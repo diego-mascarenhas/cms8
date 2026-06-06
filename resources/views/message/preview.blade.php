@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ __('Vista previa') }}@if ($message) — {{ $message->name }}@endif</title>
+    <title>{{ __('Vista previa') }}@if ($message) — {{ $previewSubject ?? $message->name }}@endif</title>
     <style>
         html, body {
             height: 100%;
@@ -73,7 +73,7 @@
         <div>
             <strong>{{ __('Vista previa del correo') }}</strong>
             @if ($message)
-                <span class="text-muted"> — {{ $message->name }}</span>
+                <span class="text-muted"> — {{ $previewSubject ?? $message->name }}</span>
             @endif
         </div>
         <button type="button" class="btn-close-preview" onclick="window.close()">{{ __('Cerrar') }}</button>
@@ -84,9 +84,15 @@
             $emailConfig = auth()->user()?->currentTeam?->getOutgoingEmailConfig() ?? [];
         @endphp
         <div class="preview-meta">
-            <strong>{{ __('De') }}:</strong>
-            {{ $emailConfig['from_name'] ?? __('Remitente') }}
-            &lt;{{ $emailConfig['from_address'] ?? 'sender@example.com' }}&gt;
+            <div><strong>{{ __('Subject') }}:</strong> {{ $previewSubject ?? $message->name }}</div>
+            @if (! empty($previewText))
+                <div class="mt-1"><strong>{{ __('app.Preview') }}:</strong> {{ $previewText }}</div>
+            @endif
+            <div class="mt-1">
+                <strong>{{ __('De') }}:</strong>
+                {{ $emailConfig['from_name'] ?? __('Remitente') }}
+                &lt;{{ $emailConfig['from_address'] ?? 'sender@example.com' }}&gt;
+            </div>
         </div>
     @endif
 

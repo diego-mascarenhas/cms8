@@ -275,6 +275,7 @@ return [
     'message_merge_field_full_name' => 'Full name',
     'message_merge_field_email' => 'Email',
     'message_merge_field_phone' => 'Phone',
+    'message_merge_fields_inbox_preview_label' => 'Inbox preview (sample data)',
     'email_template_update_button' => 'Update template',
     'email_template_update_confirm_title' => 'Update this template?',
     'email_template_update_confirm_text' => 'The editor content will replace the HTML stored on the template. Already sent messages are not changed.',

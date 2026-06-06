@@ -275,6 +275,7 @@ return [
     'message_merge_field_full_name' => 'Nombre completo',
     'message_merge_field_email' => 'Email',
     'message_merge_field_phone' => 'Teléfono',
+    'message_merge_fields_inbox_preview_label' => 'Vista previa en bandeja (datos de ejemplo)',
     'email_template_update_button' => 'Actualizar plantilla',
     'email_template_update_confirm_title' => '¿Actualizar la plantilla?',
     'email_template_update_confirm_text' => 'El contenido del editor reemplazará el HTML guardado en la plantilla. Los envíos ya realizados no se modifican.',

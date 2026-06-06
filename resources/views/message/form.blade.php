@@ -404,11 +404,19 @@ document.addEventListener('DOMContentLoaded', function () {
 					<div class="form-text mt-1">{{ __('app.message_form_template_required_help') }}</div>
 				@endif
 			</div>
-			<div class="col-md-12">
+			<div class="col-12">
 				<x-input-textarea id="text" label="{{ __('app.Preview') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 				<div class="form-text mt-1">
 					{{ __('app.message_form_alt_text_help') }}
 				</div>
+			</div>
+			<div class="col-12">
+				<div class="border rounded bg-label-secondary p-3" id="message-merge-fields-inbox-preview" aria-live="polite">
+					<div class="small text-muted mb-2">{{ __('app.message_merge_fields_inbox_preview_label') }}</div>
+					<div class="fw-semibold" id="message-merge-preview-subject"></div>
+					<div class="small text-muted mt-1" id="message-merge-preview-text"></div>
+				</div>
+				<script type="application/json" id="message-merge-fields-sample-json">@json(\App\Support\MessageTemplateMergeFields::valuesForContact(\App\Support\MessageTemplateMergeFields::sampleContact()))</script>
 			</div>
 		</div>
 		</div>
@@ -504,6 +512,54 @@ document.addEventListener('DOMContentLoaded', function () {
 	</form>
 @push('scripts')
 @include('message.partials.email-test-send-modal-script')
+<script>
+(function ()
+{
+    var subjectEl = document.getElementById('name');
+    var previewTextEl = document.getElementById('text');
+    var subjectOut = document.getElementById('message-merge-preview-subject');
+    var previewTextOut = document.getElementById('message-merge-preview-text');
+    var sampleJsonEl = document.getElementById('message-merge-fields-sample-json');
+
+    if (! subjectEl || ! previewTextEl || ! subjectOut || ! previewTextOut || ! sampleJsonEl)
+    {
+        return;
+    }
+
+    var mergeMap = {};
+    try
+    {
+        mergeMap = JSON.parse(sampleJsonEl.textContent || '{}');
+    }
+    catch (e)
+    {
+        mergeMap = {};
+    }
+
+    function applyMergeFields(value)
+    {
+        var out = String(value || '');
+        Object.keys(mergeMap).forEach(function (token)
+        {
+            out = out.split(token).join(String(mergeMap[token] ?? ''));
+        });
+
+        return out;
+    }
+
+    function refreshInboxPreview()
+    {
+        var subject = applyMergeFields(subjectEl.value).trim();
+        var previewText = applyMergeFields(previewTextEl.value).trim();
+        subjectOut.textContent = subject || '—';
+        previewTextOut.textContent = previewText || '—';
+    }
+
+    subjectEl.addEventListener('input', refreshInboxPreview);
+    previewTextEl.addEventListener('input', refreshInboxPreview);
+    refreshInboxPreview();
+})();
+</script>
 <script>
 (function ()
 {

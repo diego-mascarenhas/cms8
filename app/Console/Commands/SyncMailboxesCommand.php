@@ -29,7 +29,9 @@ class SyncMailboxesCommand extends Command
             $mailboxes = collect([$mailbox]);
         } else
         {
-            $mailboxes = Mailbox::all();
+            $mailboxes = Mailbox::query()
+                ->where('host', 'not like', '%.humano.local')
+                ->get();
         }
 
         if ($mailboxes->isEmpty())

@@ -27,6 +27,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -861,11 +862,23 @@ class MessageController extends Controller
         {
             $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
+            $totalDeliveries = MessageDelivery::where('message_id', $id)->count();
+
             // Count ALL pending deliveries (status_id = 1, not failed = 4, not delivered)
             $pendingCount = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1) // pending status (automatically excludes status_id = 4)
                 ->whereNull('delivered_at') // not delivered yet
                 ->count();
+
+            if ($pendingCount === 0 && $totalDeliveries === 0 && $message->status_id && $message->started_at)
+            {
+                Artisan::call('campaigns:process-active', ['--message' => $id]);
+
+                $pendingCount = MessageDelivery::where('message_id', $id)
+                    ->where('status_id', 1)
+                    ->whereNull('delivered_at')
+                    ->count();
+            }
 
             if ($pendingCount === 0)
             {
@@ -874,18 +887,21 @@ class MessageController extends Controller
                     ->where('status_id', 4)
                     ->count();
 
-                $message = 'No hay deliveries pendientes. ';
+                $responseMessage = 'No hay deliveries pendientes. ';
                 if ($failedCount > 0)
                 {
-                    $message .= "Hay {$failedCount} fallidos que no se reenviarán automáticamente. Usa el botón 'Reenviar' en cada uno si deseas reintentarlos.";
+                    $responseMessage .= "Hay {$failedCount} fallidos que no se reenviarán automáticamente. Usa el botón 'Reenviar' en cada uno si deseas reintentarlos.";
+                } elseif ($totalDeliveries > 0)
+                {
+                    $responseMessage .= 'Todos los contactos ya recibieron el correo.';
                 } else
                 {
-                    $message .= 'Todos los contactos ya recibieron el correo.';
+                    $responseMessage .= 'No se pudieron crear envíos para la audiencia actual. Revisa filtros de contactos o el horario de envío.';
                 }
 
                 return response()->json([
                     'success' => false,
-                    'message' => $message,
+                    'message' => $responseMessage,
                 ], 400);
             }
 
@@ -1363,9 +1379,14 @@ class MessageController extends Controller
         try
         {
             $message = Message::with(['template', 'category'])->findOrFail($id);
+            $sampleContact = $this->resolvePreviewSampleContact($message);
 
             return view('message.preview', [
                 'message' => $message,
+                'previewSubject' => MessageTemplateMergeFields::replace((string) $message->name, $sampleContact),
+                'previewText' => filled($message->text)
+                    ? MessageTemplateMergeFields::replace((string) $message->text, $sampleContact)
+                    : null,
                 'iframeSrc' => route('message.preview.html', $message->id),
             ]);
         } catch (\Exception $e)
@@ -1434,7 +1455,10 @@ class MessageController extends Controller
             $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
         } else
         {
-            $htmlContent = '<p>'.e($message->text).'</p>';
+            $previewText = filled($message->text)
+                ? MessageTemplateMergeFields::replace((string) $message->text, $sampleContact)
+                : '';
+            $htmlContent = '<p>'.e($previewText).'</p>';
         }
 
         $team = auth()->user()->currentTeam;
