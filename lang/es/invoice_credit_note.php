@@ -16,5 +16,6 @@ return [
         'not_allowed' => 'No puedes emitir una nota de crédito para esta factura.',
         'team_not_found' => 'No se encontró el equipo de la factura.',
         'stripe_not_configured' => 'Configura la clave secreta de Stripe en los ajustes del equipo.',
+        'no_creditable_amount' => 'No hay importe disponible para emitir una nota de crédito en esta factura.',
     ],
 ];
