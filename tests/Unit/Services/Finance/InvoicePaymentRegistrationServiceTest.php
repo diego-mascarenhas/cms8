@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\Finance;
 use App\Enums\TransactionType;
 use App\Models\Enterprise;
 use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
@@ -182,5 +183,137 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
         ]);
 
         $this->assertFalse($this->service->canRegisterPayment($member, $invoice));
+    }
+
+    public function test_cannot_register_payment_when_balance_is_zero(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'bank-eur',
+            'name' => 'Banco EUR',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-003',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        $this->assertFalse($this->service->canRegisterPayment($user, $invoice));
+    }
+
+    public function test_cannot_register_payment_for_blocked_statuses(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'bank-eur',
+            'name' => 'Banco EUR',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-004',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 5,
+        ]);
+
+        $this->assertFalse($this->service->canRegisterPayment($user, $invoice));
+    }
+
+    public function test_cannot_register_payment_when_stripe_invoice_is_already_paid(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'bank-eur',
+            'name' => 'Banco EUR',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-005',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_paid_sync',
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_paid_sync',
+            'status' => 'paid',
+            'paid' => true,
+        ]);
+
+        $invoice->setRelation('stripeInvoiceSync', InvoiceSync::query()->first());
+
+        $this->assertFalse($this->service->canRegisterPayment($user, $invoice));
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\Finance;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
+use App\Models\SubscriptionProduct;
 use App\Models\User;
 use App\Services\Finance\InvoiceDisplayLineItemService;
 use Database\Seeders\CurrencySeeder;
@@ -77,7 +78,11 @@ class InvoiceDisplayLineItemServiceTest extends TestCase
                         'description' => '2 × VPS Essential (at €96.00 / month)',
                         'quantity' => 2,
                         'amount' => 19200,
-                        'price' => ['unit_amount' => 9600],
+                        'price' => [
+                            'id' => 'price_vps_essential',
+                            'unit_amount' => 9600,
+                            'product' => 'prod_vps_essential',
+                        ],
                         'discount_amounts' => [['amount' => 7680]],
                     ]],
                 ],
@@ -85,10 +90,20 @@ class InvoiceDisplayLineItemServiceTest extends TestCase
             'last_synced_at' => now(),
         ]);
 
+        SubscriptionProduct::query()->create([
+            'stripe_product' => 'prod_vps_essential',
+            'stripe_price' => 'price_vps_essential',
+            'name' => 'VPS Essential',
+            'category' => 'vps',
+            'active' => true,
+            'currency' => 'eur',
+        ]);
+
         $items = $this->service->forInvoice($invoice);
 
         $this->assertCount(1, $items);
         $this->assertSame('2 × VPS Essential (at €96.00 / month)', $items->first()['description']);
+        $this->assertSame(__('VPS'), $items->first()['category']);
         $this->assertSame(2.0, $items->first()['quantity']);
         $this->assertSame(96.0, $items->first()['unit_price']);
         $this->assertSame(76.8, $items->first()['discount']);

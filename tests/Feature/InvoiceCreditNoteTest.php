@@ -4,9 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Enterprise;
 use App\Models\Invoice;
-use App\Models\PaymentAccount;
-use App\Models\PaymentType;
 use App\Models\User;
+use App\Services\Billing\StripeInvoiceCreditNoteService;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -15,7 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
-class InvoicePaymentRegistrationTest extends TestCase
+class InvoiceCreditNoteTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -33,191 +32,15 @@ class InvoicePaymentRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_team_owner_can_register_payment_from_invoice_show(): void
+    public function test_team_owner_can_issue_stripe_credit_note_from_invoice_show(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $user->assignRole('admin');
         $team = $user->ownedTeams()->first();
-
-        $enterprise = Enterprise::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'name' => 'Acme SL',
-            'type_id' => 1,
-            'status_id' => 1,
-        ]);
-
-        $account = PaymentAccount::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
-            'symbol' => '$',
-            'currency_id' => 32,
-            'status' => 1,
-        ]);
-
-        $type = PaymentType::query()->create(['name' => 'Transferencia']);
-
-        $invoice = Invoice::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'enterprise_id' => $enterprise->id,
-            'currency_id' => 32,
-            'type_id' => 1,
-            'operation' => 'sell',
-            'number' => 'F-001',
-            'date' => now()->toDateString(),
-            'due_date' => now()->addDays(10)->toDateString(),
-            'gross_amount' => 100,
-            'discount' => 0,
-            'total_amount' => 100,
-            'balance' => 100,
-            'status' => 2,
-        ]);
-
-        $this->actingAs($user)
-            ->post(route('invoice.payments.store', $invoice), [
-                'amount' => 100,
-                'date' => now()->toDateString(),
-                'account_id' => $account->id,
-                'type_id' => $type->id,
-            ])
-            ->assertRedirect(route('invoice.show', $invoice->id))
-            ->assertSessionHas('success');
-
-        $invoice->refresh();
-
-        $this->assertSame(0.0, (float) $invoice->balance);
-        $this->assertDatabaseHas('payments', [
-            'invoice_id' => $invoice->id,
-            'amount' => 100,
-            'account_id' => $account->id,
-        ]);
-    }
-
-    public function test_non_owner_cannot_register_payment_from_invoice_show(): void
-    {
-        $owner = User::factory()->withPersonalTeam()->create();
-        $owner->assignRole('admin');
-        $team = $owner->ownedTeams()->first();
-
-        $member = User::factory()->create();
-        $member->assignRole('admin');
-        $team->users()->attach($member, ['role' => 'admin']);
-        $member->forceFill(['current_team_id' => $team->id])->save();
-
-        $account = PaymentAccount::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
-            'symbol' => '$',
-            'currency_id' => 32,
-            'status' => 1,
-        ]);
-
-        $type = PaymentType::query()->create(['name' => 'Transferencia']);
-
-        $enterprise = Enterprise::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'name' => 'Acme SL',
-            'type_id' => 1,
-            'status_id' => 1,
-        ]);
-
-        $invoice = Invoice::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'enterprise_id' => $enterprise->id,
-            'currency_id' => 32,
-            'type_id' => 1,
-            'operation' => 'sell',
-            'number' => 'F-002',
-            'date' => now()->toDateString(),
-            'due_date' => now()->addDays(10)->toDateString(),
-            'gross_amount' => 50,
-            'discount' => 0,
-            'total_amount' => 50,
-            'balance' => 50,
-            'status' => 2,
-        ]);
-
-        $this->actingAs($member)
-            ->post(route('invoice.payments.store', $invoice), [
-                'amount' => 50,
-                'date' => now()->toDateString(),
-                'account_id' => $account->id,
-                'type_id' => $type->id,
-            ])
-            ->assertForbidden();
-    }
-
-    public function test_invoice_show_displays_payment_form_only_for_team_owner(): void
-    {
-        $owner = User::factory()->withPersonalTeam()->create();
-        $owner->assignRole('admin');
-        $team = $owner->ownedTeams()->first();
-
-        $owner->forceFill(['current_team_id' => $team->id])->save();
-
-        PaymentAccount::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
-            'symbol' => '$',
-            'currency_id' => 32,
-            'status' => 1,
-        ]);
-
-        $enterprise = Enterprise::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'name' => 'Acme SL',
-            'type_id' => 1,
-            'status_id' => 1,
-        ]);
-
-        $invoice = Invoice::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'enterprise_id' => $enterprise->id,
-            'currency_id' => 32,
-            'type_id' => 1,
-            'operation' => 'sell',
-            'number' => 'F-003',
-            'date' => now()->toDateString(),
-            'due_date' => now()->addDays(10)->toDateString(),
-            'gross_amount' => 80,
-            'discount' => 0,
-            'total_amount' => 80,
-            'balance' => 80,
-            'status' => 2,
-        ]);
-
-        $member = User::factory()->create();
-        $member->assignRole('admin');
-        $team->users()->attach($member, ['role' => 'admin']);
-        $member->forceFill(['current_team_id' => $team->id])->save();
-
-        $this->actingAs($owner)
-            ->get(route('invoice.show', $invoice->id))
-            ->assertOk()
-            ->assertSee(__('invoice_payment.register_title'), false);
-
-        $this->actingAs($member)
-            ->get(route('invoice.show', $invoice->id))
-            ->assertOk()
-            ->assertDontSee(__('invoice_payment.register_title'), false);
-    }
-
-    public function test_invoice_show_hides_payment_form_when_balance_is_zero(): void
-    {
-        $owner = User::factory()->withPersonalTeam()->create();
-        $owner->assignRole('admin');
-        $team = $owner->ownedTeams()->first();
-        $owner->forceFill(['current_team_id' => $team->id])->save();
-
-        PaymentAccount::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'code' => 'bank-eur',
-            'name' => 'Caja Rural',
-            'symbol' => '€',
-            'currency_id' => 978,
-            'status' => 1,
+        $team->setSetting('stripe_secret', 'sk_test_example', [
+            'type' => 'string',
+            'group' => 'stripe',
+            'is_encrypted' => false,
         ]);
 
         $enterprise = Enterprise::withoutGlobalScopes()->create([
@@ -233,7 +56,7 @@ class InvoicePaymentRegistrationTest extends TestCase
             'currency_id' => 978,
             'type_id' => 1,
             'operation' => 'sell',
-            'number' => 'F-004',
+            'number' => '0005-0100',
             'date' => now()->toDateString(),
             'due_date' => now()->addDays(10)->toDateString(),
             'gross_amount' => 100,
@@ -241,11 +64,173 @@ class InvoicePaymentRegistrationTest extends TestCase
             'total_amount' => 100,
             'balance' => 0,
             'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_test_credit_note',
+        ]);
+
+        $this->mock(StripeInvoiceCreditNoteService::class, function ($mock): void
+        {
+            $mock->shouldReceive('issueForInvoice')
+                ->once()
+                ->withArgs(function ($invoice, string $reason): bool
+                {
+                    return $reason === 'order_change';
+                })
+                ->andReturn([
+                    'credit_note_id' => 'cn_test_001',
+                    'number' => '0005-CN-01',
+                    'amount' => 100.0,
+                ]);
+        });
+
+        $this->actingAs($user)
+            ->post(route('invoice.credit-notes.store', $invoice), [
+                'reason' => 'order_change',
+            ])
+            ->assertRedirect(route('invoice.show', $invoice->id))
+            ->assertSessionHas('success');
+    }
+
+    public function test_non_owner_cannot_issue_credit_note(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+        $team->setSetting('stripe_secret', 'sk_test_example', [
+            'type' => 'string',
+            'group' => 'stripe',
+            'is_encrypted' => false,
+        ]);
+
+        $member = User::factory()->create();
+        $member->assignRole('admin');
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0101',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_test_credit_note_2',
+        ]);
+
+        $this->actingAs($member)
+            ->post(route('invoice.credit-notes.store', $invoice), [
+                'reason' => 'order_change',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_invoice_show_displays_credit_note_form_only_for_team_owner_on_stripe_invoice(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+        $team->setSetting('stripe_secret', 'sk_test_example', [
+            'type' => 'string',
+            'group' => 'stripe',
+            'is_encrypted' => false,
+        ]);
+        $owner->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0102',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_test_credit_note_3',
+        ]);
+
+        $member = User::factory()->create();
+        $member->assignRole('admin');
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($owner)
+            ->get(route('invoice.show', $invoice->id))
+            ->assertOk()
+            ->assertSee(__('invoice_credit_note.issue_title'), false)
+            ->assertSee(__('invoice_credit_note.issue_button'), false)
+            ->assertSee('creditNoteModal', false);
+
+        $this->actingAs($member)
+            ->get(route('invoice.show', $invoice->id))
+            ->assertOk()
+            ->assertDontSee(__('invoice_credit_note.issue_title'), false)
+            ->assertDontSee('creditNoteModal', false);
+    }
+
+    public function test_invoice_show_displays_disabled_credit_note_form_when_stripe_secret_missing(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+        $owner->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0103',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_test_credit_note_4',
         ]);
 
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.register_title'), false);
+            ->assertSee(__('invoice_credit_note.issue_button'), false)
+            ->assertSee(__('invoice_credit_note.errors.stripe_not_configured'), false);
     }
 }

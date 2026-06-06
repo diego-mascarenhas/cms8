@@ -415,6 +415,96 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame('€60,00', $stats['unpaid']['amount_label']);
     }
 
+    public function test_collected_and_credit_notes_stats_use_rolling_thirty_day_window(): void
+    {
+        Carbon::setTestNow('2026-06-06 12:00:00');
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-RECENT',
+            'date' => now()->subDays(10)->toDateString(),
+            'due_date' => now()->subDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OLD',
+            'date' => now()->subDays(45)->toDateString(),
+            'due_date' => now()->subDays(45)->toDateString(),
+            'gross_amount' => 500,
+            'discount' => 0,
+            'total_amount' => 500,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'NC-RECENT',
+            'date' => now()->subDays(5)->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 12.34,
+            'discount' => 0,
+            'total_amount' => 12.34,
+            'balance' => 0,
+            'status' => 4,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'NC-OLD',
+            'date' => now()->subDays(60)->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 99,
+            'discount' => 0,
+            'total_amount' => 99,
+            'balance' => 0,
+            'status' => 4,
+        ]);
+
+        $stats = $this->service->buildIndexStats($team->id);
+
+        $this->assertSame(1, $stats['collected']['count']);
+        $this->assertSame(['EUR' => 100.0], $stats['collected']['totals_by_currency']);
+        $this->assertSame(1, $stats['credit_notes']['count']);
+        $this->assertSame(['EUR' => 12.34], $stats['credit_notes']['totals_by_currency']);
+
+        $collectedQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($collectedQuery, 'collected');
+        $this->assertSame(['F-RECENT'], $collectedQuery->pluck('number')->all());
+
+        $creditNotesQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($creditNotesQuery, 'credit_notes');
+        $this->assertSame(['NC-RECENT'], $creditNotesQuery->pluck('number')->all());
+    }
+
     public function test_resolve_list_filter_maps_legacy_all_to_default(): void
     {
         $this->assertSame('excluding_collected', $this->service->resolveListFilter('all'));

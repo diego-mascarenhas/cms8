@@ -4,6 +4,7 @@ namespace App\Services\Finance;
 
 use App\Enums\TransactionType;
 use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
@@ -13,6 +14,9 @@ use Illuminate\Validation\ValidationException;
 
 class InvoicePaymentRegistrationService
 {
+    /** @var list<int> */
+    private const BLOCKED_STATUSES = [3, 4, 5, 6, 7, 9];
+
     public function __construct(
         private readonly InvoiceCurrencyService $invoiceCurrencyService,
     ) {}
@@ -29,7 +33,27 @@ class InvoicePaymentRegistrationService
             return false;
         }
 
-        return (float) $invoice->balance > 0;
+        return $this->isPaymentRegistrationEligible($invoice);
+    }
+
+    public function isPaymentRegistrationEligible(Invoice $invoice): bool
+    {
+        if ((float) $invoice->balance <= 0)
+        {
+            return false;
+        }
+
+        if (in_array((int) $invoice->status, self::BLOCKED_STATUSES, true))
+        {
+            return false;
+        }
+
+        if ($this->isStripeInvoiceCollected($invoice))
+        {
+            return false;
+        }
+
+        return $this->accountsForInvoiceCurrency($invoice)->isNotEmpty();
     }
 
     /**
@@ -158,5 +182,29 @@ class InvoicePaymentRegistrationService
 
             return $payment;
         });
+    }
+
+    private function isStripeInvoiceCollected(Invoice $invoice): bool
+    {
+        if (! filled($invoice->source_reference_id) || ! str_starts_with((string) $invoice->source_reference_id, 'in_'))
+        {
+            return false;
+        }
+
+        $sync = $invoice->relationLoaded('stripeInvoiceSync')
+            ? $invoice->stripeInvoiceSync
+            : $invoice->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return false;
+        }
+
+        if ($sync->paid)
+        {
+            return true;
+        }
+
+        return strtolower((string) $sync->status) === 'paid';
     }
 }

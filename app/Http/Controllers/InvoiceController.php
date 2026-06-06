@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\InvoiceDataTable;
+use App\Http\Requests\StoreInvoiceCreditNoteRequest;
 use App\Http\Requests\StoreInvoicePaymentRequest;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
+use App\Services\Billing\StripeInvoiceCreditNoteService;
+use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
 use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoicePaymentRegistrationService;
@@ -20,6 +23,8 @@ class InvoiceController extends Controller
 {
     public function __construct(
         private readonly InvoicePaymentRegistrationService $invoicePaymentRegistrationService,
+        private readonly InvoiceCreditNoteService $invoiceCreditNoteService,
+        private readonly StripeInvoiceCreditNoteService $stripeInvoiceCreditNoteService,
     ) {
         // Note: Manual authorization in each method due to non-standard route parameter names
         // Laravel's authorizeResource() expects {invoice} parameter, but routes use {id}
@@ -148,6 +153,7 @@ class InvoiceController extends Controller
             'enterprise',
             'items.category',
             'type',
+            'stripeInvoiceSync',
         ])->findOrFail($id);
 
         $this->authorize('view', $invoice);
@@ -158,6 +164,10 @@ class InvoiceController extends Controller
         $paymentFormDefaults = $canRegisterPayment
             ? $this->invoicePaymentRegistrationService->formDefaults($invoice)
             : null;
+        $canShowCreditNoteForm = $this->invoiceCreditNoteService->canShowCreditNoteForm(auth()->user(), $invoice);
+        $canIssueCreditNote = $this->invoiceCreditNoteService->canIssueCreditNote(auth()->user(), $invoice);
+        $creditNoteReasons = InvoiceCreditNoteService::STRIPE_REASONS;
+        $defaultCreditNoteReason = $this->invoiceCreditNoteService->defaultReason();
 
         return view('invoices.show', compact(
             'invoice',
@@ -165,6 +175,10 @@ class InvoiceController extends Controller
             'displayLineItems',
             'canRegisterPayment',
             'paymentFormDefaults',
+            'canShowCreditNoteForm',
+            'canIssueCreditNote',
+            'creditNoteReasons',
+            'defaultCreditNoteReason',
         ));
     }
 
@@ -188,5 +202,32 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoice.show', $invoice->id)
             ->with('success', __('invoice_payment.success'));
+    }
+
+    public function storeCreditNote(StoreInvoiceCreditNoteRequest $request, Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        if (! $this->invoiceCreditNoteService->canIssueCreditNote($request->user(), $invoice))
+        {
+            abort(403, __('invoice_credit_note.errors.not_allowed'));
+        }
+
+        try
+        {
+            $result = $this->stripeInvoiceCreditNoteService->issueForInvoice(
+                $invoice,
+                (string) $request->validated('reason'),
+            );
+        } catch (\Illuminate\Validation\ValidationException $exception)
+        {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        $reference = $result['number'] ?? $result['credit_note_id'];
+
+        return redirect()
+            ->route('invoice.show', $invoice->id)
+            ->with('success', __('invoice_credit_note.success', ['reference' => $reference]));
     }
 }

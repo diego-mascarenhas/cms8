@@ -23,7 +23,13 @@ class InvoiceDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'invoices.action')
+            ->addColumn('action', function (Invoice $data)
+            {
+                return view('invoices.action', [
+                    'id' => $data->id,
+                    'enterprise' => $data->enterprise,
+                ])->render();
+            })
             ->setRowId('id')
             ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount', 'balance'])
             ->addColumn('number_with_indicator', function ($data)
@@ -188,7 +194,7 @@ class InvoiceDataTable extends DataTable
                 ->className('text-center'),
             Column::computed('action')
                 ->title('Acciones')
-                ->addClass('min-desktop')
+                ->addClass('all')
                 ->className('text-center')
                 ->exportable(false)
                 ->printable(false)

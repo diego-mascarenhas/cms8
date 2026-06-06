@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
@@ -78,6 +79,58 @@ class Invoice extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function stripeInvoiceSync(): HasOne
+    {
+        return $this->hasOne(InvoiceSync::class, 'external_id', 'source_reference_id')
+            ->where('invoice_syncs.provider', 'stripe');
+    }
+
+    public function stripeHostedInvoiceUrl(): ?string
+    {
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return null;
+        }
+
+        $url = trim((string) ($sync->hosted_invoice_url ?? ''));
+
+        if ($url !== '')
+        {
+            return $url;
+        }
+
+        $payloadUrl = trim((string) data_get($sync->raw_payload, 'hosted_invoice_url', ''));
+
+        return $payloadUrl !== '' ? $payloadUrl : null;
+    }
+
+    public function stripeInvoicePdfUrl(): ?string
+    {
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return null;
+        }
+
+        $url = trim((string) ($sync->invoice_pdf ?? ''));
+
+        if ($url !== '')
+        {
+            return $url;
+        }
+
+        $payloadUrl = trim((string) data_get($sync->raw_payload, 'invoice_pdf', ''));
+
+        return $payloadUrl !== '' ? $payloadUrl : null;
     }
 
     public function getStatusLabelAttribute(): string

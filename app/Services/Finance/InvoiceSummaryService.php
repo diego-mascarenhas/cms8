@@ -31,6 +31,11 @@ class InvoiceSummaryService
 
     public const DEFAULT_LIST_FILTER = 'excluding_collected';
 
+    public const ROLLING_SUMMARY_DAYS = 30;
+
+    /** @var list<string> Filters whose card totals and list view use a rolling date window. */
+    public const ROLLING_SUMMARY_FILTERS = ['credit_notes', 'collected'];
+
     /**
      * @return array{
      *     unpaid: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
@@ -67,6 +72,7 @@ class InvoiceSummaryService
     {
         $query = $this->baseQuery($teamId);
         $this->applySummaryFilter($query, 'credit_notes');
+        $this->applyRollingDateFilter($query);
 
         return $this->buildMetric($query, 'total_amount');
     }
@@ -78,6 +84,7 @@ class InvoiceSummaryService
     {
         $query = $this->baseQuery($teamId);
         $this->applySummaryFilter($query, 'collected');
+        $this->applyRollingDateFilter($query);
 
         return $this->buildMetric($query, 'total_amount');
     }
@@ -122,14 +129,18 @@ class InvoiceSummaryService
             'unpaid', 'excluding_collected' => $query
                 ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
                 ->where('invoices.balance', '>', 0),
-            'credit_notes' => $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
-            'collected' => $query
-                ->whereNotIn('invoices.status', self::COLLECTED_EXCLUDED_STATUSES)
-                ->where(function (Builder $inner): void
-                {
-                    $inner->whereIn('invoices.status', self::BONIFIED_STATUSES)
-                        ->orWhere('invoices.balance', '<=', 0);
-                }),
+            'credit_notes' => $this->applyRollingDateFilter(
+                $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
+            ),
+            'collected' => $this->applyRollingDateFilter(
+                $query
+                    ->whereNotIn('invoices.status', self::COLLECTED_EXCLUDED_STATUSES)
+                    ->where(function (Builder $inner): void
+                    {
+                        $inner->whereIn('invoices.status', self::BONIFIED_STATUSES)
+                            ->orWhere('invoices.balance', '<=', 0);
+                    }),
+            ),
             'overdue' => $query
                 ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
                 ->where('invoices.balance', '>', 0)
@@ -143,6 +154,13 @@ class InvoiceSummaryService
     {
         return Invoice::withoutGlobalScopes()
             ->where('team_id', $teamId);
+    }
+
+    private function applyRollingDateFilter(Builder $query): Builder
+    {
+        $fromDate = Carbon::now()->subDays(self::ROLLING_SUMMARY_DAYS)->startOfDay()->toDateString();
+
+        return $query->whereDate('invoices.date', '>=', $fromDate);
     }
 
     /**
