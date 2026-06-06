@@ -1556,7 +1556,8 @@ class MessageController extends Controller
      */
     private function buildEmailTemplatePreviewBundle(Template $template, ?int $messageId, string $returnUrl, ?Message $message = null): array
     {
-        $mailHtmlSource = $this->resolveMailHtmlForTemplatePreview($template, $message);
+        $defaultHtml = $this->resolveMailHtmlForTemplatePreview($template, $message);
+        $mailHtmlSource = old('template_html', $defaultHtml);
 
         $previewHtml = $this->iframePreviewHtmlFromSource($mailHtmlSource);
         $mailHtmlTextareaValue = $mailHtmlSource;
