@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Models\Payment;
 use App\Support\DataTableFormatter;
+use App\Support\PaymentTableAmountFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -23,7 +24,7 @@ class PaymentDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->addColumn('action', 'payments.action')
             ->setRowId('id')
-            ->rawColumns(['action', 'status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'transaction_indicator'])
+            ->rawColumns(['action', 'status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'transaction_indicator', 'amount'])
             ->addColumn('transaction_indicator', function ($data)
             {
                 return $data->transaction_type?->badge() ?? '';
@@ -64,11 +65,11 @@ class PaymentDataTable extends DataTable
                 }
 
                 return DataTableFormatter::showLink(
-                    $data,
-                    'payments.show',
+                    $data->enterprise,
+                    'client.show',
                     $data->enterprise->name,
                     'view',
-                    [$data->id],
+                    [$data->enterprise->id],
                     'fw-medium text-body',
                 );
             })
@@ -89,7 +90,10 @@ class PaymentDataTable extends DataTable
             })
             ->editColumn('amount', function ($data)
             {
-                return number_format($data->amount, 2, ',', '.');
+                return PaymentTableAmountFormatter::format(
+                    (float) $data->amount,
+                    $data->currency_code,
+                );
             })
             ->editColumn('status', function ($data)
             {
@@ -101,7 +105,12 @@ class PaymentDataTable extends DataTable
     {
         return $model
             ->newQuery()
-            ->with(['enterprise', 'invoice', 'account', 'type']);
+            ->with([
+                'enterprise',
+                'invoice',
+                'type',
+                'account' => fn ($query) => $query->withoutGlobalScope('activeStatus')->with('currency'),
+            ]);
     }
 
     public function html(): HtmlBuilder

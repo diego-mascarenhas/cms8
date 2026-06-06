@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Enums\TransactionType;
 use App\Models\Payment;
 use App\Support\DataTableFormatter;
+use App\Support\PaymentTableAmountFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -29,7 +30,20 @@ class ExpenseDataTable extends DataTable
             })
             ->editColumn('invoice_id', function ($data)
             {
-                return $data->invoice?->number ?? '<span class="text-muted">-</span>';
+                if ($data->invoice)
+                {
+                    return '<a href="'.e(route('invoice.show', $data->invoice->id)).'" class="text-body">'.e($data->invoice->number).'</a>';
+                }
+
+                $user = auth()->user();
+                if ($user && $user->hasAnyRole(['admin', 'collaborator']))
+                {
+                    return '<a href="'.e(route('payments.link-invoice', $data->id)).'" class="text-body" title="'.e(__('payment_invoice.link.action_title')).'">'
+                        .'<i class="ti ti-link ti-sm"></i>'
+                        .'</a>';
+                }
+
+                return '<span class="text-muted">-</span>';
             })
             ->filterColumn('invoice_id', function ($query, $keyword)
             {
@@ -46,11 +60,11 @@ class ExpenseDataTable extends DataTable
                 }
 
                 return DataTableFormatter::showLink(
-                    $data,
-                    'payments.show',
+                    $data->enterprise,
+                    'client.show',
                     $data->enterprise->name,
                     'view',
-                    [$data->id],
+                    [$data->enterprise->id],
                     'fw-medium text-body',
                 );
             })
@@ -71,7 +85,10 @@ class ExpenseDataTable extends DataTable
             })
             ->editColumn('amount', function ($data)
             {
-                return '<span class="text-danger fw-bold">- '.number_format($data->amount, 2, ',', '.').'</span>';
+                return PaymentTableAmountFormatter::formatExpense(
+                    (float) $data->amount,
+                    $data->currency_code,
+                );
             })
             ->editColumn('status', function ($data)
             {
@@ -84,7 +101,12 @@ class ExpenseDataTable extends DataTable
         return $model
             ->newQuery()
             ->where('transaction_type', TransactionType::EXPENSE)
-            ->with(['enterprise', 'invoice', 'account', 'type']);
+            ->with([
+                'enterprise',
+                'invoice',
+                'type',
+                'account' => fn ($query) => $query->withoutGlobalScope('activeStatus')->with('currency'),
+            ]);
     }
 
     public function html(): HtmlBuilder
@@ -128,7 +150,8 @@ class ExpenseDataTable extends DataTable
                 ->orderable(false),
             Column::make('invoice_id')
                 ->title(__('Invoice'))
-                ->addClass('min-tablet'),
+                ->addClass('min-tablet')
+                ->className('text-center'),
             Column::make('account_id')
                 ->title(__('Account'))
                 ->addClass('min-desktop'),

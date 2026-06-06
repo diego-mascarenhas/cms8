@@ -46,10 +46,7 @@
                         <option value="">{{ __('payment_invoice.link.invoice_placeholder') }}</option>
                         @foreach ($invoices as $invoice)
                             <option value="{{ $invoice->id }}" @selected((string) old('invoice_id') === (string) $invoice->id)>
-                                {{ $invoice->number }} — @if($invoice->date){{ \Illuminate\Support\Carbon::parse($invoice->date)->format('d/m/Y') }}@else—@endif
-                                @if ($invoice->enterprise)
-                                    ({{ $invoice->enterprise->name }})
-                                @endif
+                                {{ \App\Support\PaymentInvoiceLinkOptionFormatter::label($invoice) }}
                             </option>
                         @endforeach
                     </select>

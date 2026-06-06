@@ -83,4 +83,19 @@ class InvoiceStatusLabelTest extends TestCase
         $this->assertStringContainsString('bg-label-success', $collected->status_badge);
         $this->assertStringContainsString('Cobrada', $collected->status_badge);
     }
+
+    public function test_bonificada_status_never_shows_as_pending(): void
+    {
+        Carbon::setTestNow('2026-06-06 12:00:00');
+
+        $bonificada = new Invoice([
+            'status' => 5,
+            'due_date' => '2005-03-01',
+            'balance' => 0,
+        ]);
+
+        $this->assertSame('Bonificada', $bonificada->status_label);
+        $this->assertStringContainsString('Bonificada', $bonificada->status_badge);
+        $this->assertStringNotContainsString('Pendiente', $bonificada->status_badge);
+    }
 }

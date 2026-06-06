@@ -93,16 +93,9 @@ class InvoiceDataTable extends DataTable
     {
         $query = $model->newQuery()->with(['enterprise', 'currency']);
 
-        $summaryFilter = request()->input('summary_filter', InvoiceSummaryService::DEFAULT_LIST_FILTER);
-        $applicableFilters = array_merge(
-            InvoiceSummaryService::SUMMARY_FILTERS,
-            [InvoiceSummaryService::DEFAULT_LIST_FILTER],
-        );
-
-        if (in_array($summaryFilter, $applicableFilters, true))
-        {
-            app(InvoiceSummaryService::class)->applySummaryFilter($query, (string) $summaryFilter);
-        }
+        $summaryService = app(InvoiceSummaryService::class);
+        $summaryFilter = $summaryService->resolveListFilter(request()->input('summary_filter'));
+        $summaryService->applySummaryFilter($query, $summaryFilter);
 
         return $query;
     }
