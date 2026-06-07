@@ -6,6 +6,7 @@ use App\DataTables\PaymentDataTable;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\Finance\PaymentInvoiceLinkService;
+use App\Services\Finance\PaymentSummaryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,11 +16,14 @@ class PaymentController extends Controller
 {
     public function __construct(
         private readonly PaymentInvoiceLinkService $paymentInvoiceLinkService,
+        private readonly PaymentSummaryService $paymentSummaryService,
     ) {}
 
     public function index(PaymentDataTable $dataTable)
     {
-        return $dataTable->render('payments.index');
+        $paymentSummary = $this->paymentSummaryService->forTeam(auth()->user()->currentTeam);
+
+        return $dataTable->render('payments.index', compact('paymentSummary'));
     }
 
     public function linkInvoiceForm(Payment $payment): View|RedirectResponse
