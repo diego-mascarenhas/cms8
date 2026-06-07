@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\PaymentDataTable;
+use App\Http\Requests\UpdatePaymentStatusRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\Finance\PaymentInvoiceLinkService;
+use App\Services\Finance\PaymentStatusUpdateService;
 use App\Services\Finance\PaymentSummaryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,6 +19,7 @@ class PaymentController extends Controller
     public function __construct(
         private readonly PaymentInvoiceLinkService $paymentInvoiceLinkService,
         private readonly PaymentSummaryService $paymentSummaryService,
+        private readonly PaymentStatusUpdateService $paymentStatusUpdateService,
     ) {}
 
     public function index(PaymentDataTable $dataTable)
@@ -88,5 +91,27 @@ class PaymentController extends Controller
         $payment = Payment::with(['enterprise', 'invoice', 'account', 'type'])->findOrFail($id);
 
         return view('payments.show', compact('payment'));
+    }
+
+    public function updateStatus(UpdatePaymentStatusRequest $request, Payment $payment): RedirectResponse
+    {
+        if (! $this->paymentStatusUpdateService->canUpdateStatus($request->user(), $payment))
+        {
+            abort(403, __('payment_status.errors.not_allowed'));
+        }
+
+        try
+        {
+            $this->paymentStatusUpdateService->update(
+                $request->user(),
+                $payment,
+                (int) $request->validated('status'),
+            );
+        } catch (\Illuminate\Validation\ValidationException $exception)
+        {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        return back()->with('success', __('payment_status.success'));
     }
 }

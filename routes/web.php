@@ -836,6 +836,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
     Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');
     Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
+    Route::patch('/payments/{payment}/status', [PaymentController::class, 'updateStatus'])->name('payments.update-status');
 
     // Income module
     Route::get('/income/list', [IncomeController::class, 'index'])->name('income.index');

@@ -13,6 +13,8 @@ class InvoicePaymentDetailService
 {
     /**
      * @return Collection<int, array{
+     *     id: int|null,
+     *     status: int|null,
      *     date: \Carbon\CarbonInterface,
      *     amount: float,
      *     currency_code: string,
@@ -36,6 +38,8 @@ class InvoicePaymentDetailService
                 );
 
                 return [
+                    'id' => $payment->id,
+                    'status' => (int) $payment->status,
                     'date' => $payment->date,
                     'amount' => (float) $payment->amount,
                     'currency_code' => $currencyCode,
@@ -83,6 +87,8 @@ class InvoicePaymentDetailService
 
     /**
      * @return Collection<int, array{
+     *     id: int|null,
+     *     status: int|null,
      *     date: \Carbon\CarbonInterface,
      *     amount: float,
      *     currency_code: string,
@@ -114,6 +120,8 @@ class InvoicePaymentDetailService
                 $amount = $this->majorAmountFromCents((int) $sync->amount_net_cents, $currency);
 
                 return [
+                    'id' => null,
+                    'status' => null,
                     'date' => $sync->charge_created_at ?? now(),
                     'amount' => $amount,
                     'currency_code' => $currency,
