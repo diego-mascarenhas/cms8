@@ -106,6 +106,11 @@ return [
         'oauth_scopes' => array_values(array_filter(array_map('trim', explode(',', (string) env('GOOGLE_OAUTH_SCOPES', 'openid,email,profile,https://www.googleapis.com/auth/contacts,https://www.googleapis.com/auth/calendar.events'))))),
     ],
 
+    'webdav' => [
+        'base_url' => env('WEBDAV_BASE_URL', 'https://webdav.test'),
+        'api_token' => env('WEBDAV_API_TOKEN'),
+    ],
+
     'apollo' => [
         'api_key' => env('APOLLO_API_KEY', ''),
     ],

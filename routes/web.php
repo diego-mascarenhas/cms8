@@ -85,6 +85,7 @@ use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
+use App\Http\Controllers\WebDavIntegrationController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -305,6 +306,13 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/integrations/google/sync-contacts', [GoogleSyncedPreviewController::class, 'queueContactsSync'])->name('integrations.google.sync-contacts');
     Route::get('/integrations/google/synced-calendar', [GoogleSyncedPreviewController::class, 'calendar'])->name('integrations.google.synced-calendar');
     Route::post('/integrations/google/sync-calendar', [GoogleSyncedPreviewController::class, 'queueCalendarSync'])->name('integrations.google.sync-calendar');
+
+    Route::get('/integrations/webdav/create', [WebDavIntegrationController::class, 'createForm'])->name('integrations.webdav.create-form');
+    Route::post('/integrations/webdav/create', [WebDavIntegrationController::class, 'create'])->name('integrations.webdav.create');
+    Route::get('/integrations/webdav/link', [WebDavIntegrationController::class, 'linkForm'])->name('integrations.webdav.link-form');
+    Route::post('/integrations/webdav/link', [WebDavIntegrationController::class, 'link'])->name('integrations.webdav.link');
+    Route::delete('/integrations/webdav/disconnect', [WebDavIntegrationController::class, 'disconnect'])->name('integrations.webdav.disconnect');
+    Route::post('/integrations/webdav/sync-all', [WebDavIntegrationController::class, 'syncAll'])->name('integrations.webdav.sync-all');
 
     // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
     Route::get('/mailboxes', function ()

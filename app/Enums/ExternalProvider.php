@@ -6,4 +6,5 @@ enum ExternalProvider: string
 {
     case Google = 'google';
     case Apple = 'apple';
+    case WebDav = 'webdav';
 }

@@ -87,6 +87,13 @@ class UpdateTeamSettingsRequest extends FormRequest
             'google.google_calendar_inbound_sync_enabled' => 'nullable|in:0,1',
             'google.google_calendar_outbound_sync_enabled' => 'nullable|in:0,1',
 
+            'webdav.webdav_contacts_inbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_contacts_outbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_calendar_inbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_calendar_outbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_tasks_inbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_tasks_outbound_sync_enabled' => 'nullable|in:0,1',
+
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
 

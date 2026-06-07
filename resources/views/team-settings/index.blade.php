@@ -41,6 +41,30 @@
                     {{ session('success') }}
                 </div>
             @endif
+            @if (session('warning'))
+                <div class="alert alert-warning">
+                    {{ session('warning') }}
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="alert alert-danger">
+                    {{ session('error') }}
+                </div>
+            @endif
+            @if (session('webdav_credentials'))
+                @php($credentials = session('webdav_credentials'))
+                <div class="alert alert-info">
+                    <strong>{{ __('app.webdav_credentials_title') }}</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>{{ __('app.webdav_server_url') }}: <code>{{ $credentials['dav_url'] ?? '' }}</code></li>
+                        <li>{{ __('app.webdav_username') }}: <code>{{ $credentials['email'] ?? '' }}</code></li>
+                        @if (! empty($credentials['password']))
+                            <li>{{ __('Password') }}: <code>{{ $credentials['password'] }}</code></li>
+                        @endif
+                        <li>{{ __('app.webdav_principal') }}: <code>{{ $credentials['principal'] ?? '' }}</code></li>
+                    </ul>
+                </div>
+            @endif
 
             <div class="row mb-4">
                 <div class="col-md-4 mb-3">
@@ -287,6 +311,41 @@
                                 @endif
                                 <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'google']) }}" class="btn btn-label-secondary">{{ __('app.team_setting_google_sync_configure') }}</a>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-cloud-data-connection mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('app.webdav_card_title') }}</h5>
+                            <p class="card-text">{{ __('app.webdav_card_description') }}</p>
+                            @if (! $webDavApiConfigured)
+                                <p class="small text-warning mb-2">{{ __('app.webdav_api_not_configured') }}</p>
+                            @endif
+                            @if ($webDavExternalAccount)
+                                <p class="small text-muted mb-2">{{ $webDavExternalAccount->provider_user_id }}</p>
+                                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                    @if ($webDavApiConfigured)
+                                        <form method="POST" action="{{ route('integrations.webdav.sync-all') }}" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success">{{ __('app.webdav_sync_all') }}</button>
+                                        </form>
+                                    @endif
+                                    <form method="POST" action="{{ route('integrations.webdav.disconnect') }}" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-outline-danger">{{ __('app.webdav_disconnect') }}</button>
+                                    </form>
+                                    <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'webdav']) }}" class="btn btn-label-secondary">{{ __('app.team_setting_webdav_sync_configure') }}</a>
+                                </div>
+                            @else
+                                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                    <a href="{{ route('integrations.webdav.create-form') }}" class="btn btn-primary">{{ __('app.webdav_create_account') }}</a>
+                                    <a href="{{ route('integrations.webdav.link-form') }}" class="btn btn-label-secondary">{{ __('app.webdav_link_account') }}</a>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
