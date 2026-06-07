@@ -151,6 +151,13 @@ Schedule::command('google:sync-data')
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('webdav:sync-data')
+    ->everyFifteenMinutes()
+    ->name('webdav-sync-data')
+    ->description('Queue WebDAV contacts, calendar and task sync jobs')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('performance-insights:generate')
     ->dailyAt('06:15')
     ->name('performance-insights-generate')

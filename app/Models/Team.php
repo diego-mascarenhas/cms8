@@ -436,6 +436,36 @@ class Team extends JetstreamTeam
         return $this->booleanTeamSetting('google_calendar_outbound_sync_enabled', false);
     }
 
+    public function webdavContactsInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_contacts_inbound_sync_enabled', false);
+    }
+
+    public function webdavCalendarInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_calendar_inbound_sync_enabled', false);
+    }
+
+    public function webdavTasksInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_tasks_inbound_sync_enabled', false);
+    }
+
+    public function webdavContactsOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_contacts_outbound_sync_enabled', false);
+    }
+
+    public function webdavCalendarOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_calendar_outbound_sync_enabled', false);
+    }
+
+    public function webdavTasksOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_tasks_outbound_sync_enabled', false);
+    }
+
     private function booleanTeamSetting(string $key, bool $default): bool
     {
         $raw = $this->getSetting($key);

@@ -13,6 +13,7 @@ use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
 use App\Services\TokenUsageLogService;
+use App\Services\WebDavApiClient;
 use App\Support\TeamDefaultShortcuts;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +26,7 @@ use function Laravel\Ai\agent;
 
 class TeamSettingController extends Controller
 {
-    public function index(Team $team)
+    public function index(Team $team, WebDavApiClient $webDavApiClient)
     {
         $this->authorize('update', $team);
 
@@ -40,6 +41,13 @@ class TeamSettingController extends Controller
             ->latest('id')
             ->first();
 
+        $webDavExternalAccount = $team->externalAccounts()
+            ->where('provider', ExternalProvider::WebDav)
+            ->latest('id')
+            ->first();
+
+        $webDavApiConfigured = $webDavApiClient->isConfigured();
+
         $performanceInsightsModule = Module::query()
             ->where('key', 'performance_insights')
             ->where('status', 1)
@@ -51,6 +59,8 @@ class TeamSettingController extends Controller
             'team',
             'groupedSettings',
             'googleExternalAccount',
+            'webDavExternalAccount',
+            'webDavApiConfigured',
             'performanceInsightsModule',
             'performanceInsightsEnabled',
         ));
@@ -304,6 +314,28 @@ class TeamSettingController extends Controller
                     }
                 }
             }
+
+            if ($group === 'webdav')
+            {
+                foreach ([
+                    'webdav_contacts_inbound_sync_enabled',
+                    'webdav_contacts_outbound_sync_enabled',
+                    'webdav_calendar_inbound_sync_enabled',
+                    'webdav_calendar_outbound_sync_enabled',
+                    'webdav_tasks_inbound_sync_enabled',
+                    'webdav_tasks_outbound_sync_enabled',
+                ] as $webDavSyncBooleanKey)
+                {
+                    if (! array_key_exists($webDavSyncBooleanKey, $settings))
+                    {
+                        $team->setSetting($webDavSyncBooleanKey, false, [
+                            'group' => 'webdav',
+                            'type' => 'boolean',
+                            'is_encrypted' => false,
+                        ]);
+                    }
+                }
+            }
         }
 
         $group = array_key_first($request->validated());
@@ -360,6 +392,12 @@ class TeamSettingController extends Controller
             'google_calendar_outbound_sync_enabled',
             'google_contacts_inbound_sync_enabled',
             'google_calendar_inbound_sync_enabled',
+            'webdav_contacts_outbound_sync_enabled',
+            'webdav_calendar_outbound_sync_enabled',
+            'webdav_tasks_outbound_sync_enabled',
+            'webdav_contacts_inbound_sync_enabled',
+            'webdav_calendar_inbound_sync_enabled',
+            'webdav_tasks_inbound_sync_enabled',
             'public_catalog_enabled',
         ];
 
@@ -1073,6 +1111,66 @@ class TeamSettingController extends Controller
                         'section' => 'outbound',
                         'row' => 2,
                         'help' => __('app.team_setting_google_calendar_outbound_sync_help'),
+                    ],
+                ],
+            ],
+            'webdav' => [
+                'title' => __('app.team_setting_webdav_sync_title'),
+                'icon' => 'ti ti-cloud-data-connection',
+                'settings' => [
+                    'webdav_contacts_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_contacts_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavContactsInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_webdav_contacts_inbound_sync_help'),
+                    ],
+                    'webdav_calendar_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_calendar_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavCalendarInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_webdav_calendar_inbound_sync_help'),
+                    ],
+                    'webdav_tasks_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_tasks_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavTasksInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_webdav_tasks_inbound_sync_help'),
+                    ],
+                    'webdav_contacts_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_contacts_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavContactsOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_webdav_contacts_outbound_sync_help'),
+                    ],
+                    'webdav_calendar_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_calendar_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavCalendarOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_webdav_calendar_outbound_sync_help'),
+                    ],
+                    'webdav_tasks_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_tasks_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavTasksOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_webdav_tasks_outbound_sync_help'),
                     ],
                 ],
             ],
