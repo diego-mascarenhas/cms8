@@ -312,6 +312,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/integrations/webdav/link', [WebDavIntegrationController::class, 'linkForm'])->name('integrations.webdav.link-form');
     Route::post('/integrations/webdav/link', [WebDavIntegrationController::class, 'link'])->name('integrations.webdav.link');
     Route::delete('/integrations/webdav/disconnect', [WebDavIntegrationController::class, 'disconnect'])->name('integrations.webdav.disconnect');
+    Route::post('/integrations/webdav/sync-all', [WebDavIntegrationController::class, 'syncAll'])->name('integrations.webdav.sync-all');
 
     // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
     Route::get('/mailboxes', function ()

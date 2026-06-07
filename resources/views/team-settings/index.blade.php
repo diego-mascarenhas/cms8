@@ -327,6 +327,12 @@
                             @if ($webDavExternalAccount)
                                 <p class="small text-muted mb-2">{{ $webDavExternalAccount->provider_user_id }}</p>
                                 <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                    @if ($webDavApiConfigured)
+                                        <form method="POST" action="{{ route('integrations.webdav.sync-all') }}" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-success">{{ __('app.webdav_sync_all') }}</button>
+                                        </form>
+                                    @endif
                                     <form method="POST" action="{{ route('integrations.webdav.disconnect') }}" class="d-inline">
                                         @csrf
                                         @method('DELETE')

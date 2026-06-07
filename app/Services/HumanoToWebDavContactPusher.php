@@ -40,9 +40,9 @@ class HumanoToWebDavContactPusher
 
         $payload = [
             'name' => (string) ($contact->name ?: 'Contact'),
-            'surname' => $contact->surname,
-            'email' => $contact->email,
-            'phone' => $contact->phone,
+            'surname' => $contact->surname !== null ? (string) $contact->surname : null,
+            'email' => $contact->email !== null ? (string) $contact->email : null,
+            'phone' => $contact->phone !== null && $contact->phone !== '' ? (string) $contact->phone : null,
         ];
 
         try

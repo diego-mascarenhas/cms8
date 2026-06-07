@@ -3,9 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\ExternalProvider;
+use App\Jobs\PushCalendarEventToWebDavJob;
+use App\Jobs\PushContactToWebDavJob;
+use App\Jobs\PushTaskToWebDavJob;
 use App\Jobs\SyncWebDavContactsJob;
 use App\Jobs\SyncWebDavDataJob;
+use App\Models\CalendarEvent;
+use App\Models\Contact;
 use App\Models\ExternalAccount;
+use App\Models\Task;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -68,6 +74,32 @@ class WebDavSyncTeamSettingsTest extends TestCase
         $this->assertFalse($team->webdavContactsInboundSyncEnabled());
         $this->assertFalse($team->webdavCalendarInboundSyncEnabled());
         $this->assertFalse($team->webdavTasksInboundSyncEnabled());
+    }
+
+    public function test_can_save_webdav_sync_settings(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $this->actingAs($user)->put(route('team-settings.update', $team), [
+            'webdav' => [
+                'webdav_contacts_inbound_sync_enabled' => '1',
+                'webdav_calendar_inbound_sync_enabled' => '1',
+                'webdav_tasks_inbound_sync_enabled' => '0',
+                'webdav_contacts_outbound_sync_enabled' => '1',
+                'webdav_calendar_outbound_sync_enabled' => '0',
+                'webdav_tasks_outbound_sync_enabled' => '1',
+            ],
+        ])->assertRedirect();
+
+        $team->refresh();
+
+        $this->assertTrue($team->webdavContactsInboundSyncEnabled());
+        $this->assertTrue($team->webdavCalendarInboundSyncEnabled());
+        $this->assertFalse($team->webdavTasksInboundSyncEnabled());
+        $this->assertTrue($team->webdavContactsOutboundSyncEnabled());
+        $this->assertFalse($team->webdavCalendarOutboundSyncEnabled());
+        $this->assertTrue($team->webdavTasksOutboundSyncEnabled());
     }
 
     public function test_webdav_create_form_is_accessible_without_api_token(): void
@@ -143,6 +175,77 @@ class WebDavSyncTeamSettingsTest extends TestCase
             'team_id' => $team->id,
             'provider' => ExternalProvider::WebDav->value,
         ]);
+    }
+
+    public function test_can_queue_webdav_full_sync_from_settings(): void
+    {
+        Bus::fake();
+
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        ExternalAccount::query()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'provider' => ExternalProvider::WebDav,
+            'provider_user_id' => 'sync-all@example.com',
+            'access_token' => encrypt('secret'),
+        ]);
+
+        foreach ([
+            'webdav_contacts_outbound_sync_enabled',
+            'webdav_calendar_outbound_sync_enabled',
+            'webdav_tasks_outbound_sync_enabled',
+            'webdav_contacts_inbound_sync_enabled',
+            'webdav_calendar_inbound_sync_enabled',
+            'webdav_tasks_inbound_sync_enabled',
+        ] as $key)
+        {
+            $team->setSetting($key, true, [
+                'group' => 'webdav',
+                'type' => 'boolean',
+                'is_encrypted' => false,
+            ]);
+        }
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Push',
+            'email' => 'push@example.com',
+            'phone' => '600000001',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => \App\Models\ContactStatus::query()->orderBy('id')->value('id'),
+            'country' => 724,
+            'language' => 'es',
+        ]);
+
+        CalendarEvent::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'title' => 'Push event',
+            'start' => now(),
+            'end' => now()->addHour(),
+            'all_day' => false,
+        ]);
+
+        Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'title' => 'Push task',
+            'status_id' => \App\Models\TaskStatus::query()->orderBy('id')->value('id'),
+            'responsible_id' => $user->id,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addDay()->toDateString(),
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('integrations.webdav.sync-all'))
+            ->assertRedirect(route('team-settings.index', $team))
+            ->assertSessionHas('success');
+
+        Bus::assertDispatched(PushContactToWebDavJob::class);
+        Bus::assertDispatched(PushCalendarEventToWebDavJob::class);
+        Bus::assertDispatched(PushTaskToWebDavJob::class);
+        Bus::assertDispatched(SyncWebDavDataJob::class);
     }
 
     public function test_sync_webdav_data_job_dispatches_enabled_resources(): void
