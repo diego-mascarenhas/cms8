@@ -8,7 +8,6 @@ use App\Models\ContactInteraction;
 use App\Models\Conversation;
 use App\Models\Email;
 use App\Models\Invoice;
-use App\Models\Payment;
 use App\Models\Project;
 use App\Models\Service;
 use App\Models\Task;
@@ -16,6 +15,7 @@ use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserContactAction;
+use App\Services\Finance\PaymentSummaryService;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -352,10 +352,10 @@ class DailyTeamDigestMetricsCollector
      */
     private function collectPaymentMetrics(Team $team): array
     {
-        $base = Payment::withoutGlobalScopes()->where('team_id', $team->id);
+        $summary = app(PaymentSummaryService::class)->forTeam($team);
 
         return [
-            'pending_claim_count' => (clone $base)->where('status', '!=', 2)->count(),
+            'pending_claim_count' => $summary['pending_claim_count'],
         ];
     }
 

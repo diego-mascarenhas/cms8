@@ -14,6 +14,7 @@ use App\Services\Finance\InvoiceDisplayLineItemService;
 use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoicePaymentRegistrationService;
 use App\Services\Finance\InvoiceSummaryService;
+use App\Services\Finance\PaymentStatusUpdateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -177,6 +178,10 @@ class InvoiceController extends Controller
         $canIssueCreditNote = $this->invoiceCreditNoteService->canIssueCreditNote(auth()->user(), $invoice);
         $creditNoteReasons = InvoiceCreditNoteService::STRIPE_REASONS;
         $defaultCreditNoteReason = $this->invoiceCreditNoteService->defaultReason();
+        $canUpdatePaymentStatus = auth()->user()->currentTeam
+            && (int) $invoice->team_id === (int) auth()->user()->currentTeam->id
+            && auth()->user()->ownsTeam(auth()->user()->currentTeam);
+        $paymentStatusOptions = app(PaymentStatusUpdateService::class)->selectableStatuses();
 
         return view('invoices.show', compact(
             'invoice',
@@ -188,6 +193,8 @@ class InvoiceController extends Controller
             'canIssueCreditNote',
             'creditNoteReasons',
             'defaultCreditNoteReason',
+            'canUpdatePaymentStatus',
+            'paymentStatusOptions',
         ));
     }
 

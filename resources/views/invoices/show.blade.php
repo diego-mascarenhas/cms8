@@ -6,6 +6,16 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/css/pages/app-invoice.css')}}" />
+<style>
+  .payment-status-trigger {
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .payment-status-trigger:hover .badge {
+    opacity: 0.85;
+  }
+</style>
 @endsection
 
 @section('vendor-script')
@@ -284,7 +294,19 @@
           <div @class(['mb-0' => $loop->last, 'mb-3 pb-3 border-bottom' => ! $loop->last])>
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
               <span class="fw-medium">{{ \Carbon\Carbon::parse($paymentDetail['date'])->format('d-m-Y') }}</span>
-              @if($paymentDetail['status_html'])
+              @if($canUpdatePaymentStatus && ! empty($paymentDetail['id']))
+                <button
+                  type="button"
+                  class="btn btn-sm p-0 border-0 bg-transparent payment-status-trigger"
+                  data-bs-toggle="modal"
+                  data-bs-target="#paymentStatusModal"
+                  data-payment-id="{{ $paymentDetail['id'] }}"
+                  data-payment-status="{{ $paymentDetail['status'] }}"
+                  title="{{ __('payment_status.change_title') }}"
+                >
+                  {!! $paymentDetail['status_html'] !!}
+                </button>
+              @elseif($paymentDetail['status_html'])
                 {!! $paymentDetail['status_html'] !!}
               @endif
             </div>
@@ -382,6 +404,49 @@
   <!-- /Invoice Actions -->
 </div>
 
+@if ($canUpdatePaymentStatus)
+<div class="modal fade" id="paymentStatusModal" tabindex="-1" aria-labelledby="paymentStatusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="paymentStatusForm" method="POST">
+        @csrf
+        @method('PATCH')
+        <div class="modal-header">
+          <h5 class="modal-title" id="paymentStatusModalLabel">
+            <i class="ti ti-status-change me-2"></i>{{ __('payment_status.modal_title') }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+        </div>
+        <div class="modal-body">
+          <label for="payment_status" class="form-label">{{ __('payment_status.status') }}</label>
+          <select
+            id="payment_status"
+            name="status"
+            class="form-select @error('status') is-invalid @enderror"
+            required
+          >
+            @foreach ($paymentStatusOptions as $statusValue => $statusLabel)
+              <option value="{{ $statusValue }}">{{ $statusLabel }}</option>
+            @endforeach
+          </select>
+          @error('status')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
+            {{ __('Cancel') }}
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-check me-1"></i>{{ __('payment_status.save') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@endif
+
 @if ($canShowCreditNoteForm)
 <div class="modal fade" id="creditNoteModal" tabindex="-1" aria-labelledby="creditNoteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
@@ -461,6 +526,33 @@ document.addEventListener('DOMContentLoaded', function () {
     if (modalElement) {
         bootstrap.Modal.getOrCreateInstance(modalElement).show();
     }
+});
+@endif
+
+@if ($canUpdatePaymentStatus ?? false)
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('paymentStatusModal');
+    const form = document.getElementById('paymentStatusForm');
+    const statusSelect = document.getElementById('payment_status');
+    const updateStatusUrlTemplate = @json(route('payments.update-status', ['payment' => '__PAYMENT__']));
+
+    if (! modalElement || ! form || ! statusSelect) {
+        return;
+    }
+
+    document.querySelectorAll('.payment-status-trigger').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            const paymentId = trigger.getAttribute('data-payment-id');
+            const paymentStatus = trigger.getAttribute('data-payment-status');
+
+            form.action = updateStatusUrlTemplate.replace('__PAYMENT__', paymentId);
+            statusSelect.value = paymentStatus;
+        });
+    });
+
+    @if ($errors->has('status'))
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    @endif
 });
 @endif
 </script>
