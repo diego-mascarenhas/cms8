@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-select/bootstrap-select.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bs-stepper/bs-stepper.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -18,6 +19,7 @@
     <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/bootstrap-select/bootstrap-select.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/bs-stepper/bs-stepper.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -49,14 +51,13 @@
         @if(isset($data->id))
             @can('delete', $data)
                 <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
-                    <form action="{{ route('contact.destroy', $data->id) }}" method="POST"
-                          onsubmit="return confirm('¿Seguro que deseas eliminar este contacto? Esta acción no se puede deshacer.');">
+                    <form id="contact-delete-form" action="{{ route('contact.destroy', $data->id) }}" method="POST" class="d-inline">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-outline-danger">
-                            <i class="ti ti-trash me-1"></i> Eliminar contacto
-                        </button>
                     </form>
+                    <button type="button" class="btn btn-outline-danger" id="contact-delete-button">
+                        <i class="ti ti-trash me-1"></i> Eliminar contacto
+                    </button>
                 </div>
             @endcan
         @endif
@@ -538,6 +539,32 @@
             display: none !important;
         }
     </style>
+    @endif
+
+    @if(isset($data->id))
+        @can('delete', $data)
+            <script>
+                document.getElementById('contact-delete-button')?.addEventListener('click', function () {
+                    Swal.fire({
+                        title: '¿Estás seguro?',
+                        text: '¿Deseas eliminar este contacto? Esta acción no se puede deshacer.',
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar',
+                        customClass: {
+                            confirmButton: 'btn btn-primary me-3',
+                            cancelButton: 'btn btn-label-secondary'
+                        },
+                        buttonsStyling: false
+                    }).then(function (result) {
+                        if (result.value) {
+                            document.getElementById('contact-delete-form').submit();
+                        }
+                    });
+                });
+            </script>
+        @endcan
     @endif
 @endpush
 
