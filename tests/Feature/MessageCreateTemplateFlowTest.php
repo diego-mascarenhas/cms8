@@ -158,6 +158,37 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertNull($message->template_id);
     }
 
+    public function test_message_store_persists_mail_html_without_template(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+        $customHtml = '<p><strong>Custom body</strong> without template</p>';
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => '',
+            'name' => 'HTML campaign without template',
+            'text' => 'Fallback preview text',
+            'type_id' => 1,
+            'message_category_ids' => [],
+            'contact_status_id' => '',
+            'template_id' => '',
+            'template_html' => $customHtml,
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('name', 'HTML campaign without template')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertNull($message->template_id);
+        $this->assertSame($customHtml, (string) $message->mail_html);
+    }
+
     public function test_message_store_update_succeeds_when_type_id_omitted_with_template(): void
     {
         $user = $this->userWithPersonalTeamResolved();

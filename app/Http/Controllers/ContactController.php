@@ -653,14 +653,23 @@ class ContactController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
         $model = Contact::findOrFail($id);
         $this->authorize('delete', $model);
 
         $model->delete();
 
-        return response()->json(['success' => __('messages.success.deleted')], 200);
+        $message = __('messages.success.deleted');
+
+        if ($request->ajax() || $request->expectsJson())
+        {
+            return response()->json(['success' => $message], 200);
+        }
+
+        return redirect()
+            ->route('contact-list')
+            ->with('success', $message);
     }
 
     public function updateSentiment(Request $request, string $id)

@@ -26,7 +26,7 @@ class MessageFormDefaultTemplatePreviewTest extends TestCase
         ]);
     }
 
-    public function test_message_create_without_templates_shows_email_preview_and_creates_default(): void
+    public function test_message_create_without_templates_shows_standalone_mail_editor(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $teamId = (int) $user->currentTeam->id;
@@ -35,15 +35,13 @@ class MessageFormDefaultTemplatePreviewTest extends TestCase
 
         $response->assertOk();
         $html = $response->getContent() ?? '';
-        $this->assertStringContainsString('email-template-content-preview', $html);
-        $this->assertStringContainsString(__('Contenido del correo'), $html);
+        $this->assertStringContainsString('id="message-store-form"', $html);
+        $this->assertStringContainsString(e(__('app.message_form_template_none')), $html);
+        $this->assertStringContainsString(e(__('app.message_form_template_optional_help')), $html);
         $this->assertStringContainsString('id="message-template-html-quill-editor"', $html);
-        $this->assertStringContainsString('message-template-merge-fields-json', $html);
-        $this->assertStringContainsString('huma-merge-field-picker', $html);
-        $this->assertStringContainsString('humaMessageTemplateMergeFields', $html);
-        $this->assertStringContainsString('{{nombre}}', $html);
-        $this->assertStringNotContainsString(__('app.message_form_template_none'), $html);
+        $this->assertStringContainsString('data-loaded-template-id="standalone"', $html);
+        $this->assertStringContainsString('standalonePreviewUrl', $html);
 
-        $this->assertSame(1, Template::withoutGlobalScopes()->where('team_id', $teamId)->count());
+        $this->assertSame(0, Template::withoutGlobalScopes()->where('team_id', $teamId)->count());
     }
 }

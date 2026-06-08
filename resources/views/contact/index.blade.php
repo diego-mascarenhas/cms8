@@ -313,8 +313,10 @@
                     fetch("{{ route('contact.destroy', ['id' => ':ID']) }}".replace(':ID', id), {
                         method: 'DELETE',
                         headers: {
+                            'Accept': 'application/json',
                             'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'X-Requested-With': 'XMLHttpRequest'
                         }
                     })
                     .then(response => response.json())

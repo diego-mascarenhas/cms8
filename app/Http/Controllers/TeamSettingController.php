@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ExternalProvider;
+use App\Http\Requests\UpdateTeamEmailSenderRequest;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
@@ -214,6 +215,13 @@ class TeamSettingController extends Controller
 
             foreach ($settings as $key => $value)
             {
+                if ($group === 'email' && in_array($key, ['mail_from_name', 'mail_from_address'], true) && trim((string) $value) === '')
+                {
+                    $team->removeSetting($key);
+
+                    continue;
+                }
+
                 $type = $this->getSettingType($key);
                 $isBoolean = $type === 'boolean';
                 $shouldSet = $isBoolean
@@ -344,6 +352,31 @@ class TeamSettingController extends Controller
         return redirect()
             ->back()
             ->with('success', $message);
+    }
+
+    public function updateEmailSender(UpdateTeamEmailSenderRequest $request, Team $team): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $team->setSetting('mail_from_name', $validated['mail_from_name'], [
+            'group' => 'email',
+            'type' => 'text',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting('mail_from_address', $validated['mail_from_address'], [
+            'group' => 'email',
+            'type' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.email_sender_config_saved'),
+            'sender' => [
+                'from_name' => $validated['mail_from_name'],
+                'from_address' => $validated['mail_from_address'],
+            ],
+        ]);
     }
 
     /**

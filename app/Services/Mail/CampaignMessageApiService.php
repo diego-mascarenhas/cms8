@@ -85,7 +85,7 @@ class CampaignMessageApiService
         $emailConfig = $team->getOutgoingEmailConfig();
         $fromName = trim((string) ($emailConfig['from_name'] ?? ''));
         $fromAddress = trim((string) ($emailConfig['from_address'] ?? ''));
-        $senderConfigured = $fromName !== '' && $fromAddress !== '';
+        $senderConfigured = $team->hasOutgoingEmailSenderConfigured();
 
         return [
             'id' => $message->id,

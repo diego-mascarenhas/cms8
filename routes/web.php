@@ -295,6 +295,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/settings/business-config/generate-summary', [TeamSettingController::class, 'generateBusinessSummary'])->name('team-settings.business-config.generate-summary');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    Route::put('/team/{team}/settings/email-sender', [TeamSettingController::class, 'updateEmailSender'])->name('team-settings.update-email-sender');
     Route::post('/team/{team}/settings/chat/seed-default-assistant-prompts', [TeamSettingController::class, 'seedDefaultAssistantFlowPrompts'])->name('team-settings.chat.seed-default-assistant-prompts');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
@@ -909,6 +910,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
+    Route::get('message/standalone-mail-editor-preview', [MessageController::class, 'standaloneMailEditorPreviewForMessageForm'])->name('message.standalone-mail-editor-preview');
     Route::post('message/sync-template-html-open-editor', [MessageController::class, 'syncTemplateHtmlOpenVisualEditor'])->name('message.sync-template-html-open-editor');
     Route::post('message/sync-template-html', [MessageController::class, 'syncTemplateHtml'])->name('message.sync-template-html');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');

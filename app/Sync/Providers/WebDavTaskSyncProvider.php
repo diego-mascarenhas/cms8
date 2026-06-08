@@ -10,6 +10,7 @@ use App\Models\TaskSyncMapping;
 use App\Services\WebDavApiClient;
 use App\Services\WebDavIntegrationService;
 use App\Support\TeamTaskBoardResolver;
+use App\Support\WebDavInboundTaskSync;
 use App\Sync\Contracts\TaskSyncProviderInterface;
 use Carbon\Carbon;
 
@@ -28,8 +29,8 @@ class WebDavTaskSyncProvider implements TaskSyncProviderInterface
         $pulled = 0;
         $upserted = 0;
         $boardId = TeamTaskBoardResolver::resolveBoardId((int) $account->team_id);
-        $toDoStatusId = TaskStatus::query()->where('name', 'TO_DO')->value('id');
-        $doneStatusId = TaskStatus::query()->where('name', 'DONE')->value('id');
+        $toDoStatusId = (int) TaskStatus::query()->where('name', 'TO_DO')->value('id');
+        $doneStatusId = (int) TaskStatus::query()->where('name', 'DONE')->value('id');
 
         foreach ($items as $item)
         {
@@ -47,6 +48,7 @@ class WebDavTaskSyncProvider implements TaskSyncProviderInterface
                 ->first();
 
             $task = $mapping?->task;
+            $isNewTask = $task === null;
 
             if ($task === null)
             {
@@ -56,10 +58,25 @@ class WebDavTaskSyncProvider implements TaskSyncProviderInterface
                 $task->responsible_id = $account->user_id;
             }
 
-            $task->title = (string) ($item['summary'] ?? 'WebDAV Task');
-            $task->description = $item['description'] ?? null;
-            $task->due_date = isset($item['due_at']) ? Carbon::parse($item['due_at'])->toDateString() : null;
-            $task->status_id = ! empty($item['completed']) ? $doneStatusId : $toDoStatusId;
+            $remoteCompleted = ! empty($item['completed']);
+            $currentStatusId = $isNewTask ? null : (int) $task->status_id;
+
+            $task->status_id = WebDavInboundTaskSync::resolveInboundStatusId(
+                $remoteCompleted,
+                $currentStatusId,
+                $toDoStatusId,
+                $doneStatusId,
+            );
+
+            $remoteUpdatedAt = isset($item['updated_at']) ? (int) $item['updated_at'] : null;
+
+            if (WebDavInboundTaskSync::shouldApplyRemoteContent($remoteUpdatedAt, $task->updated_at, $isNewTask))
+            {
+                $task->title = (string) ($item['summary'] ?? 'WebDAV Task');
+                $task->description = $item['description'] ?? null;
+                $task->due_date = isset($item['due_at']) ? Carbon::parse($item['due_at'])->toDateString() : null;
+            }
+
             $task->saveQuietly();
 
             TaskSyncMapping::query()->updateOrCreate(
