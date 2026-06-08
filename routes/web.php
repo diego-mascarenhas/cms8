@@ -909,6 +909,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
+    Route::get('message/standalone-mail-editor-preview', [MessageController::class, 'standaloneMailEditorPreviewForMessageForm'])->name('message.standalone-mail-editor-preview');
     Route::post('message/sync-template-html-open-editor', [MessageController::class, 'syncTemplateHtmlOpenVisualEditor'])->name('message.sync-template-html-open-editor');
     Route::post('message/sync-template-html', [MessageController::class, 'syncTemplateHtml'])->name('message.sync-template-html');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');

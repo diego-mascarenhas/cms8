@@ -72,7 +72,9 @@ class MessageController extends Controller
             $data->text = old('text', __('Boletín por correo'));
         }
 
-        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request);
+        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request, autoPickWhenMissing: false);
+        $previewContext = $this->mergeStandaloneMailEditorPreviewWhenNeeded($previewContext, $data);
+        $data->templates = Template::getOptions();
 
         return view('message.form', array_merge(compact('data'), $previewContext));
     }
@@ -145,9 +147,19 @@ class MessageController extends Controller
             && MessageDelivery::query()->where('message_id', $messageIdForGate)->exists();
 
         $mailHtml = null;
-        if ($resolvedTypeId === 1 && $templateId !== null && $templateId > 0 && ! $hasDeliveries)
+        if ($resolvedTypeId === 1 && ! $hasDeliveries)
         {
-            $mailHtml = $this->resolveMailHtmlFromRequest($request, $templateId);
+            if ($templateId !== null && $templateId > 0)
+            {
+                $mailHtml = $this->resolveMailHtmlFromRequest($request, $templateId);
+            } else
+            {
+                $rawHtml = $request->input('template_html');
+                if (is_string($rawHtml) && trim($rawHtml) !== '')
+                {
+                    $mailHtml = $rawHtml;
+                }
+            }
         }
 
         DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, $hasDeliveries, &$messageModel): void
@@ -443,7 +455,14 @@ class MessageController extends Controller
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
 
-        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request, $removeMailTemplate);
+        $previewContext = $this->prepareMessageFormTemplatePreview(
+            $data,
+            $request,
+            $removeMailTemplate,
+            autoPickWhenMissing: ! $removeMailTemplate && filled($data->template_id),
+        );
+        $previewContext = $this->mergeStandaloneMailEditorPreviewWhenNeeded($previewContext, $data);
+        $data->templates = Template::getOptions();
 
         return view('message.form', array_merge(compact('data', 'removeMailTemplate'), $previewContext));
     }
@@ -451,6 +470,33 @@ class MessageController extends Controller
     /**
      * JSON + HTML fragment for the message form when the user selects an email template (legacy / edit) before save.
      */
+    public function standaloneMailEditorPreviewForMessageForm(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'message_id' => ['nullable', 'integer'],
+            'context_text' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $messageId = filled($validated['message_id'] ?? null) ? (int) $validated['message_id'] : null;
+        $message = $messageId !== null ? Message::query()->find($messageId) : null;
+
+        if ($messageId !== null && $message === null)
+        {
+            abort(404);
+        }
+
+        $bundle = $this->buildStandaloneMailEditorBundle(
+            $messageId,
+            $message,
+            $validated['context_text'] ?? null,
+        );
+
+        return response()->json([
+            'html' => $bundle['emailPreviewBundleHtml'],
+            'preview_html' => $bundle['preview_html'],
+        ]);
+    }
+
     public function templateEmailPreviewForMessageForm(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -1525,7 +1571,7 @@ class MessageController extends Controller
     /**
      * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null}
      */
-    private function prepareMessageFormTemplatePreview(object $data, Request $request, bool $removeMailTemplate = false): array
+    private function prepareMessageFormTemplatePreview(object $data, Request $request, bool $removeMailTemplate = false, bool $autoPickWhenMissing = true): array
     {
         $team = auth()->user()?->currentTeam;
         if (! $team)
@@ -1547,7 +1593,7 @@ class MessageController extends Controller
         $template = app(MessageFormTemplateResolver::class)->resolveForForm(
             $preferredTemplateId > 0 ? $preferredTemplateId : null,
             (int) $team->id,
-            autoPickWhenMissing: ! $removeMailTemplate,
+            autoPickWhenMissing: ! $removeMailTemplate && $autoPickWhenMissing,
         );
 
         if (! $template instanceof Template)
@@ -1573,6 +1619,76 @@ class MessageController extends Controller
             'emailPreviewDuplicateActionUrl' => $bundle['duplicate_action_url'],
             'messageFormDefaultTemplateId' => $template->id,
         ];
+    }
+
+    /**
+     * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null, messageFormDefaultTemplateId: int|null, preview_html: string}
+     */
+    private function buildStandaloneMailEditorBundle(?int $messageId, ?Message $message = null, ?string $contextText = null): array
+    {
+        $mailHtmlSource = $this->resolveStandaloneMailHtmlSource($message, $contextText);
+        $previewHtml = $this->iframePreviewHtmlFromSource($mailHtmlSource);
+
+        $html = view('message.ajax.standalone-mail-editor-bundle', [
+            'previewHtml' => $previewHtml,
+            'messageId' => $messageId,
+            'mailHtmlTextareaValue' => $mailHtmlSource,
+        ])->render();
+
+        return [
+            'emailPreviewBundleHtml' => $html,
+            'emailPreviewDuplicateActionUrl' => null,
+            'messageFormDefaultTemplateId' => null,
+            'preview_html' => $previewHtml,
+        ];
+    }
+
+    private function resolveStandaloneMailHtmlSource(?Message $message = null, ?string $contextText = null): string
+    {
+        $fromRequest = old('template_html');
+        if (is_string($fromRequest) && trim($fromRequest) !== '')
+        {
+            return $fromRequest;
+        }
+
+        if ($message instanceof Message && is_string($message->mail_html) && trim($message->mail_html) !== '')
+        {
+            return $message->mail_html;
+        }
+
+        $text = $contextText;
+        if (! filled($text) && $message instanceof Message)
+        {
+            $text = $message->text;
+        }
+        if (! filled($text))
+        {
+            $text = old('text');
+        }
+
+        if (filled($text))
+        {
+            return '<p>'.e((string) $text).'</p>';
+        }
+
+        return '<p><br></p>';
+    }
+
+    /**
+     * @param  array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null, messageFormDefaultTemplateId: int|null}  $previewContext
+     * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null, messageFormDefaultTemplateId: int|null}
+     */
+    private function mergeStandaloneMailEditorPreviewWhenNeeded(array $previewContext, object $data): array
+    {
+        if (filled($previewContext['emailPreviewBundleHtml'] ?? null))
+        {
+            return $previewContext;
+        }
+
+        $message = $data instanceof Message ? $data : null;
+        $messageId = isset($data->id) ? (int) $data->id : null;
+
+        return array_merge($previewContext, $this->buildStandaloneMailEditorBundle($messageId, $message));
     }
 
     /**

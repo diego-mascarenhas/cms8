@@ -261,6 +261,7 @@ return [
     'message_form_categories_all' => 'All',
     'message_form_template_none' => 'No template (alternative text only)',
     'message_form_template_required_help' => 'Choose a template to edit the email body in the editor below.',
+    'message_form_template_optional_help' => 'Optional. Without a template, the preview text is used as the email body.',
     'message_form_subtitle' => 'Template, category and recipients',
     'message_form_alt_text_help' => 'Plain-text fallback for email clients without HTML. If you use a template, this text is also used as a short fallback.',
     'message_email_test_send_button' => 'Send test',

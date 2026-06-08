@@ -261,6 +261,7 @@ return [
     'message_form_categories_all' => 'Todos',
     'message_form_template_none' => 'Sin plantilla (solo texto alternativo)',
     'message_form_template_required_help' => 'Selecciona una plantilla para editar el cuerpo del correo en el editor de abajo.',
+    'message_form_template_optional_help' => 'Opcional. Sin plantilla, el envío usará el texto de vista previa como cuerpo del correo.',
     'message_form_subtitle' => 'Plantilla, categoría y destinatarios',
     'message_form_alt_text_help' => 'Texto plano de respaldo para clientes de correo sin HTML. Si usas plantilla, también sirve como versión corta o fallback.',
     'message_email_test_send_button' => 'Enviar prueba',

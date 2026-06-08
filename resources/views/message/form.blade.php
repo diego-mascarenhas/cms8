@@ -386,22 +386,19 @@ document.addEventListener('DOMContentLoaded', function () {
 					</div>
 				@endif
 			</div>
-			@php
-				$messageTemplateSelectRequired = empty($removeMailTemplate) && empty($templateSelectDisabled);
-			@endphp
 			<div class="col-md-12" id="message-form-template-field-wrapper">
 				<x-input-select
 					id="template_id"
 					label="{{ __('Plantilla') }}"
 					:options="$data->templates ?? []"
 					value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
-					:placeholder="$removeMailTemplate ? __('app.message_form_template_none') : null"
-					:required="$messageTemplateSelectRequired"
-					:allowClear="! $messageTemplateSelectRequired"
+					:placeholder="__('app.message_form_template_none')"
+					:required="false"
+					:allowClear="! $templateSelectDisabled"
 					:disabled="$templateSelectDisabled"
 				/>
-				@if ($messageTemplateSelectRequired)
-					<div class="form-text mt-1">{{ __('app.message_form_template_required_help') }}</div>
+				@if (! $templateSelectDisabled)
+					<div class="form-text mt-1">{{ __('app.message_form_template_optional_help') }}</div>
 				@endif
 			</div>
 			<div class="col-12">
@@ -426,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		id="message-email-template-preview-mount"
 		@if (filled($emailPreviewBundleHtml ?? null))
 			data-dynamic-preview="1"
-			data-loaded-template-id="{{ (int) old('template_id', $data->template_id ?? 0) }}"
+			data-loaded-template-id="{{ filled($messageFormDefaultTemplateId ?? null) ? (int) old('template_id', $data->template_id ?? 0) : 'standalone' }}"
 		@endif
 	>
 		@if (filled($emailPreviewBundleHtml ?? null))
@@ -565,10 +562,11 @@ document.addEventListener('DOMContentLoaded', function () {
 {
     var mount = document.getElementById('message-email-template-preview-mount');
     var previewUrl = @json(route('message.template-email-preview'));
+    var standalonePreviewUrl = @json(route('message.standalone-mail-editor-preview'));
     var messageFormMessageId = @json(isset($data->id) ? (int) $data->id : null);
     var templateLockDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
     var defaultTemplateId = @json((int) ($messageFormDefaultTemplateId ?? 0));
-    var allowNoTemplate = @json((bool) ($removeMailTemplate ?? false));
+    var allowNoTemplate = @json((bool) ($removeMailTemplate ?? false) || ! (isset($data->hasDeliveries) && $data->hasDeliveries));
 
     if (! mount)
     {
@@ -765,6 +763,79 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function loadStandaloneMailEditor()
+    {
+        if (mount.dataset.dynamicPreview === '1' && mount.dataset.loadedTemplateId === 'standalone')
+        {
+            return;
+        }
+
+        var fetchToken = ++previewFetchToken;
+        var params = new URLSearchParams({ return_url: window.location.href.split('#')[0] });
+        if (messageFormMessageId)
+        {
+            params.set('message_id', String(messageFormMessageId));
+        }
+        var textEl = document.getElementById('text');
+        if (textEl && textEl.value && String(textEl.value).trim())
+        {
+            params.set('context_text', String(textEl.value).trim());
+        }
+
+        mount.dataset.dynamicPreview = 'loading';
+
+        fetch(standalonePreviewUrl + '?' + params.toString(), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function (res)
+            {
+                if (! res.ok)
+                {
+                    throw new Error('bad status');
+                }
+                return res.json();
+            })
+            .then(function (data)
+            {
+                if (fetchToken !== previewFetchToken)
+                {
+                    return;
+                }
+                if (! data || typeof data.html !== 'string')
+                {
+                    throw new Error('bad payload');
+                }
+                removeStaleEmailTestSendModalsOutsidePreviewMount();
+                humaDestroyMessageTemplateHtmlQuillIn(mount);
+                mount.innerHTML = data.html;
+                mount.dataset.dynamicPreview = '1';
+                mount.dataset.loadedTemplateId = 'standalone';
+                if (duplicateForm)
+                {
+                    duplicateForm.setAttribute('action', '#');
+                }
+                if (window.humaBindEmailTestSendModals)
+                {
+                    window.humaBindEmailTestSendModals();
+                }
+                if (window.humaInitMessageTemplateHtmlQuill)
+                {
+                    window.humaInitMessageTemplateHtmlQuill(mount);
+                }
+            })
+            .catch(function ()
+            {
+                if (mount.dataset.dynamicPreview === 'loading')
+                {
+                    mount.innerHTML = '';
+                    mount.dataset.dynamicPreview = '0';
+                    delete mount.dataset.loadedTemplateId;
+                    restoreTemplateFieldUi();
+                }
+            });
+    }
+
     function loadEmailTemplatePreview(templateId)
     {
         if (mount.dataset.dynamicPreview === '1' && mount.dataset.loadedTemplateId === String(templateId))
@@ -887,6 +958,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (! allowNoTemplate && defaultTemplateId > 0)
                 {
                     $tpl.val(String(defaultTemplateId)).trigger('change');
+                    return;
+                }
+                if (allowNoTemplate)
+                {
+                    loadStandaloneMailEditor();
                     return;
                 }
                 clearDynamicPreview();
