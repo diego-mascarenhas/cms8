@@ -72,6 +72,39 @@ class ServiceDataTable extends DataTable
                 {$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
+            ->orderColumn('category_id', function ($query, $direction)
+            {
+                $query->orderBy('services.service_type_id', $direction);
+            })
+            ->filterColumn('metadata_search', function ($query, $keyword)
+            {
+                $driver = DB::getDriverName();
+
+                if ($driver === 'pgsql')
+                {
+                    $query->whereRaw('CAST(services.data AS TEXT) ILIKE ?', ["%{$keyword}%"]);
+                } elseif ($driver === 'sqlite')
+                {
+                    $query->whereRaw('CAST(services.data AS TEXT) LIKE ?', ["%{$keyword}%"]);
+                } else
+                {
+                    $query->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(services.data, '$')) LIKE ?", ["%{$keyword}%"]);
+                }
+            })
+            ->filterColumn('calculated_price', function ($query, $keyword)
+            {
+                $query->whereRaw('CAST(services.price AS TEXT) LIKE ?', ["%{$keyword}%"]);
+            })
+            ->filterColumn('description', function ($query, $keyword)
+            {
+                if (DB::getDriverName() === 'pgsql')
+                {
+                    $query->whereRaw('services.description ILIKE ?', ["%{$keyword}%"]);
+                } else
+                {
+                    $query->whereRaw('services.description LIKE ?', ["%{$keyword}%"]);
+                }
+            })
             ->editColumn('next_billing', function ($data)
             {
                 return $data->next_billing ? $data->next_billing->format('d-m-Y') : '-';
@@ -118,13 +151,15 @@ class ServiceDataTable extends DataTable
             return $model->newQuery()->whereRaw('1 = 0');
         }
 
+        $driver = DB::getDriverName();
+
         $query = $model->newQuery()
             ->select('services.*')
-            ->when(DB::getDriverName() === 'pgsql', function ($q)
+            ->when(in_array($driver, ['pgsql', 'sqlite'], true), function ($q)
             {
                 $q->selectRaw('CAST(services.data AS TEXT) as metadata_search');
             })
-            ->when(DB::getDriverName() !== 'pgsql', function ($q)
+            ->when(! in_array($driver, ['pgsql', 'sqlite'], true), function ($q)
             {
                 $q->selectRaw("JSON_UNQUOTE(JSON_EXTRACT(services.data, '$')) as metadata_search");
             })
@@ -196,7 +231,7 @@ class ServiceDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
-            ->orderBy(5, 'asc') // Ordenar por próxima facturación
+            ->orderBy(7, 'asc') // Ordenar por próxima facturación
             ->pageLength(25)
             ->parameters([
                 'initComplete' => $initComplete,
@@ -213,10 +248,11 @@ class ServiceDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::make('metadata_search')->visible(false),
+            Column::make('description')->visible(false),
             Column::computed('operation_type')->title('')->width(5)->className('text-center'),
             Column::make('enterprise_id')->title(__('Client')),
             Column::make('category_id')->title(__('Category')),
-            Column::make('calculated_price')->title(__('Price'))->className('text-center'),
+            Column::computed('calculated_price')->title(__('Price'))->className('text-center')->searchable(false)->orderable(false),
             Column::make('next_billing')->title(__('Próxima'))->className('text-center'),
             Column::make('status')->title(__('Status'))->className('text-center'),
             Column::computed('action')
