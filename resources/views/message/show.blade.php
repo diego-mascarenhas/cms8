@@ -79,7 +79,7 @@
 				<h5 class="mb-0">{{ __('General Information') }}</h5>
 			</div>
 			<div class="card-body">
-				@if(empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
+				@if(! auth()->user()->currentTeam->hasOutgoingEmailSenderConfigured())
 					<div class="alert alert-warning mb-3" role="alert">
 						<i class="ti ti-alert-triangle me-2"></i>
 						<strong>{{ __('Email sender not configured.') }}</strong>

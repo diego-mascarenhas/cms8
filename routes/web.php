@@ -295,6 +295,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/settings/business-config/generate-summary', [TeamSettingController::class, 'generateBusinessSummary'])->name('team-settings.business-config.generate-summary');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    Route::put('/team/{team}/settings/email-sender', [TeamSettingController::class, 'updateEmailSender'])->name('team-settings.update-email-sender');
     Route::post('/team/{team}/settings/chat/seed-default-assistant-prompts', [TeamSettingController::class, 'seedDefaultAssistantFlowPrompts'])->name('team-settings.chat.seed-default-assistant-prompts');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');

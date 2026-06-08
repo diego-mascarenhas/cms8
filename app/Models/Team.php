@@ -170,6 +170,19 @@ class Team extends JetstreamTeam
         return $setting->save();
     }
 
+    public function removeSetting(string $key): void
+    {
+        $this->settings()->where('key', $key)->delete();
+
+        if ($this->relationLoaded('settings'))
+        {
+            $this->setRelation(
+                'settings',
+                $this->settings->reject(fn ($setting) => $setting->key === $key)->values(),
+            );
+        }
+    }
+
     private function syncTeamSettingsSequenceIfNeeded(): void
     {
         if (DB::getDriverName() !== 'pgsql')
@@ -838,6 +851,17 @@ class Team extends JetstreamTeam
             'password' => $this->getSetting('imap_password'),
             'encryption' => $this->getSetting('imap_encryption', 'ssl'),
         ];
+    }
+
+    /**
+     * Whether the team has explicitly configured outgoing sender name and address.
+     */
+    public function hasOutgoingEmailSenderConfigured(): bool
+    {
+        $fromName = trim((string) $this->getSetting('mail_from_name'));
+        $fromAddress = trim((string) $this->getSetting('mail_from_address'));
+
+        return $fromName !== '' && $fromAddress !== '';
     }
 
     /**

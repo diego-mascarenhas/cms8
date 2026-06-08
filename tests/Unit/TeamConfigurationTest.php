@@ -140,6 +140,18 @@ class TeamConfigurationTest extends TestCase
     }
 
     /** @test */
+    public function it_checks_outgoing_email_sender_configuration_from_team_settings_only()
+    {
+        $this->assertFalse($this->team->hasOutgoingEmailSenderConfigured());
+
+        $this->team->setSetting('mail_from_name', 'Team Name');
+        $this->assertFalse($this->team->hasOutgoingEmailSenderConfigured());
+
+        $this->team->setSetting('mail_from_address', 'noreply@team.com');
+        $this->assertTrue($this->team->hasOutgoingEmailSenderConfigured());
+    }
+
+    /** @test */
     public function it_gets_outgoing_email_configuration_with_fallbacks()
     {
         // Test with team settings

@@ -807,13 +807,11 @@ class MessageController extends Controller
             {
                 $team->load('settings');
             }
-            $emailConfig = $team?->getOutgoingEmailConfig() ?? [];
-
-            if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
+            if (! $team?->hasOutgoingEmailSenderConfigured())
             {
                 return [
                     'success' => false,
-                    'message' => 'El remitente de correo no está configurado. Por favor configúralo en Ajustes del Equipo.',
+                    'message' => __('app.email_sender_activation_blocked'),
                 ];
             }
 
