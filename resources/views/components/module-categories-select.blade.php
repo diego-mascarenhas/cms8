@@ -14,6 +14,8 @@
     $selectedValues = $multiple
         ? collect(old($errorField, $selected ?? []))->map(fn ($value) => (string) $value)->all()
         : [(string) old($errorField, $selected ?? '')];
+    $showEmptyOption = ($showNull || $allowEmpty) && ! $multiple;
+    $enableAllowClear = $allowEmpty && ! $multiple;
 @endphp
 
 @php
@@ -39,13 +41,13 @@
         name="{{ $selectName }}"
         class="form-control select2 @error($errorField) is-invalid @enderror"
         data-placeholder="{{ $emptyText }}"
-        data-allow-clear="true"
-        @if($moduleKey) data-module-key="{{ $moduleKey }}" data-empty-text="{{ $emptyText }}" data-show-empty-option="{{ ($showNull || $allowEmpty) ? '1' : '0' }}" data-allow-empty-select="{{ $allowEmpty ? '1' : '0' }}" @endif
+        data-allow-clear="{{ $enableAllowClear ? 'true' : 'false' }}"
+        @if($moduleKey) data-module-key="{{ $moduleKey }}" data-empty-text="{{ $emptyText }}" data-show-empty-option="{{ $showEmptyOption ? '1' : '0' }}" data-allow-empty-select="{{ $allowEmpty ? '1' : '0' }}" @endif
         {{ $allowEmpty ? '' : 'required' }}
         @if($multiple) multiple @endif
         @if($disabled) disabled @endif
     >
-        @if($showNull || $allowEmpty)
+        @if($showEmptyOption)
             <option value="">{{ $emptyText }}</option>
         @endif
 
@@ -181,7 +183,8 @@
             const $moduleCategorySelect = $('#{{ $id }}');
             $moduleCategorySelect.select2({
                 placeholder: @json($emptyText),
-                allowClear: {{ $allowEmpty ? 'true' : 'false' }},
+                allowClear: {{ $enableAllowClear ? 'true' : 'false' }},
+                closeOnSelect: {{ $multiple ? 'false' : 'true' }},
                 language: {
                     noResults: function () {
                         return '';
@@ -201,23 +204,33 @@
                     borderColor: '#d9dee3',
                     boxShadow: 'none'
                 });
-                $container.find('.select2-selection--multiple .select2-search--inline').css({
-                    margin: '0',
-                    width: '100%'
-                });
                 $container.find('.select2-selection--multiple .select2-selection__rendered').css({
-                    minHeight: 'calc(2.25rem + 2px)',
                     padding: '.375rem .75rem',
                     display: 'flex',
                     alignItems: 'center',
                     flexWrap: 'wrap',
-                    gap: '.25rem'
+                    gap: '.25rem',
+                    margin: '0',
+                    minHeight: '0',
+                    border: 'none',
+                    boxShadow: 'none'
+                });
+                $container.find('.select2-selection--multiple .select2-search--inline').css({
+                    margin: '0',
+                    flex: '1 1 auto',
+                    minWidth: '2rem',
+                    width: 'auto',
+                    lineHeight: 'normal'
                 });
                 $container.find('.select2-selection--multiple .select2-search--inline .select2-search__field').css({
                     margin: '0',
+                    padding: '0',
                     textIndent: '0',
-                    height: 'auto',
-                    minHeight: '1.5rem'
+                    height: '1.5rem',
+                    minHeight: '0',
+                    border: 'none',
+                    outline: 'none',
+                    boxShadow: 'none'
                 });
             }
         }
@@ -245,8 +258,9 @@
             }
 
             var emptyText = $s.data('empty-text') || '';
-            var showEmpty = String($s.data('show-empty-option')) === '1';
-            var allowClear = String($s.data('allow-empty-select')) === '1';
+            var isMultiple = $s.prop('multiple');
+            var showEmpty = !isMultiple && String($s.data('show-empty-option')) === '1';
+            var allowClear = !isMultiple && String($s.data('allow-empty-select')) === '1';
             var prevVal = $s.val();
 
             jQuery.getJSON(moduleOptionsUrl, { module_key: moduleKey })
@@ -277,6 +291,7 @@
                     $s.select2({
                         placeholder: emptyText,
                         allowClear: allowClear,
+                        closeOnSelect: !isMultiple,
                         language: {
                             noResults: function () {
                                 return '';

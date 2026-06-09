@@ -2,6 +2,23 @@
 
 @section('title', 'Mapear Campos')
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+@endsection
+
+@section('page-script')
+<script>
+$(document).ready(function() {
+    $('.select2-mapping').select2({
+        placeholder: 'Seleccionar campo',
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
+@stack('page-script')
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -164,12 +181,17 @@
 
                         <!-- Categories Selection -->
                         <div class="col-md-6 mb-3">
-                            <x-categories-select
+                            <x-module-categories-select
                                 id="categories"
+                                name="categories[]"
+                                errorKey="categories"
                                 label="Categorías"
                                 moduleKey="contacts"
-                                helpText="Selecciona una o más categorías para asignar a todos los contactos importados"
+                                :multiple="true"
+                                :allowEmpty="true"
+                                emptyText="Seleccione una categoría"
                             />
+                            <div class="form-text">Selecciona una o más categorías para asignar a todos los contactos importados</div>
                         </div>
 
                         <!-- Status Selection -->
@@ -182,6 +204,23 @@
                                 :required="true"
                                 helpText="Todos los contactos importados tendrán este estado"
                             />
+                        </div>
+
+                        <!-- Country Selection -->
+                        <div class="col-md-6 mb-3">
+                            <x-country-select :value="old('country', '')" />
+                            <div class="form-text">País por defecto para todos los contactos importados</div>
+                        </div>
+
+                        <!-- Advisor Selection -->
+                        <div class="col-md-6 mb-3">
+                            <x-team-users-select
+                                id="responsible_id"
+                                label="Asesor"
+                                :selected="old('responsible_id', auth()->id())"
+                                :showNull="false"
+                            />
+                            <div class="form-text">Asesor asignado a todos los contactos importados</div>
                         </div>
                     </div>
 
@@ -200,28 +239,4 @@
         </div>
     </div>
 </div>
-
-@section('vendor-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
-@endsection
-
-@section('vendor-script')
-<script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
-@endsection
-
-@section('page-script')
-<script>
-$(document).ready(function() {
-    // Initialize Select2 for mapping selects
-    $('.select2-mapping').select2({
-        placeholder: 'Seleccionar campo',
-        allowClear: true,
-        width: '100%'
-    });
-
-    // Initialize Select2 for categories (handled by component)
-    // Initialize Select2 for status (handled by component)
-});
-</script>
-@endsection
 @endsection
