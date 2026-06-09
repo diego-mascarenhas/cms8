@@ -1552,6 +1552,8 @@ class ContactController extends Controller
             'status_id' => 'required|exists:contact_statuses,id',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
+            'country' => 'nullable|exists:countries,id',
+            'responsible_id' => 'required|exists:users,id',
         ]);
 
         $teamUserId = auth()->user()->currentTeam->id.'-'.auth()->user()->id;
@@ -1565,6 +1567,8 @@ class ContactController extends Controller
         $mapping = $request->input('mapping', []);
         $categories = $request->input('categories', []);
         $statusId = $request->input('status_id');
+        $countryId = $request->input('country') ?: null;
+        $responsibleId = $request->input('responsible_id');
 
         $contactsCreated = 0;
         $contactsSkipped = 0;
@@ -1637,7 +1641,23 @@ class ContactController extends Controller
 
             if ($existingContact)
             {
-                // Update existing contact: sync categories only
+                $existingUpdates = [];
+
+                if ($countryId)
+                {
+                    $existingUpdates['country'] = $countryId;
+                }
+
+                if ($responsibleId)
+                {
+                    $existingUpdates['responsible_id'] = $responsibleId;
+                }
+
+                if (! empty($existingUpdates))
+                {
+                    $existingContact->update($existingUpdates);
+                }
+
                 if (! empty($categories))
                 {
                     $existingContact->categories()->syncWithoutDetaching($categories);
@@ -1650,6 +1670,8 @@ class ContactController extends Controller
                     'team_id' => auth()->user()->currentTeam->id,
                     'creator_id' => auth()->user()->id,
                     'status_id' => $statusId,
+                    'responsible_id' => $responsibleId,
+                    'country' => $countryId,
                     'email' => $emailValue,
                     'phone' => $phoneValue ? (int) preg_replace('/[^0-9]/', '', $phoneValue) : null,
                     'data' => $additionalData,

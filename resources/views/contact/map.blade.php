@@ -164,12 +164,17 @@
 
                         <!-- Categories Selection -->
                         <div class="col-md-6 mb-3">
-                            <x-categories-select
+                            <x-module-categories-select
                                 id="categories"
+                                name="categories[]"
+                                errorKey="categories"
                                 label="Categorías"
                                 moduleKey="contacts"
-                                helpText="Selecciona una o más categorías para asignar a todos los contactos importados"
+                                :multiple="true"
+                                :allowEmpty="true"
+                                emptyText="Seleccione una categoría"
                             />
+                            <div class="form-text">Selecciona una o más categorías para asignar a todos los contactos importados</div>
                         </div>
 
                         <!-- Status Selection -->
@@ -182,6 +187,23 @@
                                 :required="true"
                                 helpText="Todos los contactos importados tendrán este estado"
                             />
+                        </div>
+
+                        <!-- Country Selection -->
+                        <div class="col-md-6 mb-3">
+                            <x-country-select :value="old('country', '')" />
+                            <div class="form-text">País por defecto para todos los contactos importados</div>
+                        </div>
+
+                        <!-- Advisor Selection -->
+                        <div class="col-md-6 mb-3">
+                            <x-team-users-select
+                                id="responsible_id"
+                                label="Asesor"
+                                :selected="old('responsible_id', auth()->id())"
+                                :showNull="false"
+                            />
+                            <div class="form-text">Asesor asignado a todos los contactos importados</div>
                         </div>
                     </div>
 
@@ -219,9 +241,9 @@ $(document).ready(function() {
         width: '100%'
     });
 
-    // Initialize Select2 for categories (handled by component)
-    // Initialize Select2 for status (handled by component)
+    // Categories, country, status and advisor selects are initialized by their components
 });
 </script>
+@stack('page-script')
 @endsection
 @endsection
