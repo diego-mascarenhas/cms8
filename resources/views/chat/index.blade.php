@@ -5,6 +5,7 @@
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 
 @section('page-style')
@@ -140,6 +141,7 @@
     <script src="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -1016,6 +1018,110 @@
                 if (window.refreshAssistantHistory) window.refreshAssistantHistory();
             }
         });
+
+        // --- Schedule message ---
+        var scheduleAiResponseBtn = document.getElementById('scheduleAiResponseBtn');
+        var scheduleMessageRow = document.getElementById('scheduleMessageRow');
+        var confirmScheduleBtn = document.getElementById('confirmScheduleBtn');
+        var cancelScheduleBtn = document.getElementById('cancelScheduleBtn');
+        var scheduleFlatpickr = null;
+
+        function initScheduleFlatpickr() {
+            if (scheduleFlatpickr) return;
+            var scheduleDateInput = document.getElementById('scheduleMessageDatetime');
+            if (!scheduleDateInput || typeof flatpickr === 'undefined') return;
+            scheduleFlatpickr = flatpickr(scheduleDateInput, {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: 'd/m/Y H:i',
+                minDate: 'today',
+                minuteIncrement: 5,
+                locale: { firstDayOfWeek: 1 },
+            });
+        }
+
+        var claudePreviewModalEl = document.getElementById('claudePreviewModal');
+        if (claudePreviewModalEl) {
+            claudePreviewModalEl.addEventListener('shown.bs.modal', initScheduleFlatpickr);
+        }
+
+        if (scheduleAiResponseBtn && scheduleMessageRow) {
+            scheduleAiResponseBtn.addEventListener('click', function () {
+                initScheduleFlatpickr();
+                scheduleMessageRow.classList.remove('d-none');
+                scheduleAiResponseBtn.classList.add('d-none');
+                if (scheduleFlatpickr) scheduleFlatpickr.open();
+            });
+
+            cancelScheduleBtn.addEventListener('click', function () {
+                scheduleMessageRow.classList.add('d-none');
+                scheduleAiResponseBtn.classList.remove('d-none');
+                if (scheduleFlatpickr) scheduleFlatpickr.clear();
+            });
+
+            confirmScheduleBtn.addEventListener('click', function () {
+                var taSend = document.getElementById('aiResponsePreview');
+                var replyBody = taSend && taSend.value ? taSend.value.trim() : (currentAiResponse || '').trim();
+                var cleanTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
+                var selectedDates = scheduleFlatpickr ? scheduleFlatpickr.selectedDates : [];
+
+                if (!replyBody) {
+                    alert('{{ __("No hay respuesta para programar.") }}');
+                    return;
+                }
+                if (!cleanTo) {
+                    alert('{{ __("No hay destinatario.") }}');
+                    return;
+                }
+                if (!selectedDates.length) {
+                    alert('{{ __("Selecciona la fecha y hora de envío.") }}');
+                    return;
+                }
+
+                var scheduledAt = selectedDates[0].toISOString();
+                var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                confirmScheduleBtn.disabled = true;
+                confirmScheduleBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ __("Programando...") }}';
+
+                fetch('{{ route("chat.schedule-message") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({ recipient: cleanTo, body: replyBody, scheduled_at: scheduledAt, channel: 'whatsapp' })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        previewModal.hide();
+                        var schedDate = new Date(data.scheduled_at);
+                        var label = schedDate.toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
+                        messageInput.value = '';
+                        currentUserMessage = '';
+                        currentAiResponse = '';
+                        // Small toast-style feedback
+                        var toastEl = document.createElement('div');
+                        toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
+                        toastEl.style.zIndex = 9999;
+                        toastEl.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Mensaje programado para") }} ' + label + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                        document.body.appendChild(toastEl);
+                        setTimeout(function () { toastEl.remove(); }, 5000);
+                    } else {
+                        alert(data.message || '{{ __("Error al programar el mensaje.") }}');
+                    }
+                })
+                .catch(function () {
+                    alert('{{ __("Error de conexión al programar.") }}');
+                })
+                .finally(function () {
+                    confirmScheduleBtn.disabled = false;
+                    confirmScheduleBtn.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Confirm schedule") }}';
+                    scheduleMessageRow.classList.add('d-none');
+                    scheduleAiResponseBtn.classList.remove('d-none');
+                    if (scheduleFlatpickr) scheduleFlatpickr.clear();
+                });
+            });
+        }
+        // --- End schedule message ---
 
         var chatAssistantRegenerateBtn = document.getElementById('chatAssistantRegenerateBtn');
         if (chatAssistantRegenerateBtn) {
@@ -2959,9 +3065,22 @@
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="sendAiResponseBtn">Send Response</button>
+                <div class="modal-footer flex-column align-items-stretch gap-2">
+                    <div id="scheduleMessageRow" class="d-none d-flex align-items-center gap-2 w-100">
+                        <input type="text" id="scheduleMessageDatetime" class="form-control form-control-sm flatpickr-input"
+                            placeholder="{{ __('Date and time') }}" style="max-width:220px;" readonly="readonly">
+                        <button type="button" class="btn btn-warning btn-sm" id="confirmScheduleBtn">
+                            <i class="ti ti-calendar-check me-1"></i>{{ __('Confirm schedule') }}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" id="cancelScheduleBtn">{{ __('Cancel') }}</button>
+                    </div>
+                    <div class="d-flex justify-content-end gap-2 w-100">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                        <button type="button" class="btn btn-outline-primary" id="scheduleAiResponseBtn">
+                            <i class="ti ti-calendar me-1"></i>{{ __('Schedule') }}
+                        </button>
+                        <button type="button" class="btn btn-primary" id="sendAiResponseBtn">{{ __('Send Response') }}</button>
+                    </div>
                 </div>
             </div>
         </div>
