@@ -1,5 +1,10 @@
 @extends('layouts/layoutMaster')
 
+@php
+    $chatFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
+    $chatFpLocaleBundle = in_array($chatFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+@endphp
+
 @section('title', 'Chat')
 
 @section('vendor-style')
@@ -142,6 +147,9 @@
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+    @if ($chatFpLocaleBundle)
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/{{ $chatFpLocale }}.js"></script>
+    @endif
 @endsection
 
 @section('page-script')
@@ -266,12 +274,28 @@
             });
         }
 
+        function syncSendButtonWithAiToggle(aiOn) {
+            var sendBtn = document.querySelector('#chat-form .send-msg-btn');
+            if (!sendBtn) return;
+            var iconSend = sendBtn.querySelector('.send-msg-icon');
+            var iconAi   = sendBtn.querySelector('.send-msg-icon-ai');
+            var textSend = sendBtn.querySelector('.send-msg-text');
+            var textAi   = sendBtn.querySelector('.send-msg-text-ai');
+            // Bootstrap utility classes use !important so we need setProperty to override them
+            function hide(el) { if (el) el.style.setProperty('display', 'none', 'important'); }
+            function show(el) { if (el) el.style.removeProperty('display'); }
+            if (aiOn) { hide(iconSend); show(iconAi); hide(textSend); show(textAi); }
+            else      { show(iconSend); hide(iconAi); show(textSend); hide(textAi); }
+        }
+
         (function persistAiTogglePreference() {
             var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) return;
             useAiToggle.checked = toggleDefault;
+            syncSendButtonWithAiToggle(toggleDefault);
             useAiToggle.addEventListener('change', function() {
                 var aiOn = useAiToggle.checked;
+                syncSendButtonWithAiToggle(aiOn);
                 var token = document.querySelector('meta[name="csrf-token"]');
                 var cidEl = document.getElementById('contact-id');
                 var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
@@ -716,13 +740,12 @@
             currentAiAudioBase64 = '';
             currentAiAudioMime = '';
 
-            document.getElementById('userMessagePreview').textContent = currentUserMessage;
-            document.getElementById('aiPreviewLoader').classList.remove('d-none');
-            document.getElementById('aiPreviewContent').classList.remove('d-none');
+            // Reset modal state (no AI call yet — user must click "Sugerir")
+            document.getElementById('aiPreviewLoader').classList.add('d-none');
             var taPreviewStart = document.getElementById('aiResponsePreview');
             if (taPreviewStart) {
-                taPreviewStart.value = '';
-                taPreviewStart.disabled = true;
+                taPreviewStart.value = currentUserMessage;
+                taPreviewStart.disabled = false;
             }
             var errBoxStart = document.getElementById('aiAssistantPreviewError');
             if (errBoxStart) {
@@ -731,7 +754,13 @@
             }
             var previewAudioEl = document.getElementById('aiResponsePreviewAudio');
             if (previewAudioEl) previewAudioEl.innerHTML = '';
-            if (!isAssistantView) previewModal.show();
+            currentAiResponse = '';
+
+            if (!isAssistantView) {
+                previewModal.show();
+                reenableSend();
+                return; // Don't call AI yet; wait for "Sugerir"
+            }
             if (isAssistantView) showAssistantTypingIndicator();
 
             var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
@@ -1021,62 +1050,79 @@
 
         // --- Schedule message ---
         var scheduleAiResponseBtn = document.getElementById('scheduleAiResponseBtn');
-        var scheduleMessageRow = document.getElementById('scheduleMessageRow');
+        var scheduleAiResponseLabel = document.getElementById('scheduleAiResponseLabel');
         var confirmScheduleBtn = document.getElementById('confirmScheduleBtn');
         var cancelScheduleBtn = document.getElementById('cancelScheduleBtn');
         var scheduleFlatpickr = null;
+
+        function scheduleResetState() {
+            if (scheduleFlatpickr) scheduleFlatpickr.clear();
+            if (scheduleAiResponseLabel) { scheduleAiResponseLabel.textContent = ''; scheduleAiResponseLabel.classList.add('d-none'); }
+            if (confirmScheduleBtn) confirmScheduleBtn.classList.add('d-none');
+            if (cancelScheduleBtn) cancelScheduleBtn.classList.add('d-none');
+        }
+
+        var chatFpLocaleKey = @json($chatFpLocaleBundle ? $chatFpLocale : '');
 
         function initScheduleFlatpickr() {
             if (scheduleFlatpickr) return;
             var scheduleDateInput = document.getElementById('scheduleMessageDatetime');
             if (!scheduleDateInput || typeof flatpickr === 'undefined') return;
-            scheduleFlatpickr = flatpickr(scheduleDateInput, {
+            var scheduleModalEl = document.getElementById('claudePreviewModal');
+            var fpOpts = {
                 enableTime: true,
                 time_24hr: true,
                 dateFormat: 'd/m/Y H:i',
                 minDate: 'today',
                 minuteIncrement: 5,
-                locale: { firstDayOfWeek: 1 },
-            });
+                clickOpens: false,
+                positionElement: scheduleAiResponseBtn || scheduleDateInput,
+                appendTo: scheduleModalEl || document.body,
+                onChange: function(selectedDates, dateStr) {
+                    if (selectedDates.length) {
+                        if (scheduleAiResponseLabel) { scheduleAiResponseLabel.textContent = dateStr; scheduleAiResponseLabel.classList.remove('d-none'); }
+                        if (confirmScheduleBtn) confirmScheduleBtn.classList.remove('d-none');
+                        if (cancelScheduleBtn) cancelScheduleBtn.classList.remove('d-none');
+                    } else {
+                        scheduleResetState();
+                    }
+                },
+            };
+            if (chatFpLocaleKey && flatpickr.l10ns && flatpickr.l10ns[chatFpLocaleKey]) {
+                fpOpts.locale = flatpickr.l10ns[chatFpLocaleKey];
+            } else {
+                fpOpts.locale = { firstDayOfWeek: 1 };
+            }
+            scheduleFlatpickr = flatpickr(scheduleDateInput, fpOpts);
         }
 
         var claudePreviewModalEl = document.getElementById('claudePreviewModal');
         if (claudePreviewModalEl) {
             claudePreviewModalEl.addEventListener('shown.bs.modal', initScheduleFlatpickr);
+            claudePreviewModalEl.addEventListener('hidden.bs.modal', scheduleResetState);
         }
 
-        if (scheduleAiResponseBtn && scheduleMessageRow) {
+        if (scheduleAiResponseBtn) {
             scheduleAiResponseBtn.addEventListener('click', function () {
                 initScheduleFlatpickr();
-                scheduleMessageRow.classList.remove('d-none');
-                scheduleAiResponseBtn.classList.add('d-none');
                 if (scheduleFlatpickr) scheduleFlatpickr.open();
             });
+        }
 
-            cancelScheduleBtn.addEventListener('click', function () {
-                scheduleMessageRow.classList.add('d-none');
-                scheduleAiResponseBtn.classList.remove('d-none');
-                if (scheduleFlatpickr) scheduleFlatpickr.clear();
-            });
+        if (cancelScheduleBtn) {
+            cancelScheduleBtn.addEventListener('click', scheduleResetState);
+        }
 
+        if (confirmScheduleBtn) {
             confirmScheduleBtn.addEventListener('click', function () {
                 var taSend = document.getElementById('aiResponsePreview');
                 var replyBody = taSend && taSend.value ? taSend.value.trim() : (currentAiResponse || '').trim();
                 var cleanTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
                 var selectedDates = scheduleFlatpickr ? scheduleFlatpickr.selectedDates : [];
 
-                if (!replyBody) {
-                    alert('{{ __("No hay respuesta para programar.") }}');
-                    return;
-                }
-                if (!cleanTo) {
-                    alert('{{ __("No hay destinatario.") }}');
-                    return;
-                }
-                if (!selectedDates.length) {
-                    alert('{{ __("Selecciona la fecha y hora de envío.") }}');
-                    return;
-                }
+                if (!replyBody) { alert('{{ __("No hay respuesta para programar.") }}'); return; }
+                if (!cleanTo) { alert('{{ __("No hay destinatario.") }}'); return; }
+                if (!selectedDates.length) { alert('{{ __("Selecciona la fecha y hora de envío.") }}'); return; }
 
                 var scheduledAt = selectedDates[0].toISOString();
                 var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -1093,12 +1139,10 @@
                 .then(function (data) {
                     if (data.success) {
                         previewModal.hide();
-                        var schedDate = new Date(data.scheduled_at);
-                        var label = schedDate.toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
+                        var label = new Date(data.scheduled_at).toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
                         messageInput.value = '';
                         currentUserMessage = '';
                         currentAiResponse = '';
-                        // Small toast-style feedback
                         var toastEl = document.createElement('div');
                         toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
                         toastEl.style.zIndex = 9999;
@@ -1109,15 +1153,11 @@
                         alert(data.message || '{{ __("Error al programar el mensaje.") }}');
                     }
                 })
-                .catch(function () {
-                    alert('{{ __("Error de conexión al programar.") }}');
-                })
+                .catch(function () { alert('{{ __("Error de conexión al programar.") }}'); })
                 .finally(function () {
                     confirmScheduleBtn.disabled = false;
-                    confirmScheduleBtn.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Confirm schedule") }}';
-                    scheduleMessageRow.classList.add('d-none');
-                    scheduleAiResponseBtn.classList.remove('d-none');
-                    if (scheduleFlatpickr) scheduleFlatpickr.clear();
+                    confirmScheduleBtn.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Programar") }}';
+                    scheduleResetState();
                 });
             });
         }
@@ -1136,8 +1176,9 @@
                 var regenForm = document.getElementById('chat-form');
                 var regenIsAssistant = regenForm && regenForm.getAttribute('data-view-assistant') === '1';
                 document.getElementById('aiPreviewLoader').classList.remove('d-none');
+                chatAssistantRegenerateBtn.disabled = true;
                 var taR = document.getElementById('aiResponsePreview');
-                if (taR) taR.disabled = true;
+                if (taR) { taR.value = ''; taR.disabled = true; }
                 var ebR = document.getElementById('aiAssistantPreviewError');
                 if (ebR) {
                     ebR.classList.add('d-none');
@@ -1218,6 +1259,10 @@
                     }
                 })
                 .finally(function() {
+                    chatAssistantRegenerateBtn.disabled = false;
+                    document.getElementById('aiPreviewLoader').classList.add('d-none');
+                    var taFinal = document.getElementById('aiResponsePreview');
+                    if (taFinal) taFinal.disabled = false;
                     if (regenIsAssistant) return;
                     var sb = document.querySelector('#chat-form .send-msg-btn');
                     if (sb) sb.disabled = false;
@@ -2890,9 +2935,11 @@
                             </div>
 
                             <div class="message-actions d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary d-flex send-msg-btn waves-effect waves-light">
+                                <button type="submit" class="btn btn-primary d-flex align-items-center send-msg-btn waves-effect waves-light">
                                     <i class="ti ti-send me-md-1 me-0 send-msg-icon"></i>
-                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Send') }}</span>
+                                    <i class="ti ti-sparkles me-md-1 me-0 send-msg-icon-ai" style="display:none"></i>
+                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Enviar') }}</span>
+                                    <span class="align-middle d-md-inline-block send-msg-text-ai" style="display:none">{{ __('Sugerir') }}</span>
                                 </button>
                             </div>
                         </form>
@@ -3032,54 +3079,47 @@
                     <h5 class="modal-title" id="claudePreviewModalLabel">{{ __('Humano Assistant - Vista previa') }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div id="aiPreviewLoader" class="text-center mb-3">
-                        <div class="spinner-border text-primary" role="status">
+                <div class="modal-body pb-2">
+                    <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
+                        <select class="form-select form-select-sm flex-grow-1" id="chatAssistantFlowRoutingKey">
+                            <option value="">{{ __('Automatic (detect from message)') }}</option>
+                            @foreach(($assistantFlowPrompts ?? collect()) as $flowPrompt)
+                                <option value="{{ $flowPrompt['routing_key'] }}">{{ $flowPrompt['section_label'] }} ({{ $flowPrompt['routing_key'] }})</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="btn btn-outline-primary btn-sm flex-shrink-0" id="chatAssistantRegenerateBtn">
+                            <i class="ti ti-sparkles me-1"></i>{{ __('Sugerir') }}
+                        </button>
+                    </div>
+                    <div id="aiPreviewLoader" class="text-center py-3 d-none">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-2">{{ __('Humano Assistant está pensando...') }}</p>
+                        <span class="ms-2 text-muted small">{{ __('Humano Assistant está pensando...') }}</span>
                     </div>
-                    <div id="aiPreviewContent" class="d-none">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="mb-2">{{ __('Your message') }}:</h6>
-                                <p id="userMessagePreview" class="mb-3"></p>
-                                <div class="mb-3">
-                                    <label class="form-label" for="chatAssistantFlowRoutingKey">{{ __('Assistant flow prompt') }}</label>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <select class="form-select flex-grow-1" id="chatAssistantFlowRoutingKey" style="min-width: 220px;">
-                                            <option value="">{{ __('Automatic (detect from message)') }}</option>
-                                            @foreach(($assistantFlowPrompts ?? collect()) as $flowPrompt)
-                                                <option value="{{ $flowPrompt['routing_key'] }}">{{ $flowPrompt['section_label'] }} ({{ $flowPrompt['routing_key'] }})</option>
-                                            @endforeach
-                                        </select>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="chatAssistantRegenerateBtn">{{ __('Regenerate with selected prompt') }}</button>
-                                    </div>
-                                </div>
-                                <hr>
-                                <h6 class="mb-2">{{ __('Humano Assistant reply') }}</h6>
-                                <div id="aiAssistantPreviewError" class="d-none mb-2"></div>
-                                <textarea id="aiResponsePreview" class="form-control" rows="8" spellcheck="true" disabled></textarea>
-                                <div id="aiResponsePreviewAudio" class="mt-2"></div>
-                            </div>
-                        </div>
+                    <div id="aiPreviewContent">
+                        <div id="aiAssistantPreviewError" class="d-none mb-2"></div>
+                        <textarea id="aiResponsePreview" class="form-control" rows="10" spellcheck="true"
+                            placeholder="{{ __('Hacé clic en «Sugerir» para que el asistente genere una respuesta, o escribí aquí directamente.') }}"></textarea>
+                        <div id="aiResponsePreviewAudio" class="mt-2"></div>
                     </div>
                 </div>
-                <div class="modal-footer flex-column align-items-stretch gap-2">
-                    <div id="scheduleMessageRow" class="d-none d-flex align-items-center gap-2 w-100">
-                        <input type="text" id="scheduleMessageDatetime" class="form-control form-control-sm flatpickr-input"
-                            placeholder="{{ __('Date and time') }}" style="max-width:220px;" readonly="readonly">
-                        <button type="button" class="btn btn-warning btn-sm" id="confirmScheduleBtn">
-                            <i class="ti ti-calendar-check me-1"></i>{{ __('Confirm schedule') }}
+                <div class="modal-footer align-items-center gap-2 flex-nowrap">
+                    {{-- Hidden input for flatpickr (not displayed, just attached to the picker) --}}
+                    <input type="text" id="scheduleMessageDatetime" class="d-none" readonly="readonly">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-nowrap">
+                        <button type="button" class="btn btn-outline-secondary" id="scheduleAiResponseBtn" title="{{ __('Programar envío') }}">
+                            <i class="ti ti-calendar ti-sm"></i>
                         </button>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="cancelScheduleBtn">{{ __('Cancel') }}</button>
-                    </div>
-                    <div class="d-flex justify-content-end gap-2 w-100">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
-                        <button type="button" class="btn btn-outline-primary" id="scheduleAiResponseBtn">
-                            <i class="ti ti-calendar me-1"></i>{{ __('Schedule') }}
+                        <span id="scheduleAiResponseLabel" class="text-muted small d-none"></span>
+                        <button type="button" class="btn btn-outline-primary d-none" id="confirmScheduleBtn">
+                            <i class="ti ti-calendar-check me-1"></i>{{ __('Programar') }}
                         </button>
-                        <button type="button" class="btn btn-primary" id="sendAiResponseBtn">{{ __('Send Response') }}</button>
+                        <button type="button" class="btn btn-outline-secondary d-none" id="cancelScheduleBtn">
+                            <i class="ti ti-x ti-sm"></i>
+                        </button>
+                        <button type="button" class="btn btn-primary" id="sendAiResponseBtn">{{ __('Enviar respuesta') }}</button>
                     </div>
                 </div>
             </div>
