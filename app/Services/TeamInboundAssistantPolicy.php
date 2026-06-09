@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
 
@@ -18,14 +17,14 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
-        if ($inboundSenderPhone !== null && ! $this->contactAllowsAutoReply((int) $team->id, $inboundSenderPhone))
-        {
-            return false;
-        }
-
         if (filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN))
         {
             return true;
+        }
+
+        if ($inboundSenderPhone !== null && ! $this->contactAllowsAutoReply((int) $team->id, $inboundSenderPhone))
+        {
+            return false;
         }
 
         if (! filter_var($team->getSetting('assistant_auto_respond_admins_when_off', '0'), FILTER_VALIDATE_BOOLEAN))
@@ -48,15 +47,7 @@ class TeamInboundAssistantPolicy
             return true;
         }
 
-        $contact = Contact::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->where(function ($q) use ($digits)
-            {
-                $q->whereRaw('phone::text = ?', [$digits])
-                    ->orWhereRaw('phone::text LIKE ?', ['%'.$digits])
-                    ->orWhereRaw('phone::text LIKE ?', ['%'.substr($digits, -9)]);
-            })
-            ->first();
+        $contact = app(UserResolverService::class)->findContactInTeamByPhone($teamId, $digits);
 
         if ($contact === null)
         {
