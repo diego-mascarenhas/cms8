@@ -1612,6 +1612,8 @@
   "whatsapp.send.error.local_timeout": "El servicio de WhatsApp local tardó demasiado en responder. Comprobá que esté en marcha y que la red sea estable.",
   "whatsapp.send.error.local_http_rejected": "El servicio de WhatsApp local respondió con error. Revisá su consola o el estado de la conexión en el chat.",
   "whatsapp.send.error.generic": "No se pudo enviar el mensaje de WhatsApp. Intentá de nuevo; si sigue fallando, revisá la configuración del proveedor.",
+  "whatsapp.send.error.not_connected": "WhatsApp no está conectado. Escaneá el código QR en el panel del chat para vincular tu número.",
+  "chat.send.error.no_recipient": "Seleccioná una conversación de WhatsApp antes de enviar.",
   "Invalid phone number.": "Número de teléfono no válido.",
   "No CRM contact is linked to this number. Create or link a contact in Humano to use this option.": "No hay un contacto CRM vinculado a este número. Creá o vinculá un contacto en Humano para usar esta opción.",
   "Affiliates": "Afiliados",

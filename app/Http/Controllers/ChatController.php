@@ -475,7 +475,7 @@ class ChatController extends Controller
             $userChatAiToggleDefault = ! filter_var($blocked, FILTER_VALIDATE_BOOLEAN);
         }
 
-        $contactChatAiToggleDefault = $userChatAiToggleDefault;
+        $contactChatAiToggleDefault = ($viewAssistant ?? false) ? $userChatAiToggleDefault : false;
 
         $presentation = TeamWhatsAppChatPresentation::resolveForTeam(auth()->user()?->currentTeam);
         $whatsappDriver = $presentation['whatsappDriver'];
@@ -1857,6 +1857,14 @@ class ChatController extends Controller
             if ($teamGateway !== null)
             {
                 $gateway = $teamGateway;
+                $connectionStatus = $teamGateway->getConnectionStatus();
+                if (($connectionStatus['status'] ?? '') !== 'connected')
+                {
+                    return response()->json([
+                        'success' => false,
+                        'error' => __('whatsapp.send.error.not_connected'),
+                    ], 503);
+                }
             }
         }
 
@@ -2175,12 +2183,12 @@ class ChatController extends Controller
     {
         if (config('whatsapp.driver') !== 'local')
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
         $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl === '')
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
         $url = $baseUrl.'/qr.png';
         $headers = [];
@@ -2207,19 +2215,19 @@ class ChatController extends Controller
         {
             report($e);
 
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
         $body = $response->body();
         $bodyLen = strlen($body);
 
         if (! $response->successful())
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
 
-        if ($bodyLen < 10)
+        if ($bodyLen < 100)
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
 
         return response($body)
@@ -2228,7 +2236,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 1x1 transparent PNG so img tag does not show broken icon.
+     * 1x1 transparent PNG (non-QR flows only).
      */
     private function transparentPngResponse(): \Illuminate\Http\Response
     {
@@ -2236,6 +2244,15 @@ class ChatController extends Controller
 
         return response($png)
             ->header('Content-Type', 'image/png')
+            ->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Missing QR must not return a tiny PNG (browsers upscale it to a solid block).
+     */
+    private function missingQrImageResponse(): \Illuminate\Http\Response
+    {
+        return response('', 404)
             ->header('Cache-Control', 'no-store');
     }
 
