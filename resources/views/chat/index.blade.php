@@ -1,10 +1,16 @@
 @extends('layouts/layoutMaster')
 
+@php
+    $chatFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
+    $chatFpLocaleBundle = in_array($chatFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+@endphp
+
 @section('title', 'Chat')
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 
 @section('page-style')
@@ -13,55 +19,27 @@
         #chat-qr-container,
         #chat-history-qr-container {
             position: relative;
-            min-width: 200px;
-            min-height: 200px;
         }
-        #chat-qr-container.chat-qr-loading,
-        #chat-history-qr-container.chat-qr-loading {
-            background-color: transparent;
-            border-radius: 0;
-        }
-        #chat-qr-container.chat-qr-loading .chat-qr-fallback-frame,
-        #chat-history-qr-container.chat-qr-loading .chat-qr-fallback-frame {
-            opacity: 0.65;
+        #chat-qr-container.chat-qr-loading .chat-qr-fallback,
+        #chat-history-qr-container.chat-qr-loading .chat-qr-fallback {
+            display: block !important;
         }
         .chat-qr-fallback-frame {
-            width: 200px;
-            height: 200px;
-            background-color: var(--bs-gray-75, #eceef2);
+            width: auto;
+            height: auto;
+            background: transparent;
             box-shadow: none;
         }
-        .chat-qr-fallback-pattern {
-            position: absolute;
-            inset: -10px;
-            z-index: 0;
-            pointer-events: none;
-            background-color: #dfe3ea;
-            background-image:
-                linear-gradient(90deg, rgba(67, 89, 113, 0.22) 50%, transparent 50%),
-                linear-gradient(rgba(67, 89, 113, 0.22) 50%, transparent 50%);
-            background-size: 7px 7px;
-            filter: blur(3px);
-            opacity: 0.55;
-        }
-        .chat-qr-fallback-vignette {
-            z-index: 1;
-            background: radial-gradient(
-                ellipse 70% 70% at 50% 50%,
-                rgba(255, 255, 255, 0.88) 0%,
-                rgba(255, 255, 255, 0.35) 55%,
-                rgba(255, 255, 255, 0.12) 100%
-            );
-            pointer-events: none;
-        }
         .chat-qr-fallback-frame .chat-qr-loading-overlay {
-            z-index: 3;
-            background: rgba(255, 255, 255, 0.82);
-            display: none;
+            position: static;
+            background: transparent;
+            display: flex;
+            padding: 0.75rem 0;
         }
-        #chat-qr-container.chat-qr-loading .chat-qr-fallback-frame .chat-qr-loading-overlay,
-        #chat-history-qr-container.chat-qr-loading .chat-qr-fallback-frame .chat-qr-loading-overlay {
-            display: flex !important;
+        #chat-whatsapp-qr-img,
+        #chat-whatsapp-qr-img-history {
+            background: #fff;
+            border-radius: 0.375rem;
         }
         .chat-history-header {
             min-height: 4.5rem;
@@ -168,6 +146,10 @@
     <script src="{{ asset('assets/vendor/libs/bootstrap-maxlength/bootstrap-maxlength.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+    @if ($chatFpLocaleBundle)
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/{{ $chatFpLocale }}.js"></script>
+    @endif
 @endsection
 
 @section('page-script')
@@ -292,12 +274,28 @@
             });
         }
 
+        function syncSendButtonWithAiToggle(aiOn) {
+            var sendBtn = document.querySelector('#chat-form .send-msg-btn');
+            if (!sendBtn) return;
+            var iconSend = sendBtn.querySelector('.send-msg-icon');
+            var iconAi   = sendBtn.querySelector('.send-msg-icon-ai');
+            var textSend = sendBtn.querySelector('.send-msg-text');
+            var textAi   = sendBtn.querySelector('.send-msg-text-ai');
+            // Bootstrap utility classes use !important so we need setProperty to override them
+            function hide(el) { if (el) el.style.setProperty('display', 'none', 'important'); }
+            function show(el) { if (el) el.style.removeProperty('display'); }
+            if (aiOn) { hide(iconSend); show(iconAi); hide(textSend); show(textAi); }
+            else      { show(iconSend); hide(iconAi); show(textSend); hide(textAi); }
+        }
+
         (function persistAiTogglePreference() {
             var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) return;
             useAiToggle.checked = toggleDefault;
+            syncSendButtonWithAiToggle(toggleDefault);
             useAiToggle.addEventListener('change', function() {
                 var aiOn = useAiToggle.checked;
+                syncSendButtonWithAiToggle(aiOn);
                 var token = document.querySelector('meta[name="csrf-token"]');
                 var cidEl = document.getElementById('contact-id');
                 var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
@@ -638,6 +636,20 @@
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
             var cidEl = document.getElementById('contact-id');
             var contactId = (cidEl && cidEl.value && parseInt(cidEl.value, 10)) ? parseInt(cidEl.value, 10) : undefined;
+            var waDriverLocal = @json(($whatsappDriver ?? '') === 'local');
+            var waTeamConnected = @json((bool) ($teamWhatsAppIsConnected ?? false));
+
+            if (!isAssistantViewForm && !toVal) {
+                showChatSendErrorBar(@json(__('chat.send.error.no_recipient')));
+                reenableSend();
+                return;
+            }
+
+            if (!isAssistantViewForm && waDriverLocal && !waTeamConnected) {
+                showChatSendErrorBar(@json(__('whatsapp.send.error.not_connected')));
+                reenableSend();
+                return;
+            }
 
             if (!aiOn) {
                 if (hasAudio) {
@@ -728,13 +740,12 @@
             currentAiAudioBase64 = '';
             currentAiAudioMime = '';
 
-            document.getElementById('userMessagePreview').textContent = currentUserMessage;
-            document.getElementById('aiPreviewLoader').classList.remove('d-none');
-            document.getElementById('aiPreviewContent').classList.remove('d-none');
+            // Reset modal state (no AI call yet — user must click "Sugerir")
+            document.getElementById('aiPreviewLoader').classList.add('d-none');
             var taPreviewStart = document.getElementById('aiResponsePreview');
             if (taPreviewStart) {
-                taPreviewStart.value = '';
-                taPreviewStart.disabled = true;
+                taPreviewStart.value = currentUserMessage;
+                taPreviewStart.disabled = false;
             }
             var errBoxStart = document.getElementById('aiAssistantPreviewError');
             if (errBoxStart) {
@@ -743,7 +754,13 @@
             }
             var previewAudioEl = document.getElementById('aiResponsePreviewAudio');
             if (previewAudioEl) previewAudioEl.innerHTML = '';
-            if (!isAssistantView) previewModal.show();
+            currentAiResponse = '';
+
+            if (!isAssistantView) {
+                previewModal.show();
+                reenableSend();
+                return; // Don't call AI yet; wait for "Sugerir"
+            }
             if (isAssistantView) showAssistantTypingIndicator();
 
             var respondWithAudio = document.getElementById('respond-with-audio') && document.getElementById('respond-with-audio').checked;
@@ -963,16 +980,6 @@
             return false;
         }, true);
 
-        // Refresh WhatsApp QR image periodically so it appears when the Node service has it
-        (function() {
-            var qrImg = document.getElementById('chat-whatsapp-qr-img');
-            if (qrImg && qrImg.dataset.qrBase) {
-                setInterval(function() {
-                    qrImg.src = qrImg.dataset.qrBase + '?t=' + Date.now();
-                }, 4000);
-            }
-        })();
-
         // Send the previewed AI response when confirmed (capture so we run first)
         sendAiResponseBtn.addEventListener('click', function() {
             var taSend = document.getElementById('aiResponsePreview');
@@ -1041,6 +1048,121 @@
             }
         });
 
+        // --- Schedule message ---
+        var scheduleAiResponseBtn = document.getElementById('scheduleAiResponseBtn');
+        var scheduleAiResponseLabel = document.getElementById('scheduleAiResponseLabel');
+        var confirmScheduleBtn = document.getElementById('confirmScheduleBtn');
+        var cancelScheduleBtn = document.getElementById('cancelScheduleBtn');
+        var scheduleFlatpickr = null;
+
+        function scheduleResetState() {
+            if (scheduleFlatpickr) scheduleFlatpickr.clear();
+            if (scheduleAiResponseLabel) { scheduleAiResponseLabel.textContent = ''; scheduleAiResponseLabel.classList.add('d-none'); }
+            if (confirmScheduleBtn) confirmScheduleBtn.classList.add('d-none');
+            if (cancelScheduleBtn) cancelScheduleBtn.classList.add('d-none');
+        }
+
+        var chatFpLocaleKey = @json($chatFpLocaleBundle ? $chatFpLocale : '');
+
+        function initScheduleFlatpickr() {
+            if (scheduleFlatpickr) return;
+            var scheduleDateInput = document.getElementById('scheduleMessageDatetime');
+            if (!scheduleDateInput || typeof flatpickr === 'undefined') return;
+            var scheduleModalEl = document.getElementById('claudePreviewModal');
+            var fpOpts = {
+                enableTime: true,
+                time_24hr: true,
+                dateFormat: 'd/m/Y H:i',
+                minDate: 'today',
+                minuteIncrement: 5,
+                clickOpens: false,
+                positionElement: scheduleAiResponseBtn || scheduleDateInput,
+                appendTo: scheduleModalEl || document.body,
+                onChange: function(selectedDates, dateStr) {
+                    if (selectedDates.length) {
+                        if (scheduleAiResponseLabel) { scheduleAiResponseLabel.textContent = dateStr; scheduleAiResponseLabel.classList.remove('d-none'); }
+                        if (confirmScheduleBtn) confirmScheduleBtn.classList.remove('d-none');
+                        if (cancelScheduleBtn) cancelScheduleBtn.classList.remove('d-none');
+                    } else {
+                        scheduleResetState();
+                    }
+                },
+            };
+            if (chatFpLocaleKey && flatpickr.l10ns && flatpickr.l10ns[chatFpLocaleKey]) {
+                fpOpts.locale = flatpickr.l10ns[chatFpLocaleKey];
+            } else {
+                fpOpts.locale = { firstDayOfWeek: 1 };
+            }
+            scheduleFlatpickr = flatpickr(scheduleDateInput, fpOpts);
+        }
+
+        var claudePreviewModalEl = document.getElementById('claudePreviewModal');
+        if (claudePreviewModalEl) {
+            claudePreviewModalEl.addEventListener('shown.bs.modal', initScheduleFlatpickr);
+            claudePreviewModalEl.addEventListener('hidden.bs.modal', scheduleResetState);
+        }
+
+        if (scheduleAiResponseBtn) {
+            scheduleAiResponseBtn.addEventListener('click', function () {
+                initScheduleFlatpickr();
+                if (scheduleFlatpickr) scheduleFlatpickr.open();
+            });
+        }
+
+        if (cancelScheduleBtn) {
+            cancelScheduleBtn.addEventListener('click', scheduleResetState);
+        }
+
+        if (confirmScheduleBtn) {
+            confirmScheduleBtn.addEventListener('click', function () {
+                var taSend = document.getElementById('aiResponsePreview');
+                var replyBody = taSend && taSend.value ? taSend.value.trim() : (currentAiResponse || '').trim();
+                var cleanTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
+                var selectedDates = scheduleFlatpickr ? scheduleFlatpickr.selectedDates : [];
+
+                if (!replyBody) { alert('{{ __("No hay respuesta para programar.") }}'); return; }
+                if (!cleanTo) { alert('{{ __("No hay destinatario.") }}'); return; }
+                if (!selectedDates.length) { alert('{{ __("Selecciona la fecha y hora de envío.") }}'); return; }
+
+                var scheduledAt = selectedDates[0].toISOString();
+                var token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                confirmScheduleBtn.disabled = true;
+                confirmScheduleBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ __("Programando...") }}';
+
+                fetch('{{ route("chat.schedule-message") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({ recipient: cleanTo, body: replyBody, scheduled_at: scheduledAt, channel: 'whatsapp' })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        previewModal.hide();
+                        var label = new Date(data.scheduled_at).toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
+                        messageInput.value = '';
+                        currentUserMessage = '';
+                        currentAiResponse = '';
+                        var toastEl = document.createElement('div');
+                        toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
+                        toastEl.style.zIndex = 9999;
+                        toastEl.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Mensaje programado para") }} ' + label + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                        document.body.appendChild(toastEl);
+                        setTimeout(function () { toastEl.remove(); }, 5000);
+                    } else {
+                        alert(data.message || '{{ __("Error al programar el mensaje.") }}');
+                    }
+                })
+                .catch(function () { alert('{{ __("Error de conexión al programar.") }}'); })
+                .finally(function () {
+                    confirmScheduleBtn.disabled = false;
+                    confirmScheduleBtn.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Programar") }}';
+                    scheduleResetState();
+                });
+            });
+        }
+        // --- End schedule message ---
+
         var chatAssistantRegenerateBtn = document.getElementById('chatAssistantRegenerateBtn');
         if (chatAssistantRegenerateBtn) {
             chatAssistantRegenerateBtn.addEventListener('click', function() {
@@ -1054,8 +1176,9 @@
                 var regenForm = document.getElementById('chat-form');
                 var regenIsAssistant = regenForm && regenForm.getAttribute('data-view-assistant') === '1';
                 document.getElementById('aiPreviewLoader').classList.remove('d-none');
+                chatAssistantRegenerateBtn.disabled = true;
                 var taR = document.getElementById('aiResponsePreview');
-                if (taR) taR.disabled = true;
+                if (taR) { taR.value = ''; taR.disabled = true; }
                 var ebR = document.getElementById('aiAssistantPreviewError');
                 if (ebR) {
                     ebR.classList.add('d-none');
@@ -1136,6 +1259,10 @@
                     }
                 })
                 .finally(function() {
+                    chatAssistantRegenerateBtn.disabled = false;
+                    document.getElementById('aiPreviewLoader').classList.add('d-none');
+                    var taFinal = document.getElementById('aiResponsePreview');
+                    if (taFinal) taFinal.disabled = false;
                     if (regenIsAssistant) return;
                     var sb = document.querySelector('#chat-form .send-msg-btn');
                     if (sb) sb.disabled = false;
@@ -1463,7 +1590,7 @@
                         function setQrSrc() {
                             var src = qrImg.dataset.qrBase + '?t=' + Date.now();
                             qrImg.onload = function () {
-                                if (qrImg.naturalWidth > 20) {
+                                if (isValidWhatsAppQrImage(qrImg)) {
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                     qrImg.classList.remove('d-none');
                                     if (document.getElementById('chat-qr-fallback')) document.getElementById('chat-qr-fallback').classList.add('d-none');
@@ -1471,24 +1598,28 @@
                                     qrImg.onerror = null;
                                 } else if (qrRetries < maxRetries) {
                                     qrRetries += 1;
-                                    var fbRetry = document.getElementById('chat-qr-fallback');
-                                    if (fbRetry) fbRetry.classList.remove('d-none');
-                                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
                                     setTimeout(setQrSrc, 1100);
                                 } else {
                                     if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                     qrImg.classList.add('d-none');
                                     var fbEnd = document.getElementById('chat-qr-fallback');
-                                    if (fbEnd) fbEnd.classList.remove('d-none');
+                                    if (fbEnd) fbEnd.classList.add('d-none');
                                     qrImg.onload = null;
                                     qrImg.onerror = null;
                                 }
                             };
                             qrImg.onerror = function () {
+                                if (qrRetries < maxRetries) {
+                                    qrRetries += 1;
+                                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
+                                    setTimeout(setQrSrc, 1100);
+                                    return;
+                                }
                                 if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
                                 qrImg.classList.add('d-none');
                                 var fbErr = document.getElementById('chat-qr-fallback');
-                                if (fbErr) fbErr.classList.remove('d-none');
+                                if (fbErr) fbErr.classList.add('d-none');
                                 qrImg.onload = null;
                                 qrImg.onerror = null;
                             };
@@ -1523,6 +1654,30 @@
         var waWarmupUrlForQr = '{{ route("chat.whatsapp-warmup-qr") }}';
         var waServiceErrMsg = @json(__('auth.registration.qr_whatsapp_service_unreachable'));
         var waLoadErrMsg = @json(__('auth.registration.qr_whatsapp_load_failed'));
+        var waQrMinPx = 100;
+
+        function isValidWhatsAppQrImage(img) {
+            return !!img && img.naturalWidth >= waQrMinPx && img.naturalHeight >= waQrMinPx;
+        }
+
+        function hideWhatsAppQrUi() {
+            collectWaQrScopes().forEach(function (s) {
+                if (s.container) {
+                    s.container.classList.remove('chat-qr-loading');
+                }
+                if (s.img) {
+                    s.img.classList.add('d-none');
+                    s.img.removeAttribute('src');
+                }
+                if (s.fallback) {
+                    s.fallback.classList.add('d-none');
+                }
+                if (s.err) {
+                    s.err.classList.add('d-none');
+                    s.err.textContent = '';
+                }
+            });
+        }
 
         function collectWaQrScopes() {
             var scopes = [];
@@ -1688,7 +1843,7 @@
                                 s.container.classList.remove('chat-qr-loading');
                             }
                             if (s.fallback) {
-                                s.fallback.classList.remove('d-none');
+                                s.fallback.classList.add('d-none');
                             }
                         });
                         releaseRefresh();
@@ -1728,7 +1883,7 @@
                                 s.img.classList.add('d-none');
                             }
                             if (s.fallback) {
-                                s.fallback.classList.remove('d-none');
+                                s.fallback.classList.add('d-none');
                             }
                             if (s.err) {
                                 s.err.textContent = loadErrMsg;
@@ -1741,6 +1896,10 @@
                     }
 
                     function applyQrSuccessAll(loadedSrc) {
+                        if (!isValidWhatsAppQrImage(probeImg)) {
+                            finishFailure();
+                            return;
+                        }
                         scopes.forEach(function (s) {
                             if (s.container) {
                                 s.container.classList.remove('chat-qr-loading');
@@ -1765,15 +1924,38 @@
                     function bumpQrSrc() {
                         var src = probeImg.dataset.qrBase + '?t=' + Date.now();
                         probeImg.onload = function () {
-                            if (probeImg.naturalWidth > 20) {
-                                applyQrSuccessAll(probeImg.src);
-                            } else if (qrRetries < maxRetries) {
-                                qrRetries += 1;
-                                setScopesLoadingUi(true);
-                                setTimeout(bumpQrSrc, retryMs);
-                            } else {
-                                finishFailure();
-                            }
+                            fetch(waStatusUrlForQr, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                                .then(function (r) { return r.json(); })
+                                .then(function (statusData) {
+                                    if (statusData && (statusData.isTeamConnected || statusData.status === 'connected')) {
+                                        hideWhatsAppQrUi();
+                                        if (typeof applyWaStatus === 'function') {
+                                            applyWaStatus(statusData);
+                                        }
+                                        window.location.reload();
+                                        return;
+                                    }
+                                    if (isValidWhatsAppQrImage(probeImg)) {
+                                        applyQrSuccessAll(probeImg.src);
+                                    } else if (qrRetries < maxRetries) {
+                                        qrRetries += 1;
+                                        setScopesLoadingUi(true);
+                                        setTimeout(bumpQrSrc, retryMs);
+                                    } else {
+                                        finishFailure();
+                                    }
+                                })
+                                .catch(function () {
+                                    if (isValidWhatsAppQrImage(probeImg)) {
+                                        applyQrSuccessAll(probeImg.src);
+                                    } else if (qrRetries < maxRetries) {
+                                        qrRetries += 1;
+                                        setScopesLoadingUi(true);
+                                        setTimeout(bumpQrSrc, retryMs);
+                                    } else {
+                                        finishFailure();
+                                    }
+                                });
                         };
                         probeImg.onerror = function () {
                             if (qrRetries < maxRetries) {
@@ -1807,7 +1989,7 @@
                             s.container.classList.remove('chat-qr-loading');
                         }
                         if (s.fallback) {
-                            s.fallback.classList.remove('d-none');
+                            s.fallback.classList.add('d-none');
                         }
                         if (s.err) {
                             s.err.textContent = netMsg;
@@ -1842,9 +2024,11 @@
             var disconnectBadgeTrigger = document.getElementById('chat-whatsapp-disconnect-badge-trigger');
             var avatarEl = document.getElementById('chat-sidebar-wa-avatar');
             var contactsWaAvatar = document.getElementById('chat-contacts-wa-avatar');
-            var displayNumber = data.teamNumberFormatted || null;
+            var displayNumber = data.teamNumberFormatted || data.numberFormatted || null;
+            var gatewayConnected = data.status === 'connected';
             if (titleEl) titleEl.textContent = displayNumber || '{{ __("Not linked") }}';
-            if (data.isTeamConnected) {
+            if (data.isTeamConnected || gatewayConnected) {
+                hideWhatsAppQrUi();
                 waTeamWasConnected = true;
                 if (waConnectionBlock) { waConnectionBlock.classList.add('d-none'); }
                 var historyWaPanel = document.getElementById('chat-history-wa-connect-panel');
@@ -1888,7 +2072,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         applyWaStatus(data);
-                        if (data.isTeamConnected) clearInterval(waPoll);
+                        if (data.isTeamConnected || data.status === 'connected') clearInterval(waPoll);
                     })
                     .catch(function () {});
             }, 3000);
@@ -2037,23 +2221,18 @@
                 <div class="sidebar-body px-4 pb-4">
                     @if(($whatsappDriver ?? 'twilio') === 'local')
                     <div class="my-4">
-                            @php
-                                $chatWaShowQrLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrImageUrl ?? null);
-                            @endphp
                             <div id="chat-sidebar-whatsapp-connection-block" class="{{ ($teamWhatsAppIsConnected ?? false) ? 'd-none' : '' }}" data-wa-status="{{ $whatsappStatus['status'] ?? 'disconnected' }}">
                             <small class="text-muted text-uppercase">{{ __('WhatsApp connection') }}</small>
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
-                                    <div @class(['d-inline-block', 'text-center', 'chat-qr-loading' => $chatWaShowQrLoader]) id="chat-qr-container">
+                                    <div class="d-inline-block text-center" id="chat-qr-container">
                                         <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
-                                        <div id="chat-qr-fallback" @class(['mb-2', 'd-none' => !$chatWaShowQrLoader])>
-                                            <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
-                                                <div class="chat-qr-loading-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center gap-2 rounded" role="status" aria-live="polite">
+                                        <div id="chat-qr-fallback" class="mb-2 d-none">
+                                            <div class="chat-qr-fallback-frame mx-auto">
+                                                <div class="chat-qr-loading-overlay d-flex flex-column align-items-center justify-content-center gap-2" role="status" aria-live="polite">
                                                     <div class="spinner-border text-primary" style="width: 2.25rem; height: 2.25rem;" aria-hidden="true"></div>
                                                     <span class="small text-muted text-center px-2">{{ __('auth.registration.qr_whatsapp_loading') }}</span>
                                                 </div>
-                                                <div class="chat-qr-fallback-pattern" aria-hidden="true"></div>
-                                                <div class="chat-qr-fallback-vignette position-absolute top-0 start-0 w-100 h-100"></div>
                                             </div>
                                         </div>
                                     </div>
@@ -2756,9 +2935,11 @@
                             </div>
 
                             <div class="message-actions d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary d-flex send-msg-btn waves-effect waves-light">
+                                <button type="submit" class="btn btn-primary d-flex align-items-center send-msg-btn waves-effect waves-light">
                                     <i class="ti ti-send me-md-1 me-0 send-msg-icon"></i>
-                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Send') }}</span>
+                                    <i class="ti ti-sparkles me-md-1 me-0 send-msg-icon-ai" style="display:none"></i>
+                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Enviar') }}</span>
+                                    <span class="align-middle d-md-inline-block send-msg-text-ai" style="display:none">{{ __('Sugerir') }}</span>
                                 </button>
                             </div>
                         </form>
@@ -2898,42 +3079,48 @@
                     <h5 class="modal-title" id="claudePreviewModalLabel">{{ __('Humano Assistant - Vista previa') }}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <div id="aiPreviewLoader" class="text-center mb-3">
-                        <div class="spinner-border text-primary" role="status">
+                <div class="modal-body pb-2">
+                    <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
+                        <select class="form-select form-select-sm flex-grow-1" id="chatAssistantFlowRoutingKey">
+                            <option value="">{{ __('Automatic (detect from message)') }}</option>
+                            @foreach(($assistantFlowPrompts ?? collect()) as $flowPrompt)
+                                <option value="{{ $flowPrompt['routing_key'] }}">{{ $flowPrompt['section_label'] }} ({{ $flowPrompt['routing_key'] }})</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="btn btn-outline-primary btn-sm flex-shrink-0" id="chatAssistantRegenerateBtn">
+                            <i class="ti ti-sparkles me-1"></i>{{ __('Sugerir') }}
+                        </button>
+                    </div>
+                    <div id="aiPreviewLoader" class="text-center py-3 d-none">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-2">{{ __('Humano Assistant está pensando...') }}</p>
+                        <span class="ms-2 text-muted small">{{ __('Humano Assistant está pensando...') }}</span>
                     </div>
-                    <div id="aiPreviewContent" class="d-none">
-                        <div class="card">
-                            <div class="card-body">
-                                <h6 class="mb-2">{{ __('Your message') }}:</h6>
-                                <p id="userMessagePreview" class="mb-3"></p>
-                                <div class="mb-3">
-                                    <label class="form-label" for="chatAssistantFlowRoutingKey">{{ __('Assistant flow prompt') }}</label>
-                                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <select class="form-select flex-grow-1" id="chatAssistantFlowRoutingKey" style="min-width: 220px;">
-                                            <option value="">{{ __('Automatic (detect from message)') }}</option>
-                                            @foreach(($assistantFlowPrompts ?? collect()) as $flowPrompt)
-                                                <option value="{{ $flowPrompt['routing_key'] }}">{{ $flowPrompt['section_label'] }} ({{ $flowPrompt['routing_key'] }})</option>
-                                            @endforeach
-                                        </select>
-                                        <button type="button" class="btn btn-outline-primary btn-sm" id="chatAssistantRegenerateBtn">{{ __('Regenerate with selected prompt') }}</button>
-                                    </div>
-                                </div>
-                                <hr>
-                                <h6 class="mb-2">{{ __('Humano Assistant reply') }}</h6>
-                                <div id="aiAssistantPreviewError" class="d-none mb-2"></div>
-                                <textarea id="aiResponsePreview" class="form-control" rows="8" spellcheck="true" disabled></textarea>
-                                <div id="aiResponsePreviewAudio" class="mt-2"></div>
-                            </div>
-                        </div>
+                    <div id="aiPreviewContent">
+                        <div id="aiAssistantPreviewError" class="d-none mb-2"></div>
+                        <textarea id="aiResponsePreview" class="form-control" rows="10" spellcheck="true"
+                            placeholder="{{ __('Hacé clic en «Sugerir» para que el asistente genere una respuesta, o escribí aquí directamente.') }}"></textarea>
+                        <div id="aiResponsePreviewAudio" class="mt-2"></div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="sendAiResponseBtn">Send Response</button>
+                <div class="modal-footer align-items-center gap-2 flex-nowrap">
+                    {{-- Hidden input for flatpickr (not displayed, just attached to the picker) --}}
+                    <input type="text" id="scheduleMessageDatetime" class="d-none" readonly="readonly">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">{{ __('Cancelar') }}</button>
+                    <div class="d-flex align-items-center gap-2 ms-auto flex-nowrap">
+                        <button type="button" class="btn btn-outline-secondary" id="scheduleAiResponseBtn" title="{{ __('Programar envío') }}">
+                            <i class="ti ti-calendar ti-sm"></i>
+                        </button>
+                        <span id="scheduleAiResponseLabel" class="text-muted small d-none"></span>
+                        <button type="button" class="btn btn-outline-primary d-none" id="confirmScheduleBtn">
+                            <i class="ti ti-calendar-check me-1"></i>{{ __('Programar') }}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary d-none" id="cancelScheduleBtn">
+                            <i class="ti ti-x ti-sm"></i>
+                        </button>
+                        <button type="button" class="btn btn-primary" id="sendAiResponseBtn">{{ __('Enviar respuesta') }}</button>
+                    </div>
                 </div>
             </div>
         </div>

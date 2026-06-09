@@ -38,6 +38,13 @@ class WhatsAppSendExceptionPresenter
             return __('whatsapp.send.error.local_timeout');
         }
 
+        if (
+            str_contains($lower, 'not connected')
+            || str_contains($lower, 'scan qr')
+        ) {
+            return __('whatsapp.send.error.not_connected');
+        }
+
         if (str_contains($lower, 'local whatsapp send failed'))
         {
             return __('whatsapp.send.error.local_http_rejected');

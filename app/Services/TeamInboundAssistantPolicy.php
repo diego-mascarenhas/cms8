@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
 
@@ -17,6 +18,11 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
+        if ($inboundSenderPhone !== null && ! $this->contactAllowsAutoReply((int) $team->id, $inboundSenderPhone))
+        {
+            return false;
+        }
+
         if (filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN))
         {
             return true;
@@ -28,6 +34,36 @@ class TeamInboundAssistantPolicy
         }
 
         return $this->inboundSenderIsTeamAdministrator($inboundSender, $membershipTeamId ?? (int) $team->id);
+    }
+
+    /**
+     * Returns false only when a CRM contact exists for the phone AND has explicitly disabled assistant auto-reply.
+     * If no contact is found the default is true (allow).
+     */
+    public function contactAllowsAutoReply(int $teamId, string $phone): bool
+    {
+        $digits = preg_replace('/\D/', '', (string) $phone);
+        if ($digits === '')
+        {
+            return true;
+        }
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where(function ($q) use ($digits)
+            {
+                $q->whereRaw('phone::text = ?', [$digits])
+                    ->orWhereRaw('phone::text LIKE ?', ['%'.$digits])
+                    ->orWhereRaw('phone::text LIKE ?', ['%'.substr($digits, -9)]);
+            })
+            ->first();
+
+        if ($contact === null)
+        {
+            return true;
+        }
+
+        return $contact->allowsInboundChatAssistant();
     }
 
     public function isBlacklistedWhatsAppPhone(Team $team, ?string $phone): bool

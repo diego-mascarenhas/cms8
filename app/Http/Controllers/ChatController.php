@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
+use App\Jobs\SendScheduledMessageJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\Prompt;
+use App\Models\ScheduledMessage;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
@@ -475,7 +477,16 @@ class ChatController extends Controller
             $userChatAiToggleDefault = ! filter_var($blocked, FILTER_VALIDATE_BOOLEAN);
         }
 
-        $contactChatAiToggleDefault = $userChatAiToggleDefault;
+        if ($viewAssistant ?? false)
+        {
+            $contactChatAiToggleDefault = $userChatAiToggleDefault;
+        } elseif ($selectedContact !== null)
+        {
+            $contactChatAiToggleDefault = $selectedContact->allowsInboundChatAssistant();
+        } else
+        {
+            $contactChatAiToggleDefault = false;
+        }
 
         $presentation = TeamWhatsAppChatPresentation::resolveForTeam(auth()->user()?->currentTeam);
         $whatsappDriver = $presentation['whatsappDriver'];
@@ -1221,7 +1232,7 @@ class ChatController extends Controller
             $contextUser = $userResolver->resolveUserForConversation(null, (int) $request->input('contact_id'));
         }
 
-        if ($contextUser === null && ! $request->filled('recipient'))
+        if ($contextUser === null && (! $request->filled('recipient') || $request->boolean('preview_only')))
         {
             if (! auth()->check())
             {
@@ -1857,6 +1868,14 @@ class ChatController extends Controller
             if ($teamGateway !== null)
             {
                 $gateway = $teamGateway;
+                $connectionStatus = $teamGateway->getConnectionStatus();
+                if (($connectionStatus['status'] ?? '') !== 'connected')
+                {
+                    return response()->json([
+                        'success' => false,
+                        'error' => __('whatsapp.send.error.not_connected'),
+                    ], 503);
+                }
             }
         }
 
@@ -2115,6 +2134,43 @@ class ChatController extends Controller
      * JSON endpoint for WhatsApp connection status (used by frontend to poll when not connected).
      * Returns gateway status and the current team's linked number so the UI shows per-team number.
      */
+    public function scheduleMessage(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'recipient' => ['required', 'string'],
+            'body' => ['required', 'string', 'max:4096'],
+            'scheduled_at' => ['required', 'date', 'after:now'],
+            'channel' => ['nullable', 'string', 'in:whatsapp'],
+        ]);
+
+        $team = auth()->user()->currentTeam;
+
+        if (! $team)
+        {
+            return response()->json(['success' => false, 'message' => __('No team found')], 422);
+        }
+
+        $scheduledAt = \Carbon\Carbon::parse($request->input('scheduled_at'));
+
+        $scheduled = ScheduledMessage::create([
+            'team_id' => $team->id,
+            'scheduled_by_user_id' => auth()->id(),
+            'recipient' => preg_replace('/\D/', '', $request->input('recipient')),
+            'channel' => $request->input('channel', 'whatsapp'),
+            'body' => $request->input('body'),
+            'scheduled_at' => $scheduledAt,
+            'status' => 'pending',
+        ]);
+
+        SendScheduledMessageJob::dispatch($scheduled->id)->delay($scheduledAt);
+
+        return response()->json([
+            'success' => true,
+            'scheduled_at' => $scheduledAt->toIso8601String(),
+            'scheduled_message_id' => $scheduled->id,
+        ]);
+    }
+
     public function whatsappStatus()
     {
         $driver = config('whatsapp.driver');
@@ -2175,12 +2231,12 @@ class ChatController extends Controller
     {
         if (config('whatsapp.driver') !== 'local')
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
         $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
         if ($baseUrl === '')
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
         $url = $baseUrl.'/qr.png';
         $headers = [];
@@ -2207,19 +2263,19 @@ class ChatController extends Controller
         {
             report($e);
 
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
         $body = $response->body();
         $bodyLen = strlen($body);
 
         if (! $response->successful())
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
 
-        if ($bodyLen < 10)
+        if ($bodyLen < 100)
         {
-            return $this->transparentPngResponse();
+            return $this->missingQrImageResponse();
         }
 
         return response($body)
@@ -2228,7 +2284,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 1x1 transparent PNG so img tag does not show broken icon.
+     * 1x1 transparent PNG (non-QR flows only).
      */
     private function transparentPngResponse(): \Illuminate\Http\Response
     {
@@ -2236,6 +2292,15 @@ class ChatController extends Controller
 
         return response($png)
             ->header('Content-Type', 'image/png')
+            ->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Missing QR must not return a tiny PNG (browsers upscale it to a solid block).
+     */
+    private function missingQrImageResponse(): \Illuminate\Http\Response
+    {
+        return response('', 404)
             ->header('Cache-Control', 'no-store');
     }
 
