@@ -211,6 +211,30 @@ class MessageDelivery extends Model
         return '<span class="badge bg-warning">Pending</span>';
     }
 
+    public function getSubjectForContact(): string
+    {
+        $subject = $this->message?->name ?? 'Newsletter';
+
+        if (! $this->contact)
+        {
+            return $subject;
+        }
+
+        return MessageTemplateMergeFields::replace($subject, $this->contact);
+    }
+
+    public function getPreviewTextForContact(): string
+    {
+        $text = (string) ($this->message?->text ?? '');
+
+        if ($text === '' || ! $this->contact)
+        {
+            return $text;
+        }
+
+        return MessageTemplateMergeFields::replace($text, $this->contact);
+    }
+
     /**
      * Generate personalized HTML for the contact using the associated message template
      */
@@ -224,7 +248,11 @@ class MessageDelivery extends Model
 
         if (trim($templateHtml) === '')
         {
-            $templateHtml = '<p>'.e($this->message?->text ?? '').'</p>';
+            $rawText = (string) ($this->message?->text ?? '');
+            $personalizedText = $rawText !== '' && $this->contact
+                ? MessageTemplateMergeFields::replace($rawText, $this->contact)
+                : $rawText;
+            $templateHtml = '<p>'.e($personalizedText).'</p>';
         }
 
         // Replace all template variables
@@ -279,14 +307,12 @@ class MessageDelivery extends Model
             ? $this->message->text
             : 'Mensaje de prueba';
 
-        $contactName = $this->contact ? $this->contact->name : '';
+        if (! $this->contact)
+        {
+            return $messageText;
+        }
 
-        return MessageTemplateMergeFields::replace($messageText, (object) [
-            'name' => $contactName,
-            'surname' => $this->contact->surname ?? '',
-            'email' => $this->contact->email ?? '',
-            'phone' => $this->contact->phone ?? '',
-        ]);
+        return MessageTemplateMergeFields::replace($messageText, $this->contact);
     }
 
     /**

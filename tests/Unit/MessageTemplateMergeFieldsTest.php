@@ -45,6 +45,13 @@ class MessageTemplateMergeFieldsTest extends TestCase
         );
     }
 
+    public function test_replace_with_sample_uses_sample_contact(): void
+    {
+        $result = MessageTemplateMergeFields::replaceWithSample('Hola {{nombre}} {{apellido}}');
+
+        $this->assertSame('Hola John Doe', $result);
+    }
+
     public function test_for_ui_uses_spanish_tokens_when_locale_is_spanish(): void
     {
         $tokens = array_column(MessageTemplateMergeFields::forUi('es'), 'token');

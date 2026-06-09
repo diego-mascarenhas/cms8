@@ -70,4 +70,30 @@ class TeamSettingsChatTogglesTest extends TestCase
         $team->refresh();
         $this->assertFalse($team->getSetting('assistant_auto_respond', true));
     }
+
+    public function test_update_chat_group_persists_whatsapp_blacklist_as_text(): void
+    {
+        $this->seed(ModuleSeeder::class);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $blacklist = "34600000000\n34611111111";
+
+        $this->actingAs($user)->put(route('team-settings.update', $team), [
+            'chat' => [
+                'assistant_auto_respond' => '1',
+                'assistant_chat_stub' => '0',
+                'assistant_keyword_intent_routing' => '0',
+                'chat_ai_assistance_blocked' => '0',
+                'assistant_whatsapp_blacklist_numbers' => $blacklist,
+            ],
+        ])->assertRedirect();
+
+        $team->refresh();
+        $this->assertSame($blacklist, (string) $team->getSetting('assistant_whatsapp_blacklist_numbers', ''));
+    }
 }

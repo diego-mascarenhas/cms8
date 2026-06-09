@@ -282,6 +282,8 @@ document.addEventListener('DOMContentLoaded', function () {
 @endsection
 
 @section('content')
+@include('partials.email-sender-configuration-prompt', ['topRow' => true])
+
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
 		<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Messages') }}/</span> {{ isset($data->id) ? __('Edit') : __('Create') }} News</h4>
@@ -386,29 +388,34 @@ document.addEventListener('DOMContentLoaded', function () {
 					</div>
 				@endif
 			</div>
-			@php
-				$messageTemplateSelectRequired = empty($removeMailTemplate) && empty($templateSelectDisabled);
-			@endphp
 			<div class="col-md-12" id="message-form-template-field-wrapper">
 				<x-input-select
 					id="template_id"
 					label="{{ __('Plantilla') }}"
 					:options="$data->templates ?? []"
 					value="{{ old('template_id', $removeMailTemplate ? '' : ($data->template_id ?? '')) }}"
-					:placeholder="$removeMailTemplate ? __('app.message_form_template_none') : null"
-					:required="$messageTemplateSelectRequired"
-					:allowClear="! $messageTemplateSelectRequired"
+					:placeholder="__('app.message_form_template_none')"
+					:required="false"
+					:allowClear="! $templateSelectDisabled"
 					:disabled="$templateSelectDisabled"
 				/>
-				@if ($messageTemplateSelectRequired)
-					<div class="form-text mt-1">{{ __('app.message_form_template_required_help') }}</div>
+				@if (! $templateSelectDisabled)
+					<div class="form-text mt-1">{{ __('app.message_form_template_optional_help') }}</div>
 				@endif
 			</div>
-			<div class="col-md-12">
+			<div class="col-12">
 				<x-input-textarea id="text" label="{{ __('app.Preview') }} (*)" value="{{ old('text', $data->text?? '') }}" />
 				<div class="form-text mt-1">
 					{{ __('app.message_form_alt_text_help') }}
 				</div>
+			</div>
+			<div class="col-12">
+				<div class="border rounded bg-label-secondary p-3" id="message-merge-fields-inbox-preview" aria-live="polite">
+					<div class="small text-muted mb-2">{{ __('app.message_merge_fields_inbox_preview_label') }}</div>
+					<div class="fw-semibold" id="message-merge-preview-subject"></div>
+					<div class="small text-muted mt-1" id="message-merge-preview-text"></div>
+				</div>
+				<script type="application/json" id="message-merge-fields-sample-json">@json(\App\Support\MessageTemplateMergeFields::valuesForContact(\App\Support\MessageTemplateMergeFields::sampleContact()))</script>
 			</div>
 		</div>
 		</div>
@@ -418,7 +425,7 @@ document.addEventListener('DOMContentLoaded', function () {
 		id="message-email-template-preview-mount"
 		@if (filled($emailPreviewBundleHtml ?? null))
 			data-dynamic-preview="1"
-			data-loaded-template-id="{{ (int) old('template_id', $data->template_id ?? 0) }}"
+			data-loaded-template-id="{{ filled($messageFormDefaultTemplateId ?? null) ? (int) old('template_id', $data->template_id ?? 0) : 'standalone' }}"
 		@endif
 	>
 		@if (filled($emailPreviewBundleHtml ?? null))
@@ -507,12 +514,61 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 (function ()
 {
+    var subjectEl = document.getElementById('name');
+    var previewTextEl = document.getElementById('text');
+    var subjectOut = document.getElementById('message-merge-preview-subject');
+    var previewTextOut = document.getElementById('message-merge-preview-text');
+    var sampleJsonEl = document.getElementById('message-merge-fields-sample-json');
+
+    if (! subjectEl || ! previewTextEl || ! subjectOut || ! previewTextOut || ! sampleJsonEl)
+    {
+        return;
+    }
+
+    var mergeMap = {};
+    try
+    {
+        mergeMap = JSON.parse(sampleJsonEl.textContent || '{}');
+    }
+    catch (e)
+    {
+        mergeMap = {};
+    }
+
+    function applyMergeFields(value)
+    {
+        var out = String(value || '');
+        Object.keys(mergeMap).forEach(function (token)
+        {
+            out = out.split(token).join(String(mergeMap[token] ?? ''));
+        });
+
+        return out;
+    }
+
+    function refreshInboxPreview()
+    {
+        var subject = applyMergeFields(subjectEl.value).trim();
+        var previewText = applyMergeFields(previewTextEl.value).trim();
+        subjectOut.textContent = subject || '—';
+        previewTextOut.textContent = previewText || '—';
+    }
+
+    subjectEl.addEventListener('input', refreshInboxPreview);
+    previewTextEl.addEventListener('input', refreshInboxPreview);
+    refreshInboxPreview();
+})();
+</script>
+<script>
+(function ()
+{
     var mount = document.getElementById('message-email-template-preview-mount');
     var previewUrl = @json(route('message.template-email-preview'));
+    var standalonePreviewUrl = @json(route('message.standalone-mail-editor-preview'));
     var messageFormMessageId = @json(isset($data->id) ? (int) $data->id : null);
     var templateLockDeliveries = @json((bool) (isset($data->hasDeliveries) && $data->hasDeliveries));
     var defaultTemplateId = @json((int) ($messageFormDefaultTemplateId ?? 0));
-    var allowNoTemplate = @json((bool) ($removeMailTemplate ?? false));
+    var allowNoTemplate = @json((bool) ($removeMailTemplate ?? false) || ! (isset($data->hasDeliveries) && $data->hasDeliveries));
 
     if (! mount)
     {
@@ -709,6 +765,79 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function loadStandaloneMailEditor()
+    {
+        if (mount.dataset.dynamicPreview === '1' && mount.dataset.loadedTemplateId === 'standalone')
+        {
+            return;
+        }
+
+        var fetchToken = ++previewFetchToken;
+        var params = new URLSearchParams({ return_url: window.location.href.split('#')[0] });
+        if (messageFormMessageId)
+        {
+            params.set('message_id', String(messageFormMessageId));
+        }
+        var textEl = document.getElementById('text');
+        if (textEl && textEl.value && String(textEl.value).trim())
+        {
+            params.set('context_text', String(textEl.value).trim());
+        }
+
+        mount.dataset.dynamicPreview = 'loading';
+
+        fetch(standalonePreviewUrl + '?' + params.toString(), {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function (res)
+            {
+                if (! res.ok)
+                {
+                    throw new Error('bad status');
+                }
+                return res.json();
+            })
+            .then(function (data)
+            {
+                if (fetchToken !== previewFetchToken)
+                {
+                    return;
+                }
+                if (! data || typeof data.html !== 'string')
+                {
+                    throw new Error('bad payload');
+                }
+                removeStaleEmailTestSendModalsOutsidePreviewMount();
+                humaDestroyMessageTemplateHtmlQuillIn(mount);
+                mount.innerHTML = data.html;
+                mount.dataset.dynamicPreview = '1';
+                mount.dataset.loadedTemplateId = 'standalone';
+                if (duplicateForm)
+                {
+                    duplicateForm.setAttribute('action', '#');
+                }
+                if (window.humaBindEmailTestSendModals)
+                {
+                    window.humaBindEmailTestSendModals();
+                }
+                if (window.humaInitMessageTemplateHtmlQuill)
+                {
+                    window.humaInitMessageTemplateHtmlQuill(mount);
+                }
+            })
+            .catch(function ()
+            {
+                if (mount.dataset.dynamicPreview === 'loading')
+                {
+                    mount.innerHTML = '';
+                    mount.dataset.dynamicPreview = '0';
+                    delete mount.dataset.loadedTemplateId;
+                    restoreTemplateFieldUi();
+                }
+            });
+    }
+
     function loadEmailTemplatePreview(templateId)
     {
         if (mount.dataset.dynamicPreview === '1' && mount.dataset.loadedTemplateId === String(templateId))
@@ -833,6 +962,11 @@ document.addEventListener('DOMContentLoaded', function () {
                     $tpl.val(String(defaultTemplateId)).trigger('change');
                     return;
                 }
+                if (allowNoTemplate)
+                {
+                    loadStandaloneMailEditor();
+                    return;
+                }
                 clearDynamicPreview();
                 return;
             }
@@ -869,6 +1003,9 @@ window.humaMessageTemplateQuillUploadUrl = @json(route('laravel-grapesjs.asset.s
 window.humaMessageTemplateMergeFields = @json(\App\Support\MessageTemplateMergeFields::forUi());
 window.humaMessageTemplateQuillLabels = {
     imageUrl: @json(__('app.message_quill_image_url')),
+    imageUrlPrompt: @json(__('app.message_quill_image_url_prompt')),
+    imageUrlConfirm: @json(__('app.message_quill_image_url_confirm')),
+    imageUrlCancel: @json(__('Cancel')),
     imageUpload: @json(__('app.message_quill_image_upload')),
     imageUploadFailed: @json(__('app.message_quill_image_upload_failed')),
     mergeFieldSelect: @json(__('app.message_merge_field_select_label')),
@@ -993,6 +1130,80 @@ window.humaMessageTemplateQuillLabels = {
         }
 
         return null;
+    }
+
+    function humaPromptMessageTemplateQuillImageUrl(quill)
+    {
+        if (! quill)
+        {
+            return;
+        }
+
+        var labels = window.humaMessageTemplateQuillLabels || {};
+
+        function insertUrl(url)
+        {
+            if (! url || String(url).trim() === '')
+            {
+                return;
+            }
+
+            humaInsertImageIntoQuill(quill, String(url).trim());
+        }
+
+        if (typeof Swal !== 'undefined')
+        {
+            Swal.fire({
+                title: labels.imageUrl || 'Insert image from URL',
+                input: 'url',
+                inputPlaceholder: labels.imageUrlPrompt || 'https://example.com/image.png',
+                showCancelButton: true,
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2',
+                    cancelButton: 'btn btn-label-secondary',
+                },
+                confirmButtonText: labels.imageUrlConfirm || 'Insert',
+                cancelButtonText: labels.imageUrlCancel || 'Cancel',
+                inputValidator: function (value)
+                {
+                    if (! value || String(value).trim() === '')
+                    {
+                        return labels.imageUrlPrompt || 'Paste the image URL';
+                    }
+                },
+            }).then(function (result)
+            {
+                if (result.isConfirmed)
+                {
+                    insertUrl(result.value);
+                }
+            });
+
+            return;
+        }
+
+        var url = window.prompt(labels.imageUrlPrompt || labels.imageUrl || 'Image URL');
+        insertUrl(url);
+    }
+
+    function humaBindMessageTemplateQuillImageUrlHandler(quill)
+    {
+        if (! quill)
+        {
+            return;
+        }
+
+        var toolbar = quill.getModule('toolbar');
+        if (! toolbar || typeof toolbar.addHandler !== 'function')
+        {
+            return;
+        }
+
+        toolbar.addHandler('image', function ()
+        {
+            humaPromptMessageTemplateQuillImageUrl(quill);
+        });
     }
 
     function humaBindMessageTemplateQuillImageUpload(quill, mountEl)
@@ -1396,6 +1607,7 @@ window.humaMessageTemplateQuillLabels = {
         }
         else
         {
+            humaBindMessageTemplateQuillImageUrlHandler(quill);
             humaBindMessageTemplateQuillImageUpload(quill, mountEl);
             humaBindMessageTemplateQuillMergeFields(quill, mountEl, root);
         }

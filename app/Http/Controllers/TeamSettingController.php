@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ExternalProvider;
+use App\Http\Requests\UpdateTeamEmailSenderRequest;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
 use App\Models\CustomTranslation;
@@ -13,6 +14,7 @@ use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
 use App\Services\TokenUsageLogService;
+use App\Services\WebDavApiClient;
 use App\Support\TeamDefaultShortcuts;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +27,7 @@ use function Laravel\Ai\agent;
 
 class TeamSettingController extends Controller
 {
-    public function index(Team $team)
+    public function index(Team $team, WebDavApiClient $webDavApiClient)
     {
         $this->authorize('update', $team);
 
@@ -40,6 +42,13 @@ class TeamSettingController extends Controller
             ->latest('id')
             ->first();
 
+        $webDavExternalAccount = $team->externalAccounts()
+            ->where('provider', ExternalProvider::WebDav)
+            ->latest('id')
+            ->first();
+
+        $webDavApiConfigured = $webDavApiClient->isConfigured();
+
         $performanceInsightsModule = Module::query()
             ->where('key', 'performance_insights')
             ->where('status', 1)
@@ -51,6 +60,8 @@ class TeamSettingController extends Controller
             'team',
             'groupedSettings',
             'googleExternalAccount',
+            'webDavExternalAccount',
+            'webDavApiConfigured',
             'performanceInsightsModule',
             'performanceInsightsEnabled',
         ));
@@ -204,9 +215,18 @@ class TeamSettingController extends Controller
 
             foreach ($settings as $key => $value)
             {
+                if ($group === 'email' && in_array($key, ['mail_from_name', 'mail_from_address'], true) && trim((string) $value) === '')
+                {
+                    $team->removeSetting($key);
+
+                    continue;
+                }
+
                 $type = $this->getSettingType($key);
                 $isBoolean = $type === 'boolean';
-                $shouldSet = $isBoolean ? true : (! empty($value) || $value === '0');
+                $shouldSet = $isBoolean
+                    ? true
+                    : (! empty($value) || $value === '0' || in_array($key, ['assistant_whatsapp_blacklist_numbers'], true));
                 if ($shouldSet)
                 {
                     $storedValue = $isBoolean ? (bool) ($value ?? false) : $value;
@@ -282,6 +302,48 @@ class TeamSettingController extends Controller
                     }
                 }
             }
+
+            if ($group === 'google')
+            {
+                foreach ([
+                    'google_contacts_inbound_sync_enabled',
+                    'google_contacts_outbound_sync_enabled',
+                    'google_calendar_inbound_sync_enabled',
+                    'google_calendar_outbound_sync_enabled',
+                ] as $googleSyncBooleanKey)
+                {
+                    if (! array_key_exists($googleSyncBooleanKey, $settings))
+                    {
+                        $team->setSetting($googleSyncBooleanKey, false, [
+                            'group' => 'google',
+                            'type' => 'boolean',
+                            'is_encrypted' => false,
+                        ]);
+                    }
+                }
+            }
+
+            if ($group === 'webdav')
+            {
+                foreach ([
+                    'webdav_contacts_inbound_sync_enabled',
+                    'webdav_contacts_outbound_sync_enabled',
+                    'webdav_calendar_inbound_sync_enabled',
+                    'webdav_calendar_outbound_sync_enabled',
+                    'webdav_tasks_inbound_sync_enabled',
+                    'webdav_tasks_outbound_sync_enabled',
+                ] as $webDavSyncBooleanKey)
+                {
+                    if (! array_key_exists($webDavSyncBooleanKey, $settings))
+                    {
+                        $team->setSetting($webDavSyncBooleanKey, false, [
+                            'group' => 'webdav',
+                            'type' => 'boolean',
+                            'is_encrypted' => false,
+                        ]);
+                    }
+                }
+            }
         }
 
         $group = array_key_first($request->validated());
@@ -290,6 +352,31 @@ class TeamSettingController extends Controller
         return redirect()
             ->back()
             ->with('success', $message);
+    }
+
+    public function updateEmailSender(UpdateTeamEmailSenderRequest $request, Team $team): JsonResponse
+    {
+        $validated = $request->validated();
+
+        $team->setSetting('mail_from_name', $validated['mail_from_name'], [
+            'group' => 'email',
+            'type' => 'text',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting('mail_from_address', $validated['mail_from_address'], [
+            'group' => 'email',
+            'type' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('app.email_sender_config_saved'),
+            'sender' => [
+                'from_name' => $validated['mail_from_name'],
+                'from_address' => $validated['mail_from_address'],
+            ],
+        ]);
     }
 
     /**
@@ -334,6 +421,16 @@ class TeamSettingController extends Controller
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
+            'google_contacts_outbound_sync_enabled',
+            'google_calendar_outbound_sync_enabled',
+            'google_contacts_inbound_sync_enabled',
+            'google_calendar_inbound_sync_enabled',
+            'webdav_contacts_outbound_sync_enabled',
+            'webdav_calendar_outbound_sync_enabled',
+            'webdav_tasks_outbound_sync_enabled',
+            'webdav_contacts_inbound_sync_enabled',
+            'webdav_calendar_inbound_sync_enabled',
+            'webdav_tasks_inbound_sync_enabled',
             'public_catalog_enabled',
         ];
 
@@ -591,6 +688,13 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('If enabled, the chat AI toggle starts off for the team. Per-contact preferences still take priority (same as the chat sidebar).'),
+                    ],
+                    'assistant_whatsapp_blacklist_numbers' => [
+                        'label' => __('WhatsApp auto-reply blacklist numbers'),
+                        'type' => 'textarea',
+                        'value' => (string) $team->getSetting('assistant_whatsapp_blacklist_numbers', ''),
+                        'is_encrypted' => false,
+                        'help' => __('Numbers separated by comma, semicolon, or line break. If a number is listed here, the assistant will never auto-reply on inbound WhatsApp for that sender.'),
                     ],
                 ],
             ],
@@ -998,6 +1102,108 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'placeholder' => '123456789',
                         'help' => 'Find this in Google Analytics: Admin > Property Settings. Use the numeric Property ID.',
+                    ],
+                ],
+            ],
+            'google' => [
+                'title' => __('app.team_setting_google_sync_title'),
+                'icon' => 'ti ti-arrows-exchange',
+                'settings' => [
+                    'google_contacts_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_contacts_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleContactsInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_google_contacts_inbound_sync_help'),
+                    ],
+                    'google_calendar_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_calendar_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleCalendarInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_google_calendar_inbound_sync_help'),
+                    ],
+                    'google_contacts_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_contacts_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleContactsOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_google_contacts_outbound_sync_help'),
+                    ],
+                    'google_calendar_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_google_calendar_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->googleCalendarOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_google_calendar_outbound_sync_help'),
+                    ],
+                ],
+            ],
+            'webdav' => [
+                'title' => __('app.team_setting_webdav_sync_title'),
+                'icon' => 'ti ti-cloud-data-connection',
+                'settings' => [
+                    'webdav_contacts_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_contacts_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavContactsInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_webdav_contacts_inbound_sync_help'),
+                    ],
+                    'webdav_calendar_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_calendar_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavCalendarInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_webdav_calendar_inbound_sync_help'),
+                    ],
+                    'webdav_tasks_inbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_tasks_inbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavTasksInboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'inbound',
+                        'row' => 1,
+                        'help' => __('app.team_setting_webdav_tasks_inbound_sync_help'),
+                    ],
+                    'webdav_contacts_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_contacts_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavContactsOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_webdav_contacts_outbound_sync_help'),
+                    ],
+                    'webdav_calendar_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_calendar_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavCalendarOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_webdav_calendar_outbound_sync_help'),
+                    ],
+                    'webdav_tasks_outbound_sync_enabled' => [
+                        'label' => __('app.team_setting_webdav_tasks_outbound_sync'),
+                        'type' => 'checkbox',
+                        'value' => $team->webdavTasksOutboundSyncEnabled() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'section' => 'outbound',
+                        'row' => 2,
+                        'help' => __('app.team_setting_webdav_tasks_outbound_sync_help'),
                     ],
                 ],
             ],

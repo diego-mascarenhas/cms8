@@ -3,7 +3,10 @@
 namespace App\DataTables;
 
 use App\Models\Invoice;
+use App\Services\Finance\InvoiceSummaryService;
 use App\Support\DataTableFormatter;
+use App\Support\InvoiceTableAmountFormatter;
+use App\Support\SearchNormalizer;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -13,9 +16,6 @@ use Yajra\DataTables\Services\DataTable;
 
 class InvoiceDataTable extends DataTable
 {
-    // Fix N+1: Cache exchange rates to avoid querying in the loop
-    protected $exchangeRatesCache = null;
-
     /**
      * Build the DataTable class.
      *
@@ -23,21 +23,16 @@ class InvoiceDataTable extends DataTable
      */
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
-        // Fix N+1: Load all exchange rates once
-        $this->exchangeRatesCache = \App\Models\ExchangeRate::query()
-            ->whereIn('base_currency', ['USD', 'ARS', 'EUR'])
-            ->whereIn('target_currency', ['USD', 'ARS', 'EUR'])
-            ->latest('date')
-            ->get()
-            ->groupBy(function ($rate)
-            {
-                return $rate->base_currency.'_'.$rate->target_currency;
-            });
-
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'invoices.action')
+            ->addColumn('action', function (Invoice $data)
+            {
+                return view('invoices.action', [
+                    'id' => $data->id,
+                    'enterprise' => $data->enterprise,
+                ])->render();
+            })
             ->setRowId('id')
-            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount'])
+            ->rawColumns(['status', 'action', 'enterprise_id', 'number_with_indicator', 'total_amount', 'balance'])
             ->addColumn('number_with_indicator', function ($data)
             {
                 // Punto de color según tipo de operación (rojo: compra, verde: venta)
@@ -70,11 +65,58 @@ class InvoiceDataTable extends DataTable
 
                 return '<span class="text-muted">'.e(__('invoice_enterprise.no_enterprise')).'</span>';
             })
-            ->filterColumn('enterprise_id', function ($query, $keyword)
+            ->filterColumn('number_with_indicator', function ($query, $keyword): void
             {
-                $query->whereHas('enterprise', function ($q) use ($keyword)
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
                 {
-                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                    return;
+                }
+
+                $query->where('invoices.number', 'like', '%'.$keyword.'%');
+            })
+            ->filterColumn('enterprise_id', function ($query, $keyword): void
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $query->whereHas('enterprise', function ($enterpriseQuery) use ($keyword): void
+                {
+                    SearchNormalizer::applyEnterpriseNavbarConditions($enterpriseQuery, $keyword);
+                });
+            })
+            ->filterColumn('date', function ($query, $keyword): void
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $query->where(function ($dateQuery) use ($keyword): void
+                {
+                    $dateQuery->where('invoices.date', 'like', '%'.$keyword.'%');
+
+                    foreach (['d-m-Y', 'd/m/Y', 'Y-m-d'] as $format)
+                    {
+                        try
+                        {
+                            $parsed = Carbon::createFromFormat($format, $keyword);
+
+                            if ($parsed !== false)
+                            {
+                                $dateQuery->orWhereDate('invoices.date', $parsed->toDateString());
+                            }
+                        } catch (\Throwable)
+                        {
+                        }
+                    }
                 });
             })
             ->editColumn('date', function ($data)
@@ -83,26 +125,17 @@ class InvoiceDataTable extends DataTable
             })
             ->editColumn('total_amount', function ($data)
             {
-                $conversions = '';
-
-                // Fix N+1: Use cached rates for conversion
-                $ars = $this->convertToWithCache($data, 'ARS', 'total_amount');
-                if ($ars !== null)
-                {
-                    $conversions .= '<span class="fw-bold">'.\App\Helpers\Helpers::formatMoney($ars, 'ARS').' ARS</span>';
-                }
-
-                $eur = $this->convertToWithCache($data, 'EUR', 'total_amount');
-                if ($eur !== null)
-                {
-                    if ($conversions)
-                    {
-                        $conversions .= '<br>';
-                    }
-                    $conversions .= '<small class="text-muted">≈ '.\App\Helpers\Helpers::formatMoney($eur, 'EUR').' EUR</small>';
-                }
-
-                return $conversions ?: '<span class="text-muted">N/A</span>';
+                return InvoiceTableAmountFormatter::formatNative(
+                    (float) ($data->total_amount ?? 0),
+                    $data->currency_code,
+                );
+            })
+            ->editColumn('balance', function ($data)
+            {
+                return InvoiceTableAmountFormatter::formatNative(
+                    (float) ($data->balance ?? 0),
+                    $data->currency_code,
+                );
             })
             ->editColumn('status', function ($data)
             {
@@ -110,53 +143,51 @@ class InvoiceDataTable extends DataTable
             });
     }
 
-    /**
-     * Fix N+1: Convert using cached exchange rates
-     */
-    protected function convertToWithCache($invoice, string $targetCurrency, string $field = 'total_amount'): ?float
-    {
-        $baseCurrency = $invoice->currency ?? 'USD';
-        $amount = $invoice->$field ?? 0;
-
-        if ($baseCurrency === $targetCurrency)
-        {
-            return $amount;
-        }
-
-        $key = $baseCurrency.'_'.$targetCurrency;
-        $rates = $this->exchangeRatesCache[$key] ?? collect();
-        $rate = $rates->first();
-
-        if ($rate)
-        {
-            return $amount * (float) $rate->rate;
-        }
-
-        // Try inverse conversion
-        $inverseKey = $targetCurrency.'_'.$baseCurrency;
-        $inverseRates = $this->exchangeRatesCache[$inverseKey] ?? collect();
-        $inverseRate = $inverseRates->first();
-
-        if ($inverseRate && $inverseRate->rate > 0)
-        {
-            return $amount / (float) $inverseRate->rate;
-        }
-
-        return null;
-    }
-
     public function query(Invoice $model): QueryBuilder
     {
-        return $model->newQuery()->with('enterprise');
+        $query = $model->newQuery()->with(['enterprise', 'currency']);
+
+        $summaryService = app(InvoiceSummaryService::class);
+        $summaryFilter = $summaryService->resolveListFilter(request()->input('summary_filter'));
+        $summaryService->applySummaryFilter($query, $summaryFilter);
+
+        return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $initComplete = "function () {
+            var api = this.api();
+            window.invoiceSummaryFilter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."';
+
+            function syncInvoiceSummaryFilterUi() {
+                jQuery('.filter-invoice-summary').each(function () {
+                    var el = jQuery(this);
+                    el.toggleClass('active-filter', el.data('filter') === window.invoiceSummaryFilter);
+                });
+            }
+
+            jQuery('.filter-invoice-summary').off('click.invoiceSummary').on('click.invoiceSummary', function (e) {
+                e.preventDefault();
+                var filter = jQuery(this).data('filter');
+                window.invoiceSummaryFilter = window.invoiceSummaryFilter === filter
+                    ? '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'
+                    : filter;
+                syncInvoiceSummaryFilterUi();
+                api.ajax.reload();
+            });
+
+            syncInvoiceSummaryFilterUi();
+        }";
+
         return $this
             ->builder()
             ->setTableId('invoice-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.summary_filter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."';",
+            )
             ->dom('frtip')
             ->orderBy(2, 'desc')
             ->responsive(true)
@@ -167,6 +198,7 @@ class InvoiceDataTable extends DataTable
             ->parameters([
                 'select' => false,
                 'autoWidth' => false,
+                'initComplete' => $initComplete,
                 'drawCallback' => 'function() {
 					$("#invoice-table tbody tr").css({
 						"user-select": "none",
@@ -185,12 +217,13 @@ class InvoiceDataTable extends DataTable
             Column::computed('number_with_indicator')
                 ->title('Comprobante')
                 ->addClass('all')
-                ->searchable(false)
+                ->searchable(true)
                 ->orderable(false),
             Column::make('date')
                 ->title('Fecha')
                 ->addClass('min-tablet')
-                ->className('text-center'),
+                ->className('text-center')
+                ->searchable(true),
             Column::make('enterprise_id')
                 ->title('Empresa')
                 ->addClass('min-tablet')
@@ -199,22 +232,21 @@ class InvoiceDataTable extends DataTable
             Column::make('total_amount')
                 ->title('Total')
                 ->addClass('min-desktop')
-                ->className('text-end'),
-            Column::make('discount')
-                ->title('Descuento')
-                ->addClass('none')
-                ->className('text-end'),
+                ->className('text-end')
+                ->searchable(false),
             Column::make('balance')
                 ->title('Saldo')
                 ->addClass('min-desktop')
-                ->className('text-end'),
+                ->className('text-end')
+                ->searchable(false),
             Column::make('status')
                 ->title('Estado')
                 ->addClass('min-phone')
-                ->className('text-center'),
+                ->className('text-center')
+                ->searchable(false),
             Column::computed('action')
                 ->title('Acciones')
-                ->addClass('min-desktop')
+                ->addClass('all')
                 ->className('text-center')
                 ->exportable(false)
                 ->printable(false)

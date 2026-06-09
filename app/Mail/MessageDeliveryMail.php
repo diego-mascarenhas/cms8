@@ -26,7 +26,7 @@ class MessageDeliveryMail extends Mailable
 
     public function build()
     {
-        $subject = $this->delivery->message ? $this->delivery->message->name : 'Newsletter';
+        $subject = $this->delivery->getSubjectForContact();
         $html = $this->delivery->getHtmlForContact(); // This already includes the advertising footer
 
         $css = '';

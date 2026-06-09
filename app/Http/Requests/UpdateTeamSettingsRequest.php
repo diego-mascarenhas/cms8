@@ -39,6 +39,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
             'chat.assistant_keyword_intent_routing' => 'nullable|in:0,1',
             'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',
+            'chat.assistant_whatsapp_blacklist_numbers' => 'nullable|string|max:5000',
             'documents.documents_ocr_mode' => 'nullable|string|in:local,ai,hybrid',
 
             // Twilio settings
@@ -80,6 +81,18 @@ class UpdateTeamSettingsRequest extends FormRequest
 
             // Calendar settings
             'calendar.google_calendar_id' => 'nullable|string|max:255',
+
+            'google.google_contacts_inbound_sync_enabled' => 'nullable|in:0,1',
+            'google.google_contacts_outbound_sync_enabled' => 'nullable|in:0,1',
+            'google.google_calendar_inbound_sync_enabled' => 'nullable|in:0,1',
+            'google.google_calendar_outbound_sync_enabled' => 'nullable|in:0,1',
+
+            'webdav.webdav_contacts_inbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_contacts_outbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_calendar_inbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_calendar_outbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_tasks_inbound_sync_enabled' => 'nullable|in:0,1',
+            'webdav.webdav_tasks_outbound_sync_enabled' => 'nullable|in:0,1',
 
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',

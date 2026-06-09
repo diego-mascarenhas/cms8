@@ -3,10 +3,10 @@
 namespace App\Services\WhatsApp;
 
 use App\Models\Task;
-use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\TeamTaskBoardResolver;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -51,7 +51,7 @@ class WhatsAppTaskSheetImportService
             return 'No se pudo determinar el responsable de las tareas. Contactá soporte.';
         }
 
-        $boardId = $this->resolveBoardId($teamId);
+        $boardId = TeamTaskBoardResolver::resolveBoardId($teamId);
 
         /** @var array<int, array<string, string>> $rows */
         $rows = $parsed['rows'];
@@ -303,39 +303,5 @@ class WhatsAppTaskSheetImportService
         }
 
         return (int) $user->id;
-    }
-
-    private function resolveBoardId(int $teamId): int
-    {
-        $board = TaskBoard::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->where('is_default', true)
-            ->first();
-
-        if ($board !== null)
-        {
-            return (int) $board->id;
-        }
-
-        $any = TaskBoard::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->orderBy('order')
-            ->orderBy('id')
-            ->first();
-
-        if ($any !== null)
-        {
-            return (int) $any->id;
-        }
-
-        $created = TaskBoard::withoutGlobalScopes()->create([
-            'team_id' => $teamId,
-            'name' => 'Default',
-            'description' => 'Default',
-            'is_default' => true,
-            'order' => 0,
-        ]);
-
-        return (int) $created->id;
     }
 }

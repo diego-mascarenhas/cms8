@@ -117,23 +117,7 @@ class ContactController extends Controller
         $contactData['email'] = $request->email;
         $contactData['phone'] = $request->phone ?: null;
 
-        $phoneInt = $contactData['phone'] ? (int) preg_replace('/[^0-9]/', '', (string) $contactData['phone']) : null;
-        $existing = app(\App\Services\Contacts\TeamContactMatcher::class)->findExisting(
-            (int) $contactData['team_id'],
-            $contactData['email'] ? (string) $contactData['email'] : null,
-            $phoneInt > 0 ? $phoneInt : null,
-            isset($contactData['name']) ? (string) $contactData['name'] : null,
-        );
-
-        if ($existing)
-        {
-            $contact = $existing;
-            $reusedExisting = true;
-        } else
-        {
-            $contact = Contact::create($contactData);
-            $reusedExisting = false;
-        }
+        $contact = Contact::create($contactData);
 
         // Sync categories
         $categoryIds = [];
@@ -152,13 +136,7 @@ class ContactController extends Controller
         $validCategoryIds = Category::onlyExistingIds(array_unique($categoryIds));
         if ($validCategoryIds !== [])
         {
-            if ($reusedExisting)
-            {
-                $contact->categories()->syncWithoutDetaching($validCategoryIds);
-            } else
-            {
-                $contact->categories()->sync($validCategoryIds);
-            }
+            $contact->categories()->sync($validCategoryIds);
         }
 
         // Sync software
@@ -169,23 +147,18 @@ class ContactController extends Controller
 
         $this->syncContactEnterpriseFromForm($contact, $data['enterprise'] ?? []);
 
-        $message = $reusedExisting
-            ? __('app.Contact already exists; categories were updated.')
-            : __('messages.success.created');
-
         if ($request->ajax())
         {
             return response()->json([
                 'success' => true,
-                'message' => $message,
+                'message' => __('messages.success.created'),
                 'data' => $contact->fresh(),
-                'reused_existing' => $reusedExisting,
             ]);
         }
 
         return redirect()
             ->route('contact.show', $contact->id)
-            ->with('success', $message);
+            ->with('success', __('messages.success.created'));
     }
 
     /**
@@ -680,14 +653,23 @@ class ContactController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(string $id)
+    public function destroy(Request $request, string $id)
     {
         $model = Contact::findOrFail($id);
         $this->authorize('delete', $model);
 
         $model->delete();
 
-        return response()->json(['success' => __('messages.success.deleted')], 200);
+        $message = __('messages.success.deleted');
+
+        if ($request->ajax() || $request->expectsJson())
+        {
+            return response()->json(['success' => $message], 200);
+        }
+
+        return redirect()
+            ->route('contact-list')
+            ->with('success', $message);
     }
 
     public function updateSentiment(Request $request, string $id)
@@ -2095,16 +2077,11 @@ class ContactController extends Controller
 
             if ($enterprise)
             {
-                $manualStatusId = ! empty($enterpriseInput['status_id']) ? (int) $enterpriseInput['status_id'] : null;
-                $enterprise->update([
-                    'name' => $enterpriseInput['name'] ?? $enterprise->name,
-                    'code' => $enterpriseInput['code'] ?? $enterprise->code,
-                    'website' => $enterpriseInput['website'] ?? $enterprise->website,
-                    'phone' => $enterpriseInput['phone'] ?? $enterprise->phone,
-                    'email' => $enterpriseInput['email'] ?? $enterprise->email,
-                    'whatsapp' => $enterpriseInput['whatsapp'] ?? $enterprise->whatsapp,
-                    'status_id' => $manualStatusId ?: $enterprise->status_id,
-                ]);
+                $enterpriseUpdates = $this->enterpriseUpdatesFromFormInput($enterpriseInput);
+                if ($enterpriseUpdates !== [])
+                {
+                    $enterprise->update($enterpriseUpdates);
+                }
 
                 $contact->enterprises()->sync([
                     $enterprise->id => [
@@ -2152,5 +2129,29 @@ class ContactController extends Controller
         {
             $contact->update(['current_enterprise_id' => $enterprise->id]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $enterpriseInput
+     * @return array<string, mixed>
+     */
+    private function enterpriseUpdatesFromFormInput(array $enterpriseInput): array
+    {
+        $updates = [];
+
+        foreach (['name', 'code', 'website', 'phone', 'email', 'whatsapp'] as $field)
+        {
+            if (! empty($enterpriseInput[$field]))
+            {
+                $updates[$field] = $enterpriseInput[$field];
+            }
+        }
+
+        if (! empty($enterpriseInput['status_id']))
+        {
+            $updates['status_id'] = (int) $enterpriseInput['status_id'];
+        }
+
+        return $updates;
     }
 }

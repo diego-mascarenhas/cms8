@@ -27,16 +27,29 @@
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 
 <script src="{{asset('assets/vendor/libs/toastr/toastr.js')}}"></script>
+<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
 @endsection
 
 @section('page-script')
 <script src="{{asset('assets/js/ui-toasts.js')}}"></script>
+<script>
+    window.invoiceSummaryFilter = @json($initialSummaryFilter ?? \App\Services\Finance\InvoiceSummaryService::DEFAULT_LIST_FILTER);
+</script>
+{!! $dataTable->scripts() !!}
 @endsection
 
 <style>
     .fade-out {
         opacity: 0;
         transition: opacity 0.5s ease-out;
+    }
+
+    .filter-invoice-summary {
+        cursor: pointer;
+    }
+
+    .filter-invoice-summary.active-filter {
+        box-shadow: 0 0 0 2px var(--bs-primary);
     }
 </style>
 
@@ -54,6 +67,10 @@
     </div>
     @endcan
 </div>
+
+@include('partials.invoice-summary-cards', [
+    'invoiceStats' => $invoiceStats,
+])
 
 @if(session('success'))
 <div id="toast-container" class="toast-top-right">
@@ -149,15 +166,3 @@
 </script>
 @endsection
 
-@push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
-@endpush
-
-{{-- vendor scripts --}}
-@section('vendor-script')
-<script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
-<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-<script src="{{asset('vendors/fullcalendar/lib/moment.min.js')}}"></script>
-<script src="{{asset('js/moment/' . app()->getLocale() . '.js')}}"></script>
-@endsection

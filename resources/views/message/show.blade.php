@@ -39,13 +39,14 @@
 			$deliveredCount = \App\Models\MessageDelivery::where('message_id', $message->id)->whereNotNull('delivered_at')->count();
 			$hasDeliveriesPending = $totalDeliveries > $deliveredCount;
 			$campaignCanBePaused = \App\Models\Campaign::messageIsOperationalForToolbar($message);
+			$showRecalculateDeliveries = $campaignCanBePaused && ($totalDeliveries === 0 || $hasDeliveriesPending);
 		@endphp
 
 		@if($campaignCanBePaused)
 			<button class="btn btn-warning me-2" onclick="pauseCampaign({{ $message->id }})">
 				<i class="ti ti-player-pause me-1"></i>Pausar
 			</button>
-		@if($hasDeliveriesPending)
+		@if($showRecalculateDeliveries)
 			<button class="btn btn-info me-2" onclick="sendPendingNow({{ $message->id }})">
 				<i class="ti ti-refresh me-1"></i>Recalcular envíos
 			</button>
@@ -78,7 +79,7 @@
 				<h5 class="mb-0">{{ __('General Information') }}</h5>
 			</div>
 			<div class="card-body">
-				@if(empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
+				@if(! auth()->user()->currentTeam->hasOutgoingEmailSenderConfigured())
 					<div class="alert alert-warning mb-3" role="alert">
 						<i class="ti ti-alert-triangle me-2"></i>
 						<strong>{{ __('Email sender not configured.') }}</strong>

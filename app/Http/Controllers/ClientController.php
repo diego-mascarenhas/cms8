@@ -248,6 +248,7 @@ class ClientController extends Controller
             'services.currency',
             'services.serviceType',
             'invoices.billingAddress',
+            'invoices.currency',
         ])->findOrFail($id);
 
         $this->authorize('view', $client);

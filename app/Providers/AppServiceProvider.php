@@ -6,11 +6,16 @@ use App\Contracts\CheckoutSessionRetriever;
 use App\Contracts\WhatsAppGateway;
 use App\Http\Controllers\TeamInvitationAcceptController;
 use App\Livewire\Teams\TeamMemberManager;
+use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\SubscriptionProduct;
+use App\Models\Task;
 use App\Models\TicketResponse;
+use App\Observers\CalendarEventWebDavOutboundObserver;
 use App\Observers\ContactGoogleOutboundObserver;
+use App\Observers\ContactWebDavOutboundObserver;
 use App\Observers\SubscriptionProductObserver;
+use App\Observers\TaskWebDavOutboundObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\AssistantToolsService;
 use App\Services\Stripe\StripeCheckoutSessionRetriever;
@@ -75,6 +80,9 @@ class AppServiceProvider extends ServiceProvider
         SubscriptionProduct::observe(SubscriptionProductObserver::class);
         TicketResponse::observe(TicketResponseObserver::class);
         Contact::observe(ContactGoogleOutboundObserver::class);
+        Contact::observe(ContactWebDavOutboundObserver::class);
+        CalendarEvent::observe(CalendarEventWebDavOutboundObserver::class);
+        Task::observe(TaskWebDavOutboundObserver::class);
 
         $this->registerPublicTeamInvitationAcceptRoute();
         $this->registerLivewireComponentOverrides();

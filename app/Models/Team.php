@@ -170,6 +170,19 @@ class Team extends JetstreamTeam
         return $setting->save();
     }
 
+    public function removeSetting(string $key): void
+    {
+        $this->settings()->where('key', $key)->delete();
+
+        if ($this->relationLoaded('settings'))
+        {
+            $this->setRelation(
+                'settings',
+                $this->settings->reject(fn ($setting) => $setting->key === $key)->values(),
+            );
+        }
+    }
+
     private function syncTeamSettingsSequenceIfNeeded(): void
     {
         if (DB::getDriverName() !== 'pgsql')
@@ -414,6 +427,68 @@ class Team extends JetstreamTeam
     public function isPublicCatalogEnabled(): bool
     {
         return filter_var($this->getSetting('public_catalog_enabled'), FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public function googleContactsInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_contacts_inbound_sync_enabled', false);
+    }
+
+    public function googleCalendarInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_calendar_inbound_sync_enabled', false);
+    }
+
+    public function googleContactsOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_contacts_outbound_sync_enabled', false);
+    }
+
+    public function googleCalendarOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('google_calendar_outbound_sync_enabled', false);
+    }
+
+    public function webdavContactsInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_contacts_inbound_sync_enabled', false);
+    }
+
+    public function webdavCalendarInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_calendar_inbound_sync_enabled', false);
+    }
+
+    public function webdavTasksInboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_tasks_inbound_sync_enabled', false);
+    }
+
+    public function webdavContactsOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_contacts_outbound_sync_enabled', false);
+    }
+
+    public function webdavCalendarOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_calendar_outbound_sync_enabled', false);
+    }
+
+    public function webdavTasksOutboundSyncEnabled(): bool
+    {
+        return $this->booleanTeamSetting('webdav_tasks_outbound_sync_enabled', false);
+    }
+
+    private function booleanTeamSetting(string $key, bool $default): bool
+    {
+        $raw = $this->getSetting($key);
+
+        if ($raw === null || $raw === '')
+        {
+            return $default;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -776,6 +851,17 @@ class Team extends JetstreamTeam
             'password' => $this->getSetting('imap_password'),
             'encryption' => $this->getSetting('imap_encryption', 'ssl'),
         ];
+    }
+
+    /**
+     * Whether the team has explicitly configured outgoing sender name and address.
+     */
+    public function hasOutgoingEmailSenderConfigured(): bool
+    {
+        $fromName = trim((string) $this->getSetting('mail_from_name'));
+        $fromAddress = trim((string) $this->getSetting('mail_from_address'));
+
+        return $fromName !== '' && $fromAddress !== '';
     }
 
     /**

@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
@@ -24,10 +26,10 @@ class Invoice extends Model
         'total_amount',
         'balance',
         'status',
+        'currency_id',
         'source_provider',
         'source_reference_id',
         'source_synced_at',
-        'currency',
     ];
 
     protected static function booted()
@@ -69,12 +71,72 @@ class Invoice extends Model
         return $this->hasMany(InvoiceItem::class);
     }
 
-    public function getStatusLabelAttribute()
+    public function currency()
     {
-        return match ($this->status)
+        return $this->belongsTo(Currency::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function stripeInvoiceSync(): HasOne
+    {
+        return $this->hasOne(InvoiceSync::class, 'external_id', 'source_reference_id')
+            ->where('invoice_syncs.provider', 'stripe');
+    }
+
+    public function stripeHostedInvoiceUrl(): ?string
+    {
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
         {
-            1 => 'Imprimir',
-            2 => 'Impresa',
+            return null;
+        }
+
+        $url = trim((string) ($sync->hosted_invoice_url ?? ''));
+
+        if ($url !== '')
+        {
+            return $url;
+        }
+
+        $payloadUrl = trim((string) data_get($sync->raw_payload, 'hosted_invoice_url', ''));
+
+        return $payloadUrl !== '' ? $payloadUrl : null;
+    }
+
+    public function stripeInvoicePdfUrl(): ?string
+    {
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return null;
+        }
+
+        $url = trim((string) ($sync->invoice_pdf ?? ''));
+
+        if ($url !== '')
+        {
+            return $url;
+        }
+
+        $payloadUrl = trim((string) data_get($sync->raw_payload, 'invoice_pdf', ''));
+
+        return $payloadUrl !== '' ? $payloadUrl : null;
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ((int) $this->status)
+        {
             3 => 'Anulada',
             4 => 'Nota de Crédito',
             5 => 'Bonificada',
@@ -82,28 +144,78 @@ class Invoice extends Model
             7 => 'Error',
             8 => 'Emitiendo',
             9 => 'Borrador',
-            default => 'Desconocido',
+            default => $this->collectionStatusLabel(),
         };
     }
 
-    public function getStatusBadgeAttribute()
+    public function isOverdue(): bool
+    {
+        if (in_array((int) $this->status, [3, 4, 5, 6, 7, 9], true))
+        {
+            return false;
+        }
+
+        if ($this->due_date === null || (float) $this->balance <= 0)
+        {
+            return false;
+        }
+
+        return Carbon::parse($this->due_date)->startOfDay()->lt(Carbon::now()->startOfDay());
+    }
+
+    public function getStatusBadgeAttribute(): string
     {
         $label = $this->status_label;
-        $color = match ($this->status)
+        $color = match ($label)
         {
-            1 => 'primary',
-            2 => 'warning',
-            3 => 'danger',
-            4 => 'info',
-            5 => 'success',
-            6 => 'success',
-            7 => 'danger',
-            8 => 'warning',
-            9 => 'secondary',
+            'Vencida' => 'danger',
+            'Pendiente', 'Emitiendo' => 'warning',
+            'Cobrada', 'Bonificada', 'Bonificada (Nota de Crédito)' => 'success',
+            'Anulada', 'Error' => 'danger',
+            'Nota de Crédito' => 'info',
+            'Borrador' => 'secondary',
             default => 'secondary',
         };
 
         return '<span class="badge rounded-pill bg-label-'.$color.'">'.$label.'</span>';
+    }
+
+    private function collectionStatusLabel(): string
+    {
+        if ((float) $this->balance <= 0)
+        {
+            return 'Cobrada';
+        }
+
+        if ($this->isOverdue())
+        {
+            return 'Vencida';
+        }
+
+        return 'Pendiente';
+    }
+
+    public function getCurrencyCodeAttribute(): string
+    {
+        if ($this->relationLoaded('currency'))
+        {
+            $currency = $this->getRelation('currency');
+            if ($currency instanceof Currency)
+            {
+                return strtoupper((string) $currency->code);
+            }
+        }
+
+        if ($this->currency_id)
+        {
+            $code = Currency::query()->whereKey($this->currency_id)->value('code');
+            if (filled($code))
+            {
+                return strtoupper((string) $code);
+            }
+        }
+
+        return strtoupper((string) config('verifactu.default_currency', 'EUR'));
     }
 
     /**
@@ -111,7 +223,7 @@ class Invoice extends Model
      */
     public function convertTo(string $targetCurrency, string $field = 'total_amount'): ?float
     {
-        $baseCurrency = $this->currency ?? 'USD';
+        $baseCurrency = $this->currency_code;
         $amount = $this->$field ?? 0;
 
         if ($baseCurrency === $targetCurrency)
@@ -127,7 +239,7 @@ class Invoice extends Model
      */
     public function getMultiCurrencyAttribute()
     {
-        $baseCurrency = $this->currency ?? 'USD';
+        $baseCurrency = $this->currency_code;
         $currencies = ['USD', 'EUR', 'ARS'];
         $amounts = [];
 

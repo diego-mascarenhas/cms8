@@ -846,6 +846,16 @@
         </div>
     </div>
 
+    @if ($invoiceStats ?? null)
+        @include('partials.invoice-summary-cards', [
+            'invoiceStats' => $invoiceStats,
+            'visibleFilters' => ['unpaid', 'overdue'],
+            'linkToInvoiceList' => true,
+            'columnClass' => 'col-6',
+            'rowClass' => 'mb-4',
+        ])
+    @endif
+
     @if(isset($activeTeam) && $activeTeam->hasModule('projects'))
     <div class="row mb-4">
         <div class="col-12">
@@ -877,8 +887,24 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex flex-column">
-                                                <h6 class="mb-0 text-truncate" style="max-width: 250px;">{{ $project->name }}</h6>
-                                                <small class="text-muted">{{ $project->client->name ?? 'N/A' }}</small>
+                                                <h6 class="mb-0 text-truncate" style="max-width: 250px;">
+                                                    @can('view', $project)
+                                                        <a href="{{ route('project.show', $project->id) }}" class="text-body text-decoration-none">{{ $project->name }}</a>
+                                                    @else
+                                                        {{ $project->name }}
+                                                    @endcan
+                                                </h6>
+                                                <small class="text-muted">
+                                                    @if ($project->client)
+                                                        @can('view', $project->client)
+                                                            <a href="{{ route('client.show', $project->client->id) }}" class="text-muted text-decoration-none">{{ $project->client->name }}</a>
+                                                        @else
+                                                            {{ $project->client->name }}
+                                                        @endcan
+                                                    @else
+                                                        N/A
+                                                    @endif
+                                                </small>
                                             </div>
                                         </td>
                                         <td class="text-center">

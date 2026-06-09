@@ -158,6 +158,37 @@ class MessageCreateTemplateFlowTest extends TestCase
         $this->assertNull($message->template_id);
     }
 
+    public function test_message_store_persists_mail_html_without_template(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+        $customHtml = '<p><strong>Custom body</strong> without template</p>';
+
+        $response = $this->actingAs($user)->post(route('message.store'), [
+            'id' => '',
+            'name' => 'HTML campaign without template',
+            'text' => 'Fallback preview text',
+            'type_id' => 1,
+            'message_category_ids' => [],
+            'contact_status_id' => '',
+            'template_id' => '',
+            'template_html' => $customHtml,
+            'min_hours_between_emails' => 48,
+            'send_allowed_weekdays' => [1, 2, 3, 4, 5],
+        ]);
+
+        $response->assertRedirect(route('message.index'));
+
+        $message = Message::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('name', 'HTML campaign without template')
+            ->first();
+
+        $this->assertNotNull($message);
+        $this->assertNull($message->template_id);
+        $this->assertSame($customHtml, (string) $message->mail_html);
+    }
+
     public function test_message_store_update_succeeds_when_type_id_omitted_with_template(): void
     {
         $user = $this->userWithPersonalTeamResolved();
@@ -511,5 +542,49 @@ class MessageCreateTemplateFlowTest extends TestCase
         $response->assertRedirect(route('message.index'));
         $message->refresh();
         $this->assertNull($message->template_id);
+    }
+
+    public function test_validation_error_preserves_template_html_in_composer(): void
+    {
+        $user = $this->userWithPersonalTeamResolved();
+        $teamId = (int) $user->current_team_id;
+
+        $template = Template::withoutGlobalScopes()->create([
+            'name' => 'Tpl preserve',
+            'team_id' => $teamId,
+            'status_id' => 1,
+            'gjs_data' => [
+                'html' => '<p>Original template html</p>',
+                'components' => '[]',
+                'styles' => '[]',
+                'css' => '',
+            ],
+        ]);
+
+        $customHtml = '<p>User edited composer content preserve-me-unique</p>';
+        $createUrl = route('message.create', ['template_id' => $template->id]);
+
+        $response = $this->from($createUrl)
+            ->actingAs($user)
+            ->post(route('message.store'), [
+                'id' => '',
+                'name' => 'ab',
+                'text' => 'Valid preview text for the message',
+                'type_id' => 1,
+                'template_id' => (string) $template->id,
+                'template_html' => $customHtml,
+                'message_category_ids' => [],
+                'contact_status_id' => '',
+                'min_hours_between_emails' => 48,
+                'send_allowed_weekdays' => [1, 2, 3, 4, 5, 6, 7],
+            ]);
+
+        $response->assertRedirect($createUrl);
+        $response->assertSessionHasErrors('name');
+
+        $formResponse = $this->actingAs($user)->get($createUrl);
+        $formResponse->assertOk();
+        $formResponse->assertSee('User edited composer content preserve-me-unique', false);
+        $formResponse->assertDontSee('Original template html', false);
     }
 }

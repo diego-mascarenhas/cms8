@@ -41,6 +41,13 @@ class PushCalendarEventToGoogleJob implements ShouldQueue
             return;
         }
 
+        $team = \App\Models\Team::query()->find($event->team_id);
+
+        if ($team === null || ! $team->googleCalendarOutboundSyncEnabled())
+        {
+            return;
+        }
+
         $account = $accountResolver->firstGoogleAccountForTeam((int) $event->team_id);
 
         if ($account === null)

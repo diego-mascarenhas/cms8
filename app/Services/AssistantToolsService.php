@@ -20,7 +20,6 @@ use App\Models\OpportunityStage;
 use App\Models\Product;
 use App\Models\Prompt;
 use App\Models\Task;
-use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Models\Template;
@@ -28,10 +27,12 @@ use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
+use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
+use App\Support\TeamTaskBoardResolver;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -310,6 +311,45 @@ class AssistantToolsService
                         ],
                     ],
                     'required' => ['report_type'],
+                ],
+            ],
+            [
+                'name' => 'get_financial_projection',
+                'description' => 'Get invoiced financial projection for a calendar year: income, expenses, profit, margin, YoY comparison, top categories, average monthly profit. Based on invoice line items by category.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'year' => ['type' => 'integer', 'description' => 'Calendar year (default: current year)'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'get_financial_category_breakdown',
+                'description' => 'Breakdown of invoiced amounts by category for a year. Use operation sell for revenue categories, buy for expense categories, both for combined view.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'year' => ['type' => 'integer', 'description' => 'Calendar year (default: current year)'],
+                        'operation' => [
+                            'type' => 'string',
+                            'description' => 'sell (income), buy (expenses), or both',
+                            'enum' => ['sell', 'buy', 'both'],
+                        ],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'run_financial_growth_scenario',
+                'description' => 'Calculate what is needed to reach a profit multiplier (e.g. 2 = double avg monthly profit, 5 = 5x). Returns monthly gap and equivalent % income increase or % expense decrease.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'multiplier' => ['type' => 'number', 'description' => 'Target multiple of average monthly profit (e.g. 2, 5)'],
+                        'year' => ['type' => 'integer', 'description' => 'Base year for averages (default: current year)'],
+                    ],
+                    'required' => ['multiplier'],
                 ],
             ],
             [
@@ -738,6 +778,9 @@ class AssistantToolsService
                 'update_contact' => $this->updateContact($teamId, $user, $input),
                 'create_contact_interaction' => $this->createContactInteraction($teamId, $user, $input),
                 'get_account_report' => $this->getAccountReport($teamId, $input),
+                'get_financial_projection' => $this->getFinancialProjection($teamId, $input),
+                'get_financial_category_breakdown' => $this->getFinancialCategoryBreakdown($teamId, $input),
+                'run_financial_growth_scenario' => $this->runFinancialGrowthScenario($teamId, $input),
                 'send_whatsapp_message' => $this->sendWhatsAppMessage($user, $input),
                 'create_task' => $this->createTask($teamId, $user->id, $input),
                 'search_tasks' => $this->searchTasks($teamId, $input),
@@ -1435,6 +1478,79 @@ class AssistantToolsService
         }
     }
 
+    private function getFinancialProjection(int $teamId, array $input): string
+    {
+        $year = isset($input['year']) ? (int) $input['year'] : (int) now()->year;
+        if ($year < 1990 || $year > 2100)
+        {
+            return 'Invalid year. Use a year between 1990 and 2100.';
+        }
+
+        $analytics = app(InvoiceAnalyticsService::class);
+        $report = $analytics->buildYearReport($teamId, $year);
+
+        return $this->truncate($analytics->formatYearReportForAssistant($report));
+    }
+
+    private function getFinancialCategoryBreakdown(int $teamId, array $input): string
+    {
+        $year = isset($input['year']) ? (int) $input['year'] : (int) now()->year;
+        $operation = strtolower(trim((string) ($input['operation'] ?? 'both')));
+        if (! in_array($operation, ['sell', 'buy', 'both'], true))
+        {
+            return 'Invalid operation. Use sell, buy, or both.';
+        }
+
+        $analytics = app(InvoiceAnalyticsService::class);
+        $report = $analytics->buildYearReport($teamId, $year);
+        $lines = ["Category breakdown for {$report['year']}:"];
+
+        if ($operation === 'sell' || $operation === 'both')
+        {
+            $lines[] = 'Income (sell):';
+            foreach ($report['income_categories'] as $row)
+            {
+                $lines[] = '  - '.$row['name'].': '.number_format($row['total'], 2)
+                    .' ('.number_format($row['share_percent'], 1).'%)';
+            }
+            if ($report['income_categories'] === [])
+            {
+                $lines[] = '  (none)';
+            }
+        }
+
+        if ($operation === 'buy' || $operation === 'both')
+        {
+            $lines[] = 'Expenses (buy):';
+            foreach ($report['expense_categories'] as $row)
+            {
+                $lines[] = '  - '.$row['name'].': '.number_format($row['total'], 2)
+                    .' ('.number_format($row['share_percent'], 1).'%)';
+            }
+            if ($report['expense_categories'] === [])
+            {
+                $lines[] = '  (none)';
+            }
+        }
+
+        return $this->truncate(implode("\n", $lines));
+    }
+
+    private function runFinancialGrowthScenario(int $teamId, array $input): string
+    {
+        $multiplier = isset($input['multiplier']) ? (float) $input['multiplier'] : 0.0;
+        if ($multiplier < 1)
+        {
+            return 'multiplier is required and must be at least 1 (e.g. 2 for double profit).';
+        }
+
+        $year = isset($input['year']) ? (int) $input['year'] : (int) now()->year;
+        $analytics = app(InvoiceAnalyticsService::class);
+        $scenario = $analytics->buildGrowthScenario($teamId, $year, $multiplier);
+
+        return $this->truncate($analytics->formatGrowthScenarioForAssistant($scenario));
+    }
+
     private function getAccountReport(int $teamId, array $input): string
     {
         $reportType = $input['report_type'] ?? 'summary';
@@ -1581,8 +1697,7 @@ class AssistantToolsService
             }
         }
 
-        $board = TaskBoard::getDefaultBoard();
-        $boardId = $board ? $board->id : null;
+        $boardId = TeamTaskBoardResolver::resolveBoardId($teamId);
         $defaultStatus = TaskStatus::orderBy('order')->first();
         $statusId = $defaultStatus ? $defaultStatus->id : 1;
 
@@ -1598,10 +1713,21 @@ class AssistantToolsService
             'order' => 0,
         ]);
 
-        $assignee = $responsibleId === $currentUserId ? 'you' : "user id {$responsibleId}";
-        $dueStr = $task->due_date ? \Carbon\Carbon::parse($task->due_date)->format('Y-m-d') : 'N/A';
+        Log::info('AssistantToolsService create_task success', [
+            'team_id' => $teamId,
+            'task_id' => $task->id,
+            'board_id' => $boardId,
+            'responsible_id' => $responsibleId,
+        ]);
 
-        return $this->truncate("Task created: {$task->title} (id: {$task->id}), assigned to {$assignee}, due {$dueStr}.");
+        $assigneeUser = User::withoutGlobalScopes()->find($responsibleId);
+        $assigneeLabel = $assigneeUser
+            ? $assigneeUser->name.' ('.$assigneeUser->email.')'
+            : "user id {$responsibleId}";
+        $dueStr = $task->due_date ? Carbon::parse($task->due_date)->format('Y-m-d') : 'N/A';
+        $editUrl = route('task.edit', $task->id);
+
+        return $this->truncate("Task created: {$task->title} (id: {$task->id}), assigned to {$assigneeLabel}, due {$dueStr}, board_id {$boardId}. Edit URL: {$editUrl}");
     }
 
     private function searchTasks(int $teamId, array $input): string

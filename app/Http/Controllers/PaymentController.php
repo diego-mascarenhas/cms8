@@ -3,8 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\PaymentDataTable;
+use App\Http\Requests\UpdatePaymentStatusRequest;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\Finance\PaymentInvoiceLinkService;
+use App\Services\Finance\PaymentStatusUpdateService;
+use App\Services\Finance\PaymentSummaryService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,9 +16,17 @@ use Illuminate\View\View;
 
 class PaymentController extends Controller
 {
+    public function __construct(
+        private readonly PaymentInvoiceLinkService $paymentInvoiceLinkService,
+        private readonly PaymentSummaryService $paymentSummaryService,
+        private readonly PaymentStatusUpdateService $paymentStatusUpdateService,
+    ) {}
+
     public function index(PaymentDataTable $dataTable)
     {
-        return $dataTable->render('payments.index');
+        $paymentSummary = $this->paymentSummaryService->forTeam(auth()->user()->currentTeam);
+
+        return $dataTable->render('payments.index', compact('paymentSummary'));
     }
 
     public function linkInvoiceForm(Payment $payment): View|RedirectResponse
@@ -25,20 +37,7 @@ class PaymentController extends Controller
             return redirect()->route('payments.index')->with('error', __('payment_invoice.link.errors.already_linked'));
         }
 
-        $invoices = Invoice::query()
-            ->with('enterprise')
-            ->when(
-                $payment->enterprise_id,
-                fn ($q) => $q->where('enterprise_id', $payment->enterprise_id),
-            )
-            ->when(
-                auth()->user()->hasRole('collaborator') && ! auth()->user()->hasRole('admin'),
-                fn ($q) => $q->whereHas('enterprise', fn ($eq) => $eq->where('responsible_id', auth()->id())),
-            )
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->limit(1000)
-            ->get();
+        $invoices = $this->paymentInvoiceLinkService->invoicesForPayment($payment);
 
         return view('payments.link-invoice', [
             'payment' => $payment->loadMissing(['enterprise', 'account', 'type']),
@@ -67,17 +66,13 @@ class PaymentController extends Controller
         $invoice = Invoice::query()->findOrFail($validated['invoice_id']);
         $this->authorize('view', $invoice);
 
-        if ($payment->enterprise_id !== null && (int) $invoice->enterprise_id !== (int) $payment->enterprise_id)
+        try
         {
-            return back()->withInput()->with('error', __('payment_invoice.link.errors.enterprise_mismatch'));
-        }
-
-        $payment->invoice_id = $invoice->id;
-        if ($payment->enterprise_id === null)
+            $this->paymentInvoiceLinkService->linkPaymentToInvoice($payment, $invoice);
+        } catch (\Illuminate\Validation\ValidationException $exception)
         {
-            $payment->enterprise_id = $invoice->enterprise_id;
+            return back()->withInput()->withErrors($exception->errors());
         }
-        $payment->save();
 
         return redirect()->route('payments.index')->with('success', __('payment_invoice.link.success'));
     }
@@ -96,5 +91,27 @@ class PaymentController extends Controller
         $payment = Payment::with(['enterprise', 'invoice', 'account', 'type'])->findOrFail($id);
 
         return view('payments.show', compact('payment'));
+    }
+
+    public function updateStatus(UpdatePaymentStatusRequest $request, Payment $payment): RedirectResponse
+    {
+        if (! $this->paymentStatusUpdateService->canUpdateStatus($request->user(), $payment))
+        {
+            abort(403, __('payment_status.errors.not_allowed'));
+        }
+
+        try
+        {
+            $this->paymentStatusUpdateService->update(
+                $request->user(),
+                $payment,
+                (int) $request->validated('status'),
+            );
+        } catch (\Illuminate\Validation\ValidationException $exception)
+        {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        return back()->with('success', __('payment_status.success'));
     }
 }

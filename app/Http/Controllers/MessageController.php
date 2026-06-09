@@ -27,10 +27,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use stdClass;
@@ -72,7 +72,9 @@ class MessageController extends Controller
             $data->text = old('text', __('Boletín por correo'));
         }
 
-        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request);
+        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request, autoPickWhenMissing: false);
+        $previewContext = $this->mergeStandaloneMailEditorPreviewWhenNeeded($previewContext, $data);
+        $data->templates = Template::getOptions();
 
         return view('message.form', array_merge(compact('data'), $previewContext));
     }
@@ -145,9 +147,19 @@ class MessageController extends Controller
             && MessageDelivery::query()->where('message_id', $messageIdForGate)->exists();
 
         $mailHtml = null;
-        if ($resolvedTypeId === 1 && $templateId !== null && $templateId > 0 && ! $hasDeliveries)
+        if ($resolvedTypeId === 1 && ! $hasDeliveries)
         {
-            $mailHtml = $this->resolveMailHtmlFromRequest($request, $templateId);
+            if ($templateId !== null && $templateId > 0)
+            {
+                $mailHtml = $this->resolveMailHtmlFromRequest($request, $templateId);
+            } else
+            {
+                $rawHtml = $request->input('template_html');
+                if (is_string($rawHtml) && trim($rawHtml) !== '')
+                {
+                    $mailHtml = $rawHtml;
+                }
+            }
         }
 
         DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, $hasDeliveries, &$messageModel): void
@@ -169,15 +181,9 @@ class MessageController extends Controller
                 'scheduled_send_at' => $scheduledSendAt,
             ];
 
-            if ($mailHtml !== null)
+            if ($mailHtml !== null && trim($mailHtml) !== '')
             {
-                if (Schema::hasColumn('messages', 'mail_html'))
-                {
-                    $payload['mail_html'] = $mailHtml;
-                } elseif ($templateId !== null && $templateId > 0)
-                {
-                    $this->persistTemplateHtmlToTemplateModel($templateId, $mailHtml);
-                }
+                $payload['mail_html'] = $mailHtml;
             }
 
             $messageModel = Message::updateOrCreate(
@@ -449,7 +455,14 @@ class MessageController extends Controller
         // Check if message has any deliveries created
         $data->hasDeliveries = MessageDelivery::where('message_id', $data->id)->exists();
 
-        $previewContext = $this->prepareMessageFormTemplatePreview($data, $request, $removeMailTemplate);
+        $previewContext = $this->prepareMessageFormTemplatePreview(
+            $data,
+            $request,
+            $removeMailTemplate,
+            autoPickWhenMissing: ! $removeMailTemplate && filled($data->template_id),
+        );
+        $previewContext = $this->mergeStandaloneMailEditorPreviewWhenNeeded($previewContext, $data);
+        $data->templates = Template::getOptions();
 
         return view('message.form', array_merge(compact('data', 'removeMailTemplate'), $previewContext));
     }
@@ -457,6 +470,33 @@ class MessageController extends Controller
     /**
      * JSON + HTML fragment for the message form when the user selects an email template (legacy / edit) before save.
      */
+    public function standaloneMailEditorPreviewForMessageForm(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'message_id' => ['nullable', 'integer'],
+            'context_text' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $messageId = filled($validated['message_id'] ?? null) ? (int) $validated['message_id'] : null;
+        $message = $messageId !== null ? Message::query()->find($messageId) : null;
+
+        if ($messageId !== null && $message === null)
+        {
+            abort(404);
+        }
+
+        $bundle = $this->buildStandaloneMailEditorBundle(
+            $messageId,
+            $message,
+            $validated['context_text'] ?? null,
+        );
+
+        return response()->json([
+            'html' => $bundle['emailPreviewBundleHtml'],
+            'preview_html' => $bundle['preview_html'],
+        ]);
+    }
+
     public function templateEmailPreviewForMessageForm(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -505,11 +545,24 @@ class MessageController extends Controller
             {
                 abort(422, 'Invalid message for email template.');
             }
+
+            if (MessageDelivery::query()->where('message_id', $messageIdGate)->exists())
+            {
+                $returnUrl = TemplateEditorReturnUrl::validatedCandidate($request, $request->input('return_url'));
+                if ($returnUrl === null || $returnUrl === '')
+                {
+                    $returnUrl = route('message.edit', $messageIdGate);
+                }
+
+                return redirect()
+                    ->to($returnUrl)
+                    ->with('warning', __('app.email_template_update_blocked_deliveries'));
+            }
         }
 
         $this->persistTemplateHtmlToTemplateModel($templateId, $html);
 
-        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        if ($messageIdGate !== null)
         {
             Message::query()->whereKey($messageIdGate)->update(['mail_html' => null]);
         }
@@ -586,7 +639,7 @@ class MessageController extends Controller
                 ->with('warning', __('app.email_template_update_empty'));
         }
 
-        if ($messageIdGate !== null && Schema::hasColumn('messages', 'mail_html'))
+        if ($messageIdGate !== null)
         {
             $message = Message::query()->whereKey($messageIdGate)->first();
             if ($message instanceof Message)
@@ -754,13 +807,11 @@ class MessageController extends Controller
             {
                 $team->load('settings');
             }
-            $emailConfig = $team?->getOutgoingEmailConfig() ?? [];
-
-            if (empty($emailConfig['from_name']) || empty($emailConfig['from_address']))
+            if (! $team?->hasOutgoingEmailSenderConfigured())
             {
                 return [
                     'success' => false,
-                    'message' => 'El remitente de correo no está configurado. Por favor configúralo en Ajustes del Equipo.',
+                    'message' => __('app.email_sender_activation_blocked'),
                 ];
             }
 
@@ -855,11 +906,23 @@ class MessageController extends Controller
         {
             $message = Message::with(['deliveries', 'team.settings'])->findOrFail($id);
 
+            $totalDeliveries = MessageDelivery::where('message_id', $id)->count();
+
             // Count ALL pending deliveries (status_id = 1, not failed = 4, not delivered)
             $pendingCount = MessageDelivery::where('message_id', $id)
                 ->where('status_id', 1) // pending status (automatically excludes status_id = 4)
                 ->whereNull('delivered_at') // not delivered yet
                 ->count();
+
+            if ($pendingCount === 0 && $totalDeliveries === 0 && $message->status_id && $message->started_at)
+            {
+                Artisan::call('campaigns:process-active', ['--message' => $id]);
+
+                $pendingCount = MessageDelivery::where('message_id', $id)
+                    ->where('status_id', 1)
+                    ->whereNull('delivered_at')
+                    ->count();
+            }
 
             if ($pendingCount === 0)
             {
@@ -868,18 +931,21 @@ class MessageController extends Controller
                     ->where('status_id', 4)
                     ->count();
 
-                $message = 'No hay deliveries pendientes. ';
+                $responseMessage = 'No hay deliveries pendientes. ';
                 if ($failedCount > 0)
                 {
-                    $message .= "Hay {$failedCount} fallidos que no se reenviarán automáticamente. Usa el botón 'Reenviar' en cada uno si deseas reintentarlos.";
+                    $responseMessage .= "Hay {$failedCount} fallidos que no se reenviarán automáticamente. Usa el botón 'Reenviar' en cada uno si deseas reintentarlos.";
+                } elseif ($totalDeliveries > 0)
+                {
+                    $responseMessage .= 'Todos los contactos ya recibieron el correo.';
                 } else
                 {
-                    $message .= 'Todos los contactos ya recibieron el correo.';
+                    $responseMessage .= 'No se pudieron crear envíos para la audiencia actual. Revisa filtros de contactos o el horario de envío.';
                 }
 
                 return response()->json([
                     'success' => false,
-                    'message' => $message,
+                    'message' => $responseMessage,
                 ], 400);
             }
 
@@ -1357,9 +1423,14 @@ class MessageController extends Controller
         try
         {
             $message = Message::with(['template', 'category'])->findOrFail($id);
+            $sampleContact = $this->resolvePreviewSampleContact($message);
 
             return view('message.preview', [
                 'message' => $message,
+                'previewSubject' => MessageTemplateMergeFields::replace((string) $message->name, $sampleContact),
+                'previewText' => filled($message->text)
+                    ? MessageTemplateMergeFields::replace((string) $message->text, $sampleContact)
+                    : null,
                 'iframeSrc' => route('message.preview.html', $message->id),
             ]);
         } catch (\Exception $e)
@@ -1428,7 +1499,10 @@ class MessageController extends Controller
             $htmlContent = $this->replaceEmailVariables($htmlContent, $sampleContact, $message);
         } else
         {
-            $htmlContent = '<p>'.e($message->text).'</p>';
+            $previewText = filled($message->text)
+                ? MessageTemplateMergeFields::replace((string) $message->text, $sampleContact)
+                : '';
+            $htmlContent = '<p>'.e($previewText).'</p>';
         }
 
         $team = auth()->user()->currentTeam;
@@ -1495,7 +1569,7 @@ class MessageController extends Controller
     /**
      * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null}
      */
-    private function prepareMessageFormTemplatePreview(object $data, Request $request, bool $removeMailTemplate = false): array
+    private function prepareMessageFormTemplatePreview(object $data, Request $request, bool $removeMailTemplate = false, bool $autoPickWhenMissing = true): array
     {
         $team = auth()->user()?->currentTeam;
         if (! $team)
@@ -1517,7 +1591,7 @@ class MessageController extends Controller
         $template = app(MessageFormTemplateResolver::class)->resolveForForm(
             $preferredTemplateId > 0 ? $preferredTemplateId : null,
             (int) $team->id,
-            autoPickWhenMissing: ! $removeMailTemplate,
+            autoPickWhenMissing: ! $removeMailTemplate && $autoPickWhenMissing,
         );
 
         if (! $template instanceof Template)
@@ -1546,11 +1620,82 @@ class MessageController extends Controller
     }
 
     /**
+     * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null, messageFormDefaultTemplateId: int|null, preview_html: string}
+     */
+    private function buildStandaloneMailEditorBundle(?int $messageId, ?Message $message = null, ?string $contextText = null): array
+    {
+        $mailHtmlSource = $this->resolveStandaloneMailHtmlSource($message, $contextText);
+        $previewHtml = $this->iframePreviewHtmlFromSource($mailHtmlSource);
+
+        $html = view('message.ajax.standalone-mail-editor-bundle', [
+            'previewHtml' => $previewHtml,
+            'messageId' => $messageId,
+            'mailHtmlTextareaValue' => $mailHtmlSource,
+        ])->render();
+
+        return [
+            'emailPreviewBundleHtml' => $html,
+            'emailPreviewDuplicateActionUrl' => null,
+            'messageFormDefaultTemplateId' => null,
+            'preview_html' => $previewHtml,
+        ];
+    }
+
+    private function resolveStandaloneMailHtmlSource(?Message $message = null, ?string $contextText = null): string
+    {
+        $fromRequest = old('template_html');
+        if (is_string($fromRequest) && trim($fromRequest) !== '')
+        {
+            return $fromRequest;
+        }
+
+        if ($message instanceof Message && is_string($message->mail_html) && trim($message->mail_html) !== '')
+        {
+            return $message->mail_html;
+        }
+
+        $text = $contextText;
+        if (! filled($text) && $message instanceof Message)
+        {
+            $text = $message->text;
+        }
+        if (! filled($text))
+        {
+            $text = old('text');
+        }
+
+        if (filled($text))
+        {
+            return '<p>'.e((string) $text).'</p>';
+        }
+
+        return '<p><br></p>';
+    }
+
+    /**
+     * @param  array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null, messageFormDefaultTemplateId: int|null}  $previewContext
+     * @return array{emailPreviewBundleHtml: string|null, emailPreviewDuplicateActionUrl: string|null, messageFormDefaultTemplateId: int|null}
+     */
+    private function mergeStandaloneMailEditorPreviewWhenNeeded(array $previewContext, object $data): array
+    {
+        if (filled($previewContext['emailPreviewBundleHtml'] ?? null))
+        {
+            return $previewContext;
+        }
+
+        $message = $data instanceof Message ? $data : null;
+        $messageId = isset($data->id) ? (int) $data->id : null;
+
+        return array_merge($previewContext, $this->buildStandaloneMailEditorBundle($messageId, $message));
+    }
+
+    /**
      * @return array{preview_html: string, html: string, duplicate_action_url: string}
      */
     private function buildEmailTemplatePreviewBundle(Template $template, ?int $messageId, string $returnUrl, ?Message $message = null): array
     {
-        $mailHtmlSource = $this->resolveMailHtmlForTemplatePreview($template, $message);
+        $defaultHtml = $this->resolveMailHtmlForTemplatePreview($template, $message);
+        $mailHtmlSource = old('template_html', $defaultHtml);
 
         $previewHtml = $this->iframePreviewHtmlFromSource($mailHtmlSource);
         $mailHtmlTextareaValue = $mailHtmlSource;
@@ -1634,24 +1779,31 @@ class MessageController extends Controller
      */
     private function resolveMailHtmlForTemplatePreview(Template $template, ?Message $message = null): string
     {
+        if ($message instanceof Message
+            && (int) $message->template_id === (int) $template->id
+            && is_string($message->mail_html)
+            && trim($message->mail_html) !== '')
+        {
+            return $message->mail_html;
+        }
+
         $template->refresh();
 
         return $this->rawTemplateHtmlFromModel($template);
     }
 
     /**
-     * Writes Quill / composer HTML into the template's GrapesJS payload. Skipped when the message
+     * Writes Quill / composer HTML into the message record. Skipped when the message
      * already has deliveries (readonly body) or the HTML is empty.
      */
     private function persistTemplateHtmlFromMessageComposer(int $templateId, string $rawHtml, ?int $messageIdForDeliveryGate): void
     {
-        if ($templateId <= 0)
+        if ($messageIdForDeliveryGate === null || $messageIdForDeliveryGate <= 0)
         {
             return;
         }
 
-        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
-            && MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
+        if (MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
         {
             return;
         }
@@ -1662,24 +1814,11 @@ class MessageController extends Controller
             return;
         }
 
-        if ($messageIdForDeliveryGate !== null && $messageIdForDeliveryGate > 0
-            && Schema::hasColumn('messages', 'mail_html'))
+        $message = Message::query()->whereKey($messageIdForDeliveryGate)->first();
+        if ($message instanceof Message)
         {
-            if (MessageDelivery::query()->where('message_id', $messageIdForDeliveryGate)->exists())
-            {
-                return;
-            }
-
-            $message = Message::query()->whereKey($messageIdForDeliveryGate)->first();
-            if ($message instanceof Message)
-            {
-                $message->forceFill(['mail_html' => $trimmed])->save();
-            }
-
-            return;
+            $message->forceFill(['mail_html' => $trimmed])->save();
         }
-
-        $this->persistTemplateHtmlToTemplateModel($templateId, $trimmed);
     }
 
     private function persistTemplateHtmlToTemplateModel(int $templateId, string $rawHtml): bool

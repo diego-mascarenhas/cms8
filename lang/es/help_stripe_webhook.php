@@ -26,7 +26,9 @@ return [
         'customer.subscription.created',
         'customer.subscription.updated',
         'customer.subscription.deleted',
+        'invoice.paid',
         'invoice.payment_succeeded',
+        'invoice.updated',
         'invoice.payment_failed',
     ],
 
@@ -37,6 +39,50 @@ return [
 
     'events_checkout' => 'Si la app crea sesiones de Stripe Checkout (suscripciones o registro con pago), añade también:',
     'events_checkout_item' => 'checkout.session.completed',
+
+    'dashboard_heading' => 'Añadir eventos en el Dashboard de Stripe',
+    'dashboard_intro' => 'Si tu webhook solo tiene suscripciones e invoice.payment_succeeded, faltan eventos necesarios para transferencias externas y actualizaciones de estado. Sigue estos pasos en producción (modo Live):',
+    'dashboard_steps' => [
+        'Abre Developers → Webhooks (o Event destinations en Workbench): https://dashboard.stripe.com/webhooks',
+        'Confirma que el selector superior está en Live, no en Test.',
+        'Abre el endpoint que apunta a tu app (POST /stripe/webhook).',
+        'Pulsa Edit destination, Update details o Configure.',
+        'En Events to send / Select events, pulsa Add events o + Select events.',
+        'Busca la categoría Invoice y marca invoice.paid e invoice.updated (mantén los que ya tienes).',
+        'Opcional: añade invoice.payment_failed.',
+        'Guarda con Update endpoint / Save.',
+    ],
+    'dashboard_listening_heading' => 'Lista mínima recomendada (Listening to)',
+    'dashboard_listening_customer' => 'Customer',
+    'dashboard_listening_invoice' => 'Invoice',
+
+    'invoice_paid_heading' => 'Por qué invoice.paid es imprescindible',
+    'invoice_paid_intro' => 'invoice.payment_succeeded no cubre todos los cobros. Humano usa invoice.paid para marcar la factura como cobrada cuando Stripe registra el pago por transferencia externa u otros métodos sin cargo ch_.',
+    'invoice_paid_table_heading' => 'Comparación de eventos de factura',
+    'invoice_paid_table_col_type' => 'Tipo de cobro',
+    'invoice_paid_table_col_succeeded' => 'invoice.payment_succeeded',
+    'invoice_paid_table_col_paid' => 'invoice.paid',
+    'invoice_paid_table_rows' => [
+        ['Tarjeta / cargo normal (ch_)', 'Sí', 'Sí'],
+        ['Transferencia externa marcada en Stripe', 'A veces no', 'Sí'],
+    ],
+    'invoice_updated_note' => 'invoice.updated actúa como respaldo: cuando la factura pasa a paid, void o uncollectible, Humano refresca staging e importa al core.',
+
+    'verify_heading' => 'Comprobar que funciona',
+    'verify_steps' => [
+        'En la ficha del webhook, abre Event deliveries / Recent deliveries.',
+        'Tras un cobro real, deberías ver invoice.paid con respuesta HTTP 200.',
+        'Prueba manual: Send test webhook → elige invoice.paid → confirma 200 OK.',
+        'Si ves 4xx o 5xx, revisa la URL del endpoint, STRIPE_WEBHOOK_SECRET y que el worker de colas esté activo (el job va en cola).',
+    ],
+
+    'fallback_heading' => 'Respaldo automático si el webhook no llega',
+    'fallback_intro' => 'Humano ejecuta tareas programadas que sincronizan facturas y crean pagos faltantes. No sustituyen al webhook, pero corrigen desfases en minutos:',
+    'fallback_items' => [
+        'stripe:sync-invoices — cada 10 min (refresca invoice_syncs desde la API)',
+        'invoice-syncs:import-stripe --reconcile — cada 10 min (actualiza balance y estado en invoices)',
+        'invoices:reconcile-stripe-collected-payments — :20 y :50 (crea pagos faltantes)',
+    ],
 
     'scope_heading' => 'Alcance del destino y versión de API',
     'scope_body' => 'Usa “Your account” salvo que operes como plataforma Stripe Connect y recibas eventos de cuentas conectadas. Elige una versión de API compatible con tu SDK; si el payload difiere, alinea la versión del dashboard con tu proyecto.',

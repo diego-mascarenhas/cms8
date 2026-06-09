@@ -131,6 +131,11 @@ class MessageTemplateMergeFields
         return $content;
     }
 
+    public static function replaceWithSample(string $content): string
+    {
+        return self::replace($content, self::sampleContact());
+    }
+
     /**
      * @return array<string, string>
      */

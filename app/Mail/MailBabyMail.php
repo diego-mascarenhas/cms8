@@ -39,7 +39,7 @@ class MailBabyMail extends Mailable
     {
         try
         {
-            $subject = $this->delivery->message ? $this->delivery->message->name : 'Newsletter';
+            $subject = $this->delivery->getSubjectForContact();
             $html = $this->delivery->getHtmlForContact();
 
             // Add advertising footer if team is using system SMTP

@@ -85,6 +85,7 @@ use App\Http\Controllers\TimeController;
 use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
+use App\Http\Controllers\WebDavIntegrationController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -294,6 +295,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/settings/business-config/generate-summary', [TeamSettingController::class, 'generateBusinessSummary'])->name('team-settings.business-config.generate-summary');
     Route::get('/team/{team}/settings/{group?}', [TeamSettingController::class, 'edit'])->name('team-settings.edit');
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
+    Route::put('/team/{team}/settings/email-sender', [TeamSettingController::class, 'updateEmailSender'])->name('team-settings.update-email-sender');
     Route::post('/team/{team}/settings/chat/seed-default-assistant-prompts', [TeamSettingController::class, 'seedDefaultAssistantFlowPrompts'])->name('team-settings.chat.seed-default-assistant-prompts');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
@@ -305,6 +307,13 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/integrations/google/sync-contacts', [GoogleSyncedPreviewController::class, 'queueContactsSync'])->name('integrations.google.sync-contacts');
     Route::get('/integrations/google/synced-calendar', [GoogleSyncedPreviewController::class, 'calendar'])->name('integrations.google.synced-calendar');
     Route::post('/integrations/google/sync-calendar', [GoogleSyncedPreviewController::class, 'queueCalendarSync'])->name('integrations.google.sync-calendar');
+
+    Route::get('/integrations/webdav/create', [WebDavIntegrationController::class, 'createForm'])->name('integrations.webdav.create-form');
+    Route::post('/integrations/webdav/create', [WebDavIntegrationController::class, 'create'])->name('integrations.webdav.create');
+    Route::get('/integrations/webdav/link', [WebDavIntegrationController::class, 'linkForm'])->name('integrations.webdav.link-form');
+    Route::post('/integrations/webdav/link', [WebDavIntegrationController::class, 'link'])->name('integrations.webdav.link');
+    Route::delete('/integrations/webdav/disconnect', [WebDavIntegrationController::class, 'disconnect'])->name('integrations.webdav.disconnect');
+    Route::post('/integrations/webdav/sync-all', [WebDavIntegrationController::class, 'syncAll'])->name('integrations.webdav.sync-all');
 
     // Team Mailboxes (redirect for sidebar: /mailboxes -> current team mailboxes)
     Route::get('/mailboxes', function ()
@@ -813,6 +822,8 @@ Route::middleware(['auth'])->group(function ()
     });
     Route::get('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterpriseForm'])->name('invoice.link-enterprise');
     Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
+    Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])->name('invoice.payments.store');
+    Route::post('/invoices/{invoice}/credit-notes', [InvoiceController::class, 'storeCreditNote'])->name('invoice.credit-notes.store');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
@@ -834,6 +845,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
     Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');
     Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
+    Route::patch('/payments/{payment}/status', [PaymentController::class, 'updateStatus'])->name('payments.update-status');
 
     // Income module
     Route::get('/income/list', [IncomeController::class, 'index'])->name('income.index');
@@ -843,6 +855,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Financial Dashboard (Accounting)
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');
+    Route::get('/finance-dashboard/projection', [FinancialDashboardController::class, 'projection'])->name('finance-dashboard.projection');
 
     Route::prefix('payment')->group(function ()
     {
@@ -897,6 +910,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('message/list', [MessageController::class, 'index'])->name('message.index');
     Route::get('message/create', [MessageController::class, 'create'])->name('message.create');
     Route::get('message/template-email-preview', [MessageController::class, 'templateEmailPreviewForMessageForm'])->name('message.template-email-preview');
+    Route::get('message/standalone-mail-editor-preview', [MessageController::class, 'standaloneMailEditorPreviewForMessageForm'])->name('message.standalone-mail-editor-preview');
     Route::post('message/sync-template-html-open-editor', [MessageController::class, 'syncTemplateHtmlOpenVisualEditor'])->name('message.sync-template-html-open-editor');
     Route::post('message/sync-template-html', [MessageController::class, 'syncTemplateHtml'])->name('message.sync-template-html');
     Route::get('message/{id}', [MessageController::class, 'show'])->name('message.show');

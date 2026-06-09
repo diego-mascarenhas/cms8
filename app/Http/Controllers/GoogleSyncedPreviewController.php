@@ -104,6 +104,13 @@ class GoogleSyncedPreviewController extends Controller
                 ->with('warning', __('app.No Google accounts connected for team'));
         }
 
+        if (! $team->googleContactsInboundSyncEnabled())
+        {
+            return redirect()
+                ->route('integrations.google.synced-contacts')
+                ->with('warning', __('app.Google contacts inbound sync disabled'));
+        }
+
         foreach ($accountIds as $externalAccountId)
         {
             SyncGoogleContactsJob::dispatch((int) $externalAccountId);
@@ -198,6 +205,13 @@ class GoogleSyncedPreviewController extends Controller
             return redirect()
                 ->route('integrations.google.synced-calendar')
                 ->with('warning', __('app.No Google accounts connected for team'));
+        }
+
+        if (! $team->googleCalendarInboundSyncEnabled())
+        {
+            return redirect()
+                ->route('integrations.google.synced-calendar')
+                ->with('warning', __('app.Google calendar inbound sync disabled'));
         }
 
         foreach ($accountIds as $externalAccountId)

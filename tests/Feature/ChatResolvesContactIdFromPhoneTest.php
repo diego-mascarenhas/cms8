@@ -60,4 +60,19 @@ class ChatResolvesContactIdFromPhoneTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('id="contact-id" value="'.$contact->id.'"', false);
     }
+
+    public function test_chat_index_returns_403_when_phone_is_blacklisted(): void
+    {
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting('assistant_whatsapp_blacklist_numbers', '34722372858');
+
+        $response = $this->actingAs($user)->get(route('chat.index', ['phone' => '34722372858']));
+
+        $response->assertForbidden();
+    }
 }

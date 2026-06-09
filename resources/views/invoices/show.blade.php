@@ -3,10 +3,36 @@
 @section('title', __('Invoice Detail'))
 
 @section('page-style')
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/flatpickr/flatpickr.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/css/pages/app-invoice.css')}}" />
+<style>
+  .payment-status-trigger {
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .payment-status-trigger:hover .badge {
+    opacity: 0.85;
+  }
+</style>
+@endsection
+
+@section('vendor-script')
+<script src="{{asset('assets/vendor/libs/flatpickr/flatpickr.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
 @endsection
 
 @section('content')
+@php
+    $currencyCode = $invoice->currency_code;
+    $formatAmount = fn (float|int|null $amount): string => \App\Helpers\Helpers::formatDecimal($amount).' '.$currencyCode;
+    $formatPaymentAmount = fn (float $amount, string $code): string => \App\Helpers\Helpers::formatDecimal($amount).' '.strtoupper($code);
+    $invoicePrintUrl = $invoice->stripeHostedInvoiceUrl();
+    $invoiceDownloadUrl = $invoice->stripeInvoicePdfUrl();
+    $showPendingBalance = round((float) $invoice->balance, 2) > 0
+        && round((float) $invoice->balance, 2) < round((float) $invoice->total_amount, 2);
+@endphp
 <div class="row invoice-preview">
   <!-- Invoice -->
   <div class="col-xl-9 col-md-8 col-12 mb-md-0 mb-4">
@@ -14,15 +40,22 @@
       <div class="card-body">
         <div class="d-flex justify-content-between flex-xl-row flex-md-column flex-sm-row flex-column m-sm-3 m-0">
           <div class="mb-xl-0 mb-4">
-            <div class="d-flex svg-illustration mb-4 gap-2 align-items-center">
-              <span class="app-brand-logo demo">@include('_partials.macros',["height"=>22,"withbg"=>''])</span>
-              <span class="app-brand-text fw-bold fs-4">{{ config('app.name') }}</span>
+            <div class="mb-4">
+              <img
+                src="{{ Helper::logoAsset('dark') }}?v={{ config('variables.templateVersion', '1') }}"
+                alt="{{ config('app.name') }}"
+                class="d-block"
+                style="max-height: 3.25rem; width: auto; height: auto; max-width: 220px; object-fit: contain; object-position: left center;"
+              >
             </div>
             <p class="mb-2">{{ auth()->user()->currentTeam->name }}</p>
             <p class="mb-0">{{ auth()->user()->email }}</p>
           </div>
           <div>
-            <h4 class="fw-medium mb-2">{{ __('Invoice') }} #{{ $invoice->number }}</h4>
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+              <h4 class="fw-medium mb-0">{{ __('Invoice') }} #{{ $invoice->number }}</h4>
+              {!! $invoice->status_badge !!}
+            </div>
             <div class="mb-2 pt-1">
               <span>{{ __('Date') }}:</span>
               <span class="fw-medium">{{ \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
@@ -43,8 +76,7 @@
         <hr class="my-4 mx-n4" />
 
         <div class="row p-sm-3 p-0">
-          <div class="col-xl-6 col-md-12 col-sm-5 col-12 mb-xl-0 mb-md-4 mb-sm-0 mb-4">
-            <h6 class="mb-3">{{ __('Invoice To') }}:</h6>
+          <div class="col-12 mb-xl-0 mb-md-4 mb-sm-0 mb-4">
             @if($invoice->enterprise)
             <p class="mb-1 fw-medium">{{ $invoice->enterprise->name }}</p>
             @if($invoice->enterprise->address)
@@ -63,36 +95,11 @@
             <p class="mb-0 text-muted">{{ __('No enterprise assigned') }}</p>
             @endif
           </div>
-          <div class="col-xl-6 col-md-12 col-sm-7 col-12">
-            <h6 class="mb-4">{{ __('Payment Details') }}:</h6>
-            <table>
-              <tbody>
-                <tr>
-                  <td class="pe-4">{{ __('Total Amount') }}:</td>
-                  <td class="fw-medium">${{ number_format($invoice->total_amount, 2) }}</td>
-                </tr>
-                <tr>
-                  <td class="pe-4">{{ __('Gross Amount') }}:</td>
-                  <td>${{ number_format($invoice->gross_amount, 2) }}</td>
-                </tr>
-                @if($invoice->discount > 0)
-                <tr>
-                  <td class="pe-4">{{ __('Discount') }}:</td>
-                  <td>${{ number_format($invoice->discount, 2) }}</td>
-                </tr>
-                @endif
-                <tr>
-                  <td class="pe-4">{{ __('Balance') }}:</td>
-                  <td class="fw-medium text-danger">${{ number_format($invoice->balance, 2) }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </div>
 
         <hr class="my-4 mx-n4" />
 
-        @if($invoice->items && $invoice->items->count() > 0)
+        @if($displayLineItems->isNotEmpty())
         <div class="table-responsive border-top">
           <table class="table m-0">
             <thead>
@@ -105,15 +112,57 @@
               </tr>
             </thead>
             <tbody>
-              @foreach($invoice->items as $item)
+              @foreach($displayLineItems as $lineItem)
+              @php
+                $lineGrossAmount = round((float) $lineItem['unit_price'] * (float) $lineItem['quantity'], 2);
+              @endphp
               <tr>
-                <td>{{ $item->description ?? ($item->category?->name ?? '-') }}</td>
-                <td class="text-center">{{ $item->quantity }}</td>
-                <td class="text-end">${{ number_format($item->unit_price, 2) }}</td>
-                <td class="text-end">${{ number_format($item->discount, 2) }}</td>
-                <td class="text-end">${{ number_format(($item->unit_price * $item->quantity) - $item->discount, 2) }}</td>
+                <td>
+                  <span>{{ $lineItem['description'] }}</span>
+                  @if(filled($lineItem['category'] ?? null))
+                    <small class="text-muted d-block">{{ $lineItem['category'] }}</small>
+                  @endif
+                </td>
+                <td class="text-center">{{ (float) $lineItem['quantity'] == (int) $lineItem['quantity'] ? (int) $lineItem['quantity'] : \App\Helpers\Helpers::formatDecimal($lineItem['quantity']) }}</td>
+                <td class="text-end text-nowrap">{{ $formatAmount($lineGrossAmount) }}</td>
+                <td class="text-end text-nowrap">
+                  @if((float) $lineItem['discount'] > 0)
+                    <span class="text-danger">-{{ $formatAmount($lineItem['discount']) }}</span>
+                  @else
+                    <span class="text-muted">—</span>
+                  @endif
+                </td>
+                <td class="text-end text-nowrap fw-medium">{{ $formatAmount($lineItem['total']) }}</td>
               </tr>
               @endforeach
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3 pt-3">{{ __('Subtotal') }}:</td>
+                <td class="text-end border-0 pt-3 fw-medium text-nowrap">{{ $formatAmount($invoice->gross_amount) }}</td>
+                <td class="border-0 pt-3"></td>
+                <td class="border-0 pt-3"></td>
+              </tr>
+              @if($invoice->discount > 0)
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3">{{ __('Discount') }}:</td>
+                <td class="border-0"></td>
+                <td class="text-end border-0 text-danger fw-medium text-nowrap">-{{ $formatAmount($invoice->discount) }}</td>
+                <td class="border-0"></td>
+              </tr>
+              @endif
+              @if($showPendingBalance)
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3">{{ __('Balance') }}:</td>
+                <td class="border-0"></td>
+                <td class="border-0"></td>
+                <td class="text-end border-0 text-danger fw-medium text-nowrap">{{ $formatAmount($invoice->balance) }}</td>
+              </tr>
+              @endif
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3 pb-2 fw-medium">{{ __('Total') }}:</td>
+                <td class="border-0 pb-2"></td>
+                <td class="border-0 pb-2"></td>
+                <td class="text-end border-0 pb-2 h6 fw-medium text-nowrap">{{ $formatAmount($invoice->total_amount) }}</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -123,40 +172,50 @@
             {{ __('No items found for this invoice') }}
           </div>
         </div>
-        @endif
-
-        <div class="row">
-          <div class="col-12">
-            <hr class="mt-4 mb-3" />
-            <div class="row">
-              <div class="col-lg-9 col-md-8"></div>
-              <div class="col-lg-3 col-md-4">
-                <table class="w-100">
-                  <tbody>
-                    <tr>
-                      <td class="pe-3">{{ __('Subtotal') }}:</td>
-                      <td class="text-end fw-medium">${{ number_format($invoice->gross_amount, 2) }}</td>
-                    </tr>
-                    @if($invoice->discount > 0)
-                    <tr>
-                      <td class="pe-3">{{ __('Discount') }}:</td>
-                      <td class="text-end text-danger">-${{ number_format($invoice->discount, 2) }}</td>
-                    </tr>
-                    @endif
-                    <tr>
-                      <td class="border-top-0 pe-3">
-                        <h6 class="mb-0">{{ __('Total') }}:</h6>
-                      </td>
-                      <td class="border-top-0 text-end">
-                        <h6 class="mb-0 fw-medium">${{ number_format($invoice->total_amount, 2) }}</h6>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        <div class="table-responsive border-top">
+          <table class="table m-0">
+            <thead>
+              <tr>
+                <th>{{ __('Description') }}</th>
+                <th class="text-center">{{ __('Quantity') }}</th>
+                <th class="text-end">{{ __('Price') }}</th>
+                <th class="text-end">{{ __('Discount') }}</th>
+                <th class="text-end">{{ __('Total') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3 pt-3">{{ __('Subtotal') }}:</td>
+                <td class="text-end border-0 pt-3 fw-medium text-nowrap">{{ $formatAmount($invoice->gross_amount) }}</td>
+                <td class="border-0 pt-3"></td>
+                <td class="border-0 pt-3"></td>
+              </tr>
+              @if($invoice->discount > 0)
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3">{{ __('Discount') }}:</td>
+                <td class="border-0"></td>
+                <td class="text-end border-0 text-danger fw-medium text-nowrap">-{{ $formatAmount($invoice->discount) }}</td>
+                <td class="border-0"></td>
+              </tr>
+              @endif
+              @if($showPendingBalance)
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3">{{ __('Balance') }}:</td>
+                <td class="border-0"></td>
+                <td class="border-0"></td>
+                <td class="text-end border-0 text-danger fw-medium text-nowrap">{{ $formatAmount($invoice->balance) }}</td>
+              </tr>
+              @endif
+              <tr>
+                <td colspan="2" class="border-0 text-end pe-3 pb-2 fw-medium">{{ __('Total') }}:</td>
+                <td class="border-0 pb-2"></td>
+                <td class="border-0 pb-2"></td>
+                <td class="text-end border-0 pb-2 h6 fw-medium text-nowrap">{{ $formatAmount($invoice->total_amount) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+        @endif
 
         <hr class="my-4" />
 
@@ -173,20 +232,41 @@
 
   <!-- Invoice Actions -->
   <div class="col-xl-3 col-md-4 col-12 invoice-actions">
+    @if (session('success'))
+      <div class="alert alert-success alert-dismissible mb-3" role="alert">
+        {{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    @endif
     <div class="card">
       <div class="card-body">
         <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index') }}">
           <i class="ti ti-arrow-left ti-xs me-2"></i>
           {{ __('Back to List') }}
         </a>
-        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" href="#">
+        @if ($invoicePrintUrl)
+        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoicePrintUrl }}">
           <i class="ti ti-printer ti-xs me-2"></i>
           {{ __('Print') }}
         </a>
-        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" href="#">
+        @endif
+        @if ($invoiceDownloadUrl)
+        <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoiceDownloadUrl }}">
           <i class="ti ti-download ti-xs me-2"></i>
           {{ __('Download') }}
         </a>
+        @endif
+        @if ($canShowCreditNoteForm)
+        <button
+          type="button"
+          class="btn btn-label-info d-grid w-100 mb-2"
+          data-bs-toggle="modal"
+          data-bs-target="#creditNoteModal"
+        >
+          <i class="ti ti-receipt-refund ti-xs me-2"></i>
+          {{ __('invoice_credit_note.issue_title') }}
+        </button>
+        @endif
         @can('invoice.edit')
         <a class="btn btn-label-secondary d-grid w-100 mb-2" href="#">
           <i class="ti ti-edit ti-xs me-2"></i>
@@ -203,30 +283,223 @@
     </div>
     <div class="card mt-3">
       <div class="card-body">
-        <h6>{{ __('Status') }}</h6>
-        <div class="d-flex justify-content-between align-items-center">
-          @php
-            $statusColor = match($invoice->status) {
-              1 => 'bg-label-primary',
-              2 => 'bg-label-warning',
-              3 => 'bg-label-danger',
-              4 => 'bg-label-info',
-              5 => 'bg-label-success',
-              6 => 'bg-label-success',
-              7 => 'bg-label-danger',
-              8 => 'bg-label-warning',
-              default => 'bg-label-secondary',
-            };
-          @endphp
-          <span class="badge {{ $statusColor }} rounded-pill">
-            {{ $invoice->status_label }}
-          </span>
-        </div>
+        <h6 class="mb-3">{{ __('Payments') }}</h6>
+        @if (session('success'))
+          <div class="alert alert-success alert-dismissible mb-3" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        @endif
+        @forelse($paymentDetails as $paymentDetail)
+          <div @class(['mb-0' => $loop->last, 'mb-3 pb-3 border-bottom' => ! $loop->last])>
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+              <span class="fw-medium">{{ \Carbon\Carbon::parse($paymentDetail['date'])->format('d-m-Y') }}</span>
+              @if($canUpdatePaymentStatus && ! empty($paymentDetail['id']))
+                <button
+                  type="button"
+                  class="btn btn-sm p-0 border-0 bg-transparent payment-status-trigger"
+                  data-bs-toggle="modal"
+                  data-bs-target="#paymentStatusModal"
+                  data-payment-id="{{ $paymentDetail['id'] }}"
+                  data-payment-status="{{ $paymentDetail['status'] }}"
+                  title="{{ __('payment_status.change_title') }}"
+                >
+                  {!! $paymentDetail['status_html'] !!}
+                </button>
+              @elseif($paymentDetail['status_html'])
+                {!! $paymentDetail['status_html'] !!}
+              @endif
+            </div>
+            <p @class(['mb-2 fw-medium', 'text-success' => $paymentDetail['is_income'], 'text-danger' => ! $paymentDetail['is_income']])>
+              {{ $paymentDetail['is_income'] ? '+' : '-' }}{{ $formatPaymentAmount($paymentDetail['amount'], $paymentDetail['currency_code']) }}
+            </p>
+            @if($paymentDetail['method'])
+            <p class="mb-1">
+              <span class="text-muted">{{ __('Type') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['method'] }}</span>
+            </p>
+            @endif
+            @if($paymentDetail['account'])
+            <p class="mb-0">
+              <span class="text-muted">{{ __('Account') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['account'] }}</span>
+            </p>
+            @endif
+          </div>
+        @empty
+          <p class="mb-0 text-muted">{{ __('No payments linked to this invoice') }}</p>
+        @endforelse
       </div>
     </div>
+    @if ($canRegisterPayment && $paymentFormDefaults && ! empty($paymentFormDefaults['accounts']))
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="mb-3">{{ __('invoice_payment.register_title') }}</h6>
+          <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" class="row g-3">
+            @csrf
+            <div class="col-12">
+              <label for="amount" class="form-label">{{ __('invoice_payment.amount') }} <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="{{ $paymentFormDefaults['amount'] }}"
+                  name="amount"
+                  id="amount"
+                  class="form-control @error('amount') is-invalid @enderror"
+                  value="{{ old('amount', $paymentFormDefaults['amount']) }}"
+                  required
+                >
+                <span class="input-group-text">{{ $paymentFormDefaults['currency_code'] }}</span>
+              </div>
+              @error('amount')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+              @enderror
+            </div>
+            <div class="col-12">
+              <x-input-date
+                id="date"
+                label="{{ __('invoice_payment.date') }} (*)"
+                value="{{ old('date', $paymentFormDefaults['date']) }}"
+              />
+            </div>
+            <div class="col-12">
+              <x-input-select
+                id="account_id"
+                label="{{ __('invoice_payment.account') }}"
+                :options="$paymentFormDefaults['accounts']"
+                value="{{ old('account_id', $paymentFormDefaults['account_id']) }}"
+                placeholder="{{ __('Select') }}"
+                required
+              />
+            </div>
+            <div class="col-12">
+              <x-input-select
+                id="type_id"
+                label="{{ __('invoice_payment.type') }}"
+                :options="$paymentFormDefaults['payment_types']"
+                value="{{ old('type_id', $paymentFormDefaults['type_id']) }}"
+                placeholder="{{ __('Select') }}"
+                required
+              />
+            </div>
+            <div class="col-12">
+              <x-input-textarea
+                id="remarks"
+                label="{{ __('invoice_payment.remarks') }}"
+                value="{{ old('remarks', '') }}"
+              />
+            </div>
+            <div class="col-12">
+              <button type="submit" class="btn btn-primary w-100">
+                <i class="ti ti-cash me-1"></i>{{ __('invoice_payment.submit') }}
+              </button>
+            </div>
+          </form>
+      </div>
+    </div>
+    @endif
   </div>
   <!-- /Invoice Actions -->
 </div>
+
+@if ($canUpdatePaymentStatus)
+<div class="modal fade" id="paymentStatusModal" tabindex="-1" aria-labelledby="paymentStatusModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form id="paymentStatusForm" method="POST">
+        @csrf
+        @method('PATCH')
+        <div class="modal-header">
+          <h5 class="modal-title" id="paymentStatusModalLabel">
+            <i class="ti ti-status-change me-2"></i>{{ __('payment_status.modal_title') }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+        </div>
+        <div class="modal-body">
+          <label for="payment_status" class="form-label">{{ __('payment_status.status') }}</label>
+          <select
+            id="payment_status"
+            name="status"
+            class="form-select @error('status') is-invalid @enderror"
+            required
+          >
+            @foreach ($paymentStatusOptions as $statusValue => $statusLabel)
+              <option value="{{ $statusValue }}">{{ $statusLabel }}</option>
+            @endforeach
+          </select>
+          @error('status')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
+            {{ __('Cancel') }}
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <i class="ti ti-check me-1"></i>{{ __('payment_status.save') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@endif
+
+@if ($canShowCreditNoteForm)
+<div class="modal fade" id="creditNoteModal" tabindex="-1" aria-labelledby="creditNoteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form
+        action="{{ route('invoice.credit-notes.store', $invoice) }}"
+        method="POST"
+        onsubmit="return confirm(@json(__('invoice_credit_note.confirm')))"
+      >
+        @csrf
+        <div class="modal-header">
+          <h5 class="modal-title" id="creditNoteModalLabel">
+            <i class="ti ti-receipt-refund me-2"></i>{{ __('invoice_credit_note.issue_title') }}
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+        </div>
+        <div class="modal-body">
+          @unless ($canIssueCreditNote)
+            <div class="alert alert-warning mb-3" role="alert">
+              {{ __('invoice_credit_note.errors.stripe_not_configured') }}
+            </div>
+          @endunless
+          <label for="credit_note_reason" class="form-label">{{ __('invoice_credit_note.reason') }}</label>
+          <select
+            id="credit_note_reason"
+            name="reason"
+            class="form-select @error('reason') is-invalid @enderror"
+            @disabled(! $canIssueCreditNote)
+            required
+          >
+            @foreach ($creditNoteReasons as $reason)
+              <option value="{{ $reason }}" @selected(old('reason', $defaultCreditNoteReason) === $reason)>
+                {{ __('invoice_credit_note.reasons.'.$reason) }}
+              </option>
+            @endforeach
+          </select>
+          @error('reason')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+          @enderror
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">
+            {{ __('Cancel') }}
+          </button>
+          <button type="submit" class="btn btn-primary" @disabled(! $canIssueCreditNote)>
+            <i class="ti ti-receipt-refund me-1"></i>{{ __('invoice_credit_note.issue_button') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+@endif
 
 @section('page-script')
 <script>
@@ -245,6 +518,43 @@ function deleteInvoice(id) {
         });
     }
 }
+
+@if ($errors->has('reason') && ($canShowCreditNoteForm ?? false))
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('creditNoteModal');
+
+    if (modalElement) {
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    }
+});
+@endif
+
+@if ($canUpdatePaymentStatus ?? false)
+document.addEventListener('DOMContentLoaded', function () {
+    const modalElement = document.getElementById('paymentStatusModal');
+    const form = document.getElementById('paymentStatusForm');
+    const statusSelect = document.getElementById('payment_status');
+    const updateStatusUrlTemplate = @json(route('payments.update-status', ['payment' => '__PAYMENT__']));
+
+    if (! modalElement || ! form || ! statusSelect) {
+        return;
+    }
+
+    document.querySelectorAll('.payment-status-trigger').forEach(function (trigger) {
+        trigger.addEventListener('click', function () {
+            const paymentId = trigger.getAttribute('data-payment-id');
+            const paymentStatus = trigger.getAttribute('data-payment-status');
+
+            form.action = updateStatusUrlTemplate.replace('__PAYMENT__', paymentId);
+            statusSelect.value = paymentStatus;
+        });
+    });
+
+    @if ($errors->has('status'))
+    bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    @endif
+});
+@endif
 </script>
 @endsection
 @endsection

@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Models\Message;
+use App\Support\MessageTemplateMergeFields;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -62,8 +63,10 @@ class TestMessageMail extends Mailable
         $fromAddress = config('mail.from.address');
         $fromName = config('mail.from.name');
 
+        $subject = MessageTemplateMergeFields::replace((string) $this->message->name, $this->testContact);
+
         return $this->from($fromAddress, $fromName)
-            ->subject('[TEST] '.$this->message->name)
+            ->subject('[TEST] '.$subject)
             ->html($inlinedHtml);
     }
 }
