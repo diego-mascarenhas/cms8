@@ -2,6 +2,23 @@
 
 @section('title', 'Mapear Campos')
 
+@section('vendor-style')
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
+@endsection
+
+@section('page-script')
+<script>
+$(document).ready(function() {
+    $('.select2-mapping').select2({
+        placeholder: 'Seleccionar campo',
+        allowClear: true,
+        width: '100%'
+    });
+});
+</script>
+@stack('page-script')
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -222,28 +239,4 @@
         </div>
     </div>
 </div>
-
-@section('vendor-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
-@endsection
-
-@section('vendor-script')
-<script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
-@endsection
-
-@section('page-script')
-<script>
-$(document).ready(function() {
-    // Initialize Select2 for mapping selects
-    $('.select2-mapping').select2({
-        placeholder: 'Seleccionar campo',
-        allowClear: true,
-        width: '100%'
-    });
-
-    // Categories, country, status and advisor selects are initialized by their components
-});
-</script>
-@stack('page-script')
-@endsection
 @endsection
