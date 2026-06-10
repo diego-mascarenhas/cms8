@@ -39,7 +39,7 @@
       <h2 class="slash-h2">{{ __('slash_landing.stories.title') }}</h2>
       <p class="slash-lead">
         {!! __('slash_landing.stories.lead', [
-          'link' => '<a href="'.e(route('pricing')).'" style="color: var(--slash-accent);">'.e(__('slash_landing.stories.lead_link')).'</a>',
+          'link' => '<a href="#precios" style="color: var(--slash-accent);">'.e(__('slash_landing.stories.lead_link')).'</a>',
         ]) !!}
       </p>
     </div>
