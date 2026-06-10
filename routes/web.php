@@ -132,6 +132,14 @@ Route::get('/stack', function () {
     ]);
 })->name('stack');
 
+Route::get('/stack/slide', function () {
+    $path = public_path('stack/slide.html');
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=UTF-8',
+    ]);
+})->name('stack.slide');
+
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 
 Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');

@@ -25,6 +25,7 @@ class StackPageTest extends TestCase
         $response->assertSee('Afiliados', false);
         $response->assertSee('Mercado Pago', false);
         $response->assertSee('ARCA', false);
+        $response->assertSee('Facturación fiscal', false);
         $response->assertSee('GitGuardian', false);
         $response->assertSee('staging', false);
         $response->assertSee('gitguardian.com', false);
@@ -32,5 +33,24 @@ class StackPageTest extends TestCase
         $response->assertSee('backblaze.com', false);
         $response->assertSee('OVH / Hetzner · REVISION ALPHA', false);
         $response->assertDontSee('OVH / Hetzner / WHM', false);
+    }
+
+    public function test_stack_slide_page_is_publicly_accessible(): void
+    {
+        $response = $this->get('/stack/slide');
+
+        $response->assertOk();
+        $response->assertHeader('Content-Type', 'text/html; charset=UTF-8');
+        $response->assertSee('Humano — Stack técnico', false);
+        $response->assertSee('SaaS multi-equipo · Laravel 12 · Livewire · APIs', false);
+        $response->assertSee('PHP 8.4+', false);
+        $response->assertSee('Backblaze', false);
+        $response->assertSee('REVISION ALPHA', false);
+        $response->assertSee('Prospection', false);
+        $response->assertSee('APIs', false);
+        $response->assertSee('ElevenLabs', false);
+        $response->assertSee('Stripe · Mercado Pago', false);
+        $response->assertSee('VeriFactu · ARCA', false);
+        $response->assertSee('AEAT (España), Hacienda (Argentina)', false);
     }
 }

@@ -192,6 +192,17 @@
 
     td strong { color: #fff; font-weight: 600; }
 
+    tr.group th {
+      padding-top: 1rem;
+      color: var(--accent);
+      font-size: 0.72rem;
+      letter-spacing: 0.14em;
+      border-bottom: 1px solid var(--border);
+      background: rgba(105, 108, 255, 0.06);
+    }
+
+    tr.group:first-child th { padding-top: 0.65rem; }
+
     ul {
       list-style: none;
       display: grid;
@@ -350,11 +361,15 @@ Twilio / Baileys                                                            Goog
             <tr><td>Auth / equipos</td><td><strong>Jetstream 5</strong> + Fortify + <strong>Sanctum 4</strong></td></tr>
             <tr><td>UI reactiva</td><td><strong>Livewire 4</strong></td></tr>
             <tr><td>Permisos</td><td><strong>Spatie Laravel Permission</strong></td></tr>
-            <tr><td>Pagos</td><td><strong>Laravel Cashier 15</strong> + <strong>Stripe</strong> (multi-cuenta) + <strong>Mercado Pago</strong></td></tr>
+            <tr class="group"><th colspan="2">Pagos</th></tr>
+            <tr><td>Stripe</td><td><strong>Laravel Cashier 15</strong> — multi-cuenta, suscripciones</td></tr>
+            <tr><td>Mercado Pago</td><td>Checkout regional</td></tr>
             <tr><td>Afiliados</td><td>Enlaces de referido, invitaciones, comisiones por factura (<code>affiliates</code>)</td></tr>
             <tr><td>Listados</td><td><strong>Yajra DataTables 12</strong></td></tr>
             <tr><td>Media / settings</td><td>Spatie Media Library, Laravel Settings, Tags</td></tr>
-            <tr><td>Facturación fiscal</td><td><strong>VeriFactu</strong> (AEAT, España) · <strong>ARCA</strong> (Hacienda, Argentina)</td></tr>
+            <tr class="group"><th colspan="2">Facturación fiscal</th></tr>
+            <tr><td>VeriFactu</td><td>AEAT (España)</td></tr>
+            <tr><td>ARCA</td><td>Hacienda (Argentina)</td></tr>
             <tr><td>Observabilidad</td><td>Sentry, Laravel Telescope (opcional)</td></tr>
             <tr><td>Tests / formato</td><td>PHPUnit 10, Laravel Pint</td></tr>
           </tbody>
@@ -461,9 +476,13 @@ Twilio / Baileys                                                            Goog
         <table>
           <thead><tr><th>Dominio</th><th>Servicios</th></tr></thead>
           <tbody>
-            <tr><td>Pagos</td><td>Stripe y <strong>Mercado Pago</strong> — Checkout, webhooks, suscripciones</td></tr>
+            <tr class="group"><th colspan="2">Pagos</th></tr>
+            <tr><td>Stripe</td><td>Checkout, webhooks, suscripciones</td></tr>
+            <tr><td>Mercado Pago</td><td>Checkout regional</td></tr>
             <tr><td>Afiliados</td><td>Referidos, invitaciones de compra y comisiones vía Stripe</td></tr>
-            <tr><td>Facturación fiscal</td><td>VeriFactu (AEAT) · ARCA (Argentina)</td></tr>
+            <tr class="group"><th colspan="2">Facturación fiscal</th></tr>
+            <tr><td>VeriFactu</td><td>AEAT (España)</td></tr>
+            <tr><td>ARCA</td><td>Hacienda (Argentina)</td></tr>
             <tr><td>Comunicación</td><td>Twilio (SMS/WhatsApp) o Baileys (Node.js local)</td></tr>
             <tr><td>Email</td><td>SMTP, MailBaby, IMAP, campañas transaccionales</td></tr>
             <tr><td>IA</td><td>Laravel AI, Anthropic Claude, OpenAI, ElevenLabs</td></tr>
@@ -471,7 +490,7 @@ Twilio / Baileys                                                            Goog
             <tr><td>Hosting</td><td>OVH API, <strong>Hetzner</strong>, WHM/cPanel</td></tr>
             <tr><td>Backups</td><td><a href="https://www.backblaze.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)"><strong>Backblaze</strong></a> — almacenamiento y respaldos externos</td></tr>
             <tr><td>Ciberseguridad</td><td><strong>REVISION ALPHA</strong>, <a href="https://www.gitguardian.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">GitGuardian</a></td></tr>
-            <tr><td>Otros</td><td>Apollo.io, CurrencyFreaks, WebDAV, WooCommerce, VeriFactu</td></tr>
+            <tr><td>Otros</td><td>Apollo.io, CurrencyFreaks, WebDAV, WooCommerce</td></tr>
           </tbody>
         </table>
       </div>
