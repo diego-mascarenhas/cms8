@@ -238,18 +238,29 @@
     .tag.mysql { background: rgba(0, 117, 143, 0.2); color: #5bc0de; }
 
     .diagram {
-      font-family: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
-      font-size: clamp(0.62rem, 0.95vw, 0.76rem);
-      line-height: 1.5;
+      display: flex;
+      justify-content: center;
       color: var(--muted-2);
       overflow-x: auto;
-      white-space: pre;
       padding: 1.25rem 1.5rem;
       background: rgba(0, 0, 0, 0.25);
       border-radius: 10px;
       border: 1px solid var(--border);
       width: 100%;
-      min-width: 62rem;
+    }
+
+    .diagram-pre {
+      font-family: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
+      font-size: clamp(0.62rem, 0.95vw, 0.76rem);
+      line-height: 1.5;
+      white-space: pre;
+      text-align: left;
+      margin: 0;
+    }
+
+    .diagram--flow {
+      font-size: 0.82rem;
+      text-align: center;
     }
 
     #overview .card {
@@ -310,7 +321,7 @@
     <section id="overview">
       <h2><span class="num">1</span> Vista general</h2>
       <div class="card highlight">
-        <div class="diagram">┌──────────────────┐              ┌──────────────────────────────────────────────────────────────────────┐
+        <div class="diagram"><pre class="diagram-pre">┌──────────────────┐              ┌──────────────────────────────────────────────────────────────────────┐
 │    Navegador     │─────────────▶│  Humano (Laravel 12)                                                 │
 │     Flutter      │─────────────▶│  Blade · Livewire · Sanctum API                                      │
 │   Prospection    │              └────────────────────────────────────┬─────────────────────────────────┘
@@ -324,7 +335,7 @@ PostgreSQL (principal)                    Redis (colas/cache)                   
     ┌────────────────────────────────────────┼────────────────────────────────────────┐
     ▼                                        ▼                                        ▼
 Stripe / Mercado Pago              OVH / Hetzner · REVISION ALPHA           Anthropic / OpenAI
-Twilio / Baileys                                                            Google APIs</div>
+Twilio / Baileys                                                            Google APIs</pre></div>
       </div>
     </section>
 
@@ -490,7 +501,7 @@ Twilio / Baileys                                                            Goog
           <strong style="color:#fff">staging</strong> y, tras las comprobaciones de seguridad, se publica en
           <strong style="color:#fff">producción</strong>.
         </p>
-        <div class="diagram" style="min-width:0;font-size:0.82rem;text-align:center">Local (Herd)  ──▶  Staging  ──▶  GitGuardian  ──▶  Producción</div>
+        <div class="diagram diagram--flow">Local (Herd)  ──▶  Staging  ──▶  GitGuardian  ──▶  Producción</div>
       </div>
       <div class="grid-2">
         <div class="card">
