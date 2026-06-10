@@ -160,6 +160,12 @@ class BillingAffiliateTeamTest extends TestCase
             'invitee_email' => 'jane@example.com',
             'plan_id' => 'assistant',
         ]);
+
+        $invitation = \App\Models\AffiliateInvitation::query()
+            ->where('invitee_email', 'jane@example.com')
+            ->first();
+        $this->assertNotNull($invitation?->tracking_token);
+        $this->assertNotNull($invitation?->sent_at);
     }
 
     public function test_affiliate_invite_uses_team_from_when_configured(): void

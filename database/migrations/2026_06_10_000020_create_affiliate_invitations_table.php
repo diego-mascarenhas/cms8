@@ -17,6 +17,11 @@ return new class extends Migration
             $table->string('invitee_email');
             $table->string('plan_id');
             $table->string('plan_name');
+            $table->string('tracking_token', 64)->nullable()->unique();
+            $table->timestamp('sent_at')->nullable();
+            $table->timestamp('opened_at')->nullable();
+            $table->timestamp('clicked_at')->nullable();
+            $table->string('clicked_link')->nullable();
             $table->timestamps();
 
             $table->index(['team_id', 'created_at']);

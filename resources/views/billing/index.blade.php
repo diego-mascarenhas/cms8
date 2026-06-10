@@ -727,20 +727,29 @@
 								<th>Email</th>
 								<th>Plan</th>
 								<th>Enviado por</th>
+								<th>Estado</th>
 							</tr>
 						</thead>
 						<tbody>
 							@forelse($affiliateInvitations as $invitation)
 								<tr>
-									<td>{{ $invitation->created_at->format('d/m/Y H:i') }}</td>
+									<td>{{ ($invitation->sent_at ?? $invitation->created_at)->format('d/m/Y H:i') }}</td>
 									<td>{{ $invitation->invitee_name }}</td>
 									<td>{{ $invitation->invitee_email }}</td>
 									<td>{{ $invitation->plan_name }}</td>
 									<td>{{ $invitation->invitedBy?->name ?? '—' }}</td>
+									<td>
+										<span
+											class="badge {{ $invitation->statusBadgeClass() }} rounded-pill"
+											@if($invitation->statusAt())
+												title="{{ $invitation->statusAt()->format('d/m/Y H:i') }}"
+											@endif
+										>{{ $invitation->statusLabel() }}</span>
+									</td>
 								</tr>
 							@empty
 								<tr>
-									<td colspan="5" class="text-center text-muted py-4">Aún no has enviado invitaciones.</td>
+									<td colspan="6" class="text-center text-muted py-4">Aún no has enviado invitaciones.</td>
 								</tr>
 							@endforelse
 						</tbody>

@@ -260,10 +260,22 @@ class BillingController extends Controller
             'image_url' => $linkBuilder->planImageUrl($planId),
         ];
 
+        $invitation = AffiliateInvitation::query()->create([
+            'team_id' => $team->id,
+            'invited_by_user_id' => $user->id,
+            'invitee_name' => (string) $request->validated('invite_name'),
+            'invitee_email' => (string) $request->validated('invite_email'),
+            'plan_id' => $planId,
+            'plan_name' => $planMarketing['name'],
+            'tracking_token' => AffiliateInvitation::generateTrackingToken(),
+            'sent_at' => now(),
+        ]);
+
         $this->configureMailForTeam($team);
 
         Mail::to((string) $request->validated('invite_email'))->send(
             new AffiliatePurchaseInvitationMail(
+                $invitation,
                 $team,
                 $user,
                 (string) $request->validated('invite_name'),
@@ -275,15 +287,6 @@ class BillingController extends Controller
                 $linkBuilder->pricingPageUrl(),
             ),
         );
-
-        AffiliateInvitation::query()->create([
-            'team_id' => $team->id,
-            'invited_by_user_id' => $user->id,
-            'invitee_name' => (string) $request->validated('invite_name'),
-            'invitee_email' => (string) $request->validated('invite_email'),
-            'plan_id' => $planId,
-            'plan_name' => $planMarketing['name'],
-        ]);
 
         return redirect()->route('billing.index')
             ->with('success', __('Invitación enviada correctamente.'));

@@ -3,6 +3,7 @@
 namespace App\Mail;
 
 use App\Helpers\Helpers;
+use App\Models\AffiliateInvitation;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -17,6 +18,7 @@ class AffiliatePurchaseInvitationMail extends Mailable
      * @param  list<string>  $planFeatures
      */
     public function __construct(
+        public AffiliateInvitation $invitation,
         public Team $referrerTeam,
         public User $invitedBy,
         public string $inviteeName,
@@ -31,11 +33,20 @@ class AffiliatePurchaseInvitationMail extends Mailable
     public function build(): self
     {
         $inviterLabel = $this->resolveInviterLabel();
+
+        $checkoutUrl = $this->wrapTrackedClickUrl($this->checkoutUrl, 'checkout');
+        $pricingUrl = $this->wrapTrackedClickUrl($this->pricingUrl, 'pricing');
+
         $mail = $this->subject("{$inviterLabel} te invita a conocer Humano — {$this->planName}")
             ->view('emails.affiliate-purchase-invitation', [
                 'inviterLabel' => $inviterLabel,
                 'logoUrl' => url(Helpers::logoAsset('dark')),
                 'appName' => (string) config('app.name'),
+                'checkoutUrl' => $checkoutUrl,
+                'pricingUrl' => $pricingUrl,
+                'trackingPixelUrl' => $this->invitation->tracking_token
+                    ? $this->invitation->trackedOpenUrl()
+                    : null,
             ]);
 
         $fromAddress = trim((string) ($this->referrerTeam->getSetting('mail_from_address') ?? ''));
@@ -47,6 +58,16 @@ class AffiliatePurchaseInvitationMail extends Mailable
         }
 
         return $mail;
+    }
+
+    private function wrapTrackedClickUrl(string $url, string $linkType): string
+    {
+        if ($this->invitation->tracking_token === null || $this->invitation->tracking_token === '')
+        {
+            return $url;
+        }
+
+        return $this->invitation->trackedClickUrl($url, $linkType);
     }
 
     private function resolveInviterLabel(): string

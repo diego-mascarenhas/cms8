@@ -66,5 +66,8 @@
             <p class="muted" style="margin-bottom: 0;">¿No esperabas este correo? Podés ignorarlo.</p>
         </div>
     </div>
+    @if(!empty($trackingPixelUrl))
+        <img src="{{ $trackingPixelUrl }}" alt="" width="1" height="1" style="display:block;width:1px;height:1px;border:0;">
+    @endif
 </body>
 </html>

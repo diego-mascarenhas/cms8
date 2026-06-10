@@ -124,7 +124,8 @@ Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingCont
     ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
-Route::get('/stack', function () {
+Route::get('/stack', function ()
+{
     $path = public_path('stack/index.html');
 
     return response(file_get_contents($path), 200, [
@@ -132,7 +133,8 @@ Route::get('/stack', function () {
     ]);
 })->name('stack');
 
-Route::get('/stack/slide', function () {
+Route::get('/stack/slide', function ()
+{
     $path = public_path('stack/slide.html');
 
     return response(file_get_contents($path), 200, [
@@ -1117,6 +1119,10 @@ Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 // Notification tracking routes (no auth required)
 Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');
 Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
+
+// Affiliate invitation tracking (no auth required)
+Route::get('/affiliate-invite/track/{token}/open', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
+Route::get('/affiliate-invite/track/{token}/click', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');
