@@ -118,6 +118,7 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('slash_landing.lead.modal_submit_with_details'), false)
             ->assertSee(route('pricing'), false)
             ->assertSee(route('login'), false)
+            ->assertSee('slash-nav-login-mobile', false)
             ->assertSee('hola@humano.app', false)
             ->assertSee('https://www.idoneo.dev', false)
             ->assertSee('slash-footer-idoneo-word', false)
@@ -128,6 +129,34 @@ class SlashLandingTest extends TestCase
             ->assertDontSee('Hecho con foco humano.', false)
             ->assertSee('¿Qué es Humano.app?', false)
             ->assertSee('¿Por qué usar Humano en lugar de Excel?', false);
+    }
+
+    public function test_slash_landing_footer_contact_links_to_whatsapp_web(): void
+    {
+        config([
+            'app.whatsapp_support' => '',
+            'app.wapify_whatsapp_phone' => '34613194131',
+            'app.wapify_whatsapp_text' => '',
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertSee('https://web.whatsapp.com/send?phone=34613194131', false)
+            ->assertSee('target="_blank"', false)
+            ->assertSee(__('slash_landing.nav.contact'), false);
+    }
+
+    public function test_slash_landing_footer_contact_uses_whatsapp_support_number_when_set(): void
+    {
+        config([
+            'app.whatsapp_support' => '+34 624 15 95 57',
+            'app.wapify_whatsapp_phone' => '34613194131',
+            'app.wapify_whatsapp_text' => '',
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertSee('https://web.whatsapp.com/send?phone=34624159557', false);
     }
 
     public function test_slash_landing_is_public_even_when_authenticated(): void

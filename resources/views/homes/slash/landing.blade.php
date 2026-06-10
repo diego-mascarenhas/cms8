@@ -1,4 +1,5 @@
 @php
+  use App\Helpers\SupportWhatsAppHelper;
   use App\Support\SlashHomeAsset;
 
   $slashImg = static fn (string $path): string => SlashHomeAsset::url('img/'.$path);
@@ -18,6 +19,8 @@
   $securityItems = trans('slash_landing.security_items');
   $faqs = trans('slash_landing.faqs');
   $metrics = trans('slash_landing.metric_items');
+
+  $whatsappSupportUrl = SupportWhatsAppHelper::webUrl();
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -57,6 +60,9 @@
         <li><a href="#planes">{{ __('slash_landing.nav.plans') }}</a></li>
         <li><a href="#precios">{{ __('slash_landing.nav.pricing') }}</a></li>
         <li><a href="#faq">{{ __('slash_landing.nav.faq') }}</a></li>
+        <li class="slash-nav-login-mobile">
+          <a href="{{ route('login') }}" class="slash-btn slash-btn-ghost slash-nav-login-link">{{ __('slash_landing.nav.login') }}</a>
+        </li>
       </ul>
 
       <div class="slash-nav-actions">
@@ -518,7 +524,13 @@
           <h4>{{ __('slash_landing.nav.account') }}</h4>
           <ul>
             <li><a href="{{ route('login') }}">{{ __('slash_landing.nav.login') }}</a></li>
-            <li><a href="#contacto">{{ __('slash_landing.nav.contact') }}</a></li>
+            <li>
+              <a
+                href="{{ $whatsappSupportUrl }}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ __('slash_landing.nav.contact') }}</a>
+            </li>
           </ul>
         </div>
       </div>
