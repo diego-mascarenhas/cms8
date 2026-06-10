@@ -78,19 +78,6 @@
                     </div>
                 </div>
 
-                @if(auth()->user()->hasRole('admin'))
-                <div class="col-md-4 mb-3">
-                    <div class="card h-100">
-                        <div class="card-body text-center">
-                            <i class="ti ti-affiliate mb-3" style="font-size: 2rem;"></i>
-                            <h5 class="card-title">Affiliates</h5>
-                            <p class="card-text">Global commission when this team refers clients (billing)</p>
-                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']) }}" class="btn btn-primary">Configure</a>
-                        </div>
-                    </div>
-                </div>
-                @endif
-
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">

@@ -124,6 +124,14 @@ Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingCont
     ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
+Route::get('/stack', function () {
+    $path = public_path('stack/index.html');
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=UTF-8',
+    ]);
+})->name('stack');
+
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 
 Route::get('/pricing', [\App\Http\Controllers\front_pages\Pricing::class, 'index'])->name('pricing');
@@ -1050,6 +1058,7 @@ Route::middleware(['auth'])->group(function ()
     // Billing & Plans
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
+    Route::post('/billing/affiliate-invite', [App\Http\Controllers\BillingController::class, 'sendAffiliateInvite'])->name('billing.affiliate-invite');
 
     Route::get('/performance-insights/list', [App\Http\Controllers\UserDailyPerformanceInsightController::class, 'index'])->name('performance-insights.index');
 });

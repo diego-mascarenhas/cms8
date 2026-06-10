@@ -634,25 +634,120 @@
 </div>
 
 @if($team->hasModule('affiliates'))
-<!-- Afiliados (empresa cliente: referred_by = code del referente; comisión % en settings del equipo referidor) -->
 <div class="row">
 	<div class="col-12 mb-4">
 		<div class="card">
 			<div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
 				<div>
 					<h5 class="card-title mb-0"><i class="ti ti-affiliate me-2"></i>Afiliados</h5>
-					<p class="text-muted small mb-0 mt-1">En la ficha del cliente, <strong>Referido</strong> identifica la empresa referente: para clientes del mismo equipo se guarda el <strong>ID de empresa</strong>; para referentes de otro equipo puede usarse su <strong>código público</strong> (p. ej. id. de cliente de facturación). La comisión es un % global del equipo referidor (ajustes).</p>
+					<p class="text-muted small mb-0 mt-1">
+						Comparte tu enlace de referido. Cuando otro equipo se suscribe a Humano con tu código, recibes un
+						<strong>{{ number_format($affiliateCommissionPercent, 2) }}%</strong> de cada cobro (configuración de plataforma).
+					</p>
 				</div>
-				@if(auth()->user()->hasRole('admin'))
-					<a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']) }}" class="btn btn-sm btn-label-primary">
-						<i class="ti ti-settings me-1"></i>% comisión de este equipo
-					</a>
-				@endif
 			</div>
 			<div class="card-body">
-				<p class="mb-3"><span class="fw-medium">Porcentaje global de este equipo (cuando referís):</span> {{ number_format($affiliateCommissionPercent, 2) }}%</p>
+				@if(count($affiliateReferralPlans) > 0)
+					<h6 class="mb-3">Enlaces por plan</h6>
+					<div class="table-responsive mb-4">
+						<table class="table table-sm">
+							<thead>
+								<tr>
+									<th>Plan</th>
+									<th>Enlace de referido</th>
+									<th></th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach($affiliateReferralPlans as $plan)
+									<tr>
+										<td class="align-middle">{{ $plan['name'] }}</td>
+										<td class="align-middle">
+											@if($plan['referral_url'])
+												<input type="text" class="form-control form-control-sm affiliate-plan-link" readonly value="{{ $plan['referral_url'] }}">
+											@else
+												<span class="text-muted small">—</span>
+											@endif
+										</td>
+										<td class="align-middle text-end">
+											@if($plan['referral_url'])
+												<button type="button" class="btn btn-sm btn-label-secondary" onclick="copyAffiliatePlanLink(this)">
+													<i class="ti ti-copy"></i>
+												</button>
+											@endif
+										</td>
+									</tr>
+								@endforeach
+							</tbody>
+						</table>
+					</div>
+				@endif
 
-				<h6 class="mb-3">Como referidor: pago del cliente vs. tu comisión</h6>
+				@if($affiliateReferralCode && count($affiliateReferralPlans) > 0)
+					<h6 class="mb-3">Invitar por email</h6>
+					<form action="{{ route('billing.affiliate-invite') }}" method="POST" class="row g-3 mb-4">
+						@csrf
+						<div class="col-md-4">
+							<label for="invite_name" class="form-label">Nombre</label>
+							<input type="text" class="form-control @error('invite_name') is-invalid @enderror" id="invite_name" name="invite_name" value="{{ old('invite_name') }}" required>
+							@error('invite_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+						</div>
+						<div class="col-md-4">
+							<label for="invite_email" class="form-label">Email</label>
+							<input type="email" class="form-control @error('invite_email') is-invalid @enderror" id="invite_email" name="invite_email" value="{{ old('invite_email') }}" required>
+							@error('invite_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+						</div>
+						<div class="col-md-4">
+							<label for="invite_plan" class="form-label">Plan</label>
+							<select class="form-select @error('invite_plan') is-invalid @enderror" id="invite_plan" name="invite_plan" required>
+								<option value="">Seleccionar…</option>
+								@foreach($affiliateReferralPlans as $plan)
+									<option value="{{ $plan['id'] }}" @selected(old('invite_plan') === $plan['id'])>{{ $plan['name'] }}</option>
+								@endforeach
+							</select>
+							@error('invite_plan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+						</div>
+						<div class="col-12">
+							<button type="submit" class="btn btn-primary">
+								<i class="ti ti-mail me-1"></i>Enviar invitación
+							</button>
+						</div>
+					</form>
+				@elseif(!$affiliateReferralCode)
+					<p class="text-muted small mb-4">Los enlaces e invitaciones estarán disponibles cuando tu equipo tenga una suscripción activa en Stripe.</p>
+				@endif
+
+				<h6 class="mb-3">Invitaciones enviadas</h6>
+				<div class="table-responsive mb-4">
+					<table class="table table-sm table-hover">
+						<thead>
+							<tr>
+								<th>Fecha</th>
+								<th>Nombre</th>
+								<th>Email</th>
+								<th>Plan</th>
+								<th>Enviado por</th>
+							</tr>
+						</thead>
+						<tbody>
+							@forelse($affiliateInvitations as $invitation)
+								<tr>
+									<td>{{ $invitation->created_at->format('d/m/Y H:i') }}</td>
+									<td>{{ $invitation->invitee_name }}</td>
+									<td>{{ $invitation->invitee_email }}</td>
+									<td>{{ $invitation->plan_name }}</td>
+									<td>{{ $invitation->invitedBy?->name ?? '—' }}</td>
+								</tr>
+							@empty
+								<tr>
+									<td colspan="5" class="text-center text-muted py-4">Aún no has enviado invitaciones.</td>
+								</tr>
+							@endforelse
+						</tbody>
+					</table>
+				</div>
+
+				<h6 class="mb-3">Como referidor</h6>
 				@if($affiliateTotalsAsReferrer !== [])
 					<div class="d-flex flex-wrap gap-3 mb-3">
 						@foreach($affiliateTotalsAsReferrer as $cur => $tot)
@@ -668,10 +763,8 @@
 							<tr>
 								<th>Fecha</th>
 								<th>Equipo que pagó</th>
-								<th>Empresa pagadora</th>
-								<th>Empresa referente</th>
 								<th>Ref. cobro</th>
-								<th class="text-end">Pagó (cliente)</th>
+								<th class="text-end">Pagó</th>
 								<th class="text-end">%</th>
 								<th class="text-end">Tu comisión</th>
 								<th>Moneda</th>
@@ -682,8 +775,6 @@
 								<tr>
 									<td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
 									<td>{{ $row->payingTeam?->name ?? '—' }}</td>
-									<td>{{ $row->payingEnterprise?->name ?? '—' }}</td>
-									<td>{{ $row->referrerEnterprise?->name ?? '—' }}</td>
 									<td><code class="small">{{ $row->stripe_invoice_id }}</code></td>
 									<td class="text-end">{{ number_format($row->amount_paid_cents / 100, 2) }}</td>
 									<td class="text-end">{{ number_format((float) $row->commission_percent, 2) }}</td>
@@ -692,14 +783,14 @@
 								</tr>
 							@empty
 								<tr>
-									<td colspan="9" class="text-center text-muted py-4">Sin movimientos como referidor.</td>
+									<td colspan="7" class="text-center text-muted py-4">Sin movimientos como referidor.</td>
 								</tr>
 							@endforelse
 						</tbody>
 					</table>
 				</div>
 
-				<h6 class="mb-3">Tus pagos donde hubo comisión para el referidor</h6>
+				<h6 class="mb-3">Tus pagos con comisión al referidor</h6>
 				@if($affiliateTotalsAsPayer !== [])
 					<div class="d-flex flex-wrap gap-3 mb-3">
 						@foreach($affiliateTotalsAsPayer as $cur => $tot)
@@ -715,8 +806,6 @@
 							<tr>
 								<th>Fecha</th>
 								<th>Equipo referidor</th>
-								<th>Tu empresa (pagadora)</th>
-								<th>Empresa referente</th>
 								<th>Ref. cobro</th>
 								<th class="text-end">Tu pago</th>
 								<th class="text-end">%</th>
@@ -729,8 +818,6 @@
 								<tr>
 									<td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
 									<td>{{ $row->referrerTeam?->name ?? '—' }}</td>
-									<td>{{ $row->payingEnterprise?->name ?? '—' }}</td>
-									<td>{{ $row->referrerEnterprise?->name ?? '—' }}</td>
 									<td><code class="small">{{ $row->stripe_invoice_id }}</code></td>
 									<td class="text-end">{{ number_format($row->amount_paid_cents / 100, 2) }}</td>
 									<td class="text-end">{{ number_format((float) $row->commission_percent, 2) }}</td>
@@ -739,7 +826,7 @@
 								</tr>
 							@empty
 								<tr>
-									<td colspan="9" class="text-center text-muted py-4">Sin registros de comisión sobre tus pagos.</td>
+									<td colspan="7" class="text-center text-muted py-4">Sin registros de comisión sobre tus pagos.</td>
 								</tr>
 							@endforelse
 						</tbody>
@@ -749,6 +836,13 @@
 		</div>
 	</div>
 </div>
+<script>
+function copyAffiliatePlanLink(btn) {
+	const input = btn.closest('tr')?.querySelector('.affiliate-plan-link');
+	if (!input) return;
+	navigator.clipboard.writeText(input.value);
+}
+</script>
 @endif
 
 <!-- Modal: Edit Billing Data -->

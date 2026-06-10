@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Stack técnico e infraestructura de Humano">
+  <title>Humano — Stack técnico</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #06050f;
+      --bg-card: rgba(24, 22, 48, 0.72);
+      --border: rgba(150, 148, 220, 0.14);
+      --primary: #696cff;
+      --primary-light: #8592ff;
+      --accent: #b4b6ff;
+      --text: #eceeff;
+      --muted: #9496b8;
+      --muted-2: #a8aac8;
+      --success: #71dd37;
+      --warning: #ffab00;
+      --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --radius: 16px;
+      --max: 1100px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background:
+        radial-gradient(1200px 800px at 80% -10%, #2a2858 0%, transparent 55%),
+        radial-gradient(900px 700px at -5% 100%, #1a1840 0%, transparent 58%),
+        linear-gradient(160deg, #12101f 0%, #0a0818 100%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .wrap {
+      max-width: var(--max);
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 4rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding-top: 1rem;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 1rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(105, 108, 255, 0.12);
+      border: 1px solid rgba(105, 108, 255, 0.28);
+      margin-bottom: 1.25rem;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .lead {
+      font-size: 1.05rem;
+      color: var(--muted-2);
+      max-width: 42rem;
+      margin: 0 auto;
+    }
+
+    nav.toc {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 2rem 0 3rem;
+    }
+
+    nav.toc a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.03);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    nav.toc a:hover {
+      background: rgba(105, 108, 255, 0.15);
+      border-color: rgba(105, 108, 255, 0.35);
+    }
+
+    section {
+      margin-bottom: 2.5rem;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    h2 .num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin: 1.25rem 0 0.6rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+    }
+
+    .card + .card { margin-top: 1rem; }
+
+    .highlight {
+      border-color: rgba(105, 108, 255, 0.35);
+      background: linear-gradient(165deg, rgba(90, 88, 150, 0.2), rgba(24, 22, 48, 0.55));
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td:first-child {
+      color: var(--muted-2);
+      font-weight: 500;
+      width: 38%;
+    }
+
+    td strong { color: #fff; font-weight: 600; }
+
+    ul {
+      list-style: none;
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    ul li {
+      position: relative;
+      padding-left: 1.1rem;
+      font-size: 0.9rem;
+      color: var(--muted-2);
+    }
+
+    ul li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0.55em;
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+    }
+
+    .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      background: rgba(105, 108, 255, 0.18);
+      color: var(--accent);
+      margin-right: 0.35rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .tag.pg { background: rgba(51, 103, 145, 0.25); color: #7eb8e8; }
+    .tag.mysql { background: rgba(0, 117, 143, 0.2); color: #5bc0de; }
+
+    .diagram {
+      font-family: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
+      font-size: 0.72rem;
+      line-height: 1.45;
+      color: var(--muted-2);
+      overflow-x: auto;
+      white-space: pre;
+      padding: 1rem;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .one-liner {
+      font-size: 1rem;
+      color: var(--offwhite, var(--text));
+      border-left: 3px solid var(--primary);
+      padding: 0.75rem 1rem;
+      background: rgba(105, 108, 255, 0.08);
+      border-radius: 0 10px 10px 0;
+      margin-top: 0.5rem;
+    }
+
+    footer {
+      text-align: center;
+      padding-top: 2rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 600px) {
+      .wrap { padding: 1.5rem 1rem 3rem; }
+      th, td { padding: 0.5rem 0.4rem; font-size: 0.82rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Documentación interna</div>
+      <h1>Stack técnico Humano</h1>
+      <p class="lead">
+        Plataforma SaaS multi-equipo para CRM, facturación, campañas, hosting, asistente IA y más.
+        Monolito Laravel con UI Vuexy y módulos activables por team.
+      </p>
+    </header>
+
+    <nav class="toc" aria-label="Índice">
+      <a href="#overview">Vista general</a>
+      <a href="#backend">Backend</a>
+      <a href="#frontend">Frontend</a>
+      <a href="#database">Base de datos</a>
+      <a href="#queues">Colas</a>
+      <a href="#integrations">Integraciones</a>
+      <a href="#satellites">Satélites</a>
+      <a href="#infra">Infraestructura</a>
+      <a href="#modules">Módulos</a>
+    </nav>
+
+    <section id="overview">
+      <h2><span class="num">1</span> Vista general</h2>
+      <div class="card highlight">
+        <div class="diagram">┌─────────────┐     ┌──────────────────────────────────┐
+│  Navegador  │────▶│  Humano (Laravel 12)             │
+│  Móvil/API  │────▶│  Blade · Livewire · Sanctum API  │
+│  Prospection│     └──────────┬───────────────────────┘
+└─────────────┘                │
+         ┌─────────────────────┼─────────────────────┐
+         ▼                     ▼                     ▼
+   PostgreSQL              Redis                 S3 (opt.)
+   (principal)            (colas/cache)
+         │
+         └── MySQL legacy / compat. Eloquent
+         ┌─────────────────────┬─────────────────────┐
+         ▼                     ▼                     ▼
+      Stripe               OVH / WHM            Anthropic / OpenAI
+      Twilio / Baileys     cPanel               Google APIs</div>
+      </div>
+    </section>
+
+    <section id="backend">
+      <h2><span class="num">2</span> Backend</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
+          <tbody>
+            <tr><td>Lenguaje</td><td><strong>PHP 8.3+</strong></td></tr>
+            <tr><td>Framework</td><td><strong>Laravel 12</strong></td></tr>
+            <tr><td>Auth / equipos</td><td><strong>Jetstream 5</strong> + Fortify + <strong>Sanctum 4</strong></td></tr>
+            <tr><td>UI reactiva</td><td><strong>Livewire 4</strong></td></tr>
+            <tr><td>Permisos</td><td><strong>Spatie Laravel Permission</strong></td></tr>
+            <tr><td>Pagos</td><td><strong>Laravel Cashier 15</strong> + Stripe (multi-cuenta)</td></tr>
+            <tr><td>Listados</td><td><strong>Yajra DataTables 12</strong></td></tr>
+            <tr><td>Media / settings</td><td>Spatie Media Library, Laravel Settings, Tags</td></tr>
+            <tr><td>Facturación ES</td><td><strong>VeriFactu</strong> (AEAT)</td></tr>
+            <tr><td>Observabilidad</td><td>Sentry, Laravel Telescope (opcional)</td></tr>
+            <tr><td>Tests / formato</td><td>PHPUnit 10, Laravel Pint</td></tr>
+          </tbody>
+        </table>
+        <p style="margin-top:1rem;font-size:0.88rem;color:var(--muted)">
+          Multi-tenant por equipos Jetstream (<code style="color:var(--accent)">team_id</code>) con módulos activables por organización.
+        </p>
+      </div>
+    </section>
+
+    <section id="frontend">
+      <h2><span class="num">3</span> Frontend</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
+          <tbody>
+            <tr><td>Template</td><td><strong>Vuexy</strong> (Bootstrap 5)</td></tr>
+            <tr><td>Build</td><td><strong>Vite 7</strong> + laravel-vite-plugin</td></tr>
+            <tr><td>JS</td><td>jQuery 3.7, Bootstrap 5.3, Axios</td></tr>
+            <tr><td>Tablas</td><td>DataTables.net (BS5)</td></tr>
+            <tr><td>Gráficos</td><td>Chart.js, ApexCharts</td></tr>
+            <tr><td>Editores</td><td>Quill, GrapesJS (landings)</td></tr>
+            <tr><td>Calendario</td><td>FullCalendar 6</td></tr>
+            <tr><td>Mapas</td><td>Mapbox GL, Leaflet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="database">
+      <h2><span class="num">4</span> Base de datos</h2>
+      <div class="card highlight">
+        <p style="margin-bottom:0.75rem">
+          <span class="tag pg">PostgreSQL</span> Base de datos <strong style="color:#fff">principal</strong> en producción y desarrollo.
+        </p>
+        <p style="font-size:0.9rem;color:var(--muted-2);margin-bottom:1rem">
+          El modelo de datos y las consultas están pensados para PostgreSQL. La capa de acceso usa
+          <strong style="color:#fff">Eloquent</strong>, que abstrae el driver y permite mantener
+          compatibilidad con <span class="tag mysql">MySQL</span> en entornos legacy, migraciones históricas
+          o conexiones secundarias sin reescribir la lógica de negocio.
+        </p>
+        <table>
+          <thead><tr><th>Componente</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td>PostgreSQL</td><td>BD principal (<code>pgsql</code>)</td></tr>
+            <tr><td>MySQL</td><td>Compatibilidad Eloquent, conexión legacy (<code>mysql_legacy</code>)</td></tr>
+            <tr><td>SQLite</td><td>Tests automatizados (in-memory)</td></tr>
+            <tr><td>Redis</td><td>Colas y caché en producción</td></tr>
+            <tr><td>Sesiones</td><td>Driver <code>database</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="queues">
+      <h2><span class="num">5</span> Colas y jobs</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Correo y campañas</h3>
+          <ul>
+            <li><code>task-communications</code> — emails desde Kanban</li>
+            <li><code>notifications</code> — notificaciones a contactos</li>
+            <li><code>mailer</code> / <code>campaign</code> — envíos masivos</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Infraestructura</h3>
+          <ul>
+            <li><code>whm-sync</code>, <code>whm-tests</code> — WHM/cPanel</li>
+            <li><code>ovh-sync</code> — API OVH</li>
+            <li><code>domain-*</code> — sincronización de dominios</li>
+            <li><code>default</code> — jobs genéricos</li>
+          </ul>
+        </div>
+      </div>
+      <p style="margin-top:0.75rem;font-size:0.85rem;color:var(--muted)">
+        Producción: Redis + Supervisor (Laravel Forge). Desarrollo local: <code>queue:work</code> manual.
+      </p>
+    </section>
+
+    <section id="integrations">
+      <h2><span class="num">6</span> Integraciones externas</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Dominio</th><th>Servicios</th></tr></thead>
+          <tbody>
+            <tr><td>Pagos</td><td>Stripe — Payment Links, Checkout, webhooks, afiliados</td></tr>
+            <tr><td>Comunicación</td><td>Twilio (SMS/WhatsApp) o Baileys (Node.js local)</td></tr>
+            <tr><td>Email</td><td>SMTP, MailBaby, IMAP, campañas transaccionales</td></tr>
+            <tr><td>IA</td><td>Laravel AI, Anthropic Claude, OpenAI, ElevenLabs</td></tr>
+            <tr><td>Google</td><td>OAuth, Calendar, People, Places, Analytics</td></tr>
+            <tr><td>Hosting</td><td>OVH API, WHM/cPanel</td></tr>
+            <tr><td>Otros</td><td>Apollo.io, CurrencyFreaks, WebDAV, WooCommerce, VeriFactu</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="satellites">
+      <h2><span class="num">7</span> Apps y servicios satélite</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Servicio</th><th>Rol</th></tr></thead>
+          <tbody>
+            <tr><td>whatsapp-service</td><td>Node 18+ + Baileys — WhatsApp por QR sin Twilio</td></tr>
+            <tr><td>Prospection</td><td>Frontend React separado</td></tr>
+            <tr><td>WebDAV</td><td>CardDAV / CalDAV (sincronización contactos y calendario)</td></tr>
+            <tr><td>App móvil</td><td>API REST con Sanctum</td></tr>
+            <tr><td>humano-academy</td><td>Package Composer interno (Idoneo)</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="infra">
+      <h2><span class="num">8</span> Infraestructura y despliegue</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Entornos</h3>
+          <table>
+            <tbody>
+              <tr><td>Local</td><td>Laravel Herd (<code>*.test</code>)</td></tr>
+              <tr><td>Dev</td><td>VPS OVH + cPanel (GitHub Actions)</td></tr>
+              <tr><td>Prod</td><td>OVH shared hosting (GitHub Actions)</td></tr>
+              <tr><td>Forge</td><td>Zero-downtime releases + PM2 WhatsApp</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Runtime servidor</h3>
+          <ul>
+            <li>PHP-FPM 8.2–8.4</li>
+            <li>Nginx / Apache</li>
+            <li>Supervisor — workers Redis</li>
+            <li>PM2 — servicio WhatsApp Node</li>
+            <li>Storage local + S3 opcional</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <h3>Pipeline CI/CD</h3>
+        <ul>
+          <li>GitHub Actions: build assets (Vite), <code>composer install --no-dev</code></li>
+          <li>Artefacto tar.gz → SCP por SSH al servidor</li>
+          <li>Hooks: <code>config:cache</code>, <code>route:cache</code>, migraciones, Livewire assets</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="modules">
+      <h2><span class="num">9</span> Módulos de negocio</h2>
+      <div class="card">
+        <p style="font-size:0.9rem;color:var(--muted-2);margin-bottom:0.75rem">Activables por team:</p>
+        <div>
+          <span class="tag">CRM</span>
+          <span class="tag">Billing</span>
+          <span class="tag">Marketing</span>
+          <span class="tag">Automation</span>
+          <span class="tag">Content</span>
+          <span class="tag">Infrastructure</span>
+          <span class="tag">Support</span>
+          <span class="tag">E-commerce</span>
+          <span class="tag">Learning</span>
+        </div>
+        <div class="grid-2" style="margin-top:1rem">
+          <ul>
+            <li>Contactos, oportunidades, calendario, chat</li>
+            <li>Facturas, suscripciones Stripe, afiliados</li>
+            <li>Campañas, mailer, plantillas</li>
+            <li>Prompts, funnel, asistente IA</li>
+          </ul>
+          <ul>
+            <li>Landings (GrapesJS), blog, academy</li>
+            <li>Servidores, hosting (WHM/OVH)</li>
+            <li>Tickets, mailbox</li>
+            <li>Productos, pedidos, tiendas</li>
+          </ul>
+        </div>
+      </div>
+      <div class="one-liner">
+        <strong>Resumen:</strong> Humano = Laravel 12 multi-team sobre PostgreSQL (con compatibilidad MySQL vía Eloquent),
+        Redis, Stripe, IA y comunicaciones, desplegado en OVH/Forge.
+      </div>
+    </section>
+
+    <footer>
+      <p>Humano · Stack técnico · <a href="/">Volver al inicio</a></p>
+    </footer>
+  </div>
+</body>
+</html>

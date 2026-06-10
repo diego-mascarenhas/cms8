@@ -25,7 +25,7 @@ class PaymentLinkSignupCompletionService
         private readonly CheckoutSessionRetriever $checkoutSessionRetriever,
         private readonly TeamStripeCustomerService $teamStripeCustomerService,
         private readonly TeamCheckoutSessionSubscriptionSyncer $teamCheckoutSessionSubscriptionSyncer,
-        private readonly PaymentLinkAffiliateEnterpriseAttributionService $paymentLinkAffiliateEnterpriseAttributionService,
+        private readonly PaymentLinkAffiliateTeamAttributionService $paymentLinkAffiliateTeamAttributionService,
     ) {}
 
     public function complete(string $sessionId): PaymentLinkSignupOutcome
@@ -187,10 +187,9 @@ class PaymentLinkSignupCompletionService
         $team->refresh();
         $this->teamCheckoutSessionSubscriptionSyncer->sync($team, $session, $category, (int) $user->id, true);
 
-        $this->paymentLinkAffiliateEnterpriseAttributionService->syncBillingEnterpriseReferrerFromSession(
+        $this->paymentLinkAffiliateTeamAttributionService->syncTeamReferrerFromSession(
             $team->fresh(),
             $session,
-            (int) $user->id,
         );
 
         Log::info('Payment link signup: Stripe checkout applied to Humano user', array_merge(

@@ -70,8 +70,8 @@ class BillingIndexApiUsageWidgetTest extends TestCase
         $response = $this->actingAs($user)->get(route('billing.index'));
 
         $response->assertOk();
-        $response->assertDontSee('Porcentaje global de este equipo (cuando referís)', false);
-        $response->assertDontSee('Como referidor: pago del cliente vs. tu comisión', false);
+        $response->assertDontSee('Invitaciones enviadas', false);
+        $response->assertDontSee('Como referidor', false);
     }
 
     public function test_billing_index_shows_affiliates_section_when_module_active(): void
@@ -95,6 +95,6 @@ class BillingIndexApiUsageWidgetTest extends TestCase
         $response = $this->actingAs($user)->get(route('billing.index'));
 
         $response->assertOk();
-        $response->assertSee('Porcentaje global de este equipo (cuando referís)', false);
+        $response->assertSee('Invitaciones enviadas', false);
     }
 }

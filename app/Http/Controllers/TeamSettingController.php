@@ -1221,19 +1221,6 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
-            'affiliates' => [
-                'title' => 'Affiliates (billing)',
-                'icon' => 'ti ti-affiliate',
-                'settings' => [
-                    'affiliate_commission_percent' => [
-                        'label' => 'Global commission % (this team as referrer)',
-                        'type' => 'text',
-                        'value' => $team->getSetting('affiliate_commission_percent', '0'),
-                        'is_encrypted' => false,
-                        'help' => 'Applies to referred client enterprises (referred_by = same-team referrer enterprise id, or legacy / external public code). 0 disables. Example: 10 = 10% of the paid invoice amount.',
-                    ],
-                ],
-            ],
         ];
 
         return isset($config[$group]) ? [$group => $config[$group]] : [];

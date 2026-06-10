@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\BillingAffiliateCommission;
-use App\Models\Enterprise;
 use App\Models\Team;
 use Illuminate\Support\Facades\Log;
 
@@ -11,9 +10,8 @@ class AffiliateCommissionRecorder
 {
     /**
      * When a Stripe invoice is paid, attribute commission to the referrer team using
-     * enterprises.referred_by: same-team referrer is stored as the referrer enterprise id (string);
-     * legacy / external values may still be the referrer enterprise public code (e.g. customer id).
-     * Commission % comes from the referrer team's affiliate_commission_percent setting.
+     * {@see Team::$referred_by} (Stripe customer id of the referrer team).
+     * Commission % comes from {@see config('humano_pricing.affiliate_commission_percent')}.
      *
      * @param  array<string, mixed>  $invoice  Stripe invoice object from webhook payload
      */
@@ -25,58 +23,25 @@ class AffiliateCommissionRecorder
             return;
         }
 
-        $customerId = (string) ($invoice['customer'] ?? '');
-        if ($customerId === '')
+        $referralStripeId = trim((string) ($payingTeam->referred_by ?? ''));
+        if ($referralStripeId === '')
         {
             return;
         }
 
-        $payingEnterprise = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $payingTeam->id)
-            ->where('type_id', 1)
-            ->where('code', $customerId)
-            ->first();
-
-        if (! $payingEnterprise)
+        $payingStripeId = trim((string) ($payingTeam->stripe_id ?? ''));
+        if ($payingStripeId !== '' && strcasecmp($referralStripeId, $payingStripeId) === 0)
         {
             return;
         }
 
-        $referralRaw = trim((string) ($payingEnterprise->referred_by ?? ''));
-        if ($referralRaw === '' || strcasecmp($referralRaw, $customerId) === 0)
-        {
-            return;
-        }
-
-        $referrerEnterprise = null;
-        if (ctype_digit($referralRaw))
-        {
-            $referrerEnterprise = Enterprise::withoutGlobalScopes()
-                ->where('type_id', 1)
-                ->where('id', (int) $referralRaw)
-                ->first();
-        }
-        if (! $referrerEnterprise)
-        {
-            $referrerEnterprise = Enterprise::withoutGlobalScopes()
-                ->where('type_id', 1)
-                ->where('code', $referralRaw)
-                ->orderBy('id')
-                ->first();
-        }
-
-        if (! $referrerEnterprise)
-        {
-            return;
-        }
-
-        $referrerTeam = Team::query()->find($referrerEnterprise->team_id);
+        $referrerTeam = Team::findByStripeCustomerId($referralStripeId);
         if (! $referrerTeam || (int) $referrerTeam->id === (int) $payingTeam->id)
         {
             return;
         }
 
-        $percent = $this->resolveCommissionPercent($referrerTeam);
+        $percent = $this->resolveCommissionPercent();
         if ($percent <= 0)
         {
             return;
@@ -100,8 +65,8 @@ class AffiliateCommissionRecorder
             BillingAffiliateCommission::query()->create([
                 'paying_team_id' => $payingTeam->id,
                 'referrer_team_id' => $referrerTeam->id,
-                'paying_enterprise_id' => $payingEnterprise->id,
-                'referrer_enterprise_id' => $referrerEnterprise->id,
+                'paying_enterprise_id' => null,
+                'referrer_enterprise_id' => null,
                 'stripe_invoice_id' => $invoiceId,
                 'amount_paid_cents' => $amountPaid,
                 'currency' => $currency,
@@ -118,13 +83,9 @@ class AffiliateCommissionRecorder
         }
     }
 
-    private function resolveCommissionPercent(Team $referrerTeam): float
+    private function resolveCommissionPercent(): float
     {
-        $raw = $referrerTeam->getSetting('affiliate_commission_percent', '0');
-        if ($raw === '' || $raw === null)
-        {
-            return 0.0;
-        }
+        $raw = config('humano_pricing.affiliate_commission_percent', 0);
 
         return max(0.0, min(100.0, (float) $raw));
     }

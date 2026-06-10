@@ -58,15 +58,21 @@ return [
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
 
     /*
-     * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer client
-     * | enterprise id (digits only). Keys must match Stripe's field key on each Payment Link.
-     * | If the custom field is empty, the same id may be passed as Stripe client_reference_id on the link URL.
+     * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer team's Stripe
+     * | customer id (cus_…) or legacy numeric referrer enterprise id. Keys must match Stripe's field.
+     * | If the custom field is empty, pass client_reference_id=cus_… on the Payment Link URL.
      * | HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS=referente,affiliate
      */
     'payment_link_affiliate_custom_field_keys' => array_values(array_filter(array_map(
         static fn (string $k): string => strtolower(trim($k)),
         explode(',', (string) env('HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS', 'referente,affiliate')),
     ))),
+
+    /*
+     * | Affiliate commission % on Humano platform billing (team-to-team referrals).
+     * | Applied when a referred team pays a Stripe invoice (see teams.referred_by).
+     */
+    'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 40),
 
     /*
      * |--------------------------------------------------------------------------

@@ -3,17 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Enums\EmailPlan;
+use App\Http\Requests\SendAffiliateInvitationRequest;
+use App\Mail\AffiliatePurchaseInvitationMail;
+use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
+use App\Services\AffiliateReferralLinkBuilder;
 use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
+use App\Traits\ConfiguresTeamMail;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class BillingController extends Controller
 {
+    use ConfiguresTeamMail;
+
     public function index()
     {
         $user = auth()->user();
@@ -145,24 +154,45 @@ class BillingController extends Controller
         $affiliateTotalsAsReferrer = [];
         $affiliateTotalsAsPayer = [];
         $affiliateCommissionPercent = 0.0;
+        $affiliateReferralCode = null;
+        $affiliateReferralPlans = [];
+        $affiliateInvitations = collect();
 
         if ($team->hasModule('affiliates'))
         {
+            $linkBuilder = app(AffiliateReferralLinkBuilder::class);
+
             $affiliateCommissionsAsReferrer = $team->billingAffiliateCommissionsAsReferrer()
-                ->with(['payingTeam', 'payingEnterprise', 'referrerEnterprise'])
+                ->with(['payingTeam'])
                 ->latest()
                 ->limit(200)
                 ->get();
 
             $affiliateCommissionsAsPayer = $team->billingAffiliateCommissionsAsPayer()
-                ->with(['referrerTeam', 'payingEnterprise', 'referrerEnterprise'])
+                ->with(['referrerTeam'])
                 ->latest()
                 ->limit(200)
                 ->get();
 
             $affiliateTotalsAsReferrer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsReferrer);
             $affiliateTotalsAsPayer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsPayer);
-            $affiliateCommissionPercent = (float) $team->getSetting('affiliate_commission_percent', '0');
+            $affiliateCommissionPercent = (float) config('humano_pricing.affiliate_commission_percent', 0);
+            $affiliateReferralCode = $linkBuilder->referralCode($team);
+
+            foreach ($linkBuilder->availablePlans() as $plan)
+            {
+                $affiliateReferralPlans[] = array_merge($plan, [
+                    'referral_url' => $affiliateReferralCode !== null
+                        ? $linkBuilder->buildLink($plan['checkout_url'], $affiliateReferralCode)
+                        : null,
+                ]);
+            }
+
+            $affiliateInvitations = $team->affiliateInvitations()
+                ->with('invitedBy')
+                ->latest()
+                ->limit(100)
+                ->get();
         }
 
         $tokenStats = null;
@@ -188,8 +218,73 @@ class BillingController extends Controller
             'affiliateTotalsAsReferrer',
             'affiliateTotalsAsPayer',
             'affiliateCommissionPercent',
+            'affiliateReferralCode',
+            'affiliateReferralPlans',
+            'affiliateInvitations',
             'tokenStats',
         ));
+    }
+
+    public function sendAffiliateInvite(SendAffiliateInvitationRequest $request): RedirectResponse
+    {
+        $user = $request->user();
+        $team = $user->currentTeam;
+        $linkBuilder = app(AffiliateReferralLinkBuilder::class);
+        $referralCode = $linkBuilder->referralCode($team);
+
+        if ($referralCode === null)
+        {
+            return redirect()->route('billing.index')
+                ->with('error', __('Your team does not have a billing reference code yet. Complete a subscription first.'));
+        }
+
+        $planId = (string) $request->validated('invite_plan');
+        $plan = collect($linkBuilder->availablePlans())->firstWhere('id', $planId);
+
+        if ($plan === null)
+        {
+            return redirect()->route('billing.index')
+                ->with('error', __('The selected plan is not available.'));
+        }
+
+        $checkoutUrl = $linkBuilder->buildLink(
+            $plan['checkout_url'],
+            $referralCode,
+            (string) $request->validated('invite_email'),
+        );
+
+        $planMarketing = $linkBuilder->planMarketing($planId) ?? [
+            'name' => $plan['name'],
+            'description' => '',
+            'features' => [],
+        ];
+
+        $this->configureMailForTeam($team);
+
+        Mail::to((string) $request->validated('invite_email'))->send(
+            new AffiliatePurchaseInvitationMail(
+                $team,
+                $user,
+                (string) $request->validated('invite_name'),
+                $planMarketing['name'],
+                $planMarketing['description'],
+                $planMarketing['features'],
+                $checkoutUrl,
+                $linkBuilder->pricingPageUrl(),
+            ),
+        );
+
+        AffiliateInvitation::query()->create([
+            'team_id' => $team->id,
+            'invited_by_user_id' => $user->id,
+            'invitee_name' => (string) $request->validated('invite_name'),
+            'invitee_email' => (string) $request->validated('invite_email'),
+            'plan_id' => $planId,
+            'plan_name' => $planMarketing['name'],
+        ]);
+
+        return redirect()->route('billing.index')
+            ->with('success', __('Invitación enviada correctamente.'));
     }
 
     public function update(Request $request)
