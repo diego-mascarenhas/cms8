@@ -239,15 +239,21 @@
 
     .diagram {
       font-family: ui-monospace, 'Cascadia Code', 'SF Mono', monospace;
-      font-size: 0.72rem;
-      line-height: 1.45;
+      font-size: clamp(0.62rem, 0.95vw, 0.76rem);
+      line-height: 1.5;
       color: var(--muted-2);
       overflow-x: auto;
       white-space: pre;
-      padding: 1rem;
+      padding: 1.25rem 1.5rem;
       background: rgba(0, 0, 0, 0.25);
       border-radius: 10px;
       border: 1px solid var(--border);
+      width: 100%;
+      min-width: 62rem;
+    }
+
+    #overview .card {
+      padding: 1.25rem;
     }
 
     .one-liner {
@@ -291,32 +297,34 @@
       <a href="#overview">Vista general</a>
       <a href="#backend">Backend</a>
       <a href="#frontend">Frontend</a>
+      <a href="#mobile">App móvil</a>
       <a href="#database">Base de datos</a>
       <a href="#queues">Colas</a>
       <a href="#integrations">Integraciones</a>
       <a href="#satellites">Satélites</a>
       <a href="#infra">Infraestructura</a>
+      <a href="#security">Ciberseguridad</a>
       <a href="#modules">Módulos</a>
     </nav>
 
     <section id="overview">
       <h2><span class="num">1</span> Vista general</h2>
       <div class="card highlight">
-        <div class="diagram">┌─────────────┐     ┌──────────────────────────────────┐
-│  Navegador  │────▶│  Humano (Laravel 12)             │
-│  Móvil/API  │────▶│  Blade · Livewire · Sanctum API  │
-│  Prospection│     └──────────┬───────────────────────┘
-└─────────────┘                │
-         ┌─────────────────────┼─────────────────────┐
-         ▼                     ▼                     ▼
-   PostgreSQL              Redis                 S3 (opt.)
-   (principal)            (colas/cache)
-         │
-         └── MySQL legacy / compat. Eloquent
-         ┌─────────────────────┬─────────────────────┐
-         ▼                     ▼                     ▼
-      Stripe               OVH / WHM            Anthropic / OpenAI
-      Twilio / Baileys     cPanel               Google APIs</div>
+        <div class="diagram">┌──────────────────┐              ┌──────────────────────────────────────────────────────────────────────┐
+│    Navegador     │─────────────▶│  Humano (Laravel 12)                                                 │
+│     Flutter      │─────────────▶│  Blade · Livewire · Sanctum API                                      │
+│   Prospection    │              └────────────────────────────────────┬─────────────────────────────────┘
+└──────────────────┘                                                   │
+                              App Store / Play Store (GitHub Actions)
+    ┌────────────────────────────────────────┼────────────────────────────────────────┐
+    ▼                                        ▼                                        ▼
+PostgreSQL (principal)                    Redis (colas/cache)                    Backblaze (backups)
+    │
+    └── MySQL legacy / compat. Eloquent
+    ┌────────────────────────────────────────┼────────────────────────────────────────┐
+    ▼                                        ▼                                        ▼
+Stripe / Mercado Pago              OVH / Hetzner · REVISION ALPHA           Anthropic / OpenAI
+Twilio / Baileys                                                            Google APIs</div>
       </div>
     </section>
 
@@ -326,15 +334,16 @@
         <table>
           <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
           <tbody>
-            <tr><td>Lenguaje</td><td><strong>PHP 8.3+</strong></td></tr>
+            <tr><td>Lenguaje</td><td><strong>PHP 8.4+</strong></td></tr>
             <tr><td>Framework</td><td><strong>Laravel 12</strong></td></tr>
             <tr><td>Auth / equipos</td><td><strong>Jetstream 5</strong> + Fortify + <strong>Sanctum 4</strong></td></tr>
             <tr><td>UI reactiva</td><td><strong>Livewire 4</strong></td></tr>
             <tr><td>Permisos</td><td><strong>Spatie Laravel Permission</strong></td></tr>
-            <tr><td>Pagos</td><td><strong>Laravel Cashier 15</strong> + Stripe (multi-cuenta)</td></tr>
+            <tr><td>Pagos</td><td><strong>Laravel Cashier 15</strong> + <strong>Stripe</strong> (multi-cuenta) + <strong>Mercado Pago</strong></td></tr>
+            <tr><td>Afiliados</td><td>Enlaces de referido, invitaciones, comisiones por factura (<code>affiliates</code>)</td></tr>
             <tr><td>Listados</td><td><strong>Yajra DataTables 12</strong></td></tr>
             <tr><td>Media / settings</td><td>Spatie Media Library, Laravel Settings, Tags</td></tr>
-            <tr><td>Facturación ES</td><td><strong>VeriFactu</strong> (AEAT)</td></tr>
+            <tr><td>Facturación fiscal</td><td><strong>VeriFactu</strong> (AEAT, España) · <strong>ARCA</strong> (Hacienda, Argentina)</td></tr>
             <tr><td>Observabilidad</td><td>Sentry, Laravel Telescope (opcional)</td></tr>
             <tr><td>Tests / formato</td><td>PHPUnit 10, Laravel Pint</td></tr>
           </tbody>
@@ -364,8 +373,28 @@
       </div>
     </section>
 
+    <section id="mobile">
+      <h2><span class="num">4</span> App móvil</h2>
+      <div class="card highlight">
+        <p style="margin-bottom:0.75rem">
+          <span class="tag">Flutter</span>
+          Cliente nativo multiplataforma para <strong style="color:#fff">App Store</strong> (iOS) y <strong style="color:#fff">Play Store</strong> (Android).
+        </p>
+        <table>
+          <thead><tr><th>Capa</th><th>Tecnología</th></tr></thead>
+          <tbody>
+            <tr><td>Framework</td><td><strong>Flutter</strong> (iOS + Android)</td></tr>
+            <tr><td>Backend</td><td>API REST Humano con <strong>Sanctum</strong> (<code>API_BASE_URL</code>)</td></tr>
+            <tr><td>Distribución</td><td><strong>App Store</strong> y <strong>Google Play Store</strong></td></tr>
+            <tr><td>CI/CD</td><td><strong>GitHub Actions</strong> — build, firma y publicación en tiendas</td></tr>
+            <tr><td>Funcionalidad</td><td>Menú por permisos, dashboard, chat, asistente, CRM y módulos del team</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section id="database">
-      <h2><span class="num">4</span> Base de datos</h2>
+      <h2><span class="num">5</span> Base de datos</h2>
       <div class="card highlight">
         <p style="margin-bottom:0.75rem">
           <span class="tag pg">PostgreSQL</span> Base de datos <strong style="color:#fff">principal</strong> en producción y desarrollo.
@@ -390,7 +419,7 @@
     </section>
 
     <section id="queues">
-      <h2><span class="num">5</span> Colas y jobs</h2>
+      <h2><span class="num">6</span> Colas y jobs</h2>
       <div class="grid-2">
         <div class="card">
           <h3>Correo y campañas</h3>
@@ -416,17 +445,21 @@
     </section>
 
     <section id="integrations">
-      <h2><span class="num">6</span> Integraciones externas</h2>
+      <h2><span class="num">7</span> Integraciones externas</h2>
       <div class="card">
         <table>
           <thead><tr><th>Dominio</th><th>Servicios</th></tr></thead>
           <tbody>
-            <tr><td>Pagos</td><td>Stripe — Payment Links, Checkout, webhooks, afiliados</td></tr>
+            <tr><td>Pagos</td><td>Stripe y <strong>Mercado Pago</strong> — Checkout, webhooks, suscripciones</td></tr>
+            <tr><td>Afiliados</td><td>Referidos, invitaciones de compra y comisiones vía Stripe</td></tr>
+            <tr><td>Facturación fiscal</td><td>VeriFactu (AEAT) · ARCA (Argentina)</td></tr>
             <tr><td>Comunicación</td><td>Twilio (SMS/WhatsApp) o Baileys (Node.js local)</td></tr>
             <tr><td>Email</td><td>SMTP, MailBaby, IMAP, campañas transaccionales</td></tr>
             <tr><td>IA</td><td>Laravel AI, Anthropic Claude, OpenAI, ElevenLabs</td></tr>
             <tr><td>Google</td><td>OAuth, Calendar, People, Places, Analytics</td></tr>
-            <tr><td>Hosting</td><td>OVH API, WHM/cPanel</td></tr>
+            <tr><td>Hosting</td><td>OVH API, <strong>Hetzner</strong>, WHM/cPanel</td></tr>
+            <tr><td>Backups</td><td><a href="https://www.backblaze.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)"><strong>Backblaze</strong></a> — almacenamiento y respaldos externos</td></tr>
+            <tr><td>Ciberseguridad</td><td><strong>REVISION ALPHA</strong>, <a href="https://www.gitguardian.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">GitGuardian</a></td></tr>
             <tr><td>Otros</td><td>Apollo.io, CurrencyFreaks, WebDAV, WooCommerce, VeriFactu</td></tr>
           </tbody>
         </table>
@@ -434,31 +467,39 @@
     </section>
 
     <section id="satellites">
-      <h2><span class="num">7</span> Apps y servicios satélite</h2>
+      <h2><span class="num">8</span> Apps y servicios satélite</h2>
       <div class="card">
         <table>
           <thead><tr><th>Servicio</th><th>Rol</th></tr></thead>
           <tbody>
-            <tr><td>whatsapp-service</td><td>Node 18+ + Baileys — WhatsApp por QR sin Twilio</td></tr>
+            <tr><td><strong>App móvil Humano</strong></td><td><strong>Flutter</strong> — App Store y Play Store vía GitHub Actions</td></tr>
+            <tr><td>whatsapp-service</td><td>Node + Baileys — WhatsApp por QR sin Twilio</td></tr>
             <tr><td>Prospection</td><td>Frontend React separado</td></tr>
             <tr><td>WebDAV</td><td>CardDAV / CalDAV (sincronización contactos y calendario)</td></tr>
-            <tr><td>App móvil</td><td>API REST con Sanctum</td></tr>
-            <tr><td>humano-academy</td><td>Package Composer interno (Idoneo)</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
     <section id="infra">
-      <h2><span class="num">8</span> Infraestructura y despliegue</h2>
+      <h2><span class="num">9</span> Infraestructura y despliegue</h2>
+      <div class="card highlight" style="margin-bottom:1rem">
+        <h3>Flujo de despliegue</h3>
+        <p style="font-size:0.9rem;color:var(--muted-2);margin-bottom:0.75rem">
+          El desarrollo se realiza <strong style="color:#fff">localmente</strong>, se valida en
+          <strong style="color:#fff">staging</strong> y, tras las comprobaciones de seguridad, se publica en
+          <strong style="color:#fff">producción</strong>.
+        </p>
+        <div class="diagram" style="min-width:0;font-size:0.82rem;text-align:center">Local (Herd)  ──▶  Staging  ──▶  GitGuardian  ──▶  Producción</div>
+      </div>
       <div class="grid-2">
         <div class="card">
           <h3>Entornos</h3>
           <table>
             <tbody>
-              <tr><td>Local</td><td>Laravel Herd (<code>*.test</code>)</td></tr>
-              <tr><td>Dev</td><td>VPS OVH + cPanel (GitHub Actions)</td></tr>
-              <tr><td>Prod</td><td>OVH shared hosting (GitHub Actions)</td></tr>
+              <tr><td><strong>Local</strong></td><td>Desarrollo en máquina del equipo — Laravel Herd (<code>*.test</code>)</td></tr>
+              <tr><td><strong>Staging</strong></td><td>Servidores de prueba — VPS OVH / <strong>Hetzner</strong> + cPanel (GitHub Actions)</td></tr>
+              <tr><td><strong>Producción</strong></td><td>OVH shared hosting / <strong>Hetzner</strong> — solo tras aprobación en staging y GitGuardian</td></tr>
               <tr><td>Forge</td><td>Zero-downtime releases + PM2 WhatsApp</td></tr>
             </tbody>
           </table>
@@ -470,27 +511,70 @@
             <li>Nginx / Apache</li>
             <li>Supervisor — workers Redis</li>
             <li>PM2 — servicio WhatsApp Node</li>
-            <li>Storage local + S3 opcional</li>
+            <li>Storage local + <a href="https://www.backblaze.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">Backblaze</a> (backups externos)</li>
           </ul>
         </div>
       </div>
       <div class="card" style="margin-top:1rem">
-        <h3>Pipeline CI/CD</h3>
+        <h3>Proveedores de hosting</h3>
+        <table>
+          <thead><tr><th>Proveedor</th><th>Uso</th></tr></thead>
+          <tbody>
+            <tr><td><strong>OVH</strong></td><td>VPS, shared hosting, API de dominios y servicios (<code>ovh-sync</code>)</td></tr>
+            <tr><td><strong>Hetzner</strong></td><td>Cloud y VPS — infraestructura de aplicación y servicios</td></tr>
+            <tr><td>WHM / cPanel</td><td>Gestión de hosting de clientes y automatización de cuentas</td></tr>
+            <tr><td>Laravel Forge</td><td>Despliegue zero-downtime, workers y PM2</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <h3>Pipeline CI/CD — Web (Laravel)</h3>
         <ul>
+          <li>Desarrollo local → despliegue a <strong>staging</strong> → validación → <strong>producción</strong></li>
+          <li><a href="https://www.gitguardian.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">GitGuardian</a> — escaneo de secretos y vulnerabilidades antes de publicar en producción</li>
           <li>GitHub Actions: build assets (Vite), <code>composer install --no-dev</code></li>
           <li>Artefacto tar.gz → SCP por SSH al servidor</li>
           <li>Hooks: <code>config:cache</code>, <code>route:cache</code>, migraciones, Livewire assets</li>
         </ul>
       </div>
+      <div class="card" style="margin-top:1rem">
+        <h3>Pipeline CI/CD — App móvil (Flutter)</h3>
+        <ul>
+          <li>GitHub Actions: build Flutter para iOS y Android</li>
+          <li>Firma de releases (certificados Apple, keystore Google Play)</li>
+          <li>Publicación automatizada en <strong>App Store</strong> y <strong>Play Store</strong></li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="security">
+      <h2><span class="num">10</span> Ciberseguridad</h2>
+      <div class="card highlight">
+        <p style="margin-bottom:0.75rem">
+          <span class="tag">REVISION ALPHA</span>
+          Marco de revisión y endurecimiento de seguridad de la plataforma.
+        </p>
+        <table>
+          <thead><tr><th>Área</th><th>Medidas</th></tr></thead>
+          <tbody>
+            <tr><td>Autenticación</td><td>Jetstream, Sanctum, permisos granulares (Spatie), webhooks firmados</td></tr>
+            <tr><td>Observabilidad</td><td>Sentry, Telescope (opcional), logs estructurados</td></tr>
+            <tr><td>Revisión de código</td><td><a href="https://www.gitguardian.com/" target="_blank" rel="noopener noreferrer" style="color:var(--accent)"><strong>GitGuardian</strong></a> — detección de secretos y vulnerabilidades antes de producción</td></tr>
+            <tr><td>Revisión</td><td><strong>REVISION ALPHA</strong> — auditoría y controles de ciberseguridad</td></tr>
+            <tr><td>Datos</td><td>Aislamiento por <code>team_id</code>, políticas de acceso por recurso</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section id="modules">
-      <h2><span class="num">9</span> Módulos de negocio</h2>
+      <h2><span class="num">11</span> Módulos de negocio</h2>
       <div class="card">
         <p style="font-size:0.9rem;color:var(--muted-2);margin-bottom:0.75rem">Activables por team:</p>
         <div>
           <span class="tag">CRM</span>
           <span class="tag">Billing</span>
+          <span class="tag">Afiliados</span>
           <span class="tag">Marketing</span>
           <span class="tag">Automation</span>
           <span class="tag">Content</span>
@@ -508,7 +592,7 @@
           </ul>
           <ul>
             <li>Landings (GrapesJS), blog, academy</li>
-            <li>Servidores, hosting (WHM/OVH)</li>
+            <li>Servidores, hosting (WHM / OVH / Hetzner)</li>
             <li>Tickets, mailbox</li>
             <li>Productos, pedidos, tiendas</li>
           </ul>
@@ -516,7 +600,8 @@
       </div>
       <div class="one-liner">
         <strong>Resumen:</strong> Humano = Laravel 12 multi-team sobre PostgreSQL (con compatibilidad MySQL vía Eloquent),
-        Redis, Stripe, IA y comunicaciones, desplegado en OVH/Forge.
+        Redis, Stripe, IA y comunicaciones, app móvil Flutter en App Store y Play Store (GitHub Actions),
+        desplegado en OVH / Hetzner / Forge, con ciberseguridad REVISION ALPHA.
       </div>
     </section>
 

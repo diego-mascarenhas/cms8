@@ -15,5 +15,22 @@ class StackPageTest extends TestCase
         $response->assertSee('Stack técnico Humano', false);
         $response->assertSee('PostgreSQL', false);
         $response->assertSee('compatibilidad', false);
+        $response->assertSee('Hetzner', false);
+        $response->assertSee('REVISION ALPHA', false);
+        $response->assertSee('Node + Baileys', false);
+        $response->assertDontSee('Node 18+', false);
+        $response->assertSee('Flutter', false);
+        $response->assertSee('App Store', false);
+        $response->assertSee('Play Store', false);
+        $response->assertSee('Afiliados', false);
+        $response->assertSee('Mercado Pago', false);
+        $response->assertSee('ARCA', false);
+        $response->assertSee('GitGuardian', false);
+        $response->assertSee('staging', false);
+        $response->assertSee('gitguardian.com', false);
+        $response->assertSee('Backblaze', false);
+        $response->assertSee('backblaze.com', false);
+        $response->assertSee('OVH / Hetzner · REVISION ALPHA', false);
+        $response->assertDontSee('OVH / Hetzner / WHM', false);
     }
 }
