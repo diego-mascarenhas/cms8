@@ -46,6 +46,9 @@ body{background:#06050f;font-family:var(--font);overflow:hidden;
 .hdr{position:absolute;top:42px;left:84px;right:84px;display:flex;
  justify-content:space-between;align-items:center;z-index:5}
 .brand{display:flex;align-items:center}
+a.brand{text-decoration:none;color:inherit;cursor:pointer;transition:opacity .18s ease}
+a.brand:hover{opacity:.82}
+a.brand:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
 .brand-logo{height:28px;width:auto;display:block}
 .hdr-r{font-size:12.5px;letter-spacing:3.4px;color:var(--muted2);font-weight:600}
 .ftr{position:absolute;bottom:40px;left:84px;right:84px;display:flex;
@@ -233,7 +236,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-accent" style="width:360px;height:360px;left:-120px;top:30px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">P R E S E N T A C I Ó N</div></div>
  <div class="dv">
   <div class="num sc" style="--d:.05s">01</div>
@@ -255,7 +258,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:340px;height:340px;left:-120px;bottom:-140px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">QUÉ ES HUMANO</div></div>
  <div class="wi">
   <div class="wi-l sc" style="--d:.12s">
@@ -281,7 +284,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <!-- 04 PRIMEROS PASOS -->
 <section class="slide">
  <div class="grid-tex"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">PRIMEROS PASOS</div></div>
  <div class="shead">
   <span class="eyebrow u" style="--d:0s">TRAS CONTRATAR</span>
@@ -305,7 +308,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-violet" style="width:380px;height:380px;right:-130px;top:-90px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">ASISTENTE</div></div>
  <div class="shead">
   <span class="eyebrow u" style="--d:0s">6 PASOS</span>
@@ -332,7 +335,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <!-- 06 PASO 1 DETALLE -->
 <section class="slide">
  <div class="grid-tex"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">PASO 1 / 6</div></div>
  <div style="position:absolute;left:84px;top:99px"><span class="eyebrow u" style="--d:0s">PASO 01 · DATOS DEL NEGOCIO</span></div>
  <div class="stg">
@@ -363,7 +366,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <!-- 07 PASO 5 DESAFÍO -->
 <section class="slide">
  <div class="grid-tex"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">PASO 5 / 6</div></div>
  <div style="position:absolute;left:84px;top:99px"><span class="eyebrow u" style="--d:0s">PASO 05 · DESAFÍO</span></div>
  <div class="stg">
@@ -394,7 +397,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <!-- 08 PASO 6 INFORME -->
 <section class="slide">
  <div class="grid-tex"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">PASO 6 / 6</div></div>
  <div style="position:absolute;left:84px;top:99px"><span class="eyebrow u" style="--d:0s">PASO 06 · REVISAR Y ENVIAR</span></div>
  <div class="stg">
@@ -426,7 +429,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">SIGUIENTE CAPÍTULO</div></div>
  <div class="cl">
   <div class="u" style="--d:.05s"><span class="kicker">BLOQUE 02</span></div>
