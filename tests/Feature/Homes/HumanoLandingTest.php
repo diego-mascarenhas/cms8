@@ -75,6 +75,17 @@ class HumanoLandingTest extends TestCase
             ->assertRedirect(route('wapify'));
     }
 
+    public function test_guest_root_redirects_to_slash_when_public_home_route_is_set(): void
+    {
+        config([
+            'app.public_home_route' => 'slash',
+            'app.public_home_path' => null,
+        ]);
+
+        $this->get('/')
+            ->assertRedirect(route('slash'));
+    }
+
     public function test_guest_root_redirects_to_public_home_path_when_set(): void
     {
         config([
