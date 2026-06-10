@@ -101,7 +101,15 @@ return [
     ],
 
     'lead' => [
-        'success' => 'Gracias. Recibimos tu email y podés elegir tu plan a continuación.',
+        'success_badge' => 'Solo por dejar tu email',
+        'success_kicker' => 'Empezá hoy, no la semana que viene',
+        'success_title' => '50% de descuento tus primeros 6 meses',
+        'success_body' => 'Te acabamos de desbloquear un código exclusivo. Copialo, elegí plan abajo y aplicalo en el checkout de Stripe — válido desde hoy mismo.',
+        'success_code_label' => 'Código exclusivo',
+        'success_copy' => 'Copiar código',
+        'success_copied' => '¡Copiado!',
+        'success_cta' => 'Ver planes y activarlo',
+        'success_close' => 'Cerrar',
         'validation_email_required' => 'Indicá tu email para continuar.',
         'validation_email_invalid' => 'El email no es válido.',
         'validation_client_email_required' => 'Antes de seguir, necesitamos tu email 😉',

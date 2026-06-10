@@ -111,6 +111,92 @@
     });
   });
 
+  document.querySelectorAll('[data-slash-copy-coupon]').forEach(function (copyButton) {
+    var codeWrap = copyButton.closest('.slash-lead-reward-code');
+    var couponCodeEl = codeWrap ? codeWrap.querySelector('[data-slash-coupon-code]') : null;
+
+    if (!couponCodeEl) {
+      return;
+    }
+
+    var defaultLabel = copyButton.textContent.trim();
+    var copiedLabel = copyButton.getAttribute('data-copied-label') || 'Copiado';
+
+    copyButton.addEventListener('click', function () {
+      var code = (couponCodeEl.textContent || '').trim();
+
+      if (!code) {
+        return;
+      }
+
+      function markCopied() {
+        copyButton.textContent = copiedLabel;
+        copyButton.classList.add('is-copied');
+
+        window.setTimeout(function () {
+          copyButton.textContent = defaultLabel;
+          copyButton.classList.remove('is-copied');
+        }, 1800);
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).then(markCopied).catch(function () {
+          markCopied();
+        });
+
+        return;
+      }
+
+      markCopied();
+    });
+  });
+
+  (function initRewardModal() {
+    if (!document.body.hasAttribute('data-slash-show-reward-modal')) {
+      return;
+    }
+
+    var modal = document.querySelector('[data-slash-reward-modal]');
+
+    if (!modal) {
+      return;
+    }
+
+    function openRewardModal() {
+      modal.hidden = false;
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('slash-lead-modal-open');
+    }
+
+    function closeRewardModal() {
+      modal.hidden = true;
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('slash-lead-modal-open');
+    }
+
+    modal.querySelectorAll('[data-slash-reward-modal-close]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        closeRewardModal();
+      });
+    });
+
+    var goButton = modal.querySelector('[data-slash-reward-modal-go]');
+
+    if (goButton) {
+      goButton.addEventListener('click', function () {
+        closeRewardModal();
+      });
+    }
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !modal.hidden) {
+        closeRewardModal();
+      }
+    });
+
+    openRewardModal();
+  })();
+
   /* ── Lead capture modal (after email, optional name + phone) ── */
 
   (function initLeadModal() {

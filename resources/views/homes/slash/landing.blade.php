@@ -42,7 +42,7 @@
   </script>
   @endif
 </head>
-<body class="slash-page">
+<body class="slash-page" @if (session('slash_lead_sent')) data-slash-show-reward-modal @endif>
 
   <header class="slash-nav">
     <div class="slash-container slash-nav-inner">
@@ -326,9 +326,6 @@
 
     <section id="precios" class="slash-section">
       <div class="slash-container">
-        @if (session('slash_lead_sent'))
-          <p class="slash-form-success" role="status">{{ __('slash_landing.lead.success') }}</p>
-        @endif
         <div class="slash-section-head">
           <span class="slash-eyebrow">{{ __('slash_landing.pricing.eyebrow') }}</span>
           <h2 class="slash-h2">{{ __('humano_pricing.hero_title') }}</h2>
@@ -526,6 +523,7 @@
   </footer>
 
   @include('homes.slash.partials.lead-modal')
+  @include('homes.slash.partials.reward-modal')
 
   <script src="{{ SlashHomeAsset::url('vendor/gsap/gsap.min.js') }}"></script>
   <script src="{{ SlashHomeAsset::url('vendor/gsap/ScrollTrigger.min.js') }}"></script>

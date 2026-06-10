@@ -598,6 +598,119 @@ body.slash-page {
   text-align: center;
 }
 
+.slash-lead-reward {
+  text-align: center;
+}
+
+.slash-lead-reward-modal {
+  margin: 0;
+  padding: 0;
+}
+
+.slash-reward-modal-dialog {
+  width: min(100%, 34rem);
+  padding: 1.85rem 1.65rem 1.45rem;
+  border-color: rgba(61, 214, 140, 0.28);
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(61, 214, 140, 0.14) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(18, 24, 32, 0.98), rgba(10, 14, 20, 0.98));
+}
+
+.slash-lead-reward-badge {
+  display: inline-flex;
+  margin: 0 0 0.85rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(61, 214, 140, 0.35);
+  background: var(--slash-accent-soft);
+  color: var(--slash-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.slash-lead-reward-kicker {
+  margin: 0 0 0.45rem;
+  color: var(--slash-muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.slash-lead-reward-title {
+  margin: 0 0 0.75rem;
+  color: var(--slash-ink);
+  font-size: clamp(1.45rem, 3.2vw, 1.85rem);
+  line-height: 1.2;
+}
+
+.slash-lead-reward-body {
+  margin: 0 0 1.15rem;
+  color: var(--slash-ink-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.slash-lead-reward-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(61, 214, 140, 0.45);
+  background: rgba(8, 9, 11, 0.55);
+}
+
+.slash-lead-reward-code-label {
+  width: 100%;
+  color: var(--slash-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.slash-lead-reward-code-value {
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: var(--slash-accent-soft);
+  color: var(--slash-ink);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.slash-lead-reward-copy {
+  border: 1px solid var(--slash-border-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--slash-ink);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.45rem 0.85rem;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.slash-lead-reward-copy:hover {
+  border-color: rgba(61, 214, 140, 0.45);
+  background: var(--slash-accent-soft);
+  color: var(--slash-ink);
+}
+
+.slash-lead-reward-copy.is-copied {
+  border-color: rgba(61, 214, 140, 0.55);
+  background: rgba(61, 214, 140, 0.18);
+  color: var(--slash-accent);
+}
+
 .slash-hero-shot {
   margin-top: 4rem;
   border-radius: var(--slash-radius-xl) var(--slash-radius-xl) 0 0;

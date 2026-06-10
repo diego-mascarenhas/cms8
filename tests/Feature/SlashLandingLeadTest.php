@@ -78,6 +78,27 @@ class SlashLandingLeadTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_store_lead_shows_discount_reward_modal(): void
+    {
+        Mail::fake();
+
+        config([
+            'humano_pricing.slash_lead_coupon_code' => 'HOYMISMO',
+        ]);
+
+        $this->post(route('slash.lead.store'), [
+            'email' => 'interesado@example.com',
+            'source' => 'cta',
+        ])->assertRedirect(route('slash').'#precios');
+
+        $this->get(route('slash').'#precios')
+            ->assertOk()
+            ->assertSee('data-slash-show-reward-modal', false)
+            ->assertSee('data-slash-reward-modal', false)
+            ->assertSee('HOYMISMO', false)
+            ->assertSee(__('slash_landing.lead.success_title'), false);
+    }
+
     public function test_store_lead_logs_warning_when_notification_email_is_not_configured(): void
     {
         Mail::fake();

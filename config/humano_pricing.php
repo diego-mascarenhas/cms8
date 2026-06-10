@@ -58,6 +58,11 @@ return [
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
 
     /*
+     * | Promo code shown after slash landing lead capture (/slash). Falls back to coupon_code.
+     */
+    'slash_lead_coupon_code' => env('SLASH_LANDING_COUPON_CODE', 'HOYMISMO'),
+
+    /*
      * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer team's Stripe
      * | customer id (cus_…) or legacy numeric referrer enterprise id. Keys must match Stripe's field.
      * | If the custom field is empty, pass client_reference_id=cus_… on the Payment Link URL.
