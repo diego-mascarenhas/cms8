@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'welcome' => '¡Hola! Soy el asistente de :shop. Te ayudo a armar tu pedido.',
+    'ask_profile' => 'Para recomendarte mejor: ¿qué edad tenés o para qué edad comprás? ¿Algún gusto, restricción o estilo que debamos tener en cuenta?',
+    'assistant_title' => 'Asistente',
+    'flow_label' => 'Tienda',
+    'cart_title' => 'Tu carrito',
+    'cart_empty' => 'Todavía no agregaste productos. Pedile sugerencias al asistente o tocá los botones cuando aparezcan.',
+    'input_placeholder' => 'Escribí lo que buscás o respondé al asistente…',
+    'send' => 'Enviar',
+    'add' => 'Agregar',
+    'suggested_label' => 'Sugerencias rápidas',
+    'checkout_whatsapp' => 'Enviar pedido por WhatsApp',
+    'lines' => 'ítems',
+    'back_home' => 'Volver al inicio',
+    'thinking' => 'Pensando…',
+    'error' => 'No pudimos cargar la tienda.',
+    'fallback_no_match' => 'No encontré coincidencias claras en el catálogo. Contame un poco más (tipo de producto, ocasión o presupuesto aproximado).',
+    'fallback_matches' => 'Estas opciones podrían encajar: :names.',
+    'empty_reply' => '¿Podés contarme un poco más para recomendarte?',
+    'no_whatsapp' => 'Este negocio aún no tiene WhatsApp configurado para recibir pedidos.',
+    'empty_cart' => 'Agregá al menos un producto al carrito antes de enviar el pedido.',
+    'wa_order_intro' => 'Hola, quiero hacer este pedido:',
+    'profile_snapshot' => 'Datos que compartiste',
+    'age_label' => 'Edad:',
+];

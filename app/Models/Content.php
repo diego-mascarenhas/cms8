@@ -193,7 +193,6 @@ class Content extends Model
             return null;
         }
 
-        $locale = app()->getLocale();
         $fromSection = [];
         if ($this->relationLoaded('sectionCategory') && $this->sectionCategory)
         {
@@ -201,7 +200,7 @@ class Content extends Model
         }
 
         $candidates = array_values(array_unique(array_merge(
-            [$locale, 'es'],
+            \App\Support\ApplicationLocales::contentTranslationCandidates(app()->getLocale()),
             $fromSection,
             array_keys($raw),
         )));
@@ -237,7 +236,15 @@ class Content extends Model
 
         if (is_array($value))
         {
-            return $value[$locale] ?? $value['es'] ?? $value[array_key_first($value)] ?? null;
+            foreach (\App\Support\ApplicationLocales::contentTranslationCandidates($locale) as $candidate)
+            {
+                if (isset($value[$candidate]) && is_string($value[$candidate]) && $value[$candidate] !== '')
+                {
+                    return $value[$candidate];
+                }
+            }
+
+            return $value[array_key_first($value)] ?? null;
         }
 
         return $value;

@@ -1,0 +1,34 @@
+<?php
+
+return [
+    'page_title' => 'Ayuda — Guía sobre SPF y DNS para el envío de correo',
+    'title' => 'Ayuda — Guía sobre SPF y DNS para el envío de correo',
+    'intro' => 'Cuando tu equipo usa el correo saliente de la plataforma (SMTP del sistema), Humano comprueba el dominio de la dirección «De». Tu TXT SPF en el apex debe incluir el include de Revision Alpha (puedes mantener otros mecanismos: MX, ip4, otros include, etc.).',
+
+    'required_record_heading' => 'Mecanismo obligatorio en el SPF',
+    'required_record_body' => 'En la raíz del dominio de envío (la parte después de @ en el remitente del equipo), el TXT SPF debe contener este include (sin distinguir mayúsculas). Puedes añadirlo junto a lo que ya tengas:',
+
+    'example_heading' => 'Ejemplo mínimo',
+    'example_body' => 'Si solo envías desde esta plataforma para ese dominio, un registro mínimo sería:',
+
+    'domain_heading' => '¿Qué dominio?',
+    'domain_body' => 'La comprobación usa el dominio del remitente «De» configurado para tu equipo (Ajustes del equipo → correo / notificaciones). Si envías como noreply@ejemplo.com, el SPF se valida en ejemplo.com.',
+
+    'why_heading' => '¿Por qué este include?',
+    'why_body' => 'Autoriza la infraestructura de envío de Revision Alpha para enviar en nombre de tu dominio cuando usas el SMTP del sistema.',
+
+    'includes_chain_heading' => 'Includes anidados',
+    'includes_chain_body' => 'Si tu SPF usa include:otro-dominio y ese registro acaba incluyendo spf.revisionalpha.com, Humano sigue una cadena corta de includes (hasta 5 niveles) al resolver TXT.',
+
+    'propagation_heading' => 'Propagación DNS',
+    'propagation_body' => 'Tras guardar en tu proveedor DNS, los resolvers globales pueden tardar desde minutos hasta 48 horas. Humano lee DNS desde el servidor de la aplicación; herramientas como MXToolbox pueden mostrar el registro antes o después que tu servidor, según la caché del resolver.',
+
+    'verify_heading' => 'Cómo comprobarlo',
+    'verify_body' => 'Usa un comprobador SPF/DNS externo para el apex de tu dominio, o consulta TXT desde terminal (ejemplo):',
+    'verify_note' => 'Busca una línea TXT que empiece por v=spf1 y contenga include:spf.revisionalpha.com.',
+
+    'own_smtp_heading' => 'Si usas SMTP propio',
+    'own_smtp_body' => 'Si tu equipo configura SMTP personalizado (host, usuario, etc.) en los ajustes del equipo, estas comprobaciones de SPF para «SMTP del sistema» no aplican al envío por tu propio servidor—siguen aplicando los requisitos de tu proveedor.',
+
+    'back_to_help' => 'Volver al inicio de Ayuda',
+];

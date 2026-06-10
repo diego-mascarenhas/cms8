@@ -48,7 +48,7 @@ class ContentFormVisibilityTest extends TestCase
     {
         $locales = ContentsSectionCategoryData::mergeContentLocalesFromRequest([]);
 
-        $this->assertSame(['es'], $locales);
+        $this->assertSame(['es_ES'], $locales);
     }
 
     public function test_content_edit_form_only_shows_configured_locale_tabs(): void

@@ -10,112 +10,14 @@
     'mentor' => $slashImg('plans/mentor.png'),
   ];
 
-  $features = [
-    ['icon' => 'laptop.png', 'title' => 'Sin el mega excel', 'text' => 'Dejá macros opacos y permisos confusos. Toda la empresa ve la misma información con roles claros.'],
-    ['icon' => 'check.png', 'title' => 'Los datos son tuyos', 'text' => 'Servidores en Europa. Exportá y llevate tus datos cuando quieras, sin límites.'],
-    ['icon' => 'rocket.png', 'title' => 'Menos gestión, más vida', 'text' => 'Procesos probados sin inventarlos vos. Humano.app acelera la operativa desde el primer día.'],
-    ['icon' => 'paper.png', 'title' => 'Sistema en la nube', 'text' => 'Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.'],
-    ['icon' => 'user.png', 'title' => 'Control por WhatsApp', 'text' => 'Gestioná tu negocio desde WhatsApp. Vos das las órdenes, Humano.app responde.'],
-    ['icon' => 'keyboard.png', 'title' => 'Consultor IA personalizado', 'text' => 'Respuestas útiles para tu negocio y tu equipo, con tu tono de marca.'],
-  ];
-
-  $capabilities = [
-    ['title' => 'WhatsApp integrado', 'text' => 'Conectá tu línea, respondé desde el panel y automatizá lo repetitivo sin salir de Humano.'],
-    ['title' => 'Roles y permisos', 'text' => 'Definí quién ve qué: ventas, operaciones, finanzas. Sin macros ni hojas compartidas a ciegas.'],
-    ['title' => 'Multi-equipo', 'text' => 'Cambiá entre espacios de trabajo como entre servidores: cada negocio con su marca, datos y flujos.'],
-  ];
-
-  $tools = [
-    ['title' => 'Panel Hoy', 'text' => 'Vista diaria de pendientes, citas y conversaciones activas.'],
-    ['title' => 'Prospección', 'text' => 'Buscá perfiles por cargo y ubicación e importalos a tu agenda.'],
-    ['title' => 'Tareas y tablero', 'text' => 'Lista y kanban por estado, responsables y fechas.'],
-    ['title' => 'Landings', 'text' => 'Convertí visitas en contactos con páginas enlazadas al CRM.'],
-    ['title' => 'Facturación', 'text' => 'Emití y seguí cobros sin cambiar de herramienta.'],
-    ['title' => 'Exportación', 'text' => 'Tus datos son tuyos: exportá cuando quieras, sin límites.'],
-  ];
-
-  $trustCards = [
-    [
-      'quote' => 'Dejamos el Excel compartido y por fin todo el equipo ve lo mismo. La configuración inicial nos llevó una tarde.',
-      'name' => 'María G.',
-      'role' => 'Directora, estudio creativo',
-      'initials' => 'MG',
-      'stats' => [['value' => '24/7', 'label' => 'acceso en la nube'], ['value' => '−40%', 'label' => 'tiempo admin']],
-    ],
-    [
-      'quote' => 'WhatsApp conectado al panel cambió cómo respondemos. La IA mantiene nuestro tono sin sonar genérica.',
-      'name' => 'Carlos R.',
-      'role' => 'Fundador, agencia digital',
-      'initials' => 'CR',
-      'stats' => [['value' => '1', 'label' => 'plataforma unificada'], ['value' => '0', 'label' => 'macros confusos']],
-    ],
-    [
-      'quote' => 'Facturas, contactos y campañas en un solo lugar. Dejamos de saltar entre cinco herramientas cada mañana.',
-      'name' => 'Laura P.',
-      'role' => 'COO, consultora B2B',
-      'initials' => 'LP',
-      'stats' => [['value' => 'EU', 'label' => 'datos en Europa'], ['value' => '100%', 'label' => 'exportables']],
-    ],
-  ];
-
-  $testimonials = [
-    ['text' => 'Las necesidades de un negocio moderno cambian rápido, y plataformas como Humano son las que pueden responder a eso.', 'author' => 'Equipo fundador', 'company' => 'Humano.app'],
-    ['text' => 'Siguen lanzando mejoras que realmente uso cada día: chat, tareas y contactos en el mismo flujo.', 'author' => 'Usuario Business', 'company' => 'Plan Business'],
-    ['text' => 'Con Humano veo todo lo que pasa en el negocio. Hace que mirar los números y el equipo sea mucho más claro.', 'author' => 'Usuario Mentor', 'company' => 'Plan Mentor'],
-  ];
-
-  $securityItems = [
-    ['title' => 'Infraestructura europea', 'text' => 'La plataforma se aloja en servidores en Europa, con controles de acceso y respaldo operativo.'],
-    ['title' => 'Autenticación segura', 'text' => 'Cuentas y acciones sensibles protegidas con inicio de sesión y permisos granulares por rol.'],
-    ['title' => 'Tus datos, tu propiedad', 'text' => 'Exportá tu información cuando quieras. Sin bloqueos ni dependencia de formatos propietarios.'],
-    ['title' => 'Permisos por equipo', 'text' => 'Definí quién edita, quién ve y quién opera en cada módulo según la gobernanza de tu empresa.'],
-  ];
-
-  $faqs = [
-    ['q' => '¿Qué es Humano.app?', 'a' => 'Es el sistema operativo de tu negocio digital: contactos, agenda, tareas, WhatsApp, facturación y automatización con IA, en una sola plataforma en la nube.'],
-    ['q' => '¿Puedo probar antes de pagar?', 'a' => 'Sí. Podés suscribirte desde la página de precios con checkout seguro en Stripe.'],
-    ['q' => '¿Los datos son míos?', 'a' => 'Sí. Podés exportar tu información cuando quieras. La plataforma se aloja en infraestructura europea robusta.'],
-    ['q' => '¿Por qué usar Humano en lugar de Excel?', 'a' => 'Porque centraliza contactos, comunicación, tareas y cobros con roles claros. Menos errores, menos tiempo administrativo y más foco en clientes.'],
-    ['q' => '¿Es seguro para mi negocio?', 'a' => 'Sí. Usamos autenticación estándar, permisos por rol e infraestructura en Europa. Tus datos permanecen bajo tu control y son exportables.'],
-  ];
-
-  $metrics = [
-    ['value' => '24/7', 'label' => 'Plataforma en la nube', 'count' => null],
-    ['value' => '6', 'label' => 'Pasos para configurar', 'count' => 6, 'suffix' => ''],
-    ['value' => '4', 'label' => 'Planes escalables', 'count' => 4, 'suffix' => ''],
-    ['value' => '100%', 'label' => 'Datos exportables', 'count' => 100, 'suffix' => '%'],
-  ];
-
-  $pricingTiers = [
-    [
-      'name' => 'Assistant',
-      'price' => 'Desde',
-      'suffix' => '/mes',
-      'description' => 'Lo esencial para automatizar el día a día: chat, contactos, calendario y tareas.',
-      'featured' => false,
-      'cta' => 'Empezar',
-      'features' => [
-        'Chat por WhatsApp y prompts con tu tono',
-        'Calendario, contactos y tareas',
-        'Panel Hoy y ajustes operativos',
-        'Exportación de datos sin límites',
-      ],
-    ],
-    [
-      'name' => 'Business',
-      'price' => 'Escala',
-      'suffix' => 'completa',
-      'description' => 'Marketing, ventas y cobros enlazados. El plan más elegido para equipos en crecimiento.',
-      'featured' => true,
-      'cta' => 'Ver precios',
-      'features' => [
-        'Todo lo de Hunter y Assistant',
-        'Facturas, cobros y módulo financiero',
-        'Landings y campañas integradas',
-        'Dashboard y visibilidad del equipo',
-      ],
-    ],
-  ];
+  $features = trans('slash_landing.features');
+  $capabilities = trans('slash_landing.capability_items');
+  $tools = trans('slash_landing.tool_items');
+  $trustCards = trans('slash_landing.trust_cards');
+  $testimonials = trans('slash_landing.testimonials');
+  $securityItems = trans('slash_landing.security_items');
+  $faqs = trans('slash_landing.faqs');
+  $metrics = trans('slash_landing.metric_items');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -123,9 +25,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="description" content="El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.">
+  <meta name="description" content="{{ __('slash_landing.meta_description') }}">
   <meta name="color-scheme" content="dark">
-  <title>Humano.app — El asistente digital que trabaja por ti</title>
+  <title>{{ __('slash_landing.page_title') }}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -149,18 +51,17 @@
       </a>
 
       <ul class="slash-nav-links" id="slashNavLinks">
-        <li><a href="#historias-planes">En acción</a></li>
-        <li><a href="#beneficios">Beneficios</a></li>
-        <li><a href="#guias">Guías</a></li>
-        <li><a href="#planes">Planes</a></li>
-        <li><a href="#precios">Precios</a></li>
-        <li><a href="#faq">FAQ</a></li>
+        <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
+        <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
+        <li><a href="#guias">{{ __('slash_landing.nav.guides') }}</a></li>
+        <li><a href="#planes">{{ __('slash_landing.nav.plans') }}</a></li>
+        <li><a href="#precios">{{ __('slash_landing.nav.pricing') }}</a></li>
+        <li><a href="#faq">{{ __('slash_landing.nav.faq') }}</a></li>
       </ul>
 
       <div class="slash-nav-actions">
-        <a href="{{ route('login') }}" class="slash-btn slash-btn-ghost slash-nav-cta-desktop">Iniciar sesión</a>
-        <a href="{{ route('pricing') }}" class="slash-btn slash-btn-dark">Empezar</a>
-        <button class="slash-nav-toggle" type="button" data-slash-nav-toggle aria-controls="slashNavLinks" aria-expanded="false" aria-label="Abrir menú">
+        <a href="{{ route('login') }}" class="slash-btn slash-btn-ghost slash-nav-cta-desktop">{{ __('slash_landing.nav.login') }}</a>
+        <button class="slash-nav-toggle" type="button" data-slash-nav-toggle aria-controls="slashNavLinks" aria-expanded="false" aria-label="{{ __('slash_landing.nav.open_menu') }}">
           @include('homes.slash.partials.icon', ['name' => 'menu'])
         </button>
       </div>
@@ -177,32 +78,32 @@
       <div class="slash-hero-grid" aria-hidden="true"></div>
       <div class="slash-container">
         <span class="slash-eyebrow slash-shine-badge">Humano.app</span>
-        <h1>Un <em><span class="slash-hero-shine">estándar superior</span></em><br>en gestión de negocio</h1>
-        <p class="slash-lead">Contactos, WhatsApp, IA, facturación y más. Todo en una plataforma.</p>
+        <h1>Un <em><span class="slash-hero-shine">{{ __('slash_landing.hero.title_emphasis') }}</span></em><br>en gestión de negocio</h1>
+        <p class="slash-lead">{{ __('slash_landing.hero.lead') }}</p>
         <form class="slash-hero-form" action="{{ route('pricing') }}" method="GET">
-          <input type="email" name="email" placeholder="tu@email.com" aria-label="Email">
-          <button type="submit" class="slash-btn slash-btn-accent">Empezar</button>
+          <input type="email" name="email" placeholder="{{ __('slash_landing.hero.email_placeholder') }}" aria-label="Email">
+          <button type="submit" class="slash-btn slash-btn-accent">{{ __('slash_landing.hero.cta') }}</button>
         </form>
-        <p class="slash-hero-note">Checkout seguro con Stripe. Cancelá cuando quieras.</p>
+        <p class="slash-hero-note">{{ __('slash_landing.hero.note') }}</p>
         <div class="slash-hero-shot slash-glow-frame">
-          <img src="{{ $slashImg('landing-page/hero-elements-dark.png') }}" alt="Panel Humano" width="3612" height="2328" loading="eager" decoding="async">
+          <img src="{{ $slashImg('landing-page/hero-elements-dark.png') }}" alt="{{ __('slash_landing.hero.image_alt') }}" width="3612" height="2328" loading="eager" decoding="async">
         </div>
       </div>
     </section>
 
     <section class="slash-statband">
       <div class="slash-container">
-        <strong>Miles de tareas gestionadas</strong>
-        <span>por equipos que eligieron dejar el mega excel</span>
+        <strong>{{ __('slash_landing.statband.strong') }}</strong>
+        <span>{{ __('slash_landing.statband.span') }}</span>
       </div>
     </section>
 
     <section id="producto" class="slash-section">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Confianza</span>
-          <h2 class="slash-h2">Elegido por equipos que quieren moverse más rápido</h2>
-          <p class="slash-lead">Desde freelancers hasta pymes, equipos eligen Humano para operar con menos fricción.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.trust.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.trust.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.trust.lead') }}</p>
         </div>
         <div class="slash-trust-grid">
           @foreach ($trustCards as $card)
@@ -237,9 +138,9 @@
     <section class="slash-section">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Capacidades modernas</span>
-          <h2 class="slash-h2">Amplificado con herramientas actuales</h2>
-          <p class="slash-lead">WhatsApp, IA, permisos granulares y espacios de trabajo para escalar sin perder control.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.capabilities.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.capabilities.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.capabilities.lead') }}</p>
         </div>
         <div class="slash-cap-grid">
           @foreach ($capabilities as $cap)
@@ -255,9 +156,9 @@
     <section id="beneficios" class="slash-section slash-guides">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Beneficios clave</span>
-          <h2 class="slash-h2">Todo lo que necesitás para gestionar tu negocio</h2>
-          <p class="slash-lead">Menos gestión administrativa y más tiempo con tus clientes.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.benefits.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.benefits.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.benefits.lead') }}</p>
         </div>
         <div class="slash-grid">
           @foreach ($features as $feature)
@@ -292,8 +193,8 @@
     <section class="slash-section">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Escala y rendimiento</span>
-          <h2 class="slash-h2">Métricas que importan</h2>
+          <span class="slash-eyebrow">{{ __('slash_landing.metrics.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.metrics.title') }}</h2>
         </div>
         <div class="slash-metrics">
           @foreach ($metrics as $metric)
@@ -314,9 +215,9 @@
     <section class="slash-section slash-guides">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Herramientas inteligentes</span>
-          <h2 class="slash-h2">Completá cualquier tarea en pocos clics</h2>
-          <p class="slash-lead">Módulos pensados para el día a día de tu equipo.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.tools.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.tools.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.tools.lead') }}</p>
         </div>
         <div class="slash-tools-grid">
           @foreach ($tools as $tool)
@@ -332,9 +233,9 @@
     <section class="slash-section">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Seguridad</span>
-          <h2 class="slash-h2">Seguro por diseño</h2>
-          <p class="slash-lead">Infraestructura europea, permisos granulares y control total de tus datos.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.security.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.security.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.security.lead') }}</p>
         </div>
         <div class="slash-security-grid">
           @foreach ($securityItems as $item)
@@ -350,9 +251,9 @@
     <section id="guias" class="slash-section slash-foundation">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Guías</span>
-          <h2 class="slash-h2">Aprendé a usar Humano</h2>
-          <p class="slash-lead">Presentaciones paso a paso por módulo. Empezamos por cómo funciona la plataforma.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.guides.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.guides.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.guides.lead') }}</p>
         </div>
         <div class="slash-grid">
           @foreach ($guidePresentations as $guide)
@@ -365,7 +266,7 @@
                 </div>
               </div>
               <p>{{ $guide['description'] }}</p>
-              <span class="slash-guide-link">Ver presentación @include('homes.slash.partials.icon', ['name' => 'arrow-right'])</span>
+              <span class="slash-guide-link">{{ __('slash_landing.guides.cta') }} @include('homes.slash.partials.icon', ['name' => 'arrow-right'])</span>
             </a>
           @endforeach
         </div>
@@ -387,21 +288,13 @@
           @endphp
           <div class="slash-plan-row {{ $index % 2 === 1 ? 'is-reversed' : '' }}">
             <div class="slash-plan-copy">
-              <h3>
-                {{ __('humano_pricing.plans.'.$planId.'.name') }}
-                @if (! empty($plan['popular']))
-                  <span class="slash-pill">{{ __('humano_pricing.most_popular') }}</span>
-                @endif
-              </h3>
+              <h3>{{ __('humano_pricing.plans.'.$planId.'.name') }}</h3>
               <p>{{ __('humano_pricing.plans.'.$planId.'.description') }}</p>
               <ul class="slash-plan-features">
                 @foreach (trans('humano_pricing.plans.'.$planId.'.features') as $planFeature)
                   <li>@include('homes.slash.partials.icon', ['name' => 'check']) <span>{{ $planFeature }}</span></li>
                 @endforeach
               </ul>
-              <a href="{{ route('pricing') }}#plan-{{ $planId }}" class="slash-btn slash-btn-accent">
-                {{ __('humano_pricing.landing_plans_cta') }} @include('homes.slash.partials.icon', ['name' => 'arrow-right'])
-              </a>
             </div>
             <div class="slash-plan-visual">
               <img src="{{ $planImage }}" alt="{{ __('humano_pricing.plans.'.$planId.'.name') }}">
@@ -414,23 +307,48 @@
     <section id="precios" class="slash-section">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Precios</span>
-          <h2 class="slash-h2">Precios transparentes para tu negocio</h2>
-          <p class="slash-lead">Elegí el plan que mejor se adapte. Los precios finales y el checkout están en la página de planes.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.pricing.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('humano_pricing.hero_title') }}</h2>
+          <p class="slash-lead">{{ __('humano_pricing.hero_subtitle') }}</p>
         </div>
         <div class="slash-pricing-grid">
-          @foreach ($pricingTiers as $tier)
-            <div class="slash-pricing-card {{ ! empty($tier['featured']) ? 'is-featured' : '' }}">
-              <h3>{{ $tier['name'] }}</h3>
-              <div class="slash-pricing-price">{{ $tier['price'] }} <small>{{ $tier['suffix'] }}</small></div>
-              <p class="slash-pricing-desc">{{ $tier['description'] }}</p>
+          @foreach ($landingPlans as $plan)
+            @php
+              $planId = $plan['id'];
+              $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
+              $checkoutHref = trim((string) ($plan['checkout_href'] ?? $plan['checkout_url'] ?? ''));
+              $isFeatured = $checkoutAvailable && ! empty($plan['popular']);
+            @endphp
+            <article id="plan-{{ $planId }}" class="slash-pricing-card {{ $isFeatured ? 'is-featured' : '' }}">
+              @if ($isFeatured)
+                <span class="slash-pill slash-pricing-badge">{{ __('humano_pricing.most_popular') }}</span>
+              @endif
+              <h3>{{ __('humano_pricing.plans.'.$planId.'.name') }}</h3>
+              @if ($checkoutAvailable && filled($plan['monthly_amount'] ?? null))
+                <div class="slash-pricing-price">
+                  {{ $plan['monthly_amount'] }}€
+                  <small>{{ __('humano_pricing.per_month_suffix') }}</small>
+                </div>
+                <p class="slash-pricing-vat">{{ __('humano_pricing.prices_plus_vat') }}</p>
+              @else
+                <div class="slash-pricing-price slash-pricing-soon">{{ __('humano_pricing.coming_soon') }}</div>
+              @endif
+              <p class="slash-pricing-desc">{{ __('humano_pricing.plans.'.$planId.'.description') }}</p>
               <ul class="slash-pricing-features">
-                @foreach ($tier['features'] as $feature)
-                  <li>@include('homes.slash.partials.icon', ['name' => 'check']) <span>{{ $feature }}</span></li>
+                @foreach (trans('humano_pricing.plans.'.$planId.'.features') as $planFeature)
+                  <li>@include('homes.slash.partials.icon', ['name' => 'check']) <span>{{ $planFeature }}</span></li>
                 @endforeach
               </ul>
-              <a href="{{ route('pricing') }}" class="slash-btn {{ ! empty($tier['featured']) ? 'slash-btn-accent' : 'slash-btn-outline' }}">{{ $tier['cta'] }}</a>
-            </div>
+              @if ($checkoutAvailable && $checkoutHref !== '')
+                <a href="{{ $checkoutHref }}" class="slash-btn {{ $isFeatured ? 'slash-btn-accent' : 'slash-btn-outline' }}">
+                  {{ __('humano_pricing.subscribe') }}
+                </a>
+              @else
+                <a href="{{ route('pricing') }}#plan-{{ $planId }}" class="slash-btn slash-btn-outline">
+                  {{ __('humano_pricing.landing_plans_cta') }}
+                </a>
+              @endif
+            </article>
           @endforeach
         </div>
       </div>
@@ -439,9 +357,13 @@
     <section id="faq" class="slash-section slash-faq">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">FAQ</span>
-          <h2 class="slash-h2">Preguntas frecuentes</h2>
-          <p class="slash-lead">¿No encontrás la respuesta? <a href="#contacto" style="color: var(--slash-accent);">Escribinos</a>.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.faq.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.faq.title') }}</h2>
+          <p class="slash-lead">
+            {!! __('slash_landing.faq.lead', [
+              'link' => '<a href="#contacto" style="color: var(--slash-accent);">'.e(__('slash_landing.faq.lead_link')).'</a>',
+            ]) !!}
+          </p>
         </div>
         <div class="slash-faq-list">
           @foreach ($faqs as $faq)
@@ -463,11 +385,11 @@
       <div class="slash-container">
         <div class="slash-cta-card">
           <div class="slash-cta-copy">
-            <h2>Empezá en menos de 10 minutos</h2>
-            <p>Unite a los equipos que ya operan su negocio con Humano.app.</p>
+            <h2>{{ __('slash_landing.cta.title') }}</h2>
+            <p>{{ __('slash_landing.cta.lead') }}</p>
             <form class="slash-hero-form" action="{{ route('pricing') }}" method="GET">
-              <input type="email" name="email" placeholder="tu@email.com" aria-label="Email">
-              <button type="submit" class="slash-btn slash-btn-accent">Empezar gratis</button>
+              <input type="email" name="email" placeholder="{{ __('slash_landing.hero.email_placeholder') }}" aria-label="Email">
+              <button type="submit" class="slash-btn slash-btn-accent">{{ __('slash_landing.cta.button') }}</button>
             </form>
           </div>
           <div class="slash-cta-shot">
@@ -480,28 +402,25 @@
     <section id="contacto" class="slash-section slash-foundation">
       <div class="slash-container">
         <div class="slash-section-head">
-          <span class="slash-eyebrow">Contacto</span>
-          <h2 class="slash-h2">Hablemos de tu negocio</h2>
-          <p class="slash-lead">¿Alguna duda? Escríbenos o visitá la web principal.</p>
+          <span class="slash-eyebrow">{{ __('slash_landing.contact.eyebrow') }}</span>
+          <h2 class="slash-h2">{{ __('slash_landing.contact.title') }}</h2>
+          <p class="slash-lead">{{ __('slash_landing.contact.lead') }}</p>
         </div>
         <div class="slash-contact-grid">
           <div class="slash-contact-card">
             <span class="slash-card-icon">@include('homes.slash.partials.icon', ['name' => 'mail'])</span>
             <div>
-              <span>Email</span>
+              <span>{{ __('slash_landing.contact.email') }}</span>
               <strong><a href="mailto:hola@humano.app">hola@humano.app</a></strong>
             </div>
           </div>
           <div class="slash-contact-card">
             <span class="slash-card-icon">@include('homes.slash.partials.icon', ['name' => 'phone'])</span>
             <div>
-              <span>Teléfono</span>
+              <span>{{ __('slash_landing.contact.phone') }}</span>
               <strong><a href="tel:+34624159557">+34 624 15 95 57</a></strong>
             </div>
           </div>
-        </div>
-        <div class="slash-contact-actions">
-          <a href="{{ route('humano') }}" class="slash-btn slash-btn-outline slash-btn-lg">Ver landing clásica</a>
         </div>
       </div>
     </section>
@@ -512,38 +431,35 @@
       <div class="slash-footer-top">
         <div class="slash-footer-brand">
           <img src="{{ Helper::logoAsset('light') }}" alt="{{ config('app.name') }}">
-          <p>El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.</p>
+          <p>{{ __('slash_landing.footer.tagline') }}</p>
         </div>
         <div>
-          <h4>Producto</h4>
+          <h4>{{ __('slash_landing.nav.product') }}</h4>
           <ul>
-            <li><a href="#historias-planes">En acción</a></li>
-            <li><a href="#beneficios">Beneficios</a></li>
-            <li><a href="#planes">Planes</a></li>
-            <li><a href="{{ route('pricing') }}">Precios</a></li>
+            <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
+            <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
+            <li><a href="#planes">{{ __('slash_landing.nav.plans') }}</a></li>
+            <li><a href="#precios">{{ __('slash_landing.nav.pricing') }}</a></li>
           </ul>
         </div>
         <div>
-          <h4>Recursos</h4>
+          <h4>{{ __('slash_landing.nav.resources') }}</h4>
           <ul>
-            <li><a href="#guias">Guías</a></li>
-            <li><a href="#faq">FAQ</a></li>
-            <li><a href="{{ route('humano') }}">Landing clásica</a></li>
-            <li><a href="https://humano.app" target="_blank" rel="noopener">humano.app</a></li>
+            <li><a href="#guias">{{ __('slash_landing.nav.guides') }}</a></li>
+            <li><a href="#faq">{{ __('slash_landing.nav.faq') }}</a></li>
           </ul>
         </div>
         <div>
-          <h4>Cuenta</h4>
+          <h4>{{ __('slash_landing.nav.account') }}</h4>
           <ul>
-            <li><a href="{{ route('login') }}">Iniciar sesión</a></li>
-            <li><a href="{{ route('pricing') }}">Empezar</a></li>
-            <li><a href="#contacto">Contacto</a></li>
+            <li><a href="{{ route('login') }}">{{ __('slash_landing.nav.login') }}</a></li>
+            <li><a href="#contacto">{{ __('slash_landing.nav.contact') }}</a></li>
           </ul>
         </div>
       </div>
       <div class="slash-footer-bottom">
-        <span>© {{ date('Y') }} {{ config('app.name') }}. Todos los derechos reservados.</span>
-        <span>Hecho con foco humano.</span>
+        <span>© {{ date('Y') }} {{ config('app.name') }}. {{ __('slash_landing.footer.copyright') }}</span>
+        <span>{{ __('slash_landing.footer.made_with') }}</span>
       </div>
     </div>
   </footer>

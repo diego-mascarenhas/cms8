@@ -36,8 +36,12 @@
   <div class="slash-container">
     <div class="slash-section-head">
       <span class="slash-eyebrow">{{ __('humano_pricing.landing_plans_badge') }}</span>
-      <h2 class="slash-h2">Conocé cada plan en acción</h2>
-      <p class="slash-lead">Un video por plan. Misma información que en <a href="{{ route('pricing') }}" style="color: var(--slash-accent);">precios</a>, en formato visual.</p>
+      <h2 class="slash-h2">{{ __('slash_landing.stories.title') }}</h2>
+      <p class="slash-lead">
+        {!! __('slash_landing.stories.lead', [
+          'link' => '<a href="'.e(route('pricing')).'" style="color: var(--slash-accent);">'.e(__('slash_landing.stories.lead_link')).'</a>',
+        ]) !!}
+      </p>
     </div>
 
     <div class="slash-stories-stage" data-slash-stories>

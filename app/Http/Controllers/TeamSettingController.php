@@ -1531,12 +1531,7 @@ class TeamSettingController extends Controller
         ];
 
         // Get available locales
-        $availableLocales = [
-            'es' => 'Español',
-            'en' => 'English',
-            'fr' => 'Français',
-            'de' => 'Deutsch',
-        ];
+        $availableLocales = \App\Support\ApplicationLocales::labels();
 
         return view('team-settings.custom-translations', compact('team', 'translations', 'availableGroups', 'availableLocales'));
     }

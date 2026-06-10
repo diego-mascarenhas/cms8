@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ApplicationLocales;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,12 +16,26 @@ class LocaleMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Locale is enabled and allowed to be change
-        if (session()->has('locale') && in_array(session()->get('locale'), ['en', 'es', 'it', 'pt', 'fr', 'de']))
+        if (session()->has('locale'))
         {
-            app()->setLocale(session()->get('locale'));
+            $locale = ApplicationLocales::normalize(session()->get('locale'));
+
+            if (ApplicationLocales::isSupported($locale))
+            {
+                app()->setLocale($locale);
+                $this->applyTranslatorFallback($locale);
+            }
         }
 
         return $next($request);
+    }
+
+    private function applyTranslatorFallback(string $locale): void
+    {
+        $fallback = $locale === ApplicationLocales::ARGENTINA
+            ? ApplicationLocales::DEFAULT
+            : (string) config('app.fallback_locale');
+
+        app('translator')->setFallback($fallback);
     }
 }

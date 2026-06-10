@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Homes;
 
 use App\Http\Controllers\Controller;
 use App\Services\HumanoPricingPlanResolver;
+use App\Support\ApplicationLocales;
 use App\Support\HumanoHomeAsset;
 use Illuminate\View\View;
 
@@ -47,7 +48,7 @@ class SlashLandingController extends Controller
                 'url' => HumanoHomeAsset::url('presentations/prospeccion.html'),
                 'title' => __('Prospección'),
                 'subtitle' => __('Buscar contactos'),
-                'description' => __('Buscá perfiles por cargo y ubicación e importalos a tu agenda con créditos de prospectos.'),
+                'description' => __('slash_landing.guides.prospecting_description'),
                 'icon' => 'target',
             ],
         ];
@@ -81,6 +82,8 @@ class SlashLandingController extends Controller
         {
             abort(404);
         }
+
+        app()->setLocale(ApplicationLocales::DEFAULT);
 
         return view('homes.slash.landing', [
             'guidePresentations' => self::guidePresentations(),

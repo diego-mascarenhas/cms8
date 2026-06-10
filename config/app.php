@@ -116,9 +116,11 @@ return [
     | by the translation service provider. You are free to set this value
     | to any of the locales which will be supported by the application.
     |
+    | Spanish defaults to Spain (es_ES). Use es_AR for Argentina via session locale.
+    |
     */
 
-    'locale' => 'es',
+    'locale' => 'es_ES',
 
     /*
     |--------------------------------------------------------------------------

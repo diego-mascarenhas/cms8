@@ -1268,10 +1268,15 @@ body.slash-page {
 /* Pricing cards */
 .slash-pricing-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.25rem;
-  max-width: 52rem;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
   margin: 0 auto;
+}
+
+@media (max-width: 1199.98px) {
+  .slash-pricing-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 767.98px) {
@@ -1335,10 +1340,26 @@ body.slash-page {
   }
 }
 
+.slash-pricing-badge {
+  align-self: flex-start;
+  margin-bottom: 0.75rem;
+}
+
 .slash-pricing-card h3 {
   font-size: 1.35rem;
   font-weight: 700;
   margin: 0 0 0.35rem;
+}
+
+.slash-pricing-vat {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  color: var(--slash-muted);
+}
+
+.slash-pricing-soon {
+  font-size: 1.35rem;
+  color: var(--slash-muted);
 }
 
 .slash-pricing-price {
