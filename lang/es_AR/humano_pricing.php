@@ -25,6 +25,8 @@ return [
     'landing_plans_title' => 'Qué incluye cada plan',
     'landing_plans_subtitle' => 'Compará módulos y capacidades. Los precios y el checkout están en la página de planes.',
     'landing_plans_cta' => 'Ver planes y precios',
+    'external_cta' => 'Conocer Fanyion',
+    'external_pricing' => 'Consultar',
     'plans' => [
         'assistant' => [
             'name' => 'Assistant',
@@ -63,6 +65,16 @@ return [
                 'Automatización integral adaptada a cómo trabajas',
                 'Escala ingresos y capacidad sin crecer a la fuerza en plantilla',
                 'Acompañamiento prioritario en despliegues complejos',
+            ],
+        ],
+        'innovation' => [
+            'name' => 'Innovación',
+            'description' => 'La solución para que la innovación suceda en tu organización. Fanyion estructura roles, decisiones y participación transversal para convertir la innovación en un sistema organizacional, no en iniciativas aisladas.',
+            'features' => [
+                'Comité, evaluadores y administradores con flujos claros de decisión',
+                'Usuarios, ideas y desafíos ilimitados para escalar sin restricciones',
+                'Embudo colaborativo alineado a objetivos estratégicos e impacto',
+                'Métricas, reportes y método DAGMA para implementar y evolucionar',
             ],
         ],
     ],

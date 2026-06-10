@@ -258,5 +258,17 @@ return [
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],
+        [
+            'id' => 'innovation',
+            'checkout_url' => '',
+            'external_url' => env('HUMANO_PRICING_INNOVATION_EXTERNAL_URL', 'https://fanyion.com'),
+            'stripe_product_id' => '',
+            'stripe_price_monthly_id' => '',
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => '',
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => false,
+        ],
     ],
 ];

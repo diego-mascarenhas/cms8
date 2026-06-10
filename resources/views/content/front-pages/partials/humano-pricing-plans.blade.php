@@ -1,12 +1,13 @@
 @php
 $showPageHeader = $showPageHeader ?? true;
 $showFlashAlerts = $showFlashAlerts ?? true;
-$planImages = $planImages ?? [
+  $planImages = $planImages ?? [
     'assistant' => 'assets/img/illustrations/page-pricing-basic.png',
     'hunter' => 'homes/humano/img/plans/hunter.png',
     'business' => 'assets/img/illustrations/page-pricing-standard.png',
     'mentor' => 'assets/img/illustrations/page-pricing-enterprise.png',
-];
+    'innovation' => 'homes/humano/img/plans/innovation.png',
+  ];
 @endphp
 
 @if ($showPageHeader)
@@ -64,6 +65,7 @@ $planImages = $planImages ?? [
       $id = $plan['id'];
       $img = $planImages[$id] ?? 'assets/img/illustrations/page-pricing-basic.png';
       $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
+      $externalUrl = trim((string) ($plan['external_url'] ?? ''));
       $highlightPopular = $checkoutAvailable && ! empty($plan['popular']);
       $cardBorder = $highlightPopular ? 'border-primary border' : 'border rounded';
     @endphp
@@ -97,6 +99,8 @@ $planImages = $planImages ?? [
               <small class="price-yearly text-muted d-block mb-0">{{ __('humano_pricing.billed_annually') }}</small>
               <small class="price-monthly text-muted d-none">{{ __('humano_pricing.billed_monthly') }}</small>
               <small class="d-block text-muted mt-1 mb-0">{{ __('humano_pricing.prices_plus_vat') }}</small>
+            @elseif ($externalUrl !== '')
+              <p class="mb-0 text-muted fs-5 fw-semibold">{{ __('humano_pricing.external_pricing') }}</p>
             @else
               <p class="mb-0 text-muted fs-5 fw-semibold">{{ __('humano_pricing.coming_soon') }}</p>
             @endif
@@ -120,6 +124,10 @@ $planImages = $planImages ?? [
             @if ($checkoutAvailable)
               <a href="{{ $plan['checkout_href'] }}" class="btn btn-primary d-grid w-100">
                 {{ __('humano_pricing.subscribe') }}
+              </a>
+            @elseif ($externalUrl !== '')
+              <a href="{{ $externalUrl }}" class="btn btn-label-primary d-grid w-100" target="_blank" rel="noopener noreferrer">
+                {{ __('humano_pricing.external_cta') }}
               </a>
             @else
               <span class="btn {{ $highlightPopular ? 'btn-primary' : 'btn-label-primary' }} d-grid w-100 disabled" style="cursor: not-allowed; pointer-events: none;">

@@ -9,6 +9,7 @@
     'hunter' => $slashImg('plans/hunter.png'),
     'business' => $slashImg('plans/business.png'),
     'mentor' => $slashImg('plans/mentor.png'),
+    'innovation' => $slashImg('plans/innovation.png'),
   ];
 
   $features = trans('slash_landing.features');
@@ -21,6 +22,11 @@
   $metrics = trans('slash_landing.metric_items');
 
   $whatsappSupportUrl = SupportWhatsAppHelper::webUrl();
+
+  $slashPricingPlans = array_values(array_filter(
+    $landingPlans,
+    static fn (array $plan): bool => ! in_array($plan['id'] ?? '', ['mentor', 'innovation'], true)
+  ));
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -349,11 +355,12 @@
           <span class="slash-pill slash-pricing-billing-badge">{{ __('humano_pricing.annual_discount_badge') }}</span>
         </div>
         <div class="slash-pricing-grid">
-          @foreach ($landingPlans as $plan)
+          @foreach ($slashPricingPlans as $plan)
             @php
               $planId = $plan['id'];
               $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
               $checkoutHref = trim((string) ($plan['checkout_href'] ?? $plan['checkout_url'] ?? ''));
+              $externalUrl = trim((string) ($plan['external_url'] ?? ''));
               $isFeatured = $checkoutAvailable && ! empty($plan['popular']);
             @endphp
             <article id="plan-{{ $planId }}" class="slash-pricing-card {{ $isFeatured ? 'is-featured' : '' }}">
@@ -381,6 +388,8 @@
                   <small>{{ __('humano_pricing.per_month_suffix') }}</small>
                 </div>
                 <p class="slash-pricing-vat">{{ __('humano_pricing.prices_plus_vat') }}</p>
+              @elseif ($externalUrl !== '')
+                <div class="slash-pricing-price slash-pricing-soon">{{ __('humano_pricing.external_pricing') }}</div>
               @else
                 <div class="slash-pricing-price slash-pricing-soon">{{ __('humano_pricing.coming_soon') }}</div>
               @endif
@@ -393,6 +402,10 @@
               @if ($checkoutAvailable && $checkoutHref !== '')
                 <a href="{{ $checkoutHref }}" class="slash-btn {{ $isFeatured ? 'slash-btn-accent' : 'slash-btn-outline' }}">
                   {{ __('humano_pricing.subscribe') }}
+                </a>
+              @elseif ($externalUrl !== '')
+                <a href="{{ $externalUrl }}" class="slash-btn slash-btn-outline" target="_blank" rel="noopener noreferrer">
+                  {{ __('humano_pricing.external_cta') }}
                 </a>
               @else
                 <a href="{{ route('pricing') }}#plan-{{ $planId }}" class="slash-btn slash-btn-outline">

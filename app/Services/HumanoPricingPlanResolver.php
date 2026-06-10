@@ -16,6 +16,7 @@ class HumanoPricingPlanResolver
                 $plan['checkout_href'] = $checkoutAvailable
                     ? (string) $plan['checkout_url']
                     : '';
+                $plan['external_url'] = trim((string) ($plan['external_url'] ?? ''));
 
                 return $plan;
             })

@@ -25,6 +25,8 @@ return [
     'landing_plans_title' => 'What each plan includes',
     'landing_plans_subtitle' => 'Compare modules and capabilities. Pricing and checkout live on the plans page.',
     'landing_plans_cta' => 'View plans and pricing',
+    'external_cta' => 'Explore Fanyion',
+    'external_pricing' => 'Contact us',
     'plans' => [
         'assistant' => [
             'name' => 'Assistant',
@@ -63,6 +65,16 @@ return [
                 'End-to-end automation tailored to how you work',
                 'Scale revenue and capacity without linear headcount',
                 'Priority guidance for complex rollouts',
+            ],
+        ],
+        'innovation' => [
+            'name' => 'Innovation',
+            'description' => 'The operating system to make innovation happen in your organization. Fanyion structures roles, decisions, and cross-functional participation so innovation becomes an organizational system—not isolated initiatives.',
+            'features' => [
+                'Committee, evaluators, and admins with clear decision flows',
+                'Unlimited users, ideas, and challenges to scale without caps',
+                'Collaborative funnel aligned with strategic goals and impact',
+                'Metrics, reports, and the DAGMA method to implement and evolve',
             ],
         ],
     ],

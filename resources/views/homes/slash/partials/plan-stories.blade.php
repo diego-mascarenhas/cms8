@@ -19,7 +19,7 @@
 
   $storyPlans = array_values(array_filter(
     $landingPlans,
-    static fn (array $plan): bool => ($plan['id'] ?? '') !== 'mentor'
+    static fn (array $plan): bool => ! in_array($plan['id'] ?? '', ['mentor', 'innovation'], true)
   ));
 
   $defaultStoryId = 'assistant';
@@ -55,7 +55,7 @@
             $youtubeId = trim((string) ($meta['youtube_id'] ?? ''));
             $storyHref = $youtubeId !== ''
               ? 'https://www.youtube.com/watch?v='.$youtubeId
-              : route('pricing').'#plan-'.$planId;
+              : '#plan-'.$planId;
             $isDefault = $planId === $defaultStoryId;
           @endphp
           <article
