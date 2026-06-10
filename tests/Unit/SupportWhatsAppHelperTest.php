@@ -47,4 +47,26 @@ class SupportWhatsAppHelperTest extends TestCase
             SupportWhatsAppHelper::webUrl(),
         );
     }
+
+    public function test_tel_url_uses_same_phone_resolution_as_whatsapp(): void
+    {
+        config([
+            'app.whatsapp_support' => '+34 722 37 28 58',
+            'app.wapify_whatsapp_phone' => '34613194131',
+        ]);
+
+        $this->assertSame('tel:+34722372858', SupportWhatsAppHelper::telUrl());
+        $this->assertSame('+34 722 37 28 58', SupportWhatsAppHelper::phoneDisplay());
+    }
+
+    public function test_tel_url_falls_back_to_default_phone(): void
+    {
+        config([
+            'app.whatsapp_support' => '',
+            'app.wapify_whatsapp_phone' => '',
+        ]);
+
+        $this->assertSame('tel:+34624159557', SupportWhatsAppHelper::telUrl());
+        $this->assertSame('+34 624 15 95 57', SupportWhatsAppHelper::phoneDisplay());
+    }
 }

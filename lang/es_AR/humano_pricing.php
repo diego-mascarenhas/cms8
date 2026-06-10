@@ -25,6 +25,7 @@ return [
     'landing_plans_title' => 'Qué incluye cada plan',
     'landing_plans_subtitle' => 'Compará módulos y capacidades. Los precios y el checkout están en la página de planes.',
     'landing_plans_cta' => 'Ver planes y precios',
+    'consult_cta' => 'Consultar',
     'external_cta' => 'Conocer Fanyion',
     'external_pricing' => 'Consultar',
     'plans' => [

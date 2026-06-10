@@ -24,6 +24,37 @@ class SupportWhatsAppHelper
         return '';
     }
 
+    public static function telUrl(): ?string
+    {
+        $phone = self::phoneDigits();
+        if ($phone === '')
+        {
+            return null;
+        }
+
+        return 'tel:+'.$phone;
+    }
+
+    public static function phoneDisplay(): ?string
+    {
+        $phone = self::phoneDigits();
+        if ($phone === '')
+        {
+            return null;
+        }
+
+        if (str_starts_with($phone, '34') && strlen($phone) === 11)
+        {
+            return '+34 '
+                .substr($phone, 2, 3).' '
+                .substr($phone, 5, 2).' '
+                .substr($phone, 7, 2).' '
+                .substr($phone, 9, 2);
+        }
+
+        return '+'.$phone;
+    }
+
     public static function webUrl(?string $text = null): ?string
     {
         $phone = self::phoneDigits();

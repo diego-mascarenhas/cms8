@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Homes;
 
+use App\Helpers\SupportWhatsAppHelper;
 use App\Support\SlashHomeAsset;
 use Tests\TestCase;
 
@@ -121,7 +122,9 @@ class SlashLandingTest extends TestCase
             ->assertSee('data-slash-lead-email', false)
             ->assertSee(__('slash_landing.lead.modal_submit_email_only'), false)
             ->assertSee(__('slash_landing.lead.modal_submit_with_details'), false)
-            ->assertSee(route('pricing'), false)
+            ->assertSee(__('humano_pricing.consult_cta'), false)
+            ->assertSee('https://web.whatsapp.com/send?phone='.SupportWhatsAppHelper::phoneDigits(), false)
+            ->assertSee(SupportWhatsAppHelper::phoneDisplay(), false)
             ->assertSee(route('login'), false)
             ->assertSee('slash-nav-login-mobile', false)
             ->assertSee('hola@humano.app', false)

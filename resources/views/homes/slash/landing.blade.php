@@ -22,6 +22,7 @@
   $metrics = trans('slash_landing.metric_items');
 
   $whatsappSupportUrl = SupportWhatsAppHelper::webUrl();
+  $supportPhoneDisplay = SupportWhatsAppHelper::phoneDisplay();
 
   $slashPricingPlans = array_values(array_filter(
     $landingPlans,
@@ -408,9 +409,15 @@
                   {{ __('humano_pricing.external_cta') }}
                 </a>
               @else
-                <a href="{{ route('pricing') }}#plan-{{ $planId }}" class="slash-btn slash-btn-outline">
-                  {{ __('humano_pricing.landing_plans_cta') }}
-                </a>
+                @if ($whatsappSupportUrl)
+                  <a href="{{ $whatsappSupportUrl }}" class="slash-btn slash-btn-outline" target="_blank" rel="noopener noreferrer">
+                    {{ __('humano_pricing.consult_cta') }}
+                  </a>
+                @else
+                  <a href="#contacto" class="slash-btn slash-btn-outline">
+                    {{ __('humano_pricing.consult_cta') }}
+                  </a>
+                @endif
               @endif
             </article>
           @endforeach
@@ -502,7 +509,7 @@
             <span class="slash-card-icon">@include('homes.slash.partials.icon', ['name' => 'phone'])</span>
             <div>
               <span>{{ __('slash_landing.contact.phone') }}</span>
-              <strong><a href="tel:+34624159557">+34 624 15 95 57</a></strong>
+              <strong><a href="{{ $whatsappSupportUrl ?? '#contacto' }}" target="_blank" rel="noopener noreferrer">{{ $supportPhoneDisplay ?? '+34 624 15 95 57' }}</a></strong>
             </div>
           </div>
         </div>
