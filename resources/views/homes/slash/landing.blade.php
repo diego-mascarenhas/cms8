@@ -331,6 +331,17 @@
           <h2 class="slash-h2">{{ __('humano_pricing.hero_title') }}</h2>
           <p class="slash-lead">{{ __('humano_pricing.hero_subtitle') }}</p>
         </div>
+        <div class="slash-pricing-billing" role="group" aria-label="{{ __('humano_pricing.hero_subtitle') }}">
+          <span class="slash-pricing-billing-label" data-slash-billing-label="monthly">{{ __('humano_pricing.billing_monthly') }}</span>
+          <label class="slash-pricing-billing-switch">
+            <input type="checkbox" class="slash-price-duration-toggler" checked>
+            <span class="slash-pricing-billing-track" aria-hidden="true">
+              <span class="slash-pricing-billing-thumb"></span>
+            </span>
+          </label>
+          <span class="slash-pricing-billing-label is-active" data-slash-billing-label="annual">{{ __('humano_pricing.billing_annual') }}</span>
+          <span class="slash-pill slash-pricing-billing-badge">{{ __('humano_pricing.annual_discount_badge') }}</span>
+        </div>
         <div class="slash-pricing-grid">
           @foreach ($landingPlans as $plan)
             @php
@@ -344,7 +355,21 @@
                 <span class="slash-pill slash-pricing-badge">{{ __('humano_pricing.most_popular') }}</span>
               @endif
               <h3>{{ __('humano_pricing.plans.'.$planId.'.name') }}</h3>
-              @if ($checkoutAvailable && filled($plan['monthly_amount'] ?? null))
+              @if ($checkoutAvailable && filled($plan['monthly_amount'] ?? null) && filled($plan['yearly_amount'] ?? null))
+                <div class="slash-pricing-price-wrap">
+                  <div class="slash-pricing-price slash-price-toggle slash-price-yearly">
+                    {{ $plan['yearly_amount'] }}€
+                    <small>{{ __('humano_pricing.per_year_suffix') }}</small>
+                  </div>
+                  <div class="slash-pricing-price slash-price-toggle slash-price-monthly is-hidden">
+                    {{ $plan['monthly_amount'] }}€
+                    <small>{{ __('humano_pricing.per_month_suffix') }}</small>
+                  </div>
+                  <p class="slash-pricing-billing-note slash-price-toggle slash-price-yearly">{{ __('humano_pricing.billed_annually') }}</p>
+                  <p class="slash-pricing-billing-note slash-price-toggle slash-price-monthly is-hidden">{{ __('humano_pricing.billed_monthly') }}</p>
+                  <p class="slash-pricing-vat">{{ __('humano_pricing.prices_plus_vat') }}</p>
+                </div>
+              @elseif ($checkoutAvailable && filled($plan['monthly_amount'] ?? null))
                 <div class="slash-pricing-price">
                   {{ $plan['monthly_amount'] }}€
                   <small>{{ __('humano_pricing.per_month_suffix') }}</small>

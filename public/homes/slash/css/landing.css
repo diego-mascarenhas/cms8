@@ -1473,6 +1473,93 @@ body.slash-page {
 }
 
 /* Pricing cards */
+.slash-pricing-billing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin: 0 auto 2.25rem;
+}
+
+.slash-pricing-billing-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--slash-muted);
+  transition: color 0.2s ease;
+}
+
+.slash-pricing-billing-label.is-active {
+  color: var(--slash-ink);
+}
+
+.slash-pricing-billing-switch {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.slash-pricing-billing-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slash-pricing-billing-track {
+  position: relative;
+  display: block;
+  width: 3.25rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--slash-border);
+  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.slash-pricing-billing-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: calc(1.75rem - 6px);
+  height: calc(1.75rem - 6px);
+  border-radius: 50%;
+  background: var(--slash-muted);
+  transition: transform 0.22s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.slash-pricing-billing-switch input:checked + .slash-pricing-billing-track {
+  background: var(--slash-accent-soft);
+  border-color: rgba(61, 214, 140, 0.45);
+  box-shadow: 0 0 0 1px rgba(61, 214, 140, 0.18);
+}
+
+.slash-pricing-billing-switch input:checked + .slash-pricing-billing-track .slash-pricing-billing-thumb {
+  transform: translateX(1.5rem);
+  background: var(--slash-accent);
+  box-shadow: 0 0 16px var(--slash-accent-glow);
+}
+
+.slash-pricing-billing-switch input:focus-visible + .slash-pricing-billing-track {
+  outline: 2px solid var(--slash-accent);
+  outline-offset: 2px;
+}
+
+.slash-pricing-billing-badge {
+  background: rgba(61, 214, 140, 0.16);
+  color: var(--slash-accent);
+}
+
+.slash-pricing-billing-note {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: var(--slash-muted);
+}
+
+.slash-price-toggle.is-hidden {
+  display: none;
+}
+
 .slash-pricing-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

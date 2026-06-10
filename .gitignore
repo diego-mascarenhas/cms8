@@ -37,7 +37,7 @@ Thumbs.db
 /public/js/openai.js
 /public/js/helpdesk-chat.js
 /public/js/datatables/
-/public/assets/
+/public/assets/*
 
 # Logos: tracked so they deploy to production
 !/public/assets/logo.png
@@ -47,6 +47,8 @@ Thumbs.db
 !/public/assets/logo-iso.svg
 !/public/assets/logo-iso-dark.svg
 !/public/assets/logo-iso-light.svg
+!/public/assets/logo-idoneo-iso.svg
+!/public/assets/logo-idoneo.svg
 !/public/assets/css/custom.css
 !/public/assets/css/demo.css
 

@@ -111,6 +111,38 @@
     });
   });
 
+  var priceDurationToggler = document.querySelector('.slash-price-duration-toggler');
+
+  if (priceDurationToggler) {
+    var priceMonthlyEls = [].slice.call(document.querySelectorAll('.slash-price-monthly'));
+    var priceYearlyEls = [].slice.call(document.querySelectorAll('.slash-price-yearly'));
+    var billingLabelMonthly = document.querySelector('[data-slash-billing-label="monthly"]');
+    var billingLabelAnnual = document.querySelector('[data-slash-billing-label="annual"]');
+
+    function togglePricingInterval() {
+      var showYearly = priceDurationToggler.checked;
+
+      priceYearlyEls.forEach(function (el) {
+        el.classList.toggle('is-hidden', !showYearly);
+      });
+
+      priceMonthlyEls.forEach(function (el) {
+        el.classList.toggle('is-hidden', showYearly);
+      });
+
+      if (billingLabelMonthly) {
+        billingLabelMonthly.classList.toggle('is-active', !showYearly);
+      }
+
+      if (billingLabelAnnual) {
+        billingLabelAnnual.classList.toggle('is-active', showYearly);
+      }
+    }
+
+    togglePricingInterval();
+    priceDurationToggler.addEventListener('change', togglePricingInterval);
+  }
+
   document.querySelectorAll('[data-slash-copy-coupon]').forEach(function (copyButton) {
     var codeWrap = copyButton.closest('.slash-lead-reward-code');
     var couponCodeEl = codeWrap ? codeWrap.querySelector('[data-slash-coupon-code]') : null;
