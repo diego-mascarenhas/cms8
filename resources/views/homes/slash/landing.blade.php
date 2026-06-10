@@ -548,7 +548,6 @@
         </div>
       </div>
       <div class="slash-footer-bottom">
-        <span>© {{ date('Y') }} {{ config('app.name') }}. {{ __('slash_landing.footer.copyright') }}</span>
         <a
           href="https://www.idoneo.dev"
           class="slash-footer-idoneo"
@@ -567,6 +566,24 @@
             </svg>
           </span>
           <img src="{{ asset('assets/logo-idoneo-iso.svg') }}" alt="">
+        </a>
+        <span class="slash-footer-copy">© {{ date('Y') }} {{ __('slash_landing.footer.brand_name') }}. {{ __('slash_landing.footer.copyright') }}</span>
+        <a
+          href="https://revisionalpha.com"
+          class="slash-footer-powered"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="{{ __('slash_landing.footer.revision_alpha_link_title') }}"
+        >
+          <span class="slash-footer-powered-by">{{ __('slash_landing.footer.powered_by') }}</span>
+          <img
+            src="{{ asset('assets/logo-revision-alpha.svg') }}"
+            alt="{{ __('slash_landing.footer.revision_alpha_logo_alt') }}"
+            width="120"
+            height="20"
+            loading="lazy"
+            decoding="async"
+          >
         </a>
       </div>
     </div>

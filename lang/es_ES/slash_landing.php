@@ -158,6 +158,10 @@ return [
     'footer' => [
         'tagline' => 'El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.',
         'copyright' => 'Todos los derechos reservados.',
+        'brand_name' => 'Humano.app',
+        'powered_by' => 'Powered by',
+        'revision_alpha_link_title' => 'Revision Alpha',
+        'revision_alpha_logo_alt' => 'Revision Alpha',
         'idoneo_link_title' => 'Idoneo — desarrollo de software',
         'idoneo_tooltip' => 'IDONEO',
         'idoneo_logo_alt' => 'Idoneo',
