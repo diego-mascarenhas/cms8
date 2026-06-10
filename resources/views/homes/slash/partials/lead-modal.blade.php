@@ -16,7 +16,16 @@
     <h2 id="slash-lead-modal-title" class="slash-lead-modal-title" data-slash-lead-modal-title></h2>
     <p class="slash-lead-modal-subtitle" data-slash-lead-modal-subtitle>{{ __('slash_landing.lead.modal_subtitle') }}</p>
     <p class="slash-lead-modal-email" data-slash-lead-modal-email hidden></p>
-    <form class="slash-lead-modal-form" data-slash-lead-modal-form novalidate>
+    <form
+      class="slash-lead-modal-form"
+      data-slash-lead-modal-form
+      action="{{ route('slash.lead.store') }}"
+      method="POST"
+      novalidate
+    >
+      @csrf
+      <input type="hidden" name="email" value="" data-slash-lead-email>
+      <input type="hidden" name="source" value="cta" data-slash-lead-source>
       <label class="slash-lead-modal-field">
         <span>{{ __('slash_landing.lead.modal_name_label') }}</span>
         <input type="text" name="name" maxlength="255" autocomplete="name" placeholder="{{ __('slash_landing.lead.modal_name_placeholder') }}">

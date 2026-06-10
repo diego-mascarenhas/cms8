@@ -507,9 +507,19 @@
           class="slash-footer-idoneo"
           target="_blank"
           rel="noopener noreferrer"
-          title="{{ __('slash_landing.footer.idoneo_link_title') }}"
+          aria-label="{{ __('slash_landing.footer.idoneo_link_title') }}"
         >
-          <img src="{{ asset('assets/logo-idoneo-iso.svg') }}" alt="{{ __('slash_landing.footer.idoneo_logo_alt') }}">
+          <span class="slash-footer-idoneo-word" aria-hidden="true">
+            @foreach (mb_str_split(__('slash_landing.footer.idoneo_tooltip')) as $index => $letter)
+              <span class="slash-footer-idoneo-letter" style="--letter-index: {{ $index }}">{{ $letter }}</span>
+            @endforeach
+          </span>
+          <span class="slash-footer-idoneo-bolt" aria-hidden="true">
+            <svg viewBox="0 0 24 32" xmlns="http://www.w3.org/2000/svg" focusable="false">
+              <path d="M13.2 0 4.5 17.2h6.8L7.8 32 21 13.4h-7.5L13.2 0Z" fill="currentColor"/>
+            </svg>
+          </span>
+          <img src="{{ asset('assets/logo-idoneo-iso.svg') }}" alt="">
         </a>
       </div>
     </div>

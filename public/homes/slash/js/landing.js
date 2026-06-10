@@ -204,12 +204,15 @@
     var titleEl = modal.querySelector('[data-slash-lead-modal-title]');
     var emailEl = modal.querySelector('[data-slash-lead-modal-email]');
     var modalForm = modal.querySelector('[data-slash-lead-modal-form]');
+    var modalEmailInput = modalForm ? modalForm.querySelector('[data-slash-lead-email]') : null;
+    var modalSourceInput = modalForm ? modalForm.querySelector('[data-slash-lead-source]') : null;
     var modalNameInput = modalForm ? modalForm.querySelector('input[name="name"]') : null;
     var modalPhoneInput = modalForm ? modalForm.querySelector('[data-slash-phone-input]') : null;
     var modalPhoneField = modalPhoneInput ? modalPhoneInput.closest('[data-slash-form-field]') : null;
     var modalFeedback = modalForm ? modalForm.querySelector('[data-slash-form-feedback]') : null;
     var modalSubmitButton = modalForm ? modalForm.querySelector('[data-slash-lead-modal-submit]') : null;
     var pending = null;
+    var allowNativeSubmit = false;
     var lastActiveElement = null;
 
     function pickTitle() {
@@ -254,6 +257,20 @@
 
       if (modalForm) {
         modalForm.reset();
+
+        if (modalSourceInput) {
+          modalSourceInput.value = payload.source || 'cta';
+        }
+      }
+
+      if (modalEmailInput) {
+        modalEmailInput.value = payload.email;
+      }
+
+      allowNativeSubmit = false;
+
+      if (modalSubmitButton) {
+        modalSubmitButton.disabled = false;
       }
 
       clearFormFeedback(modalFeedback, null, modalPhoneField);
@@ -269,37 +286,32 @@
     }
 
     function submitLead(extra) {
-      if (!pending) {
+      if (!pending || !modalForm) {
         return;
       }
 
-      var form = document.createElement('form');
-      form.method = 'POST';
-      form.action = pending.action;
-      form.style.display = 'none';
-
-      function addField(name, value) {
-        var input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = name;
-        input.value = value;
-        form.appendChild(input);
+      if (modalEmailInput) {
+        modalEmailInput.value = pending.email;
       }
 
-      addField('_token', pending.token);
-      addField('email', pending.email);
-      addField('source', pending.source);
-
-      if (extra.name) {
-        addField('name', extra.name);
+      if (modalSourceInput) {
+        modalSourceInput.value = pending.source || 'cta';
       }
 
-      if (extra.phone) {
-        addField('phone', extra.phone);
+      if (modalNameInput) {
+        modalNameInput.value = extra && extra.name !== undefined ? extra.name : (modalNameInput.value || '').trim();
       }
 
-      document.body.appendChild(form);
-      form.submit();
+      if (modalPhoneInput) {
+        modalPhoneInput.value = extra && extra.phone !== undefined ? extra.phone : (modalPhoneInput.value || '').trim();
+      }
+
+      if (modalSubmitButton) {
+        modalSubmitButton.disabled = true;
+      }
+
+      allowNativeSubmit = true;
+      modalForm.submit();
     }
 
     document.querySelectorAll('[data-slash-lead-form]').forEach(function (leadForm) {
@@ -335,13 +347,10 @@
         clearFormFeedback(feedbackEl, leadForm, null);
 
         var sourceInput = leadForm.querySelector('input[name="source"]');
-        var tokenInput = leadForm.querySelector('input[name="_token"]');
 
         openModal({
           email: email,
           source: sourceInput ? sourceInput.value : 'cta',
-          token: tokenInput ? tokenInput.value : '',
-          action: leadForm.getAttribute('action') || '',
         });
       });
     });
@@ -361,6 +370,10 @@
 
     if (modalForm) {
       modalForm.addEventListener('submit', function (event) {
+        if (allowNativeSubmit) {
+          return;
+        }
+
         event.preventDefault();
 
         if (!pending) {

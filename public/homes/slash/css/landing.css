@@ -1812,7 +1812,8 @@ body.slash-page {
   line-height: 0;
   overflow: visible;
   opacity: 0.82;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.2s ease;
+  isolation: isolate;
 }
 
 .slash-footer-idoneo::before,
@@ -1821,46 +1822,71 @@ body.slash-page {
   position: absolute;
   left: 50%;
   top: 50%;
-  border-radius: 50%;
   pointer-events: none;
   z-index: 0;
 }
 
 .slash-footer-idoneo::before {
-  width: 56px;
-  height: 56px;
-  background: radial-gradient(
-    circle,
-    rgba(61, 214, 140, 0.24) 0%,
-    rgba(61, 214, 140, 0.08) 42%,
-    transparent 72%
-  );
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(61, 214, 140, 0.75) 24%, transparent 68%);
   opacity: 0;
-  transform: translate(-50%, -50%) scale(0.5);
-  transition:
-    opacity 0.35s ease,
-    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transform: translate(-50%, -50%) scale(0.35);
 }
 
 .slash-footer-idoneo::after {
   width: 36px;
   height: 36px;
+  border-radius: 50%;
   opacity: 0;
   transform: translate(-50%, -50%) scale(1);
-  box-shadow: 0 0 0 0 var(--slash-accent-glow);
+  box-shadow:
+    0 0 0 0 rgba(255, 255, 255, 0.85),
+    0 0 0 0 rgba(61, 214, 140, 0.65);
 }
 
-.slash-footer-idoneo:hover {
+.slash-footer-idoneo:hover,
+.slash-footer-idoneo:focus-visible {
   opacity: 1;
 }
 
-.slash-footer-idoneo:hover::before {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1.15);
+.slash-footer-idoneo:hover::before,
+.slash-footer-idoneo:focus-visible::before {
+  animation: slash-idoneo-flash-burst 0.62s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.slash-footer-idoneo:hover::after {
-  animation: slash-footer-idoneo-splash 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+.slash-footer-idoneo:hover::after,
+.slash-footer-idoneo:focus-visible::after {
+  animation: slash-idoneo-flash-ring 0.72s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slash-footer-idoneo-bolt {
+  position: absolute;
+  top: -20px;
+  right: -8px;
+  z-index: 4;
+  width: 15px;
+  height: 20px;
+  color: #d7ffe9;
+  opacity: 0;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 4px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 10px rgba(61, 214, 140, 0.95));
+  transform: scale(0.35) rotate(-10deg);
+}
+
+.slash-footer-idoneo-bolt svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.slash-footer-idoneo:hover .slash-footer-idoneo-bolt,
+.slash-footer-idoneo:focus-visible .slash-footer-idoneo-bolt {
+  animation: slash-idoneo-bolt-strike 0.68s ease-out;
 }
 
 .slash-footer-idoneo img {
@@ -1871,27 +1897,187 @@ body.slash-page {
   max-width: 100%;
   display: block;
   object-fit: contain;
-  transition:
-    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
-    filter 0.35s ease;
 }
 
-.slash-footer-idoneo:hover img {
-  transform: scale(1.1);
-  filter: brightness(1.12) drop-shadow(0 0 10px rgba(61, 214, 140, 0.35));
+.slash-footer-idoneo:hover img,
+.slash-footer-idoneo:focus-visible img {
+  animation: slash-idoneo-logo-flicker 0.68s ease-out forwards;
 }
 
-@keyframes slash-footer-idoneo-splash {
+.slash-footer-idoneo-word {
+  position: absolute;
+  bottom: calc(100% + 0.55rem);
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.1em;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateX(-50%);
+}
+
+.slash-footer-idoneo-letter {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--slash-ink);
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateY(10px) scale(1.55);
+  text-shadow: 0 0 14px rgba(61, 214, 140, 0.75);
+}
+
+.slash-footer-idoneo:hover .slash-footer-idoneo-word,
+.slash-footer-idoneo:focus-visible .slash-footer-idoneo-word {
+  visibility: visible;
+}
+
+.slash-footer-idoneo:hover .slash-footer-idoneo-letter,
+.slash-footer-idoneo:focus-visible .slash-footer-idoneo-letter {
+  animation: slash-idoneo-letter-dissolve-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: calc(0.48s + (var(--letter-index) * 0.07s));
+}
+
+.slash-footer-idoneo:focus-visible {
+  outline: none;
+}
+
+@keyframes slash-idoneo-letter-dissolve-in {
   0% {
-    opacity: 0.9;
-    transform: translate(-50%, -50%) scale(0.95);
-    box-shadow: 0 0 0 0 rgba(61, 214, 140, 0.45);
+    opacity: 0;
+    filter: blur(12px);
+    transform: translateY(12px) scale(1.65);
+    text-shadow:
+      0 0 16px rgba(255, 255, 255, 0.95),
+      0 0 24px rgba(61, 214, 140, 0.85);
+  }
+
+  35% {
+    opacity: 0.55;
+    filter: blur(5px);
+    transform: translateY(4px) scale(1.15);
+    text-shadow:
+      0 0 10px rgba(255, 255, 255, 0.65),
+      0 0 16px rgba(61, 214, 140, 0.55);
+  }
+
+  65% {
+    opacity: 0.92;
+    filter: blur(1px);
+    transform: translateY(-1px) scale(1.03);
+  }
+
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+    text-shadow: 0 0 10px rgba(61, 214, 140, 0.22);
+  }
+}
+
+@keyframes slash-idoneo-flash-burst {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+
+  14% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+
+  28% {
+    opacity: 0.35;
+    transform: translate(-50%, -50%) scale(1.25);
   }
 
   100% {
     opacity: 0;
     transform: translate(-50%, -50%) scale(1.45);
-    box-shadow: 0 0 0 16px rgba(61, 214, 140, 0);
+  }
+}
+
+@keyframes slash-idoneo-flash-ring {
+  0% {
+    opacity: 0.95;
+    transform: translate(-50%, -50%) scale(0.85);
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0.85),
+      0 0 18px 2px rgba(61, 214, 140, 0.55);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.55);
+    box-shadow:
+      0 0 0 18px rgba(255, 255, 255, 0),
+      0 0 28px 8px rgba(61, 214, 140, 0);
+  }
+}
+
+@keyframes slash-idoneo-bolt-strike {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.35) rotate(-10deg);
+  }
+
+  10% {
+    opacity: 1;
+    transform: scale(1.2) rotate(-4deg);
+  }
+
+  16% {
+    opacity: 0.15;
+    transform: scale(0.95) rotate(-8deg);
+  }
+
+  22% {
+    opacity: 1;
+    transform: scale(1.05) rotate(-6deg);
+  }
+
+  30% {
+    opacity: 0.25;
+  }
+
+  38% {
+    opacity: 0.85;
+    transform: scale(1) rotate(-7deg);
+  }
+
+  55% {
+    opacity: 0;
+  }
+}
+
+@keyframes slash-idoneo-logo-flicker {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+
+  8% {
+    transform: scale(1.14);
+    filter: brightness(2.8) saturate(0) drop-shadow(0 0 16px rgba(255, 255, 255, 0.95));
+  }
+
+  14% {
+    transform: scale(1.06);
+    filter: brightness(1.1) drop-shadow(0 0 8px rgba(61, 214, 140, 0.45));
+  }
+
+  20% {
+    transform: scale(1.12);
+    filter: brightness(2.2) drop-shadow(0 0 14px rgba(170, 255, 220, 0.85));
+  }
+
+  32% {
+    transform: scale(1.08);
+    filter: brightness(1.25) drop-shadow(0 0 12px rgba(61, 214, 140, 0.55));
   }
 }
 
@@ -1970,14 +2156,30 @@ html.slash-motion-off .slash-btn-accent {
   }
 
   .slash-footer-idoneo::before,
-  .slash-footer-idoneo::after {
-    transition: none;
-    animation: none;
+  .slash-footer-idoneo::after,
+  .slash-footer-idoneo-bolt,
+  .slash-footer-idoneo-letter,
+  .slash-footer-idoneo img {
+    animation: none !important;
   }
 
-  .slash-footer-idoneo:hover img {
+  .slash-footer-idoneo:hover img,
+  .slash-footer-idoneo:focus-visible img {
+    transform: scale(1.06);
+    filter: brightness(1.12) drop-shadow(0 0 8px rgba(61, 214, 140, 0.35));
+  }
+
+  .slash-footer-idoneo:hover .slash-footer-idoneo-word,
+  .slash-footer-idoneo:focus-visible .slash-footer-idoneo-word {
+    visibility: visible;
+  }
+
+  .slash-footer-idoneo:hover .slash-footer-idoneo-letter,
+  .slash-footer-idoneo:focus-visible .slash-footer-idoneo-letter {
+    opacity: 1;
+    filter: none;
     transform: none;
-    filter: brightness(1.08);
+    text-shadow: none;
   }
 }
 

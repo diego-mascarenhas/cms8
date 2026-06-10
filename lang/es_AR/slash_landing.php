@@ -151,6 +151,7 @@ return [
         'tagline' => 'El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.',
         'copyright' => 'Todos los derechos reservados.',
         'idoneo_link_title' => 'Idoneo — desarrollo de software',
+        'idoneo_tooltip' => 'IDONEO',
         'idoneo_logo_alt' => 'Idoneo',
     ],
 

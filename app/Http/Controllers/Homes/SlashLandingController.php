@@ -113,10 +113,18 @@ class SlashLandingController extends Controller
         $sourceLabel = __('slash_landing.lead.sources.'.$source);
         $submittedAt = now()->timezone(config('app.timezone'))->format('Y-m-d H:i:s');
 
-        $recipient = (string) config('app.notification_email');
-        if ($recipient !== '')
+        $recipient = config('app.notification_email');
+
+        if (filled($recipient))
         {
-            Mail::to($recipient)->send(new SlashLandingInterestMail($email, $sourceLabel, $submittedAt, $name, $phone));
+            Mail::to((string) $recipient)->send(new SlashLandingInterestMail($email, $sourceLabel, $submittedAt, $name, $phone));
+        }
+        else
+        {
+            Log::channel('leads')->warning('Slash landing lead notification skipped: NOTIFICATION_EMAIL is not configured.', [
+                'email' => $email,
+                'source' => $source,
+            ]);
         }
 
         Log::channel('leads')->info(sprintf(

@@ -78,6 +78,25 @@ class SlashLandingLeadTest extends TestCase
         Mail::assertNothingSent();
     }
 
+    public function test_store_lead_logs_warning_when_notification_email_is_not_configured(): void
+    {
+        Mail::fake();
+
+        config([
+            'app.notification_email' => '',
+            'services.notifications.email' => '',
+        ]);
+
+        $this->post(route('slash.lead.store'), [
+            'email' => 'interesado@example.com',
+            'source' => 'cta',
+        ])
+            ->assertRedirect(route('slash').'#precios')
+            ->assertSessionHas('slash_lead_sent', true);
+
+        Mail::assertNothingSent();
+    }
+
     public function test_store_lead_returns_404_when_slash_is_not_public_home(): void
     {
         config([
