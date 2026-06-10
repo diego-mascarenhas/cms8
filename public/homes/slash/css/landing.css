@@ -2118,7 +2118,13 @@ body.slash-page {
 
 .slash-footer-idoneo:hover img,
 .slash-footer-idoneo:focus-visible img {
-  animation: slash-idoneo-logo-flicker 0.68s ease-out forwards;
+  animation: slash-idoneo-logo-flicker 0.68s ease-out;
+}
+
+.slash-footer-idoneo:not(:hover):not(:focus-visible) img {
+  animation: none;
+  filter: none;
+  transform: none;
 }
 
 .slash-footer-idoneo-word {
@@ -2153,8 +2159,16 @@ body.slash-page {
 
 .slash-footer-idoneo:hover .slash-footer-idoneo-letter,
 .slash-footer-idoneo:focus-visible .slash-footer-idoneo-letter {
-  animation: slash-idoneo-letter-dissolve-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: calc(0.48s + (var(--letter-index) * 0.07s));
+  animation: slash-idoneo-letter-dissolve-in 0.52s cubic-bezier(0.22, 1, 0.36, 1);
+  animation-delay: calc(0.42s + (var(--letter-index) * 0.06s));
+}
+
+.slash-footer-idoneo:not(:hover):not(:focus-visible) .slash-footer-idoneo-letter {
+  animation: none;
+  opacity: 0;
+  filter: blur(10px);
+  transform: translateY(10px) scale(1.55);
+  text-shadow: 0 0 14px rgba(61, 214, 140, 0.75);
 }
 
 .slash-footer-idoneo:focus-visible {

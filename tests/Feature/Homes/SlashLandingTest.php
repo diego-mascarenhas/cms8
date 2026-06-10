@@ -96,6 +96,8 @@ class SlashLandingTest extends TestCase
             ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/primeros-pasos.html'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/calendario.html'), false)
             ->assertSee(__('Prospección'), false)
+            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/facturacion.html'), false)
+            ->assertSee(__('Facturación'), false)
             ->assertSee('Ver presentación', false)
             ->assertSee(SlashHomeAsset::url('css/landing.css'), false)
             ->assertSee(SlashHomeAsset::url('vendor/gsap/gsap.min.js'), false)

@@ -16,4 +16,17 @@ class HumanoPresentationsTest extends TestCase
             $html,
         );
     }
+
+    public function test_facturacion_presentation_exists_and_has_expected_content(): void
+    {
+        $path = public_path('homes/humano/presentations/facturacion.html');
+
+        $this->assertFileExists($path);
+
+        $html = file_get_contents($path);
+
+        $this->assertIsString($html);
+        $this->assertStringContainsString('del ticket al sistema contable', $html);
+        $this->assertStringContainsString('organismos fiscales', $html);
+    }
 }

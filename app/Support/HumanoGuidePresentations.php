@@ -45,6 +45,13 @@ class HumanoGuidePresentations
                 'description' => __('Buscá perfiles por cargo y ubicación e importalos a tu agenda con créditos de prospectos.'),
                 'icon' => 'target',
             ],
+            [
+                'url' => HumanoHomeAsset::url('presentations/facturacion.html'),
+                'title' => __('Facturación'),
+                'subtitle' => __('Cobros y contabilidad'),
+                'description' => __('Subí una foto de factura o pago por asistente, email o WhatsApp y registrála en tu sistema contable al instante.'),
+                'icon' => 'receipt',
+            ],
         ];
     }
 }
