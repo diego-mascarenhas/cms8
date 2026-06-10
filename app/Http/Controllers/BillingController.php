@@ -257,6 +257,7 @@ class BillingController extends Controller
             'name' => $plan['name'],
             'description' => '',
             'features' => [],
+            'image_url' => $linkBuilder->planImageUrl($planId),
         ];
 
         $this->configureMailForTeam($team);
@@ -269,6 +270,7 @@ class BillingController extends Controller
                 $planMarketing['name'],
                 $planMarketing['description'],
                 $planMarketing['features'],
+                $planMarketing['image_url'],
                 $checkoutUrl,
                 $linkBuilder->pricingPageUrl(),
             ),

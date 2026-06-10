@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Team;
+use App\Support\HumanoHomeAsset;
 
 class AffiliateReferralLinkBuilder
 {
@@ -87,7 +88,22 @@ class AffiliateReferralLinkBuilder
             'name' => $plan['name'],
             'description' => (string) __("humano_pricing.plans.{$planId}.description"),
             'features' => array_values(array_map('strval', $features)),
+            'image_url' => $this->planImageUrl($planId),
         ];
+    }
+
+    public function planImageUrl(string $planId): string
+    {
+        $paths = [
+            'assistant' => 'img/plans/assistant.png',
+            'hunter' => 'img/plans/hunter.png',
+            'business' => 'img/plans/business.png',
+            'mentor' => 'img/plans/mentor.png',
+        ];
+
+        $path = $paths[$planId] ?? 'img/plans/assistant.png';
+
+        return HumanoHomeAsset::url($path);
     }
 
     public function pricingPageUrl(): string

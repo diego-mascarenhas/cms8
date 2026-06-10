@@ -23,6 +23,7 @@ class AffiliatePurchaseInvitationMail extends Mailable
         public string $planName,
         public string $planDescription,
         public array $planFeatures,
+        public string $planImageUrl,
         public string $checkoutUrl,
         public string $pricingUrl,
     ) {}
