@@ -111,6 +111,298 @@
     });
   });
 
+  /* ── Lead capture modal (after email, optional name + phone) ── */
+
+  (function initLeadModal() {
+    var modal = document.querySelector('[data-slash-lead-modal]');
+
+    if (!modal) {
+      return;
+    }
+
+    var configEl = document.getElementById('slash-lead-config');
+    var config = { titles: [], emailConfirmed: '', validation: {} };
+
+    if (configEl) {
+      try {
+        config = JSON.parse(configEl.textContent);
+      } catch (error) {
+        config = { titles: [], emailConfirmed: '', validation: {} };
+      }
+    }
+
+    var validationMessages = config.validation || {};
+    var emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+    var phonePattern = /^[+\-\d\s()]+$/;
+
+    function validateEmail(value) {
+      var email = (value || '').trim();
+
+      if (email === '') {
+        return validationMessages.emailRequired || 'Indica tu email para continuar.';
+      }
+
+      if (!emailPattern.test(email)) {
+        return validationMessages.emailInvalid || 'El email no es válido.';
+      }
+
+      return '';
+    }
+
+    function validatePhone(value) {
+      var phone = (value || '').trim();
+
+      if (phone === '') {
+        return '';
+      }
+
+      if (!phonePattern.test(phone)) {
+        return validationMessages.phoneInvalid || 'El teléfono no es válido.';
+      }
+
+      return '';
+    }
+
+    function showFormFeedback(feedbackEl, message, formEl, fieldEl) {
+      if (!feedbackEl) {
+        return;
+      }
+
+      feedbackEl.textContent = message;
+      feedbackEl.hidden = false;
+      feedbackEl.setAttribute('data-slash-form-feedback-visible', 'true');
+      feedbackEl.classList.remove('is-shaking');
+      void feedbackEl.offsetWidth;
+      feedbackEl.classList.add('is-shaking');
+
+      if (formEl) {
+        formEl.classList.add('is-invalid');
+      }
+
+      if (fieldEl) {
+        fieldEl.classList.add('is-invalid');
+      }
+    }
+
+    function clearFormFeedback(feedbackEl, formEl, fieldEl) {
+      if (feedbackEl) {
+        feedbackEl.textContent = '';
+        feedbackEl.hidden = true;
+        feedbackEl.removeAttribute('data-slash-form-feedback-visible');
+        feedbackEl.classList.remove('is-shaking');
+      }
+
+      if (formEl) {
+        formEl.classList.remove('is-invalid');
+      }
+
+      if (fieldEl) {
+        fieldEl.classList.remove('is-invalid');
+      }
+    }
+
+    var titleEl = modal.querySelector('[data-slash-lead-modal-title]');
+    var emailEl = modal.querySelector('[data-slash-lead-modal-email]');
+    var modalForm = modal.querySelector('[data-slash-lead-modal-form]');
+    var modalNameInput = modalForm ? modalForm.querySelector('input[name="name"]') : null;
+    var modalPhoneInput = modalForm ? modalForm.querySelector('[data-slash-phone-input]') : null;
+    var modalPhoneField = modalPhoneInput ? modalPhoneInput.closest('[data-slash-form-field]') : null;
+    var modalFeedback = modalForm ? modalForm.querySelector('[data-slash-form-feedback]') : null;
+    var modalSubmitButton = modalForm ? modalForm.querySelector('[data-slash-lead-modal-submit]') : null;
+    var pending = null;
+    var lastActiveElement = null;
+
+    function pickTitle() {
+      var titles = config.titles || [];
+
+      if (!titles.length) {
+        return '';
+      }
+
+      return titles[Math.floor(Math.random() * titles.length)];
+    }
+
+    function hasModalExtraFields() {
+      var name = (modalNameInput && modalNameInput.value ? modalNameInput.value : '').trim();
+      var phone = (modalPhoneInput && modalPhoneInput.value ? modalPhoneInput.value : '').trim();
+
+      return name.length > 0 || phone.length > 0;
+    }
+
+    function updateSubmitLabel() {
+      if (!modalSubmitButton) {
+        return;
+      }
+
+      modalSubmitButton.textContent = hasModalExtraFields()
+        ? (config.submitWithDetails || 'Enviar')
+        : (config.submitEmailOnly || 'Enviar solo mi email');
+    }
+
+    function openModal(payload) {
+      pending = payload;
+      lastActiveElement = document.activeElement;
+
+      if (titleEl) {
+        titleEl.textContent = pickTitle();
+      }
+
+      if (emailEl) {
+        emailEl.textContent = (config.emailConfirmed || ':email').replace(':email', payload.email);
+        emailEl.hidden = false;
+      }
+
+      if (modalForm) {
+        modalForm.reset();
+      }
+
+      clearFormFeedback(modalFeedback, null, modalPhoneField);
+      updateSubmitLabel();
+
+      modal.hidden = false;
+      modal.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('slash-lead-modal-open');
+
+      if (modalNameInput) {
+        modalNameInput.focus();
+      }
+    }
+
+    function submitLead(extra) {
+      if (!pending) {
+        return;
+      }
+
+      var form = document.createElement('form');
+      form.method = 'POST';
+      form.action = pending.action;
+      form.style.display = 'none';
+
+      function addField(name, value) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      }
+
+      addField('_token', pending.token);
+      addField('email', pending.email);
+      addField('source', pending.source);
+
+      if (extra.name) {
+        addField('name', extra.name);
+      }
+
+      if (extra.phone) {
+        addField('phone', extra.phone);
+      }
+
+      document.body.appendChild(form);
+      form.submit();
+    }
+
+    document.querySelectorAll('[data-slash-lead-form]').forEach(function (leadForm) {
+      var emailInput = leadForm.querySelector('[data-slash-email-input]');
+      var feedbackEl = leadForm.querySelector('[data-slash-form-feedback]');
+
+      if (emailInput) {
+        emailInput.addEventListener('input', function () {
+          clearFormFeedback(feedbackEl, leadForm, null);
+        });
+      }
+
+      if (feedbackEl && feedbackEl.getAttribute('data-slash-form-feedback-visible') === 'true') {
+        leadForm.classList.add('is-invalid');
+      }
+
+      leadForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        var email = (emailInput && emailInput.value ? emailInput.value : '').trim();
+        var emailError = validateEmail(email);
+
+        if (emailError) {
+          showFormFeedback(feedbackEl, emailError, leadForm, null);
+
+          if (emailInput) {
+            emailInput.focus();
+          }
+
+          return;
+        }
+
+        clearFormFeedback(feedbackEl, leadForm, null);
+
+        var sourceInput = leadForm.querySelector('input[name="source"]');
+        var tokenInput = leadForm.querySelector('input[name="_token"]');
+
+        openModal({
+          email: email,
+          source: sourceInput ? sourceInput.value : 'cta',
+          token: tokenInput ? tokenInput.value : '',
+          action: leadForm.getAttribute('action') || '',
+        });
+      });
+    });
+
+    if (modalNameInput) {
+      modalNameInput.addEventListener('input', function () {
+        updateSubmitLabel();
+      });
+    }
+
+    if (modalPhoneInput) {
+      modalPhoneInput.addEventListener('input', function () {
+        clearFormFeedback(modalFeedback, null, modalPhoneField);
+        updateSubmitLabel();
+      });
+    }
+
+    if (modalForm) {
+      modalForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        if (!pending) {
+          return;
+        }
+
+        var nameInput = modalForm.querySelector('input[name="name"]');
+        var phone = (modalPhoneInput && modalPhoneInput.value ? modalPhoneInput.value : '').trim();
+        var phoneError = validatePhone(phone);
+
+        if (phoneError) {
+          showFormFeedback(modalFeedback, phoneError, null, modalPhoneField);
+
+          if (modalPhoneInput) {
+            modalPhoneInput.focus();
+          }
+
+          return;
+        }
+
+        clearFormFeedback(modalFeedback, null, modalPhoneField);
+
+        submitLead({
+          name: (nameInput && nameInput.value ? nameInput.value : '').trim(),
+          phone: phone,
+        });
+      });
+    }
+
+    modal.querySelectorAll('[data-slash-lead-modal-close]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        submitLead({ name: '', phone: '' });
+      });
+    });
+
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && !modal.hidden) {
+        submitLead({ name: '', phone: '' });
+      }
+    });
+  })();
+
   if (prefersReducedMotion || typeof gsap === 'undefined') {
     document.documentElement.classList.add('slash-motion-off');
     return;

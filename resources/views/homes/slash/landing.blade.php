@@ -80,9 +80,29 @@
         <span class="slash-eyebrow slash-shine-badge">Humano.app</span>
         <h1>Un <em><span class="slash-hero-shine">{{ __('slash_landing.hero.title_emphasis') }}</span></em><br>en gestión de negocio</h1>
         <p class="slash-lead">{{ __('slash_landing.hero.lead') }}</p>
-        <form class="slash-hero-form" action="{{ route('pricing') }}" method="GET">
-          <input type="email" name="email" placeholder="{{ __('slash_landing.hero.email_placeholder') }}" aria-label="Email">
+        <form class="slash-hero-form" action="{{ route('slash.lead.store') }}" method="POST" data-slash-lead-form novalidate>
+          @csrf
+          <input type="hidden" name="source" value="hero">
+          <input
+            type="email"
+            name="email"
+            value="{{ old('email') }}"
+            placeholder="{{ __('slash_landing.hero.email_placeholder') }}"
+            aria-label="Email"
+            autocomplete="email"
+            inputmode="email"
+            spellcheck="false"
+            data-slash-email-input
+            aria-describedby="slash-lead-feedback-hero"
+          >
           <button type="submit" class="slash-btn slash-btn-accent">{{ __('slash_landing.hero.cta') }}</button>
+          <p
+            class="slash-form-feedback"
+            id="slash-lead-feedback-hero"
+            data-slash-form-feedback
+            role="alert"
+            @if ($errors->has('email') && old('source', 'hero') === 'hero') data-slash-form-feedback-visible @endif
+          >@if ($errors->has('email') && old('source', 'hero') === 'hero'){{ $errors->first('email') }}@endif</p>
         </form>
         <p class="slash-hero-note">{{ __('slash_landing.hero.note') }}</p>
         <div class="slash-hero-shot slash-glow-frame">
@@ -306,6 +326,9 @@
 
     <section id="precios" class="slash-section">
       <div class="slash-container">
+        @if (session('slash_lead_sent'))
+          <p class="slash-form-success" role="status">{{ __('slash_landing.lead.success') }}</p>
+        @endif
         <div class="slash-section-head">
           <span class="slash-eyebrow">{{ __('slash_landing.pricing.eyebrow') }}</span>
           <h2 class="slash-h2">{{ __('humano_pricing.hero_title') }}</h2>
@@ -387,9 +410,29 @@
           <div class="slash-cta-copy">
             <h2>{{ __('slash_landing.cta.title') }}</h2>
             <p>{{ __('slash_landing.cta.lead') }}</p>
-            <form class="slash-hero-form" action="{{ route('pricing') }}" method="GET">
-              <input type="email" name="email" placeholder="{{ __('slash_landing.hero.email_placeholder') }}" aria-label="Email">
+            <form class="slash-hero-form" action="{{ route('slash.lead.store') }}" method="POST" data-slash-lead-form novalidate>
+              @csrf
+              <input type="hidden" name="source" value="cta">
+              <input
+                type="email"
+                name="email"
+                value="{{ old('email') }}"
+                placeholder="{{ __('slash_landing.hero.email_placeholder') }}"
+                aria-label="Email"
+                autocomplete="email"
+                inputmode="email"
+                spellcheck="false"
+                data-slash-email-input
+                aria-describedby="slash-lead-feedback-cta"
+              >
               <button type="submit" class="slash-btn slash-btn-accent">{{ __('slash_landing.cta.button') }}</button>
+              <p
+                class="slash-form-feedback"
+                id="slash-lead-feedback-cta"
+                data-slash-form-feedback
+                role="alert"
+                @if ($errors->has('email') && old('source') === 'cta') data-slash-form-feedback-visible @endif
+              >@if ($errors->has('email') && old('source') === 'cta'){{ $errors->first('email') }}@endif</p>
             </form>
           </div>
           <div class="slash-cta-shot">
@@ -459,10 +502,20 @@
       </div>
       <div class="slash-footer-bottom">
         <span>© {{ date('Y') }} {{ config('app.name') }}. {{ __('slash_landing.footer.copyright') }}</span>
-        <span>{{ __('slash_landing.footer.made_with') }}</span>
+        <a
+          href="https://www.idoneo.dev"
+          class="slash-footer-idoneo"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="{{ __('slash_landing.footer.idoneo_link_title') }}"
+        >
+          <img src="{{ asset('assets/logo-idoneo-iso.svg') }}" alt="{{ __('slash_landing.footer.idoneo_logo_alt') }}">
+        </a>
       </div>
     </div>
   </footer>
+
+  @include('homes.slash.partials.lead-modal')
 
   <script src="{{ SlashHomeAsset::url('vendor/gsap/gsap.min.js') }}"></script>
   <script src="{{ SlashHomeAsset::url('vendor/gsap/ScrollTrigger.min.js') }}"></script>

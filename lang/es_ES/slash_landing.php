@@ -100,6 +100,45 @@ return [
         'button' => 'Empezar gratis',
     ],
 
+    'lead' => [
+        'success' => 'Gracias. Hemos recibido tu email y puedes elegir tu plan a continuación.',
+        'validation_email_required' => 'Indica tu email para continuar.',
+        'validation_email_invalid' => 'El email no es válido.',
+        'validation_client_email_required' => 'Antes de seguir, necesitamos tu email 😉',
+        'validation_client_email_invalid' => 'Ese correo no cuadra. ¿Un typo?',
+        'validation_phone_invalid' => 'El teléfono solo puede contener números, espacios y los símbolos + - ( ).',
+        'mail_subject' => 'Nuevo interés en la landing — :email',
+        'mail_title' => 'Nuevo interés en la landing Slash',
+        'mail_email' => 'Email',
+        'mail_name' => 'Nombre',
+        'mail_phone' => 'Teléfono',
+        'mail_not_provided' => 'No indicado',
+        'mail_source' => 'Origen del formulario',
+        'mail_submitted_at' => 'Fecha y hora',
+        'modal_kicker' => 'Una cosita más…',
+        'modal_subtitle' => 'Es opcional. Pero nos ayuda a no sonar a robot de turno.',
+        'modal_email_confirmed' => 'Perfecto, :email apuntado.',
+        'modal_name_label' => '¿Cómo te llamamos?',
+        'modal_name_placeholder' => 'Tu nombre o apodo',
+        'modal_phone_label' => '¿Te llamamos?',
+        'modal_phone_placeholder' => '+34 600 000 000',
+        'modal_submit_email_only' => 'Enviar solo mi email',
+        'modal_submit_with_details' => 'Enviar',
+        'modal_skip' => 'Saltar, llévame a los planes',
+        'modal_close' => 'Cerrar',
+        'modal_titles' => [
+            '¿Cómo quieres que me refiera cuando te contacte?',
+            '¿Cómo te llamas? (solo entre nosotros 🤫)',
+            'Si quieres, cuéntanos tu nombre y teléfono y te llamamos ;)',
+            'Última cosa: ¿cómo te presento cuando escriba?',
+            'No seas tímido/a: ¿nombre y móvil para llamarte?',
+        ],
+        'sources' => [
+            'hero' => 'Hero (arriba)',
+            'cta' => 'CTA (abajo)',
+        ],
+    ],
+
     'contact' => [
         'eyebrow' => 'Contacto',
         'title' => 'Hablemos de tu negocio',
@@ -111,7 +150,8 @@ return [
     'footer' => [
         'tagline' => 'El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.',
         'copyright' => 'Todos los derechos reservados.',
-        'made_with' => 'Hecho con foco humano.',
+        'idoneo_link_title' => 'Idoneo — desarrollo de software',
+        'idoneo_logo_alt' => 'Idoneo',
     ],
 
     'features' => [

@@ -3,9 +3,14 @@
 namespace App\Http\Controllers\Homes;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSlashLandingLeadRequest;
+use App\Mail\SlashLandingInterestMail;
 use App\Services\HumanoPricingPlanResolver;
 use App\Support\ApplicationLocales;
 use App\Support\HumanoHomeAsset;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\View\View;
 
 class SlashLandingController extends Controller
@@ -89,5 +94,42 @@ class SlashLandingController extends Controller
             'guidePresentations' => self::guidePresentations(),
             'landingPlans' => app(HumanoPricingPlanResolver::class)->plansForDisplay(),
         ]);
+    }
+
+    public function storeLead(StoreSlashLandingLeadRequest $request): RedirectResponse
+    {
+        if (! self::isConfiguredAsPublicHome())
+        {
+            abort(404);
+        }
+
+        app()->setLocale(ApplicationLocales::DEFAULT);
+
+        $validated = $request->validated();
+        $email = $validated['email'];
+        $source = $validated['source'] ?? 'cta';
+        $name = filled($validated['name'] ?? null) ? trim((string) $validated['name']) : null;
+        $phone = filled($validated['phone'] ?? null) ? trim((string) $validated['phone']) : null;
+        $sourceLabel = __('slash_landing.lead.sources.'.$source);
+        $submittedAt = now()->timezone(config('app.timezone'))->format('Y-m-d H:i:s');
+
+        $recipient = (string) config('app.notification_email');
+        if ($recipient !== '')
+        {
+            Mail::to($recipient)->send(new SlashLandingInterestMail($email, $sourceLabel, $submittedAt, $name, $phone));
+        }
+
+        Log::channel('leads')->info(sprintf(
+            '[%s] Slash landing lead - Email: %s, Name: %s, Phone: %s, Source: %s',
+            $submittedAt,
+            $email,
+            $name ?? 'no proporcionado',
+            $phone ?? 'no proporcionado',
+            $source,
+        ));
+
+        return redirect()
+            ->to(route('slash').'#precios')
+            ->with('slash_lead_sent', true);
     }
 }

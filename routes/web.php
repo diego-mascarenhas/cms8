@@ -120,6 +120,7 @@ Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
 Route::get('/slash', [SlashLandingController::class, 'index'])->name('slash');
+Route::middleware('throttle:10,1')->post('/slash/lead', [SlashLandingController::class, 'storeLead'])->name('slash.lead.store');
 Route::redirect('/front-pages/landing', '/inicio', 301);
 Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
 Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
