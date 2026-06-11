@@ -151,8 +151,9 @@ class BillingAffiliateTeamTest extends TestCase
         {
             return $mail->hasTo('jane@example.com')
                 && $mail->inviteeName === 'Jane Doe'
-                && str_contains($mail->checkoutUrl, 'client_reference_id=cus_invite_ref')
-                && str_contains($mail->checkoutUrl, 'prefilled_email=jane%40example.com')
+                && str_contains($mail->checkoutUrl, 'affiliate/capture')
+                && str_contains($mail->checkoutUrl, 'ref=cus_invite_ref')
+                && str_contains($mail->checkoutUrl, 'client_reference_id%3Dcus_invite_ref')
                 && str_contains($mail->pricingUrl, '/pricing');
         });
 

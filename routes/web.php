@@ -1127,6 +1127,7 @@ Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trac
 // Affiliate invitation tracking (no auth required)
 Route::get('/affiliate-invite/track/{token}/open', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
 Route::get('/affiliate-invite/track/{token}/click', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
+Route::get('/affiliate/capture', [App\Http\Controllers\AffiliateReferralCaptureController::class, 'capture'])->name('affiliate.referral.capture');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');

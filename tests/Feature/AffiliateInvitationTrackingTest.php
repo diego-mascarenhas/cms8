@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AffiliateInvitation;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\AffiliateReferralAttributionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -40,6 +41,21 @@ class AffiliateInvitationTrackingTest extends TestCase
         $this->assertNotNull($invitation->opened_at);
         $this->assertNotNull($invitation->clicked_at);
         $this->assertSame('checkout', $invitation->clicked_link);
+    }
+
+    public function test_click_tracking_stores_referrer_in_session(): void
+    {
+        $invitation = $this->createInvitation();
+        $invitation->team->forceFill(['stripe_id' => 'cus_track_click_ref'])->save();
+        $targetUrl = 'https://buy.stripe.com/test_checkout';
+
+        $this->get(route('affiliate-invite.track.click', [
+            'token' => $invitation->tracking_token,
+            'url' => $targetUrl,
+            'link' => 'checkout',
+        ]))
+            ->assertRedirect($targetUrl)
+            ->assertSessionHas(AffiliateReferralAttributionService::SESSION_REFERRER_KEY, 'cus_track_click_ref');
     }
 
     public function test_invalid_token_does_not_error_on_open(): void

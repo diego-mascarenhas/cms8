@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\CheckoutSessionRetriever;
+use App\Models\AffiliateInvitation;
 use App\Models\Enterprise;
 use App\Models\Team;
 use App\Models\User;
@@ -780,6 +781,138 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $payingTeam->refresh();
 
         $this->assertSame($referrerStripeFromField, $payingTeam->referred_by);
+    }
+
+    public function test_payment_link_sets_referred_by_from_affiliate_invitation_email_when_stripe_has_no_reference(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $referrerOwner = User::factory()->create();
+        $referrerStripeId = 'cus_ref_invite_'.uniqid('', true);
+        $referrerTeam = Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeId,
+        ]);
+        $referrerOwner->forceFill(['current_team_id' => $referrerTeam->id])->save();
+
+        $email = 'pl-invite-'.uniqid('', true).'@example.com';
+        $customerId = 'cus_pl_invite_'.uniqid('', true);
+
+        AffiliateInvitation::query()->create([
+            'team_id' => $referrerTeam->id,
+            'invited_by_user_id' => $referrerOwner->id,
+            'invitee_name' => 'Invited Buyer',
+            'invitee_email' => $email,
+            'plan_id' => 'assistant',
+            'plan_name' => 'Assistant',
+            'sent_at' => now(),
+        ]);
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_pl_invite_email',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => $customerId,
+            'subscription' => 'sub_test_pl_invite',
+            'client_reference_id' => null,
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Invited Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_pl_invite_email',
+            'category' => 'assistant',
+        ]))
+            ->assertRedirect(route('dashboard'));
+
+        $buyer = User::where('email', $email)->first();
+        $this->assertNotNull($buyer);
+        $payingTeam = $buyer->currentTeam;
+        $this->assertNotNull($payingTeam);
+        $payingTeam->refresh();
+
+        $this->assertSame($referrerStripeId, $payingTeam->referred_by);
+    }
+
+    public function test_payment_link_sets_referred_by_from_browser_cookie_when_stripe_has_no_reference(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $referrerOwner = User::factory()->create();
+        $referrerStripeId = 'cus_ref_cookie_'.uniqid('', true);
+        Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeId,
+        ]);
+
+        $email = 'pl-cookie-'.uniqid('', true).'@example.com';
+        $customerId = 'cus_pl_cookie_'.uniqid('', true);
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_pl_cookie',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => $customerId,
+            'subscription' => 'sub_test_pl_cookie',
+            'client_reference_id' => null,
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Cookie Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->withCookie(
+            config('humano_pricing.affiliate_referral_cookie_name', 'humano_affiliate_ref'),
+            $referrerStripeId,
+        )->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_pl_cookie',
+            'category' => 'assistant',
+        ]))
+            ->assertRedirect(route('dashboard'));
+
+        $buyer = User::where('email', $email)->first();
+        $this->assertNotNull($buyer);
+        $payingTeam = $buyer->currentTeam;
+        $this->assertNotNull($payingTeam);
+        $payingTeam->refresh();
+
+        $this->assertSame($referrerStripeId, $payingTeam->referred_by);
     }
 
     private function bindNoopTeamCheckoutSessionSubscriptionSyncer(): void

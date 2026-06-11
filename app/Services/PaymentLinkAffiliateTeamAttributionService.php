@@ -7,6 +7,10 @@ use App\Models\Team;
 use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session;
 
+/**
+ * Resolves referrer in order: Payment Link custom field → Stripe client_reference_id
+ * → browser session/cookie → affiliate_invitations.invitee_email match.
+ */
 class PaymentLinkAffiliateTeamAttributionService
 {
     /**
@@ -17,9 +21,9 @@ class PaymentLinkAffiliateTeamAttributionService
      * Custom field wins when both are set. Legacy numeric values resolve to a referrer enterprise id
      * and are stored as that enterprise team's {@see Team::$stripe_id}.
      */
-    public function syncTeamReferrerFromSession(Team $team, Session $session): void
+    public function syncTeamReferrerFromSession(Team $team, Session $session, ?string $payerEmail = null): void
     {
-        $referrerStripeId = $this->resolveReferrerStripeCustomerId($session);
+        $referrerStripeId = $this->resolveReferrerStripeCustomerId($session, $payerEmail);
         if ($referrerStripeId === null || $referrerStripeId === '')
         {
             return;
@@ -70,9 +74,19 @@ class PaymentLinkAffiliateTeamAttributionService
         ]);
     }
 
-    private function resolveReferrerStripeCustomerId(Session $session): ?string
+    private function resolveReferrerStripeCustomerId(Session $session, ?string $payerEmail = null): ?string
     {
         $raw = $this->resolveReferrerRaw($session);
+        if ($raw === null || $raw === '')
+        {
+            $raw = $this->resolveReferrerRawFromBrowserStorage();
+        }
+
+        if (($raw === null || $raw === '') && $payerEmail !== null && trim($payerEmail) !== '')
+        {
+            $raw = app(AffiliateReferralAttributionService::class)->resolveReferrerFromInvitationEmail($payerEmail);
+        }
+
         if ($raw === null || $raw === '')
         {
             return null;
@@ -93,6 +107,17 @@ class PaymentLinkAffiliateTeamAttributionService
         ]);
 
         return null;
+    }
+
+    private function resolveReferrerRawFromBrowserStorage(): ?string
+    {
+        $request = request();
+        if ($request === null)
+        {
+            return null;
+        }
+
+        return app(AffiliateReferralAttributionService::class)->getStoredReferrerStripeId($request);
     }
 
     private function resolveReferrerRaw(Session $session): ?string

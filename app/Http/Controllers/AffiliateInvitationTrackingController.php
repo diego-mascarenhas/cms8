@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\AffiliateInvitation;
+use App\Services\AffiliateReferralAttributionService;
+use App\Services\AffiliateReferralLinkBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -10,6 +12,11 @@ use Illuminate\Support\Facades\Log;
 
 class AffiliateInvitationTrackingController extends Controller
 {
+    public function __construct(
+        private readonly AffiliateReferralAttributionService $affiliateReferralAttribution,
+        private readonly AffiliateReferralLinkBuilder $affiliateReferralLinkBuilder,
+    ) {}
+
     public function trackOpen(Request $request, string $token): Response
     {
         $this->recordOpen($request, $token);
@@ -26,6 +33,7 @@ class AffiliateInvitationTrackingController extends Controller
         if ($invitation && $redirectUrl !== '')
         {
             $invitation->markClicked($linkType);
+            $this->captureReferrerFromInvitation($request, $invitation);
 
             Log::info('Affiliate invitation click tracked', [
                 'invitation_id' => $invitation->id,
@@ -56,6 +64,18 @@ class AffiliateInvitationTrackingController extends Controller
             'invitation_id' => $invitation->id,
             'ip' => $request->ip(),
         ]);
+    }
+
+    private function captureReferrerFromInvitation(Request $request, AffiliateInvitation $invitation): void
+    {
+        $invitation->loadMissing('team');
+        $referrerStripeId = $this->affiliateReferralLinkBuilder->referralCode($invitation->team);
+        if ($referrerStripeId === null)
+        {
+            return;
+        }
+
+        $this->affiliateReferralAttribution->capture($request, $referrerStripeId, (int) $invitation->id);
     }
 
     private function findByToken(string $token): ?AffiliateInvitation

@@ -80,6 +80,13 @@ return [
     'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 40),
 
     /*
+     * | Cookie + session fallback when Stripe checkout omits client_reference_id.
+     * | Set on /affiliate/capture and invitation click tracking before redirect.
+     */
+    'affiliate_referral_cookie_name' => env('HUMANO_AFFILIATE_REFERRAL_COOKIE', 'humano_affiliate_ref'),
+    'affiliate_referral_cookie_days' => (int) env('HUMANO_AFFILIATE_REFERRAL_COOKIE_DAYS', 90),
+
+    /*
      * |--------------------------------------------------------------------------
      * | Team modules after checkout (by plan id: assistant, business, mentor)
      * |--------------------------------------------------------------------------

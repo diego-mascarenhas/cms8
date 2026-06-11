@@ -187,7 +187,7 @@ class BillingController extends Controller
             {
                 $affiliateReferralPlans[] = array_merge($plan, [
                     'referral_url' => $affiliateReferralCode !== null
-                        ? $linkBuilder->buildLink($plan['checkout_url'], $affiliateReferralCode)
+                        ? $linkBuilder->buildCaptureRedirectLink($plan['checkout_url'], $affiliateReferralCode)
                         : null,
                 ]);
             }
@@ -277,7 +277,7 @@ class BillingController extends Controller
                 ->with('error', __('The selected plan is not available.'));
         }
 
-        $checkoutUrl = $linkBuilder->buildLink(
+        $checkoutUrl = $linkBuilder->buildCaptureRedirectLink(
             $plan['checkout_url'],
             $referralCode,
             (string) $request->validated('invite_email'),

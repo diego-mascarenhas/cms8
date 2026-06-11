@@ -67,6 +67,14 @@ class AffiliateReferralLinkBuilder
         return $checkoutUrl.$separator.http_build_query($query);
     }
 
+    public function buildCaptureRedirectLink(string $checkoutUrl, string $referralCode, ?string $prefilledEmail = null): string
+    {
+        return route('affiliate.referral.capture', [
+            'ref' => $referralCode,
+            'url' => $this->buildLink($checkoutUrl, $referralCode, $prefilledEmail),
+        ]);
+    }
+
     /**
      * @return array{name: string, description: string, features: list<string>}|null
      */

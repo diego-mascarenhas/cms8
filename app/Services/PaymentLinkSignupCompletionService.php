@@ -190,6 +190,7 @@ class PaymentLinkSignupCompletionService
         $this->paymentLinkAffiliateTeamAttributionService->syncTeamReferrerFromSession(
             $team->fresh(),
             $session,
+            $email,
         );
 
         Log::info('Payment link signup: Stripe checkout applied to Humano user', array_merge(

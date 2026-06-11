@@ -37,12 +37,34 @@ class HumanoPricingPlanResolver
      *
      * @return list<array<string, mixed>>
      */
-    public function plansWithCheckoutAvailable(): array
+    public function plansWithCheckoutAvailable(?string $referralCode = null): array
     {
-        return array_values(array_filter(
+        $plans = array_values(array_filter(
             $this->plansForDisplay(),
             static fn (array $plan): bool => (bool) ($plan['checkout_available'] ?? true),
         ));
+
+        $referralCode = trim((string) ($referralCode ?? ''));
+        if ($referralCode === '')
+        {
+            return $plans;
+        }
+
+        $builder = app(AffiliateReferralLinkBuilder::class);
+
+        return array_map(function (array $plan) use ($builder, $referralCode): array
+        {
+            foreach (['checkout_href_monthly', 'checkout_href_yearly', 'checkout_href'] as $key)
+            {
+                $href = trim((string) ($plan[$key] ?? ''));
+                if ($href !== '')
+                {
+                    $plan[$key] = $builder->buildLink($href, $referralCode);
+                }
+            }
+
+            return $plan;
+        }, $plans);
     }
 
     /**
