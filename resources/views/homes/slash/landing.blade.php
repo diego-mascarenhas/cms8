@@ -38,6 +38,31 @@
   <meta name="description" content="{{ __('slash_landing.meta_description') }}">
   <meta name="color-scheme" content="dark">
   <title>{{ __('slash_landing.page_title') }}</title>
+  @php
+    $slashOgImagePath = config('variables.ogImage', 'assets/logo.png');
+    $slashOgImageUrl = str_starts_with($slashOgImagePath, 'http') ? $slashOgImagePath : url('/'.ltrim($slashOgImagePath, '/'));
+    $slashPageUrl = route('slash');
+  @endphp
+  <link rel="canonical" href="{{ $slashPageUrl }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ $slashPageUrl }}">
+  <meta property="og:title" content="{{ __('slash_landing.page_title') }}">
+  <meta property="og:description" content="{{ __('slash_landing.meta_description') }}">
+  <meta property="og:image" content="{{ $slashOgImageUrl }}">
+  <meta property="og:image:secure_url" content="{{ $slashOgImageUrl }}">
+  <meta property="og:image:width" content="{{ config('variables.ogImageWidth', 552) }}">
+  <meta property="og:image:height" content="{{ config('variables.ogImageHeight', 552) }}">
+  <meta property="og:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}">
+  <meta property="og:site_name" content="{{ config('variables.templateName') }}">
+  <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ __('slash_landing.page_title') }}">
+  <meta name="twitter:description" content="{{ __('slash_landing.meta_description') }}">
+  <meta name="twitter:image" content="{{ $slashOgImageUrl }}">
+  <meta name="twitter:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}">
+  @if (config('variables.twitterUrl'))
+  <meta name="twitter:site" content="{{ config('variables.twitterUrl') }}">
+  @endif
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">

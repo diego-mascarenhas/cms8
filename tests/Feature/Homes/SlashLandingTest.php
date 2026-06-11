@@ -61,6 +61,8 @@ class SlashLandingTest extends TestCase
             ->assertSee('slash-glow-frame', false)
             ->assertSee('data-slash-spotlight', false)
             ->assertSee('color-scheme" content="dark"', false)
+            ->assertSee('property="og:image" content="'.url('/images/system-onboarding/whatsapp-image.jpg').'"', false)
+            ->assertSee('name="twitter:image" content="'.url('/images/system-onboarding/whatsapp-image.jpg').'"', false)
             ->assertSee('estándar superior', false)
             ->assertSee('Beneficios clave', false)
             ->assertSee('Seguro por diseño', false)
