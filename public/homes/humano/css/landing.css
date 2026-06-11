@@ -11,6 +11,16 @@
 .dark-style .landing-plans-stack .landing-plan-row:not(:last-child){border-bottom-color:rgba(255,255,255,.12)}
 .humano-front-navbar.is-scrolled{box-shadow:0 4px 24px rgba(47,43,61,.08);backdrop-filter:saturate(180%) blur(8px)}
 .dark-style .humano-front-navbar.is-scrolled{box-shadow:0 4px 24px rgba(0,0,0,.28)}
+#landingPlans.landing-plans.section-py{padding-bottom:3rem}
+#landingFAQ.landing-faq.section-py{padding-top:3rem}
+@media(max-width:1199.98px){
+  #landingPlans.landing-plans.section-py{padding-bottom:2.5rem}
+  #landingFAQ.landing-faq.section-py{padding-top:2.5rem}
+}
+@media(max-width:767.98px){
+  #landingPlans.landing-plans.section-py{padding-bottom:2rem}
+  #landingFAQ.landing-faq.section-py{padding-top:2rem}
+}
 #landingContact.landing-contact.section-py{padding-bottom:1.25rem}
 @media(max-width:767.98px){#landingContact.landing-contact.section-py{padding-bottom:1rem}}
 .humano-landing-page{padding-bottom:0;margin-bottom:0}

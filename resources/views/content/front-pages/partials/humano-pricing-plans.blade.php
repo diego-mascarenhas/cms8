@@ -59,7 +59,7 @@ $showFlashAlerts = $showFlashAlerts ?? true;
   </div>
 </div>
 
-<div class="row mx-0 gy-3 px-lg-5 justify-content-center">
+<div class="row mx-0 gy-3 px-lg-4 justify-content-center">
   @foreach ($plans as $plan)
     @php
       $id = $plan['id'];
@@ -69,7 +69,7 @@ $showFlashAlerts = $showFlashAlerts ?? true;
       $highlightPopular = $checkoutAvailable && ! empty($plan['popular']);
       $cardBorder = $highlightPopular ? 'border-primary border' : 'border rounded';
     @endphp
-    <div class="col-md-6 col-xl-3 mb-md-0 mb-4" id="plan-{{ $id }}">
+    <div class="col-md-6 col-lg-4 col-xl-4 mb-md-0 mb-4" id="plan-{{ $id }}">
       <div class="card {{ $cardBorder }} shadow-none h-100 d-flex flex-column">
         <div class="card-body d-flex flex-column flex-grow-1">
           @if ($highlightPopular)
