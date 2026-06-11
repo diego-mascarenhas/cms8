@@ -3,6 +3,7 @@
 namespace Tests\Feature\Homes;
 
 use App\Helpers\SupportWhatsAppHelper;
+use App\Support\HumanoHomeAsset;
 use Tests\TestCase;
 
 class HumanoLandingTest extends TestCase
@@ -49,6 +50,23 @@ class HumanoLandingTest extends TestCase
             ->assertDontSee('#plan-mentor', false)
             ->assertDontSee('https://fanyion.com', false)
             ->assertSee(__('humano_pricing.landing_plans_cta'), false);
+    }
+
+    public function test_landing_includes_brand_footer_with_partner_effects(): void
+    {
+        $this->get('/inicio')
+            ->assertOk()
+            ->assertSee('humano-brand-footer', false)
+            ->assertSee('slash-footer-idoneo', false)
+            ->assertSee('slash-footer-powered', false)
+            ->assertSee(__('slash_landing.footer.brand_name'), false)
+            ->assertSee(__('slash_landing.footer.copyright'), false)
+            ->assertSee(__('slash_landing.footer.powered_by'), false)
+            ->assertSee(asset('assets/logo-idoneo-iso.svg'), false)
+            ->assertSee(asset('assets/logo-revision-alpha.svg'), false)
+            ->assertSee(asset('homes/shared/css/brand-footer.css'), false)
+            ->assertSee(HumanoHomeAsset::url('vendor/lenis/lenis.min.js'), false)
+            ->assertSee(HumanoHomeAsset::url('vendor/gsap/gsap.min.js'), false);
     }
 
     public function test_public_index_html_must_not_exist_to_avoid_root_reload_loop(): void

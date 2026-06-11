@@ -106,6 +106,7 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('Facturación'), false)
             ->assertSee('Ver presentación', false)
             ->assertSee(SlashHomeAsset::url('css/landing.css'), false)
+            ->assertSee(asset('homes/shared/css/brand-footer.css'), false)
             ->assertSee(SlashHomeAsset::url('vendor/gsap/gsap.min.js'), false)
             ->assertSee(SlashHomeAsset::url('vendor/gsap/ScrollTrigger.min.js'), false)
             ->assertSee(SlashHomeAsset::url('vendor/lenis/lenis.min.js'), false)

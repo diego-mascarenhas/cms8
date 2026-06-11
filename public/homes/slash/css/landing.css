@@ -2048,6 +2048,11 @@ body.slash-page {
   gap: 1rem;
 }
 
+.slash-footer-copy-sep {
+  margin-inline: 0.65rem;
+  opacity: 0.45;
+}
+
 .slash-footer-powered {
   position: relative;
   display: inline-flex;
@@ -2056,6 +2061,7 @@ body.slash-page {
   color: var(--slash-muted-2);
   text-decoration: none;
   isolation: isolate;
+  line-height: 1;
 }
 
 .slash-footer-powered::before {
@@ -2077,11 +2083,15 @@ body.slash-page {
 
 .slash-footer-powered-by {
   position: relative;
+  top: 2px;
   z-index: 1;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  height: auto;
   overflow: hidden;
   padding: 0 2px;
-  line-height: 1.25;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .slash-footer-powered-by::before {
@@ -2277,9 +2287,11 @@ body.slash-page {
 
 .slash-footer-powered img {
   display: block;
+  flex-shrink: 0;
   height: 1.15rem;
   width: auto;
   max-width: 7.5rem;
+  margin: 0;
 }
 
 .slash-footer-copy {

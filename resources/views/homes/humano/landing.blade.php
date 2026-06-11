@@ -16,10 +16,14 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
 
 @section('page-style')
 <link rel="stylesheet" href="{{ HumanoHomeAsset::url('css/landing.css') }}" />
+<link rel="stylesheet" href="{{ asset('homes/shared/css/brand-footer.css') }}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{ HumanoHomeAsset::url('vendor/swiper/swiper.js') }}"></script>
+<script src="{{ HumanoHomeAsset::url('vendor/gsap/gsap.min.js') }}"></script>
+<script src="{{ HumanoHomeAsset::url('vendor/gsap/ScrollTrigger.min.js') }}"></script>
+<script src="{{ HumanoHomeAsset::url('vendor/lenis/lenis.min.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -27,7 +31,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
 @endsection
 
 @section('content')
-<div data-bs-spy="scroll" class="scrollspy-example">
+<div class="scrollspy-example humano-landing-page">
   <section id="hero-animation">
     <div id="landingHero" class="section-py landing-hero position-relative">
       <div class="container">
@@ -263,6 +267,9 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
             </div>
           </div>
         </div>
+      </div>
+      <div class="humano-brand-footer">
+        @include('homes.partials.brand-footer-bottom')
       </div>
     </div>
   </section>
