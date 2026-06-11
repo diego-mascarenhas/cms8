@@ -43,4 +43,27 @@ class HumanoPricingPlanResolverTest extends TestCase
 
         $this->assertSame('https://buy.stripe.com/monthly-assistant', $plans[0]['checkout_href_yearly']);
     }
+
+    public function test_plans_with_checkout_available_only_includes_checkout_enabled_plans(): void
+    {
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'assistant',
+                    'checkout_url' => 'https://buy.stripe.com/monthly-assistant',
+                    'checkout_available' => true,
+                ],
+                [
+                    'id' => 'mentor',
+                    'checkout_url' => '',
+                    'checkout_available' => false,
+                ],
+            ],
+        ]);
+
+        $plans = app(HumanoPricingPlanResolver::class)->plansWithCheckoutAvailable();
+
+        $this->assertCount(1, $plans);
+        $this->assertSame('assistant', $plans[0]['id']);
+    }
 }

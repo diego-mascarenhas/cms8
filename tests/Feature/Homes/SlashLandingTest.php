@@ -83,8 +83,6 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('humano_pricing.plans.assistant.name'), false)
             ->assertSee(__('humano_pricing.plans.hunter.name'), false)
             ->assertSee(__('humano_pricing.plans.business.name'), false)
-            ->assertSee(__('humano_pricing.plans.mentor.name'), false)
-            ->assertSee(__('humano_pricing.plans.innovation.name'), false)
             ->assertDontSee('id="plan-mentor"', false)
             ->assertDontSee('id="plan-innovation"', false)
             ->assertSee('id="historias-planes"', false)

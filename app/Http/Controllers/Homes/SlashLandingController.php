@@ -56,7 +56,7 @@ class SlashLandingController extends Controller
 
         return view('homes.slash.landing', [
             'guidePresentations' => self::guidePresentations(),
-            'landingPlans' => app(HumanoPricingPlanResolver::class)->plansForDisplay(),
+            'landingPlans' => app(HumanoPricingPlanResolver::class)->plansWithCheckoutAvailable(),
         ]);
     }
 

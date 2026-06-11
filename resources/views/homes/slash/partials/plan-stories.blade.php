@@ -17,10 +17,7 @@
     ],
   ];
 
-  $storyPlans = array_values(array_filter(
-    $landingPlans,
-    static fn (array $plan): bool => ! in_array($plan['id'] ?? '', ['mentor', 'innovation'], true)
-  ));
+  $storyPlans = $landingPlans;
 
   $defaultStoryId = 'assistant';
 

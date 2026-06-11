@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Homes;
 
+use App\Helpers\SupportWhatsAppHelper;
 use Tests\TestCase;
 
 class HumanoLandingTest extends TestCase
@@ -37,6 +38,17 @@ class HumanoLandingTest extends TestCase
             ->assertSee('humanoFrontNavCollapse', false)
             ->assertDontSee('landingPricing', false)
             ->assertDontSee(__('humano_pricing.hero_title'), false);
+    }
+
+    public function test_landing_plans_without_checkout_show_consult_cta(): void
+    {
+        $this->get('/inicio')
+            ->assertOk()
+            ->assertSee(__('humano_pricing.consult_cta'), false)
+            ->assertSee('https://web.whatsapp.com/send?phone='.SupportWhatsAppHelper::phoneDigits(), false)
+            ->assertDontSee('#plan-mentor', false)
+            ->assertDontSee('https://fanyion.com', false)
+            ->assertSee(__('humano_pricing.landing_plans_cta'), false);
     }
 
     public function test_public_index_html_must_not_exist_to_avoid_root_reload_loop(): void

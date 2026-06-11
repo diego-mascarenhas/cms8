@@ -23,11 +23,6 @@
 
   $whatsappSupportUrl = SupportWhatsAppHelper::webUrl();
   $supportPhoneDisplay = SupportWhatsAppHelper::phoneDisplay();
-
-  $slashPricingPlans = array_values(array_filter(
-    $landingPlans,
-    static fn (array $plan): bool => ! in_array($plan['id'] ?? '', ['mentor', 'innovation'], true)
-  ));
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -381,7 +376,7 @@
           <span class="slash-pill slash-pricing-billing-badge">{{ __('humano_pricing.annual_discount_badge') }}</span>
         </div>
         <div class="slash-pricing-grid">
-          @foreach ($slashPricingPlans as $plan)
+          @foreach ($landingPlans as $plan)
             @php
               $planId = $plan['id'];
               $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);

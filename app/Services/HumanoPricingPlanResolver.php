@@ -33,6 +33,19 @@ class HumanoPricingPlanResolver
     }
 
     /**
+     * Plans with an active Stripe checkout (public pricing surfaces).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function plansWithCheckoutAvailable(): array
+    {
+        return array_values(array_filter(
+            $this->plansForDisplay(),
+            static fn (array $plan): bool => (bool) ($plan['checkout_available'] ?? true),
+        ));
+    }
+
+    /**
      * Match a Stripe product id to a `humano_pricing.plans` entry (`assistant`, `business`, `mentor`).
      */
     public function resolvePlanSlugFromStripeProductId(string $stripeProductId): ?string

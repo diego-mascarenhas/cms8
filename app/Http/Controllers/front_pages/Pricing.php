@@ -15,7 +15,7 @@ class Pricing extends Controller
     {
         $pageConfigs = ['myLayout' => 'front'];
 
-        $plans = $this->pricingPlanResolver->plansForDisplay();
+        $plans = $this->pricingPlanResolver->plansWithCheckoutAvailable();
 
         return view('content.front-pages.pricing-page', [
             'pageConfigs' => $pageConfigs,
