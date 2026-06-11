@@ -7,6 +7,7 @@ use App\Http\Requests\SendAffiliateInvitationRequest;
 use App\Mail\AffiliatePurchaseInvitationMail;
 use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
+use App\Models\Team;
 use App\Services\AffiliateReferralLinkBuilder;
 use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
@@ -160,6 +161,9 @@ class BillingController extends Controller
 
         if ($team->hasModule('affiliates'))
         {
+            $this->ensureAffiliateStripeCustomer($team);
+            $team->refresh();
+
             $linkBuilder = app(AffiliateReferralLinkBuilder::class);
 
             $affiliateCommissionsAsReferrer = $team->billingAffiliateCommissionsAsReferrer()
@@ -225,6 +229,25 @@ class BillingController extends Controller
         ));
     }
 
+    public function setupAffiliateStripe(Request $request): RedirectResponse
+    {
+        $team = $request->user()->currentTeam;
+
+        if (! $team || ! $team->hasModule('affiliates'))
+        {
+            abort(403);
+        }
+
+        if ($this->ensureAffiliateStripeCustomer($team))
+        {
+            return redirect()->route('billing.index')
+                ->with('success', 'Código de referido activado correctamente.');
+        }
+
+        return redirect()->route('billing.index')
+            ->with('error', 'No pudimos activar tu código de referido en Stripe. Revisá tus datos de facturación e intentalo de nuevo.');
+    }
+
     public function sendAffiliateInvite(SendAffiliateInvitationRequest $request): RedirectResponse
     {
         $user = $request->user();
@@ -234,8 +257,15 @@ class BillingController extends Controller
 
         if ($referralCode === null)
         {
+            $this->ensureAffiliateStripeCustomer($team);
+            $team->refresh();
+            $referralCode = $linkBuilder->referralCode($team);
+        }
+
+        if ($referralCode === null)
+        {
             return redirect()->route('billing.index')
-                ->with('error', __('Your team does not have a billing reference code yet. Complete a subscription first.'));
+                ->with('error', 'No pudimos activar tu código de referido. Usá el botón «Activar en Stripe» en la sección Afiliados e intentalo de nuevo.');
         }
 
         $planId = (string) $request->validated('invite_plan');
@@ -466,5 +496,31 @@ class BillingController extends Controller
         }
 
         return $totals;
+    }
+
+    private function ensureAffiliateStripeCustomer(Team $team): bool
+    {
+        if (trim((string) ($team->stripe_id ?? '')) !== '')
+        {
+            return true;
+        }
+
+        try
+        {
+            $customerId = app(TeamStripeCustomerService::class)
+                ->getOrCreateStripeCustomerIdForCategory($team, 'mailer');
+
+            $team->refresh();
+
+            return $customerId !== null && trim((string) $team->stripe_id) !== '';
+        } catch (\Throwable $e)
+        {
+            Log::warning('Unable to create Stripe customer for affiliate referrals', [
+                'team_id' => $team->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 }

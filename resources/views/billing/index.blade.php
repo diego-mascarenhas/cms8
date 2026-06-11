@@ -643,73 +643,94 @@
 				</div>
 			</div>
 			<div class="card-body">
-				@if(count($affiliateReferralPlans) > 0)
-					<h6 class="mb-3">Enlaces por plan</h6>
-					<div class="table-responsive mb-4">
-						<table class="table table-sm">
-							<thead>
-								<tr>
-									<th>Plan</th>
-									<th>Enlace de referido</th>
-									<th></th>
-								</tr>
-							</thead>
-							<tbody>
-								@foreach($affiliateReferralPlans as $plan)
-									<tr>
-										<td class="align-middle">{{ $plan['name'] }}</td>
-										<td class="align-middle">
-											@if($plan['referral_url'])
-												<input type="text" class="form-control form-control-sm affiliate-plan-link" readonly value="{{ $plan['referral_url'] }}">
-											@else
-												<span class="text-muted small">—</span>
-											@endif
-										</td>
-										<td class="align-middle text-end">
-											@if($plan['referral_url'])
-												<button type="button" class="btn btn-sm btn-label-secondary" onclick="copyAffiliatePlanLink(this)">
-													<i class="ti ti-copy"></i>
-												</button>
-											@endif
-										</td>
-									</tr>
-								@endforeach
-							</tbody>
-						</table>
+				@if(!$affiliateReferralCode)
+					<div class="alert alert-warning mb-4" role="alert">
+						<div class="d-flex">
+							<div class="flex-shrink-0 me-3">
+								<i class="ti ti-alert-triangle ti-md"></i>
+							</div>
+							<div class="flex-grow-1">
+								<h6 class="alert-heading mb-2">Activa tu código de referido</h6>
+								<p class="mb-3 mb-md-0">
+									Para compartir enlaces e invitar por email, tu equipo debe estar registrado en Stripe.
+									Al activarlo, creamos tu cliente de facturación y guardamos el identificador en tu equipo.
+								</p>
+								<form method="POST" action="{{ route('billing.affiliate-setup-stripe') }}" class="mt-3">
+									@csrf
+									<button type="submit" class="btn btn-warning">
+										<i class="ti ti-brand-stripe me-1"></i>Activar en Stripe
+									</button>
+								</form>
+							</div>
+						</div>
 					</div>
-				@endif
+				@else
+					@if(count($affiliateReferralPlans) > 0)
+						<h6 class="mb-3">Enlaces por plan</h6>
+						<div class="table-responsive mb-4">
+							<table class="table table-sm">
+								<thead>
+									<tr>
+										<th>Plan</th>
+										<th>Enlace de referido</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach($affiliateReferralPlans as $plan)
+										<tr>
+											<td class="align-middle">{{ $plan['name'] }}</td>
+											<td class="align-middle">
+												@if($plan['referral_url'])
+													<input type="text" class="form-control form-control-sm affiliate-plan-link" readonly value="{{ $plan['referral_url'] }}">
+												@else
+													<span class="text-muted small">—</span>
+												@endif
+											</td>
+											<td class="align-middle text-end">
+												@if($plan['referral_url'])
+													<button type="button" class="btn btn-sm btn-label-secondary" onclick="copyAffiliatePlanLink(this)">
+														<i class="ti ti-copy"></i>
+													</button>
+												@endif
+											</td>
+										</tr>
+									@endforeach
+								</tbody>
+							</table>
+						</div>
+					@endif
 
-				@if($affiliateReferralCode && count($affiliateReferralPlans) > 0)
-					<h6 class="mb-3">Invitar por email</h6>
-					<form id="affiliate-invite-form" action="{{ route('billing.affiliate-invite') }}" method="POST" class="row g-3 mb-4" novalidate>
-						@csrf
-						<div class="col-md-4">
-							<x-input-general id="invite_name" label="Nombre (*)" value="{{ old('invite_name') }}" />
-						</div>
-						<div class="col-md-4">
-							<x-input-general id="invite_email" label="Email (*)" type="email" value="{{ old('invite_email') }}" />
-						</div>
-						<div class="col-md-4">
-							@php
-								$invitePlanOptions = collect($affiliateReferralPlans)->pluck('name', 'id')->all();
-							@endphp
-							<x-input-select
-								id="invite_plan"
-								label="Plan (*)"
-								:options="$invitePlanOptions"
-								value="{{ old('invite_plan') }}"
-								placeholder="Seleccionar…"
-								:allow-clear="false"
-							/>
-						</div>
-						<div class="col-12">
-							<button type="submit" class="btn btn-primary">
-								<i class="ti ti-mail me-1"></i>Enviar invitación
-							</button>
-						</div>
-					</form>
-				@elseif(!$affiliateReferralCode)
-					<p class="text-muted small mb-4">Los enlaces e invitaciones estarán disponibles cuando tu equipo tenga una suscripción activa en Stripe.</p>
+					@if(count($affiliateReferralPlans) > 0)
+						<h6 class="mb-3">Invitar por email</h6>
+						<form id="affiliate-invite-form" action="{{ route('billing.affiliate-invite') }}" method="POST" class="row g-3 mb-4" novalidate>
+							@csrf
+							<div class="col-md-4">
+								<x-input-general id="invite_name" label="Nombre (*)" value="{{ old('invite_name') }}" />
+							</div>
+							<div class="col-md-4">
+								<x-input-general id="invite_email" label="Email (*)" type="email" value="{{ old('invite_email') }}" />
+							</div>
+							<div class="col-md-4">
+								@php
+									$invitePlanOptions = collect($affiliateReferralPlans)->pluck('name', 'id')->all();
+								@endphp
+								<x-input-select
+									id="invite_plan"
+									label="Plan (*)"
+									:options="$invitePlanOptions"
+									value="{{ old('invite_plan') }}"
+									placeholder="Seleccionar…"
+									:allow-clear="false"
+								/>
+							</div>
+							<div class="col-12">
+								<button type="submit" class="btn btn-primary">
+									<i class="ti ti-mail me-1"></i>Enviar invitación
+								</button>
+							</div>
+						</form>
+					@endif
 				@endif
 
 				<h6 class="mb-3">Invitaciones enviadas</h6>

@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AffiliateCommissionRecorder;
 use App\Services\AffiliateReferralLinkBuilder;
+use App\Services\TeamStripeCustomerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -296,5 +297,128 @@ class BillingAffiliateTeamTest extends TestCase
             ->assertSee('Pedro Test', false)
             ->assertSee('pedro@example.com', false)
             ->assertSee('Assistant', false);
+    }
+
+    public function test_billing_affiliate_shows_stripe_setup_alert_when_no_stripe_id(): void
+    {
+        Module::query()->firstOrCreate(
+            ['key' => 'affiliates'],
+            [
+                'name' => 'Affiliates',
+                'icon' => 'affiliate',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+        $team->forceFill(['stripe_id' => null])->save();
+        $team->enableModule('affiliates');
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->mock(TeamStripeCustomerService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getOrCreateStripeCustomerIdForCategory')
+                ->andReturn(null);
+        });
+
+        $this->actingAs($user)->get(route('billing.index'))
+            ->assertOk()
+            ->assertSee('Activa tu código de referido', false)
+            ->assertSee('Activar en Stripe', false)
+            ->assertDontSee('Invitar por email', false)
+            ->assertDontSee('affiliate-invite-form', false);
+    }
+
+    public function test_billing_affiliate_setup_stripe_persists_customer_id(): void
+    {
+        Module::query()->firstOrCreate(
+            ['key' => 'affiliates'],
+            [
+                'name' => 'Affiliates',
+                'icon' => 'affiliate',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+        $team->forceFill(['stripe_id' => null])->save();
+        $team->enableModule('affiliates');
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->mock(TeamStripeCustomerService::class, function ($mock) use ($team): void
+        {
+            $mock->shouldReceive('getOrCreateStripeCustomerIdForCategory')
+                ->with(\Mockery::on(fn ($passedTeam): bool => $passedTeam->id === $team->id), 'mailer')
+                ->andReturnUsing(function ($passedTeam): string
+                {
+                    $passedTeam->forceFill(['stripe_id' => 'cus_affiliate_setup'])->save();
+
+                    return 'cus_affiliate_setup';
+                });
+        });
+
+        $this->actingAs($user)->post(route('billing.affiliate-setup-stripe'))
+            ->assertRedirect(route('billing.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame('cus_affiliate_setup', $team->fresh()->stripe_id);
+    }
+
+    public function test_billing_affiliate_auto_registers_stripe_customer_on_index(): void
+    {
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'assistant',
+                    'name' => 'Assistant',
+                    'checkout_url' => 'https://buy.stripe.com/test_assistant',
+                    'checkout_available' => true,
+                ],
+            ],
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'affiliates'],
+            [
+                'name' => 'Affiliates',
+                'icon' => 'affiliate',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+        $team->forceFill(['stripe_id' => null])->save();
+        $team->enableModule('affiliates');
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->mock(TeamStripeCustomerService::class, function ($mock) use ($team): void
+        {
+            $mock->shouldReceive('getOrCreateStripeCustomerIdForCategory')
+                ->once()
+                ->with(\Mockery::on(fn ($passedTeam): bool => $passedTeam->id === $team->id), 'mailer')
+                ->andReturnUsing(function ($passedTeam): string
+                {
+                    $passedTeam->forceFill(['stripe_id' => 'cus_auto_index'])->save();
+
+                    return 'cus_auto_index';
+                });
+        });
+
+        $this->actingAs($user)->get(route('billing.index'))
+            ->assertOk()
+            ->assertSee('Invitar por email', false)
+            ->assertSee('affiliate-invite-form', false)
+            ->assertDontSee('Activa tu código de referido', false);
+
+        $this->assertSame('cus_auto_index', $team->fresh()->stripe_id);
     }
 }

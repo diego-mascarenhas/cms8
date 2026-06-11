@@ -1072,6 +1072,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
     Route::post('/billing/affiliate-invite', [App\Http\Controllers\BillingController::class, 'sendAffiliateInvite'])->name('billing.affiliate-invite');
+    Route::post('/billing/affiliate-setup-stripe', [App\Http\Controllers\BillingController::class, 'setupAffiliateStripe'])->name('billing.affiliate-setup-stripe');
 
     Route::get('/performance-insights/list', [App\Http\Controllers\UserDailyPerformanceInsightController::class, 'index'])->name('performance-insights.index');
 });
