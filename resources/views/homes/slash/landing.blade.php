@@ -385,7 +385,8 @@
             @php
               $planId = $plan['id'];
               $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
-              $checkoutHref = trim((string) ($plan['checkout_href'] ?? $plan['checkout_url'] ?? ''));
+              $checkoutHrefMonthly = trim((string) ($plan['checkout_href_monthly'] ?? $plan['checkout_href'] ?? $plan['checkout_url'] ?? ''));
+              $checkoutHrefYearly = trim((string) ($plan['checkout_href_yearly'] ?? $checkoutHrefMonthly));
               $externalUrl = trim((string) ($plan['external_url'] ?? ''));
               $isFeatured = $checkoutAvailable && ! empty($plan['popular']);
             @endphp
@@ -425,8 +426,13 @@
                   <li>@include('homes.slash.partials.icon', ['name' => 'check']) <span>{{ $planFeature }}</span></li>
                 @endforeach
               </ul>
-              @if ($checkoutAvailable && $checkoutHref !== '')
-                <a href="{{ $checkoutHref }}" class="slash-btn {{ $isFeatured ? 'slash-btn-accent' : 'slash-btn-outline' }}">
+              @if ($checkoutAvailable && $checkoutHrefMonthly !== '')
+                <a
+                  href="{{ $checkoutHrefMonthly }}"
+                  class="slash-btn slash-pricing-checkout {{ $isFeatured ? 'slash-btn-accent' : 'slash-btn-outline' }}"
+                  data-slash-checkout-monthly="{{ $checkoutHrefMonthly }}"
+                  data-slash-checkout-yearly="{{ $checkoutHrefYearly }}"
+                >
                   {{ __('humano_pricing.subscribe') }}
                 </a>
               @elseif ($externalUrl !== '')

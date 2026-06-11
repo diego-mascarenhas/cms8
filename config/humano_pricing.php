@@ -196,6 +196,10 @@ return [
                 'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL',
                 'https://buy.stripe.com/5kQ4gzacZ3Nk9HM0Qd43S07',
             ),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL_YEARLY',
+                'https://buy.stripe.com/aFa5kDgBn5Vs07c56t43S09',
+            ),
             'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_UJkenQzkHZM1Sr'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1ThAmkGelYN536DrP364au8Z'),
             'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1TUro1GelYN536DriuckpG7j'),
@@ -212,6 +216,10 @@ return [
             'checkout_url' => env(
                 'HUMANO_PRICING_HUNTER_CHECKOUT_URL',
                 'https://buy.stripe.com/6oU14ngBn2Jg7zE0Qd43S08',
+            ),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_HUNTER_CHECKOUT_URL_YEARLY',
+                'https://buy.stripe.com/fZu7sLfxjfw2g6afL743S0a',
             ),
             'stripe_product_id' => env('HUMANO_PRICING_HUNTER_STRIPE_PRODUCT_ID', 'prod_UgXq13WgRU1IiP'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_HUNTER_PRICE_MONTHLY_ID', 'price_1ThAkUGelYN536DrhZmSAwVr'),
@@ -230,6 +238,10 @@ return [
                 'HUMANO_PRICING_BUSINESS_CHECKOUT_URL',
                 'https://buy.stripe.com/6oU9AT3OB5VsbPUeH343S06',
             ),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_BUSINESS_CHECKOUT_URL_YEARLY',
+                'https://buy.stripe.com/cNidR998VbfM4ns9mJ43S0b',
+            ),
             'stripe_product_id' => env('HUMANO_PRICING_BUSINESS_STRIPE_PRODUCT_ID', 'prod_UUoHz602tHBY8b'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_BUSINESS_PRICE_MONTHLY_ID', 'price_1TVoebGelYN536DrLAOm6k90'),
             'stripe_price_yearly_id' => env('HUMANO_PRICING_BUSINESS_PRICE_YEARLY_ID', 'price_1TVof6GelYN536DrAaThyVzr'),
@@ -246,6 +258,10 @@ return [
             'checkout_url' => env(
                 'HUMANO_PRICING_MENTOR_CHECKOUT_URL',
                 'https://buy.stripe.com/4gM4gz3OB0B82fkcyV43S05',
+            ),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_MENTOR_CHECKOUT_URL_YEARLY',
+                '',
             ),
             'stripe_product_id' => env('HUMANO_PRICING_MENTOR_STRIPE_PRODUCT_ID', 'prod_UUoIeGCxj2MfcL'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_MENTOR_PRICE_MONTHLY_ID', 'price_1TVofaGelYN536DrGEL9txGS'),

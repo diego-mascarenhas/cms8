@@ -122,7 +122,12 @@ $showFlashAlerts = $showFlashAlerts ?? true;
 
           <div class="mt-auto pt-2">
             @if ($checkoutAvailable)
-              <a href="{{ $plan['checkout_href'] }}" class="btn btn-primary d-grid w-100">
+              <a
+                href="{{ $plan['checkout_href_monthly'] ?? $plan['checkout_href'] }}"
+                class="btn btn-primary d-grid w-100 price-checkout-link"
+                data-checkout-monthly="{{ $plan['checkout_href_monthly'] ?? $plan['checkout_href'] }}"
+                data-checkout-yearly="{{ $plan['checkout_href_yearly'] ?? $plan['checkout_href_monthly'] ?? $plan['checkout_href'] }}"
+              >
                 {{ __('humano_pricing.subscribe') }}
               </a>
             @elseif ($externalUrl !== '')

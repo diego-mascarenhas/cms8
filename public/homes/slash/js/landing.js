@@ -118,6 +118,7 @@
     var priceYearlyEls = [].slice.call(document.querySelectorAll('.slash-price-yearly'));
     var billingLabelMonthly = document.querySelector('[data-slash-billing-label="monthly"]');
     var billingLabelAnnual = document.querySelector('[data-slash-billing-label="annual"]');
+    var checkoutLinks = [].slice.call(document.querySelectorAll('[data-slash-checkout-monthly]'));
 
     function togglePricingInterval() {
       var showYearly = priceDurationToggler.checked;
@@ -128,6 +129,12 @@
 
       priceMonthlyEls.forEach(function (el) {
         el.classList.toggle('is-hidden', showYearly);
+      });
+
+      checkoutLinks.forEach(function (link) {
+        var monthlyHref = link.getAttribute('data-slash-checkout-monthly') || '';
+        var yearlyHref = link.getAttribute('data-slash-checkout-yearly') || monthlyHref;
+        link.setAttribute('href', showYearly ? yearlyHref : monthlyHref);
       });
 
       if (billingLabelMonthly) {

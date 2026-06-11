@@ -1,1 +1,44 @@
-"use strict";document.addEventListener("DOMContentLoaded",function(e){!function(){const e=document.querySelector(".price-duration-toggler"),n=[].slice.call(document.querySelectorAll(".price-monthly")),c=[].slice.call(document.querySelectorAll(".price-yearly"));function t(){e.checked?(c.map(function(e){e.classList.remove("d-none")}),n.map(function(e){e.classList.add("d-none")})):(c.map(function(e){e.classList.add("d-none")}),n.map(function(e){e.classList.remove("d-none")}))}t(),e.onchange=function(){t()}}()});
+/**
+ * Pricing
+ */
+
+'use strict';
+
+document.addEventListener('DOMContentLoaded', function (event) {
+  (function () {
+    const priceDurationToggler = document.querySelector('.price-duration-toggler'),
+      priceMonthlyList = [].slice.call(document.querySelectorAll('.price-monthly')),
+      priceYearlyList = [].slice.call(document.querySelectorAll('.price-yearly')),
+      checkoutLinks = [].slice.call(document.querySelectorAll('[data-checkout-monthly]'));
+
+    function togglePrice() {
+      if (priceDurationToggler.checked) {
+        priceYearlyList.map(function (yearEl) {
+          yearEl.classList.remove('d-none');
+        });
+        priceMonthlyList.map(function (monthEl) {
+          monthEl.classList.add('d-none');
+        });
+      } else {
+        priceYearlyList.map(function (yearEl) {
+          yearEl.classList.add('d-none');
+        });
+        priceMonthlyList.map(function (monthEl) {
+          monthEl.classList.remove('d-none');
+        });
+      }
+
+      checkoutLinks.forEach(function (link) {
+        var monthlyHref = link.getAttribute('data-checkout-monthly') || '';
+        var yearlyHref = link.getAttribute('data-checkout-yearly') || monthlyHref;
+        link.setAttribute('href', priceDurationToggler.checked ? yearlyHref : monthlyHref);
+      });
+    }
+
+    togglePrice();
+
+    priceDurationToggler.onchange = function () {
+      togglePrice();
+    };
+  })();
+});
