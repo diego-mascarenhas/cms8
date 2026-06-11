@@ -168,6 +168,51 @@ class BillingAffiliateTeamTest extends TestCase
         $this->assertNotNull($invitation?->sent_at);
     }
 
+    public function test_affiliate_invite_returns_field_validation_errors(): void
+    {
+        Mail::fake();
+
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'assistant',
+                    'checkout_url' => 'https://buy.stripe.com/test_assistant',
+                    'checkout_available' => true,
+                ],
+            ],
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'affiliates'],
+            [
+                'name' => 'Affiliates',
+                'icon' => 'affiliate',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+        $team->forceFill(['stripe_id' => 'cus_invite_ref'])->save();
+        $team->enableModule('affiliates');
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($user)
+            ->from(route('billing.index'))
+            ->post(route('billing.affiliate-invite'), [])
+            ->assertRedirect(route('billing.index'))
+            ->assertSessionHasErrors(['invite_name', 'invite_email', 'invite_plan']);
+
+        $this->get(route('billing.index'))
+            ->assertOk()
+            ->assertSee('affiliate-invite-form', false)
+            ->assertDontSee('var myModal = new bootstrap.Modal(document.getElementById(\'editBillingModal\'))', false);
+
+        Mail::assertNothingSent();
+    }
+
     public function test_affiliate_invite_uses_team_from_when_configured(): void
     {
         Mail::fake();

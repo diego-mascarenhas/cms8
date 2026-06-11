@@ -123,10 +123,14 @@
 			modal.show();
 		}
 
-		@if ($errors->any())
+		@if ($errors->hasAny(['individual_name', 'business_name', 'country', 'phone', 'tax_id']))
 		document.addEventListener('DOMContentLoaded', function() {
 			var myModal = new bootstrap.Modal(document.getElementById('editBillingModal'));
 			myModal.show();
+		});
+		@elseif ($errors->hasAny(['invite_name', 'invite_email', 'invite_plan']))
+		document.addEventListener('DOMContentLoaded', function() {
+			document.getElementById('affiliate-invite-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		});
 		@endif
 	</script>
@@ -178,18 +182,10 @@
 
 								@if(isset($stripeData['customer']->address->country))
 									@php
-										$countries = [
-											'ES' => 'España',
-											'AR' => 'Argentina',
-											'MX' => 'México',
-											'US' => 'Estados Unidos',
-											'CO' => 'Colombia',
-											'CL' => 'Chile',
-											'PE' => 'Perú',
-											'UY' => 'Uruguay',
-										];
 										$countryCode = $stripeData['customer']->address->country;
-										$countryName = $countries[$countryCode] ?? $countryCode;
+										$countryName = \App\Models\Country::query()
+											->where('code', strtolower($countryCode))
+											->value('name') ?? $countryCode;
 									@endphp
 									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">País:</dt>
 									<dd class="col-sm-7">{{ $countryName }}</dd>
@@ -685,27 +681,26 @@
 
 				@if($affiliateReferralCode && count($affiliateReferralPlans) > 0)
 					<h6 class="mb-3">Invitar por email</h6>
-					<form action="{{ route('billing.affiliate-invite') }}" method="POST" class="row g-3 mb-4">
+					<form id="affiliate-invite-form" action="{{ route('billing.affiliate-invite') }}" method="POST" class="row g-3 mb-4" novalidate>
 						@csrf
 						<div class="col-md-4">
-							<label for="invite_name" class="form-label">Nombre</label>
-							<input type="text" class="form-control @error('invite_name') is-invalid @enderror" id="invite_name" name="invite_name" value="{{ old('invite_name') }}" required>
-							@error('invite_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+							<x-input-general id="invite_name" label="Nombre (*)" value="{{ old('invite_name') }}" />
 						</div>
 						<div class="col-md-4">
-							<label for="invite_email" class="form-label">Email</label>
-							<input type="email" class="form-control @error('invite_email') is-invalid @enderror" id="invite_email" name="invite_email" value="{{ old('invite_email') }}" required>
-							@error('invite_email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+							<x-input-general id="invite_email" label="Email (*)" type="email" value="{{ old('invite_email') }}" />
 						</div>
 						<div class="col-md-4">
-							<label for="invite_plan" class="form-label">Plan</label>
-							<select class="form-select @error('invite_plan') is-invalid @enderror" id="invite_plan" name="invite_plan" required>
-								<option value="">Seleccionar…</option>
-								@foreach($affiliateReferralPlans as $plan)
-									<option value="{{ $plan['id'] }}" @selected(old('invite_plan') === $plan['id'])>{{ $plan['name'] }}</option>
-								@endforeach
-							</select>
-							@error('invite_plan')<div class="invalid-feedback">{{ $message }}</div>@enderror
+							@php
+								$invitePlanOptions = collect($affiliateReferralPlans)->pluck('name', 'id')->all();
+							@endphp
+							<x-input-select
+								id="invite_plan"
+								label="Plan (*)"
+								:options="$invitePlanOptions"
+								value="{{ old('invite_plan') }}"
+								placeholder="Seleccionar…"
+								:allow-clear="false"
+							/>
 						</div>
 						<div class="col-12">
 							<button type="submit" class="btn btn-primary">
@@ -914,23 +909,13 @@ function copyAffiliatePlanLink(btn) {
 
 						<!-- Country -->
 						<div class="col-md-6">
-							<label class="form-label" for="country">País (*)</label>
-							<select class="form-select @error('country') is-invalid @enderror"
-								id="country"
-								name="country">
-								<option value="">Seleccionar país</option>
-								<option value="AR" {{ old('country', $stripeData['customer']->address->country ?? '') == 'AR' ? 'selected' : '' }}>Argentina</option>
-								<option value="ES" {{ old('country', $stripeData['customer']->address->country ?? '') == 'ES' ? 'selected' : '' }}>España</option>
-								<option value="MX" {{ old('country', $stripeData['customer']->address->country ?? '') == 'MX' ? 'selected' : '' }}>México</option>
-								<option value="CL" {{ old('country', $stripeData['customer']->address->country ?? '') == 'CL' ? 'selected' : '' }}>Chile</option>
-								<option value="CO" {{ old('country', $stripeData['customer']->address->country ?? '') == 'CO' ? 'selected' : '' }}>Colombia</option>
-								<option value="PE" {{ old('country', $stripeData['customer']->address->country ?? '') == 'PE' ? 'selected' : '' }}>Perú</option>
-								<option value="UY" {{ old('country', $stripeData['customer']->address->country ?? '') == 'UY' ? 'selected' : '' }}>Uruguay</option>
-								<option value="US" {{ old('country', $stripeData['customer']->address->country ?? '') == 'US' ? 'selected' : '' }}>Estados Unidos</option>
-							</select>
-							@error('country')
-								<div class="invalid-feedback d-block">{{ $message }}</div>
-							@enderror
+							<x-country-select
+								name="country"
+								id="billing_country"
+								label="País (*)"
+								value-key="code"
+								:value="old('country', $stripeData['customer']->address->country ?? '')"
+							/>
 						</div>
 
 						<!-- Phone -->

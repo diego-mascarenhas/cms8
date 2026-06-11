@@ -41,4 +41,16 @@ class SendAffiliateInvitationRequest extends FormRequest
             'invite_plan' => ['required', 'string', Rule::in($planIds)],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'invite_name' => 'nombre',
+            'invite_email' => 'email',
+            'invite_plan' => 'plan',
+        ];
+    }
 }
