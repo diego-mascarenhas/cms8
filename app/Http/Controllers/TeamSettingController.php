@@ -286,20 +286,25 @@ class TeamSettingController extends Controller
                 ]);
             }
 
+            if ($group === 'fiscal')
+            {
+                foreach (['fiscal_platform', 'fiscal_country'] as $clearableKey)
+                {
+                    if (array_key_exists($clearableKey, $settings) && trim((string) $settings[$clearableKey]) === '')
+                    {
+                        $team->removeSetting($clearableKey);
+                    }
+                }
+            }
+
             if ($group === 'cuentica')
             {
-                if (! array_key_exists('cuentica_sandbox', $settings))
+                foreach (['cuentica_api_token', 'cuentica_invoice_serie'] as $clearableKey)
                 {
-                    $team->setSetting('cuentica_sandbox', false, [
-                        'group' => 'cuentica',
-                        'type' => 'boolean',
-                        'is_encrypted' => false,
-                    ]);
-                }
-
-                if (array_key_exists('fiscal_platform', $settings) && trim((string) $settings['fiscal_platform']) === '')
-                {
-                    $team->removeSetting('fiscal_platform');
+                    if (array_key_exists($clearableKey, $settings) && trim((string) $settings[$clearableKey]) === '')
+                    {
+                        $team->removeSetting($clearableKey);
+                    }
                 }
             }
 
@@ -432,7 +437,6 @@ class TeamSettingController extends Controller
 
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
-            'cuentica_sandbox',
             'notifications_email_enabled',
             'notifications_sms_enabled',
             'performance_insights_in_app_notification',
@@ -497,8 +501,39 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
+            'fiscal' => [
+                'title' => 'Exportación fiscal',
+                'icon' => 'ti ti-file-export',
+                'settings' => [
+                    'fiscal_platform' => [
+                        'label' => 'Plataforma fiscal',
+                        'type' => 'select',
+                        'options' => [
+                            '' => 'Automática (según país fiscal)',
+                            'cuentica' => 'Cuéntica (España)',
+                            'arca' => 'ARCA (Argentina)',
+                            'none' => 'Ninguna (no exportar)',
+                        ],
+                        'value' => $team->getSetting('fiscal_platform', ''),
+                        'is_encrypted' => false,
+                        'help' => 'Define a qué proveedor legal se envían las facturas de este equipo. Después configura las credenciales del proveedor elegido (Cuéntica, ARCA, …).',
+                    ],
+                    'fiscal_country' => [
+                        'label' => 'País fiscal del equipo',
+                        'type' => 'select',
+                        'options' => [
+                            '' => 'No especificado',
+                            'ES' => 'España',
+                            'AR' => 'Argentina',
+                        ],
+                        'value' => $team->getSetting('fiscal_country', ''),
+                        'is_encrypted' => false,
+                        'help' => 'Solo se usa cuando la plataforma está en "Automática". Por defecto: ES → Cuéntica, AR → ARCA.',
+                    ],
+                ],
+            ],
             'cuentica' => [
-                'title' => 'Cuéntica (facturación España)',
+                'title' => 'Cuéntica',
                 'icon' => 'ti ti-file-invoice',
                 'settings' => [
                     'cuentica_api_token' => [
@@ -506,34 +541,14 @@ class TeamSettingController extends Controller
                         'type' => 'password',
                         'value' => $team->getSetting('cuentica_api_token'),
                         'is_encrypted' => true,
-                        'help' => 'Token de la empresa en Cuéntica (Usuario → API). Cada equipo factura en su propia cuenta: si lo dejas vacío, este equipo no exporta a Cuéntica.',
+                        'help' => 'Token de tu empresa en Cuéntica (Usuario → API). Cada equipo usa su propia cuenta; sin token, no se exporta.',
                     ],
                     'cuentica_invoice_serie' => [
                         'label' => 'Serie de facturación',
                         'type' => 'text',
                         'value' => $team->getSetting('cuentica_invoice_serie'),
                         'is_encrypted' => false,
-                        'help' => 'Opcional. Nombre de la serie en Cuéntica. Si se deja vacío se usa la serie por defecto.',
-                    ],
-                    'fiscal_platform' => [
-                        'label' => 'Plataforma fiscal',
-                        'type' => 'select',
-                        'options' => [
-                            '' => 'Automática (según país)',
-                            'cuentica' => 'Cuéntica (España)',
-                            'arca' => 'ARCA (Argentina)',
-                            'none' => 'Ninguna (no exportar)',
-                        ],
-                        'value' => $team->getSetting('fiscal_platform', ''),
-                        'is_encrypted' => false,
-                        'help' => 'A qué plataforma legal se exportan las facturas de este equipo.',
-                    ],
-                    'cuentica_sandbox' => [
-                        'label' => 'Modo sandbox',
-                        'type' => 'checkbox',
-                        'value' => $team->getSetting('cuentica_sandbox', '0'),
-                        'is_encrypted' => false,
-                        'help' => 'Indica que el token corresponde a una empresa sandbox de pruebas.',
+                        'help' => 'Opcional. Si se deja vacío se usa la serie por defecto de Cuéntica. El modo sandbox/producción lo determina el token, no un interruptor.',
                     ],
                 ],
             ],
@@ -1992,10 +2007,11 @@ class TeamSettingController extends Controller
         {
             $company = $client->getCompany();
             $name = $company['business_name'] ?? $company['tradename'] ?? $company['name'] ?? 'empresa';
+            $mode = ($company['sandbox'] ?? false) ? 'sandbox (pruebas)' : 'producción';
 
             return response()->json([
                 'success' => true,
-                'message' => "Conexión con Cuéntica correcta. Empresa: {$name}",
+                'message' => "Conexión con Cuéntica correcta. Empresa: {$name} · Modo: {$mode}",
             ]);
         } catch (FiscalExportException $exception)
         {

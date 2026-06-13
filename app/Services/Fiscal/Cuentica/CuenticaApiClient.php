@@ -98,10 +98,13 @@ class CuenticaApiClient
 
     private function pendingRequest(): PendingRequest
     {
+        // Note: do not force ->asJson() here. It would set Content-Type:
+        // application/json on GET requests (empty body) and Cuéntica rejects
+        // those with "400 Invalid Json". POST/PUT still send JSON bodies
+        // because that is the Laravel HTTP client default body format.
         return Http::baseUrl(rtrim($this->baseUrl, '/'))
             ->timeout($this->timeout)
             ->acceptJson()
-            ->asJson()
             ->withHeaders(['X-AUTH-TOKEN' => $this->token]);
     }
 
