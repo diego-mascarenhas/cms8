@@ -321,6 +321,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+    Route::post('/team/{team}/test-cuentica', [TeamSettingController::class, 'testCuenticaConnection'])->name('team-settings.test-cuentica');
     Route::get('/integrations/google/connect', [GoogleIntegrationController::class, 'connect'])->name('integrations.google.connect');
     Route::get('/integrations/google/callback', [GoogleIntegrationController::class, 'callback'])->name('integrations.google.callback');
     Route::delete('/integrations/google/disconnect', [GoogleIntegrationController::class, 'disconnect'])->name('integrations.google.disconnect');

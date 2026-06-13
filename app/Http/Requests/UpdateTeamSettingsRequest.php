@@ -19,6 +19,12 @@ class UpdateTeamSettingsRequest extends FormRequest
             'stripe.stripe_secret' => 'nullable|string|max:255',
             'stripe.stripe_webhook' => 'nullable|string|max:255',
 
+            // Cuéntica / fiscal export settings
+            'cuentica.cuentica_api_token' => 'nullable|string|max:255',
+            'cuentica.cuentica_invoice_serie' => 'nullable|string|max:255',
+            'cuentica.fiscal_platform' => 'nullable|string|in:,cuentica,arca,none',
+            'cuentica.cuentica_sandbox' => 'nullable|in:0,1',
+
             // Categories settings
             'categories.categories_default_status' => 'nullable|string|in:active,inactive',
             'categories.categories_require_approval' => 'nullable|in:0,1',

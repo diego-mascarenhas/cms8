@@ -13,6 +13,8 @@ use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
+use App\Services\Fiscal\Cuentica\CuenticaClientFactory;
+use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
 use App\Support\TeamDefaultShortcuts;
@@ -233,7 +235,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $storedValue, [
                         'group' => $group,
                         'type' => $type,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
                     ]);
                 }
             }
@@ -282,6 +284,23 @@ class TeamSettingController extends Controller
                     'type' => 'boolean',
                     'is_encrypted' => false,
                 ]);
+            }
+
+            if ($group === 'cuentica')
+            {
+                if (! array_key_exists('cuentica_sandbox', $settings))
+                {
+                    $team->setSetting('cuentica_sandbox', false, [
+                        'group' => 'cuentica',
+                        'type' => 'boolean',
+                        'is_encrypted' => false,
+                    ]);
+                }
+
+                if (array_key_exists('fiscal_platform', $settings) && trim((string) $settings['fiscal_platform']) === '')
+                {
+                    $team->removeSetting('fiscal_platform');
+                }
             }
 
             if ($group === 'notifications')
@@ -413,6 +432,7 @@ class TeamSettingController extends Controller
 
         $booleanFields = [
             'categories_require_approval', 'categories_allow_multiple_parents',
+            'cuentica_sandbox',
             'notifications_email_enabled',
             'notifications_sms_enabled',
             'performance_insights_in_app_notification',
@@ -474,6 +494,46 @@ class TeamSettingController extends Controller
                         'type' => 'password',
                         'value' => $team->getSetting('stripe_webhook'),
                         'is_encrypted' => true,
+                    ],
+                ],
+            ],
+            'cuentica' => [
+                'title' => 'Cuéntica (facturación España)',
+                'icon' => 'ti ti-file-invoice',
+                'settings' => [
+                    'cuentica_api_token' => [
+                        'label' => 'API Token',
+                        'type' => 'password',
+                        'value' => $team->getSetting('cuentica_api_token'),
+                        'is_encrypted' => true,
+                        'help' => 'Token de la empresa en Cuéntica (Usuario → API). Cada equipo factura en su propia cuenta: si lo dejas vacío, este equipo no exporta a Cuéntica.',
+                    ],
+                    'cuentica_invoice_serie' => [
+                        'label' => 'Serie de facturación',
+                        'type' => 'text',
+                        'value' => $team->getSetting('cuentica_invoice_serie'),
+                        'is_encrypted' => false,
+                        'help' => 'Opcional. Nombre de la serie en Cuéntica. Si se deja vacío se usa la serie por defecto.',
+                    ],
+                    'fiscal_platform' => [
+                        'label' => 'Plataforma fiscal',
+                        'type' => 'select',
+                        'options' => [
+                            '' => 'Automática (según país)',
+                            'cuentica' => 'Cuéntica (España)',
+                            'arca' => 'ARCA (Argentina)',
+                            'none' => 'Ninguna (no exportar)',
+                        ],
+                        'value' => $team->getSetting('fiscal_platform', ''),
+                        'is_encrypted' => false,
+                        'help' => 'A qué plataforma legal se exportan las facturas de este equipo.',
+                    ],
+                    'cuentica_sandbox' => [
+                        'label' => 'Modo sandbox',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('cuentica_sandbox', '0'),
+                        'is_encrypted' => false,
+                        'help' => 'Indica que el token corresponde a una empresa sandbox de pruebas.',
                     ],
                 ],
             ],
@@ -1907,6 +1967,47 @@ class TeamSettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe connection failed: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Test Cuéntica connection using the team (or global) API token.
+     */
+    public function testCuenticaConnection(Team $team, CuenticaClientFactory $clientFactory): JsonResponse
+    {
+        $this->authorize('update', $team);
+
+        $client = $clientFactory->forTeam($team);
+
+        if ($client === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falta el API Token de Cuéntica para este equipo. Configúralo en los ajustes de Cuéntica.',
+            ]);
+        }
+
+        try
+        {
+            $company = $client->getCompany();
+            $name = $company['business_name'] ?? $company['tradename'] ?? $company['name'] ?? 'empresa';
+
+            return response()->json([
+                'success' => true,
+                'message' => "Conexión con Cuéntica correcta. Empresa: {$name}",
+            ]);
+        } catch (FiscalExportException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de conexión con Cuéntica: '.$exception->getMessage(),
+            ]);
+        } catch (\Throwable $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado al conectar con Cuéntica: '.$exception->getMessage(),
             ]);
         }
     }

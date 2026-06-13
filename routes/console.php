@@ -85,6 +85,22 @@ Schedule::command('invoices:reconcile-stripe-collected-payments --limit=80')
     ->withoutOverlapping()
     ->runInBackground();
 
+// Fiscal export (Cuéntica, ARCA, ...): sweep eligible local invoices and queue exports.
+Schedule::command('fiscal:export-invoices --limit=80')
+    ->everyFifteenMinutes()
+    ->name('fiscal-export-invoices-sweep')
+    ->description('Queue eligible local invoices for fiscal platform export')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Retry invoices whose last fiscal export failed (transient/data issues resolved later).
+Schedule::command('fiscal:export-invoices --retry-failed --limit=40')
+    ->hourly()
+    ->name('fiscal-export-invoices-retry')
+    ->description('Retry failed fiscal platform exports')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('ovh:sync')->daily();
 
 Schedule::command('notifications:send-pending')

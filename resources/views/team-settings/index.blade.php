@@ -81,6 +81,22 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-file-invoice mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">Cuéntica</h5>
+                            <p class="card-text">{{ __('Exporta las facturas locales a Cuéntica (facturación España)') }}</p>
+                            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'cuentica']) }}" class="btn btn-primary">Configure</a>
+                                <button type="button" class="btn btn-sm btn-info" onclick="testCuenticaConnection({{ $team->id }})">
+                                    <i class="ti ti-plug-connected me-1"></i>{{ __('Probar conexión') }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-category mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">Categories</h5>
                             <p class="card-text">Configure default category settings and preferences</p>
@@ -503,6 +519,56 @@
         })
         .catch(error => {
             console.error('Test connection error:', error);
+            button.classList.remove('btn-info');
+            button.classList.add('btn-danger');
+            button.innerHTML = '<i class="ti ti-x me-1"></i>Error';
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.className = 'btn btn-sm btn-info';
+                button.innerHTML = originalText;
+            }, 3000);
+        });
+    }
+
+    function testCuenticaConnection(teamId) {
+        const button = event.currentTarget;
+        const originalText = button.innerHTML;
+
+        button.disabled = true;
+        button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Probando...';
+
+        fetch(`/team/${teamId}/test-cuentica`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                button.classList.remove('btn-info');
+                button.classList.add('btn-success');
+                button.innerHTML = '<i class="ti ti-check me-1"></i>OK';
+            } else {
+                button.classList.remove('btn-info');
+                button.classList.add('btn-danger');
+                button.innerHTML = '<i class="ti ti-x me-1"></i>Error';
+            }
+
+            if (data.message) {
+                alert(data.message);
+            }
+
+            setTimeout(() => {
+                button.disabled = false;
+                button.className = 'btn btn-sm btn-info';
+                button.innerHTML = originalText;
+            }, 3000);
+        })
+        .catch(error => {
+            console.error('Cuéntica test connection error:', error);
             button.classList.remove('btn-info');
             button.classList.add('btn-danger');
             button.innerHTML = '<i class="ti ti-x me-1"></i>Error';
