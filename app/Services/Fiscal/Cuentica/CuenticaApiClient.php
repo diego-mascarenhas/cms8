@@ -66,6 +66,95 @@ class CuenticaApiClient
     }
 
     /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function listInvoices(array $filters = []): array
+    {
+        return $this->listResource('/invoice', $filters);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function listExpenses(array $filters = []): array
+    {
+        return $this->listResource('/expense', $filters);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    public function listProviders(array $filters = []): array
+    {
+        return $this->listResource('/provider', $filters);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getCustomer(int|string $id): array
+    {
+        return $this->request('get', '/customer/'.$id)->json();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getProvider(int|string $id): array
+    {
+        return $this->request('get', '/provider/'.$id)->json();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getExpense(int|string $id): array
+    {
+        return $this->request('get', '/expense/'.$id)->json();
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function createExpense(array $data): array
+    {
+        return $this->request('post', '/expense', $data)->json();
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return array<int, array<string, mixed>>
+     */
+    private function listResource(string $uri, array $filters = []): array
+    {
+        $payload = $this->request('get', $uri, $filters)->json();
+
+        if (! is_array($payload))
+        {
+            return [];
+        }
+
+        if (array_is_list($payload))
+        {
+            return $payload;
+        }
+
+        foreach (['data', 'items', 'results'] as $key)
+        {
+            if (isset($payload[$key]) && is_array($payload[$key]) && array_is_list($payload[$key]))
+            {
+                return $payload[$key];
+            }
+        }
+
+        return [];
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */

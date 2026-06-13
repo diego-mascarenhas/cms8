@@ -48,4 +48,13 @@ class ApplicationLocalesTest extends TestCase
         $this->assertSame(['es_ES', 'es'], ApplicationLocales::contentTranslationCandidates('es_ES'));
         $this->assertSame(['es_AR', 'es_ES', 'es'], ApplicationLocales::contentTranslationCandidates('es_AR'));
     }
+
+    public function test_datatable_json_locale_normalizes_legacy_es(): void
+    {
+        $this->assertSame('es_ES', ApplicationLocales::datatableJsonLocale('es'));
+        $this->assertSame(
+            '/js/datatables/es_ES.json',
+            ApplicationLocales::datatableLanguageUrl('es-ES'),
+        );
+    }
 }

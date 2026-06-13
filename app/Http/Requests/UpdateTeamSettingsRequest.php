@@ -26,6 +26,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Cuéntica credentials (Spain)
             'cuentica.cuentica_api_token' => 'nullable|string|max:255',
             'cuentica.cuentica_invoice_serie' => 'nullable|string|max:255',
+            'cuentica.cuentica_inbound_sync_enabled' => 'nullable|boolean',
 
             // Categories settings
             'categories.categories_default_status' => 'nullable|string|in:active,inactive',

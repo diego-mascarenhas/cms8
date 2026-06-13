@@ -70,6 +70,18 @@ return [
             'default_payment_method' => env('CUENTICA_DEFAULT_PAYMENT_METHOD', 'card'),
             'default_business_type' => env('CUENTICA_DEFAULT_BUSINESS_TYPE', 'company'),
             'default_country_code' => env('CUENTICA_DEFAULT_COUNTRY_CODE', 'ES'),
+
+            /*
+            | Inbound sync: pull sale invoices (/invoice) and purchase invoices
+            | (/expense) from Cuéntica into invoice_syncs, then into local invoices.
+            */
+            'inbound_sync' => [
+                'enabled' => env('CUENTICA_INBOUND_SYNC_ENABLED', true),
+                'page_size' => (int) env('CUENTICA_INBOUND_SYNC_PAGE_SIZE', 50),
+                'recent_days' => (int) env('CUENTICA_INBOUND_SYNC_RECENT_DAYS', 45),
+                'backfill_start' => env('CUENTICA_INBOUND_SYNC_BACKFILL_START', '2020-01-01'),
+                'default_currency' => env('CUENTICA_INBOUND_SYNC_CURRENCY', 'EUR'),
+            ],
         ],
 
         'arca' => [

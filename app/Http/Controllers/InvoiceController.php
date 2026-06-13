@@ -9,6 +9,7 @@ use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\FiscalExport;
 use App\Models\Invoice;
+use App\Services\Billing\InvoiceInboundSyncService;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
@@ -58,12 +59,58 @@ class InvoiceController extends Controller
             request()->query('summary_filter'),
         );
 
+        $team = auth()->user()->currentTeam;
+        $inboundSyncService = app(InvoiceInboundSyncService::class);
+        $invoiceSyncProviders = $team ? $inboundSyncService->availableProviders($team) : [];
+
         return $dataTable->render('invoice.index', compact(
             'exchangeRates',
             'lastUpdate',
             'invoiceStats',
             'initialSummaryFilter',
+            'invoiceSyncProviders',
         ));
+    }
+
+    /**
+     * Pull invoices from configured inbound providers (Stripe, Cuéntica) for the current team.
+     */
+    public function syncInbound(InvoiceInboundSyncService $inboundSyncService): RedirectResponse
+    {
+        $this->authorize('viewAny', Invoice::class);
+
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return redirect()->route('invoice.index')->with('error', __('invoice_sync.errors.no_team'));
+        }
+
+        if (! $inboundSyncService->canSync($team))
+        {
+            return redirect()->route('invoice.index')->with('error', __('invoice_sync.errors.nothing_configured'));
+        }
+
+        $result = $inboundSyncService->syncForTeam($team);
+
+        if ($result['imported'] === 0 && $result['updated'] === 0 && $result['skipped'] > 0)
+        {
+            return redirect()->route('invoice.index')->with(
+                'warning',
+                __('invoice_sync.sync_warning_skipped', [
+                    'providers' => $inboundSyncService->providerLabels($result['providers']),
+                    'skipped' => $result['skipped'],
+                ]),
+            );
+        }
+
+        return redirect()->route('invoice.index')->with(
+            'success',
+            __('invoice_sync.sync_success', [
+                'providers' => $inboundSyncService->providerLabels($result['providers']),
+                'imported' => $result['imported'],
+                'updated' => $result['updated'],
+            ]),
+        );
     }
 
     /**

@@ -85,7 +85,22 @@ Schedule::command('invoices:reconcile-stripe-collected-payments --limit=80')
     ->withoutOverlapping()
     ->runInBackground();
 
-// Fiscal export (Cuéntica, ARCA, ...): sweep eligible local invoices and queue exports.
+// Fiscal export (Cuéntica → local): sweep + import, staggered from Stripe.
+Schedule::command('cuentica:sync-invoices --mode=auto --limit=80')
+    ->everyTenMinutes()
+    ->name('cuentica-invoices-sync-auto')
+    ->description('Pull Cuéntica sale/purchase documents into invoice_syncs')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('invoice-syncs:import-cuentica --reconcile --limit=120 --fallback-tax-id --fallback-email --link-code-on-match')
+    ->cron('7,17,27,37,47,57 * * * *')
+    ->name('cuentica-invoice-syncs-import')
+    ->description('Import/reconcile Cuéntica invoice_syncs into core invoices')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// Fiscal export (local → Cuéntica): sweep eligible local invoices and queue exports.
 Schedule::command('fiscal:export-invoices --limit=80')
     ->everyFifteenMinutes()
     ->name('fiscal-export-invoices-sweep')

@@ -99,4 +99,24 @@ final class ApplicationLocales
             default => array_values(array_unique([$locale, self::DEFAULT, 'es'])),
         };
     }
+
+    public static function datatableJsonLocale(?string $locale = null): string
+    {
+        $locale = self::normalize($locale ?? session()->get('locale', app()->getLocale()));
+
+        foreach (self::contentTranslationCandidates($locale) as $candidate)
+        {
+            if (is_file(lang_path('datatables/'.$candidate.'.json')))
+            {
+                return $candidate;
+            }
+        }
+
+        return is_file(lang_path('datatables/en.json')) ? 'en' : self::DEFAULT;
+    }
+
+    public static function datatableLanguageUrl(?string $locale = null): string
+    {
+        return '/js/datatables/'.self::datatableJsonLocale($locale).'.json';
+    }
 }

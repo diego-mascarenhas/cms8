@@ -306,6 +306,15 @@ class TeamSettingController extends Controller
                         $team->removeSetting($clearableKey);
                     }
                 }
+
+                if (! array_key_exists('cuentica_inbound_sync_enabled', $settings))
+                {
+                    $team->setSetting('cuentica_inbound_sync_enabled', false, [
+                        'group' => 'cuentica',
+                        'type' => 'boolean',
+                        'is_encrypted' => false,
+                    ]);
+                }
             }
 
             if ($group === 'notifications')
@@ -445,6 +454,7 @@ class TeamSettingController extends Controller
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
+            'cuentica_inbound_sync_enabled',
             'google_contacts_outbound_sync_enabled',
             'google_calendar_outbound_sync_enabled',
             'google_contacts_inbound_sync_enabled',
@@ -549,6 +559,13 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('cuentica_invoice_serie'),
                         'is_encrypted' => false,
                         'help' => 'Opcional. Si se deja vacío se usa la serie por defecto de Cuéntica. El modo sandbox/producción lo determina el token, no un interruptor.',
+                    ],
+                    'cuentica_inbound_sync_enabled' => [
+                        'label' => 'Sincronización inbound (Cuéntica → Humano)',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('cuentica_inbound_sync_enabled', '1'),
+                        'is_encrypted' => false,
+                        'help' => 'Importa facturas de venta (/invoice) y compra (/expense) desde Cuéntica al sistema local de forma continua (como Stripe).',
                     ],
                 ],
             ],

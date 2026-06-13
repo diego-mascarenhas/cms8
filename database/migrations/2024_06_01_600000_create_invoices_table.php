@@ -25,12 +25,20 @@ return new class extends Migration
             $table->decimal('balance', 10, 2)->unsigned();
             $table->unsignedInteger('currency_id')->nullable();
             $table->unsignedTinyInteger('status')->default(1);
+            $table->enum('source_provider', ['manual', 'stripe', 'mercadopago', 'paypal', 'cuentica'])
+                ->default('manual');
+            $table->string('source_reference_id')->nullable();
+            $table->timestamp('source_synced_at')->nullable();
             $table->timestamps();
 
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('billing_id')->references('id')->on('enterprise_billing_addresses')->onDelete('set null');
             $table->foreign('type_id')->references('id')->on('invoice_types')->onDelete('cascade');
             $table->foreign('currency_id')->references('id')->on('currencies')->nullOnDelete();
+
+            $table->index('source_provider');
+            $table->index('source_reference_id');
+            $table->unique(['source_provider', 'source_reference_id'], 'invoices_source_provider_reference_unique');
         });
     }
 

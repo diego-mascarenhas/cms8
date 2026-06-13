@@ -839,6 +839,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Invoice & Payment Routes
     Route::get('/invoice/list', [InvoiceController::class, 'index'])->name('invoice.index');
+    Route::post('/invoice/sync-inbound', [InvoiceController::class, 'syncInbound'])->name('invoice.sync-inbound');
     Route::get('/invoices', function ()
     {
         return redirect()->route('invoice.index');
