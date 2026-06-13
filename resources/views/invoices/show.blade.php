@@ -238,6 +238,12 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     @endif
+    @if (session('error'))
+      <div class="alert alert-warning alert-dismissible mb-3" role="alert">
+        {{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    @endif
     <div class="card">
       <div class="card-body">
         <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index') }}">
@@ -281,6 +287,48 @@
         @endcan
       </div>
     </div>
+
+    @if ($fiscalPlatform)
+    @php
+      $fiscalPlatformLabel = ['cuentica' => 'Cuéntica', 'arca' => 'ARCA'][$fiscalPlatform] ?? ucfirst($fiscalPlatform);
+      $fiscalExported = $fiscalExport && in_array($fiscalExport->status, ['exported', 'rectified'], true);
+    @endphp
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="mb-3">{{ __('Fiscal export') }}</h6>
+        @if ($fiscalExported)
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <span class="badge bg-label-success">{{ __('Exported') }}</span>
+            <span class="fw-medium">{{ $fiscalPlatformLabel }}</span>
+          </div>
+          @if ($fiscalExport->external_number)
+          <p class="mb-1">
+            <span class="text-muted">{{ __('Number') }}:</span>
+            <span class="fw-medium">{{ $fiscalExport->external_number }}</span>
+          </p>
+          @endif
+          @if ($fiscalExport->exported_at)
+          <p class="mb-0 text-muted small">{{ \Carbon\Carbon::parse($fiscalExport->exported_at)->format('d-m-Y H:i') }}</p>
+          @endif
+        @else
+          @if ($fiscalExport && $fiscalExport->status === 'failed' && $fiscalExport->error_message)
+            <div class="alert alert-warning py-2 px-3 small mb-2" role="alert">{{ $fiscalExport->error_message }}</div>
+          @endif
+          @if ($canExportFiscal)
+            <form method="POST" action="{{ route('invoice.fiscal-export', $invoice->id) }}">
+              @csrf
+              <button type="submit" class="btn btn-label-primary d-grid w-100">
+                <i class="ti ti-file-export ti-xs me-2"></i>
+                {{ __('Export to :platform', ['platform' => $fiscalPlatformLabel]) }}
+              </button>
+            </form>
+          @else
+            <p class="mb-0 text-muted small">{{ __('This invoice is not ready for fiscal export yet.') }}</p>
+          @endif
+        @endif
+      </div>
+    </div>
+    @endif
     <div class="card mt-3">
       <div class="card-body">
         <h6 class="mb-3">{{ __('Payments') }}</h6>

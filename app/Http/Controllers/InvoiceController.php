@@ -7,6 +7,7 @@ use App\Http\Requests\StoreInvoiceCreditNoteRequest;
 use App\Http\Requests\StoreInvoicePaymentRequest;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
+use App\Models\FiscalExport;
 use App\Models\Invoice;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Finance\InvoiceCreditNoteService;
@@ -15,6 +16,10 @@ use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoicePaymentRegistrationService;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Services\Finance\PaymentStatusUpdateService;
+use App\Services\Fiscal\Exceptions\FiscalExportException;
+use App\Services\Fiscal\FiscalExportRouter;
+use App\Services\Fiscal\FiscalExportService;
+use App\Services\Fiscal\NullFiscalExportAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -164,9 +169,21 @@ class InvoiceController extends Controller
             'items.category',
             'type',
             'stripeInvoiceSync',
+            'fiscalExports',
         ])->findOrFail($id);
 
         $this->authorize('view', $invoice);
+
+        $fiscalPlatform = app(FiscalExportRouter::class)->resolvePlatform($invoice);
+        if ($fiscalPlatform === NullFiscalExportAdapter::PLATFORM)
+        {
+            $fiscalPlatform = null;
+        }
+        $fiscalExport = $fiscalPlatform
+            ? $invoice->fiscalExports->firstWhere('platform', $fiscalPlatform)
+            : null;
+        $canExportFiscal = auth()->user()->can('invoice.edit')
+            && app(FiscalExportService::class)->isEligible($invoice);
 
         $paymentDetails = app(InvoicePaymentDetailService::class)->forInvoice($invoice);
         $displayLineItems = app(InvoiceDisplayLineItemService::class)->forInvoice($invoice);
@@ -195,7 +212,53 @@ class InvoiceController extends Controller
             'defaultCreditNoteReason',
             'canUpdatePaymentStatus',
             'paymentStatusOptions',
+            'fiscalPlatform',
+            'fiscalExport',
+            'canExportFiscal',
         ));
+    }
+
+    public function exportFiscal(Invoice $invoice, FiscalExportService $service): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        if (! auth()->user()->can('invoice.edit'))
+        {
+            abort(403);
+        }
+
+        try
+        {
+            $export = $service->export($invoice, force: request()->boolean('force'));
+        } catch (FiscalExportException $exception)
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('Error al exportar la factura: :message', ['message' => $exception->getMessage()]));
+        }
+
+        if (! $export instanceof FiscalExport)
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('La exportación fiscal está deshabilitada.'));
+        }
+
+        return match ($export->status)
+        {
+            FiscalExport::STATUS_EXPORTED, FiscalExport::STATUS_RECTIFIED => redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('success', __('Factura exportada a :platform (Nº :number).', [
+                    'platform' => ucfirst($export->platform),
+                    'number' => $export->external_number ?: $export->external_id,
+                ])),
+            FiscalExport::STATUS_SKIPPED => redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('No se exportó: :message', ['message' => $export->error_message])),
+            default => redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('Error al exportar la factura: :message', ['message' => $export->error_message])),
+        };
     }
 
     public function storePayment(StoreInvoicePaymentRequest $request, Invoice $invoice): RedirectResponse

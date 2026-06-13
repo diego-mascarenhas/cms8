@@ -847,6 +847,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])->name('invoice.payments.store');
     Route::post('/invoices/{invoice}/credit-notes', [InvoiceController::class, 'storeCreditNote'])->name('invoice.credit-notes.store');
+    Route::post('/invoices/{invoice}/fiscal-export', [InvoiceController::class, 'exportFiscal'])->name('invoice.fiscal-export');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
