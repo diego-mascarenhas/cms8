@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\InvoiceSync;
+use App\Services\Billing\CuenticaCollectedInvoicePaymentReconciliationService;
 use App\Services\Billing\CuenticaInvoiceCoreImportService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -22,8 +23,10 @@ class ImportCuenticaInvoiceSyncsCommand extends Command
 
     protected $description = 'Map Cuéntica invoice_syncs rows into core invoices (sale and purchase)';
 
-    public function handle(CuenticaInvoiceCoreImportService $importService): int
-    {
+    public function handle(
+        CuenticaInvoiceCoreImportService $importService,
+        CuenticaCollectedInvoicePaymentReconciliationService $paymentReconciliationService,
+    ): int {
         if (! Schema::hasTable('invoice_syncs'))
         {
             $this->error('Table invoice_syncs does not exist. Run migrations first.');
@@ -124,11 +127,27 @@ class ImportCuenticaInvoiceSyncsCommand extends Command
             }
         }
 
-        $this->info(
-            "Processed: {$processed} | created: {$created} | updated: {$updated} | skipped: {$skipped}".
+        $paymentStats = null;
+
+        if ($reconcile && ! $dryRun)
+        {
+            $paymentStats = $paymentReconciliationService->reconcile(
+                teamId: $teamId,
+                limit: $limit,
+                dryRun: false,
+            );
+        }
+
+        $message = "Processed: {$processed} | created: {$created} | updated: {$updated} | skipped: {$skipped}".
             ($reconcile ? ' | reconcile' : ' | pending-only').
-            ($dryRun ? ' | dry-run' : ''),
-        );
+            ($dryRun ? ' | dry-run' : '');
+
+        if ($paymentStats !== null)
+        {
+            $message .= ' | payments: '.$paymentStats['created'];
+        }
+
+        $this->info($message);
 
         return self::SUCCESS;
     }

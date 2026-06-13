@@ -2,16 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TransactionType;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
+use App\Models\Payment;
 use App\Models\Team;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTaxStatusTypeSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
+use Database\Seeders\PaymentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -30,6 +33,7 @@ class CuenticaInboundSyncTest extends TestCase
             EnterpriseStatusSeeder::class,
             EnterpriseTaxStatusTypeSeeder::class,
             InvoiceTypeSeeder::class,
+            PaymentTypeSeeder::class,
             CurrencySeeder::class,
         ]);
 
@@ -137,6 +141,26 @@ class CuenticaInboundSyncTest extends TestCase
             'source_provider' => 'cuentica',
             'source_reference_id' => 'purchase:202',
             'number' => 'C-0001',
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'transaction_type' => TransactionType::INCOME->value,
+            'source_provider' => 'cuentica',
+            'source_reference_id' => 'cuentica-invoice:sale:101',
+            'amount' => 121,
+            'status' => 2,
+        ]);
+
+        $this->assertDatabaseHas('payments', [
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'transaction_type' => TransactionType::EXPENSE->value,
+            'source_provider' => 'cuentica',
+            'source_reference_id' => 'cuentica-invoice:purchase:202',
+            'amount' => 60.5,
+            'status' => 2,
         ]);
     }
 
@@ -306,6 +330,96 @@ class CuenticaInboundSyncTest extends TestCase
             'type_id' => 2,
             'code' => 'cuentica_p_888',
             'name' => 'Proveedor Scalar SL',
+        ]);
+    }
+
+    public function test_import_does_not_create_payment_for_unpaid_sale(): void
+    {
+        $team = $this->teamWithToken();
+        $client = $this->makeClientEnterprise($team);
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'cuentica',
+            'external_id' => 'sale:999',
+            'customer_tax_id' => 'B12345678',
+            'number' => 'F-0099',
+            'status' => 'open',
+            'billing_reason' => 'cuentica_sale',
+            'currency' => 'eur',
+            'subtotal' => 100,
+            'total' => 121,
+            'paid' => false,
+            'amount_remaining' => 121,
+            'invoice_created_at' => '2026-06-10',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'charges' => [['amount' => 121, 'paid' => false]],
+            ],
+        ]);
+
+        $this->artisan('invoice-syncs:import-cuentica', [
+            '--team_id' => $team->id,
+            '--fallback-tax-id' => true,
+        ])->assertSuccessful();
+
+        $this->assertDatabaseHas('invoices', [
+            'source_reference_id' => 'sale:999',
+        ]);
+
+        $this->assertSame(0, Payment::withoutGlobalScopes()
+            ->where('source_provider', 'cuentica')
+            ->where('source_reference_id', 'cuentica-invoice:sale:999')
+            ->count());
+    }
+
+    public function test_reconcile_command_creates_missing_payments_for_existing_invoices(): void
+    {
+        $team = $this->teamWithToken();
+        $client = $this->makeClientEnterprise($team);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-0001',
+            'date' => '2026-06-10',
+            'gross_amount' => 100,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'cuentica',
+            'source_reference_id' => 'sale:101',
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'cuentica',
+            'external_id' => 'sale:101',
+            'customer_tax_id' => 'B12345678',
+            'status' => 'paid',
+            'billing_reason' => 'cuentica_sale',
+            'currency' => 'eur',
+            'total' => 121,
+            'paid' => true,
+            'invoice_created_at' => '2026-06-10',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'charges' => [['amount' => 121, 'paid' => true, 'date' => '2026-06-10']],
+            ],
+        ]);
+
+        $this->artisan('invoices:reconcile-cuentica-collected-payments', [
+            '--team_id' => $team->id,
+        ])->assertSuccessful();
+
+        $this->assertDatabaseHas('payments', [
+            'team_id' => $team->id,
+            'invoice_id' => $invoice->id,
+            'transaction_type' => TransactionType::INCOME->value,
+            'source_reference_id' => 'cuentica-invoice:sale:101',
+            'amount' => 121,
         ]);
     }
 

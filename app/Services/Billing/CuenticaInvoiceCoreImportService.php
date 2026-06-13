@@ -22,6 +22,7 @@ class CuenticaInvoiceCoreImportService
         private readonly InvoiceCurrencyService $currencyService,
         private readonly CuenticaCounterpartyResolver $counterpartyResolver,
         private readonly CuenticaInvoiceItemImporter $itemImporter,
+        private readonly CuenticaPaymentImportService $paymentImportService,
     ) {}
 
     public function importFromSyncRow(
@@ -103,12 +104,14 @@ class CuenticaInvoiceCoreImportService
             $existing->fill($payload);
             $existing->save();
             $this->itemImporter->syncForInvoice($existing, $row, $kind);
+            $this->paymentImportService->syncPaymentForInvoice($existing, $row);
 
             return $existing->fresh(['items']);
         }
 
         $invoice = Invoice::withoutGlobalScopes()->create($payload);
         $this->itemImporter->syncForInvoice($invoice, $row, $kind);
+        $this->paymentImportService->syncPaymentForInvoice($invoice, $row);
 
         return $invoice->fresh(['items']);
     }
