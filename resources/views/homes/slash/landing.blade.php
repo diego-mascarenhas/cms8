@@ -41,7 +41,7 @@
   <link rel="canonical" href="{{ $slashPageUrl }}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ $slashPageUrl }}">
-  <meta property="og:title" content="{{ __('slash_landing.page_title') }}">
+  <meta property="og:title" content="{{ __('slash_landing.og_title') }}">
   <meta property="og:description" content="{{ __('slash_landing.meta_description') }}">
   <meta property="og:image" content="{{ $slashOgImageUrl }}">
   <meta property="og:image:secure_url" content="{{ $slashOgImageUrl }}">
@@ -51,7 +51,7 @@
   <meta property="og:site_name" content="{{ config('variables.templateName') }}">
   <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ __('slash_landing.page_title') }}">
+  <meta name="twitter:title" content="{{ __('slash_landing.og_title') }}">
   <meta name="twitter:description" content="{{ __('slash_landing.meta_description') }}">
   <meta name="twitter:image" content="{{ $slashOgImageUrl }}">
   <meta name="twitter:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}">
@@ -63,6 +63,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ SlashHomeAsset::url('css/landing.css') }}">
   <link rel="stylesheet" href="{{ asset('homes/shared/css/brand-footer.css') }}">
+  <link rel="stylesheet" href="{{ asset('homes/shared/css/landing-highlight.css') }}">
   @if(config('app.google_analytics_id'))
   <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('app.google_analytics_id') }}"></script>
   <script>
@@ -113,8 +114,7 @@
       </div>
       <div class="slash-hero-grid" aria-hidden="true"></div>
       <div class="slash-container">
-        <span class="slash-eyebrow slash-shine-badge">Humano.app</span>
-        <h1>Un <em><span class="slash-hero-shine">{{ __('slash_landing.hero.title_emphasis') }}</span></em><br>en gestión de negocio</h1>
+        <h1>{{ __('slash_landing.hero.title') }}</h1>
         <p class="slash-lead">{{ __('slash_landing.hero.lead') }}</p>
         <form class="slash-hero-form" action="{{ route('slash.lead.store') }}" method="POST" data-slash-lead-form novalidate>
           @csrf
@@ -143,6 +143,14 @@
         <p class="slash-hero-note">{{ __('slash_landing.hero.note') }}</p>
         <div class="slash-hero-shot slash-glow-frame">
           <img src="{{ $slashImg('landing-page/hero-elements-dark.png') }}" alt="{{ __('slash_landing.hero.image_alt') }}" width="3612" height="2328" loading="eager" decoding="async">
+        </div>
+      </div>
+    </section>
+
+    <section class="slash-section pt-0">
+      <div class="slash-container">
+        <div class="slash-section-head text-center">
+          @include('homes.shared.partials.hero-highlight', ['class' => 'slash-lead mb-0 landing-hero-highlight'])
         </div>
       </div>
     </section>

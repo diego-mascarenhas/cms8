@@ -159,78 +159,6 @@
     <script src="{{ asset('assets/js/app-chat.js') }}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
-        (function bindChatWhatsAppSidebarControls() {
-            var avatar = document.getElementById('chat-contacts-wa-avatar');
-            var sidebar = document.getElementById('app-chat-sidebar-left');
-            var overlay = document.querySelector('.app-overlay');
-            var closeButtons = sidebar
-                ? sidebar.querySelectorAll('.close-sidebar')
-                : [];
-
-            if (!sidebar || sidebar.dataset.chatWaSidebarBound === '1') {
-                return;
-            }
-            sidebar.dataset.chatWaSidebarBound = '1';
-            if (avatar) {
-                avatar.dataset.chatWaSidebarBound = '1';
-            }
-
-            function syncOverlay(show) {
-                if (!overlay) {
-                    return;
-                }
-                if (show) {
-                    overlay.classList.add('show');
-                    overlay.onclick = function (e) {
-                        e.currentTarget.classList.remove('show');
-                        sidebar.classList.remove('show');
-                    };
-                } else {
-                    overlay.classList.remove('show');
-                    overlay.onclick = null;
-                }
-            }
-
-            function openWhatsAppSidebar() {
-                sidebar.classList.add('show');
-                syncOverlay(true);
-            }
-
-            function closeWhatsAppSidebar() {
-                sidebar.classList.remove('show');
-                syncOverlay(false);
-            }
-
-            function toggleWhatsAppSidebar() {
-                if (sidebar.classList.contains('show')) {
-                    closeWhatsAppSidebar();
-                } else {
-                    openWhatsAppSidebar();
-                }
-            }
-
-            if (avatar) {
-                avatar.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    toggleWhatsAppSidebar();
-                });
-                avatar.addEventListener('keydown', function (event) {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        toggleWhatsAppSidebar();
-                    }
-                });
-            }
-
-            closeButtons.forEach(function (closeButton) {
-                closeButton.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    closeWhatsAppSidebar();
-                }, true);
-            });
-        })();
-
         var chatImageModal = document.getElementById('chatImageModal');
         if (chatImageModal) {
         chatImageModal.addEventListener('show.bs.modal', function (event) {
@@ -2514,8 +2442,7 @@
                                 $avatarStatusClass = ($teamWhatsAppIsConnected ?? false) ? 'avatar-online' : 'avatar-offline';
                             }
                         @endphp
-                        <div id="chat-contacts-wa-avatar" class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" role="button" tabindex="0" aria-label="{{ __('WhatsApp connection and settings') }}" data-bs-toggle="sidebar"
-                            data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
+                        <div id="chat-contacts-wa-avatar" class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" role="button" tabindex="0" aria-label="{{ __('WhatsApp connection and settings') }}">
                             <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp ti-sm"></i></span>
                         </div>
                         <div class="flex-grow-1 input-group input-group-merge rounded-pill">

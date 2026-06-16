@@ -5,6 +5,7 @@ namespace App\Actions\Fortify;
 use App\Actions\Jetstream\AcceptTeamInvitation;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\PendingTeamInvitation;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -15,7 +16,10 @@ class CreateNewUser implements CreatesNewUsers
 {
     use PasswordValidationRules;
 
-    public function __construct(private AcceptTeamInvitation $acceptTeamInvitation) {}
+    public function __construct(
+        private AcceptTeamInvitation $acceptTeamInvitation,
+        private TeamModulesByPricingPlanSyncer $teamModulesByPricingPlanSyncer,
+    ) {}
 
     /**
      * Create a newly registered user.
@@ -82,5 +86,8 @@ class CreateNewUser implements CreatesNewUsers
         $user->forceFill([
             'current_team_id' => $team->id,
         ])->save();
+
+        $planSlug = (string) config('humano_pricing.registration_team_plan_slug', 'hunter');
+        $this->teamModulesByPricingPlanSyncer->syncForHumanoPricingPlan($team, $planSlug);
     }
 }

@@ -13,7 +13,7 @@ return [
     'ogImage' => 'images/system-onboarding/whatsapp-image.jpg',
     'ogImageWidth' => 552,
     'ogImageHeight' => 552,
-    'ogImageAlt' => 'Humano — gestiona tu negocio desde cualquier lugar',
+    'ogImageAlt' => 'HumanoApp — la libertad de trabajar donde quieras, cuando quieras',
     'licenseUrl' => 'https://www.gnu.org/licenses/agpl-3.0.html',
     'livePreview' => 'https://humano.revisionalpha.es/',
     'productPage' => 'https://revisionalpha.es',

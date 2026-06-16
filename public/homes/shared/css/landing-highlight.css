@@ -1,0 +1,39 @@
+.landing-hero-highlight .highlight-hook {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+@media (min-width: 768px) {
+  .landing-hero-highlight .highlight-hook {
+    display: inline;
+    margin-bottom: 0;
+  }
+}
+
+.landing-hero-highlight .highlight-whatsapp {
+  color: #25d366;
+  font-weight: 700;
+}
+
+.landing-hero-highlight .highlight-brand {
+  font-weight: 700;
+  color: #7367f0;
+}
+
+.landing-hero-highlight .highlight-traits {
+  font-weight: 600;
+}
+
+.landing-hero-highlight .highlight-muted {
+  opacity: 0.72;
+}
+
+.slash-page .landing-hero-highlight .highlight-brand {
+  color: #a78bfa;
+}
+
+.slash-page .landing-hero-highlight .highlight-muted {
+  color: var(--slash-muted);
+  opacity: 1;
+}

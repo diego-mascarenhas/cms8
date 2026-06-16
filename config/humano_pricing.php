@@ -52,6 +52,20 @@ return [
     },
 
     /*
+     * | Plan slug applied to the personal team created at /register (self-signup).
+     * | Uses the same module bundle as {@see plan_team_modules} for that plan (default: hunter).
+     * | Override with HUMANO_PRICING_REGISTRATION_TEAM_PLAN_SLUG.
+     */
+    'registration_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_REGISTRATION_TEAM_PLAN_SLUG', 'hunter'))))
+    {
+        'assistant' => 'assistant',
+        'hunter' => 'hunter',
+        'business' => 'business',
+        'mentor' => 'mentor',
+        default => 'hunter',
+    },
+
+    /*
      * | Referral / friend promotion code label (e.g. for copy in UI or translations).
      * | Not appended to Payment Link URLs — users enter it in Stripe checkout if they have it.
      */
