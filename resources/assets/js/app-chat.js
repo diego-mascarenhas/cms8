@@ -208,9 +208,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // on click of chatHistoryHeaderMenu, Remove data-overlay attribute from chatSidebarLeftClose to resolve overlay overlapping issue for two sidebar
     let chatHistoryHeaderMenu = document.querySelector(".chat-history-header [data-target='#app-chat-contacts']"),
       chatSidebarLeftClose = document.querySelector('.app-chat-sidebar-left .close-sidebar');
-    chatHistoryHeaderMenu.addEventListener('click', e => {
-      chatSidebarLeftClose.removeAttribute('data-overlay');
-    });
+    if (chatHistoryHeaderMenu && chatSidebarLeftClose) {
+      chatHistoryHeaderMenu.addEventListener('click', e => {
+        chatSidebarLeftClose.removeAttribute('data-overlay');
+      });
+    }
     // }
 
     // Speech To Text

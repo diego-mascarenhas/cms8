@@ -41,6 +41,9 @@
             background: #fff;
             border-radius: 0.375rem;
         }
+        #chat-contacts-wa-avatar .avatar-initial i {
+            color: var(--bs-success);
+        }
         .chat-history-header {
             min-height: 4.5rem;
         }
@@ -156,13 +159,87 @@
     <script src="{{ asset('assets/js/app-chat.js') }}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
+        (function bindChatWhatsAppSidebarControls() {
+            var avatar = document.getElementById('chat-contacts-wa-avatar');
+            var sidebar = document.getElementById('app-chat-sidebar-left');
+            var overlay = document.querySelector('.app-overlay');
+            var closeButtons = sidebar
+                ? sidebar.querySelectorAll('.close-sidebar')
+                : [];
+
+            if (!sidebar || sidebar.dataset.chatWaSidebarBound === '1') {
+                return;
+            }
+            sidebar.dataset.chatWaSidebarBound = '1';
+            if (avatar) {
+                avatar.dataset.chatWaSidebarBound = '1';
+            }
+
+            function syncOverlay(show) {
+                if (!overlay) {
+                    return;
+                }
+                if (show) {
+                    overlay.classList.add('show');
+                    overlay.onclick = function (e) {
+                        e.currentTarget.classList.remove('show');
+                        sidebar.classList.remove('show');
+                    };
+                } else {
+                    overlay.classList.remove('show');
+                    overlay.onclick = null;
+                }
+            }
+
+            function openWhatsAppSidebar() {
+                sidebar.classList.add('show');
+                syncOverlay(true);
+            }
+
+            function closeWhatsAppSidebar() {
+                sidebar.classList.remove('show');
+                syncOverlay(false);
+            }
+
+            function toggleWhatsAppSidebar() {
+                if (sidebar.classList.contains('show')) {
+                    closeWhatsAppSidebar();
+                } else {
+                    openWhatsAppSidebar();
+                }
+            }
+
+            if (avatar) {
+                avatar.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    toggleWhatsAppSidebar();
+                });
+                avatar.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        toggleWhatsAppSidebar();
+                    }
+                });
+            }
+
+            closeButtons.forEach(function (closeButton) {
+                closeButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                    closeWhatsAppSidebar();
+                }, true);
+            });
+        })();
+
         var chatImageModal = document.getElementById('chatImageModal');
+        if (chatImageModal) {
         chatImageModal.addEventListener('show.bs.modal', function (event) {
             var trigger = event.relatedTarget;
             var imgUrl = trigger.getAttribute('data-img');
             var modalImg = document.getElementById('chatModalImg');
             modalImg.src = imgUrl;
         });
+        }
 
         // Humano Assistant preview handling
         const formSendMessage = document.getElementById('chat-form');
@@ -288,19 +365,35 @@
             else      { show(iconSend); hide(iconAi); show(textSend); hide(textAi); }
         }
 
+        function syncSendButtonForContext() {
+            var form = document.getElementById('chat-form');
+            var isAssistantView = form && form.getAttribute('data-view-assistant') === '1';
+            if (isAssistantView) {
+                syncSendButtonWithAiToggle(false);
+                return;
+            }
+            if (!useAiToggle) {
+                syncSendButtonWithAiToggle(false);
+                return;
+            }
+            syncSendButtonWithAiToggle(useAiToggle.checked);
+        }
+
         (function persistAiTogglePreference() {
             var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
-            if (!useAiToggle) return;
+            if (!useAiToggle) {
+                syncSendButtonForContext();
+                return;
+            }
             useAiToggle.checked = toggleDefault;
-            syncSendButtonWithAiToggle(toggleDefault);
+            syncSendButtonForContext();
             useAiToggle.addEventListener('change', function() {
-                var aiOn = useAiToggle.checked;
-                syncSendButtonWithAiToggle(aiOn);
+                syncSendButtonForContext();
                 var token = document.querySelector('meta[name="csrf-token"]');
                 var cidEl = document.getElementById('contact-id');
                 var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
                 if (token) {
-                    var body = { on: aiOn };
+                    var body = { on: useAiToggle.checked };
                     if (contactId > 0) {
                         body.contact_id = contactId;
                     }
@@ -2172,6 +2265,7 @@
                 });
             });
         }
+
     });
     </script>
 @endsection
@@ -2382,7 +2476,7 @@
                                 $avatarStatusClass = ($teamWhatsAppIsConnected ?? false) ? 'avatar-online' : 'avatar-offline';
                             }
                         @endphp
-                        <div id="chat-contacts-wa-avatar" class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" data-bs-toggle="sidebar"
+                        <div id="chat-contacts-wa-avatar" class="flex-shrink-0 avatar {{ $avatarStatusClass }} me-3 cursor-pointer" role="button" tabindex="0" aria-label="{{ __('WhatsApp connection and settings') }}" data-bs-toggle="sidebar"
                             data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">
                             <span class="avatar-initial rounded-circle bg-label-success"><i class="ti ti-brand-whatsapp ti-sm"></i></span>
                         </div>
