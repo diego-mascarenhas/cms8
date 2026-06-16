@@ -12,6 +12,7 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
+use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Services\UserDailyPerformanceInsightService;
@@ -23,6 +24,10 @@ use Stripe\Stripe;
 
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly ContactDailySentimentService $contactDailySentimentService,
+    ) {}
+
     public function index()
     {
         // Get active team
@@ -70,47 +75,7 @@ class DashboardController extends Controller
                 ->get();
         }
 
-        // Get latest sentiment for each contact (filtered by team)
-        $contacts = Contact::where('team_id', $activeTeam->id)
-            ->with(['currentSentiment' => function ($query)
-            {
-                $query->latest();
-            }])
-            ->get();
-
-        // Count current sentiments
-        $sentimentCounts = $contacts
-            ->pluck('currentSentiment.sentiment_id')
-            ->filter()
-            ->countBy();
-
-        // Define sentiments
-        $sentiments = [
-            1 => 'Muy Negativo',
-            2 => 'Negativo',
-            3 => 'Neutral',
-            4 => 'Positivo',
-            5 => 'Muy Positivo',
-        ];
-
-        // Ensure all sentiments are represented
-        foreach ($sentiments as $id => $name)
-        {
-            if (! isset($sentimentCounts[$id]))
-            {
-                $sentimentCounts[$id] = 0;
-            }
-        }
-
-        // Prepare data for view
-        $sentimentData = [];
-        foreach ($sentiments as $id => $name)
-        {
-            $sentimentData[] = [
-                'label' => $name,
-                'count' => $sentimentCounts[$id],
-            ];
-        }
+        $sentimentData = $this->contactDailySentimentService->chartDataForTeam($activeTeam);
 
         $authUser = auth()->user();
 

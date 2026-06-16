@@ -4,7 +4,6 @@ namespace App\Services\Imap;
 
 use App\Enums\EmailFolder;
 use App\Jobs\ClassifyEmailSpamJob;
-use App\Jobs\ProcessEmailSentimentJob;
 use App\Models\Email;
 use App\Models\Mailbox;
 use App\Services\Mail\MailInboxService;
@@ -152,14 +151,6 @@ class MailboxConnectionService
 
         if ($email->wasRecentlyCreated)
         {
-            try
-            {
-                ProcessEmailSentimentJob::dispatch($email->id);
-            } catch (\Throwable $e)
-            {
-                Log::warning('Mail sync: could not dispatch sentiment job', ['email_id' => $email->id, 'error' => $e->getMessage()]);
-            }
-
             try
             {
                 ClassifyEmailSpamJob::dispatch($email->id);

@@ -27,13 +27,31 @@ Respond with ONLY a valid JSON object, no markdown, no code block, no extra text
 Valid keys: sentiment_id (integer 1-5), reason (short string in the same language as the message).
 PROMPT;
 
+    private const DAILY_CONTEXT_INSTRUCTIONS = <<<'PROMPT'
+You are a sentiment classifier. You will receive one or more inbound messages from the same contact within the last 24 hours (WhatsApp and/or email).
+Classify the overall emotional tone across the full conversation context into exactly one of these categories:
+
+1 = Muy Negativo (very negative, angry, furious, outraged)
+2 = Negativo (negative, annoyed, dissatisfied, worried)
+3 = Neutral (neutral, factual, no clear emotion)
+4 = Positivo (positive, satisfied, grateful, friendly)
+5 = Muy Positivo (very positive, delighted, enthusiastic, celebrating)
+
+Weigh the whole thread, not just the last line. If tone shifts, favor the most recent emotional direction unless earlier messages clearly dominate.
+
+Respond with ONLY a valid JSON object, no markdown, no code block, no extra text. Example:
+{"sentiment_id": 4, "reason": "El contacto pasó de una queja inicial a agradecer la resolución"}
+
+Valid keys: sentiment_id (integer 1-5), reason (short string in the same language as the messages).
+PROMPT;
+
     /**
      * Classify message text into one of the 5 emotional states using AI (Laravel AI / Anthropic).
      * Returns array with sentiment_id (1-5), name, reason or null on failure.
      *
      * @return array{id: int, name: string, reason: string}|null
      */
-    public function analyzeWithAi(string $text, ?int $teamId = null): ?array
+    public function analyzeWithAi(string $text, ?int $teamId = null, ?string $instructions = null): ?array
     {
         $text = trim(strip_tags($text));
         if ($text === '')
@@ -44,7 +62,7 @@ PROMPT;
         try
         {
             $agent = agent(
-                instructions: self::SENTIMENT_INSTRUCTIONS,
+                instructions: $instructions ?? self::SENTIMENT_INSTRUCTIONS,
                 messages: [],
                 tools: [],
             );
@@ -108,7 +126,11 @@ PROMPT;
      */
     public function recordForContact(Contact $contact, string $text, string $channel): void
     {
-        $result = $this->analyzeWithAi($text, (int) $contact->team_id);
+        $instructions = $channel === 'daily'
+            ? self::DAILY_CONTEXT_INSTRUCTIONS
+            : null;
+
+        $result = $this->analyzeWithAi($text, (int) $contact->team_id, $instructions);
 
         if ($result === null)
         {
