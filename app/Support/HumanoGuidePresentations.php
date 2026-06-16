@@ -52,6 +52,13 @@ class HumanoGuidePresentations
                 'description' => __('Subí una foto de factura o pago por asistente, email o WhatsApp y registrála en tu sistema contable al instante.'),
                 'icon' => 'receipt',
             ],
+            [
+                'url' => route('affiliates'),
+                'title' => __('Afiliados'),
+                'subtitle' => __('Programa de referidos'),
+                'description' => __('Compartí tu enlace o invitá por email: cobrás comisión por cada suscripción que llegue con tu código de referido.'),
+                'icon' => 'affiliate',
+            ],
         ];
     }
 }

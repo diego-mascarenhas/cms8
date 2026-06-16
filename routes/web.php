@@ -123,6 +123,14 @@ Route::get('/slash', [SlashLandingController::class, 'index'])->name('slash');
 Route::middleware('throttle:10,1')->post('/slash/lead', [SlashLandingController::class, 'storeLead'])->name('slash.lead.store');
 Route::redirect('/front-pages/landing', '/inicio', 301);
 Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
+Route::get('/affiliates', function ()
+{
+    $path = public_path('homes/humano/presentations/afiliados.html');
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=UTF-8',
+    ]);
+})->name('affiliates');
 Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
     ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');

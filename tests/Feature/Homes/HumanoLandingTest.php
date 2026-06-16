@@ -33,6 +33,8 @@ class HumanoLandingTest extends TestCase
             ->assertSee(__('Prospección'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/facturacion.html'), false)
             ->assertSee(__('Facturación'), false)
+            ->assertSee(route('affiliates'), false)
+            ->assertSee(__('Afiliados'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('css/landing.css'), false)
             ->assertSee('Ver presentación', false)
             ->assertSee(route('pricing'), false)

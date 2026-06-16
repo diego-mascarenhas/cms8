@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="/homes/humano/presentations/">
+<title>Humano · Afiliados</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-aff-flow{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch}
+.pres-aff-step{border-radius:16px;padding:20px 18px;background:linear-gradient(165deg,rgba(90,88,150,.28),rgba(24,22,48,.52));border:1px solid rgba(150,148,220,.18);display:flex;flex-direction:column;gap:10px}
+.pres-aff-step-num{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--accent)}
+.pres-aff-step h4{font-size:15px;font-weight:700;color:#fff;margin:0}
+.pres-aff-step p{font-size:12px;color:#b8bae0;line-height:1.5;margin:0}
+.pres-aff-tag{display:inline-flex;align-items:center;gap:6px;margin-top:auto;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#d8dcff;background:rgba(105,108,255,.18);border:1px solid rgba(150,148,220,.22);width:fit-content}
+.pres-aff-panel{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;background:#f5f5f9;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;padding:22px 24px}
+.pres-aff-panel h3{font-size:16px;font-weight:700;color:#566a7f;margin:0 0 4px;display:flex;align-items:center;gap:8px}
+.pres-aff-panel .lead{font-size:12px;color:#a1acb8;margin-bottom:16px;line-height:1.45}
+.pres-aff-card{background:#fff;border-radius:10px;border:1px solid #e4e6ef;padding:16px 18px;margin-bottom:12px}
+.pres-aff-card h4{font-size:13px;font-weight:700;margin:0 0 10px;color:#566a7f}
+.pres-aff-link{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:#f5f5f9;border:1px solid #e4e6ef;font-size:11px;color:#697a8d}
+.pres-aff-link span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pres-aff-link i{color:#696cff}
+.pres-aff-table{width:100%;border-collapse:collapse;font-size:11px;background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e4e6ef}
+.pres-aff-table th,.pres-aff-table td{padding:9px 12px;text-align:left;border-bottom:1px solid #f0f2f4}
+.pres-aff-table th{font-size:10px;font-weight:700;color:#a1acb8;text-transform:uppercase;letter-spacing:.04em;background:#fafafa}
+.pres-aff-table td{color:#566a7f}
+.pres-aff-badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(113,221,55,.16);color:#56ca00}
+.pres-aff-stats{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.pres-aff-stat{border-radius:18px;padding:22px 20px;background:linear-gradient(165deg,rgba(90,88,150,.26),rgba(24,22,48,.5));border:1px solid rgba(150,148,220,.16)}
+.pres-aff-stat h4{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+.pres-aff-stat p{font-size:12.5px;color:#a4a6c8;line-height:1.55;margin:0}
+.pres-aff-stat .val{font-size:28px;font-weight:800;color:var(--accent);margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">BLOQUE 07 · GUÍA</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:920px">Afiliados · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">programa de referidos</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:620px;line-height:1.6">Compartí tu enlace, invitá equipos por email y cobrá comisión por cada suscripción que llegue con tu código de referido.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="facturacion.html">← Capítulo anterior: Facturación</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">AFILIADOS</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">PROGRAMA DE REFERIDOS</span></div>
+   <h2 class="u" style="--d:.26s">Recomendá Humano y <em>ganá comisión</em></h2>
+   <p class="u" style="--d:.36s">Con el módulo de afiliados activo, tu equipo obtiene un código de referido en Facturación. Cada equipo que se suscribe con tu enlace te genera un porcentaje de cada cobro.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">Enlaces por plan</span>
+    <span class="dv-chip">Invitaciones por email</span>
+    <span class="dv-chip">Comisiones automáticas</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Afiliados</span><span class="r">Intro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">AFILIADOS · FLUJO</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>De tu enlace al <em style="font-style:normal;color:var(--accent)">cobro de comisión</em></h2>
+  <p class="sub">Cuatro pasos: activás tu código, compartís el enlace, el equipo referido se suscribe y Humano registra la comisión en cada factura.</p>
+ </div>
+ <div class="pres-aff-flow u sc" style="--d:.22s">
+  <div class="pres-aff-step">
+   <div class="pres-aff-step-num">01</div>
+   <h4>Activá Stripe</h4>
+   <p>En Facturación → Afiliados, creá tu cliente de facturación para obtener el código de referido del equipo.</p>
+   <span class="pres-aff-tag"><i class="ti ti-brand-stripe ti-xs"></i> Un clic en el panel</span>
+  </div>
+  <div class="pres-aff-step">
+   <div class="pres-aff-step-num">02</div>
+   <h4>Compartí el enlace</h4>
+   <p>Copiá el enlace por plan o enviá una invitación por email con el plan preseleccionado.</p>
+   <span class="pres-aff-tag"><i class="ti ti-link ti-xs"></i> Enlace + invitación</span>
+  </div>
+  <div class="pres-aff-step">
+   <div class="pres-aff-step-num">03</div>
+   <h4>Se suscriben</h4>
+   <p>El visitante pasa por checkout con tu referido guardado en cookie; la atribución queda en el equipo nuevo.</p>
+   <span class="pres-aff-tag"><i class="ti ti-cookie ti-xs"></i> Atribución automática</span>
+  </div>
+  <div class="pres-aff-step">
+   <div class="pres-aff-step-num">04</div>
+   <h4>Cobrás comisión</h4>
+   <p>Cada pago de suscripción del equipo referido genera tu comisión en el historial de afiliados.</p>
+   <span class="pres-aff-tag"><i class="ti ti-coin ti-xs"></i> Por cada factura</span>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Afiliados</span><span class="r">Flujo</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">AFILIADOS · PANEL</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Todo en <em style="font-style:normal;color:var(--accent)">Facturación</em></h2>
+  <p class="sub">La sección Afiliados vive en el módulo de facturación: enlaces, invitaciones enviadas y comisiones como referidor o como equipo referido.</p>
+ </div>
+ <div class="pres-aff-panel u sc" style="--d:.22s">
+  <h3><i class="ti ti-affiliate"></i> Afiliados</h3>
+  <p class="lead">Comparte tu enlace de referido. Cuando otro equipo se suscribe con tu código, recibes comisión de cada cobro.</p>
+  <div class="pres-aff-card">
+   <h4>Enlaces por plan</h4>
+   <div class="pres-aff-link"><span>humano.test/affiliate/capture?ref=cus_…&amp;url=…/pricing/…</span><i class="ti ti-copy"></i></div>
+  </div>
+  <div class="pres-aff-card">
+   <h4>Invitaciones enviadas</h4>
+   <table class="pres-aff-table">
+    <thead><tr><th>Contacto</th><th>Plan</th><th>Estado</th><th>Enviada</th></tr></thead>
+    <tbody>
+     <tr><td>María López</td><td>Hunter</td><td><span class="pres-aff-badge">Abierta</span></td><td>12/06/2026</td></tr>
+     <tr><td>Estudio Norte</td><td>Mentor</td><td>Clic</td><td>08/06/2026</td></tr>
+    </tbody>
+   </table>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Afiliados</span><span class="r">Panel</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">AFILIADOS · SEGUIMIENTO</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Atribución <em style="font-style:normal;color:var(--accent)">transparente</em></h2>
+  <p class="sub">Enlaces de captura, cookies de referido, tracking de invitaciones y registro de comisiones por factura de Stripe.</p>
+ </div>
+ <div class="pres-aff-stats u sc" style="--d:.22s">
+  <div class="pres-aff-stat">
+   <div class="val">40%</div>
+   <h4>Comisión configurable</h4>
+   <p>Porcentaje de plataforma sobre cada cobro del equipo que referiste. Visible en tu panel de afiliados.</p>
+  </div>
+  <div class="pres-aff-stat">
+   <div class="val">90 d</div>
+   <h4>Cookie de referido</h4>
+   <p>El código queda guardado en el navegador del visitante para atribuir el alta aunque no complete el mismo día.</p>
+  </div>
+  <div class="pres-aff-stat">
+   <div class="val">Email</div>
+   <h4>Invitaciones rastreables</h4>
+   <p>Aperturas y clics de cada invitación enviada, con enlace personalizado al plan elegido.</p>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Afiliados</span><span class="r">Seguimiento</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">GUÍAS</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">RECORRIDO COMPLETO</span></div>
+  <h2 class="u" style="--d:.14s">Del primer contacto al <em>ingreso recurrente</em></h2>
+  <p class="u" style="--d:.24s">Configuración, operación diaria, calendario, tareas, prospección, facturación y afiliados. Activá el módulo en tu plan y empezá a referir.</p>
+  <a class="cta-link u" style="--d:.36s" href="/">Ver planes en la landing →</a>
+  <div class="pres-nav-row u" style="--d:.44s">
+   <a href="primeros-pasos.html">Volver a Primeros pasos</a>
+   <a href="facturacion.html">← Facturación</a>
+  </div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>
