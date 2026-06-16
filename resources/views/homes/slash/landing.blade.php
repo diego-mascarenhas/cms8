@@ -82,7 +82,9 @@
       </a>
 
       <ul class="slash-nav-links" id="slashNavLinks">
+        @if (config('slash_landing.show_plan_stories_section'))
         <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
+        @endif
         <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
         <li><a href="#guias">{{ __('slash_landing.nav.guides') }}</a></li>
         <li><a href="#planes">{{ __('slash_landing.nav.plans') }}</a></li>
@@ -152,6 +154,7 @@
       </div>
     </section>
 
+    @if (config('slash_landing.show_trust_section'))
     <section id="producto" class="slash-section">
       <div class="slash-container">
         <div class="slash-section-head">
@@ -183,11 +186,14 @@
         </div>
       </div>
     </section>
+    @endif
 
+    @if (config('slash_landing.show_plan_stories_section'))
     @include('homes.slash.partials.plan-stories', [
       'landingPlans' => $landingPlans,
       'planImages' => $planImages,
     ])
+    @endif
 
     <section class="slash-section">
       <div class="slash-container">
@@ -554,7 +560,9 @@
         <div>
           <h4>{{ __('slash_landing.nav.product') }}</h4>
           <ul>
+            @if (config('slash_landing.show_plan_stories_section'))
             <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
+            @endif
             <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
             <li><a href="#planes">{{ __('slash_landing.nav.plans') }}</a></li>
             <li><a href="#precios">{{ __('slash_landing.nav.pricing') }}</a></li>

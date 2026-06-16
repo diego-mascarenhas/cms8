@@ -85,14 +85,15 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('humano_pricing.plans.business.name'), false)
             ->assertDontSee('id="plan-mentor"', false)
             ->assertDontSee('id="plan-innovation"', false)
-            ->assertSee('id="historias-planes"', false)
-            ->assertSee('data-slash-stories', false)
-            ->assertSee('slash-stories-row', false)
-            ->assertSee(__('slash_landing.stories.title'), false)
+            ->assertDontSee('id="historias-planes"', false)
+            ->assertDontSee('data-slash-stories', false)
+            ->assertDontSee(__('slash_landing.stories.title'), false)
+            ->assertDontSee('slash-story-card', false)
+            ->assertDontSee('id="producto"', false)
+            ->assertDontSee(__('slash_landing.trust.title'), false)
+            ->assertDontSee('María G.', false)
             ->assertSee(__('slash_landing.benefits.title'), false)
             ->assertSee(__('slash_landing.tools.title'), false)
-            ->assertSee('slash-story-card', false)
-            ->assertSee('id="producto"', false)
             ->assertSee('id="planes"', false)
             ->assertSee('id="precios"', false)
             ->assertSee('id="guias"', false)
@@ -173,6 +174,22 @@ class SlashLandingTest extends TestCase
         $this->get('/slash')
             ->assertOk()
             ->assertSee('https://web.whatsapp.com/send?phone=34624159557', false);
+    }
+
+    public function test_slash_landing_can_show_trust_and_plan_stories_sections_when_enabled(): void
+    {
+        config([
+            'slash_landing.show_trust_section' => true,
+            'slash_landing.show_plan_stories_section' => true,
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertSee('id="producto"', false)
+            ->assertSee(__('slash_landing.trust.title'), false)
+            ->assertSee('id="historias-planes"', false)
+            ->assertSee(__('slash_landing.stories.title'), false)
+            ->assertSee('data-slash-stories', false);
     }
 
     public function test_slash_landing_is_public_even_when_authenticated(): void
