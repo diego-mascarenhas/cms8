@@ -119,4 +119,19 @@ final class ApplicationLocales
     {
         return '/js/datatables/'.self::datatableJsonLocale($locale).'.json';
     }
+
+    /**
+     * Locale key accepted by Vuexy TemplateCustomizer (en, es, fr, …).
+     */
+    public static function templateCustomizerLang(?string $locale = null): string
+    {
+        $locale = self::normalize($locale ?? app()->getLocale());
+
+        return match ($locale)
+        {
+            self::DEFAULT, self::ARGENTINA => 'es',
+            'en', 'fr', 'de', 'it', 'pt', 'ar' => $locale,
+            default => 'es',
+        };
+    }
 }

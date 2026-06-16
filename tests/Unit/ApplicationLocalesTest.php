@@ -57,4 +57,12 @@ class ApplicationLocalesTest extends TestCase
             ApplicationLocales::datatableLanguageUrl('es-ES'),
         );
     }
+
+    public function test_template_customizer_lang_maps_app_locales(): void
+    {
+        $this->assertSame('es', ApplicationLocales::templateCustomizerLang('es_ES'));
+        $this->assertSame('es', ApplicationLocales::templateCustomizerLang('es_AR'));
+        $this->assertSame('en', ApplicationLocales::templateCustomizerLang('en'));
+        $this->assertSame('fr', ApplicationLocales::templateCustomizerLang('fr'));
+    }
 }

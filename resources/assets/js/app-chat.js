@@ -4,6 +4,80 @@
 
 'use strict';
 
+(function bindChatWhatsAppSidebarControls() {
+  const avatar = document.getElementById('chat-contacts-wa-avatar');
+  const sidebar = document.getElementById('app-chat-sidebar-left');
+  const overlay = document.querySelector('.app-overlay');
+  const closeButtons = sidebar ? sidebar.querySelectorAll('.close-sidebar') : [];
+
+  if (!sidebar || sidebar.dataset.chatWaSidebarBound === '1') {
+    return;
+  }
+
+  sidebar.dataset.chatWaSidebarBound = '1';
+  if (avatar) {
+    avatar.dataset.chatWaSidebarBound = '1';
+  }
+
+  function syncOverlay(show) {
+    if (!overlay) {
+      return;
+    }
+
+    if (show) {
+      overlay.classList.add('show');
+      overlay.onclick = function (e) {
+        e.currentTarget.classList.remove('show');
+        sidebar.classList.remove('show');
+      };
+    } else {
+      overlay.classList.remove('show');
+      overlay.onclick = null;
+    }
+  }
+
+  function openWhatsAppSidebar() {
+    sidebar.classList.add('show');
+    syncOverlay(true);
+  }
+
+  function closeWhatsAppSidebar() {
+    sidebar.classList.remove('show');
+    syncOverlay(false);
+  }
+
+  function toggleWhatsAppSidebar() {
+    if (sidebar.classList.contains('show')) {
+      closeWhatsAppSidebar();
+    } else {
+      openWhatsAppSidebar();
+    }
+  }
+
+  if (avatar) {
+    avatar.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      toggleWhatsAppSidebar();
+    }, true);
+
+    avatar.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        toggleWhatsAppSidebar();
+      }
+    });
+  }
+
+  closeButtons.forEach(function (closeButton) {
+    closeButton.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      closeWhatsAppSidebar();
+    }, true);
+  });
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
   (function () {
     const chatContactsBody = document.querySelector('.app-chat-contacts .sidebar-body'),

@@ -43,5 +43,6 @@ class NavbarGlobalSearchTest extends TestCase
         $this->assertNotFalse($mainJs);
         $this->assertStringContainsString('usesAlpineGlobalSearch', $mainJs);
         $this->assertStringContainsString("indexOf('globalSearch')", $mainJs);
+        $this->assertStringContainsString('window.templateCustomizer?.settings', $mainJs);
     }
 }
