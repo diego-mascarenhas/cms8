@@ -110,6 +110,8 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('Prospección'), false)
             ->assertSee(\App\Support\GuidePresentation::url('facturacion'), false)
             ->assertSee(__('Facturación'), false)
+            ->assertSee('M5.931 6.936', false)
+            ->assertSee('M4 10a2 2 0 0 1 2-2h2', false)
             ->assertSee('Ver presentación', false)
             ->assertSee(SlashHomeAsset::url('css/landing.css'), false)
             ->assertSee(asset('homes/shared/css/brand-footer.css'), false)
