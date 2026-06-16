@@ -3,6 +3,7 @@
 namespace Tests\Feature\Homes;
 
 use App\Helpers\SupportWhatsAppHelper;
+use App\Support\GuidePresentation;
 use App\Support\HumanoHomeAsset;
 use Tests\TestCase;
 
@@ -22,18 +23,18 @@ class HumanoLandingTest extends TestCase
             ->assertSee('#landingPlans', false)
             ->assertSee('#landingFAQ', false)
             ->assertSee(__('Primeros pasos'), false)
-            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/primeros-pasos.html'), false)
-            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/chat-contactos-modulos.html'), false)
+            ->assertSee(GuidePresentation::url('primeros-pasos'), false)
+            ->assertSee(GuidePresentation::url('chat-contactos-modulos'), false)
             ->assertSee('Chat, contactos y módulos', false)
-            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/calendario.html'), false)
+            ->assertSee(GuidePresentation::url('calendario'), false)
             ->assertSee(__('Calendario'), false)
-            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/tareas.html'), false)
+            ->assertSee(GuidePresentation::url('tareas'), false)
             ->assertSee(__('Tareas'), false)
-            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/prospeccion.html'), false)
+            ->assertSee(GuidePresentation::url('prospeccion'), false)
             ->assertSee(__('Prospección'), false)
-            ->assertSee(\App\Support\HumanoHomeAsset::url('presentations/facturacion.html'), false)
+            ->assertSee(GuidePresentation::url('facturacion'), false)
             ->assertSee(__('Facturación'), false)
-            ->assertSee(route('affiliates'), false)
+            ->assertSee(GuidePresentation::url('afiliados'), false)
             ->assertSee(__('Afiliados'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('css/landing.css'), false)
             ->assertSee('Ver presentación', false)
@@ -148,10 +149,10 @@ class HumanoLandingTest extends TestCase
             ->assertRedirect('/inicio');
     }
 
-    public function test_legacy_presentation_url_redirects_to_homes_path(): void
+    public function test_legacy_presentation_url_redirects_to_presentacion_route(): void
     {
         $this->get('/humano-presentacion.html')
-            ->assertRedirect('/homes/humano/presentations/primeros-pasos.html');
+            ->assertRedirect('/presentacion/primeros-pasos');
     }
 
     public function test_chat_whatsapp_presentation_embed_is_public(): void

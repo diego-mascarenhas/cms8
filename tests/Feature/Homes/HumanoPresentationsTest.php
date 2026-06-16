@@ -28,7 +28,7 @@ class HumanoPresentationsTest extends TestCase
         $this->assertIsString($html);
         $this->assertStringContainsString('del ticket al sistema contable', $html);
         $this->assertStringContainsString('organismos fiscales', $html);
-        $this->assertStringContainsString('/affiliates', $html);
+        $this->assertStringContainsString('/presentacion/afiliados', $html);
     }
 
     public function test_afiliados_presentation_exists_and_has_expected_content(): void

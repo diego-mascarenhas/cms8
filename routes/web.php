@@ -34,6 +34,7 @@ use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Homes\GuidePresentationController;
 use App\Http\Controllers\Homes\HumanoLandingController;
 use App\Http\Controllers\Homes\SlashLandingController;
 use App\Http\Controllers\HostingController;
@@ -122,15 +123,20 @@ Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano')
 Route::get('/slash', [SlashLandingController::class, 'index'])->name('slash');
 Route::middleware('throttle:10,1')->post('/slash/lead', [SlashLandingController::class, 'storeLead'])->name('slash.lead.store');
 Route::redirect('/front-pages/landing', '/inicio', 301);
-Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
-Route::get('/affiliates', function ()
+Route::redirect('/humano-presentacion.html', '/presentacion/primeros-pasos', 301);
+Route::redirect('/affiliates', '/presentacion/afiliados', 301)->name('affiliates');
+Route::get('/presentacion/{slug}', [GuidePresentationController::class, 'show'])
+    ->where('slug', \App\Support\GuidePresentation::slugPattern())
+    ->name('presentacion.show');
+Route::get('/homes/humano/presentations/{slug}.html', function (string $slug)
 {
-    $path = public_path('homes/humano/presentations/afiliados.html');
+    if (! \App\Support\GuidePresentation::isValid($slug))
+    {
+        abort(404);
+    }
 
-    return response(file_get_contents($path), 200, [
-        'Content-Type' => 'text/html; charset=UTF-8',
-    ]);
-})->name('affiliates');
+    return redirect()->route('presentacion.show', $slug, 301);
+})->where('slug', \App\Support\GuidePresentation::slugPattern());
 Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
     ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');
