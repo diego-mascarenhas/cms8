@@ -731,41 +731,22 @@ body.slash-page {
 
 .slash-hero-shot {
   margin-top: 4rem;
-  border-radius: var(--slash-radius-xl) var(--slash-radius-xl) 0 0;
-  overflow: hidden;
-  box-shadow:
-    0 -20px 80px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(61, 214, 140, 0.12),
-    0 -12px 60px rgba(61, 214, 140, 0.12);
-  border: 1px solid var(--slash-border);
-  border-bottom: none;
-  background: var(--slash-bg-card);
-}
-
-.slash-glow-frame {
-  position: relative;
-}
-
-.slash-glow-frame::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(61, 214, 140, 0.55), rgba(120, 92, 255, 0.35), rgba(56, 189, 248, 0.25));
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.85;
+  overflow: visible;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  max-width: min(1120px, 100%);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .slash-hero-shot img {
+  display: block;
   width: 100%;
   height: auto;
   object-fit: contain;
   aspect-ratio: 3612 / 2328;
+  filter: drop-shadow(0 28px 60px rgba(0, 0, 0, 0.45));
 }
 
 /* Stat band */
@@ -2643,14 +2624,6 @@ html.lenis.lenis-scrolling iframe {
   background: rgba(8, 9, 11, 0.94);
   border-bottom-color: var(--slash-border-strong);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-}
-
-.slash-hero-shot {
-  will-change: transform;
-}
-
-.slash-hero-shot img {
-  will-change: transform;
 }
 
 .slash-btn-accent {

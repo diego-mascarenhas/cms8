@@ -606,31 +606,13 @@
       y: 36,
     });
 
-    if (heroShot) {
-      gsap.set(heroShot, { scale: 0.94, transformOrigin: '50% 100%' });
-    }
-
     gsap.timeline({ defaults: { ease: 'power3.out' } })
       .to(heroEyebrow, { opacity: 1, y: 0, duration: 0.55 })
       .to(heroTitle, { opacity: 1, y: 0, duration: 0.75 }, '-=0.35')
       .to(heroLead, { opacity: 1, y: 0, duration: 0.6 }, '-=0.45')
       .to(heroForm, { opacity: 1, y: 0, duration: 0.55 }, '-=0.4')
       .to(heroNote, { opacity: 1, y: 0, duration: 0.45 }, '-=0.35')
-      .to(heroShot, { opacity: 1, y: 0, scale: 1, duration: 1.1, ease: 'power2.out' }, '-=0.25');
-
-    if (heroShot) {
-      gsap.to(heroShot, {
-        y: -48,
-        scale: 1.03,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: heroSection,
-          start: 'top top',
-          end: 'bottom top',
-          scrub: 1.2,
-        },
-      });
-    }
+      .to(heroShot, { opacity: 1, y: 0, duration: 0.85, ease: 'power2.out' }, '-=0.25');
   }
 
   /* ── Scroll reveals ── */

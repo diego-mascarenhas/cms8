@@ -141,7 +141,7 @@
           >@if ($errors->has('email') && old('source', 'hero') === 'hero'){{ $errors->first('email') }}@endif</p>
         </form>
         <p class="slash-hero-note">{{ __('slash_landing.hero.note') }}</p>
-        <div class="slash-hero-shot slash-glow-frame">
+        <div class="slash-hero-shot">
           <img src="{{ $slashImg('landing-page/hero-elements-dark.png') }}" alt="{{ __('slash_landing.hero.image_alt') }}" width="3612" height="2328" loading="eager" decoding="async">
         </div>
       </div>
@@ -581,6 +581,13 @@
           <ul>
             <li><a href="#guias">{{ __('slash_landing.nav.guides') }}</a></li>
             <li><a href="#faq">{{ __('slash_landing.nav.faq') }}</a></li>
+            <li>
+              <a
+                href="{{ config('slash_landing.compliance_url') }}"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ __('slash_landing.nav.data_privacy') }}</a>
+            </li>
           </ul>
         </div>
         <div>

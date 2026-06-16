@@ -14,6 +14,7 @@ return [
         'plans' => 'Planes',
         'pricing' => 'Precios',
         'faq' => 'FAQ',
+        'data_privacy' => 'Privacidad de datos e IA',
         'contact' => 'Contacto',
         'product' => 'Producto',
         'resources' => 'Recursos',
