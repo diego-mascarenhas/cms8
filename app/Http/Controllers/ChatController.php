@@ -34,6 +34,7 @@ use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
+use App\Support\ChatMessageAvatar;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -543,7 +544,16 @@ class ChatController extends Controller
             ? $this->resolveLeadContactStatusId()
             : null;
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId'));
+        $chatMessageAvatars = ChatMessageAvatar::contextForChat(
+            viewAssistant: (bool) $viewAssistant,
+            authUser: auth()->user(),
+            assistantConversationUser: $selectedAssistantUser,
+            contactUser: $selectedUser,
+            selectedContact: $selectedContact,
+            selectedPhone: $selectedPhone,
+        );
+
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars'));
     }
 
     /**
@@ -763,8 +773,21 @@ class ChatController extends Controller
             Cache::forget('inbound_received_count_team_'.$team->id);
         }
 
+        $userIds = $messages->pluck('user_id')->filter()->unique();
+        $messageUsers = User::whereIn('id', $userIds)->get()->keyBy('id');
+        $authUser = auth()->user();
+
         return response()->json([
-            'messages' => $messages,
+            'messages' => $messages->map(function (Conversation $message) use ($messageUsers, $authUser)
+            {
+                $payload = $message->toArray();
+                $sender = $message->user_id
+                    ? ($messageUsers->get($message->user_id) ?? $authUser)
+                    : $authUser;
+                $payload['sender_avatar'] = ChatMessageAvatar::forUser($sender, 'bg-label-primary');
+
+                return $payload;
+            })->values()->all(),
             'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone),
         ]);
     }
@@ -923,7 +946,16 @@ class ChatController extends Controller
             return response()->json(['messages' => []], 403);
         }
         $targetUserId = $userId ?? auth()->id();
+        $targetUser = User::withoutGlobalScopes()->find($targetUserId);
         $messages = $contextService->getMessagesForDisplay($targetUserId, 50);
+        $avatars = ChatMessageAvatar::contextForChat(
+            viewAssistant: true,
+            authUser: auth()->user(),
+            assistantConversationUser: $targetUserId !== auth()->id() ? $targetUser : null,
+            contactUser: null,
+            selectedContact: null,
+            selectedPhone: null,
+        );
 
         return response()->json([
             'messages' => array_map(fn ($m) => [
@@ -931,6 +963,7 @@ class ChatController extends Controller
                 'content' => $m['content'],
                 'created_at' => $m['created_at']->toIso8601String(),
             ], $messages),
+            'avatars' => $avatars,
         ]);
     }
 

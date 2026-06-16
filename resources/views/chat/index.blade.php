@@ -241,6 +241,25 @@
         });
         }
 
+        var chatMessageAvatars = @json($chatMessageAvatars ?? []);
+        function buildChatAvatarHtml(avatar, marginClass) {
+            if (!avatar) {
+                return '';
+            }
+            marginClass = marginClass || 'me-3';
+            var inner = '';
+            if (avatar.photo_url) {
+                inner = '<img src="' + String(avatar.photo_url).replace(/"/g, '&quot;') + '" alt="" class="rounded-circle">';
+            } else if (avatar.icon) {
+                inner = '<span class="avatar-initial rounded-circle ' + (avatar.label_class || 'bg-label-info') + '"><i class="ti ti-' + String(avatar.icon) + ' ti-sm"></i></span>';
+            } else {
+                var initials = document.createElement('div');
+                initials.textContent = avatar.initials || '?';
+                inner = '<span class="avatar-initial rounded-circle ' + (avatar.label_class || 'bg-label-primary') + '">' + initials.innerHTML + '</span>';
+            }
+            return '<div class="user-avatar flex-shrink-0 ' + marginClass + '"><div class="avatar avatar-sm">' + inner + '</div></div>';
+        }
+
         // Humano Assistant preview handling
         const formSendMessage = document.getElementById('chat-form');
         const messageInput = document.querySelector('.message-input');
@@ -567,12 +586,13 @@
             var attachmentHtml = buildAttachmentPreviewHtml(attachments || []);
             var userLi = document.createElement('li');
             userLi.className = 'chat-message chat-message-right';
-            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + userTextHtml + '</p>' + attachmentHtml + '</div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+            userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + userTextHtml + '</p>' + attachmentHtml + '</div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div>' + buildChatAvatarHtml(chatMessageAvatars.user, 'ms-3') + '</div>';
             list.appendChild(userLi);
             var audioHtml = (audioBase64 && audioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + audioMime + ';base64,' + audioBase64 + '" type="' + audioMime + '"></audio></div>' : '';
             var aiLi = document.createElement('li');
             aiLi.className = 'chat-message';
-            aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + renderMarkdownForChat(aiMsg || '') + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+            aiLi.innerHTML = '<div class="d-flex overflow-hidden">' + buildChatAvatarHtml(chatMessageAvatars.assistant, 'me-3') +
+                '<div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + renderMarkdownForChat(aiMsg || '') + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
             list.appendChild(aiLi);
             removeAssistantTypingIndicator();
             var body = document.querySelector('.chat-history-body');
@@ -1092,13 +1112,13 @@
                     if (empty) empty.remove();
                     var userLi = document.createElement('li');
                     userLi.className = 'chat-message chat-message-right';
-                    userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + (currentUserMessage || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                    userLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + (currentUserMessage || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-end text-muted mt-1"><small>' + timeStr + '</small></div></div>' + buildChatAvatarHtml(chatMessageAvatars.user, 'ms-3') + '</div>';
                     list.appendChild(userLi);
                     var aiLi = document.createElement('li');
                     aiLi.className = 'chat-message';
                     var audioHtml = (currentAiAudioBase64 && currentAiAudioMime) ? '<div class="mt-2"><audio controls class="w-100" style="max-height:40px;"><source src="data:' + currentAiAudioMime + ';base64,' + currentAiAudioBase64 + '" type="' + currentAiAudioMime + '"></audio></div>' : '';
                     var aiContent = typeof renderMarkdownForChat === 'function' ? renderMarkdownForChat(currentAiResponse) : currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-                    aiLi.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + aiContent + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
+                    aiLi.innerHTML = '<div class="d-flex overflow-hidden">' + buildChatAvatarHtml(chatMessageAvatars.assistant, 'me-3') + '<div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text assistant-markdown"><div class="mb-0">' + aiContent + '</div>' + audioHtml + '</div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div></div>';
                     list.appendChild(aiLi);
                     var body = document.querySelector('.chat-history-body');
                     if (body) body.scrollTop = body.scrollHeight;
@@ -1108,7 +1128,7 @@
 
                     var aiMsg = document.createElement('li');
                     aiMsg.className = 'chat-message';
-                    aiMsg.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div><div class="user-avatar flex-shrink-0 ms-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-info">AI</span></div></div></div>';
+                    aiMsg.innerHTML = '<div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + currentAiResponse.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>') + '</p></div><div class="text-muted mt-1"><small>' + timeStr + '</small></div></div>' + buildChatAvatarHtml(chatMessageAvatars.assistant, 'ms-3') + '</div>';
                     list.appendChild(aiMsg);
 
                     var chatHistory = document.querySelector('.chat-history-body');
@@ -1406,12 +1426,23 @@
                     var sideClass = isAssistant ? '' : 'chat-message-right';
                     var timeClass = isAssistant ? '' : 'text-end';
                     var contentWrap = isAssistant ? '<div class="assistant-markdown mb-0">' + content + '</div>' : '<p class="mb-0">' + content + '</p>';
+                    var avatarHtml = isAssistant
+                        ? buildChatAvatarHtml((chatMessageAvatars.assistant || {}), 'me-3')
+                        : buildChatAvatarHtml((chatMessageAvatars.user || {}), 'ms-3');
+                    if (isAssistant) {
+                        return '<li class="chat-message ' + sideClass + '">' +
+                            '<div class="d-flex overflow-hidden">' + avatarHtml +
+                            '<div class="chat-message-wrapper flex-grow-1">' +
+                            '<div class="chat-message-text">' + contentWrap + '</div>' +
+                            '<div class="text-muted mt-1 ' + timeClass + '"><small>' + time + '</small></div>' +
+                            '</div></div></li>';
+                    }
                     return '<li class="chat-message ' + sideClass + '">' +
                         '<div class="d-flex overflow-hidden">' +
                         '<div class="chat-message-wrapper flex-grow-1">' +
                         '<div class="chat-message-text">' + contentWrap + '</div>' +
                         '<div class="text-muted mt-1 ' + timeClass + '"><small>' + time + '</small></div>' +
-                        '</div></div></li>';
+                        '</div>' + avatarHtml + '</div></li>';
                 }).join('');
                 var body = document.querySelector('.chat-history-body');
                 var wasPinned = chatHistoryIsPinnedToBottom(body);
@@ -1435,7 +1466,12 @@
             function fetchHistory() {
                 fetch(historyUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
                     .then(function(r) { return r.json(); })
-                    .then(function(data) { renderMessages(data.messages || []); })
+                    .then(function(data) {
+                        if (data.avatars) {
+                            chatMessageAvatars = data.avatars;
+                        }
+                        renderMessages(data.messages || []);
+                    })
                     .catch(function() {});
             }
             function resetAssistantContext() {
@@ -1503,6 +1539,8 @@
                     var bodyEscaped = escapeHtml(m.body || '').replace(/\n/g, '<br>');
                     var time = formatTime(m.created_at);
                     var fromSuffix = (m.from || '').toString().slice(-2);
+                    var inboundAvatar = chatMessageAvatars.contact || { initials: fromSuffix, label_class: 'bg-label-success' };
+                    var outboundAvatar = m.sender_avatar || chatMessageAvatars.current_user || { initials: fromSuffix, label_class: 'bg-label-primary' };
                     var media = (typeof m.media === 'string' ? (function () { try { return JSON.parse(m.media); } catch (e) { return []; } })() : m.media) || [];
                     var mediaHtml = media.length ? media.map(function (item) {
                         var url = item.url || item;
@@ -1516,9 +1554,9 @@
                         return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(typeof item === 'object' ? (item.filename || 'Archivo') : 'Archivo') + '</a>';
                     }).join('') : '';
                     if (inbound) {
-                        return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="user-avatar flex-shrink-0 me-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span></div></div><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1"><small>' + time + '</small></div></div></div></li>';
+                        return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden">' + buildChatAvatarHtml(inboundAvatar, 'me-3') + '<div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1"><small>' + time + '</small></div></div></div></li>';
                     }
-                    return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1">' + statusIcon(m.status) + '<small>' + time + '</small></div></div><div class="user-avatar flex-shrink-0 ms-3"><div class="avatar avatar-sm"><span class="avatar-initial rounded-circle bg-label-primary">' + escapeHtml(fromSuffix) + '</span></div></div></div></li>';
+                    return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1">' + statusIcon(m.status) + '<small>' + time + '</small></div></div>' + buildChatAvatarHtml(outboundAvatar, 'ms-3') + '</div></li>';
                 }).join('');
                 var scrollEl = document.querySelector('.chat-history-body');
                 var wasPinnedWa = chatHistoryIsPinnedToBottom(scrollEl);
@@ -2841,6 +2879,9 @@
                                 @forelse(($assistantMessages ?? []) as $msg)
                                     <li class="chat-message {{ $msg['role'] !== 'assistant' ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
+                                            @if ($msg['role'] === 'assistant')
+                                                @include('chat.partials.message-avatar', ['avatar' => $chatMessageAvatars['assistant'], 'margin' => 'me-3'])
+                                            @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text assistant-markdown">
                                                     <div class="mb-0">{!! \Illuminate\Support\Str::markdown($msg['content']) !!}</div>
@@ -2849,6 +2890,9 @@
                                                     <small>{{ $msg['created_at']->format('d/m/Y H:i') }}</small>
                                                 </div>
                                             </div>
+                                            @if ($msg['role'] !== 'assistant')
+                                                @include('chat.partials.message-avatar', ['avatar' => $chatMessageAvatars['user'], 'margin' => 'ms-3'])
+                                            @endif
                                         </div>
                                     </li>
                                 @empty
@@ -2874,18 +2918,7 @@
                                     <li class="chat-message {{ !$isInbound ? 'chat-message-right' : '' }}">
                                         <div class="d-flex overflow-hidden">
                                             @if ($isInbound)
-                                                <div class="user-avatar flex-shrink-0 me-3">
-                                                    <div class="avatar avatar-sm">
-                                                        @if (isset($selectedUser) && $selectedUser->profile_photo_path)
-                                                            <img src="{{ Storage::url($selectedUser->profile_photo_path) }}"
-                                                                alt="{{ $selectedUser->name }}" class="rounded-circle">
-                                                        @else
-                                                            <span class="avatar-initial rounded-circle bg-label-success">
-                                                                {{ substr($message->from, -2) }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                </div>
+                                                @include('chat.partials.message-avatar', ['avatar' => $chatMessageAvatars['contact'], 'margin' => 'me-3'])
                                             @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
@@ -2931,22 +2964,12 @@
                                                 </div>
                                             </div>
                                             @if (!$isInbound)
-                                                <div class="user-avatar flex-shrink-0 ms-3">
-                                                    <div class="avatar avatar-sm">
-                                                        @if (isset($message->user_id) && $message->user_id && isset($users[$message->user_id]) && $users[$message->user_id]->profile_photo_path)
-                                                            <img src="{{ Storage::url($users[$message->user_id]->profile_photo_path) }}"
-                                                                alt="{{ $users[$message->user_id]->name }}" class="rounded-circle">
-                                                        @elseif(isset($users[$message->user_id]->name))
-                                                            <span class="avatar-initial rounded-circle bg-label-primary">
-                                                                {{ \Illuminate\Support\Str::of($users[$message->user_id]->name)->explode(' ')->map(fn($w) => $w[0])->join('') }}
-                                                            </span>
-                                                        @else
-                                                            <span class="avatar-initial rounded-circle bg-label-primary">
-                                                                {{ substr($message->from, -2) }}
-                                                            </span>
-                                                        @endif
-                                                    </div>
-                                                </div>
+                                                @php
+                                                    $outboundAvatar = isset($message->user_id) && isset($users[$message->user_id])
+                                                        ? \App\Support\ChatMessageAvatar::forUser($users[$message->user_id])
+                                                        : $chatMessageAvatars['current_user'];
+                                                @endphp
+                                                @include('chat.partials.message-avatar', ['avatar' => $outboundAvatar, 'margin' => 'ms-3'])
                                             @endif
                                         </div>
                                     </li>

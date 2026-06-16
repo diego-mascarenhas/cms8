@@ -74,6 +74,9 @@ class AssistantContextResetTest extends TestCase
 
         $response->assertOk();
         $response->assertJson(['messages' => []]);
+        $response->assertJsonStructure([
+            'avatars' => ['user', 'assistant', 'contact', 'current_user'],
+        ]);
     }
 
     public function test_reset_requires_authentication(): void
