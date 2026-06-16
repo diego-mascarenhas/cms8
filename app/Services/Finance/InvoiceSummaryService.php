@@ -128,7 +128,11 @@ class InvoiceSummaryService
         {
             'unpaid', 'excluding_collected' => $query
                 ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
-                ->where('invoices.balance', '>', 0),
+                ->where(function (Builder $inner): void
+                {
+                    $inner->where('invoices.balance', '>', 0)
+                        ->orWhere('invoices.operation', 'buy');
+                }),
             'credit_notes' => $this->applyRollingDateFilter(
                 $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
             ),

@@ -39,14 +39,7 @@ final class ContentsSectionCategoryData
      */
     public static function supportedLocaleLabels(): array
     {
-        return [
-            'es' => 'Español',
-            'en' => 'English',
-            'it' => 'Italiano',
-            'pt' => 'Português',
-            'fr' => 'Français',
-            'de' => 'Deutsch',
-        ];
+        return ApplicationLocales::labels();
     }
 
     /**
@@ -64,9 +57,10 @@ final class ContentsSectionCategoryData
             return $allowed;
         }
 
+        $stored = ApplicationLocales::normalizeList($stored);
         $ordered = self::orderedLocaleIntersection($allowed, $stored);
 
-        return $ordered !== [] ? $ordered : ['es'];
+        return $ordered !== [] ? $ordered : [ApplicationLocales::DEFAULT];
     }
 
     /**
@@ -80,12 +74,13 @@ final class ContentsSectionCategoryData
         $allowed = array_keys(self::supportedLocaleLabels());
         if ($selected === null || $selected === [])
         {
-            return ['es'];
+            return [ApplicationLocales::DEFAULT];
         }
 
+        $selected = ApplicationLocales::normalizeList($selected);
         $ordered = self::orderedLocaleIntersection($allowed, $selected);
 
-        return $ordered !== [] ? $ordered : ['es'];
+        return $ordered !== [] ? $ordered : [ApplicationLocales::DEFAULT];
     }
 
     /**

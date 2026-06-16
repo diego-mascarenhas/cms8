@@ -6,6 +6,7 @@
     'hunter' => HumanoHomeAsset::url('img/plans/hunter.png'),
     'business' => HumanoHomeAsset::url('img/plans/business.png'),
     'mentor' => HumanoHomeAsset::url('img/plans/mentor.png'),
+    'innovation' => HumanoHomeAsset::url('img/plans/innovation.png'),
   ];
 @endphp
 

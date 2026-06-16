@@ -51,6 +51,12 @@ class InvoiceCurrencyService
         return $this->currencyIdFromIsoCode($sync->currency);
     }
 
+    public function resolveCurrencyIdFromCuenticaSync(InvoiceSync $sync): ?int
+    {
+        return $this->currencyIdFromIsoCode($sync->currency)
+            ?? $this->currencyIdFromIsoCode((string) config('fiscal.platforms.cuentica.inbound_sync.default_currency', 'EUR'));
+    }
+
     /**
      * @return array{updated: int, stripe: int, legacy: int, manual_default: int}
      */

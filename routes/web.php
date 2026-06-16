@@ -34,7 +34,9 @@ use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Homes\GuidePresentationController;
 use App\Http\Controllers\Homes\HumanoLandingController;
+use App\Http\Controllers\Homes\SlashLandingController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
@@ -118,11 +120,44 @@ Route::middleware('throttle:120,1')->get('/shop/{slug}', [PublicShopController::
 // main
 Route::get('/', [HomeController::class, 'index']);
 Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
+Route::get('/slash', [SlashLandingController::class, 'index'])->name('slash');
+Route::middleware('throttle:10,1')->post('/slash/lead', [SlashLandingController::class, 'storeLead'])->name('slash.lead.store');
 Route::redirect('/front-pages/landing', '/inicio', 301);
-Route::redirect('/humano-presentacion.html', '/homes/humano/presentations/primeros-pasos.html', 301);
+Route::redirect('/humano-presentacion.html', '/presentacion/primeros-pasos', 301);
+Route::redirect('/affiliates', '/presentacion/afiliados', 301)->name('affiliates');
+Route::get('/presentacion/{slug}', [GuidePresentationController::class, 'show'])
+    ->where('slug', \App\Support\GuidePresentation::slugPattern())
+    ->name('presentacion.show');
+Route::get('/homes/humano/presentations/{slug}.html', function (string $slug)
+{
+    if (! \App\Support\GuidePresentation::isValid($slug))
+    {
+        abort(404);
+    }
+
+    return redirect()->route('presentacion.show', $slug, 301);
+})->where('slug', \App\Support\GuidePresentation::slugPattern());
 Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
     ->name('humano.presentation.chat-whatsapp-embed');
 Route::get('/home', [PageController::class, 'home'])->name('home');
+
+Route::get('/stack', function ()
+{
+    $path = public_path('stack/index.html');
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=UTF-8',
+    ]);
+})->name('stack');
+
+Route::get('/stack/slide', function ()
+{
+    $path = public_path('stack/slide.html');
+
+    return response(file_get_contents($path), 200, [
+        'Content-Type' => 'text/html; charset=UTF-8',
+    ]);
+})->name('stack.slide');
 
 Route::get('/landing', fn () => view('landing-widget'))->name('landing');
 
@@ -300,6 +335,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
+    Route::post('/team/{team}/test-cuentica', [TeamSettingController::class, 'testCuenticaConnection'])->name('team-settings.test-cuentica');
     Route::get('/integrations/google/connect', [GoogleIntegrationController::class, 'connect'])->name('integrations.google.connect');
     Route::get('/integrations/google/callback', [GoogleIntegrationController::class, 'callback'])->name('integrations.google.callback');
     Route::delete('/integrations/google/disconnect', [GoogleIntegrationController::class, 'disconnect'])->name('integrations.google.disconnect');
@@ -817,6 +853,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Invoice & Payment Routes
     Route::get('/invoice/list', [InvoiceController::class, 'index'])->name('invoice.index');
+    Route::post('/invoice/sync-inbound', [InvoiceController::class, 'syncInbound'])->name('invoice.sync-inbound');
     Route::get('/invoices', function ()
     {
         return redirect()->route('invoice.index');
@@ -825,6 +862,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])->name('invoice.payments.store');
     Route::post('/invoices/{invoice}/credit-notes', [InvoiceController::class, 'storeCreditNote'])->name('invoice.credit-notes.store');
+    Route::post('/invoices/{invoice}/fiscal-export', [InvoiceController::class, 'exportFiscal'])->name('invoice.fiscal-export');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
@@ -1050,6 +1088,8 @@ Route::middleware(['auth'])->group(function ()
     // Billing & Plans
     Route::get('/billing', [App\Http\Controllers\BillingController::class, 'index'])->name('billing.index');
     Route::post('/billing/update', [App\Http\Controllers\BillingController::class, 'update'])->name('billing.update');
+    Route::post('/billing/affiliate-invite', [App\Http\Controllers\BillingController::class, 'sendAffiliateInvite'])->name('billing.affiliate-invite');
+    Route::post('/billing/affiliate-setup-stripe', [App\Http\Controllers\BillingController::class, 'setupAffiliateStripe'])->name('billing.affiliate-setup-stripe');
 
     Route::get('/performance-insights/list', [App\Http\Controllers\UserDailyPerformanceInsightController::class, 'index'])->name('performance-insights.index');
 });
@@ -1100,6 +1140,11 @@ Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 // Notification tracking routes (no auth required)
 Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');
 Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
+
+// Affiliate invitation tracking (no auth required)
+Route::get('/affiliate-invite/track/{token}/open', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
+Route::get('/affiliate-invite/track/{token}/click', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
+Route::get('/affiliate/capture', [App\Http\Controllers\AffiliateReferralCaptureController::class, 'capture'])->name('affiliate.referral.capture');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');

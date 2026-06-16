@@ -32,7 +32,73 @@ class InvoiceDisplayLineItemService
             return $invoice->items()->with('category')->get()->map(fn (InvoiceItem $item): array => $this->fromInvoiceItem($item));
         }
 
-        return $this->fromStripeInvoiceSync($invoice);
+        $stripeLines = $this->fromStripeInvoiceSync($invoice);
+        if ($stripeLines->isNotEmpty())
+        {
+            return $stripeLines;
+        }
+
+        return $this->fromCuenticaInvoiceSync($invoice);
+    }
+
+    /**
+     * @return Collection<int, array{
+     *     description: string,
+     *     category: string|null,
+     *     quantity: float,
+     *     unit_price: float,
+     *     discount: float,
+     *     total: float,
+     * }>
+     */
+    private function fromCuenticaInvoiceSync(Invoice $invoice): Collection
+    {
+        if ($invoice->source_provider !== 'cuentica' || ! filled($invoice->source_reference_id))
+        {
+            return collect();
+        }
+
+        $sync = InvoiceSync::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('provider', 'cuentica')
+            ->where('external_id', $invoice->source_reference_id)
+            ->first();
+
+        if (! $sync || ! is_array($sync->raw_payload))
+        {
+            return collect();
+        }
+
+        $lines = data_get($sync->raw_payload, 'invoice_lines', []);
+        if (! is_array($lines) || $lines === [])
+        {
+            $lines = data_get($sync->raw_payload, 'expense_lines', []);
+        }
+
+        if (! is_array($lines) || $lines === [])
+        {
+            return collect();
+        }
+
+        return collect($lines)
+            ->filter(fn ($line): bool => is_array($line))
+            ->map(function (array $line): array
+            {
+                $quantity = max(1.0, (float) (data_get($line, 'quantity') ?: 1));
+                $unitPrice = (float) (data_get($line, 'amount') ?? data_get($line, 'base') ?? 0);
+                $discount = (float) (data_get($line, 'discount') ?? 0);
+                $description = trim((string) (data_get($line, 'concept') ?? data_get($line, 'description') ?? '-'));
+
+                return [
+                    'description' => $description !== '' ? $description : '-',
+                    'category' => null,
+                    'quantity' => $quantity,
+                    'unit_price' => round($unitPrice, 2),
+                    'discount' => round($discount, 2),
+                    'total' => round(max(0, ($unitPrice * $quantity) - $discount), 2),
+                ];
+            })
+            ->values();
     }
 
     /**

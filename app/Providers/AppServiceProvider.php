@@ -18,6 +18,9 @@ use App\Observers\SubscriptionProductObserver;
 use App\Observers\TaskWebDavOutboundObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\AssistantToolsService;
+use App\Services\Fiscal\Cuentica\CuenticaFiscalExportAdapter;
+use App\Services\Fiscal\FiscalExportRouter;
+use App\Services\Fiscal\NullFiscalExportAdapter;
 use App\Services\Stripe\StripeCheckoutSessionRetriever;
 use App\Services\Stripe\StripeProductService;
 use App\Services\WhatsApp\CloudWhatsAppGateway;
@@ -46,6 +49,16 @@ class AppServiceProvider extends ServiceProvider
         {
             return new StripeProductService(
                 new StripeClient(config('cashier.secret')),
+            );
+        });
+
+        $this->app->bind(FiscalExportRouter::class, function ($app)
+        {
+            return new FiscalExportRouter(
+                adapters: [
+                    CuenticaFiscalExportAdapter::PLATFORM => $app->make(CuenticaFiscalExportAdapter::class),
+                ],
+                nullAdapter: $app->make(NullFiscalExportAdapter::class),
             );
         });
 

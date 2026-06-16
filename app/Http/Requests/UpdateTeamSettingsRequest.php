@@ -19,6 +19,15 @@ class UpdateTeamSettingsRequest extends FormRequest
             'stripe.stripe_secret' => 'nullable|string|max:255',
             'stripe.stripe_webhook' => 'nullable|string|max:255',
 
+            // Fiscal export (global platform routing)
+            'fiscal.fiscal_platform' => 'nullable|string|in:,cuentica,arca,none',
+            'fiscal.fiscal_country' => 'nullable|string|in:,ES,AR',
+
+            // Cuéntica credentials (Spain)
+            'cuentica.cuentica_api_token' => 'nullable|string|max:255',
+            'cuentica.cuentica_invoice_serie' => 'nullable|string|max:255',
+            'cuentica.cuentica_inbound_sync_enabled' => 'nullable|boolean',
+
             // Categories settings
             'categories.categories_default_status' => 'nullable|string|in:active,inactive',
             'categories.categories_require_approval' => 'nullable|in:0,1',
@@ -97,8 +106,6 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
 
-            // Affiliates (admin-only save enforced in TeamSettingController)
-            'affiliates.affiliate_commission_percent' => 'nullable|numeric|min:0|max:100',
         ];
     }
 }

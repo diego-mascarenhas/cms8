@@ -123,10 +123,14 @@
 			modal.show();
 		}
 
-		@if ($errors->any())
+		@if ($errors->hasAny(['individual_name', 'business_name', 'country', 'phone', 'tax_id']))
 		document.addEventListener('DOMContentLoaded', function() {
 			var myModal = new bootstrap.Modal(document.getElementById('editBillingModal'));
 			myModal.show();
+		});
+		@elseif ($errors->hasAny(['invite_name', 'invite_email', 'invite_plan']))
+		document.addEventListener('DOMContentLoaded', function() {
+			document.getElementById('affiliate-invite-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		});
 		@endif
 	</script>
@@ -178,18 +182,10 @@
 
 								@if(isset($stripeData['customer']->address->country))
 									@php
-										$countries = [
-											'ES' => 'España',
-											'AR' => 'Argentina',
-											'MX' => 'México',
-											'US' => 'Estados Unidos',
-											'CO' => 'Colombia',
-											'CL' => 'Chile',
-											'PE' => 'Perú',
-											'UY' => 'Uruguay',
-										];
 										$countryCode = $stripeData['customer']->address->country;
-										$countryName = $countries[$countryCode] ?? $countryCode;
+										$countryName = \App\Models\Country::query()
+											->where('code', strtolower($countryCode))
+											->value('name') ?? $countryCode;
 									@endphp
 									<dt class="col-sm-5 mb-2 fw-medium text-nowrap">País:</dt>
 									<dd class="col-sm-7">{{ $countryName }}</dd>
@@ -634,25 +630,149 @@
 </div>
 
 @if($team->hasModule('affiliates'))
-<!-- Afiliados (empresa cliente: referred_by = code del referente; comisión % en settings del equipo referidor) -->
 <div class="row">
 	<div class="col-12 mb-4">
 		<div class="card">
 			<div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
 				<div>
 					<h5 class="card-title mb-0"><i class="ti ti-affiliate me-2"></i>Afiliados</h5>
-					<p class="text-muted small mb-0 mt-1">En la ficha del cliente, <strong>Referido</strong> identifica la empresa referente: para clientes del mismo equipo se guarda el <strong>ID de empresa</strong>; para referentes de otro equipo puede usarse su <strong>código público</strong> (p. ej. id. de cliente de facturación). La comisión es un % global del equipo referidor (ajustes).</p>
+					<p class="text-muted small mb-0 mt-1">
+						Comparte tu enlace de referido. Cuando otro equipo se suscribe a Humano con tu código, recibes un
+						<strong>{{ number_format($affiliateCommissionPercent, 2) }}%</strong> de cada cobro (configuración de plataforma).
+					</p>
 				</div>
-				@if(auth()->user()->hasRole('admin'))
-					<a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']) }}" class="btn btn-sm btn-label-primary">
-						<i class="ti ti-settings me-1"></i>% comisión de este equipo
-					</a>
-				@endif
 			</div>
 			<div class="card-body">
-				<p class="mb-3"><span class="fw-medium">Porcentaje global de este equipo (cuando referís):</span> {{ number_format($affiliateCommissionPercent, 2) }}%</p>
+				@if(!$affiliateReferralCode)
+					<div class="alert alert-warning mb-4" role="alert">
+						<div class="d-flex">
+							<div class="flex-shrink-0 me-3">
+								<i class="ti ti-alert-triangle ti-md"></i>
+							</div>
+							<div class="flex-grow-1">
+								<h6 class="alert-heading mb-2">Activa tu código de referido</h6>
+								<p class="mb-3 mb-md-0">
+									Para compartir enlaces e invitar por email, tu equipo debe estar registrado en Stripe.
+									Al activarlo, creamos tu cliente de facturación y guardamos el identificador en tu equipo.
+								</p>
+								<form method="POST" action="{{ route('billing.affiliate-setup-stripe') }}" class="mt-3">
+									@csrf
+									<button type="submit" class="btn btn-warning">
+										<i class="ti ti-brand-stripe me-1"></i>Activar en Stripe
+									</button>
+								</form>
+							</div>
+						</div>
+					</div>
+				@else
+					@if(count($affiliateReferralPlans) > 0)
+						<h6 class="mb-3">Enlaces por plan</h6>
+						<div class="table-responsive mb-4">
+							<table class="table table-sm">
+								<thead>
+									<tr>
+										<th>Plan</th>
+										<th>Enlace de referido</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									@foreach($affiliateReferralPlans as $plan)
+										<tr>
+											<td class="align-middle">{{ $plan['name'] }}</td>
+											<td class="align-middle">
+												@if($plan['referral_url'])
+													<input type="text" class="form-control form-control-sm affiliate-plan-link" readonly value="{{ $plan['referral_url'] }}">
+												@else
+													<span class="text-muted small">—</span>
+												@endif
+											</td>
+											<td class="align-middle text-end">
+												@if($plan['referral_url'])
+													<button type="button" class="btn btn-sm btn-label-secondary" onclick="copyAffiliatePlanLink(this)">
+														<i class="ti ti-copy"></i>
+													</button>
+												@endif
+											</td>
+										</tr>
+									@endforeach
+								</tbody>
+							</table>
+						</div>
+					@endif
 
-				<h6 class="mb-3">Como referidor: pago del cliente vs. tu comisión</h6>
+					@if(count($affiliateReferralPlans) > 0)
+						<h6 class="mb-3">Invitar por email</h6>
+						<form id="affiliate-invite-form" action="{{ route('billing.affiliate-invite') }}" method="POST" class="row g-3 mb-4" novalidate>
+							@csrf
+							<div class="col-md-4">
+								<x-input-general id="invite_name" label="Nombre (*)" value="{{ old('invite_name') }}" />
+							</div>
+							<div class="col-md-4">
+								<x-input-general id="invite_email" label="Email (*)" type="email" value="{{ old('invite_email') }}" />
+							</div>
+							<div class="col-md-4">
+								@php
+									$invitePlanOptions = collect($affiliateReferralPlans)->pluck('name', 'id')->all();
+								@endphp
+								<x-input-select
+									id="invite_plan"
+									label="Plan (*)"
+									:options="$invitePlanOptions"
+									value="{{ old('invite_plan') }}"
+									placeholder="Seleccionar…"
+									:allow-clear="false"
+								/>
+							</div>
+							<div class="col-12">
+								<button type="submit" class="btn btn-primary">
+									<i class="ti ti-mail me-1"></i>Enviar invitación
+								</button>
+							</div>
+						</form>
+					@endif
+				@endif
+
+				<h6 class="mb-3">Invitaciones enviadas</h6>
+				<div class="table-responsive mb-4">
+					<table class="table table-sm table-hover">
+						<thead>
+							<tr>
+								<th>Fecha</th>
+								<th>Nombre</th>
+								<th>Email</th>
+								<th>Plan</th>
+								<th>Enviado por</th>
+								<th>Estado</th>
+							</tr>
+						</thead>
+						<tbody>
+							@forelse($affiliateInvitations as $invitation)
+								<tr>
+									<td>{{ ($invitation->sent_at ?? $invitation->created_at)->format('d/m/Y H:i') }}</td>
+									<td>{{ $invitation->invitee_name }}</td>
+									<td>{{ $invitation->invitee_email }}</td>
+									<td>{{ $invitation->plan_name }}</td>
+									<td>{{ $invitation->invitedBy?->name ?? '—' }}</td>
+									<td>
+										<span
+											class="badge {{ $invitation->statusBadgeClass() }} rounded-pill"
+											@if($invitation->statusAt())
+												title="{{ $invitation->statusAt()->format('d/m/Y H:i') }}"
+											@endif
+										>{{ $invitation->statusLabel() }}</span>
+									</td>
+								</tr>
+							@empty
+								<tr>
+									<td colspan="6" class="text-center text-muted py-4">Aún no has enviado invitaciones.</td>
+								</tr>
+							@endforelse
+						</tbody>
+					</table>
+				</div>
+
+				<h6 class="mb-3">Como referidor</h6>
 				@if($affiliateTotalsAsReferrer !== [])
 					<div class="d-flex flex-wrap gap-3 mb-3">
 						@foreach($affiliateTotalsAsReferrer as $cur => $tot)
@@ -668,10 +788,8 @@
 							<tr>
 								<th>Fecha</th>
 								<th>Equipo que pagó</th>
-								<th>Empresa pagadora</th>
-								<th>Empresa referente</th>
 								<th>Ref. cobro</th>
-								<th class="text-end">Pagó (cliente)</th>
+								<th class="text-end">Pagó</th>
 								<th class="text-end">%</th>
 								<th class="text-end">Tu comisión</th>
 								<th>Moneda</th>
@@ -682,8 +800,6 @@
 								<tr>
 									<td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
 									<td>{{ $row->payingTeam?->name ?? '—' }}</td>
-									<td>{{ $row->payingEnterprise?->name ?? '—' }}</td>
-									<td>{{ $row->referrerEnterprise?->name ?? '—' }}</td>
 									<td><code class="small">{{ $row->stripe_invoice_id }}</code></td>
 									<td class="text-end">{{ number_format($row->amount_paid_cents / 100, 2) }}</td>
 									<td class="text-end">{{ number_format((float) $row->commission_percent, 2) }}</td>
@@ -692,14 +808,14 @@
 								</tr>
 							@empty
 								<tr>
-									<td colspan="9" class="text-center text-muted py-4">Sin movimientos como referidor.</td>
+									<td colspan="7" class="text-center text-muted py-4">Sin movimientos como referidor.</td>
 								</tr>
 							@endforelse
 						</tbody>
 					</table>
 				</div>
 
-				<h6 class="mb-3">Tus pagos donde hubo comisión para el referidor</h6>
+				<h6 class="mb-3">Tus pagos con comisión al referidor</h6>
 				@if($affiliateTotalsAsPayer !== [])
 					<div class="d-flex flex-wrap gap-3 mb-3">
 						@foreach($affiliateTotalsAsPayer as $cur => $tot)
@@ -715,8 +831,6 @@
 							<tr>
 								<th>Fecha</th>
 								<th>Equipo referidor</th>
-								<th>Tu empresa (pagadora)</th>
-								<th>Empresa referente</th>
 								<th>Ref. cobro</th>
 								<th class="text-end">Tu pago</th>
 								<th class="text-end">%</th>
@@ -729,8 +843,6 @@
 								<tr>
 									<td>{{ $row->created_at->format('d/m/Y H:i') }}</td>
 									<td>{{ $row->referrerTeam?->name ?? '—' }}</td>
-									<td>{{ $row->payingEnterprise?->name ?? '—' }}</td>
-									<td>{{ $row->referrerEnterprise?->name ?? '—' }}</td>
 									<td><code class="small">{{ $row->stripe_invoice_id }}</code></td>
 									<td class="text-end">{{ number_format($row->amount_paid_cents / 100, 2) }}</td>
 									<td class="text-end">{{ number_format((float) $row->commission_percent, 2) }}</td>
@@ -739,7 +851,7 @@
 								</tr>
 							@empty
 								<tr>
-									<td colspan="9" class="text-center text-muted py-4">Sin registros de comisión sobre tus pagos.</td>
+									<td colspan="7" class="text-center text-muted py-4">Sin registros de comisión sobre tus pagos.</td>
 								</tr>
 							@endforelse
 						</tbody>
@@ -749,6 +861,13 @@
 		</div>
 	</div>
 </div>
+<script>
+function copyAffiliatePlanLink(btn) {
+	const input = btn.closest('tr')?.querySelector('.affiliate-plan-link');
+	if (!input) return;
+	navigator.clipboard.writeText(input.value);
+}
+</script>
 @endif
 
 <!-- Modal: Edit Billing Data -->
@@ -811,23 +930,13 @@
 
 						<!-- Country -->
 						<div class="col-md-6">
-							<label class="form-label" for="country">País (*)</label>
-							<select class="form-select @error('country') is-invalid @enderror"
-								id="country"
-								name="country">
-								<option value="">Seleccionar país</option>
-								<option value="AR" {{ old('country', $stripeData['customer']->address->country ?? '') == 'AR' ? 'selected' : '' }}>Argentina</option>
-								<option value="ES" {{ old('country', $stripeData['customer']->address->country ?? '') == 'ES' ? 'selected' : '' }}>España</option>
-								<option value="MX" {{ old('country', $stripeData['customer']->address->country ?? '') == 'MX' ? 'selected' : '' }}>México</option>
-								<option value="CL" {{ old('country', $stripeData['customer']->address->country ?? '') == 'CL' ? 'selected' : '' }}>Chile</option>
-								<option value="CO" {{ old('country', $stripeData['customer']->address->country ?? '') == 'CO' ? 'selected' : '' }}>Colombia</option>
-								<option value="PE" {{ old('country', $stripeData['customer']->address->country ?? '') == 'PE' ? 'selected' : '' }}>Perú</option>
-								<option value="UY" {{ old('country', $stripeData['customer']->address->country ?? '') == 'UY' ? 'selected' : '' }}>Uruguay</option>
-								<option value="US" {{ old('country', $stripeData['customer']->address->country ?? '') == 'US' ? 'selected' : '' }}>Estados Unidos</option>
-							</select>
-							@error('country')
-								<div class="invalid-feedback d-block">{{ $message }}</div>
-							@enderror
+							<x-country-select
+								name="country"
+								id="billing_country"
+								label="País (*)"
+								value-key="code"
+								:value="old('country', $stripeData['customer']->address->country ?? '')"
+							/>
 						</div>
 
 						<!-- Phone -->

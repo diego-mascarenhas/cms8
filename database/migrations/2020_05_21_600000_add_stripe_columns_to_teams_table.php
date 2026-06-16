@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::table('teams', function (Blueprint $table)
         {
             $table->string('stripe_id')->nullable()->index()->after('personal_team');
-            $table->string('pm_type')->nullable()->after('stripe_id');
+            $table->string('referred_by')->nullable()->index()->after('stripe_id');
+            $table->string('pm_type')->nullable()->after('referred_by');
             $table->string('pm_last_four', 4)->nullable()->after('pm_type');
             $table->timestamp('trial_ends_at')->nullable()->after('pm_last_four');
         });
@@ -29,6 +30,7 @@ return new class extends Migration
         {
             $table->dropColumn([
                 'stripe_id',
+                'referred_by',
                 'pm_type',
                 'pm_last_four',
                 'trial_ends_at',

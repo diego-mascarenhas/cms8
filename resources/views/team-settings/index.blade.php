@@ -78,18 +78,27 @@
                     </div>
                 </div>
 
-                @if(auth()->user()->hasRole('admin'))
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
-                            <i class="ti ti-affiliate mb-3" style="font-size: 2rem;"></i>
-                            <h5 class="card-title">Affiliates</h5>
-                            <p class="card-text">Global commission when this team refers clients (billing)</p>
-                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']) }}" class="btn btn-primary">Configure</a>
+                            <i class="ti ti-file-export mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Exportación fiscal') }}</h5>
+                            <p class="card-text">{{ __('Plataforma fiscal, país y enrutado automático de facturas locales') }}</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'fiscal']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
                         </div>
                     </div>
                 </div>
-                @endif
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-file-invoice mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Cuéntica') }}</h5>
+                            <p class="card-text">{{ __('Credenciales API para exportar facturas a Cuéntica (España)') }}</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'cuentica']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">

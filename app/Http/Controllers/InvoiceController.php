@@ -7,7 +7,9 @@ use App\Http\Requests\StoreInvoiceCreditNoteRequest;
 use App\Http\Requests\StoreInvoicePaymentRequest;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
+use App\Models\FiscalExport;
 use App\Models\Invoice;
+use App\Services\Billing\InvoiceInboundSyncService;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
@@ -15,6 +17,10 @@ use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoicePaymentRegistrationService;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Services\Finance\PaymentStatusUpdateService;
+use App\Services\Fiscal\Exceptions\FiscalExportException;
+use App\Services\Fiscal\FiscalExportRouter;
+use App\Services\Fiscal\FiscalExportService;
+use App\Services\Fiscal\NullFiscalExportAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -53,12 +59,58 @@ class InvoiceController extends Controller
             request()->query('summary_filter'),
         );
 
+        $team = auth()->user()->currentTeam;
+        $inboundSyncService = app(InvoiceInboundSyncService::class);
+        $invoiceSyncProviders = $team ? $inboundSyncService->availableProviders($team) : [];
+
         return $dataTable->render('invoice.index', compact(
             'exchangeRates',
             'lastUpdate',
             'invoiceStats',
             'initialSummaryFilter',
+            'invoiceSyncProviders',
         ));
+    }
+
+    /**
+     * Pull invoices from configured inbound providers (Stripe, Cuéntica) for the current team.
+     */
+    public function syncInbound(InvoiceInboundSyncService $inboundSyncService): RedirectResponse
+    {
+        $this->authorize('viewAny', Invoice::class);
+
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return redirect()->route('invoice.index')->with('error', __('invoice_sync.errors.no_team'));
+        }
+
+        if (! $inboundSyncService->canSync($team))
+        {
+            return redirect()->route('invoice.index')->with('error', __('invoice_sync.errors.nothing_configured'));
+        }
+
+        $result = $inboundSyncService->syncForTeam($team);
+
+        if ($result['imported'] === 0 && $result['updated'] === 0 && $result['skipped'] > 0)
+        {
+            return redirect()->route('invoice.index')->with(
+                'warning',
+                __('invoice_sync.sync_warning_skipped', [
+                    'providers' => $inboundSyncService->providerLabels($result['providers']),
+                    'skipped' => $result['skipped'],
+                ]),
+            );
+        }
+
+        return redirect()->route('invoice.index')->with(
+            'success',
+            __('invoice_sync.sync_success', [
+                'providers' => $inboundSyncService->providerLabels($result['providers']),
+                'imported' => $result['imported'],
+                'updated' => $result['updated'],
+            ]),
+        );
     }
 
     /**
@@ -164,9 +216,21 @@ class InvoiceController extends Controller
             'items.category',
             'type',
             'stripeInvoiceSync',
+            'fiscalExports',
         ])->findOrFail($id);
 
         $this->authorize('view', $invoice);
+
+        $fiscalPlatform = app(FiscalExportRouter::class)->resolvePlatform($invoice);
+        if ($fiscalPlatform === NullFiscalExportAdapter::PLATFORM)
+        {
+            $fiscalPlatform = null;
+        }
+        $fiscalExport = $fiscalPlatform
+            ? $invoice->fiscalExports->firstWhere('platform', $fiscalPlatform)
+            : null;
+        $canExportFiscal = auth()->user()->can('invoice.edit')
+            && app(FiscalExportService::class)->isEligible($invoice);
 
         $paymentDetails = app(InvoicePaymentDetailService::class)->forInvoice($invoice);
         $displayLineItems = app(InvoiceDisplayLineItemService::class)->forInvoice($invoice);
@@ -195,7 +259,53 @@ class InvoiceController extends Controller
             'defaultCreditNoteReason',
             'canUpdatePaymentStatus',
             'paymentStatusOptions',
+            'fiscalPlatform',
+            'fiscalExport',
+            'canExportFiscal',
         ));
+    }
+
+    public function exportFiscal(Invoice $invoice, FiscalExportService $service): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        if (! auth()->user()->can('invoice.edit'))
+        {
+            abort(403);
+        }
+
+        try
+        {
+            $export = $service->export($invoice, force: request()->boolean('force'));
+        } catch (FiscalExportException $exception)
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('Error al exportar la factura: :message', ['message' => $exception->getMessage()]));
+        }
+
+        if (! $export instanceof FiscalExport)
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('La exportación fiscal está deshabilitada.'));
+        }
+
+        return match ($export->status)
+        {
+            FiscalExport::STATUS_EXPORTED, FiscalExport::STATUS_RECTIFIED => redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('success', __('Factura exportada a :platform (Nº :number).', [
+                    'platform' => ucfirst($export->platform),
+                    'number' => $export->external_number ?: $export->external_id,
+                ])),
+            FiscalExport::STATUS_SKIPPED => redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('No se exportó: :message', ['message' => $export->error_message])),
+            default => redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('Error al exportar la factura: :message', ['message' => $export->error_message])),
+        };
     }
 
     public function storePayment(StoreInvoicePaymentRequest $request, Invoice $invoice): RedirectResponse

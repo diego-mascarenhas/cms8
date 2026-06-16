@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\Enterprise;
 use App\Models\InvoiceSync;
 use App\Models\Team;
+use App\Services\Fiscal\FiscalExportService;
 use Illuminate\Support\Facades\Log;
 
 class StripeInvoiceWebhookSyncService
@@ -13,6 +14,7 @@ class StripeInvoiceWebhookSyncService
         private readonly StripeInvoiceSyncUpserter $upserter,
         private readonly StripeInvoiceCoreImportService $coreImportService,
         private readonly StripeCollectedInvoicePaymentReconciliationService $paymentReconciliationService,
+        private readonly FiscalExportService $fiscalExportService,
     ) {}
 
     /**
@@ -54,6 +56,11 @@ class StripeInvoiceWebhookSyncService
         if ($invoice && (float) $invoice->balance <= 0)
         {
             $this->paymentReconciliationService->reconcileInvoice($invoice);
+        }
+
+        if ($invoice)
+        {
+            $this->fiscalExportService->dispatchFor($invoice);
         }
 
         return $invoice !== null;

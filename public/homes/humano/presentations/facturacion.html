@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humano · Facturación</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-flow{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:1fr 72px 1fr 72px 1fr;gap:0;align-items:center}
+.pres-flow-col{display:flex;flex-direction:column;gap:12px;height:100%;justify-content:center}
+.pres-flow-card{border-radius:16px;padding:18px 16px;background:linear-gradient(165deg,rgba(90,88,150,.28),rgba(24,22,48,.52));border:1px solid rgba(150,148,220,.18)}
+.pres-flow-card h4{font-size:14px;font-weight:700;color:#fff;margin-bottom:8px}
+.pres-flow-card p{font-size:12px;color:#b8bae0;line-height:1.5}
+.pres-flow-tag{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#d8dcff;background:rgba(105,108,255,.18);border:1px solid rgba(150,148,220,.22)}
+.pres-flow-arrow{display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:28px;font-weight:300}
+.pres-invoice{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;display:grid;grid-template-columns:280px 1fr}
+.pres-invoice-shot{background:linear-gradient(180deg,#eef0ff,#f8f8fc);border-right:1px solid #e4e6ef;display:flex;align-items:center;justify-content:center;padding:24px}
+.pres-invoice-paper{width:180px;min-height:220px;border-radius:10px;background:#fff;border:1px solid #d8dbe7;box-shadow:0 16px 40px rgba(67,89,113,.18);padding:14px;font-size:9px;color:#697a8d}
+.pres-invoice-paper b{display:block;font-size:11px;color:#566a7f;margin-bottom:8px}
+.pres-invoice-line{height:6px;border-radius:999px;background:#eceef5;margin-bottom:6px}
+.pres-invoice-line.w80{width:80%}.pres-invoice-line.w60{width:60%}.pres-invoice-line.w45{width:45%}
+.pres-invoice-body{padding:22px 24px;display:flex;flex-direction:column;gap:14px}
+.pres-invoice-row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:10px;background:#f5f5f9;border:1px solid #e4e6ef;font-size:11px}
+.pres-invoice-row strong{color:#566a7f}
+.pres-invoice-row span{color:#a1acb8}
+.pres-invoice-status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(113,221,55,.16);color:#56ca00}
+.pres-fiscal{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.pres-fiscal-card{border-radius:18px;padding:22px 20px;background:linear-gradient(165deg,rgba(90,88,150,.26),rgba(24,22,48,.5));border:1px solid rgba(150,148,220,.16)}
+.pres-fiscal-card h4{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
+.pres-fiscal-card p{font-size:12.5px;color:#a4a6c8;line-height:1.55}
+.pres-fiscal-flag{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--accent);margin-bottom:10px}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">BLOQUE 06 · GUÍA</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:920px">Facturación · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">del ticket al sistema contable</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:620px;line-height:1.6">Sacá una foto, reenviá un mail o mandá el comprobante por WhatsApp: Humano lo lee, lo registra y lo conecta con tu facturación electrónica.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="prospeccion.html">← Capítulo anterior: Prospección</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">FACTURACIÓN</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">FACTURACIÓN</span></div>
+   <h2 class="u" style="--d:.26s">Menos carga manual, <em>más tiempo para vender</em></h2>
+   <p class="u" style="--d:.36s">Las facturas y pagos dejan de quedar en el bolsillo, el mail o el chat. El asistente los interpreta y los deja listos para contabilidad.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">Foto o PDF</span>
+    <span class="dv-chip">Asistente · Email · WhatsApp</span>
+    <span class="dv-chip">Registro automático</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Facturación</span><span class="r">Intro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">FACTURACIÓN · FLUJO</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>De la foto al <em style="font-style:normal;color:var(--accent)">asiento contable</em></h2>
+  <p class="sub">Tres entradas, un mismo resultado: el comprobante queda registrado en Humano y sincronizado con tu sistema contable.</p>
+ </div>
+ <div class="pres-flow u sc" style="--d:.22s">
+  <div class="pres-flow-col">
+   <div class="pres-flow-card"><h4>1 · Capturás el comprobante</h4><p>Foto del ticket, factura en PDF o captura del pago desde el celular.</p><span class="pres-flow-tag"><i class="ti ti-camera ti-xs"></i> Imagen o archivo</span></div>
+   <div class="pres-flow-card"><h4>Asistente</h4><p>Lo subís en el panel y el asistente extrae importe, fecha, proveedor y concepto.</p><span class="pres-flow-tag"><i class="ti ti-robot ti-xs"></i> IA en el panel</span></div>
+   <div class="pres-flow-card"><h4>Email o WhatsApp</h4><p>Reenviás el mail o mandás la foto al canal del equipo; entra al mismo flujo.</p><span class="pres-flow-tag"><i class="ti ti-brand-whatsapp ti-xs"></i> Canales habituales</span></div>
+  </div>
+  <div class="pres-flow-arrow">→</div>
+  <div class="pres-flow-col">
+   <div class="pres-flow-card"><h4>2 · Humano interpreta</h4><p>Valida datos, asocia contacto o empresa y prepara el registro contable sin tipear a mano.</p><span class="pres-flow-tag"><i class="ti ti-scan ti-xs"></i> Lectura inteligente</span></div>
+   <div class="pres-flow-card"><h4>3 · Contabilidad al día</h4><p>El comprobante queda en el módulo de facturación y se exporta o sincroniza con tu ERP.</p><span class="pres-flow-tag"><i class="ti ti-file-check ti-xs"></i> Listo para cerrar mes</span></div>
+  </div>
+  <div class="pres-flow-arrow">→</div>
+  <div class="pres-flow-col">
+   <div class="pres-flow-card"><h4>Ahorro de tiempo</h4><p>Lo que antes era foto + planilla + carga manual pasa a ser un envío y una confirmación.</p></div>
+   <div class="pres-flow-card"><h4>Menos errores</h4><p>Importes, fechas e IVA se leen del documento original, no de una transcripción.</p></div>
+   <div class="pres-flow-card"><h4>Equipo alineado</h4><p>Ventas, administración y dirección ven el mismo estado de cobros y gastos.</p></div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Facturación</span><span class="r">Flujo</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">FACTURACIÓN · REGISTRO</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Una foto, <em style="font-style:normal;color:var(--accent)">registro completo</em></h2>
+  <p class="sub">Ejemplo: subís la factura de un proveedor y Humano propone el asiento con los datos ya completos.</p>
+ </div>
+ <div class="pres-invoice u sc" style="--d:.22s">
+  <div class="pres-invoice-shot">
+   <div class="pres-invoice-paper">
+    <b>FACTURA B-00482</b>
+    <div class="pres-invoice-line w80"></div>
+    <div class="pres-invoice-line w60"></div>
+    <div class="pres-invoice-line w45"></div>
+    <div style="margin-top:18px;font-size:10px;color:#696cff;font-weight:700">Total · 1.240,00 €</div>
+   </div>
+  </div>
+  <div class="pres-invoice-body">
+   <div class="pres-invoice-row"><strong>Proveedor detectado</strong><span>Suministros ACME SL</span></div>
+   <div class="pres-invoice-row"><strong>Fecha</strong><span>08/06/2026</span></div>
+   <div class="pres-invoice-row"><strong>Base imponible</strong><span>1.024,79 €</span></div>
+   <div class="pres-invoice-row"><strong>IVA 21%</strong><span>215,21 €</span></div>
+   <div class="pres-invoice-row"><strong>Total</strong><span>1.240,00 €</span></div>
+   <div class="pres-invoice-row"><strong>Estado</strong><span class="pres-invoice-status"><i class="ti ti-check ti-xs"></i> Listo para contabilidad</span></div>
+   <div class="pres-invoice-row"><strong>Origen</strong><span>WhatsApp · foto recibida hoy 10:14</span></div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Facturación</span><span class="r">Registro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">FACTURACIÓN · FISCAL</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Facturación electrónica <em style="font-style:normal;color:var(--accent)">por país</em></h2>
+  <p class="sub">Humano se conecta con los organismos fiscales de cada mercado para emitir, validar y archivar comprobantes electrónicos con trazabilidad.</p>
+ </div>
+ <div class="pres-fiscal u sc" style="--d:.22s">
+  <div class="pres-fiscal-card"><div class="pres-fiscal-flag">ES · AEAT</div><h4>España</h4><p>Verifactu, SII y factura electrónica alineadas con la normativa vigente.</p></div>
+  <div class="pres-fiscal-card"><div class="pres-fiscal-flag">AR · AFIP</div><h4>Argentina</h4><p>Comprobantes electrónicos, CAE y puntos de venta integrados al flujo de cobro.</p></div>
+  <div class="pres-fiscal-card"><div class="pres-fiscal-flag">MX · SAT</div><h4>México</h4><p>CFDI timbrado y envío al SAT desde el mismo registro de facturación.</p></div>
+  <div class="pres-fiscal-card"><div class="pres-fiscal-flag">CO · DIAN</div><h4>Colombia</h4><p>Factura electrónica validada ante la DIAN con numeración y resolución.</p></div>
+  <div class="pres-fiscal-card"><div class="pres-fiscal-flag">CL · SII</div><h4>Chile</h4><p>DTE emitidos y recepcionados con respuesta del Servicio de Impuestos Internos.</p></div>
+  <div class="pres-fiscal-card"><div class="pres-fiscal-flag">+ PAÍSES</div><h4>Expansión regional</h4><p>Arquitectura preparada para sumar conectores fiscales según el mercado de tu equipo.</p></div>
+ </div>
+ <div class="ftr"><span>Humano · Facturación</span><span class="r">Fiscal</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">GUÍAS</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">RECORRIDO COMPLETO</span></div>
+  <h2 class="u" style="--d:.14s">Del primer contacto al <em>cobro</em></h2>
+  <p class="u" style="--d:.24s">Configuración, operación diaria, calendario, tareas, prospección, facturación y afiliados. Compará planes y activá el módulo que necesites.</p>
+  <a class="cta-link u" style="--d:.36s" href="/">Ver planes en la landing →</a>
+  <div class="pres-nav-row u" style="--d:.44s">
+   <a href="primeros-pasos.html">Volver a Primeros pasos</a>
+   <a href="prospeccion.html">← Prospección</a>
+   <a href="/presentacion/afiliados">Siguiente: Afiliados →</a>
+  </div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

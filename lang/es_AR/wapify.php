@@ -7,7 +7,7 @@ return [
     'qr_link_title' => 'Abrir en WhatsApp',
     'qr_image_alt' => 'Código QR para abrir WhatsApp',
     'cta_or' => 'O',
-    'cta_create_business' => 'Creá tu negocio',
+    'cta_creáte_business' => 'Creá tu negocio',
     'qr_section_heading' => 'Escaneá el código QR y ¡Probalo ya!',
     'brand_alt' => 'Wapify',
     'partner_link_title' => 'Idoneo',

@@ -58,15 +58,33 @@ return [
     'coupon_code' => env('HUMANO_PRICING_COUPON_CODE', 'SOYAMIGO'),
 
     /*
-     * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer client
-     * | enterprise id (digits only). Keys must match Stripe's field key on each Payment Link.
-     * | If the custom field is empty, the same id may be passed as Stripe client_reference_id on the link URL.
+     * | Promo code shown after slash landing lead capture (/slash). Falls back to coupon_code.
+     */
+    'slash_lead_coupon_code' => env('SLASH_LANDING_COUPON_CODE', 'HOYMISMO'),
+
+    /*
+     * | Payment Link: Checkout custom field keys (lowercase) whose value is the referrer team's Stripe
+     * | customer id (cus_…) or legacy numeric referrer enterprise id. Keys must match Stripe's field.
+     * | If the custom field is empty, pass client_reference_id=cus_… on the Payment Link URL.
      * | HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS=referente,affiliate
      */
     'payment_link_affiliate_custom_field_keys' => array_values(array_filter(array_map(
         static fn (string $k): string => strtolower(trim($k)),
         explode(',', (string) env('HUMANO_PRICING_PAYMENT_LINK_AFFILIATE_CUSTOM_FIELD_KEYS', 'referente,affiliate')),
     ))),
+
+    /*
+     * | Affiliate commission % on Humano platform billing (team-to-team referrals).
+     * | Applied when a referred team pays a Stripe invoice (see teams.referred_by).
+     */
+    'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 40),
+
+    /*
+     * | Cookie + session fallback when Stripe checkout omits client_reference_id.
+     * | Set on /affiliate/capture and invitation click tracking before redirect.
+     */
+    'affiliate_referral_cookie_name' => env('HUMANO_AFFILIATE_REFERRAL_COOKIE', 'humano_affiliate_ref'),
+    'affiliate_referral_cookie_days' => (int) env('HUMANO_AFFILIATE_REFERRAL_COOKIE_DAYS', 90),
 
     /*
      * |--------------------------------------------------------------------------
@@ -183,13 +201,17 @@ return [
             'id' => 'assistant',
             'checkout_url' => env(
                 'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL',
-                'https://buy.stripe.com/3cIeVd98VabI07cgPb43S03',
+                'https://buy.stripe.com/5kQ4gzacZ3Nk9HM0Qd43S07',
             ),
-            'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_UUoDnxftlyItz0'),
-            'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1TVoawGelYN536DrEH4gIAsR'),
-            'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1TVod6GelYN536DrtCsqOG6d'),
-            'monthly_amount' => '99',
-            'yearly_amount' => '990',
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL_YEARLY',
+                'https://buy.stripe.com/aFa5kDgBn5Vs07c56t43S09',
+            ),
+            'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_UJkenQzkHZM1Sr'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1ThAmkGelYN536DrP364au8Z'),
+            'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1TUro1GelYN536DriuckpG7j'),
+            'monthly_amount' => '49',
+            'yearly_amount' => '490',
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_ASSISTANT_CHECKOUT_AVAILABLE', 'true'),
@@ -200,16 +222,20 @@ return [
             'id' => 'hunter',
             'checkout_url' => env(
                 'HUMANO_PRICING_HUNTER_CHECKOUT_URL',
-                '',
+                'https://buy.stripe.com/6oU14ngBn2Jg7zE0Qd43S08',
             ),
-            'stripe_product_id' => env('HUMANO_PRICING_HUNTER_STRIPE_PRODUCT_ID', ''),
-            'stripe_price_monthly_id' => env('HUMANO_PRICING_HUNTER_PRICE_MONTHLY_ID', ''),
-            'stripe_price_yearly_id' => env('HUMANO_PRICING_HUNTER_PRICE_YEARLY_ID', ''),
-            'monthly_amount' => env('HUMANO_PRICING_HUNTER_MONTHLY_AMOUNT', ''),
-            'yearly_amount' => env('HUMANO_PRICING_HUNTER_YEARLY_AMOUNT', ''),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_HUNTER_CHECKOUT_URL_YEARLY',
+                'https://buy.stripe.com/fZu7sLfxjfw2g6afL743S0a',
+            ),
+            'stripe_product_id' => env('HUMANO_PRICING_HUNTER_STRIPE_PRODUCT_ID', 'prod_UgXq13WgRU1IiP'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_HUNTER_PRICE_MONTHLY_ID', 'price_1ThAkUGelYN536DrhZmSAwVr'),
+            'stripe_price_yearly_id' => env('HUMANO_PRICING_HUNTER_PRICE_YEARLY_ID', 'price_1ThAlmGelYN536Dr7yEl4WaW'),
+            'monthly_amount' => env('HUMANO_PRICING_HUNTER_MONTHLY_AMOUNT', '99'),
+            'yearly_amount' => env('HUMANO_PRICING_HUNTER_YEARLY_AMOUNT', '990'),
             'popular' => false,
             'checkout_available' => filter_var(
-                (string) env('HUMANO_PRICING_HUNTER_CHECKOUT_AVAILABLE', 'false'),
+                (string) env('HUMANO_PRICING_HUNTER_CHECKOUT_AVAILABLE', 'true'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],
@@ -217,7 +243,11 @@ return [
             'id' => 'business',
             'checkout_url' => env(
                 'HUMANO_PRICING_BUSINESS_CHECKOUT_URL',
-                'https://buy.stripe.com/6oU14nfxjabIbPUbuR43S04',
+                'https://buy.stripe.com/6oU9AT3OB5VsbPUeH343S06',
+            ),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_BUSINESS_CHECKOUT_URL_YEARLY',
+                'https://buy.stripe.com/cNidR998VbfM4ns9mJ43S0b',
             ),
             'stripe_product_id' => env('HUMANO_PRICING_BUSINESS_STRIPE_PRODUCT_ID', 'prod_UUoHz602tHBY8b'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_BUSINESS_PRICE_MONTHLY_ID', 'price_1TVoebGelYN536DrLAOm6k90'),
@@ -226,7 +256,7 @@ return [
             'yearly_amount' => '2990',
             'popular' => true,
             'checkout_available' => filter_var(
-                (string) env('HUMANO_PRICING_BUSINESS_CHECKOUT_AVAILABLE', 'false'),
+                (string) env('HUMANO_PRICING_BUSINESS_CHECKOUT_AVAILABLE', 'true'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],
@@ -235,6 +265,10 @@ return [
             'checkout_url' => env(
                 'HUMANO_PRICING_MENTOR_CHECKOUT_URL',
                 'https://buy.stripe.com/4gM4gz3OB0B82fkcyV43S05',
+            ),
+            'checkout_url_yearly' => env(
+                'HUMANO_PRICING_MENTOR_CHECKOUT_URL_YEARLY',
+                '',
             ),
             'stripe_product_id' => env('HUMANO_PRICING_MENTOR_STRIPE_PRODUCT_ID', 'prod_UUoIeGCxj2MfcL'),
             'stripe_price_monthly_id' => env('HUMANO_PRICING_MENTOR_PRICE_MONTHLY_ID', 'price_1TVofaGelYN536DrGEL9txGS'),
@@ -246,6 +280,18 @@ return [
                 (string) env('HUMANO_PRICING_MENTOR_CHECKOUT_AVAILABLE', 'false'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
+        ],
+        [
+            'id' => 'innovation',
+            'checkout_url' => '',
+            'external_url' => env('HUMANO_PRICING_INNOVATION_EXTERNAL_URL', 'https://fanyion.com'),
+            'stripe_product_id' => '',
+            'stripe_price_monthly_id' => '',
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => '',
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => false,
         ],
     ],
 ];

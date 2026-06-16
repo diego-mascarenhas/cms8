@@ -13,6 +13,8 @@ use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
+use App\Services\Fiscal\Cuentica\CuenticaClientFactory;
+use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
 use App\Support\TeamDefaultShortcuts;
@@ -233,7 +235,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $storedValue, [
                         'group' => $group,
                         'type' => $type,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
+                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
                     ]);
                 }
             }
@@ -282,6 +284,37 @@ class TeamSettingController extends Controller
                     'type' => 'boolean',
                     'is_encrypted' => false,
                 ]);
+            }
+
+            if ($group === 'fiscal')
+            {
+                foreach (['fiscal_platform', 'fiscal_country'] as $clearableKey)
+                {
+                    if (array_key_exists($clearableKey, $settings) && trim((string) $settings[$clearableKey]) === '')
+                    {
+                        $team->removeSetting($clearableKey);
+                    }
+                }
+            }
+
+            if ($group === 'cuentica')
+            {
+                foreach (['cuentica_api_token', 'cuentica_invoice_serie'] as $clearableKey)
+                {
+                    if (array_key_exists($clearableKey, $settings) && trim((string) $settings[$clearableKey]) === '')
+                    {
+                        $team->removeSetting($clearableKey);
+                    }
+                }
+
+                if (! array_key_exists('cuentica_inbound_sync_enabled', $settings))
+                {
+                    $team->setSetting('cuentica_inbound_sync_enabled', false, [
+                        'group' => 'cuentica',
+                        'type' => 'boolean',
+                        'is_encrypted' => false,
+                    ]);
+                }
             }
 
             if ($group === 'notifications')
@@ -421,6 +454,7 @@ class TeamSettingController extends Controller
             'assistant_chat_stub',
             'assistant_keyword_intent_routing',
             'chat_ai_assistance_blocked',
+            'cuentica_inbound_sync_enabled',
             'google_contacts_outbound_sync_enabled',
             'google_calendar_outbound_sync_enabled',
             'google_contacts_inbound_sync_enabled',
@@ -474,6 +508,64 @@ class TeamSettingController extends Controller
                         'type' => 'password',
                         'value' => $team->getSetting('stripe_webhook'),
                         'is_encrypted' => true,
+                    ],
+                ],
+            ],
+            'fiscal' => [
+                'title' => 'Exportación fiscal',
+                'icon' => 'ti ti-file-export',
+                'settings' => [
+                    'fiscal_platform' => [
+                        'label' => 'Plataforma fiscal',
+                        'type' => 'select',
+                        'options' => [
+                            '' => 'Automática (según país fiscal)',
+                            'cuentica' => 'Cuéntica (España)',
+                            'arca' => 'ARCA (Argentina)',
+                            'none' => 'Ninguna (no exportar)',
+                        ],
+                        'value' => $team->getSetting('fiscal_platform', ''),
+                        'is_encrypted' => false,
+                        'help' => 'Define a qué proveedor legal se envían las facturas de este equipo. Después configura las credenciales del proveedor elegido (Cuéntica, ARCA, …).',
+                    ],
+                    'fiscal_country' => [
+                        'label' => 'País fiscal del equipo',
+                        'type' => 'select',
+                        'options' => [
+                            '' => 'No especificado',
+                            'ES' => 'España',
+                            'AR' => 'Argentina',
+                        ],
+                        'value' => $team->getSetting('fiscal_country', ''),
+                        'is_encrypted' => false,
+                        'help' => 'Solo se usa cuando la plataforma está en "Automática". Por defecto: ES → Cuéntica, AR → ARCA.',
+                    ],
+                ],
+            ],
+            'cuentica' => [
+                'title' => 'Cuéntica',
+                'icon' => 'ti ti-file-invoice',
+                'settings' => [
+                    'cuentica_api_token' => [
+                        'label' => 'API Token',
+                        'type' => 'password',
+                        'value' => $team->getSetting('cuentica_api_token'),
+                        'is_encrypted' => true,
+                        'help' => 'Token de tu empresa en Cuéntica (Usuario → API). Cada equipo usa su propia cuenta; sin token, no se exporta.',
+                    ],
+                    'cuentica_invoice_serie' => [
+                        'label' => 'Serie de facturación',
+                        'type' => 'text',
+                        'value' => $team->getSetting('cuentica_invoice_serie'),
+                        'is_encrypted' => false,
+                        'help' => 'Opcional. Si se deja vacío se usa la serie por defecto de Cuéntica. El modo sandbox/producción lo determina el token, no un interruptor.',
+                    ],
+                    'cuentica_inbound_sync_enabled' => [
+                        'label' => 'Sincronización inbound (Cuéntica → Humano)',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('cuentica_inbound_sync_enabled', '1'),
+                        'is_encrypted' => false,
+                        'help' => 'Importa facturas de venta (/invoice) y compra (/expense) desde Cuéntica al sistema local de forma continua (como Stripe).',
                     ],
                 ],
             ],
@@ -1221,19 +1313,6 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
-            'affiliates' => [
-                'title' => 'Affiliates (billing)',
-                'icon' => 'ti ti-affiliate',
-                'settings' => [
-                    'affiliate_commission_percent' => [
-                        'label' => 'Global commission % (this team as referrer)',
-                        'type' => 'text',
-                        'value' => $team->getSetting('affiliate_commission_percent', '0'),
-                        'is_encrypted' => false,
-                        'help' => 'Applies to referred client enterprises (referred_by = same-team referrer enterprise id, or legacy / external public code). 0 disables. Example: 10 = 10% of the paid invoice amount.',
-                    ],
-                ],
-            ],
         ];
 
         return isset($config[$group]) ? [$group => $config[$group]] : [];
@@ -1544,12 +1623,7 @@ class TeamSettingController extends Controller
         ];
 
         // Get available locales
-        $availableLocales = [
-            'es' => 'Español',
-            'en' => 'English',
-            'fr' => 'Français',
-            'de' => 'Deutsch',
-        ];
+        $availableLocales = \App\Support\ApplicationLocales::labels();
 
         return view('team-settings.custom-translations', compact('team', 'translations', 'availableGroups', 'availableLocales'));
     }
@@ -1925,6 +1999,48 @@ class TeamSettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Stripe connection failed: '.$e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Test Cuéntica connection using the team (or global) API token.
+     */
+    public function testCuenticaConnection(Team $team, CuenticaClientFactory $clientFactory): JsonResponse
+    {
+        $this->authorize('update', $team);
+
+        $client = $clientFactory->forTeam($team);
+
+        if ($client === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falta el API Token de Cuéntica para este equipo. Configúralo en los ajustes de Cuéntica.',
+            ]);
+        }
+
+        try
+        {
+            $company = $client->getCompany();
+            $name = $company['business_name'] ?? $company['tradename'] ?? $company['name'] ?? 'empresa';
+            $mode = ($company['sandbox'] ?? false) ? 'sandbox (pruebas)' : 'producción';
+
+            return response()->json([
+                'success' => true,
+                'message' => "Conexión con Cuéntica correcta. Empresa: {$name} · Modo: {$mode}",
+            ]);
+        } catch (FiscalExportException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error de conexión con Cuéntica: '.$exception->getMessage(),
+            ]);
+        } catch (\Throwable $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado al conectar con Cuéntica: '.$exception->getMessage(),
             ]);
         }
     }

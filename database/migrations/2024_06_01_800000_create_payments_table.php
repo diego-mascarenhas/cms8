@@ -24,6 +24,10 @@ return new class extends Migration
             $table->decimal('amount', 15, 2);
             $table->text('remarks')->nullable();
             $table->tinyInteger('status')->default(1);
+            $table->enum('source_provider', ['manual', 'stripe', 'mercadopago', 'paypal', 'transfer', 'cuentica'])
+                ->default('manual');
+            $table->string('source_reference_id')->nullable();
+            $table->timestamp('source_synced_at')->nullable();
             $table->timestamps();
 
             // Foreign keys
@@ -66,6 +70,9 @@ return new class extends Migration
             $table->index(['team_id', 'date']);
             $table->index(['team_id', 'transaction_type']);
             $table->index(['team_id', 'status']);
+            $table->index('source_provider');
+            $table->index('source_reference_id');
+            $table->unique(['source_provider', 'source_reference_id'], 'payments_source_provider_reference_unique');
         });
     }
 

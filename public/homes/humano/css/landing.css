@@ -9,9 +9,33 @@
 /* Humano hero backdrop (light) */
 .light-style #hero-animation .landing-hero{background-color:#eae8fd;background-image:url(/homes/humano/img/landing-page/hero-bg-light.png),linear-gradient(138.18deg,#eae8fd 0%,#fce5e6 94.44%);background-position:center top,center;background-repeat:no-repeat,no-repeat;background-size:cover,auto}
 .dark-style .landing-plans-stack .landing-plan-row:not(:last-child){border-bottom-color:rgba(255,255,255,.12)}
+.humano-front-navbar.is-scrolled{box-shadow:0 4px 24px rgba(47,43,61,.08);backdrop-filter:saturate(180%) blur(8px)}
+.dark-style .humano-front-navbar.is-scrolled{box-shadow:0 4px 24px rgba(0,0,0,.28)}
+#landingPlans.landing-plans.section-py{padding-bottom:3rem}
+#landingFAQ.landing-faq.section-py{padding-top:3rem}
+@media(max-width:1199.98px){
+  #landingPlans.landing-plans.section-py{padding-bottom:2.5rem}
+  #landingFAQ.landing-faq.section-py{padding-top:2.5rem}
+}
+@media(max-width:767.98px){
+  #landingPlans.landing-plans.section-py{padding-bottom:2rem}
+  #landingFAQ.landing-faq.section-py{padding-top:2rem}
+}
+#landingContact.landing-contact.section-py{padding-bottom:1.25rem}
+@media(max-width:767.98px){#landingContact.landing-contact.section-py{padding-bottom:1rem}}
+.humano-landing-page{padding-bottom:0;margin-bottom:0}
 /* Hero dashboard mockup — keep aspect ratio (fixes mobile stretch) */
 #hero-animation .humano-landing-hero-img{display:block;width:100%;height:auto;max-width:100%;object-fit:contain;aspect-ratio:3612/2328}
 #hero-animation .landing-hero .hero-animation-img .hero-dashboard-img{height:auto}
 #hero-animation .landing-hero .hero-animation-img .hero-dashboard-img img{width:100%;height:auto;object-fit:contain}
 @media(max-width:1199.98px){#hero-animation .landing-hero .hero-animation-img .hero-dashboard-img{width:92%;transform:none!important}}
 @media(max-width:575.98px){#hero-animation .landing-hero .hero-animation-img .hero-dashboard-img{width:100%;transform:none!important}}
+/* Hero dashboard — no mouse-tilt; preserve PNG shadow */
+#hero-animation .landing-hero .hero-animation-img .hero-dashboard-img{
+  transform-style:flat;
+  transition:none;
+  overflow:visible;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+}

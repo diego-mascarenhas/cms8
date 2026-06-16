@@ -6,6 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
@@ -85,6 +86,16 @@ class Invoice extends Model
     {
         return $this->hasOne(InvoiceSync::class, 'external_id', 'source_reference_id')
             ->where('invoice_syncs.provider', 'stripe');
+    }
+
+    public function fiscalExports(): HasMany
+    {
+        return $this->hasMany(FiscalExport::class);
+    }
+
+    public function fiscalExport(string $platform): ?FiscalExport
+    {
+        return $this->fiscalExports()->where('platform', $platform)->first();
     }
 
     public function stripeHostedInvoiceUrl(): ?string

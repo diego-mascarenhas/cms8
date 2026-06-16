@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Models\Invoice;
 use App\Services\Finance\InvoiceSummaryService;
+use App\Support\ApplicationLocales;
 use App\Support\DataTableFormatter;
 use App\Support\InvoiceTableAmountFormatter;
 use App\Support\SearchNormalizer;
@@ -194,7 +195,7 @@ class InvoiceDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json'])
+            ->language(['url' => ApplicationLocales::datatableLanguageUrl()])
             ->parameters([
                 'select' => false,
                 'autoWidth' => false,
@@ -215,37 +216,37 @@ class InvoiceDataTable extends DataTable
         return [
             Column::make('id')->hidden(),
             Column::computed('number_with_indicator')
-                ->title('Comprobante')
+                ->title(__('Invoice'))
                 ->addClass('all')
                 ->searchable(true)
                 ->orderable(false),
             Column::make('date')
-                ->title('Fecha')
+                ->title(__('Date'))
                 ->addClass('min-tablet')
                 ->className('text-center')
                 ->searchable(true),
             Column::make('enterprise_id')
-                ->title('Empresa')
+                ->title(__('Enterprise'))
                 ->addClass('min-tablet')
                 ->searchable(true)
                 ->orderable(false),
             Column::make('total_amount')
-                ->title('Total')
+                ->title(__('Total'))
                 ->addClass('min-desktop')
                 ->className('text-end')
                 ->searchable(false),
             Column::make('balance')
-                ->title('Saldo')
+                ->title(__('Balance'))
                 ->addClass('min-desktop')
                 ->className('text-end')
                 ->searchable(false),
             Column::make('status')
-                ->title('Estado')
+                ->title(__('Status'))
                 ->addClass('min-phone')
                 ->className('text-center')
                 ->searchable(false),
             Column::computed('action')
-                ->title('Acciones')
+                ->title(__('Actions'))
                 ->addClass('all')
                 ->className('text-center')
                 ->exportable(false)

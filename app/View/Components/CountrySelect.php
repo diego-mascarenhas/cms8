@@ -15,12 +15,15 @@ class CountrySelect extends Component
 
     public $label;
 
-    public function __construct($name = 'country', $id = null, $value = null, $label = 'País')
+    public string $valueKey;
+
+    public function __construct($name = 'country', $id = null, $value = null, $label = 'País', string $valueKey = 'id')
     {
         $this->name = $name;
         $this->id = $id ?? $name;
-        $this->value = $value ?? 724;
+        $this->value = $value ?? ($valueKey === 'code' ? '' : 724);
         $this->label = $label;
+        $this->valueKey = in_array($valueKey, ['id', 'code'], true) ? $valueKey : 'id';
     }
 
     public function render()
@@ -29,6 +32,7 @@ class CountrySelect extends Component
 
         return view('components.country-select', [
             'countries' => $countries,
+            'valueKey' => $this->valueKey,
         ]);
     }
 }

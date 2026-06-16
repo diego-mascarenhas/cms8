@@ -1,3 +1,9 @@
+@php
+  use App\Helpers\SupportWhatsAppHelper;
+
+  $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
+  $whatsappSupportUrl = SupportWhatsAppHelper::webUrl();
+@endphp
 <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
   <h4 class="mb-0">{{ __('humano_pricing.plans.'.$planId.'.name') }}</h4>
   @if (! empty($plan['popular']))
@@ -13,7 +19,19 @@
     </li>
   @endforeach
 </ul>
-<a href="{{ route('pricing') }}#plan-{{ $planId }}" class="btn btn-label-primary">
-  {{ __('humano_pricing.landing_plans_cta') }}
-  <i class="ti ti-arrow-right ti-xs ms-1"></i>
-</a>
+@if ($checkoutAvailable)
+  <a href="{{ route('pricing') }}#plan-{{ $planId }}" class="btn btn-label-primary">
+    {{ __('humano_pricing.landing_plans_cta') }}
+    <i class="ti ti-arrow-right ti-xs ms-1"></i>
+  </a>
+@elseif ($whatsappSupportUrl)
+  <a href="{{ $whatsappSupportUrl }}" class="btn btn-label-primary" target="_blank" rel="noopener noreferrer">
+    {{ __('humano_pricing.consult_cta') }}
+    <i class="ti ti-arrow-right ti-xs ms-1"></i>
+  </a>
+@else
+  <a href="#landingContact" class="btn btn-label-primary">
+    {{ __('humano_pricing.consult_cta') }}
+    <i class="ti ti-arrow-right ti-xs ms-1"></i>
+  </a>
+@endif

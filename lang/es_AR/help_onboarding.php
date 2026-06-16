@@ -1,0 +1,77 @@
+<?php
+
+return [
+    'page_title' => 'Onboarding — Primeros pasos tras el pago',
+    'title' => 'Onboarding: de la suscripción a WhatsApp conectado',
+    'lead' => 'Esta guía describe los tres pasos esenciales después de contratar Humano: pagar el plan, configurar tu negocio y vincular WhatsApp. Es el recorrido que verás en el panel nada más entrar.',
+    'video_note' => 'Esta documentación está pensada como guion para los tutoriales en vídeo del onboarding (checkout, configuración del negocio y escaneo del QR).',
+
+    'overview_heading' => 'Resumen del recorrido',
+    'overview_intro' => 'El orden habitual es el siguiente. Tras completar el pago, Humano te lleva al panel con un aviso amarillo en la parte superior para que no te pierdas los pasos pendientes.',
+    'overview_steps' => [
+        'Elegir plan y pagar en la página de precios.',
+        'Completar la configuración de tu negocio (asistente en varios pasos).',
+        'Escanear el código QR para conectar WhatsApp.',
+    ],
+
+    'dashboard_banner_heading' => 'Aviso en el panel',
+    'dashboard_banner_body' => 'Cuando entres al panel y aún falte algún paso, verás un aviso amarillo con botones de acción rápida:',
+    'dashboard_banner_configure' => 'Configurar negocio — abre el asistente de configuración del equipo.',
+    'dashboard_banner_whatsapp' => 'Conectar WhatsApp — abre la pantalla del código QR.',
+    'dashboard_banner_hint' => 'Si ya completaste la configuración del negocio pero WhatsApp sigue desconectado, el aviso puede mostrar solo el botón de WhatsApp.',
+
+    'step1_heading' => '1. Checkout desde Precios',
+    'step1_intro' => 'Empezá en la página pública de planes. Ahí comparás Assistant, Business y Mentor, elegís facturación mensual o anual y pasás al checkout seguro de Stripe.',
+    'step1_path_label' => 'Ruta',
+    'step1_steps' => [
+        'Abrí la página de precios de tu sitio Humano.',
+        'Elegí el plan que mejor se adapte a tu negocio.',
+        'Si está disponible, alterná entre facturación mensual y anual antes de pagar.',
+        'Tocá «Suscribirse» (o el botón equivalente del plan) para ir al checkout de Stripe.',
+        'Completá el pago con tarjeta. Si tenés un código promocional, ingresalo en el checkout cuando Stripe lo muestre.',
+        'Al confirmarse el pago, Humano creá o activa tu espacio de trabajo y te redirige al panel con un mensaje de bienvenida.',
+    ],
+    'step1_after_payment' => 'Si ya tenías cuenta y el pago se asoció a tu usuario, iniciá sesión con el mismo correo del checkout. Si el alta fue automática tras el pago, quedarás autenticado al volver del checkout.',
+
+    'step2_heading' => '2. Configuración de tu negocio',
+    'step2_intro' => 'Este paso alimenta al asistente con el contexto de tu marca: nombre, rubro, contacto, redes y el desafío principal de tu negocio. Sin completarlo, el aviso amarillo del panel seguirá visible.',
+    'step2_access' => 'Entrá desde el botón «Configurar negocio» del aviso amarillo del panel (arriba del dashboard). Ese botón te lleva directamente al asistente de configuración.',
+    'step2_wizard_heading' => 'Pasos del asistente',
+    'step2_wizard_steps' => [
+        'Datos del negocio — nombre, rubro, teléfono, WhatsApp, web, email y descripción.',
+        'Información personal — datos del responsable (nombre, fecha de nacimiento, etc.).',
+        'Dirección — ubicación y código postal.',
+        'Redes sociales — enlaces a tus perfiles.',
+        'Desafío — qué problema querés resolver con Humano.',
+        'Revisar y enviar — resumen generado por IA e informe de insights; guardá para finalizar.',
+    ],
+    'step2_tip' => 'Completá al menos nombre, rubro y descripción con sentido: el asistente y los flujos de WhatsApp usan esos datos para responder con tu tono de marca.',
+
+    'step3_heading' => '3. Escanear el código QR de WhatsApp',
+    'step3_intro' => 'Con el plan activo y la configuración del negocio en marcha, vinculá el número de WhatsApp que usarás con clientes. Desde el panel, tocá «Conectar WhatsApp» en el aviso amarillo o abrí directamente la pantalla de onboarding.',
+    'step3_path_label' => 'Ruta',
+    'step3_phone_heading' => 'En tu teléfono',
+    'step3_phone_steps' => [
+        'Abrí WhatsApp en el móvil que vas a usar para este negocio.',
+        'Tocá Menú (⋮) o Ajustes → Dispositivos vinculados → Vincular un dispositivo.',
+        'Cuando se abra la cámara, apuntá al código QR que aparece en la pantalla de Humano.',
+        'Confirmá en el teléfono si WhatsApp te lo pide.',
+    ],
+    'step3_refresh' => 'Si el QR tarda en cargar, usá «Actualizar código QR» en la misma pantalla. También podés abrir Chat: el código se renueva al entrar a Chat cuando el conector lo permite. En pantalla verás un aviso de que puede demorar hasta 45 segundos.',
+    'step3_connected' => 'Cuando WhatsApp quede vinculado, verás un mensaje de éxito. Entonces podés ir al panel o abrir Chat para probar que llegan y salen mensajes.',
+    'step3_cloud_note' => 'En algunos entornos el flujo puede variar y puede no mostrarse QR en esta pantalla. Si no ves QR, contactá soporte.',
+
+    'next_heading' => '¿Qué sigue?',
+    'next_body' => 'Con el pago confirmado, el negocio configurado y WhatsApp conectado, ya podés usar Chat, contactos, tareas y el resto de módulos de tu plan. Explorá el panel y el manual de usuario para profundizar en cada área.',
+    'next_manual_link' => 'Manual de usuario',
+
+    'back_to_help' => '← Volver al centro de ayuda',
+
+    'sidebar_title' => 'Onboarding tras el pago',
+    'index_card_title' => 'Onboarding: checkout, negocio y WhatsApp',
+    'index_card_cta' => 'Ver guía completa',
+    'index_card_intro' => 'Guía paso a paso para cuando ya pagaste y entraste a la plataforma: elegir plan, configurar tu negocio y conectar WhatsApp con el código QR.',
+    'index_card_step_checkout' => 'Checkout en /pricing (Stripe).',
+    'index_card_step_business' => 'Configuración del negocio con el botón «Configurar negocio» del panel.',
+    'index_card_step_whatsapp' => 'Escaneo del QR en /registration/onboarding/qr.',
+];

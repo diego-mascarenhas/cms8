@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Content\StoreContentRequest;
 use App\Http\Requests\Content\UpdateContentRequest;
 use App\Models\Content;
-use App\Models\Module;
 use Illuminate\Http\Request;
 
 class ContentController extends Controller
@@ -152,7 +151,7 @@ class ContentController extends Controller
 
             // Prepare translatable fields for all locales
             $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
-            $availableLocales = ['es', 'en', 'it', 'pt', 'fr', 'de'];
+            $availableLocales = \App\Support\ApplicationLocales::supported();
 
             foreach ($translatableFields as $field)
             {
@@ -331,7 +330,7 @@ class ContentController extends Controller
 
             // Prepare translatable fields for all locales
             $translatableFields = ['title', 'subtitle', 'url', 'content', 'seo_title', 'seo_keywords', 'seo_description'];
-            $availableLocales = ['es', 'en', 'it', 'pt', 'fr', 'de'];
+            $availableLocales = \App\Support\ApplicationLocales::supported();
 
             foreach ($translatableFields as $field)
             {

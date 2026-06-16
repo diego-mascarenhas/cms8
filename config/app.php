@@ -116,9 +116,11 @@ return [
     | by the translation service provider. You are free to set this value
     | to any of the locales which will be supported by the application.
     |
+    | Spanish defaults to Spain (es_ES). Use es_AR for Argentina via session locale.
+    |
     */
 
-    'locale' => 'es',
+    'locale' => 'es_ES',
 
     /*
     |--------------------------------------------------------------------------
@@ -260,7 +262,8 @@ return [
     | Route name wins if both are set; otherwise path; if both empty → login.
     | Authenticated users always go to the dashboard from "/".
     |
-    | PUBLIC_HOME_ROUTE=humano | PUBLIC_HOME_ROUTE=wapify | PUBLIC_HOME_PATH=/inicio
+    | PUBLIC_HOME_ROUTE=humano | PUBLIC_HOME_ROUTE=wapify | PUBLIC_HOME_ROUTE=slash
+    | PUBLIC_HOME_PATH=/inicio | PUBLIC_HOME_PATH=/slash
     |
     */
     'public_home_route' => env('PUBLIC_HOME_ROUTE'),

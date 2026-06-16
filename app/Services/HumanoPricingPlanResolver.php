@@ -13,14 +13,58 @@ class HumanoPricingPlanResolver
             ->map(function (array $plan): array
             {
                 $checkoutAvailable = (bool) ($plan['checkout_available'] ?? true);
-                $plan['checkout_href'] = $checkoutAvailable
-                    ? (string) $plan['checkout_url']
-                    : '';
+                $monthlyCheckoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
+                $yearlyCheckoutUrl = trim((string) ($plan['checkout_url_yearly'] ?? ''));
+
+                if ($yearlyCheckoutUrl === '')
+                {
+                    $yearlyCheckoutUrl = $monthlyCheckoutUrl;
+                }
+
+                $plan['checkout_href_monthly'] = $checkoutAvailable ? $monthlyCheckoutUrl : '';
+                $plan['checkout_href_yearly'] = $checkoutAvailable ? $yearlyCheckoutUrl : '';
+                $plan['checkout_href'] = $plan['checkout_href_monthly'];
+                $plan['external_url'] = trim((string) ($plan['external_url'] ?? ''));
 
                 return $plan;
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Plans with an active Stripe checkout (public pricing surfaces).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function plansWithCheckoutAvailable(?string $referralCode = null): array
+    {
+        $plans = array_values(array_filter(
+            $this->plansForDisplay(),
+            static fn (array $plan): bool => (bool) ($plan['checkout_available'] ?? true),
+        ));
+
+        $referralCode = trim((string) ($referralCode ?? ''));
+        if ($referralCode === '')
+        {
+            return $plans;
+        }
+
+        $builder = app(AffiliateReferralLinkBuilder::class);
+
+        return array_map(function (array $plan) use ($builder, $referralCode): array
+        {
+            foreach (['checkout_href_monthly', 'checkout_href_yearly', 'checkout_href'] as $key)
+            {
+                $href = trim((string) ($plan[$key] ?? ''));
+                if ($href !== '')
+                {
+                    $plan[$key] = $builder->buildLink($href, $referralCode);
+                }
+            }
+
+            return $plan;
+        }, $plans);
     }
 
     /**

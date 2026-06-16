@@ -3,20 +3,21 @@
 namespace App\Http\Controllers\language;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApplicationLocales;
 use Illuminate\Support\Facades\App;
 
 class LanguageController extends Controller
 {
-    public function swap($locale)
+    public function swap(string $locale)
     {
-        if (! in_array($locale, ['en', 'es', 'it', 'pt', 'fr', 'de']))
+        $locale = ApplicationLocales::normalize($locale);
+
+        if (! ApplicationLocales::isSupported($locale))
         {
             abort(400);
-        } else
-        {
-            session()->put('locale', $locale);
         }
 
+        session()->put('locale', $locale);
         App::setLocale($locale);
 
         return redirect()->back();

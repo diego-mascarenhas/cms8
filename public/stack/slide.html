@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1920, initial-scale=1">
+  <title>Humano — Stack (slide)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background:
+        radial-gradient(900px 600px at 85% 0%, #2a2858 0%, transparent 55%),
+        radial-gradient(700px 500px at 0% 100%, #1a1840 0%, transparent 58%),
+        linear-gradient(155deg, #12101f 0%, #06050f 100%);
+      color: #eceeff;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .slide {
+      width: 1920px;
+      height: 1080px;
+      padding: 72px 96px 64px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 48px;
+    }
+
+    .head h1 {
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+      line-height: 1;
+    }
+
+    .head p {
+      font-size: 22px;
+      color: #a8aac8;
+      margin-top: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 24px;
+    }
+
+    .grid-bottom {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 24px;
+    }
+
+    .col {
+      background: rgba(24, 22, 48, 0.72);
+      border: 1px solid rgba(150, 148, 220, 0.14);
+      border-radius: 18px;
+      padding: 28px 30px;
+    }
+
+    .col h2 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #696cff;
+      margin-bottom: 20px;
+    }
+
+    .col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .col li {
+      font-size: 22px;
+      font-weight: 600;
+      color: #eceeff;
+      line-height: 1.25;
+    }
+
+    .col li span {
+      display: block;
+      font-size: 16px;
+      font-weight: 500;
+      color: #9496b8;
+      margin-top: 3px;
+    }
+
+    .col--clients ul {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 20px;
+    }
+
+    .col--clients li span {
+      margin-top: 2px;
+    }
+
+    .col--ia {
+      padding-bottom: 36px;
+    }
+  </style>
+</head>
+<body>
+  <div class="slide">
+    <header class="head">
+      <div>
+        <h1>Humano — Stack técnico</h1>
+        <p>SaaS multi-equipo · Laravel 12 · Livewire · APIs</p>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="col">
+        <h2>Core</h2>
+        <ul>
+          <li>PHP 8.4+ <span>Laravel · Livewire 4</span></li>
+          <li>Jetstream <span>Sanctum · Spatie</span></li>
+          <li>PostgreSQL <span>Redis · Eloquent</span></li>
+          <li>Flutter <span>App Store · Play Store</span></li>
+        </ul>
+      </section>
+
+      <section class="col">
+        <h2>Negocio</h2>
+        <ul>
+          <li>Stripe · Mercado Pago <span>Laravel Cashier · suscripciones</span></li>
+          <li>VeriFactu · ARCA <span>AEAT (España), Hacienda (Argentina)</span></li>
+          <li>Afiliados <span>referidos y comisiones</span></li>
+          <li>CRM · Campañas <span>Chat · Asistente IA</span></li>
+        </ul>
+      </section>
+
+      <section class="col">
+        <h2>Infra</h2>
+        <ul>
+          <li>OVH · Hetzner <span>VPS · cloud</span></li>
+          <li>Backblaze <span>backups externos</span></li>
+          <li>GitHub Actions <span>web · móvil · deploy</span></li>
+          <li>Forge <span>zero-downtime · PM2</span></li>
+        </ul>
+      </section>
+
+      <section class="col">
+        <h2>Seguridad</h2>
+        <ul>
+          <li>REVISION ALPHA <span>endurecimiento</span></li>
+          <li>GitGuardian <span>secretos · vulnerabilidades</span></li>
+          <li>Sentry <span>monitoreo</span></li>
+          <li>team_id <span>aislamiento multi-tenant</span></li>
+        </ul>
+      </section>
+    </div>
+
+    <div class="grid-bottom">
+      <section class="col col--clients">
+        <h2>Clientes</h2>
+        <ul>
+          <li>Web <span>Vuexy · Blade · Livewire</span></li>
+          <li>Flutter <span>App Store · Play Store</span></li>
+          <li>Prospection <span>React · búsqueda de leads</span></li>
+          <li>WhatsApp <span>Baileys · Twilio</span></li>
+          <li>APIs <span>REST · Sanctum</span></li>
+        </ul>
+      </section>
+
+      <section class="col col--ia">
+        <h2>IA</h2>
+        <ul>
+          <li>Anthropic <span>Claude · asistente</span></li>
+          <li>OpenAI <span>texto · embeddings</span></li>
+          <li>ElevenLabs <span>audio · voz</span></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

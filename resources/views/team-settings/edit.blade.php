@@ -8,12 +8,39 @@
 @endsection
 
 @section('content')
+@php
+    $groupTitles = [
+        'fiscal' => __('Exportación fiscal'),
+        'cuentica' => __('Cuéntica'),
+    ];
+    $groupTitle = $groupTitles[$group ?? ''] ?? (isset($group) ? ucfirst($group) : __('Configuration'));
+@endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Settings/</span> {{ isset($group) ? ucfirst($group) : 'Configuration' }}</h4>
-        <p class="text-muted">Configure {{ isset($group) ? strtolower($group) : 'team' }} settings</p>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Settings/</span> {{ $groupTitle }}</h4>
+        <p class="text-muted">
+            @if (($group ?? '') === 'fiscal')
+                {{ __('Elige la plataforma fiscal y el país para el enrutado automático.') }}
+            @elseif (($group ?? '') === 'cuentica')
+                {{ __('Credenciales de Cuéntica para exportar facturas a España.') }}
+            @else
+                {{ __('Configure') }} {{ isset($group) ? strtolower($group) : 'team' }} {{ __('settings') }}
+            @endif
+        </p>
     </div>
+    @if (($group ?? '') === 'cuentica')
+        <div class="mt-3 mt-md-0">
+            <button type="button" id="btnTestCuentica" class="btn btn-info waves-effect waves-light"
+                data-url="{{ route('team-settings.test-cuentica', $team) }}">
+                <i class="ti ti-plug-connected me-1"></i>{{ __('Probar conexión') }}
+            </button>
+        </div>
+    @endif
 </div>
+
+@if (($group ?? '') === 'cuentica')
+    <div id="cuenticaTestResult" class="mb-3"></div>
+@endif
 
     <div class="row">
         <div class="col-md-12">
@@ -25,6 +52,14 @@
             @if (session('error'))
                 <div class="alert alert-warning">
                     {{ session('error') }}
+                </div>
+            @endif
+
+            @if (($group ?? '') === 'fiscal')
+                <div class="alert alert-info mb-4">
+                    {{ __('Después de elegir la plataforma, configura las credenciales del proveedor:') }}
+                    <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'cuentica']) }}" class="alert-link">{{ __('Cuéntica') }}</a>
+                    {{ __('(España). ARCA estará disponible próximamente.') }}
                 </div>
             @endif
 
@@ -229,6 +264,44 @@
                 });
             });
         });
+
+        // Cuéntica connection test
+        (function() {
+            const btn = document.getElementById('btnTestCuentica');
+            if (!btn) {
+                return;
+            }
+
+            const result = document.getElementById('cuenticaTestResult');
+            const originalText = btn.innerHTML;
+
+            btn.addEventListener('click', function() {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>{{ __('Probando...') }}';
+                result.innerHTML = '';
+
+                fetch(btn.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const cssClass = data.success ? 'alert-success' : 'alert-warning';
+                    result.innerHTML = '<div class="alert ' + cssClass + ' mb-0">' + (data.message || '') + '</div>';
+                })
+                .catch(error => {
+                    console.error('Cuéntica test connection error:', error);
+                    result.innerHTML = '<div class="alert alert-danger mb-0">{{ __('Error inesperado al probar la conexión.') }}</div>';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            });
+        })();
 
         // Copy to clipboard function
         function copyToClipboard(text, button) {

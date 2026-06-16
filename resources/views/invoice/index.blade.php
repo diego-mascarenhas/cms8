@@ -59,13 +59,24 @@
         <h4 class="mb-1 mt-3">{{ __('Invoices') }}</h4>
         <p class="text-muted">{{ __('Manage your receipts') }}</p>
     </div>
-    @can('create', App\Models\Invoice::class)
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('invoice.create') }}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> Crear Factura
-        </a>
+    <div class="d-flex align-items-center flex-wrap gap-2 mt-3 mt-md-0">
+        @can('viewAny', App\Models\Invoice::class)
+            @if (! empty($invoiceSyncProviders ?? []))
+                <form action="{{ route('invoice.sync-inbound') }}" method="POST" class="m-0">
+                    @csrf
+                    <button type="submit" class="btn btn-outline-primary waves-effect waves-light"
+                        title="{{ collect($invoiceSyncProviders)->map(fn ($p) => __('invoice_sync.providers.'.$p))->implode(', ') }}">
+                        <i class="ti ti-refresh me-1"></i>{{ __('invoice_sync.sync_button') }}
+                    </button>
+                </form>
+            @endif
+        @endcan
+        @can('create', App\Models\Invoice::class)
+            <a href="{{ route('invoice.create') }}" class="btn btn-primary waves-effect waves-light">
+                <i class="ti ti-plus me-1"></i>Crear Factura
+            </a>
+        @endcan
     </div>
-    @endcan
 </div>
 
 @include('partials.invoice-summary-cards', [
@@ -90,6 +101,13 @@
     toast.show();
   });
 </script>
+@endif
+
+@if (session('warning'))
+    <div class="alert alert-warning alert-dismissible" role="alert">
+        {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 @endif
 
 @if (session('error'))

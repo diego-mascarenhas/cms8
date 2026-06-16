@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Contracts\CheckoutSessionRetriever;
+use App\Models\AffiliateInvitation;
+use App\Models\Enterprise;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
@@ -487,7 +489,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $this->assertSame(explode(' ', $expectedDisplayName, 2)[0]."'s Team", $team->name);
     }
 
-    public function test_payment_link_sets_billing_enterprise_referred_by_from_numeric_custom_field(): void
+    public function test_payment_link_sets_team_referred_by_from_numeric_custom_field_legacy_enterprise_id(): void
     {
         config(['humano_pricing.signup_completion' => 'payment_link']);
 
@@ -497,7 +499,11 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         ]);
 
         $referrerOwner = User::factory()->create();
-        $referrerTeam = Team::factory()->create(['user_id' => $referrerOwner->id]);
+        $referrerStripeId = 'cus_ref_pl_'.uniqid('', true);
+        $referrerTeam = Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeId,
+        ]);
         $referrerOwner->forceFill(['current_team_id' => $referrerTeam->id])->save();
 
         $referrerEnterprise = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($referrerTeam->id)->create([
@@ -556,15 +562,9 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $this->assertNotNull($buyer);
         $payingTeam = $buyer->currentTeam;
         $this->assertNotNull($payingTeam);
+        $payingTeam->refresh();
 
-        $billingEnterprise = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $payingTeam->id)
-            ->where('type_id', 1)
-            ->where('code', $customerId)
-            ->first();
-
-        $this->assertNotNull($billingEnterprise);
-        $this->assertSame((string) $referrerEnterprise->id, $billingEnterprise->referred_by);
+        $this->assertSame($referrerStripeId, $payingTeam->referred_by);
     }
 
     public function test_payment_link_does_not_set_referred_by_when_referrer_is_same_team(): void
@@ -634,16 +634,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
 
         $team->refresh();
 
-        $billingEnterprise = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $team->id)
-            ->where('type_id', 1)
-            ->where('code', $customerId)
-            ->first();
-
-        if ($billingEnterprise !== null)
-        {
-            $this->assertNull($billingEnterprise->referred_by);
-        }
+        $this->assertNull($team->referred_by);
     }
 
     public function test_payment_link_sets_referred_by_from_client_reference_id_when_custom_field_empty(): void
@@ -656,17 +647,12 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         ]);
 
         $referrerOwner = User::factory()->create();
-        $referrerTeam = Team::factory()->create(['user_id' => $referrerOwner->id]);
+        $referrerStripeId = 'cus_ref_cr_'.uniqid('', true);
+        $referrerTeam = Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeId,
+        ]);
         $referrerOwner->forceFill(['current_team_id' => $referrerTeam->id])->save();
-
-        $referrerEnterprise = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($referrerTeam->id)->create([
-            'type_id' => 1,
-            'code' => 'REF-CR-'.uniqid('', true),
-            'referred_by' => null,
-            'payment_type_id' => null,
-            'invoice_type_id' => null,
-            'status_id' => 1,
-        ]));
 
         $email = 'pl-cr-'.uniqid('', true).'@example.com';
         $customerId = 'cus_pl_cr_'.uniqid('', true);
@@ -679,7 +665,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             'payment_status' => 'paid',
             'customer' => $customerId,
             'subscription' => 'sub_test_pl_cr',
-            'client_reference_id' => (string) $referrerEnterprise->id,
+            'client_reference_id' => $referrerStripeId,
             'customer_details' => [
                 'email' => $email,
                 'name' => 'Client Ref Buyer',
@@ -707,15 +693,9 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $this->assertNotNull($buyer);
         $payingTeam = $buyer->currentTeam;
         $this->assertNotNull($payingTeam);
+        $payingTeam->refresh();
 
-        $billingEnterprise = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $payingTeam->id)
-            ->where('type_id', 1)
-            ->where('code', $customerId)
-            ->first();
-
-        $this->assertNotNull($billingEnterprise);
-        $this->assertSame((string) $referrerEnterprise->id, $billingEnterprise->referred_by);
+        $this->assertSame($referrerStripeId, $payingTeam->referred_by);
     }
 
     public function test_payment_link_custom_field_wins_over_client_reference_id(): void
@@ -728,7 +708,11 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         ]);
 
         $referrerOwner = User::factory()->create();
-        $referrerTeam = Team::factory()->create(['user_id' => $referrerOwner->id]);
+        $referrerStripeFromField = 'cus_ref_cf_'.uniqid('', true);
+        $referrerTeam = Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeFromField,
+        ]);
         $referrerOwner->forceFill(['current_team_id' => $referrerTeam->id])->save();
 
         $enterpriseFromField = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($referrerTeam->id)->create([
@@ -741,17 +725,12 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         ]));
 
         $otherOwner = User::factory()->create();
-        $otherTeam = Team::factory()->create(['user_id' => $otherOwner->id]);
+        $otherStripeId = 'cus_ref_other_'.uniqid('', true);
+        $otherTeam = Team::factory()->create([
+            'user_id' => $otherOwner->id,
+            'stripe_id' => $otherStripeId,
+        ]);
         $otherOwner->forceFill(['current_team_id' => $otherTeam->id])->save();
-
-        $enterpriseFromClientRef = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($otherTeam->id)->create([
-            'type_id' => 1,
-            'code' => 'REF-OTHER-'.uniqid('', true),
-            'referred_by' => null,
-            'payment_type_id' => null,
-            'invoice_type_id' => null,
-            'status_id' => 1,
-        ]));
 
         $email = 'pl-priority-'.uniqid('', true).'@example.com';
         $customerId = 'cus_pl_priority_'.uniqid('', true);
@@ -764,7 +743,7 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
             'payment_status' => 'paid',
             'customer' => $customerId,
             'subscription' => 'sub_test_pl_priority',
-            'client_reference_id' => (string) $enterpriseFromClientRef->id,
+            'client_reference_id' => $otherStripeId,
             'customer_details' => [
                 'email' => $email,
                 'name' => 'Priority Buyer',
@@ -799,15 +778,141 @@ class PaymentLinkCheckoutCompleteTest extends TestCase
         $buyer = User::where('email', $email)->first();
         $this->assertNotNull($buyer);
         $payingTeam = $buyer->currentTeam;
+        $payingTeam->refresh();
 
-        $billingEnterprise = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $payingTeam->id)
-            ->where('type_id', 1)
-            ->where('code', $customerId)
-            ->first();
+        $this->assertSame($referrerStripeFromField, $payingTeam->referred_by);
+    }
 
-        $this->assertNotNull($billingEnterprise);
-        $this->assertSame((string) $enterpriseFromField->id, $billingEnterprise->referred_by);
+    public function test_payment_link_sets_referred_by_from_affiliate_invitation_email_when_stripe_has_no_reference(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $referrerOwner = User::factory()->create();
+        $referrerStripeId = 'cus_ref_invite_'.uniqid('', true);
+        $referrerTeam = Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeId,
+        ]);
+        $referrerOwner->forceFill(['current_team_id' => $referrerTeam->id])->save();
+
+        $email = 'pl-invite-'.uniqid('', true).'@example.com';
+        $customerId = 'cus_pl_invite_'.uniqid('', true);
+
+        AffiliateInvitation::query()->create([
+            'team_id' => $referrerTeam->id,
+            'invited_by_user_id' => $referrerOwner->id,
+            'invitee_name' => 'Invited Buyer',
+            'invitee_email' => $email,
+            'plan_id' => 'assistant',
+            'plan_name' => 'Assistant',
+            'sent_at' => now(),
+        ]);
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_pl_invite_email',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => $customerId,
+            'subscription' => 'sub_test_pl_invite',
+            'client_reference_id' => null,
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Invited Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_pl_invite_email',
+            'category' => 'assistant',
+        ]))
+            ->assertRedirect(route('dashboard'));
+
+        $buyer = User::where('email', $email)->first();
+        $this->assertNotNull($buyer);
+        $payingTeam = $buyer->currentTeam;
+        $this->assertNotNull($payingTeam);
+        $payingTeam->refresh();
+
+        $this->assertSame($referrerStripeId, $payingTeam->referred_by);
+    }
+
+    public function test_payment_link_sets_referred_by_from_browser_cookie_when_stripe_has_no_reference(): void
+    {
+        config(['humano_pricing.signup_completion' => 'payment_link']);
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        $referrerOwner = User::factory()->create();
+        $referrerStripeId = 'cus_ref_cookie_'.uniqid('', true);
+        Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => $referrerStripeId,
+        ]);
+
+        $email = 'pl-cookie-'.uniqid('', true).'@example.com';
+        $customerId = 'cus_pl_cookie_'.uniqid('', true);
+
+        $session = Session::constructFrom([
+            'id' => 'cs_test_pl_cookie',
+            'object' => 'checkout.session',
+            'status' => 'complete',
+            'mode' => 'subscription',
+            'payment_status' => 'paid',
+            'customer' => $customerId,
+            'subscription' => 'sub_test_pl_cookie',
+            'client_reference_id' => null,
+            'customer_details' => [
+                'email' => $email,
+                'name' => 'Cookie Buyer',
+            ],
+        ]);
+
+        $this->instance(CheckoutSessionRetriever::class, new class($session) implements CheckoutSessionRetriever
+        {
+            public function __construct(private Session $session) {}
+
+            public function retrieve(string $sessionId, string $category): ?Session
+            {
+                return $this->session;
+            }
+        });
+
+        $this->withCookie(
+            config('humano_pricing.affiliate_referral_cookie_name', 'humano_affiliate_ref'),
+            $referrerStripeId,
+        )->get(route('pricing.checkout.complete', [
+            'session_id' => 'cs_test_pl_cookie',
+            'category' => 'assistant',
+        ]))
+            ->assertRedirect(route('dashboard'));
+
+        $buyer = User::where('email', $email)->first();
+        $this->assertNotNull($buyer);
+        $payingTeam = $buyer->currentTeam;
+        $this->assertNotNull($payingTeam);
+        $payingTeam->refresh();
+
+        $this->assertSame($referrerStripeId, $payingTeam->referred_by);
     }
 
     private function bindNoopTeamCheckoutSessionSubscriptionSyncer(): void

@@ -56,6 +56,7 @@ class Team extends JetstreamTeam
         'personal_team',
         'user_id',
         'stripe_id',
+        'referred_by',
     ];
 
     /**
@@ -100,6 +101,11 @@ class Team extends JetstreamTeam
     public function billingAffiliateCommissionsAsPayer()
     {
         return $this->hasMany(BillingAffiliateCommission::class, 'paying_team_id');
+    }
+
+    public function affiliateInvitations()
+    {
+        return $this->hasMany(AffiliateInvitation::class);
     }
 
     /**

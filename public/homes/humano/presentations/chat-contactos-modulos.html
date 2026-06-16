@@ -47,6 +47,9 @@ body{background:#06050f;font-family:var(--font);overflow:hidden;
 .hdr{position:absolute;top:42px;left:84px;right:84px;display:flex;
  justify-content:space-between;align-items:center;z-index:5}
 .brand{display:flex;align-items:center}
+a.brand{text-decoration:none;color:inherit;cursor:pointer;transition:opacity .18s ease}
+a.brand:hover{opacity:.82}
+a.brand:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px}
 .brand-logo{height:28px;width:auto;display:block}
 .hdr-r{font-size:12.5px;letter-spacing:3.4px;color:var(--muted2);font-weight:600}
 .ftr{position:absolute;bottom:40px;left:84px;right:84px;display:flex;
@@ -299,7 +302,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:340px;height:340px;right:-100px;top:20px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">CHAT · WHATSAPP</div></div>
  <div class="chat-slide-layout">
   <div class="chat-slide-copy">
@@ -343,7 +346,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-accent" style="width:360px;height:360px;left:-120px;top:30px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">CHAT · PANEL COMPLETO</div></div>
  <div class="chat-slide-full">
 <div class="pres-chat-app u sc" style="--d:.18s">
@@ -423,7 +426,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:340px;height:340px;right:-120px;bottom:-140px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">CONTACTOS</div></div>
  <div class="wi">
   <div class="wi-l sc" style="--d:.12s">
@@ -449,7 +452,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-violet" style="width:380px;height:380px;right:-130px;top:-90px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">MÓDULOS</div></div>
  <div class="shead">
   <span class="eyebrow u" style="--d:0s">SEGÚN TU PLAN</span>
@@ -477,7 +480,7 @@ h1.title{font-weight:800;color:#fff;letter-spacing:-1.4px;line-height:1.04}
 <section class="slide">
  <div class="grid-tex"></div>
  <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
- <div class="hdr"><div class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
   <div class="hdr-r">RESUMEN</div></div>
  <div class="cl">
   <div class="u" style="--d:.05s"><span class="kicker">EN LA PRÁCTICA</span></div>
