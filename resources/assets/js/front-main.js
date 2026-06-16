@@ -7,7 +7,9 @@ let isRtl = window.Helpers.isRtl(),
   isDarkStyle = window.Helpers.isDarkStyle();
 
 (function () {
-  const menu = document.getElementById('navbarSupportedContent'),
+  const menu =
+      document.getElementById('navbarSupportedContent') ||
+      document.getElementById('humanoFrontNavCollapse'),
     nav = document.querySelector('.layout-navbar'),
     navItemLink = document.querySelectorAll('.navbar-nav .nav-link');
 
@@ -36,41 +38,49 @@ let isRtl = window.Helpers.isRtl(),
   }
 
   // Navbar
-  window.addEventListener('scroll', e => {
-    if (window.scrollY > 10) {
-      nav.classList.add('navbar-active');
-    } else {
-      nav.classList.remove('navbar-active');
-    }
-  });
-  window.addEventListener('load', e => {
-    if (window.scrollY > 10) {
-      nav.classList.add('navbar-active');
-    } else {
-      nav.classList.remove('navbar-active');
-    }
-  });
+  if (nav) {
+    window.addEventListener('scroll', e => {
+      if (window.scrollY > 10) {
+        nav.classList.add('navbar-active');
+      } else {
+        nav.classList.remove('navbar-active');
+      }
+    });
+    window.addEventListener('load', e => {
+      if (window.scrollY > 10) {
+        nav.classList.add('navbar-active');
+      } else {
+        nav.classList.remove('navbar-active');
+      }
+    });
+  }
 
   // Function to close the mobile menu
   function closeMenu() {
+    if (!menu) {
+      return;
+    }
+
     menu.classList.remove('show');
   }
 
-  document.addEventListener('click', function (event) {
-    // Check if the clicked element is inside mobile menu
-    if (!menu.contains(event.target)) {
-      closeMenu();
-    }
-  });
-  navItemLink.forEach(link => {
-    link.addEventListener('click', event => {
-      if (!link.classList.contains('dropdown-toggle')) {
+  if (menu) {
+    document.addEventListener('click', function (event) {
+      // Check if the clicked element is inside mobile menu
+      if (!menu.contains(event.target)) {
         closeMenu();
-      } else {
-        event.preventDefault();
       }
     });
-  });
+    navItemLink.forEach(link => {
+      link.addEventListener('click', event => {
+        if (!link.classList.contains('dropdown-toggle')) {
+          closeMenu();
+        } else {
+          event.preventDefault();
+        }
+      });
+    });
+  }
 
   // If layout is RTL add .dropdown-menu-end class to .dropdown-menu
   if (isRtl) {
