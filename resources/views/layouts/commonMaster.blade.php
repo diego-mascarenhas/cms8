@@ -15,7 +15,7 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <title>@yield('title') |
     {{ config('variables.templateName') ? config('variables.templateName') : 'TemplateName' }}
   </title>
-  <meta name="description" content="{{ config('variables.templateDescription') ? config('variables.templateDescription') : '' }}" />
+  <meta name="description" content="@hasSection('metaDescription')@yield('metaDescription')@else{{ config('variables.templateDescription') ? config('variables.templateDescription') : '' }}@endif" />
   <meta name="keywords" content="{{ config('variables.templateKeyword') ? config('variables.templateKeyword') : '' }}">
   <!-- laravel CRUD token -->
   <meta name="csrf-token" content="{{ csrf_token() }}">
@@ -31,8 +31,8 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- Open Graph / Facebook / WhatsApp -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{ url()->current() }}" />
-  <meta property="og:title" content="@yield('title') | {{ config('variables.templateName') }}" />
-  <meta property="og:description" content="{{ config('variables.templateDescription') }}" />
+  <meta property="og:title" content="@hasSection('ogTitle')@yield('ogTitle')@else@yield('title') | {{ config('variables.templateName') }}@endif" />
+  <meta property="og:description" content="@hasSection('metaDescription')@yield('metaDescription')@else{{ config('variables.templateDescription') }}@endif" />
   <meta property="og:image" content="{{ $ogImageUrl }}" />
   <meta property="og:image:secure_url" content="{{ $ogImageUrl }}" />
   <meta property="og:image:width" content="{{ config('variables.ogImageWidth', 552) }}" />
@@ -44,8 +44,8 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="{{ url()->current() }}" />
-  <meta name="twitter:title" content="@yield('title') | {{ config('variables.templateName') }}" />
-  <meta name="twitter:description" content="{{ config('variables.templateDescription') }}" />
+  <meta name="twitter:title" content="@hasSection('ogTitle')@yield('ogTitle')@else@yield('title') | {{ config('variables.templateName') }}@endif" />
+  <meta name="twitter:description" content="@hasSection('metaDescription')@yield('metaDescription')@else{{ config('variables.templateDescription') }}@endif" />
   <meta name="twitter:image" content="{{ $ogImageUrl }}" />
   <meta name="twitter:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}" />
   @if(config('variables.twitterUrl'))

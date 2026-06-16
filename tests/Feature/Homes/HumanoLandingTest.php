@@ -13,7 +13,12 @@ class HumanoLandingTest extends TestCase
     {
         $this->get('/inicio')
             ->assertOk()
-            ->assertSee('El asistente digital que trabaja por ti', false)
+            ->assertSee('property="og:description" content="La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp."', false)
+            ->assertSee('property="og:title" content="HumanoApp"', false)
+            ->assertSee('La nueva forma de gestionar tu negocio.', false)
+            ->assertSee('highlight-whatsapp', false)
+            ->assertSee('highlight-brand', false)
+            ->assertSee('ligero, rápido e intuitivo', false)
             ->assertSee('Beneficios clave', false)
             ->assertSee(__('humano_pricing.landing_plans_title'), false)
             ->assertSee(__('humano_pricing.plans.hunter.name'), false)

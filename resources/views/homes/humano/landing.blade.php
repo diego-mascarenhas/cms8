@@ -8,7 +8,9 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
 
 @extends('layouts/layoutMaster')
 
-@section('title', 'Humano.app — El sistema operativo de tu negocio digital')
+@section('title', 'HumanoApp')
+@section('ogTitle', __('slash_landing.og_title'))
+@section('metaDescription', __('slash_landing.meta_description'))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ HumanoHomeAsset::url('vendor/swiper/swiper.css') }}" />
@@ -17,6 +19,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
 @section('page-style')
 <link rel="stylesheet" href="{{ HumanoHomeAsset::url('css/landing.css') }}" />
 <link rel="stylesheet" href="{{ asset('homes/shared/css/brand-footer.css') }}" />
+<link rel="stylesheet" href="{{ asset('homes/shared/css/landing-highlight.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -36,10 +39,9 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
     <div id="landingHero" class="section-py landing-hero position-relative">
       <div class="container">
         <div class="hero-text-box text-center">
-          <h1 class="text-primary hero-title display-6 fw-bold">El asistente digital que trabaja por ti</h1>
+          <h1 class="text-primary hero-title display-6 fw-bold">{{ __('slash_landing.hero.title') }}</h1>
           <h2 class="hero-sub-title h6 mb-4 pb-1">
-            El sistema operativo de tu negocio digital.<br class="d-none d-lg-block" />
-            Contactos, WhatsApp, IA y procesos sin depender del mega excel.
+            {{ __('slash_landing.hero.lead') }}
           </h2>
         </div>
         <div id="heroDashboardAnimation" class="hero-animation-img">
@@ -50,6 +52,20 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
       </div>
     </div>
     <div class="landing-hero-blank"></div>
+  </section>
+
+  <section id="landingHighlight" class="section-py pt-0 pb-0">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-lg-5 text-center">
+              @include('homes.shared.partials.hero-highlight')
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section id="landingFeatures" class="section-py landing-features">

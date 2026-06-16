@@ -1,8 +1,9 @@
 <?php
 
 return [
-    'meta_description' => 'El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.',
-    'page_title' => 'Humano.app — El asistente digital que trabaja por ti',
+    'meta_description' => 'La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp.',
+    'page_title' => 'HumanoApp',
+    'og_title' => 'HumanoApp',
 
     'nav' => [
         'login' => 'Iniciar sesión',
@@ -20,9 +21,19 @@ return [
     ],
 
     'hero' => [
-        'title_line' => 'Un :emphasis en gestión de negocio',
-        'title_emphasis' => 'estándar superior',
-        'lead' => 'Contactos, WhatsApp, IA, facturación y más. Todo en una plataforma.',
+        'title' => 'La nueva forma de gestionar tu negocio.',
+        'lead' => 'Fácil, sencillo y sin complicaciones',
+        'highlight' => [
+            'hook' => '¿Sabés qué es lo mejor?',
+            'works_from' => 'Que todo funciona desde',
+            'whatsapp' => 'WhatsApp',
+            'desk' => 'Se acabó lo de estar pegado al ordenador todo el día:',
+            'desk_why' => 'es aburrido y poco práctico.',
+            'with_brand' => 'Con',
+            'brand' => 'HumanoApp',
+            'in_hand' => 'tenés tu negocio en la palma de la mano:',
+            'traits' => 'ligero, rápido e intuitivo',
+        ],
         'email_placeholder' => 'tu@email.com',
         'cta' => 'Empezar',
         'note' => 'Checkout seguro con Stripe. Cancelá cuando quieras.',
