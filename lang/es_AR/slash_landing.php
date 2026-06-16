@@ -182,7 +182,7 @@ return [
         ['icon' => 'laptop.png', 'title' => 'Sin el mega excel', 'text' => 'Dejá macros opacos y permisos confusos. Toda la empresa ve la misma información con roles claros.'],
         ['icon' => 'check.png', 'title' => 'Los datos son tuyos', 'text' => 'Servidores en Europa. Exportá y llevate tus datos cuando quieras, sin límites.'],
         ['icon' => 'rocket.png', 'title' => 'Menos gestión, más vida', 'text' => 'Procesos probados sin inventarlos vos. Humano.app acelera la operativa desde el primer día.'],
-        ['icon' => 'paper.png', 'title' => 'Sistema en la nube', 'text' => 'Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.'],
+        ['icon' => 'cloud.svg', 'title' => 'Sistema en la nube', 'text' => 'Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.'],
         ['icon' => 'user.png', 'title' => 'Control por WhatsApp', 'text' => 'Gestioná tu negocio desde WhatsApp. Vos das las órdenes, Humano.app responde.'],
         ['icon' => 'keyboard.png', 'title' => 'Consultor IA personalizado', 'text' => 'Respuestas útiles para tu negocio y tu equipo, con tu tono de marca.'],
     ],
