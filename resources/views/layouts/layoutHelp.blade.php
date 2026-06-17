@@ -1,6 +1,7 @@
 @php
 $configData = Helper::appClasses();
 $isFront = true;
+$includeSharePreview = true;
 @endphp
 
 @section('layoutContent')
