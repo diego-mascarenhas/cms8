@@ -1,6 +1,14 @@
 @extends('layouts/layoutMaster')
 
-@section('title', 'Team Settings')
+@php
+    $teamSettingsGroupTitles = [
+        'fiscal' => __('Exportación fiscal'),
+        'cuentica' => __('Cuéntica'),
+        'email' => __('app.team_setting_mailer_email_title'),
+    ];
+@endphp
+
+@section('title', $teamSettingsGroupTitles[$group ?? ''] ?? __('Team Settings'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
@@ -9,20 +17,19 @@
 
 @section('content')
 @php
-    $groupTitles = [
-        'fiscal' => __('Exportación fiscal'),
-        'cuentica' => __('Cuéntica'),
-    ];
+    $groupTitles = $teamSettingsGroupTitles;
     $groupTitle = $groupTitles[$group ?? ''] ?? (isset($group) ? ucfirst($group) : __('Configuration'));
 @endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Settings/</span> {{ $groupTitle }}</h4>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ $groupTitle }}</h4>
         <p class="text-muted">
             @if (($group ?? '') === 'fiscal')
                 {{ __('Elige la plataforma fiscal y el país para el enrutado automático.') }}
             @elseif (($group ?? '') === 'cuentica')
                 {{ __('Credenciales de Cuéntica para exportar facturas a España.') }}
+            @elseif (($group ?? '') === 'email')
+                {{ __('app.team_setting_mailer_email_subtitle') }}
             @else
                 {{ __('Configure') }} {{ isset($group) ? strtolower($group) : 'team' }} {{ __('settings') }}
             @endif
@@ -118,6 +125,36 @@
                                             <div class="col-12 mb-3">
                                                 <h6 class="text-muted mb-0">📥 Incoming Email (IMAP)</h6>
                                             </div>
+                                        @elseif($setting['section'] === 'team_sender' && $groupKey === 'email')
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-1">{{ __('app.team_setting_team_sender_title') }}</h6>
+                                                <p class="small text-muted mb-0">{{ __('app.team_setting_team_sender_intro') }}</p>
+                                                @if ($team->hasTeamEmailSenderConfigured())
+                                                    <p class="small mb-0 mt-2">
+                                                        <span class="badge bg-label-primary">
+                                                            {{ $team->getTeamEmailSender()['from_name'] }}
+                                                            &lt;{{ $team->getTeamEmailSender()['from_address'] }}&gt;
+                                                        </span>
+                                                    </p>
+                                                @else
+                                                    <p class="small text-warning mb-0 mt-2">{{ __('app.team_setting_team_sender_not_configured') }}</p>
+                                                @endif
+                                            </div>
+                                        @elseif($setting['section'] === 'mailer_sender' && $groupKey === 'email')
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-1">{{ __('app.team_setting_mailer_sender_title') }}</h6>
+                                                <p class="small text-muted mb-0">{{ __('app.team_setting_mailer_sender_intro') }}</p>
+                                                @if ($team->hasMailerSenderOverrideConfigured())
+                                                    <p class="small mb-0 mt-2">
+                                                        <span class="badge bg-label-info">
+                                                            {{ $team->getMailerEmailSender()['from_name'] }}
+                                                            &lt;{{ $team->getMailerEmailSender()['from_address'] }}&gt;
+                                                        </span>
+                                                    </p>
+                                                @elseif ($team->hasTeamEmailSenderConfigured())
+                                                    <p class="small text-muted mb-0 mt-2">{{ __('app.team_setting_mailer_uses_team_sender') }}</p>
+                                                @endif
+                                            </div>
                                         @elseif($setting['section'] === 'routing')
                                             <div class="col-12 mb-2">
                                                 <p class="small text-muted mb-0">
@@ -152,7 +189,12 @@
                                     @endphp
 
                                     <div class="mb-3 {{ $colClass }}">
-                                        <label for="{{ $key }}" class="form-label">{{ $setting['label'] }}</label>
+                                        <label for="{{ $key }}" class="form-label">
+                                            {{ $setting['label'] }}
+                                            @if (! empty($setting['required']))
+                                                <span class="text-danger">*</span>
+                                            @endif
+                                        </label>
 
                                         @if($setting['type'] === 'select' && isset($setting['options']))
                                             <select class="form-select @error("{$groupKey}.{$key}") is-invalid @enderror"
@@ -173,14 +215,14 @@
                                                     value="1"
                                                     {{ $setting['value'] == '1' ? 'checked' : '' }}
                                                 />
-                                                <label class="form-check-label" for="{{ $key }}">Enable</label>
+                                                <label class="form-check-label" for="{{ $key }}">{{ __('Enable') }}</label>
                                             </div>
                                         @elseif($setting['type'] === 'textarea')
                                             <textarea class="form-control @error("{$groupKey}.{$key}") is-invalid @enderror"
                                                 id="{{ $key }}"
                                                 name="{{ $groupKey }}[{{ $key }}]"
                                                 rows="3"
-                                                placeholder="Enter {{ strtolower($setting['label']) }}"
+                                                placeholder="{{ __('Enter :label', ['label' => strtolower($setting['label'])]) }}"
                                             >{{ old("{$groupKey}.{$key}", $setting['value']) }}</textarea>
                                         @elseif($setting['type'] === 'readonly')
                                             <div class="input-group">
@@ -199,7 +241,8 @@
                                                     type="{{ $setting['type'] }}" id="{{ $key }}"
                                                     name="{{ $groupKey }}[{{ $key }}]"
                                                     value="{{ old("{$groupKey}.{$key}", $setting['value']) }}"
-                                                    placeholder="Enter {{ strtolower($setting['label']) }}" />
+                                                    placeholder="{{ $setting['placeholder'] ?? __('Enter :label', ['label' => strtolower($setting['label'])]) }}"
+                                                    @if (! empty($setting['required'])) required @endif />
                                                 @if ($setting['type'] === 'password')
                                                     <span class="input-group-text cursor-pointer toggle-password"><i
                                                             class="ti ti-eye-off"></i></span>
@@ -217,8 +260,8 @@
                                 @endforeach
                             </div>
                             <div class="mt-4">
-                                <button type="submit" class="btn btn-primary me-2">Save Changes</button>
-                                <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary me-2">{{ __('Save Changes') }}</button>
+                                <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">{{ __('Cancel') }}</a>
                             </div>
                         </div>
                     </div>

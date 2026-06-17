@@ -214,7 +214,7 @@ class TeamSettingController extends Controller
 
             foreach ($settings as $key => $value)
             {
-                if ($group === 'email' && in_array($key, ['mail_from_name', 'mail_from_address'], true) && trim((string) $value) === '')
+                if ($group === 'email' && in_array($key, ['mail_from_name', 'mail_from_address', 'mailer_from_name', 'mailer_from_address'], true) && trim((string) $value) === '')
                 {
                     $team->removeSetting($key);
 
@@ -377,7 +377,11 @@ class TeamSettingController extends Controller
         }
 
         $group = array_key_first($request->validated());
-        $message = ucfirst($group).' settings updated successfully';
+        $message = match ($group)
+        {
+            'email' => __('app.team_setting_mailer_saved'),
+            default => __(':group settings updated successfully', ['group' => ucfirst((string) $group)]),
+        };
 
         return redirect()
             ->back()
@@ -921,28 +925,49 @@ class TeamSettingController extends Controller
                 ],
             ],
             'email' => [
-                'title' => 'Email Configuration',
+                'title' => __('app.team_setting_mailer_email_title'),
                 'icon' => 'ti ti-mail',
                 'settings' => [
-                    // Sender Information - Row 1 (Always visible)
                     'mail_from_name' => [
-                        'label' => 'From Name',
+                        'label' => __('app.email_sender_modal_from_name'),
                         'type' => 'text',
                         'value' => $team->getSetting('mail_from_name'),
                         'is_encrypted' => false,
-                        'placeholder' => env('MAIL_FROM_NAME'),
-                        'help' => 'Leave empty to use: '.env('MAIL_FROM_NAME'),
-                        'section' => 'sender',
+                        'placeholder' => __('app.team_setting_team_from_name_placeholder'),
+                        'help' => __('app.team_setting_team_from_name_help'),
+                        'section' => 'team_sender',
                         'row' => 1,
+                        'required' => true,
                     ],
                     'mail_from_address' => [
-                        'label' => 'From Email Address',
+                        'label' => __('app.email_sender_modal_from_email'),
                         'type' => 'email',
                         'value' => $team->getSetting('mail_from_address'),
                         'is_encrypted' => false,
-                        'placeholder' => env('MAIL_FROM_ADDRESS'),
-                        'help' => 'Leave empty to use: '.env('MAIL_FROM_ADDRESS'),
-                        'section' => 'sender',
+                        'placeholder' => __('app.team_setting_team_from_email_placeholder'),
+                        'help' => __('app.team_setting_team_from_email_help'),
+                        'section' => 'team_sender',
+                        'row' => 1,
+                        'required' => true,
+                    ],
+                    'mailer_from_name' => [
+                        'label' => __('app.email_sender_modal_from_name'),
+                        'type' => 'text',
+                        'value' => $team->getSetting('mailer_from_name'),
+                        'is_encrypted' => false,
+                        'placeholder' => __('app.team_setting_mailer_from_name_placeholder'),
+                        'help' => __('app.team_setting_mailer_from_name_help'),
+                        'section' => 'mailer_sender',
+                        'row' => 1,
+                    ],
+                    'mailer_from_address' => [
+                        'label' => __('app.email_sender_modal_from_email'),
+                        'type' => 'email',
+                        'value' => $team->getSetting('mailer_from_address'),
+                        'is_encrypted' => false,
+                        'placeholder' => __('app.team_setting_mailer_from_email_placeholder'),
+                        'help' => __('app.team_setting_mailer_from_email_help'),
+                        'section' => 'mailer_sender',
                         'row' => 1,
                     ],
                     // Outgoing Email (SMTP) - Row 1 (Server Configuration)

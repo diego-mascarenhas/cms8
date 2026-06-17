@@ -177,12 +177,20 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendViaMailBabyApi()
     {
+        $this->configureMailForTeam($this->messageDelivery->team, forMailerCampaigns: true);
+
         $mailBabyService = app(\App\Services\MailBabyService::class);
 
         $htmlContent = $this->messageDelivery->getHtmlForContact();
 
-        $fromName = config('mail.from.name');
-        $fromEmail = config('mail.from.address');
+        $sender = $this->messageDelivery->team->getMailerEmailSender();
+        $fromName = $sender['from_name'];
+        $fromEmail = $sender['from_address'];
+
+        if ($fromName === '' || $fromEmail === '')
+        {
+            throw new \Exception('Mailer sender not configured for this team');
+        }
 
         $emailData = [
             'to' => $this->messageDelivery->contact->email,
@@ -216,7 +224,7 @@ class SendMessageCampaignJob implements ShouldQueue
      */
     private function sendViaSmtp()
     {
-        $this->configureMailForTeam($this->messageDelivery->team);
+        $this->configureMailForTeam($this->messageDelivery->team, forMailerCampaigns: true);
 
         $mailableClass = config('humano-mailer.mailables.message_delivery_mail', \App\Mail\MessageDeliveryMail::class);
 

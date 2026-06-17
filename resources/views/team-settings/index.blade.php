@@ -230,8 +230,8 @@
                     <div class="card h-100">
                         <div class="card-body text-center">
                             <i class="ti ti-mail mb-3" style="font-size: 2rem;"></i>
-                            <h5 class="card-title">{{ __('Email Configuration') }}</h5>
-                            <p class="card-text">{{ __('Configure SMTP and IMAP settings for incoming and outgoing emails') }}</p>
+                            <h5 class="card-title">{{ __('app.team_setting_mailer_email_title') }}</h5>
+                            <p class="card-text">{{ __('app.team_setting_mailer_email_card_description') }}</p>
                             <div class="btn-group">
                                 <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'email']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
                                 <a href="{{ route('team.mailboxes.index', $team) }}" class="btn btn-outline-primary">{{ __('Manage mailboxes') }}</a>

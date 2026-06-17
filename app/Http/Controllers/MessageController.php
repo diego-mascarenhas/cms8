@@ -1265,7 +1265,7 @@ class MessageController extends Controller
      */
     private function sendTestEmailUsingMessageContext(Message $message, User $user, Team $team, array $recipientEmails): void
     {
-        $this->configureMailForTeam($team);
+        $this->configureMailForTeam($team, forMailerCampaigns: true);
 
         $emailProvider = config('services.email.provider', 'smtp');
 

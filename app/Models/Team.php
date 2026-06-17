@@ -829,19 +829,75 @@ class Team extends JetstreamTeam
         return ! empty($this->getSetting('twilio_sid')) && ! empty($this->getSetting('twilio_token'));
     }
 
+    public function hasStripeConfig(): bool
+    {
+        return ! empty($this->getSetting('stripe_public')) && ! empty($this->getSetting('stripe_secret'));
+    }
+
     /**
-     * Get outgoing email configuration for this team (with fallbacks to .env).
+     * Team-wide sender (notifications, affiliates, system emails for this team).
+     *
+     * @return array{from_name: string, from_address: string}
+     */
+    public function getTeamEmailSender(): array
+    {
+        return [
+            'from_name' => trim((string) $this->getSetting('mail_from_name')),
+            'from_address' => trim((string) $this->getSetting('mail_from_address')),
+        ];
+    }
+
+    public function hasTeamEmailSenderConfigured(): bool
+    {
+        $sender = $this->getTeamEmailSender();
+
+        return $sender['from_name'] !== '' && $sender['from_address'] !== '';
+    }
+
+    /**
+     * Mailer campaign sender. Uses mailer override when complete, otherwise team sender.
+     *
+     * @return array{from_name: string, from_address: string}
+     */
+    public function getMailerEmailSender(): array
+    {
+        $mailerName = trim((string) $this->getSetting('mailer_from_name'));
+        $mailerAddress = trim((string) $this->getSetting('mailer_from_address'));
+
+        if ($mailerName !== '' && $mailerAddress !== '')
+        {
+            return [
+                'from_name' => $mailerName,
+                'from_address' => $mailerAddress,
+            ];
+        }
+
+        return $this->getTeamEmailSender();
+    }
+
+    public function hasMailerSenderOverrideConfigured(): bool
+    {
+        $mailerName = trim((string) $this->getSetting('mailer_from_name'));
+        $mailerAddress = trim((string) $this->getSetting('mailer_from_address'));
+
+        return $mailerName !== '' && $mailerAddress !== '';
+    }
+
+    /**
+     * Get outgoing email configuration for this team (SMTP from team settings with .env fallback).
      */
     public function getOutgoingEmailConfig()
     {
+        $sender = $this->getMailerEmailSender();
+
         return [
             'host' => $this->getSetting('mail_host', env('MAIL_HOST')),
             'port' => $this->getSetting('mail_port', env('MAIL_PORT')),
             'username' => $this->getSetting('mail_username', env('MAIL_USERNAME')),
             'password' => $this->getSetting('mail_password', env('MAIL_PASSWORD')),
             'encryption' => $this->getSetting('mail_encryption', env('MAIL_ENCRYPTION')),
-            'from_address' => $this->getSetting('mail_from_address', env('MAIL_FROM_ADDRESS')),
-            'from_name' => $this->getSetting('mail_from_name', env('MAIL_FROM_NAME')),
+            'from_address' => $sender['from_address'],
+            'from_name' => $sender['from_name'],
         ];
     }
 
@@ -860,14 +916,13 @@ class Team extends JetstreamTeam
     }
 
     /**
-     * Whether the team has explicitly configured outgoing sender name and address.
+     * Whether Mailer campaigns can be sent (team sender or mailer override complete).
      */
     public function hasOutgoingEmailSenderConfigured(): bool
     {
-        $fromName = trim((string) $this->getSetting('mail_from_name'));
-        $fromAddress = trim((string) $this->getSetting('mail_from_address'));
+        $sender = $this->getMailerEmailSender();
 
-        return $fromName !== '' && $fromAddress !== '';
+        return $sender['from_name'] !== '' && $sender['from_address'] !== '';
     }
 
     /**

@@ -173,12 +173,31 @@ class TeamConfigurationTest extends TestCase
         $this->assertEquals('Team Name', $config['from_name']);
         $this->assertEquals('noreply@team.com', $config['from_address']);
 
-        // Test fallback to .env values
+        // Test fallback to .env values for SMTP only (not sender fields)
         $this->team->settings()->delete();
         $config = $this->team->getOutgoingEmailConfig();
 
         $this->assertEquals(env('MAIL_HOST'), $config['host']);
         $this->assertEquals(env('MAIL_PORT', 587), $config['port']);
+        $this->assertSame('', $config['from_name']);
+        $this->assertSame('', $config['from_address']);
+    }
+
+    /** @test */
+    public function it_uses_mailer_override_when_configured_otherwise_team_sender()
+    {
+        $this->team->setSetting('mail_from_name', 'Team Name');
+        $this->team->setSetting('mail_from_address', 'team@example.com');
+
+        $this->assertSame('Team Name', $this->team->getMailerEmailSender()['from_name']);
+        $this->assertSame('team@example.com', $this->team->getMailerEmailSender()['from_address']);
+
+        $this->team->setSetting('mailer_from_name', 'Mailer Name');
+        $this->team->setSetting('mailer_from_address', 'mailer@example.com');
+
+        $this->assertTrue($this->team->hasMailerSenderOverrideConfigured());
+        $this->assertSame('Mailer Name', $this->team->getMailerEmailSender()['from_name']);
+        $this->assertSame('mailer@example.com', $this->team->getMailerEmailSender()['from_address']);
     }
 
     /** @test */
