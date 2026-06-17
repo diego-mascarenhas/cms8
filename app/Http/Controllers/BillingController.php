@@ -160,7 +160,7 @@ class BillingController extends Controller
         $affiliateReferralPlans = [];
         $affiliateInvitations = collect();
 
-        if ($team->hasModule('affiliates'))
+        if ($team->canUseAffiliateProgram())
         {
             $this->ensureAffiliateStripeCustomer($team);
             $team->refresh();
@@ -234,7 +234,7 @@ class BillingController extends Controller
     {
         $team = $request->user()->currentTeam;
 
-        if (! $team || ! $team->hasModule('affiliates'))
+        if (! $team || ! $team->canUseAffiliateProgram())
         {
             abort(403);
         }

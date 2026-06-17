@@ -108,6 +108,16 @@ class Team extends JetstreamTeam
         return $this->hasMany(AffiliateInvitation::class);
     }
 
+    public function wasReferredByAnotherTeam(): bool
+    {
+        return trim((string) ($this->referred_by ?? '')) !== '';
+    }
+
+    public function canUseAffiliateProgram(): bool
+    {
+        return ! $this->wasReferredByAnotherTeam();
+    }
+
     /**
      * Find a team by any of its Stripe customer IDs (main stripe_id or per-category settings).
      */

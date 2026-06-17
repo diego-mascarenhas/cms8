@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Module;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -50,22 +49,12 @@ class BillingIndexApiUsageWidgetTest extends TestCase
         $response->assertDontSee('Uso de API & Ahorro', false);
     }
 
-    public function test_billing_index_hides_affiliates_section_when_module_inactive(): void
+    public function test_billing_index_hides_affiliates_section_when_team_was_referred(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
+        $team->forceFill(['referred_by' => 'cus_some_referrer'])->save();
         $user->forceFill(['current_team_id' => $team->id])->save();
-
-        Module::query()->firstOrCreate(
-            ['key' => 'affiliates'],
-            [
-                'name' => 'Affiliates',
-                'icon' => 'affiliate',
-                'description' => 'Test',
-                'is_core' => false,
-                'status' => 1,
-            ],
-        );
 
         $response = $this->actingAs($user)->get(route('billing.index'));
 
@@ -74,23 +63,11 @@ class BillingIndexApiUsageWidgetTest extends TestCase
         $response->assertDontSee('Como referidor', false);
     }
 
-    public function test_billing_index_shows_affiliates_section_when_module_active(): void
+    public function test_billing_index_shows_affiliates_section_without_affiliates_module(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
-
-        Module::query()->firstOrCreate(
-            ['key' => 'affiliates'],
-            [
-                'name' => 'Affiliates',
-                'icon' => 'affiliate',
-                'description' => 'Test',
-                'is_core' => false,
-                'status' => 1,
-            ],
-        );
-        $team->enableModule('affiliates');
 
         $response = $this->actingAs($user)->get(route('billing.index'));
 
