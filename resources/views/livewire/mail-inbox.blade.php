@@ -1,6 +1,6 @@
-<div class="row g-0">
+<div>
     @if ($statusMessage)
-        <div class="col-12 px-3 pt-2" wire:key="mail-status-{{ md5($statusMessage) }}">
+        <div class="px-3 pt-2" wire:key="mail-status-{{ md5($statusMessage) }}">
             <div class="alert alert-{{ $statusType === 'success' ? 'success' : 'danger' }} alert-dismissible mb-0 py-2" role="alert">
                 {{ $statusMessage }}
                 <button type="button" class="btn-close" wire:click="$set('statusMessage', null)"></button>
@@ -8,6 +8,7 @@
         </div>
     @endif
 
+    <div class="row g-0">
     <div class="col app-email-sidebar border-end flex-grow-0" id="app-email-sidebar">
         <div class="btn-compost-wrapper d-grid">
             <button class="btn btn-primary btn-compose" data-bs-toggle="modal" data-bs-target="#emailComposeSidebar"
@@ -17,49 +18,32 @@
             <ul class="email-filter-folders list-unstyled mb-4">
                 @php
                     $folders = [
-                        'inbox' => ['icon' => 'ti-mail', 'label' => __('Inbox'), 'badge' => $folderCounts['inbox_unread'] ?? 0, 'badge_class' => 'bg-label-primary', 'li_class' => 'd-flex justify-content-between'],
-                        'sent' => ['icon' => 'ti-send', 'label' => __('Sent'), 'badge' => null, 'li_class' => 'd-flex'],
-                        'draft' => ['icon' => 'ti-file', 'label' => __('Draft'), 'badge' => $folderCounts['draft'] ?? 0, 'li_class' => 'd-flex'],
-                        'starred' => ['icon' => 'ti-star', 'label' => __('Starred'), 'badge' => $folderCounts['starred'] ?? 0, 'badge_class' => 'bg-label-warning', 'li_class' => 'd-flex justify-content-between'],
-                        'spam' => ['icon' => 'ti-shield-x', 'label' => __('Spam'), 'badge' => $folderCounts['spam'] ?? 0, 'li_class' => 'd-flex align-items-center'],
-                        'trash' => ['icon' => 'ti-trash', 'label' => __('Trash'), 'badge' => $folderCounts['trash'] ?? 0, 'li_class' => 'd-flex align-items-center'],
+                        'inbox' => ['icon' => 'ti-mail', 'label' => __('Inbox'), 'badge' => $folderCounts['inbox_unread'] ?? 0, 'badge_class' => 'bg-label-primary'],
+                        'sent' => ['icon' => 'ti-send', 'label' => __('Sent'), 'badge' => null],
+                        'draft' => ['icon' => 'ti-file', 'label' => __('Draft'), 'badge' => $folderCounts['draft'] ?? 0],
+                        'starred' => ['icon' => 'ti-star', 'label' => __('Starred'), 'badge' => $folderCounts['starred'] ?? 0, 'badge_class' => 'bg-label-warning'],
+                        'spam' => ['icon' => 'ti-shield-x', 'label' => __('Spam'), 'badge' => $folderCounts['spam'] ?? 0],
+                        'trash' => ['icon' => 'ti-trash', 'label' => __('Trash'), 'badge' => $folderCounts['trash'] ?? 0],
                     ];
                 @endphp
                 @foreach ($folders as $key => $meta)
-                    <li class="{{ $meta['li_class'] }} {{ $folder === $key ? 'active' : '' }}"
+                    <li class="d-flex justify-content-between align-items-center gap-2 {{ $folder === $key ? 'active' : '' }}"
                         data-target="{{ $key }}" wire:key="folder-{{ $key }}">
-                        <a href="javascript:void(0);" class="d-flex flex-wrap align-items-center"
+                        <a href="javascript:void(0);" class="d-flex align-items-center flex-grow-1 min-w-0"
                             wire:click.prevent="setFolder('{{ $key }}')">
-                            <i class="ti {{ $meta['icon'] }} ti-sm"></i>
-                            <span class="align-middle ms-2">{{ $meta['label'] }}</span>
+                            <i class="ti {{ $meta['icon'] }} ti-sm flex-shrink-0"></i>
+                            <span class="align-middle ms-2 text-truncate">{{ $meta['label'] }}</span>
                         </a>
                         @if (! empty($meta['badge']) && (int) $meta['badge'] > 0)
-                            <div class="badge {{ $meta['badge_class'] ?? 'bg-label-secondary' }} rounded-pill badge-center">{{ $meta['badge'] }}</div>
+                            <div class="badge {{ $meta['badge_class'] ?? 'bg-label-secondary' }} rounded-pill badge-center flex-shrink-0">{{ $meta['badge'] }}</div>
                         @endif
                     </li>
                 @endforeach
             </ul>
-            @if (! empty($sources) && count($sources) > 0)
-                <div class="email-filter-labels">
-                    <small class="fw-normal text-uppercase text-muted m-4">{{ __('Networks') }}</small>
-                    <ul class="list-unstyled mb-0 mt-2">
-                        @foreach ($sources as $source)
-                            <li data-target="{{ Str::lower($source->name) }}" wire:key="source-{{ $source->id }}">
-                                <a href="javascript:void(0);">
-                                    <i class="{{ in_array($source->icon, ['fa-envelope', 'fa-phone']) ? 'fas' : 'fab' }} {{ $source->icon }}"
-                                        style="color: {{ $source->color }};"></i>
-                                    <span class="align-middle ms-2">{{ $source->name }}</span>
-                                </a>
-                            </li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
         </div>
     </div>
 
-    <div class="col d-flex flex-grow-1 p-0" style="min-width: 0;">
-        <div class="col app-emails-list">
+    <div class="col app-emails-list">
             <div class="shadow-none border-0">
                 <div class="emails-list-header p-3 py-lg-3 py-2">
                     <div class="d-flex justify-content-between align-items-center">
@@ -146,9 +130,9 @@
                         </div>
                         <div class="email-pagination d-sm-flex d-none align-items-center flex-wrap justify-content-between justify-sm-content-end">
                             <span class="d-sm-block d-none mx-3 text-muted">{{ $paginationLabel }}</span>
-                            <i class="email-prev ti ti-chevron-left ti-sm scaleX-n1-rtl cursor-pointer text-muted me-2 {{ $emailsPage->onFirstPage() ? 'opacity-25 pe-none' : '' }}"
+                            <i class="email-prev ti ti-chevron-left ti-sm scaleX-n1-rtl cursor-pointer text-muted me-2 {{ $senderGroupsPage->onFirstPage() ? 'opacity-25 pe-none' : '' }}"
                                 wire:click="goToPreviousPage"></i>
-                            <i class="email-next ti ti-chevron-right ti-sm scaleX-n1-rtl cursor-pointer {{ ! $emailsPage->hasMorePages() ? 'opacity-25 pe-none' : '' }}"
+                            <i class="email-next ti ti-chevron-right ti-sm scaleX-n1-rtl cursor-pointer {{ ! $senderGroupsPage->hasMorePages() ? 'opacity-25 pe-none' : '' }}"
                                 wire:click="goToNextPage"></i>
                         </div>
                     </div>
@@ -156,74 +140,107 @@
                 <hr class="container-m-nx m-0">
                 <div class="email-list pt-0" wire:loading.class="opacity-50" wire:target="refreshMailbox,search,setFolder">
                     <ul class="list-unstyled m-0">
-                        @forelse ($emailsPage as $email)
+                        @forelse ($senderGroupsPage as $group)
                             @php
-                                $fromDisplay = $email['from'] ?? __('Unknown');
+                                $fromDisplay = $group['from'] ?? __('Unknown');
                                 $words = array_filter(explode(' ', strip_tags((string) $fromDisplay)));
                                 $initials = strtoupper(substr($words[0] ?? 'U', 0, 1) . substr($words[1] ?? '', 0, 1));
-                                $isRead = (bool) ($email['seen'] ?? false);
-                                $isStarred = (bool) ($email['flagged'] ?? false);
+                                $hasUnread = (int) ($group['unread_count'] ?? 0) > 0;
+                                $isStarred = (bool) ($group['has_starred'] ?? false);
+                                $messageCount = (int) ($group['count'] ?? 1);
+                                $isExpanded = $expandedSenderKey === ($group['sender_key'] ?? '');
+                                $groupEmailIds = $group['email_ids'] ?? [];
+                                $groupFullySelected = $groupEmailIds !== []
+                                    && count(array_intersect($groupEmailIds, $selectedIds)) === count($groupEmailIds);
                             @endphp
-                            <li class="email-list-item {{ $isRead ? 'email-marked-read' : '' }}"
-                                wire:key="email-row-{{ $email['id'] }}"
-                                data-starred="{{ $isStarred ? 'true' : 'false' }}"
-                                wire:click="selectEmail({{ $email['id'] }})">
-                                <div class="d-flex align-items-center">
+                            <li class="email-list-item {{ $isExpanded ? 'border-start border-3 border-primary' : '' }}"
+                                wire:key="sender-group-{{ $group['sender_key'] }}"
+                                data-starred="{{ $isStarred ? 'true' : 'false' }}">
+                                <div class="d-flex align-items-center"
+                                    wire:click="selectEmail({{ $group['latest_email_id'] }})">
                                     <div class="form-check mb-0" wire:click.stop>
                                         <input class="email-list-item-input form-check-input" type="checkbox"
-                                            value="{{ $email['id'] }}" wire:model.live="selectedIds"
-                                            id="email-{{ $email['id'] }}">
-                                        <label class="form-check-label" for="email-{{ $email['id'] }}"></label>
+                                            @checked($groupFullySelected)
+                                            wire:click="toggleGroupSelection(@js($groupEmailIds))"
+                                            id="sender-{{ md5($group['sender_key']) }}">
+                                        <label class="form-check-label" for="sender-{{ md5($group['sender_key']) }}"></label>
                                     </div>
-                                    <i class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-2 me-3 {{ $isStarred ? 'text-warning' : '' }}"
-                                        wire:click.stop="toggleStarFor({{ $email['id'] }})"></i>
+                                    @if ($messageCount > 1)
+                                        <button type="button"
+                                            class="email-sender-expand btn btn-link text-secondary p-0 me-1 border-0 shadow-none"
+                                            wire:click.stop="toggleSenderExpand('{{ $group['sender_key'] }}')"
+                                            title="{{ __('Expand conversation') }}">
+                                            <i class="ti {{ $isExpanded ? 'ti-chevron-down' : 'ti-chevron-right' }} ti-sm"></i>
+                                        </button>
+                                    @else
+                                        <span class="d-inline-block me-1" style="width: 1.5rem;"></span>
+                                    @endif
+                                    <i class="email-list-item-bookmark ti ti-star ti-sm d-sm-inline-block d-none cursor-pointer ms-1 me-2 {{ $isStarred ? 'text-warning' : '' }}"
+                                        wire:click.stop="toggleStarFor({{ $group['latest_email_id'] }})"></i>
                                     <div class="avatar avatar-sm d-block flex-shrink-0 me-sm-3 me-2">
                                         <span class="avatar-initial rounded-circle bg-label-primary">{{ $initials }}</span>
                                     </div>
                                     <div class="email-list-item-content ms-2 ms-sm-0 me-2">
-                                        <span class="h6 email-list-item-username me-2">{{ $fromDisplay }}</span>
-                                        <span class="email-list-item-subject d-xl-inline-block d-block">{{ $email['subject'] }}</span>
+                                        <span class="h6 email-list-item-username me-2 {{ $hasUnread ? 'fw-semibold' : '' }}">{{ $fromDisplay }}</span>
+                                        @if ($messageCount > 1)
+                                            <span class="badge rounded-pill {{ $hasUnread ? 'bg-label-primary' : 'bg-label-secondary' }} me-2">{{ $messageCount }}</span>
+                                        @endif
+                                        <span class="email-list-item-subject d-xl-inline-block d-block {{ $hasUnread ? 'fw-semibold' : '' }}">{{ $group['subject'] }}</span>
                                     </div>
                                     <div class="email-list-item-meta ms-auto d-flex align-items-center">
                                         <small class="email-list-item-time text-muted">
-                                            @php
-                                                try {
-                                                    echo \Carbon\Carbon::parse($email['date'] ?? 'now')->format('h:i A');
-                                                } catch (\Exception $e) {
-                                                    echo $email['date'] ?? '—';
-                                                }
-                                            @endphp
+                                            {{ $group['date_list'] ?? '—' }}
                                         </small>
                                         <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read" wire:click.stop="markSingleRead({{ $email['id'] }})">
+                                            <li class="list-inline-item email-read" wire:click.stop="markSingleRead({{ $group['latest_email_id'] }})">
                                                 <i class="ti ti-mail-opened ti-sm"></i>
                                             </li>
-                                            <li class="list-inline-item email-delete" wire:click.stop="deleteSingle({{ $email['id'] }})">
+                                            <li class="list-inline-item email-delete" wire:click.stop="deleteSingle({{ $group['latest_email_id'] }})">
                                                 <i class="ti ti-trash ti-sm"></i>
                                             </li>
-                                            <li class="list-inline-item" wire:click.stop="archiveSingle({{ $email['id'] }})">
+                                            <li class="list-inline-item" wire:click.stop="archiveSingle({{ $group['latest_email_id'] }})">
                                                 <i class="ti ti-archive ti-sm"></i>
                                             </li>
                                         </ul>
                                     </div>
                                 </div>
+                                @if ($isExpanded && $messageCount > 1)
+                                    <ul class="list-unstyled mb-0 ps-5 border-top">
+                                        @foreach ($group['emails'] as $threadEmail)
+                                            @php
+                                                $threadRead = (bool) ($threadEmail['seen'] ?? false);
+                                            @endphp
+                                            <li class="py-2 px-3 {{ $selectedEmailId === $threadEmail['id'] ? 'bg-label-primary' : '' }} {{ $threadRead ? 'text-muted' : '' }}"
+                                                wire:key="thread-email-{{ $threadEmail['id'] }}"
+                                                wire:click.stop="selectEmail({{ $threadEmail['id'] }})"
+                                                style="cursor: pointer;">
+                                                <div class="d-flex justify-content-between align-items-center gap-2">
+                                                    <span class="text-truncate {{ $threadRead ? '' : 'fw-semibold' }}">{{ $threadEmail['subject'] }}</span>
+                                                    <small class="text-muted flex-shrink-0">
+                                                        {{ $threadEmail['date_short'] ?? '—' }}
+                                                    </small>
+                                                </div>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @endif
                             </li>
                         @empty
-                            <li class="email-list-empty text-center">{{ __('No hay correos disponibles.') }}</li>
+                            <li class="email-list-empty text-center">{{ __('No emails available.') }}</li>
                         @endforelse
                     </ul>
                 </div>
             </div>
             <div class="app-overlay"></div>
-        </div>
+    </div>
 
-        <div class="col app-email-view flex-grow-0 bg-body {{ $selectedEmailId ? 'show' : '' }}" id="app-email-view">
+    <div class="col app-email-view flex-grow-0 bg-body {{ $selectedEmailId ? 'show' : '' }}" id="app-email-view">
             <div class="card shadow-none border-0 rounded-0 app-email-view-header p-3 py-md-3 py-2">
                 <div class="d-flex justify-content-between align-items-center py-2">
                     <div class="d-flex align-items-center overflow-hidden">
                         <i class="ti ti-chevron-left ti-sm cursor-pointer me-2" wire:click="closeEmailView"></i>
                         <h6 class="text-truncate mb-0 me-2" id="email-view-subject">
-                            {{ $this->selectedEmail['subject'] ?? __('Selecciona un mensaje') }}
+                            {{ $this->selectedEmail['subject'] ?? __('Select a message') }}
                         </h6>
                     </div>
                     <div class="d-flex align-items-center">
@@ -281,9 +298,9 @@
                     </div>
                     <div class="d-flex align-items-center flex-wrap justify-content-end">
                         <span class="d-sm-block d-none mx-3 text-muted">{{ $paginationLabel }}</span>
-                        <i class="ti ti-chevron-left ti-sm scaleX-n1-rtl cursor-pointer text-muted me-2 {{ $emailsPage->onFirstPage() ? 'opacity-25 pe-none' : '' }}"
+                        <i class="ti ti-chevron-left ti-sm scaleX-n1-rtl cursor-pointer text-muted me-2 {{ $senderGroupsPage->onFirstPage() ? 'opacity-25 pe-none' : '' }}"
                             wire:click="goToPreviousPage"></i>
-                        <i class="ti ti-chevron-right ti-sm scaleX-n1-rtl cursor-pointer {{ ! $emailsPage->hasMorePages() ? 'opacity-25 pe-none' : '' }}"
+                        <i class="ti ti-chevron-right ti-sm scaleX-n1-rtl cursor-pointer {{ ! $senderGroupsPage->hasMorePages() ? 'opacity-25 pe-none' : '' }}"
                             wire:click="goToNextPage"></i>
                     </div>
                 </div>
@@ -291,7 +308,48 @@
             <hr class="m-0">
             <div class="app-email-view-content py-4" wire:key="email-view-content-{{ $selectedEmailId ?? 'none' }}">
                 @if (! $this->selectedEmail)
-                    <p class="text-center text-muted py-5">{{ __('Haz clic en un mensaje de la lista para ver su contenido.') }}</p>
+                    <p class="text-center text-muted py-5">{{ __('Click a message in the list to view its content.') }}</p>
+                @elseif (count($this->senderThread) > 1)
+                    <div class="mx-sm-4 mx-3">
+                        <p class="text-muted small mb-3">
+                            {{ __('Conversation with :sender', ['sender' => $this->selectedEmail['from'] ?? '']) }}
+                            <span class="badge bg-label-secondary ms-1">{{ count($this->senderThread) }}</span>
+                        </p>
+                        @foreach ($this->senderThread as $threadEmail)
+                            @php
+                                $fromStr = $threadEmail['from'] ?? '';
+                                $fromName = trim(preg_replace('/<[^>]+>/', '', $fromStr));
+                                $fromEmail = preg_match('/<([^>]+)>/', $fromStr, $m) ? $m[1] : $fromStr;
+                                $body = $threadEmail['body'] ?? '';
+                                $isActive = (int) ($threadEmail['id'] ?? 0) === (int) $selectedEmailId;
+                            @endphp
+                            <div class="card email-view-body-card mb-3 {{ $isActive ? 'border-primary' : '' }}"
+                                wire:key="thread-view-{{ $threadEmail['id'] }}"
+                                wire:click="selectEmail({{ $threadEmail['id'] }})"
+                                style="cursor: pointer;">
+                                <div class="card-header d-flex justify-content-between align-items-center flex-wrap py-3">
+                                    <div>
+                                        <h6 class="m-0 {{ ($threadEmail['seen'] ?? false) ? 'text-muted' : '' }}">{{ $threadEmail['subject'] }}</h6>
+                                        <small class="text-muted">{{ $fromName ?: $fromEmail }}</small>
+                                    </div>
+                                    <small class="text-muted">{{ $threadEmail['date_display'] ?? '—' }}</small>
+                                </div>
+                                @if ($isActive)
+                                    <div class="card-body" style="min-height: 80px; white-space: pre-wrap; word-break: break-word;">
+                                        @if (strlen(trim($body)) > 0)
+                                            @if (str_contains($body, '<') && str_contains($body, '>'))
+                                                <div>{!! $body !!}</div>
+                                            @else
+                                                {{ $body }}
+                                            @endif
+                                        @else
+                                            <p class="text-muted mb-0">{{ __('(This message has no text content)') }}</p>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
                 @else
                     @php
                         $email = $this->selectedEmail;
@@ -301,11 +359,6 @@
                         $words = array_filter(explode(' ', $fromName));
                         $initials = strtoupper(substr($words[0] ?? 'U', 0, 1) . substr($words[1] ?? '', 0, 1));
                         $body = $email['body'] ?? '';
-                        try {
-                            $dateFormatted = \Carbon\Carbon::parse($email['date'] ?? 'now')->format('M j, Y, g:i A');
-                        } catch (\Exception $e) {
-                            $dateFormatted = $email['date'] ?? '—';
-                        }
                     @endphp
                     <div class="card email-view-body-card mx-sm-4 mx-3">
                         <div class="card-header d-flex justify-content-between align-items-center flex-wrap">
@@ -314,12 +367,12 @@
                                     <span class="avatar-initial rounded-circle bg-label-primary">{{ $initials }}</span>
                                 </div>
                                 <div class="flex-grow-1 ms-1">
-                                    <h6 class="m-0">{{ $fromName ?: __('De') }}</h6>
+                                    <h6 class="m-0">{{ $fromName ?: __('From') }}</h6>
                                     <small class="text-muted">{{ $fromEmail }}</small>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                <p class="mb-0 me-3 text-muted">{{ $dateFormatted }}</p>
+                                <p class="mb-0 me-3 text-muted">{{ $email['date_display'] ?? '—' }}</p>
                             </div>
                         </div>
                         <div class="card-body" style="min-height: 120px; white-space: pre-wrap; word-break: break-word;">
@@ -330,7 +383,7 @@
                                     {{ $body }}
                                 @endif
                             @else
-                                <p class="text-muted mb-0">{{ __('(Este mensaje no tiene contenido de texto)') }}</p>
+                                <p class="text-muted mb-0">{{ __('(This message has no text content)') }}</p>
                             @endif
                         </div>
                     </div>

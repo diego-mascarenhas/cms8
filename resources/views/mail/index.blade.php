@@ -10,6 +10,38 @@
 
 @section('page-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/css/pages/app-email.css') }}" />
+    <style>
+        .app-email .email-list li.email-list-item,
+        .app-email .email-list li {
+            transition: none;
+        }
+
+        .app-email .email-list li.email-list-item:hover,
+        .dark-style .app-email .email-list li.email-list-item:hover,
+        .app-email .email-list li.email-list-item:not(.list-inline-item):hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .app-email .email-sender-expand {
+            line-height: 1;
+            min-width: 1.5rem;
+            text-decoration: none;
+        }
+
+        .app-email .email-sender-expand:hover,
+        .app-email .email-sender-expand:focus,
+        .app-email .email-sender-expand:active {
+            background: transparent !important;
+            box-shadow: none !important;
+            outline: none;
+        }
+
+        .app-email .email-list li.email-list-item.email-marked-read,
+        .dark-style .app-email .email-list li.email-list-item.email-marked-read {
+            background-color: transparent !important;
+        }
+    </style>
 @endsection
 
 @section('vendor-script')
@@ -162,7 +194,7 @@
         </div>
     @endif
     <div class="app-email card">
-        @livewire('mail-inbox', ['sources' => $sources])
+        @livewire('mail-inbox')
 
         <!-- Compose Email -->
         <div class="app-email-compose modal" id="emailComposeSidebar" tabindex="-1"

@@ -5,8 +5,11 @@ namespace App\Services\Mail;
 use App\Enums\EmailFolder;
 use App\Models\Email;
 use App\Models\Team;
+use App\Support\ApplicationDateTime;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
+use Illuminate\Support\Collection;
 
 class MailInboxService
 {
@@ -53,6 +56,102 @@ class MailInboxService
     }
 
     public function paginate(Team $team, string $folder, string $search, int $page = 1): LengthAwarePaginator
+    {
+        return $this->paginateGrouped($team, $folder, $search, $page);
+    }
+
+    public function paginateGrouped(Team $team, string $folder, string $search, int $page = 1): LengthAwarePaginator
+    {
+        $groups = $this->senderGroups($team, $folder, $search);
+        $total = $groups->count();
+        $items = $groups->slice(($page - 1) * self::PER_PAGE, self::PER_PAGE)->values();
+
+        return new Paginator(
+            $items,
+            $total,
+            self::PER_PAGE,
+            $page,
+            ['path' => request()->url(), 'pageName' => 'page'],
+        );
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function senderGroups(Team $team, string $folder, string $search): Collection
+    {
+        $query = $this->baseQuery($team);
+        $query = $this->applyFolderFilter($query, $folder);
+        $query = $this->applySearch($query, $search);
+
+        return $query
+            ->get()
+            ->groupBy(fn (Email $email) => self::senderKeyFromAddress((string) $email->from_address))
+            ->map(fn (Collection $items, string $senderKey) => $this->buildSenderGroup($senderKey, $items))
+            ->sortByDesc(fn (array $group) => $group['latest_timestamp'])
+            ->values();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function threadForSender(Team $team, string $folder, string $search, string $senderKey): array
+    {
+        $group = $this->senderGroups($team, $folder, $search)
+            ->firstWhere('sender_key', $senderKey);
+
+        return $group['emails'] ?? [];
+    }
+
+    public static function senderKeyFromAddress(string $fromAddress): string
+    {
+        $from = trim($fromAddress);
+
+        if (preg_match('/<([^>]+)>/', $from, $matches))
+        {
+            return strtolower(trim($matches[1]));
+        }
+
+        return strtolower($from);
+    }
+
+    /**
+     * @param  Collection<int, Email>  $emails
+     * @return array<string, mixed>
+     */
+    private function buildSenderGroup(string $senderKey, Collection $emails): array
+    {
+        $sorted = $emails
+            ->sortByDesc(fn (Email $email) => [optional($email->message_date)?->timestamp ?? 0, $email->id])
+            ->values();
+
+        /** @var Email $latest */
+        $latest = $sorted->first();
+        $formattedEmails = $sorted
+            ->map(fn (Email $email) => $this->formatForList($email))
+            ->values()
+            ->all();
+
+        return [
+            'sender_key' => $senderKey,
+            'from' => $latest->from_address,
+            'count' => $sorted->count(),
+            'unread_count' => $sorted->where('seen', false)->count(),
+            'has_starred' => $sorted->contains(fn (Email $email) => $email->flagged),
+            'seen' => $sorted->every(fn (Email $email) => $email->seen),
+            'subject' => $latest->subject ?? '',
+            'date' => $latest->message_date?->toIso8601String() ?? '',
+            'date_list' => ApplicationDateTime::formatListDateTime($latest->message_date),
+            'latest_timestamp' => optional($latest->message_date)?->timestamp ?? 0,
+            'latest_email_id' => $latest->id,
+            'email_ids' => $sorted->pluck('id')->map(fn ($id) => (int) $id)->all(),
+            'emails' => $formattedEmails,
+            'flagged' => $latest->flagged,
+            'id' => $latest->id,
+        ];
+    }
+
+    public function paginateFlat(Team $team, string $folder, string $search, int $page = 1): LengthAwarePaginator
     {
         $query = $this->baseQuery($team);
         $query = $this->applyFolderFilter($query, $folder);
@@ -144,13 +243,18 @@ class MailInboxService
 
     public function formatForList(Email $email): array
     {
+        $messageDate = $email->message_date;
+
         return [
             'id' => $email->id,
             'message_id' => $email->message_id,
             'subject' => $email->subject ?? '',
             'from' => $email->from_address,
             'to' => $email->to_address ?? '',
-            'date' => $email->message_date?->format('r') ?? '',
+            'date' => $messageDate?->toIso8601String() ?? '',
+            'date_display' => ApplicationDateTime::formatDateTime($messageDate),
+            'date_list' => ApplicationDateTime::formatListDateTime($messageDate),
+            'date_short' => ApplicationDateTime::formatShortDateTime($messageDate),
             'body' => $email->body_html ?: $email->body_text ?: '',
             'attachments' => [],
             'seen' => $email->seen,

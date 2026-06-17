@@ -18,9 +18,6 @@ class MailInbox extends Component
 {
     use WithPagination;
 
-    /** @var \Illuminate\Support\Collection<int, \App\Models\Source> */
-    public $sources;
-
     public string $folder = 'inbox';
 
     public string $search = '';
@@ -29,6 +26,8 @@ class MailInbox extends Component
     public array $selectedIds = [];
 
     public ?int $selectedEmailId = null;
+
+    public ?string $expandedSenderKey = null;
 
     public bool $selectAllOnPage = false;
 
@@ -39,11 +38,6 @@ class MailInbox extends Component
     protected $paginationTheme = 'bootstrap';
 
     protected MailInboxService $inboxService;
-
-    public function mount($sources = []): void
-    {
-        $this->sources = collect($sources);
-    }
 
     public function boot(MailInboxService $inboxService): void
     {
@@ -62,6 +56,7 @@ class MailInbox extends Component
         $this->folder = $folder;
         $this->resetPage();
         $this->selectedEmailId = null;
+        $this->expandedSenderKey = null;
         $this->clearSelection();
     }
 
@@ -114,20 +109,30 @@ class MailInbox extends Component
         }
 
         $this->selectedEmailId = $emailId;
+        $this->expandedSenderKey = MailInboxService::senderKeyFromAddress((string) $email->from_address);
         if (! $email->seen)
         {
             $email->update(['seen' => true]);
         }
     }
 
+    public function toggleSenderExpand(string $senderKey): void
+    {
+        $this->expandedSenderKey = $this->expandedSenderKey === $senderKey ? null : $senderKey;
+    }
+
     public function closeEmailView(): void
     {
         $this->selectedEmailId = null;
+        $this->expandedSenderKey = null;
     }
 
     public function updatedSelectAllOnPage(bool $value): void
     {
-        $pageIds = collect($this->paginatedEmails()->items())->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $pageIds = collect($this->paginatedSenderGroups()->items())
+            ->flatMap(fn (array $group) => $group['email_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
         if ($value)
         {
@@ -244,6 +249,28 @@ class MailInbox extends Component
         $this->clearSelection();
     }
 
+    /**
+     * @param  list<int>  $emailIds
+     */
+    public function toggleGroupSelection(array $emailIds): void
+    {
+        $emailIds = array_values(array_map('intval', $emailIds));
+        if ($emailIds === [])
+        {
+            return;
+        }
+
+        $allSelected = count(array_intersect($emailIds, $this->selectedIds)) === count($emailIds);
+
+        if ($allSelected)
+        {
+            $this->selectedIds = array_values(array_diff($this->selectedIds, $emailIds));
+        } else
+        {
+            $this->selectedIds = array_values(array_unique(array_merge($this->selectedIds, $emailIds)));
+        }
+    }
+
     public function markSingleRead(int $emailId): void
     {
         $team = $this->currentTeam();
@@ -292,7 +319,7 @@ class MailInbox extends Component
 
     public function goToPreviousPage(): void
     {
-        if ($this->paginatedEmails()->onFirstPage())
+        if ($this->paginatedSenderGroups()->onFirstPage())
         {
             return;
         }
@@ -303,7 +330,7 @@ class MailInbox extends Component
 
     public function goToNextPage(): void
     {
-        if (! $this->paginatedEmails()->hasMorePages())
+        if (! $this->paginatedSenderGroups()->hasMorePages())
         {
             return;
         }
@@ -325,7 +352,7 @@ class MailInbox extends Component
 
     public function getPaginationLabelProperty(): string
     {
-        return $this->inboxService->paginationLabel($this->paginatedEmails());
+        return $this->inboxService->paginationLabel($this->paginatedSenderGroups());
     }
 
     public function getSelectedEmailProperty(): ?array
@@ -340,16 +367,35 @@ class MailInbox extends Component
         return $email ? $this->inboxService->formatForList($email) : null;
     }
 
+    public function getSenderThreadProperty(): array
+    {
+        if ($this->expandedSenderKey === null)
+        {
+            return [];
+        }
+
+        $team = $this->currentTeam();
+        if (! $team)
+        {
+            return [];
+        }
+
+        return $this->inboxService->threadForSender($team, $this->folder, $this->search, $this->expandedSenderKey);
+    }
+
     public function render()
     {
         return view('livewire.mail-inbox', [
-            'emailsPage' => $this->paginatedEmails(),
+            'senderGroupsPage' => $this->paginatedSenderGroups(),
             'folderCounts' => $this->folderCounts,
             'paginationLabel' => $this->paginationLabel,
         ]);
     }
 
-    private function paginatedEmails(): LengthAwarePaginator
+    /**
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    private function paginatedSenderGroups(): LengthAwarePaginator
     {
         $team = $this->currentTeam();
         if (! $team)
@@ -357,9 +403,7 @@ class MailInbox extends Component
             return new \Illuminate\Pagination\LengthAwarePaginator([], 0, MailInboxService::PER_PAGE);
         }
 
-        $paginator = $this->inboxService->paginate($team, $this->folder, $this->search, $this->getPage());
-
-        return $paginator->through(fn (Email $email) => $this->inboxService->formatForList($email));
+        return $this->inboxService->paginateGrouped($team, $this->folder, $this->search, $this->getPage());
     }
 
     private function bulkMarkRead(bool $read): void

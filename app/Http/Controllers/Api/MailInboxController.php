@@ -42,7 +42,7 @@ class MailInboxController extends Controller
         $page = (int) ($validated['page'] ?? 1);
         $perPage = (int) ($validated['per_page'] ?? MailInboxService::PER_PAGE);
 
-        $paginator = $this->mailInbox->paginate($team, $folder, $search, $page);
+        $paginator = $this->mailInbox->paginateFlat($team, $folder, $search, $page);
         $paginator->setPath($request->url());
         $paginator->appends($request->query());
 
