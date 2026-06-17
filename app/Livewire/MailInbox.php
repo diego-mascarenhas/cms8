@@ -99,6 +99,7 @@ class MailInbox extends Component
             __('Sincronización completada. :count mensajes procesados.', ['count' => $synced]),
             'success',
         );
+        $this->broadcastInboxCountChanged();
     }
 
     public function selectEmail(int $emailId): void
@@ -114,6 +115,7 @@ class MailInbox extends Component
         if (! $email->seen)
         {
             $email->update(['seen' => true]);
+            $this->broadcastInboxCountChanged();
         }
     }
 
@@ -357,6 +359,7 @@ class MailInbox extends Component
             $read ? __('Marcados como leídos.') : __('Marcados como no leídos.'),
             'success',
         );
+        $this->broadcastInboxCountChanged();
     }
 
     public function deleteSingle(int $emailId): void
@@ -492,6 +495,7 @@ class MailInbox extends Component
             'success',
         );
         $this->clearSelection();
+        $this->broadcastInboxCountChanged();
     }
 
     private function markAllInCurrentFolderRead(): void
@@ -512,6 +516,7 @@ class MailInbox extends Component
 
         $this->flashStatus(__('Marcados como leídos.'), 'success');
         $this->clearSelection();
+        $this->broadcastInboxCountChanged();
     }
 
     private function markAllInCurrentFolderUnread(): void
@@ -532,6 +537,7 @@ class MailInbox extends Component
 
         $this->flashStatus(__('Marcados como no leídos.'), 'success');
         $this->clearSelection();
+        $this->broadcastInboxCountChanged();
     }
 
     private function afterBulkAction(): void
@@ -542,6 +548,7 @@ class MailInbox extends Component
         }
 
         $this->clearSelection();
+        $this->broadcastInboxCountChanged();
     }
 
     private function clearSelection(): void
@@ -602,5 +609,10 @@ class MailInbox extends Component
     {
         $this->statusMessage = $message;
         $this->statusType = $type;
+    }
+
+    private function broadcastInboxCountChanged(): void
+    {
+        $this->dispatch('mail-inbox-updated');
     }
 }

@@ -409,11 +409,7 @@
 
         <!-- Mail -->
         @if(auth()->user()->currentTeam?->hasModule('mailbox'))
-            <li class="nav-item me-3 me-xl-1">
-                <a class="nav-link" href="{{ route('mail-list') }}" data-bs-toggle="tooltip" data-bs-placement="bottom" title="{{ __('Mail') }}">
-                    <i class="ti ti-mail ti-md"></i>
-                </a>
-            </li>
+            @livewire('mail-navbar-icon')
         @endif
         <!--/ Mail -->
 
