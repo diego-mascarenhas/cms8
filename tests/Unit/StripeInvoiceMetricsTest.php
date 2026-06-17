@@ -97,4 +97,48 @@ class StripeInvoiceMetricsTest extends TestCase
     {
         $this->assertSame(15.5, StripeInvoiceMetrics::sumAmountsConvertedToCurrency(['EUR' => 15.5], 'EUR'));
     }
+
+    public function test_stripe_paid_invoice_amount_falls_back_to_total_when_amount_paid_is_zero(): void
+    {
+        $invoice = (object) [
+            'amount_paid' => 0,
+            'total' => 7377900,
+        ];
+
+        $this->assertSame(73779.0, StripeInvoiceMetrics::stripePaidInvoiceAmount($invoice));
+    }
+
+    public function test_contact_balance_metrics_sums_visible_invoice_rows(): void
+    {
+        $metrics = StripeInvoiceMetrics::contactBalanceMetrics(
+            [
+                ['amount' => 73779, 'currency' => 'ARS'],
+                ['amount' => 73779, 'currency' => 'ARS'],
+            ],
+            [
+                ['amount' => 73779, 'currency' => 'ARS'],
+            ],
+            'ARS',
+        );
+
+        $this->assertStringContainsString('147,558.00 ARS', $metrics['total_paid']);
+        $this->assertStringContainsString('73,779.00 ARS', $metrics['unpaid']);
+        $this->assertEqualsWithDelta(147558.0, $metrics['total_paid_raw'], 0.001);
+        $this->assertEqualsWithDelta(73779.0, $metrics['unpaid_raw'], 0.001);
+    }
+
+    public function test_metric_card_display_falls_back_to_table_rows_when_metrics_missing(): void
+    {
+        $rows = [['amount' => 100, 'currency' => 'ARS']];
+
+        $this->assertSame(
+            '100.00 ARS',
+            StripeInvoiceMetrics::metricCardDisplay(null, 'total_paid', $rows),
+        );
+
+        $this->assertSame(
+            '100.00 ARS',
+            StripeInvoiceMetrics::metricCardDisplay(['total_paid' => '0.00'], 'total_paid', $rows),
+        );
+    }
 }

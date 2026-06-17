@@ -69,6 +69,79 @@ class StripeInvoiceMetrics
     }
 
     /**
+     * Paid invoice amount in major units (matches balance table rows).
+     */
+    public static function stripePaidInvoiceAmount(object $invoice): float
+    {
+        $cents = (int) ($invoice->amount_paid ?? 0);
+
+        if ($cents <= 0)
+        {
+            $cents = (int) ($invoice->total ?? $invoice->amount_due ?? 0);
+        }
+
+        return $cents / 100;
+    }
+
+    /**
+     * Open / uncollectible invoice amount in major units (matches balance table rows).
+     */
+    public static function stripeUnpaidInvoiceAmount(object $invoice): float
+    {
+        $cents = (int) ($invoice->amount_due ?? $invoice->amount_remaining ?? $invoice->total ?? 0);
+
+        return $cents / 100;
+    }
+
+    /**
+     * Summary totals for the contact balance cards (same rows as the tables below).
+     *
+     * @param  array<int, array<string, mixed>>  $paidRows
+     * @param  array<int, array<string, mixed>>  $unpaidRows
+     * @return array{
+     *     total_paid: string,
+     *     unpaid: string,
+     *     paid_by_currency: array<string, float>,
+     *     unpaid_by_currency: array<string, float>,
+     *     total_paid_raw: float,
+     *     unpaid_raw: float,
+     * }
+     */
+    public static function contactBalanceMetrics(array $paidRows, array $unpaidRows, ?string $primaryCurrency = null): array
+    {
+        $paidByCurrency = self::sumAmountsByCurrency($paidRows);
+        $unpaidByCurrency = self::sumAmountsByCurrency($unpaidRows);
+        $primaryCurrency = strtoupper(trim((string) ($primaryCurrency ?? config('cashier.currency', 'usd'))));
+
+        return [
+            'total_paid' => self::formatMetricTotalsWithPrimaryEquivalent($paidByCurrency, $primaryCurrency),
+            'unpaid' => self::formatMetricTotalsWithPrimaryEquivalent($unpaidByCurrency, $primaryCurrency),
+            'paid_by_currency' => $paidByCurrency,
+            'unpaid_by_currency' => $unpaidByCurrency,
+            'total_paid_raw' => array_sum($paidByCurrency),
+            'unpaid_raw' => array_sum($unpaidByCurrency),
+        ];
+    }
+
+    /**
+     * Resolve metric card text from controller metrics or by summing visible table rows.
+     *
+     * @param  array<string, mixed>|null  $metrics
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    public static function metricCardDisplay(?array $metrics, string $metricKey, array $rows): string
+    {
+        $fromMetrics = is_array($metrics) ? trim((string) ($metrics[$metricKey] ?? '')) : '';
+
+        if ($fromMetrics !== '' && $fromMetrics !== '0.00')
+        {
+            return $fromMetrics;
+        }
+
+        return self::formatMetricTotalsForDisplay(self::sumAmountsByCurrency($rows));
+    }
+
+    /**
      * Sum invoice row amounts grouped by ISO currency (same rows as shown in balance tables).
      *
      * @param  array<int, array<string, mixed>>  $rows

@@ -1,4 +1,11 @@
 <div class="card mb-4">
+    @php
+        $balanceMetrics = $stripeData['metrics'] ?? null;
+        $paidRows = $stripeData['invoices'] ?? [];
+        $unpaidRows = $stripeData['unpaid_invoices'] ?? [];
+        $paidTotalDisplay = \App\Support\StripeInvoiceMetrics::metricCardDisplay($balanceMetrics, 'total_paid', $paidRows);
+        $unpaidTotalDisplay = \App\Support\StripeInvoiceMetrics::metricCardDisplay($balanceMetrics, 'unpaid', $unpaidRows);
+    @endphp
     <h5 class="card-header d-flex justify-content-between align-items-center">
         Saldo
         @if(!empty($enterprise->code))
@@ -33,7 +40,7 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ $stripeData['metrics']['total_paid'] ?? '0.00' }}</h4>
+                        <h4 class="mb-0">{{ $paidTotalDisplay }}</h4>
                         <small class="text-muted">Pagado</small>
                     </div>
                 </div>
@@ -46,7 +53,7 @@
                         </span>
                     </div>
                     <div>
-                        <h4 class="mb-0">{{ $stripeData['metrics']['unpaid'] ?? '0.00' }}</h4>
+                        <h4 class="mb-0">{{ $unpaidTotalDisplay }}</h4>
                         <small class="text-muted">Impago</small>
                     </div>
                 </div>
