@@ -7,6 +7,7 @@ use App\Models\Email;
 use App\Models\Team;
 use App\Services\Imap\MailboxConnectionService;
 use App\Services\Mail\MailInboxService;
+use App\Support\MailComposeReplyForward;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\On;
@@ -145,11 +146,25 @@ class MailInbox extends Component
 
     public function markSelectedRead(): void
     {
+        if ($this->selectedIds === [])
+        {
+            $this->markAllInCurrentFolderRead();
+
+            return;
+        }
+
         $this->bulkMarkRead(true);
     }
 
     public function markSelectedUnread(): void
     {
+        if ($this->selectedIds === [])
+        {
+            $this->markAllInCurrentFolderUnread();
+
+            return;
+        }
+
         $this->bulkMarkRead(false);
     }
 
@@ -201,6 +216,11 @@ class MailInbox extends Component
     }
 
     public function moveSelectedFromSpam(): void
+    {
+        $this->moveSelectedToInbox();
+    }
+
+    public function moveSelectedToInbox(): void
     {
         $team = $this->currentTeam();
         if (! $team || $this->selectedIds === [])
@@ -271,26 +291,72 @@ class MailInbox extends Component
         }
     }
 
-    public function markSingleRead(int $emailId): void
+    public function forwardSelected(): void
     {
-        $team = $this->currentTeam();
-        if (! $team)
+        $email = $this->selectedEmail;
+        if ($email === null)
         {
             return;
         }
 
-        $this->inboxService->markRead($team, [$emailId], true);
+        $payload = MailComposeReplyForward::forwardPayload($email);
+        $this->dispatch('open-mail-compose', ...$payload);
+    }
+
+    public function replyToSelected(): void
+    {
+        $email = $this->selectedEmail;
+        if ($email === null)
+        {
+            return;
+        }
+
+        $payload = MailComposeReplyForward::replyPayload($email, $this->folder);
+        $this->dispatch('open-mail-compose', ...$payload);
+    }
+
+    public function markGroupRead(array $emailIds): void
+    {
+        $this->markEmailsReadState($emailIds, true);
+    }
+
+    public function markGroupUnread(array $emailIds): void
+    {
+        $this->markEmailsReadState($emailIds, false);
+    }
+
+    public function markSingleRead(int $emailId): void
+    {
+        $this->markEmailsReadState([$emailId], true);
     }
 
     public function markSingleUnread(int $emailId): void
     {
+        $this->markEmailsReadState([$emailId], false);
+    }
+
+    /**
+     * @param  list<int>  $emailIds
+     */
+    private function markEmailsReadState(array $emailIds, bool $read): void
+    {
         $team = $this->currentTeam();
         if (! $team)
         {
             return;
         }
 
-        $this->inboxService->markRead($team, [$emailId], false);
+        $emailIds = array_values(array_unique(array_map('intval', $emailIds)));
+        if ($emailIds === [])
+        {
+            return;
+        }
+
+        $this->inboxService->markRead($team, $emailIds, $read);
+        $this->flashStatus(
+            $read ? __('Marcados como leídos.') : __('Marcados como no leídos.'),
+            'success',
+        );
     }
 
     public function deleteSingle(int $emailId): void
@@ -315,6 +381,12 @@ class MailInbox extends Component
     {
         $this->selectedIds = [$emailId];
         $this->moveSelectedFromSpam();
+    }
+
+    public function moveSingleToInbox(int $emailId): void
+    {
+        $this->selectedIds = [$emailId];
+        $this->moveSelectedToInbox();
     }
 
     public function goToPreviousPage(): void
@@ -419,6 +491,46 @@ class MailInbox extends Component
             $read ? __('Marcados como leídos.') : __('Marcados como no leídos.'),
             'success',
         );
+        $this->clearSelection();
+    }
+
+    private function markAllInCurrentFolderRead(): void
+    {
+        $team = $this->currentTeam();
+        if (! $team)
+        {
+            return;
+        }
+
+        $updated = $this->inboxService->markAllReadInFolder($team, $this->folder, true);
+        if ($updated === 0)
+        {
+            $this->flashStatus(__('No hay correos sin leer en esta carpeta.'), 'success');
+
+            return;
+        }
+
+        $this->flashStatus(__('Marcados como leídos.'), 'success');
+        $this->clearSelection();
+    }
+
+    private function markAllInCurrentFolderUnread(): void
+    {
+        $team = $this->currentTeam();
+        if (! $team)
+        {
+            return;
+        }
+
+        $updated = $this->inboxService->markAllReadInFolder($team, $this->folder, false);
+        if ($updated === 0)
+        {
+            $this->flashStatus(__('No hay correos leídos en esta carpeta.'), 'success');
+
+            return;
+        }
+
+        $this->flashStatus(__('Marcados como no leídos.'), 'success');
         $this->clearSelection();
     }
 

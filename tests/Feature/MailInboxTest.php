@@ -214,6 +214,76 @@ class MailInboxTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_mark_group_unread_updates_all_emails_in_sender_group(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $first = $this->createEmail($team, [
+            'from_address' => 'Partner <partner@example.com>',
+            'seen' => true,
+        ]);
+        $second = $this->createEmail($team, [
+            'from_address' => 'Partner <partner@example.com>',
+            'seen' => true,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->call('markGroupUnread', [$first->id, $second->id])
+            ->assertSet('statusMessage', __('Marcados como no leídos.'));
+
+        $this->assertFalse($first->fresh()->seen);
+        $this->assertFalse($second->fresh()->seen);
+    }
+
+    public function test_archive_folder_lists_archived_emails(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $archived = $this->createEmail($team, [
+            'subject' => 'Archived message',
+            'folder' => EmailFolder::Archive,
+        ]);
+        $this->createEmail($team, [
+            'subject' => 'Inbox message',
+            'folder' => EmailFolder::Inbox,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->call('setFolder', 'archive')
+            ->assertSee('Archived message')
+            ->assertDontSee('Inbox message');
+
+        $this->assertSame($archived->id, Email::query()->where('team_id', $team->id)->where('folder', EmailFolder::Archive->value)->value('id'));
+    }
+
+    public function test_mark_selected_read_without_selection_marks_all_unread_in_folder(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $this->createEmail($team, ['seen' => false, 'from_address' => 'a@example.com']);
+        $this->createEmail($team, ['seen' => false, 'from_address' => 'b@example.com']);
+        $this->createEmail($team, ['seen' => true, 'from_address' => 'c@example.com']);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->call('markSelectedRead')
+            ->assertSet('statusMessage', __('Marcados como leídos.'));
+
+        $this->assertSame(
+            0,
+            Email::query()
+                ->where('team_id', $team->id)
+                ->where('folder', EmailFolder::Inbox->value)
+                ->where('seen', false)
+                ->count(),
+        );
+    }
+
     public function test_select_email_marks_as_read(): void
     {
         $user = $this->userWithTeam();
@@ -224,6 +294,20 @@ class MailInboxTest extends TestCase
             ->call('selectEmail', $email->id);
 
         $this->assertTrue($email->fresh()->seen);
+    }
+
+    public function test_move_selected_to_inbox_from_trash(): void
+    {
+        $user = $this->userWithTeam();
+        $email = $this->createEmail($user->currentTeam, ['folder' => EmailFolder::Trash]);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->set('folder', 'trash')
+            ->set('selectedIds', [$email->id])
+            ->call('moveSelectedToInbox');
+
+        $this->assertSame(EmailFolder::Inbox->value, $email->fresh()->folder->value);
     }
 
     public function test_move_selected_to_spam_and_back_to_inbox(): void

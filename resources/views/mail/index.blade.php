@@ -124,6 +124,51 @@
                 }
             }
 
+            function setMailComposeRecipients(recipients) {
+                var $sel = window.jQuery && window.jQuery('#emailContacts');
+                if (!$sel || !$sel.length) {
+                    return;
+                }
+                $sel.val(null).trigger('change');
+                (Array.isArray(recipients) ? recipients : []).forEach(function (email) {
+                    if (!email) {
+                        return;
+                    }
+                    if ($sel.find('option[value="' + email.replace(/"/g, '\\"') + '"]').length === 0) {
+                        $sel.append(new Option(email, email, true, true));
+                    }
+                });
+                $sel.val(recipients).trigger('change');
+            }
+
+            function openMailCompose(payload) {
+                if (!payload) {
+                    return;
+                }
+                setMailComposeRecipients(payload.recipients || []);
+                var subj = document.getElementById('email-subject');
+                if (subj) {
+                    subj.value = payload.subject || '';
+                }
+                setMailComposeBodyText(payload.body || '');
+                var elOpen = document.getElementById('emailComposeSidebar');
+                if (elOpen && window.bootstrap && window.bootstrap.Modal) {
+                    window.bootstrap.Modal.getOrCreateInstance(elOpen).show();
+                }
+            }
+
+            function registerMailComposeListener() {
+                Livewire.on('open-mail-compose', function (event) {
+                    openMailCompose(event);
+                });
+            }
+
+            if (typeof Livewire !== 'undefined') {
+                registerMailComposeListener();
+            } else {
+                document.addEventListener('livewire:init', registerMailComposeListener);
+            }
+
             function runMailComposeSuggest(flowKey) {
                 if (busy || !csrf) {
                     return;
@@ -193,6 +238,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Close') }}"></button>
         </div>
     @endif
+    <div id="mail-inbox-status"></div>
     <div class="app-email card">
         @livewire('mail-inbox')
 
@@ -202,7 +248,9 @@
             <div class="modal-dialog m-0 me-md-4 mb-4 modal-lg">
                 <div class="modal-content p-0">
                     <div class="modal-header py-3 bg-body">
-                        <h5 class="modal-title fs-5">{{ __('Compose mail') }}</h5>
+                        <h5 class="modal-title fs-5 d-flex align-items-center">
+                            <i class="ti ti-pencil ti-sm me-2"></i>{{ __('Compose mail') }}
+                        </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
                     </div>
                     <div class="modal-body flex-grow-1 pb-sm-0 p-4 py-2">

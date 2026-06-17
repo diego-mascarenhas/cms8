@@ -1,18 +1,23 @@
 <div>
     @if ($statusMessage)
-        <div class="px-3 pt-2" wire:key="mail-status-{{ md5($statusMessage) }}">
-            <div class="alert alert-{{ $statusType === 'success' ? 'success' : 'danger' }} alert-dismissible mb-0 py-2" role="alert">
+        @teleport('#mail-inbox-status')
+            <div class="alert alert-{{ $statusType === 'success' ? 'success' : 'danger' }} alert-dismissible mb-3 py-2"
+                role="alert"
+                wire:key="mail-status-{{ md5($statusMessage) }}">
                 {{ $statusMessage }}
-                <button type="button" class="btn-close" wire:click="$set('statusMessage', null)"></button>
+                <button type="button" class="btn-close" wire:click="$set('statusMessage', null)" aria-label="{{ __('Close') }}"></button>
             </div>
-        </div>
+        @endteleport
     @endif
 
     <div class="row g-0">
     <div class="col app-email-sidebar border-end flex-grow-0" id="app-email-sidebar">
         <div class="btn-compost-wrapper d-grid">
-            <button class="btn btn-primary btn-compose" data-bs-toggle="modal" data-bs-target="#emailComposeSidebar"
-                id="emailComposeSidebarLabel">{{ __('Compose mail') }}</button>
+            <button class="btn btn-primary btn-compose d-inline-flex align-items-center justify-content-center"
+                data-bs-toggle="modal" data-bs-target="#emailComposeSidebar"
+                id="emailComposeSidebarLabel">
+                <i class="ti ti-pencil ti-sm me-1"></i>{{ __('Compose mail') }}
+            </button>
         </div>
         <div class="email-filters py-2">
             <ul class="email-filter-folders list-unstyled mb-4">
@@ -22,6 +27,7 @@
                         'sent' => ['icon' => 'ti-send', 'label' => __('Sent'), 'badge' => null],
                         'draft' => ['icon' => 'ti-file', 'label' => __('Draft'), 'badge' => $folderCounts['draft'] ?? 0],
                         'starred' => ['icon' => 'ti-star', 'label' => __('Starred'), 'badge' => $folderCounts['starred'] ?? 0, 'badge_class' => 'bg-label-warning'],
+                        'archive' => ['icon' => 'ti-archive', 'label' => __('Archived'), 'badge' => $folderCounts['archive'] ?? 0],
                         'spam' => ['icon' => 'ti-shield-x', 'label' => __('Spam'), 'badge' => $folderCounts['spam'] ?? 0],
                         'trash' => ['icon' => 'ti-trash', 'label' => __('Trash'), 'badge' => $folderCounts['trash'] ?? 0],
                     ];
@@ -90,6 +96,7 @@
                             </div>
                             <i class="ti ti-trash ti-sm email-list-delete cursor-pointer me-2" wire:click="deleteSelected" title="{{ __('Delete') }}"></i>
                             <i class="ti ti-mail-opened ti-sm email-list-read cursor-pointer me-2" wire:click="markSelectedRead" title="{{ __('Mark as read') }}"></i>
+                            <i class="ti ti-mail ti-sm email-list-unread cursor-pointer me-2" wire:click="markSelectedUnread" title="{{ __('Mark as unread') }}"></i>
                             @if ($folder === 'spam')
                                 <i class="ti ti-inbox ti-sm cursor-pointer me-2" wire:click="moveSelectedFromSpam" title="{{ __('Not spam') }}"></i>
                             @else
@@ -101,6 +108,12 @@
                                     <i class="ti ti-folder ti-sm"></i>
                                 </button>
                                 <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuFolderOne">
+                                    @if ($folder !== 'inbox')
+                                        <a class="dropdown-item" href="javascript:void(0)" wire:click.prevent="moveSelectedToInbox">
+                                            <i class="ti ti-mail ti-xs me-1"></i>
+                                            <span class="align-middle">{{ __('Inbox') }}</span>
+                                        </a>
+                                    @endif
                                     <a class="dropdown-item" href="javascript:void(0)" wire:click.prevent="moveSelectedToSpam">
                                         <i class="ti ti-shield-x ti-xs me-1"></i>
                                         <span class="align-middle">{{ __('Spam') }}</span>
@@ -192,9 +205,15 @@
                                             {{ $group['date_list'] ?? '—' }}
                                         </small>
                                         <ul class="list-inline email-list-item-actions text-nowrap">
-                                            <li class="list-inline-item email-read" wire:click.stop="markSingleRead({{ $group['latest_email_id'] }})">
-                                                <i class="ti ti-mail-opened ti-sm"></i>
-                                            </li>
+                                            @if ($hasUnread)
+                                                <li class="list-inline-item email-read" wire:click.stop="markGroupRead(@js($groupEmailIds))" title="{{ __('Mark as read') }}">
+                                                    <i class="ti ti-mail-opened ti-sm"></i>
+                                                </li>
+                                            @else
+                                                <li class="list-inline-item email-unread" wire:click.stop="markGroupUnread(@js($groupEmailIds))" title="{{ __('Mark as unread') }}">
+                                                    <i class="ti ti-mail ti-sm"></i>
+                                                </li>
+                                            @endif
                                             <li class="list-inline-item email-delete" wire:click.stop="deleteSingle({{ $group['latest_email_id'] }})">
                                                 <i class="ti ti-trash ti-sm"></i>
                                             </li>
@@ -244,9 +263,16 @@
                         </h6>
                     </div>
                     <div class="d-flex align-items-center">
-                        <i class="ti ti-printer ti-sm mt-1 cursor-pointer d-sm-block d-none"></i>
                         @if ($this->selectedEmail)
-                            <div class="dropdown ms-3">
+                            <button type="button" class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none"
+                                wire:click="replyToSelected" title="{{ __('Reply') }}">
+                                <i class="ti ti-corner-up-left ti-sm"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none ms-1"
+                                wire:click="forwardSelected" title="{{ __('Forward') }}">
+                                <i class="ti ti-corner-up-right ti-sm"></i>
+                            </button>
+                            <div class="dropdown ms-2">
                                 <button class="btn p-0" type="button" id="dropdownMoreOptions" data-bs-toggle="dropdown"
                                     aria-haspopup="true" aria-expanded="false">
                                     <i class="ti ti-dots-vertical ti-sm"></i>
@@ -270,8 +296,12 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
                         @if ($selectedEmailId)
+                            @if ($this->selectedEmail['seen'] ?? false)
+                                <i class="ti ti-mail ti-sm cursor-pointer me-3" wire:click="markSingleUnread({{ $selectedEmailId }})" title="{{ __('Mark as unread') }}"></i>
+                            @else
+                                <i class="ti ti-mail-opened ti-sm cursor-pointer me-3" wire:click="markSingleRead({{ $selectedEmailId }})" title="{{ __('Mark as read') }}"></i>
+                            @endif
                             <i class="ti ti-trash ti-sm cursor-pointer me-3" wire:click="deleteSingle({{ $selectedEmailId }})" title="{{ __('Delete') }}"></i>
-                            <i class="ti ti-mail-opened ti-sm cursor-pointer me-3" wire:click="markSingleRead({{ $selectedEmailId }})" title="{{ __('Mark as read') }}"></i>
                             @if ($folder === 'spam')
                                 <i class="ti ti-inbox ti-sm cursor-pointer me-3" wire:click="moveSingleFromSpam({{ $selectedEmailId }})" title="{{ __('Not spam') }}"></i>
                             @else
@@ -284,6 +314,11 @@
                                 <i class="ti ti-folder ti-sm"></i>
                             </button>
                             <div class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuFolderTwo">
+                                @if ($folder !== 'inbox')
+                                    <a class="dropdown-item" href="javascript:void(0)" wire:click.prevent="moveSelectedToInbox">
+                                        <i class="ti ti-mail ti-xs me-1"></i><span class="align-middle">{{ __('Inbox') }}</span>
+                                    </a>
+                                @endif
                                 <a class="dropdown-item" href="javascript:void(0)" wire:click.prevent="moveSelectedToSpam">
                                     <i class="ti ti-shield-x ti-xs me-1"></i><span class="align-middle">{{ __('Spam') }}</span>
                                 </a>

@@ -136,7 +136,7 @@ class MailInboxService
             'sender_key' => $senderKey,
             'from' => $latest->from_address,
             'count' => $sorted->count(),
-            'unread_count' => $sorted->where('seen', false)->count(),
+            'unread_count' => $sorted->filter(fn (Email $email) => ! $email->seen)->count(),
             'has_starred' => $sorted->contains(fn (Email $email) => $email->flagged),
             'seen' => $sorted->every(fn (Email $email) => $email->seen),
             'subject' => $latest->subject ?? '',
@@ -202,6 +202,17 @@ class MailInboxService
     public function markRead(Team $team, array $emailIds, bool $read): int
     {
         return $this->scopedIds($team, $emailIds)->update(['seen' => $read]);
+    }
+
+    public function markAllReadInFolder(Team $team, string $folder, bool $read = true): int
+    {
+        $query = Email::query()
+            ->where('team_id', $team->id)
+            ->where('seen', ! $read);
+
+        $query = $this->applyFolderFilter($query, $folder);
+
+        return $query->update(['seen' => $read]);
     }
 
     /**
