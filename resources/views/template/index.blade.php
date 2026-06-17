@@ -87,7 +87,7 @@
 
 <div class="card">
     <div class="card-body">
-        {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
+        {!! $dataTable->table(['class' => 'table table-hover dt-responsive w-100']) !!}
     </div>
 </div>
 
@@ -167,5 +167,5 @@
 @endsection
 
 @push('scripts')
-    {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+    {!! $dataTable->scripts() !!}
 @endpush
