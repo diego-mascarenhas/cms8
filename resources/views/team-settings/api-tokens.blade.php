@@ -8,17 +8,11 @@
 
 @section('content')
 <meta name="csrf-token" content="{{ csrf_token() }}">
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Team Settings/</span> API Access Tokens</h4>
-        <p class="text-muted">Generate and manage team API tokens for external access</p>
-    </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i>{{ __('Back to Settings') }}
-        </a>
-    </div>
-</div>
+@include('team-settings.partials.header', [
+    'team' => $team,
+    'title' => __('API Access Token'),
+    'subtitle' => __('Generate and manage team API tokens for external access'),
+])
 
 <div class="row">
     <div class="col-md-12">

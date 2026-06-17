@@ -18,6 +18,7 @@ use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
 use App\Support\TeamDefaultShortcuts;
+use App\Support\TeamSettingsLabels;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -377,15 +378,10 @@ class TeamSettingController extends Controller
         }
 
         $group = array_key_first($request->validated());
-        $message = match ($group)
-        {
-            'email' => __('app.team_setting_mailer_saved'),
-            default => __(':group settings updated successfully', ['group' => ucfirst((string) $group)]),
-        };
 
         return redirect()
             ->back()
-            ->with('success', $message);
+            ->with('success', TeamSettingsLabels::groupSavedMessage((string) $group));
     }
 
     public function updateEmailSender(UpdateTeamEmailSenderRequest $request, Team $team): JsonResponse
@@ -1337,7 +1333,12 @@ class TeamSettingController extends Controller
             ],
         ];
 
-        return isset($config[$group]) ? [$group => $config[$group]] : [];
+        if (! isset($config[$group]))
+        {
+            return [];
+        }
+
+        return TeamSettingsLabels::localizeConfig([$group => $config[$group]]);
     }
 
     /**

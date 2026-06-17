@@ -1670,5 +1670,7 @@
   "The address uses your business name from the business configuration wizard (normalized). Published products only.": "La dirección usa el nombre del negocio del asistente de configuración (normalizado). Solo productos publicados.",
   "Twilio Integration": "Integración con Twilio",
   "Valorations": "Valoraciones",
+  "Add Valoration": "Agregar valoración",
+  "Add Translation": "Agregar traducción",
   "WooCommerce Integration": "Integración con WooCommerce"
 }

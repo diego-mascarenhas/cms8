@@ -11,17 +11,12 @@
 @endsection
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Settings/</span> Valorations</h4>
-        <p class="text-muted">Manage contact valorations for your team</p>
-    </div>
-    <div class="mt-3 mt-md-0">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createValorationModal">
-            <i class="ti ti-plus me-1"></i> Add Valoration
-        </button>
-    </div>
-</div>
+@include('team-settings.partials.header', [
+    'team' => $team,
+    'title' => __('Valorations'),
+    'subtitle' => __('Manage contact valorations for your team'),
+    'actions' => '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createValorationModal"><i class="ti ti-plus me-1"></i>'.e(__('Add Valoration')).'</button>',
+])
 
     @if (session('success'))
         <div class="alert alert-success alert-dismissible" role="alert">

@@ -1,14 +1,10 @@
 @extends('layouts/layoutMaster')
 
 @php
-    $teamSettingsGroupTitles = [
-        'fiscal' => __('Exportación fiscal'),
-        'cuentica' => __('Cuéntica'),
-        'email' => __('app.team_setting_mailer_email_title'),
-    ];
+    use App\Support\TeamSettingsLabels;
 @endphp
 
-@section('title', $teamSettingsGroupTitles[$group ?? ''] ?? __('Team Settings'))
+@section('title', TeamSettingsLabels::groupTitle($group ?? ''))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
@@ -17,33 +13,20 @@
 
 @section('content')
 @php
-    $groupTitles = $teamSettingsGroupTitles;
-    $groupTitle = $groupTitles[$group ?? ''] ?? (isset($group) ? ucfirst($group) : __('Configuration'));
+    $groupTitle = TeamSettingsLabels::groupTitle($group ?? '');
+    $groupSubtitle = TeamSettingsLabels::groupSubtitle($group ?? '');
+    $headerActions = '';
+    if (($group ?? '') === 'cuentica') {
+        $headerActions = '<button type="button" id="btnTestCuentica" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-cuentica', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
+    }
 @endphp
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ $groupTitle }}</h4>
-        <p class="text-muted">
-            @if (($group ?? '') === 'fiscal')
-                {{ __('Elige la plataforma fiscal y el país para el enrutado automático.') }}
-            @elseif (($group ?? '') === 'cuentica')
-                {{ __('Credenciales de Cuéntica para exportar facturas a España.') }}
-            @elseif (($group ?? '') === 'email')
-                {{ __('app.team_setting_mailer_email_subtitle') }}
-            @else
-                {{ __('Configure') }} {{ isset($group) ? strtolower($group) : 'team' }} {{ __('settings') }}
-            @endif
-        </p>
-    </div>
-    @if (($group ?? '') === 'cuentica')
-        <div class="mt-3 mt-md-0">
-            <button type="button" id="btnTestCuentica" class="btn btn-info waves-effect waves-light"
-                data-url="{{ route('team-settings.test-cuentica', $team) }}">
-                <i class="ti ti-plug-connected me-1"></i>{{ __('Probar conexión') }}
-            </button>
-        </div>
-    @endif
-</div>
+
+@include('team-settings.partials.header', [
+    'team' => $team,
+    'title' => $groupTitle,
+    'subtitle' => $groupSubtitle,
+    'actions' => $headerActions,
+])
 
 @if (($group ?? '') === 'cuentica')
     <div id="cuenticaTestResult" class="mb-3"></div>
@@ -117,15 +100,8 @@
                                         @php $currentSection = $setting['section']; @endphp
 
                                         {{-- Add section title --}}
-                                        @if($setting['section'] === 'outgoing')
-                                            <div class="col-12 mb-3">
-                                                <h6 class="text-muted mb-0">📤 Outgoing Email (SMTP)</h6>
-                                            </div>
-                                        @elseif($setting['section'] === 'incoming')
-                                            <div class="col-12 mb-3">
-                                                <h6 class="text-muted mb-0">📥 Incoming Email (IMAP)</h6>
-                                            </div>
-                                        @elseif($setting['section'] === 'team_sender' && $groupKey === 'email')
+                                        @php $sectionTitle = TeamSettingsLabels::sectionTitle($setting['section'], $groupKey); @endphp
+                                        @if($setting['section'] === 'team_sender' && $groupKey === 'email')
                                             <div class="col-12 mb-3">
                                                 <h6 class="text-muted mb-1">{{ __('app.team_setting_team_sender_title') }}</h6>
                                                 <p class="small text-muted mb-0">{{ __('app.team_setting_team_sender_intro') }}</p>
@@ -154,6 +130,10 @@
                                                 @elseif ($team->hasTeamEmailSenderConfigured())
                                                     <p class="small text-muted mb-0 mt-2">{{ __('app.team_setting_mailer_uses_team_sender') }}</p>
                                                 @endif
+                                            </div>
+                                        @elseif($sectionTitle)
+                                            <div class="col-12 mb-3">
+                                                <h6 class="text-muted mb-0">{{ $sectionTitle }}</h6>
                                             </div>
                                         @elseif($setting['section'] === 'routing')
                                             <div class="col-12 mb-2">
@@ -222,7 +202,7 @@
                                                 id="{{ $key }}"
                                                 name="{{ $groupKey }}[{{ $key }}]"
                                                 rows="3"
-                                                placeholder="{{ __('Enter :label', ['label' => strtolower($setting['label'])]) }}"
+                                                placeholder="{{ $setting['placeholder'] ?? __('Enter :label', ['label' => strtolower($setting['label'])]) }}"
                                             >{{ old("{$groupKey}.{$key}", $setting['value']) }}</textarea>
                                         @elseif($setting['type'] === 'readonly')
                                             <div class="input-group">
@@ -236,7 +216,7 @@
                                                 </span>
                                             </div>
                                         @else
-                                            <div class="input-group input-group-merge">
+                                            <div class="input-group input-group-merge has-validation">
                                                 <input class="form-control @error("{$groupKey}.{$key}") is-invalid @enderror"
                                                     type="{{ $setting['type'] }}" id="{{ $key }}"
                                                     name="{{ $groupKey }}[{{ $key }}]"
@@ -251,7 +231,7 @@
                                         @endif
 
                                         @error("{$groupKey}.{$key}")
-                                            <div class="invalid-feedback">{{ $message }}</div>
+                                            <div class="invalid-feedback d-block">{{ $message }}</div>
                                         @enderror
                                         @if (!empty($setting['help'] ?? null))
                                             <div class="form-text">{{ $setting['help'] }}</div>
@@ -260,8 +240,7 @@
                                 @endforeach
                             </div>
                             <div class="mt-4">
-                                <button type="submit" class="btn btn-primary me-2">{{ __('Save Changes') }}</button>
-                                <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">{{ __('Cancel') }}</a>
+                                <button type="submit" class="btn btn-primary">{{ __('Save Changes') }}</button>
                             </div>
                         </div>
                     </div>
