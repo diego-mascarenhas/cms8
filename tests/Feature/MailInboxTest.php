@@ -284,6 +284,72 @@ class MailInboxTest extends TestCase
         );
     }
 
+    public function test_mark_selected_read_with_select_all_on_page_marks_all_unread_in_folder(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        for ($i = 1; $i <= 10; $i++)
+        {
+            $this->createEmail($team, [
+                'seen' => true,
+                'from_address' => "sender{$i}@example.com",
+                'message_date' => Carbon::now()->subMinutes($i),
+            ]);
+        }
+
+        $this->createEmail($team, [
+            'seen' => false,
+            'from_address' => 'unread-page-two@example.com',
+            'message_date' => Carbon::now()->subHours(2),
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->set('selectAllOnPage', true)
+            ->call('markSelectedRead')
+            ->assertSet('statusMessage', __('Marcados como leídos.'));
+
+        $this->assertSame(
+            0,
+            Email::query()
+                ->where('team_id', $team->id)
+                ->where('folder', EmailFolder::Inbox->value)
+                ->where('seen', false)
+                ->count(),
+        );
+    }
+
+    public function test_mark_selected_read_with_only_read_selection_marks_remaining_unread_in_folder(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $readEmail = $this->createEmail($team, [
+            'seen' => true,
+            'from_address' => 'read@example.com',
+        ]);
+        $this->createEmail($team, [
+            'seen' => false,
+            'from_address' => 'unread@example.com',
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->set('selectedIds', [$readEmail->id])
+            ->call('markSelectedRead')
+            ->assertSet('statusMessage', __('Marcados como leídos.'));
+
+        $this->assertSame(
+            0,
+            Email::query()
+                ->where('team_id', $team->id)
+                ->where('folder', EmailFolder::Inbox->value)
+                ->where('seen', false)
+                ->count(),
+        );
+    }
+
     public function test_select_email_marks_as_read(): void
     {
         $user = $this->userWithTeam();

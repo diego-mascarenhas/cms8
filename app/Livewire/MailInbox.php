@@ -146,7 +146,7 @@ class MailInbox extends Component
 
     public function markSelectedRead(): void
     {
-        if ($this->selectedIds === [])
+        if ($this->shouldMarkEntireFolderReadState())
         {
             $this->markAllInCurrentFolderRead();
 
@@ -548,6 +548,35 @@ class MailInbox extends Component
     {
         $this->selectedIds = [];
         $this->selectAllOnPage = false;
+    }
+
+    private function shouldMarkEntireFolderReadState(): bool
+    {
+        if ($this->selectedIds === [] || $this->selectAllOnPage)
+        {
+            return true;
+        }
+
+        $team = $this->currentTeam();
+        if (! $team)
+        {
+            return false;
+        }
+
+        $unreadIds = Email::query()
+            ->where('team_id', $team->id)
+            ->where('seen', false)
+            ->where('folder', EmailFolder::tryFrom($this->folder)?->value ?? EmailFolder::Inbox->value)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($unreadIds === [])
+        {
+            return false;
+        }
+
+        return count(array_intersect($unreadIds, $this->selectedIds)) === 0;
     }
 
     private function findTeamEmail(int $emailId): ?Email
