@@ -29,10 +29,13 @@
 .pres-aff-table td{color:#566a7f}
 .pres-aff-badge{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:rgba(113,221,55,.16);color:#56ca00}
 .pres-aff-stats{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.pres-aff-stat{border-radius:18px;padding:22px 20px;background:linear-gradient(165deg,rgba(90,88,150,.26),rgba(24,22,48,.5));border:1px solid rgba(150,148,220,.16)}
+.pres-aff-stat{border-radius:18px;padding:22px 20px;background:linear-gradient(165deg,rgba(90,88,150,.26),rgba(24,22,48,.5));border:1px solid rgba(150,148,220,.16);min-height:100%;display:flex;flex-direction:column}
 .pres-aff-stat h4{font-size:16px;font-weight:700;color:#fff;margin-bottom:8px}
 .pres-aff-stat p{font-size:12.5px;color:#a4a6c8;line-height:1.55;margin:0}
 .pres-aff-stat .val{font-size:28px;font-weight:800;color:var(--accent);margin-bottom:6px}
+.pres-aff-stat-list{margin:14px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.pres-aff-stat-list li{font-size:11px;color:#9094b8;line-height:1.45;padding-left:14px;position:relative}
+.pres-aff-stat-list li::before{content:'';position:absolute;left:0;top:7px;width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.85}
 </style>
 </head>
 <body>
@@ -147,19 +150,34 @@
  </div>
  <div class="pres-aff-stats u sc" style="--d:.22s">
   <div class="pres-aff-stat">
-   <div class="val">40%</div>
-   <h4>Comisión configurable</h4>
-   <p>Porcentaje de plataforma sobre cada cobro del equipo que referiste. Visible en tu panel de afiliados.</p>
+   <div class="val">__AFFILIATE_COMMISSION_PERCENT__%</div>
+   <h4>Comisión por referido</h4>
+   <p>Porcentaje de plataforma sobre cada cobro del equipo que referiste. Se calcula en cada factura pagada en Stripe y queda registrado en tu panel de afiliados.</p>
+   <ul class="pres-aff-stat-list">
+    <li>Visible en Facturación → Afiliados, con totales por moneda</li>
+    <li>Se aplica a suscripciones nuevas atribuidas a tu código</li>
+    <li>El valor lo define la plataforma</li>
+   </ul>
   </div>
   <div class="pres-aff-stat">
-   <div class="val">90 d</div>
+   <div class="val">__AFFILIATE_COOKIE_DAYS__ d</div>
    <h4>Cookie de referido</h4>
    <p>El código queda guardado en el navegador del visitante para atribuir el alta aunque no complete el mismo día.</p>
+   <ul class="pres-aff-stat-list">
+    <li>Se activa al abrir tu enlace de captura o al hacer clic en una invitación</li>
+    <li>Respaldo en sesión si el checkout omite el referido en Stripe</li>
+    <li>Ventana amplia para equipos que evalúan el plan antes de pagar</li>
+   </ul>
   </div>
   <div class="pres-aff-stat">
    <div class="val">Email</div>
    <h4>Invitaciones rastreables</h4>
    <p>Aperturas y clics de cada invitación enviada, con enlace personalizado al plan elegido.</p>
+   <ul class="pres-aff-stat-list">
+    <li>Estado por contacto: enviada, abierta, clic o registrada</li>
+    <li>Assistant, Enlaces por plan (Hunter, Business) desde tu panel</li>
+    <li>Ideal para seguir prospecciones sin perder la atribución</li>
+   </ul>
   </div>
  </div>
  <div class="ftr"><span>Humano · Afiliados</span><span class="r">Seguimiento</span></div>

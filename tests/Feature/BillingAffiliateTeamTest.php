@@ -22,7 +22,7 @@ class BillingAffiliateTeamTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['humano_pricing.affiliate_commission_percent' => 40]);
+        config(['humano_pricing.affiliate_commission_percent' => 30]);
     }
 
     public function test_commission_recorded_when_paying_team_has_referrer_stripe_id(): void
@@ -53,7 +53,7 @@ class BillingAffiliateTeamTest extends TestCase
             'stripe_invoice_id' => 'in_test_aff_team_1',
             'paying_team_id' => $payingTeam->id,
             'referrer_team_id' => $referrerTeam->id,
-            'commission_amount_cents' => 4000,
+            'commission_amount_cents' => 3000,
         ]);
     }
 

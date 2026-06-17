@@ -238,6 +238,7 @@ class TeamSettingsLabels
         $groups = [
             'stripe' => ['stripe_public', 'stripe_secret', 'stripe_webhook'],
             'fiscal' => ['fiscal_platform', 'fiscal_country'],
+            'affiliates' => ['affiliate_commission_percent'],
             'cuentica' => ['cuentica_api_token', 'cuentica_invoice_serie', 'cuentica_inbound_sync_enabled'],
             'categories' => ['categories_default_status', 'categories_require_approval', 'categories_max_depth', 'categories_allow_multiple_parents', 'categories_default_ordering'],
             'notifications' => ['notifications_email_enabled', 'notifications_sms_enabled', 'performance_insights_in_app_notification', 'notifications_from_name', 'notifications_from_email'],

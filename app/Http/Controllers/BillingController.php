@@ -13,6 +13,7 @@ use App\Services\StripeAccountResolver;
 use App\Services\TaxIdentifierService;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamStripeCustomerService;
+use App\Support\AffiliateCommission;
 use App\Support\StripeErrorMessage;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\RedirectResponse;
@@ -180,7 +181,7 @@ class BillingController extends Controller
 
             $affiliateTotalsAsReferrer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsReferrer);
             $affiliateTotalsAsPayer = $this->sumAffiliateCommissionsByCurrency($affiliateCommissionsAsPayer);
-            $affiliateCommissionPercent = (float) config('humano_pricing.affiliate_commission_percent', 0);
+            $affiliateCommissionPercent = AffiliateCommission::percent();
             $affiliateReferralCode = $linkBuilder->referralCode($team);
 
             foreach ($linkBuilder->availablePlans() as $plan)

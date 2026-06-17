@@ -91,7 +91,12 @@ return [
      * | Affiliate commission % on Humano platform billing (team-to-team referrals).
      * | Applied when a referred team pays a Stripe invoice (see teams.referred_by).
      */
-    'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 40),
+    'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 30),
+
+    /*
+     * | Team that stores platform-wide affiliate settings (commission %). Defaults to CMS_TEAM_ID.
+     */
+    'platform_team_id' => (int) env('CMS_TEAM_ID', 0),
 
     /*
      * | Cookie + session fallback when Stripe checkout omits client_reference_id.

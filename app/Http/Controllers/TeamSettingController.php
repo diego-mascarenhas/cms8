@@ -17,6 +17,7 @@ use App\Services\Fiscal\Cuentica\CuenticaClientFactory;
 use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
+use App\Support\AffiliateCommission;
 use App\Support\TeamDefaultShortcuts;
 use App\Support\TeamSettingsLabels;
 use Carbon\Carbon;
@@ -187,6 +188,12 @@ class TeamSettingController extends Controller
     {
         $this->authorize('update', $team);
 
+        if ($group === 'affiliates')
+        {
+            abort_unless(auth()->user()->hasRole('root'), 403);
+            abort_unless(AffiliateCommission::isPlatformTeam($team), 403);
+        }
+
         $settings = $this->getSettingsConfig($team, $group);
 
         return view('team-settings.edit', compact('team', 'settings', 'group'));
@@ -208,9 +215,9 @@ class TeamSettingController extends Controller
                 $settings = array_intersect_key($settings, array_flip($allowedKeys));
             }
 
-            if ($group === 'affiliates' && ! auth()->user()->hasRole('admin'))
+            if ($group === 'affiliates' && (! auth()->user()->hasRole('root') || ! AffiliateCommission::isPlatformTeam($team)))
             {
-                $settings = [];
+                continue;
             }
 
             foreach ($settings as $key => $value)
@@ -439,6 +446,7 @@ class TeamSettingController extends Controller
         $integerFields = [
             'email_monthly_limit', 'email_daily_limit', 'contact_limit',
             'email_monthly_used', 'email_daily_used',
+            'affiliate_commission_percent',
         ];
 
         $booleanFields = [
@@ -536,6 +544,24 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('fiscal_country', ''),
                         'is_encrypted' => false,
                         'help' => 'Solo se usa cuando la plataforma está en "Automática". Por defecto: ES → Cuéntica, AR → ARCA.',
+                    ],
+                ],
+            ],
+            'affiliates' => [
+                'title' => 'Afiliados',
+                'icon' => 'ti ti-affiliate',
+                'settings' => [
+                    'affiliate_commission_percent' => [
+                        'label' => 'Comisión de afiliados (%)',
+                        'type' => 'number',
+                        'value' => $team->getSetting('affiliate_commission_percent', AffiliateCommission::percent()),
+                        'is_encrypted' => false,
+                        'help' => 'Porcentaje de plataforma sobre cada cobro de equipos referidos. Solo el usuario root puede modificar este valor.',
+                        'attributes' => [
+                            'min' => 0,
+                            'max' => 100,
+                            'step' => '0.01',
+                        ],
                     ],
                 ],
             ],

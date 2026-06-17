@@ -12,6 +12,10 @@ return [
             'title' => 'Exportación fiscal',
             'subtitle' => 'Elige la plataforma fiscal y el país para el enrutado automático.',
         ],
+        'affiliates' => [
+            'title' => 'Afiliados',
+            'subtitle' => 'Comisión global del programa de referidos de la plataforma.',
+        ],
         'cuentica' => [
             'title' => 'Cuéntica',
             'subtitle' => 'Credenciales de Cuéntica para exportar facturas a España.',
@@ -102,6 +106,10 @@ return [
         'stripe_public' => ['label' => 'Clave pública', 'help' => null],
         'stripe_secret' => ['label' => 'Clave secreta', 'help' => null],
         'stripe_webhook' => ['label' => 'Secreto del webhook', 'help' => null],
+        'affiliate_commission_percent' => [
+            'label' => 'Comisión de afiliados (%)',
+            'help' => 'Porcentaje sobre cada cobro de equipos referidos. Solo el usuario root puede modificarlo.',
+        ],
         'categories_default_status' => ['label' => 'Estado por defecto'],
         'categories_require_approval' => ['label' => 'Requiere aprobación'],
         'categories_max_depth' => ['label' => 'Profundidad máxima de subcategorías'],

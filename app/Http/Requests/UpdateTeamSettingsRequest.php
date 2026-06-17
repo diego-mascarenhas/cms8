@@ -24,6 +24,9 @@ class UpdateTeamSettingsRequest extends FormRequest
             'fiscal.fiscal_platform' => 'nullable|string|in:,cuentica,arca,none',
             'fiscal.fiscal_country' => 'nullable|string|in:,ES,AR',
 
+            // Affiliate program (platform-wide, root only)
+            'affiliates.affiliate_commission_percent' => 'nullable|numeric|min:0|max:100',
+
             // Cuéntica credentials (Spain)
             'cuentica.cuentica_api_token' => 'nullable|string|max:255',
             'cuentica.cuentica_invoice_serie' => 'nullable|string|max:255',
