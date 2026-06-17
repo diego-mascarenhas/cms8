@@ -56,8 +56,6 @@ class TeamSettingController extends Controller
             ->where('status', 1)
             ->first();
 
-        $performanceInsightsEnabled = $team->hasModule('performance_insights');
-
         return view('team-settings.index', compact(
             'team',
             'groupedSettings',
@@ -65,7 +63,6 @@ class TeamSettingController extends Controller
             'webDavExternalAccount',
             'webDavApiConfigured',
             'performanceInsightsModule',
-            'performanceInsightsEnabled',
         ));
     }
 
@@ -638,7 +635,7 @@ class TeamSettingController extends Controller
                         'section' => 'general',
                         'row' => 1,
                     ],
-                ], $team->hasModule('performance_insights') ? [
+                ], [
                     'performance_insights_in_app_notification' => [
                         'label' => __('app.team_setting_performance_insights_in_app_notification'),
                         'type' => 'checkbox',
@@ -647,7 +644,7 @@ class TeamSettingController extends Controller
                         'section' => 'performance_insights',
                         'row' => 3,
                     ],
-                ] : [], [
+                ], [
                     'notifications_from_name' => [
                         'label' => 'From Name',
                         'type' => 'text',
