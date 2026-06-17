@@ -15,7 +15,7 @@
             </div>
         </div>
         <div class="row g-4">
-            @can('invoice.list')
+            @if (! empty($stripeData['metrics']))
             <!-- CAC Card -->
             <div class="col-md-6">
                 <div class="card">
@@ -67,7 +67,7 @@
                     </div>
                 </div>
             </div>
-            @endcan
+            @endif
 
             <!-- Astral Profile -->
             @if($astralProfile)
