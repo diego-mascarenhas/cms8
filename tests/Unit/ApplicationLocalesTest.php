@@ -55,5 +55,8 @@ class ApplicationLocalesTest extends TestCase
         $this->assertSame('es', ApplicationLocales::templateCustomizerLang('es_AR'));
         $this->assertSame('en', ApplicationLocales::templateCustomizerLang('en'));
         $this->assertSame('fr', ApplicationLocales::templateCustomizerLang('fr'));
+        $this->assertSame('es', ApplicationLocales::javascriptLocale('es_ES'));
+        $this->assertSame('es', ApplicationLocales::javascriptLocale('es_AR'));
+        $this->assertSame('en', ApplicationLocales::javascriptLocale('en'));
     }
 }
