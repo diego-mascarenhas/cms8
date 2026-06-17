@@ -75,9 +75,17 @@
                         </h5>
                         <div class="card-body">
                             @php
+                                $visibleSettings = $group['settings'];
+                                if ($groupKey === 'email') {
+                                    $visibleSettings = array_filter(
+                                        $group['settings'],
+                                        fn ($setting) => ! in_array($setting['section'] ?? '', ['outgoing', 'incoming'], true),
+                                    );
+                                }
+
                                 // Group fields by section and row to determine column classes
                                 $fieldsByRow = [];
-                                foreach ($group['settings'] as $key => $setting) {
+                                foreach ($visibleSettings as $key => $setting) {
                                     $section = $setting['section'] ?? 'default';
                                     $row = $setting['row'] ?? 1;
                                     $fieldsByRow[$section][$row][] = $key;
@@ -91,7 +99,7 @@
                                         <small class="text-muted text-uppercase">{{ __('Settings') }}</small>
                                     </div>
                                 @endif
-                                @foreach ($group['settings'] as $key => $setting)
+                                @foreach ($visibleSettings as $key => $setting)
                                     @if(isset($setting['section']) && $setting['section'] !== $currentSection)
                                         @if($currentSection !== null)
                                             {{-- Close previous row and add separator --}}
