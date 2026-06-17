@@ -389,7 +389,7 @@ class ContactController extends Controller
                     $stripeData['invoices'][] = [
                         'id' => $invoice->id,
                         'number' => $invoice->number,
-                        'amount' => $invoice->amount_paid / 100,  // Convert from cents
+                        'amount' => StripeInvoiceMetrics::stripePaidInvoiceAmount($invoice),
                         'currency' => strtoupper($invoice->currency),
                         'status' => $invoice->status,
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
@@ -405,7 +405,7 @@ class ContactController extends Controller
                     $stripeData['unpaid_invoices'][] = [
                         'id' => $invoice->id,
                         'number' => $invoice->number,
-                        'amount' => ($invoice->amount_due ?? $invoice->amount_remaining ?? 0) / 100,
+                        'amount' => StripeInvoiceMetrics::stripeUnpaidInvoiceAmount($invoice),
                         'currency' => strtoupper($invoice->currency),
                         'status' => $invoice->status,  // 'open' or 'uncollectible'
                         'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
@@ -414,6 +414,28 @@ class ContactController extends Controller
                         'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
                     ];
                 }
+
+                $contactCountryCode = $data->country?->code ? strtolower((string) $data->country->code) : null;
+                $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
+                    $paidInvoices->data,
+                    $openInvoices->data,
+                    $uncollectibleInvoices->data,
+                    'EUR',
+                    $contactCountryCode,
+                );
+
+                $balanceMetrics = StripeInvoiceMetrics::contactBalanceMetrics(
+                    $stripeData['invoices'],
+                    $stripeData['unpaid_invoices'],
+                );
+
+                $stripeData['metrics'] = [
+                    'total_paid' => $balanceMetrics['total_paid'],
+                    'unpaid' => $balanceMetrics['unpaid'],
+                    'paid_by_currency' => $balanceMetrics['paid_by_currency'],
+                    'unpaid_by_currency' => $balanceMetrics['unpaid_by_currency'],
+                    'currency' => $metricsCurrency,
+                ];
 
                 // Process void invoices (canceled)
                 foreach ($voidInvoices->data as $invoice)
@@ -446,19 +468,9 @@ class ContactController extends Controller
 
                 // Calculate metrics — sum the same amounts shown in the tables (avoids StripeObject field quirks vs UI)
                 $allInvoicesForMetrics = array_merge($paidInvoices->data, $openInvoices->data, $uncollectibleInvoices->data);
-                $contactCountryCode = $data->country?->code ? strtolower((string) $data->country->code) : null;
-                $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
-                    $paidInvoices->data,
-                    $openInvoices->data,
-                    $uncollectibleInvoices->data,
-                    'EUR',
-                    $contactCountryCode,
-                );
 
-                $paidByCurrency = StripeInvoiceMetrics::sumAmountsByCurrency($stripeData['invoices']);
-                $unpaidByCurrency = StripeInvoiceMetrics::sumAmountsByCurrency($stripeData['unpaid_invoices']);
-                $totalPaid = array_sum($paidByCurrency);
-                $totalUnpaid = array_sum($unpaidByCurrency);
+                $totalPaid = $balanceMetrics['total_paid_raw'];
+                $totalUnpaid = $balanceMetrics['unpaid_raw'];
 
                 $firstInvoiceDate = null;
                 foreach ($allInvoicesForMetrics as $invoice)
@@ -479,16 +491,9 @@ class ContactController extends Controller
                 $monthlyMarketingSpend = 10;
                 $cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
 
-                $primaryDisplayCurrency = strtoupper((string) config('cashier.currency', 'usd'));
-
-                $stripeData['metrics'] = [
-                    'total_paid' => StripeInvoiceMetrics::formatMetricTotalsWithPrimaryEquivalent($paidByCurrency, $primaryDisplayCurrency),
-                    'unpaid' => StripeInvoiceMetrics::formatMetricTotalsWithPrimaryEquivalent($unpaidByCurrency, $primaryDisplayCurrency),
-                    'ltv' => number_format($ltv, 2),
-                    'cac' => number_format($cac, 2),
-                    'lifetime_months' => $lifetimeMonths,
-                    'currency' => $metricsCurrency,
-                ];
+                $stripeData['metrics']['ltv'] = number_format($ltv, 2);
+                $stripeData['metrics']['cac'] = number_format($cac, 2);
+                $stripeData['metrics']['lifetime_months'] = $lifetimeMonths;
 
                 if (! empty($stripeData['unpaid_invoices']))
                 {

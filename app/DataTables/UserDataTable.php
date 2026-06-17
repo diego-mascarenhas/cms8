@@ -80,7 +80,7 @@ class UserDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language([
-                'url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json',
+                'url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json',
             ])
             ->parameters([
                 'select' => false,

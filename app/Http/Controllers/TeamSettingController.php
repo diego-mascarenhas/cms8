@@ -17,7 +17,9 @@ use App\Services\Fiscal\Cuentica\CuenticaClientFactory;
 use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
+use App\Support\AffiliateCommission;
 use App\Support\TeamDefaultShortcuts;
+use App\Support\TeamSettingsLabels;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -56,8 +58,6 @@ class TeamSettingController extends Controller
             ->where('status', 1)
             ->first();
 
-        $performanceInsightsEnabled = $team->hasModule('performance_insights');
-
         return view('team-settings.index', compact(
             'team',
             'groupedSettings',
@@ -65,7 +65,6 @@ class TeamSettingController extends Controller
             'webDavExternalAccount',
             'webDavApiConfigured',
             'performanceInsightsModule',
-            'performanceInsightsEnabled',
         ));
     }
 
@@ -189,6 +188,12 @@ class TeamSettingController extends Controller
     {
         $this->authorize('update', $team);
 
+        if ($group === 'affiliates')
+        {
+            abort_unless(auth()->user()->hasRole('root'), 403);
+            abort_unless(AffiliateCommission::isPlatformTeam($team), 403);
+        }
+
         $settings = $this->getSettingsConfig($team, $group);
 
         return view('team-settings.edit', compact('team', 'settings', 'group'));
@@ -210,14 +215,14 @@ class TeamSettingController extends Controller
                 $settings = array_intersect_key($settings, array_flip($allowedKeys));
             }
 
-            if ($group === 'affiliates' && ! auth()->user()->hasRole('admin'))
+            if ($group === 'affiliates' && (! auth()->user()->hasRole('root') || ! AffiliateCommission::isPlatformTeam($team)))
             {
-                $settings = [];
+                continue;
             }
 
             foreach ($settings as $key => $value)
             {
-                if ($group === 'email' && in_array($key, ['mail_from_name', 'mail_from_address'], true) && trim((string) $value) === '')
+                if ($group === 'email' && in_array($key, ['mail_from_name', 'mail_from_address', 'mailer_from_name', 'mailer_from_address'], true) && trim((string) $value) === '')
                 {
                     $team->removeSetting($key);
 
@@ -380,11 +385,10 @@ class TeamSettingController extends Controller
         }
 
         $group = array_key_first($request->validated());
-        $message = ucfirst($group).' settings updated successfully';
 
         return redirect()
             ->back()
-            ->with('success', $message);
+            ->with('success', TeamSettingsLabels::groupSavedMessage((string) $group));
     }
 
     public function updateEmailSender(UpdateTeamEmailSenderRequest $request, Team $team): JsonResponse
@@ -442,6 +446,7 @@ class TeamSettingController extends Controller
         $integerFields = [
             'email_monthly_limit', 'email_daily_limit', 'contact_limit',
             'email_monthly_used', 'email_daily_used',
+            'affiliate_commission_percent',
         ];
 
         $booleanFields = [
@@ -542,6 +547,24 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
+            'affiliates' => [
+                'title' => 'Afiliados',
+                'icon' => 'ti ti-affiliate',
+                'settings' => [
+                    'affiliate_commission_percent' => [
+                        'label' => 'Comisión de afiliados (%)',
+                        'type' => 'number',
+                        'value' => $team->getSetting('affiliate_commission_percent', AffiliateCommission::percent()),
+                        'is_encrypted' => false,
+                        'help' => 'Porcentaje de plataforma sobre cada cobro de equipos referidos. Solo el usuario root puede modificar este valor.',
+                        'attributes' => [
+                            'min' => 0,
+                            'max' => 100,
+                            'step' => '0.01',
+                        ],
+                    ],
+                ],
+            ],
             'cuentica' => [
                 'title' => 'Cuéntica',
                 'icon' => 'ti ti-file-invoice',
@@ -638,7 +661,7 @@ class TeamSettingController extends Controller
                         'section' => 'general',
                         'row' => 1,
                     ],
-                ], $team->hasModule('performance_insights') ? [
+                ], [
                     'performance_insights_in_app_notification' => [
                         'label' => __('app.team_setting_performance_insights_in_app_notification'),
                         'type' => 'checkbox',
@@ -647,7 +670,7 @@ class TeamSettingController extends Controller
                         'section' => 'performance_insights',
                         'row' => 3,
                     ],
-                ] : [], [
+                ], [
                     'notifications_from_name' => [
                         'label' => 'From Name',
                         'type' => 'text',
@@ -924,28 +947,49 @@ class TeamSettingController extends Controller
                 ],
             ],
             'email' => [
-                'title' => 'Email Configuration',
+                'title' => __('app.team_setting_mailer_email_title'),
                 'icon' => 'ti ti-mail',
                 'settings' => [
-                    // Sender Information - Row 1 (Always visible)
                     'mail_from_name' => [
-                        'label' => 'From Name',
+                        'label' => __('app.email_sender_modal_from_name'),
                         'type' => 'text',
                         'value' => $team->getSetting('mail_from_name'),
                         'is_encrypted' => false,
-                        'placeholder' => env('MAIL_FROM_NAME'),
-                        'help' => 'Leave empty to use: '.env('MAIL_FROM_NAME'),
-                        'section' => 'sender',
+                        'placeholder' => __('app.team_setting_team_from_name_placeholder'),
+                        'help' => __('app.team_setting_team_from_name_help'),
+                        'section' => 'team_sender',
                         'row' => 1,
+                        'required' => true,
                     ],
                     'mail_from_address' => [
-                        'label' => 'From Email Address',
+                        'label' => __('app.email_sender_modal_from_email'),
                         'type' => 'email',
                         'value' => $team->getSetting('mail_from_address'),
                         'is_encrypted' => false,
-                        'placeholder' => env('MAIL_FROM_ADDRESS'),
-                        'help' => 'Leave empty to use: '.env('MAIL_FROM_ADDRESS'),
-                        'section' => 'sender',
+                        'placeholder' => __('app.team_setting_team_from_email_placeholder'),
+                        'help' => __('app.team_setting_team_from_email_help'),
+                        'section' => 'team_sender',
+                        'row' => 1,
+                        'required' => true,
+                    ],
+                    'mailer_from_name' => [
+                        'label' => __('app.email_sender_modal_from_name'),
+                        'type' => 'text',
+                        'value' => $team->getSetting('mailer_from_name'),
+                        'is_encrypted' => false,
+                        'placeholder' => __('app.team_setting_mailer_from_name_placeholder'),
+                        'help' => __('app.team_setting_mailer_from_name_help'),
+                        'section' => 'mailer_sender',
+                        'row' => 1,
+                    ],
+                    'mailer_from_address' => [
+                        'label' => __('app.email_sender_modal_from_email'),
+                        'type' => 'email',
+                        'value' => $team->getSetting('mailer_from_address'),
+                        'is_encrypted' => false,
+                        'placeholder' => __('app.team_setting_mailer_from_email_placeholder'),
+                        'help' => __('app.team_setting_mailer_from_email_help'),
+                        'section' => 'mailer_sender',
                         'row' => 1,
                     ],
                     // Outgoing Email (SMTP) - Row 1 (Server Configuration)
@@ -1315,7 +1359,12 @@ class TeamSettingController extends Controller
             ],
         ];
 
-        return isset($config[$group]) ? [$group => $config[$group]] : [];
+        if (! isset($config[$group]))
+        {
+            return [];
+        }
+
+        return TeamSettingsLabels::localizeConfig([$group => $config[$group]]);
     }
 
     /**

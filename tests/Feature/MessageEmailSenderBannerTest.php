@@ -63,7 +63,7 @@ class MessageEmailSenderBannerTest extends TestCase
         $this->assertStringNotContainsString('id="email-sender-config-banner"', $html);
     }
 
-    public function test_clearing_mail_from_address_in_team_settings_shows_banner_on_message_create(): void
+    public function test_clearing_mail_from_address_in_team_settings_is_rejected(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $team = $user->currentTeam;
@@ -76,16 +76,11 @@ class MessageEmailSenderBannerTest extends TestCase
                 'mail_from_name' => 'News Sender',
                 'mail_from_address' => '',
             ],
-        ])->assertRedirect();
+        ])->assertSessionHasErrors(['email.mail_from_address']);
 
         $team->refresh();
-        $this->assertFalse($team->hasOutgoingEmailSenderConfigured());
-        $this->assertNull($team->getSetting('mail_from_address'));
-
-        $response = $this->actingAs($user)->get(route('message.create'));
-        $response->assertOk();
-        $html = $response->getContent() ?? '';
-        $this->assertStringContainsString('id="email-sender-config-banner"', $html);
+        $this->assertTrue($team->hasOutgoingEmailSenderConfigured());
+        $this->assertSame('news@example.test', $team->getSetting('mail_from_address'));
     }
 
     public function test_update_email_sender_endpoint_persists_team_settings(): void

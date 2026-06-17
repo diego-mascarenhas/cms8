@@ -237,7 +237,7 @@ class ModuleSeeder extends Seeder
             'order' => 3,
         ],
         'prompts' => [
-            'name' => 'Instrucciones AI',
+            'name' => 'Prompts',
             'icon' => 'cpu',
             'description' => 'Instructions for the assistant.',
             'group' => 'automation',

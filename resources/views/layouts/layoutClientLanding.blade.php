@@ -1,6 +1,7 @@
 @php
 $configData = Helper::appClasses();
 $isFront = false;
+$includeSharePreview = true;
 // Force full-width layout so header banner and content span entire viewport (ignore global contentLayout).
 $container = 'container-fluid';
 @endphp

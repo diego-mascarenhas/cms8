@@ -3,17 +3,11 @@
 @section('title', __('Social networks'))
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Team Settings') }} /</span> {{ __('Social networks') }}</h4>
-        <p class="text-muted">{{ __('Connect Meta, LinkedIn, Bluesky and other accounts for this team. Stats use these connections on the dashboard.') }}</p>
-    </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-secondary">
-            <i class="ti ti-arrow-left me-1"></i>{{ __('Back to Settings') }}
-        </a>
-    </div>
-</div>
+@include('team-settings.partials.header', [
+    'team' => $team,
+    'title' => __('Social networks'),
+    'subtitle' => __('Connect Meta, LinkedIn, Bluesky and other accounts for this team. Stats use these connections on the dashboard.'),
+])
 
 @if (session('success'))
     <div class="alert alert-success">{{ session('success') }}</div>

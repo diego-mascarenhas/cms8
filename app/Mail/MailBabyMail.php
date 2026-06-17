@@ -54,16 +54,21 @@ class MailBabyMail extends Mailable
             $inliner = new CssToInlineStyles;
             $htmlInlined = $inliner->convert($html, $css);
 
-            // Get team configuration for proper sender settings
+            // Get Mailer campaign sender (override or team fallback)
             $team = $this->delivery->team ?? auth()->user()->currentTeam;
-            $fromAddress = $team->hasOutgoingEmailConfig()
-                ? $team->getOutgoingEmailConfig()['from_address']
-                : config('mail.from.address');
+            $sender = $team->getMailerEmailSender();
+            $fromAddress = $sender['from_address'];
+            $fromName = $sender['from_name'];
+
+            if ($fromAddress === '' || $fromName === '')
+            {
+                throw new \RuntimeException('Mailer sender not configured for this team');
+            }
 
             // Prepare email data for MailBaby API
             $emailData = [
                 'to' => $this->delivery->contact->email,
-                'from' => $fromAddress,
+                'from' => $fromName.' <'.$fromAddress.'>',
                 'subject' => $subject,
                 'body' => $htmlInlined,
                 'message_id' => $this->delivery->id, // Use our delivery ID for tracking

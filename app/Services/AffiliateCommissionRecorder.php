@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BillingAffiliateCommission;
 use App\Models\Team;
+use App\Support\AffiliateCommission;
 use Illuminate\Support\Facades\Log;
 
 class AffiliateCommissionRecorder
@@ -11,7 +12,7 @@ class AffiliateCommissionRecorder
     /**
      * When a Stripe invoice is paid, attribute commission to the referrer team using
      * {@see Team::$referred_by} (Stripe customer id of the referrer team).
-     * Commission % comes from {@see config('humano_pricing.affiliate_commission_percent')}.
+     * Commission % comes from {@see AffiliateCommission::percent()}.
      *
      * @param  array<string, mixed>  $invoice  Stripe invoice object from webhook payload
      */
@@ -85,8 +86,6 @@ class AffiliateCommissionRecorder
 
     private function resolveCommissionPercent(): float
     {
-        $raw = config('humano_pricing.affiliate_commission_percent', 0);
-
-        return max(0.0, min(100.0, (float) $raw));
+        return AffiliateCommission::percent();
     }
 }

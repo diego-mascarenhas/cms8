@@ -103,7 +103,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
         </div>
         <div class="col-lg-4 col-sm-6 text-center features-icon-box">
           <div class="text-center mb-3">
-            <img src="{{ $humanoImg('icons/paper.png') }}" alt="" />
+            <img src="{{ $humanoImg('icons/cloud.svg') }}" alt="" />
           </div>
           <h5 class="mb-3">Sistema en la nube</h5>
           <p class="features-icon-description">Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.</p>

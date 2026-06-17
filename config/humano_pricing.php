@@ -43,7 +43,7 @@ return [
      * | with this value (assistant, business, or mentor). Mentor = business modules plus enterprise extras below.
      * | Override with HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG.
      */
-    'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'assistant'))))
+    'demo_team_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_DEMO_TEAM_PLAN_SLUG', 'hunter'))))
     {
         'hunter' => 'hunter',
         'business' => 'business',
@@ -91,7 +91,12 @@ return [
      * | Affiliate commission % on Humano platform billing (team-to-team referrals).
      * | Applied when a referred team pays a Stripe invoice (see teams.referred_by).
      */
-    'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 40),
+    'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 30),
+
+    /*
+     * | Team that stores platform-wide affiliate settings (commission %). Defaults to CMS_TEAM_ID.
+     */
+    'platform_team_id' => (int) env('CMS_TEAM_ID', 0),
 
     /*
      * | Cookie + session fallback when Stripe checkout omits client_reference_id.
@@ -108,7 +113,7 @@ return [
      * | Matched via stripe_product_id on the subscription vs plans below.
      * | Each plan lists every module key to enable (business repeats assistant + extras).
      * | mentor is business plus org, CRM, API, files, support, extended billing, and commerce keys.
-     * | Demo team modules follow demo_team_plan_slug above (default: assistant).
+     * | Demo team modules follow demo_team_plan_slug above (default: hunter).
      * | Keys must match modules.key (see ModuleSeeder). Include settings so team
      * | settings stay usable after paid signup.
      * |

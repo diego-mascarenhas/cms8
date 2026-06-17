@@ -3,17 +3,11 @@
 @section('title', 'Seguridad de contraseñas')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Configuración del equipo/</span> Seguridad de contraseñas</h4>
-        <p class="text-muted">Configura la clave maestra para desbloquear el cofre de contraseñas de tu equipo</p>
-    </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('team-settings.index', $team) }}" class="btn btn-outline-secondary">
-            <i class="ti ti-arrow-left me-1"></i>Volver a Configuración
-        </a>
-    </div>
-</div>
+@include('team-settings.partials.header', [
+    'team' => $team,
+    'title' => __('Password security'),
+    'subtitle' => __('Configure and rotate the team master key for the password vault'),
+])
 
 <div class="row">
     <div class="col-lg-8">

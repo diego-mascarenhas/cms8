@@ -10,7 +10,7 @@
       "slug": "dashboard"
     },
     {
-      "menuHeader": "CRM"
+      "menuHeader": "Operations"
     },
     {
       "url": "today",
@@ -211,7 +211,7 @@
     },
     {
       "url": "prompt/list",
-      "name": "Instrucciones AI",
+      "name": "Prompts",
       "icon": "menu-icon tf-icons ti ti-cpu",
       "slug": "prompt-list",
       "module_key": "prompts"

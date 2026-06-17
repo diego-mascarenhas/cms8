@@ -1,6 +1,7 @@
 @php
 $configData = Helper::appClasses();
 $isFront = false;
+$includeSharePreview = true;
 $container = (isset($configData['contentLayout']) && $configData['contentLayout'] === 'compact') ? 'container-xxl' : 'container-fluid';
 @endphp
 

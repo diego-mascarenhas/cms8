@@ -718,20 +718,10 @@ html.lenis.lenis-scrolling iframe {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
-.slash-hero-shot {
-  will-change: transform;
-}
-
-.slash-hero-shot img {
-  will-change: transform;
-}
-
 .slash-btn-accent {
   will-change: transform;
 }
 
-html.slash-motion-off .slash-hero-shot,
-html.slash-motion-off .slash-hero-shot img,
 html.slash-motion-off .slash-btn-accent {
   will-change: auto;
 }
@@ -741,8 +731,6 @@ html.slash-motion-off .slash-btn-accent {
     scroll-behavior: auto;
   }
 
-  .slash-hero-shot,
-  .slash-hero-shot img,
   .slash-btn-accent {
     will-change: auto;
   }

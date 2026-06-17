@@ -191,7 +191,7 @@ class MultimediaDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(8, 'desc')
             ->responsive(true)
-            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json']);
+            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json']);
     }
 
     public function getColumns(): array

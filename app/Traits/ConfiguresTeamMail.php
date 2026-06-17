@@ -11,7 +11,7 @@ trait ConfiguresTeamMail
      * Configure mail settings for a specific team.
      * If team has custom SMTP, use it. Otherwise, use system SMTP with advertising.
      */
-    protected function configureMailForTeam(Team $team)
+    protected function configureMailForTeam(Team $team, bool $forMailerCampaigns = false)
     {
         $emailProvider = config('services.email.provider', 'smtp');
 
@@ -20,27 +20,29 @@ trait ConfiguresTeamMail
             'team_name' => $team->name,
             'email_provider' => $emailProvider,
             'has_custom_smtp' => $team->hasOutgoingEmailConfig(),
+            'for_mailer_campaigns' => $forMailerCampaigns,
             'current_env_host' => env('MAIL_HOST'),
             'current_env_username' => env('MAIL_USERNAME'),
         ]);
 
-        // 🎯 PRIORITY: Always check team email settings first (from_name, from_address)
-        $teamEmailConfig = $team->getOutgoingEmailConfig();
+        $sender = $forMailerCampaigns
+            ? $team->getMailerEmailSender()
+            : $team->getTeamEmailSender();
 
-        // Set team's from_name and from_address if available
-        if (! empty($teamEmailConfig['from_name']))
+        if ($sender['from_name'] !== '')
         {
-            Config::set('mail.from.name', $teamEmailConfig['from_name']);
+            Config::set('mail.from.name', $sender['from_name']);
         }
-        if (! empty($teamEmailConfig['from_address']))
+        if ($sender['from_address'] !== '')
         {
-            Config::set('mail.from.address', $teamEmailConfig['from_address']);
+            Config::set('mail.from.address', $sender['from_address']);
         }
 
         \Log::info('🔧 ConfiguresTeamMail: Applied team email config', [
             'team_id' => $team->id,
-            'team_has_from_name' => ! empty($teamEmailConfig['from_name']),
-            'team_has_from_address' => ! empty($teamEmailConfig['from_address']),
+            'for_mailer_campaigns' => $forMailerCampaigns,
+            'team_has_from_name' => $sender['from_name'] !== '',
+            'team_has_from_address' => $sender['from_address'] !== '',
             'final_from_name' => config('mail.from.name'),
             'final_from_address' => config('mail.from.address'),
         ]);
@@ -67,8 +69,14 @@ trait ConfiguresTeamMail
             Config::set('mail.mailers.smtp.username', $config['username']);
             Config::set('mail.mailers.smtp.password', $config['password']);
             Config::set('mail.mailers.smtp.encryption', $config['encryption']);
-            Config::set('mail.from.address', $config['from_address']);
-            Config::set('mail.from.name', $config['from_name']);
+            if ($sender['from_address'] !== '')
+            {
+                Config::set('mail.from.address', $sender['from_address']);
+            }
+            if ($sender['from_name'] !== '')
+            {
+                Config::set('mail.from.name', $sender['from_name']);
+            }
 
             // No advertising footer for teams with custom SMTP
             Config::set('app.mail_advertising_footer', '');
@@ -95,21 +103,6 @@ trait ConfiguresTeamMail
             $advertisingFooter = $team->getAdvertisingFooter();
             Config::set('app.mail_advertising_footer', $advertisingFooter);
 
-            // However, if team has from_name/from_address settings, use those
-            $fromName = $team->getSetting('mail_from_name');
-            $fromAddress = $team->getSetting('mail_from_address');
-
-            if ($fromName)
-            {
-                Config::set('mail.from.name', $fromName);
-                \Log::info('📝 Custom from_name applied', ['from_name' => $fromName]);
-            }
-            if ($fromAddress)
-            {
-                Config::set('mail.from.address', $fromAddress);
-                \Log::info('📝 Custom from_address applied', ['from_address' => $fromAddress]);
-            }
-
             \Log::info('✅ System SMTP configuration confirmed', [
                 'team_id' => $team->id,
                 'final_host' => config('mail.mailers.smtp.host'),
@@ -124,13 +117,20 @@ trait ConfiguresTeamMail
      * Get the appropriate "from" address for a team.
      * Uses team setting if available, otherwise system default.
      */
-    protected function getFromAddressForTeam(Team $team)
+    protected function getFromAddressForTeam(Team $team, bool $forMailerCampaigns = false)
     {
+        $sender = $forMailerCampaigns
+            ? $team->getMailerEmailSender()
+            : $team->getTeamEmailSender();
+
+        if ($sender['from_address'] !== '')
+        {
+            return $sender['from_address'];
+        }
+
         if ($team->hasOutgoingEmailConfig())
         {
-            $config = $team->getOutgoingEmailConfig();
-
-            return $config['from_address'];
+            return $team->getOutgoingEmailConfig()['from_address'];
         }
 
         return config('mail.from.address');
@@ -140,13 +140,20 @@ trait ConfiguresTeamMail
      * Get the appropriate "from" name for a team.
      * Uses team setting if available, otherwise system default.
      */
-    protected function getFromNameForTeam(Team $team)
+    protected function getFromNameForTeam(Team $team, bool $forMailerCampaigns = false)
     {
+        $sender = $forMailerCampaigns
+            ? $team->getMailerEmailSender()
+            : $team->getTeamEmailSender();
+
+        if ($sender['from_name'] !== '')
+        {
+            return $sender['from_name'];
+        }
+
         if ($team->hasOutgoingEmailConfig())
         {
-            $config = $team->getOutgoingEmailConfig();
-
-            return $config['from_name'];
+            return $team->getOutgoingEmailConfig()['from_name'];
         }
 
         return config('mail.from.name');

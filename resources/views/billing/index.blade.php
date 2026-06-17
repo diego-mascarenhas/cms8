@@ -629,7 +629,7 @@
 	</div>
 </div>
 
-@if($team->hasModule('affiliates'))
+@if($team->canUseAffiliateProgram())
 <div class="row">
 	<div class="col-12 mb-4">
 		<div class="card">

@@ -41,6 +41,7 @@ class HumanoPresentationsTest extends TestCase
 
         $this->assertIsString($html);
         $this->assertStringContainsString('programa de referidos', $html);
-        $this->assertStringContainsString('Comisión configurable', $html);
+        $this->assertStringContainsString('Comisión por referido', $html);
+        $this->assertStringContainsString('__AFFILIATE_COMMISSION_PERCENT__%', $html);
     }
 }

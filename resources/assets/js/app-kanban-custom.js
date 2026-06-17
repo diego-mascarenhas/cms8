@@ -9,6 +9,45 @@
     const { statuses, tasksByStatus, boardId, projectId, storeUrl, updateStatusUrl, updateOrderUrl, csrfToken, currentUserId, users, categories, hasTimesModule } = window.kanbanData;
     const timesModuleEnabled = hasTimesModule === true;
 
+    function escapeHtml(value)
+    {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function findUserById(userId)
+    {
+        return (users || []).find((user) => Number(user.id) === Number(userId)) || null;
+    }
+
+    function buildResponsibleAvatarInner(responsibleOrUser)
+    {
+        const name = responsibleOrUser?.name || 'U';
+        const initial = name.charAt(0).toUpperCase();
+        const photoUrl = responsibleOrUser?.profile_photo_url;
+
+        if (photoUrl)
+        {
+            return `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(name)}" class="rounded-circle pull-up">`;
+        }
+
+        return `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${escapeHtml(initial)}</span>`;
+    }
+
+    function buildResponsibleAvatarGroup(responsibleOrUser, sizeClass = 'avatar-xs')
+    {
+        const name = responsibleOrUser?.name || 'Usuario';
+
+        return `<div class="avatar-group d-flex align-items-center assigned-avatar">`
+            + `<div class="avatar ${sizeClass}" data-bs-toggle="tooltip" data-bs-placement="top" title="${escapeHtml(name)}">`
+            + buildResponsibleAvatarInner(responsibleOrUser)
+            + `</div></div>`;
+    }
+
 	const kanbanWrapper = document.querySelector('.kanban-wrapper');
 
 	// Build boards array for jKanban
@@ -58,11 +97,7 @@
 			html += `</div>`;
 				if (task.responsible)
 				{
-                    html += `<div class="avatar-group d-flex align-items-center assigned-avatar">`;
-                    html += `<div class="avatar avatar-xs" data-bs-toggle="tooltip" data-bs-placement="top" title="${task.responsible.name}">`;
-                    html += `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${task.responsible.name.charAt(0).toUpperCase()}</span>`;
-                    html += `</div>`;
-					html += `</div>`;
+                    html += buildResponsibleAvatarGroup(task.responsible);
 				}
 				html += `</div>`;  // Cierra div.d-flex.justify-content-between.align-items-center
 
@@ -277,8 +312,9 @@
                         html += `</div>`;
                         html += `</div>`;
                         html += `<div class="d-flex align-items-center">`;
+                        const currentUser = findUserById(currentUserId) || { id: currentUserId, name: 'U' };
                         html += `<div class="avatar avatar-sm me-2">`;
-                        html += `<span class="avatar-initial rounded-circle bg-label-primary">${users.find(u => u.id === currentUserId)?.name?.charAt(0) || 'U'}</span>`;
+                        html += buildResponsibleAvatarInner(currentUser);
                         html += `</div>`;
                         html += `</div>`;
                         html += `</div>`;
@@ -902,7 +938,11 @@
 						let avatar = avatarGroup ? avatarGroup.querySelector('.avatar') : null;
 						const selectedResponsible = responsibleSelect ? responsibleSelect.options[responsibleSelect.selectedIndex] : null;
 						const responsibleName = selectedResponsible && selectedResponsible.text ? selectedResponsible.text : 'U';
-						const initial = responsibleName.charAt(0).toUpperCase();
+						const responsibleUser = findUserById(responsibleId) || {
+                            id: responsibleId,
+                            name: responsibleName,
+                            profile_photo_url: null,
+                        };
 
 						if (!avatarGroup && bottomRow)
 						{
@@ -919,8 +959,8 @@
 							avatar.className = 'avatar avatar-xs';
 							avatar.setAttribute('data-bs-toggle', 'tooltip');
 							avatar.setAttribute('data-bs-placement', 'top');
-							avatar.setAttribute('title', responsibleName);
-							avatar.innerHTML = `<span class="avatar-initial rounded-circle bg-label-primary pull-up">${initial}</span>`;
+							avatar.setAttribute('title', responsibleUser.name);
+							avatar.innerHTML = buildResponsibleAvatarInner(responsibleUser);
 							avatarGroup.appendChild(avatar);
 
 							// Initialize tooltip for new avatar
@@ -931,10 +971,9 @@
 						else if (avatar)
 						{
 							// Update existing avatar
-							avatar.setAttribute('title', responsibleName);
-							avatar.setAttribute('data-bs-original-title', responsibleName); // Bootstrap stores original title here
-							const avatarInitial = avatar.querySelector('.avatar-initial');
-							if (avatarInitial) avatarInitial.textContent = initial;
+							avatar.setAttribute('title', responsibleUser.name);
+							avatar.setAttribute('data-bs-original-title', responsibleUser.name);
+							avatar.innerHTML = buildResponsibleAvatarInner(responsibleUser);
 
 							// Update tooltip instance
 							if (window.bootstrap && bootstrap.Tooltip) {

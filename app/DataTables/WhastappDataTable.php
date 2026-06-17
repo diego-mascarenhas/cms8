@@ -63,7 +63,7 @@ class WhastappDataTable extends DataTable
             ->minifiedAjax()
             ->dom('frtip')
             ->orderBy(1, 'desc')
-            ->language(['url' => '/js/datatables/'.session()->get('locale', app()->getLocale()).'.json']);
+            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json']);
     }
 
     /**

@@ -11,7 +11,7 @@ class SendAffiliateInvitationRequest extends FormRequest
     {
         $team = $this->user()?->currentTeam;
 
-        return $team !== null && $team->hasModule('affiliates');
+        return $team !== null && $team->canUseAffiliateProgram();
     }
 
     /**

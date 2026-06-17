@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\TeamSettingsLabels;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTeamSettingsRequest extends FormRequest
@@ -23,6 +24,9 @@ class UpdateTeamSettingsRequest extends FormRequest
             'fiscal.fiscal_platform' => 'nullable|string|in:,cuentica,arca,none',
             'fiscal.fiscal_country' => 'nullable|string|in:,ES,AR',
 
+            // Affiliate program (platform-wide, root only)
+            'affiliates.affiliate_commission_percent' => 'nullable|numeric|min:0|max:100',
+
             // Cuéntica credentials (Spain)
             'cuentica.cuentica_api_token' => 'nullable|string|max:255',
             'cuentica.cuentica_invoice_serie' => 'nullable|string|max:255',
@@ -41,6 +45,8 @@ class UpdateTeamSettingsRequest extends FormRequest
             'notifications.notifications_email_enabled' => 'nullable|in:0,1',
             'notifications.notifications_sms_enabled' => 'nullable|in:0,1',
             'notifications.performance_insights_in_app_notification' => 'nullable|in:0,1',
+            'notifications.notifications_from_name' => 'nullable|string|max:255',
+            'notifications.notifications_from_email' => 'nullable|email|max:255',
 
             // Chat / Assistant settings
             'chat.assistant_auto_respond' => 'nullable|in:0,1',
@@ -76,8 +82,10 @@ class UpdateTeamSettingsRequest extends FormRequest
             'email.mail_username' => 'nullable|string|max:255',
             'email.mail_password' => 'nullable|string|max:255',
             'email.mail_encryption' => 'nullable|string|in:tls,ssl,none',
-            'email.mail_from_address' => 'nullable|email|max:255',
-            'email.mail_from_name' => 'nullable|string|max:255',
+            'email.mail_from_address' => 'required_with:email|nullable|email|max:255',
+            'email.mail_from_name' => 'required_with:email|nullable|string|max:255',
+            'email.mailer_from_address' => 'nullable|required_with:email.mailer_from_name|email|max:255',
+            'email.mailer_from_name' => 'nullable|required_with:email.mailer_from_address|string|max:255',
             'email.imap_host' => 'nullable|string|max:255',
             'email.imap_port' => 'nullable|integer|between:1,65535',
             'email.imap_username' => 'nullable|string|max:255',
@@ -106,6 +114,31 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
 
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return TeamSettingsLabels::validationAttributes();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.mail_from_name.required_with' => __('validation.required', ['attribute' => __('app.email_sender_modal_from_name')]),
+            'email.mail_from_address.required_with' => __('validation.required', ['attribute' => __('app.email_sender_modal_from_email')]),
+            'email.mail_from_address.email' => __('validation.email', ['attribute' => __('app.email_sender_modal_from_email')]),
+            'email.mailer_from_name.required_with' => __('validation.required', ['attribute' => __('app.email_sender_modal_from_name')]),
+            'email.mailer_from_address.required_with' => __('validation.required', ['attribute' => __('app.email_sender_modal_from_email')]),
+            'email.mailer_from_address.email' => __('validation.email', ['attribute' => __('app.email_sender_modal_from_email')]),
+            'wordpress.wordpress_url.url' => __('validation.url', ['attribute' => __('team_settings.fields.wordpress_url.label')]),
+            'woocommerce.woocommerce_url.url' => __('validation.url', ['attribute' => __('team_settings.fields.woocommerce_url.label')]),
         ];
     }
 }

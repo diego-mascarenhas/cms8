@@ -3,17 +3,12 @@
 @section('title', 'Custom Translations')
 
 @section('content')
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-    <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">Custom Translations</h4>
-        <p class="text-muted">Manage custom translations for your team</p>
-    </div>
-    <div class="d-flex align-content-center flex-wrap gap-3">
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTranslationModal">
-            <i class="ti ti-plus me-1"></i>Add Translation
-        </button>
-    </div>
-</div>
+@include('team-settings.partials.header', [
+    'team' => $team,
+    'title' => __('Custom Translations'),
+    'subtitle' => __('Manage custom translations for your team'),
+    'actions' => '<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTranslationModal"><i class="ti ti-plus me-1"></i>'.e(__('Add Translation')).'</button>',
+])
 
 <div class="row">
     <div class="col-12">

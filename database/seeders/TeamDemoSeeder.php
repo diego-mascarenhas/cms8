@@ -103,6 +103,9 @@ class TeamDemoSeeder extends Seeder
         // 12.1. Demo notifications (navbar + módulo notificaciones)
         $this->call(DemoNotificationsSeeder::class);
 
+        // 12.2. Demo affiliate referrals (invitations + commissions)
+        $this->call(DemoAffiliatesSeeder::class);
+
         // 13. Seed demo data
         $this->seedDemoEnterprises();
         $this->createServiceCategoriesAndTypes();

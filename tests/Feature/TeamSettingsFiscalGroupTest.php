@@ -90,4 +90,23 @@ class TeamSettingsFiscalGroupTest extends TestCase
             ->assertSee(route('team-settings.edit', ['team' => $team, 'group' => 'fiscal']), false)
             ->assertSee(route('team-settings.edit', ['team' => $team, 'group' => 'cuentica']), false);
     }
+
+    public function test_settings_index_shows_spanish_copy_when_locale_is_spanish(): void
+    {
+        app()->setLocale('es');
+
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $this->actingAs($user)
+            ->get(route('team-settings.index', $team))
+            ->assertOk()
+            ->assertSee(__('Team Settings'), false)
+            ->assertSee(__('Configure your team settings and preferences'), false)
+            ->assertSee(__('Stripe Integration'), false)
+            ->assertSee(__('Password security'), false)
+            ->assertSee(__('Google People & Calendar'), false)
+            ->assertDontSee('Team Settings', false)
+            ->assertDontSee('Configure your team settings and preferences', false);
+    }
 }

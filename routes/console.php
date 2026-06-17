@@ -195,3 +195,10 @@ Schedule::command('performance-insights:generate')
     ->description('Persist daily performance insight rows for admin/root users (idempotent without --force)')
     ->withoutOverlapping(120)
     ->runInBackground();
+
+Schedule::command('sentiment:compute-daily')
+    ->dailyAt('06:20')
+    ->name('sentiment-compute-daily')
+    ->description('Analyze full inbound chat and email context from the last 24 hours per active contact')
+    ->withoutOverlapping(120)
+    ->runInBackground();

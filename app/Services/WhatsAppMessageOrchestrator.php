@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppOutboundText;
-use App\Jobs\RecordContactSentimentJob;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
@@ -922,12 +921,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 Log::info("New contact email notification sent to {$notificationEmail} for from {$cleanFrom}");
             }
 
-            // Queue AI sentiment analysis for WhatsApp (all channels use same job)
-            if ($channel === 'whatsapp')
-            {
-                $this->dispatchSentimentAnalysis($cleanFrom, $body);
-            }
-
             // Automatic AI response: team settings prevail over per-contact preferences and blacklist.
             $shouldProcessAutoAi = false;
             if ($channel === 'whatsapp' && $this->team)
@@ -1479,44 +1472,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             Log::error('Twilio WhatsApp Template Error: '.$e->getMessage());
             throw $e;
-        }
-    }
-
-    /**
-     * Queue AI sentiment analysis for incoming WhatsApp message (contact resolved by phone).
-     */
-    private function dispatchSentimentAnalysis(string $phoneNumber, string $messageBody): void
-    {
-        try
-        {
-            $phoneAsInt = is_numeric($phoneNumber) ? (int) $phoneNumber : null;
-            $user = null;
-
-            if ($phoneAsInt)
-            {
-                $user = User::where('phone', $phoneAsInt)->first();
-            }
-
-            if (! $user)
-            {
-                $user = User::where('phone', 'like', '%'.$phoneNumber.'%')->first();
-            }
-
-            if (! $user)
-            {
-                return;
-            }
-
-            $contact = Contact::withoutGlobalScopes()->where('user_id', $user->id)->first();
-            if (! $contact)
-            {
-                return;
-            }
-
-            RecordContactSentimentJob::dispatch($contact->id, $messageBody, 'whatsapp');
-        } catch (\Exception $e)
-        {
-            Log::error('Error dispatching sentiment analysis: '.$e->getMessage());
         }
     }
 
