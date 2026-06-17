@@ -3,9 +3,20 @@
         @teleport('#mail-inbox-status')
             <div class="alert alert-{{ $statusType === 'success' ? 'success' : 'danger' }} alert-dismissible mb-3 py-2"
                 role="alert"
-                wire:key="mail-status-{{ md5($statusMessage) }}">
+                wire:key="mail-status-{{ md5($statusMessage) }}"
+                x-data="{ show: true, hideTimer: null, removeTimer: null }"
+                x-init="
+                    hideTimer = setTimeout(() => {
+                        show = false;
+                        removeTimer = setTimeout(() => $wire.set('statusMessage', null), 300);
+                    }, 3000);
+                "
+                x-show="show"
+                x-transition:leave.opacity.duration.300ms>
                 {{ $statusMessage }}
-                <button type="button" class="btn-close" wire:click="$set('statusMessage', null)" aria-label="{{ __('Close') }}"></button>
+                <button type="button" class="btn-close"
+                    @click="clearTimeout(hideTimer); clearTimeout(removeTimer); show = false; $wire.set('statusMessage', null)"
+                    aria-label="{{ __('Close') }}"></button>
             </div>
         @endteleport
     @endif
