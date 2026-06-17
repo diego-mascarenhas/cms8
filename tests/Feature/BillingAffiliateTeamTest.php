@@ -170,6 +170,57 @@ class BillingAffiliateTeamTest extends TestCase
         $this->assertNotNull($invitation?->sent_at);
     }
 
+    public function test_affiliate_invite_email_uses_spain_spanish(): void
+    {
+        Mail::fake();
+        app()->setLocale('es_AR');
+
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'assistant',
+                    'name' => 'Assistant',
+                    'checkout_url' => 'https://buy.stripe.com/test_assistant',
+                    'checkout_available' => true,
+                ],
+            ],
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'affiliates'],
+            [
+                'name' => 'Affiliates',
+                'icon' => 'affiliate',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create(['name' => 'Carlos Referidor']);
+        $team = $user->currentTeam;
+        $team->forceFill(['stripe_id' => 'cus_invite_ref'])->save();
+        $team->enableModule('affiliates');
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($user)->post(route('billing.affiliate-invite'), [
+            'invite_name' => 'Jane Doe',
+            'invite_email' => 'jane@example.com',
+            'invite_plan' => 'assistant',
+        ])->assertRedirect(route('billing.index'));
+
+        $mailable = Mail::sent(AffiliatePurchaseInvitationMail::class)->first();
+        $this->assertNotNull($mailable);
+
+        $html = $mailable->render();
+
+        $this->assertStringContainsString('Puedes ignorarlo', $html);
+        $this->assertStringNotContainsString('Podés', $html);
+        $this->assertStringContainsString('Ver todos los planes', $html);
+        $this->assertStringContainsString('Suscribirme a Assistant', $html);
+        $this->assertStringContainsString('Hola, Jane Doe', $html);
+    }
+
     public function test_affiliate_invite_returns_field_validation_errors(): void
     {
         Mail::fake();

@@ -76,28 +76,58 @@ class AffiliateReferralLinkBuilder
     }
 
     /**
-     * @return array{name: string, description: string, features: list<string>}|null
+     * @return array{name: string, description: string, features: list<string>, image_url: string}|null
      */
-    public function planMarketing(string $planId): ?array
+    public function planMarketing(string $planId, ?string $locale = null): ?array
     {
-        $plan = collect($this->availablePlans())->firstWhere('id', $planId);
-        if ($plan === null)
+        $resolve = function () use ($planId): ?array
         {
-            return null;
+            $plan = collect($this->availablePlans())->firstWhere('id', $planId);
+            if ($plan === null)
+            {
+                return null;
+            }
+
+            $features = __("humano_pricing.plans.{$planId}.features");
+            if (! is_array($features))
+            {
+                $features = [];
+            }
+
+            return [
+                'name' => $plan['name'],
+                'description' => (string) __("humano_pricing.plans.{$planId}.description"),
+                'features' => array_values(array_map('strval', $features)),
+                'image_url' => $this->planImageUrl($planId),
+            ];
+        };
+
+        if ($locale !== null)
+        {
+            return $this->runWithLocale($locale, $resolve);
         }
 
-        $features = __("humano_pricing.plans.{$planId}.features");
-        if (! is_array($features))
-        {
-            $features = [];
-        }
+        return $resolve();
+    }
 
-        return [
-            'name' => $plan['name'],
-            'description' => (string) __("humano_pricing.plans.{$planId}.description"),
-            'features' => array_values(array_map('strval', $features)),
-            'image_url' => $this->planImageUrl($planId),
-        ];
+    /**
+     * @template TReturn
+     *
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
+     */
+    private function runWithLocale(string $locale, callable $callback): mixed
+    {
+        $previousLocale = app()->getLocale();
+        app()->setLocale($locale);
+
+        try
+        {
+            return $callback();
+        } finally
+        {
+            app()->setLocale($previousLocale);
+        }
     }
 
     public function planImageUrl(string $planId): string
