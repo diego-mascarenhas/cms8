@@ -7,7 +7,6 @@ use App\Models\Contact;
 use App\Models\Email;
 use App\Models\Mailbox;
 use App\Models\Prompt;
-use App\Models\Source;
 use App\Services\AgentConversationContextService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\Imap\MailboxConnectionService;
@@ -25,7 +24,6 @@ class MailController extends Controller
 {
     public function index(): View
     {
-        $sources = Source::all();
         $emails = $this->getEmailsFromDatabase();
 
         if ($emails->isEmpty() && class_exists(\Webklex\PHPIMAP\ClientManager::class))
@@ -83,7 +81,7 @@ class MailController extends Controller
                 ]);
         }
 
-        return view('mail.index', compact('sources', 'mailComposePrefill', 'mailComposeContactId', 'assistantFlowPrompts'));
+        return view('mail.index', compact('mailComposePrefill', 'mailComposeContactId', 'assistantFlowPrompts'));
     }
 
     /**
