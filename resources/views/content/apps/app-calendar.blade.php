@@ -35,7 +35,7 @@
 <script>window.calendarInitialView = @json($calendarInitialView);</script>
 @endif
 <script>
-  window.calendarLocale = @json(app()->getLocale());
+  window.calendarLocale = @json(\App\Support\ApplicationLocales::javascriptLocale());
   window.calendarStrings = {
     addEvent: @json(__('Add Event')),
     updateEvent: @json(__('Update Event')),
@@ -61,7 +61,7 @@
     deleteConfirmText: @json(__('Are you sure you want to delete this record?')),
     deleteConfirmYes: @json(__('Yes, delete')),
     cancel: @json(__('Cancel')),
-    dateTimePlaceholder: @json(app()->getLocale() === 'es' ? 'dd-mm-aaaa hh:mm' : 'mm-dd-yyyy hh:mm'),
+    dateTimePlaceholder: @json(\App\Support\ApplicationLocales::javascriptLocale() === 'es' ? 'dd-mm-aaaa hh:mm' : 'mm-dd-yyyy hh:mm'),
     datePlaceholder: @json(__('Selecciona una fecha')),
     calendar: @json(__('Calendario'))
   };

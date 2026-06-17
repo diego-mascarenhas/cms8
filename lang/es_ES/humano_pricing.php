@@ -91,5 +91,5 @@ return [
     'dashboard_post_checkout_whatsapp_title' => 'Vincular WhatsApp',
     'dashboard_post_checkout_whatsapp_body' => 'Escanea el código QR para conectar WhatsApp (Dispositivos vinculados) cuando tu conector lo permita.',
     'dashboard_post_checkout_whatsapp_button' => 'Conectar WhatsApp',
-    'checkout_billing_gate_pending' => 'Recibimos el pago, pero aún no pudimos validar el acceso en la app. Copiá este mensaje y contacta soporte, o prueba de nuevo en unos minutos.',
+    'checkout_billing_gate_pending' => 'Recibimos el pago, pero aún no pudimos validar el acceso en la app. Copia este mensaje y contacta soporte, o prueba de nuevo en unos minutos.',
 ];

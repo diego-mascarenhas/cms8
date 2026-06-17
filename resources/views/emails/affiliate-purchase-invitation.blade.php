@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-ES">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $inviterLabel }} te invita a conocer {{ $appName }}</title>
+    <title>{{ __('affiliate_invitation.page_title', ['inviter' => $inviterLabel, 'app' => $appName]) }}</title>
     <style>
         body { margin: 0; padding: 24px 12px; background: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #0f172a; line-height: 1.45; }
         .wrap { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08); }
@@ -36,9 +36,16 @@
                 </a>
             </div>
 
-            <h1>Hola, {{ $inviteeName }}</h1>
+            <h1>{{ __('affiliate_invitation.greeting', ['name' => $inviteeName]) }}</h1>
             <p class="intro">
-                <strong>{{ $inviterLabel }}</strong> te invita a conocer <strong>{{ $appName }}</strong> y el plan <strong>{{ $planName }}</strong>.
+                @php
+                    $introHtml = __('affiliate_invitation.intro', [
+                        'inviter' => '<strong>'.e($inviterLabel).'</strong>',
+                        'app' => '<strong>'.e($appName).'</strong>',
+                        'plan' => '<strong>'.e($planName).'</strong>',
+                    ]);
+                @endphp
+                {!! $introHtml !!}
             </p>
 
             <div class="plan-card">
@@ -57,13 +64,13 @@
             </div>
 
             <div class="btn-wrap">
-                <a href="{{ $checkoutUrl }}" class="btn btn-primary">Suscribirme a {{ $planName }}</a>
+                <a href="{{ $checkoutUrl }}" class="btn btn-primary">{{ __('affiliate_invitation.cta_subscribe', ['plan' => $planName]) }}</a>
             </div>
             <div class="btn-wrap">
-                <a href="{{ $pricingUrl }}" class="btn btn-secondary">Ver todos los planes</a>
+                <a href="{{ $pricingUrl }}" class="btn btn-secondary">{{ __('affiliate_invitation.cta_pricing') }}</a>
             </div>
 
-            <p class="muted" style="margin-bottom: 0;">¿No esperabas este correo? Podés ignorarlo.</p>
+            <p class="muted" style="margin-bottom: 0;">{{ __('affiliate_invitation.footer') }}</p>
         </div>
     </div>
     @if(!empty($trackingPixelUrl))

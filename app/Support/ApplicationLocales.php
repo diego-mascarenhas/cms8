@@ -114,4 +114,12 @@ final class ApplicationLocales
             default => 'es',
         };
     }
+
+    /**
+     * Two-letter locale for browser libraries (FullCalendar, DataTables, flatpickr, moment).
+     */
+    public static function javascriptLocale(?string $locale = null): string
+    {
+        return self::templateCustomizerLang($locale);
+    }
 }

@@ -28,7 +28,9 @@ class AffiliatePurchaseInvitationMail extends Mailable
         public string $planImageUrl,
         public string $checkoutUrl,
         public string $pricingUrl,
-    ) {}
+    ) {
+        $this->locale = 'es_ES';
+    }
 
     public function build(): self
     {
@@ -37,7 +39,12 @@ class AffiliatePurchaseInvitationMail extends Mailable
         $checkoutUrl = $this->wrapTrackedClickUrl($this->checkoutUrl, 'checkout');
         $pricingUrl = $this->wrapTrackedClickUrl($this->pricingUrl, 'pricing');
 
-        $mail = $this->subject("{$inviterLabel} te invita a conocer Humano — {$this->planName}")
+        $mail = $this->locale('es_ES')
+            ->subject(__('affiliate_invitation.subject', [
+                'inviter' => $inviterLabel,
+                'app' => (string) config('app.name'),
+                'plan' => $this->planName,
+            ]))
             ->view('emails.affiliate-purchase-invitation', [
                 'inviterLabel' => $inviterLabel,
                 'logoUrl' => url(Helpers::logoAsset('dark')),

@@ -284,7 +284,7 @@ class BillingController extends Controller
             (string) $request->validated('invite_email'),
         );
 
-        $planMarketing = $linkBuilder->planMarketing($planId) ?? [
+        $planMarketing = $linkBuilder->planMarketing($planId, 'es_ES') ?? [
             'name' => $plan['name'],
             'description' => '',
             'features' => [],

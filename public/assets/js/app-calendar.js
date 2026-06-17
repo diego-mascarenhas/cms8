@@ -12,7 +12,13 @@
 'use strict';
 
 const calendarStrings = window.calendarStrings || {};
-const calendarLocale = window.calendarLocale || 'es';
+const calendarLocale = (function normalizeJsLocale(locale) {
+  const raw = String(locale || 'es').trim();
+  if (!raw) {
+    return 'es';
+  }
+  return raw.replace('_', '-').split('-')[0].toLowerCase();
+})(window.calendarLocale || 'es');
 
 let direction = 'ltr';
 
