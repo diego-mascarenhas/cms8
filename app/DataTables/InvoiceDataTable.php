@@ -4,7 +4,6 @@ namespace App\DataTables;
 
 use App\Models\Invoice;
 use App\Services\Finance\InvoiceSummaryService;
-use App\Support\ApplicationLocales;
 use App\Support\DataTableFormatter;
 use App\Support\InvoiceTableAmountFormatter;
 use App\Support\SearchNormalizer;
@@ -195,7 +194,7 @@ class InvoiceDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->pageLength(25)
-            ->language(['url' => ApplicationLocales::datatableLanguageUrl()])
+            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters([
                 'select' => false,
                 'autoWidth' => false,

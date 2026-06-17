@@ -75,8 +75,6 @@ class CampaignDataTable extends DataTable
 
     public function html(): HtmlBuilder
     {
-        $locale = session()->get('locale', app()->getLocale());
-
         return $this->builder()
             ->setTableId('campaigns-table')
             ->columns($this->getColumns())
@@ -95,7 +93,7 @@ class CampaignDataTable extends DataTable
             ->pageLength(10)
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/'.$locale.'.json'])
+            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters($this->tableDomParameters());
     }
 
