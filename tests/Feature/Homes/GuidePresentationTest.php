@@ -23,7 +23,7 @@ class GuidePresentationTest extends TestCase
             ->assertOk()
             ->assertSee('<base href="/homes/humano/presentations/">', false)
             ->assertSee('programa de referidos', false)
-            ->assertSee('Activá Stripe', false)
+            ->assertSee('Activa Stripe', false)
             ->assertSee('Comisión por referido', false);
     }
 

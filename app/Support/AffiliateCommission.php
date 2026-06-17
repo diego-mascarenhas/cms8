@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Team;
+use Illuminate\Support\Facades\Schema;
 
 class AffiliateCommission
 {
@@ -22,7 +23,7 @@ class AffiliateCommission
     {
         $platformTeamId = self::platformTeamId();
 
-        if ($platformTeamId <= 0)
+        if ($platformTeamId <= 0 || ! Schema::hasTable('teams'))
         {
             return null;
         }
