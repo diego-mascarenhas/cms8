@@ -872,6 +872,8 @@ return [
     'New' => 'Nuevo',
     'Post' => 'Entrada',
     'Slug' => 'Slug',
+    'Permalink' => 'Enlace permanente',
+    'Slug is generated automatically from the title.' => 'Se genera automáticamente desde el título. Podés editarlo con «Editar».',
     'Leave blank to generate from the title.' => 'Déjalo en blanco para generarlo desde el título.',
     'Excerpt' => 'Extracto',
     'Publish' => 'Publicación',

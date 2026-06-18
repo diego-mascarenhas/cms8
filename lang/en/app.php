@@ -698,6 +698,8 @@ return [
     'New' => 'New',
     'Post' => 'Post',
     'Slug' => 'Slug',
+    'Permalink' => 'Permalink',
+    'Slug is generated automatically from the title.' => 'Generated automatically from the title. Click Edit to customize.',
     'Leave blank to generate from the title.' => 'Leave blank to generate from the title.',
     'Excerpt' => 'Excerpt',
     'Publish' => 'Publish',

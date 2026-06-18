@@ -57,12 +57,25 @@
                         @error('post_title')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label" for="post_name">{{ __('app.Slug') }}</label>
-                        <input type="text" id="post_name" name="post_name" class="form-control @error('post_name') is-invalid @enderror"
-                            value="{{ old('post_name', $isEdit ? $post->post_name : '') }}" pattern="[a-z0-9\-]*">
-                        <div class="form-text">{{ __('app.Leave blank to generate from the title.') }}</div>
-                        @error('post_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    <div class="mb-3" id="permalink-panel">
+                        <div class="d-flex flex-wrap align-items-center gap-1 small" id="permalink-view">
+                            <span class="text-muted">{{ __('app.Permalink') }}:</span>
+                            <span class="text-muted">/</span>
+                            <span id="permalink-slug-text" class="fw-medium">{{ old('post_name', $isEdit ? $post->post_name : '') ?: '…' }}</span>
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-1" id="permalink-edit-btn">{{ __('app.Edit') }}</button>
+                        </div>
+                        <div class="d-none mt-2" id="permalink-edit">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">/</span>
+                                <input type="text" id="post_name" name="post_name"
+                                    class="form-control @error('post_name') is-invalid @enderror"
+                                    value="{{ old('post_name', $isEdit ? $post->post_name : '') }}"
+                                    pattern="[a-z0-9\-]*" autocomplete="off">
+                                <button type="button" class="btn btn-primary" id="permalink-ok-btn">OK</button>
+                            </div>
+                            @error('post_name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                            <div class="form-text">{{ __('app.Slug is generated automatically from the title.') }}</div>
+                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -238,8 +251,47 @@ $(function() {
         }
     });
 
+    // Permalink / slug (WordPress-style: auto from title until manually edited).
+    const titleInput = document.getElementById('post_title');
+    const slugInput = document.getElementById('post_name');
+    const slugText = document.getElementById('permalink-slug-text');
+    const permalinkView = document.getElementById('permalink-view');
+    const permalinkEdit = document.getElementById('permalink-edit');
+    const isNewPost = {{ $isEdit ? 'false' : 'true' }};
+    let slugManual = !isNewPost && (slugInput.value || '').trim() !== '';
+
+    function slugify(text) {
+        return (text || '')
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    function syncSlugPreview() {
+        const slug = (slugInput.value || '').trim();
+        slugText.textContent = slug || '…';
+    }
+
+    function applyAutoSlug() {
+        if (slugManual) {
+            return;
+        }
+        const slug = slugify(titleInput.value);
+        slugInput.value = slug;
+        syncSlugPreview();
+    }
+
     $('#post-form').on('submit', function() {
         document.querySelector('#post_content').value = quill.root.innerHTML;
+        if (!slugManual || !(slugInput.value || '').trim()) {
+            slugInput.value = slugify(titleInput.value);
+        }
+        syncSlugPreview();
     });
 
     // Insert image from the media library into the editor.
@@ -272,6 +324,34 @@ $(function() {
         preview.classList.add('d-none');
         removeBtn.classList.add('d-none');
     });
+
+    titleInput?.addEventListener('input', applyAutoSlug);
+
+    slugInput?.addEventListener('input', function() {
+        slugManual = true;
+        syncSlugPreview();
+    });
+
+    document.getElementById('permalink-edit-btn')?.addEventListener('click', function() {
+        permalinkView.classList.add('d-none');
+        permalinkEdit.classList.remove('d-none');
+        slugInput.focus();
+        slugInput.select();
+    });
+
+    document.getElementById('permalink-ok-btn')?.addEventListener('click', function() {
+        slugInput.value = slugify(slugInput.value);
+        slugManual = true;
+        syncSlugPreview();
+        permalinkEdit.classList.add('d-none');
+        permalinkView.classList.remove('d-none');
+    });
+
+    if (isNewPost) {
+        applyAutoSlug();
+    } else {
+        syncSlugPreview();
+    }
 });
 </script>
 @endsection
