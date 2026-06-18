@@ -19,6 +19,9 @@
     if (($group ?? '') === 'cuentica') {
         $headerActions = '<button type="button" id="btnTestCuentica" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-cuentica', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
     }
+    if (($group ?? '') === 'wordpress') {
+        $headerActions = '<button type="button" id="btnTestWordPress" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-wordpress', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
+    }
 @endphp
 
 @include('team-settings.partials.header', [
@@ -32,16 +35,22 @@
     <div id="cuenticaTestResult" class="mb-3"></div>
 @endif
 
+@if (($group ?? '') === 'wordpress')
+    <div id="wordpressTestResult" class="mb-3"></div>
+@endif
+
     <div class="row">
         <div class="col-md-12">
             @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
+                <div class="alert alert-success d-flex align-items-center">
+                    <i class="ti ti-circle-check me-2"></i>
+                    <span>{{ session('success') }}</span>
                 </div>
             @endif
             @if (session('error'))
-                <div class="alert alert-warning">
-                    {{ session('error') }}
+                <div class="alert alert-warning d-flex align-items-center">
+                    <i class="ti ti-alert-triangle me-2"></i>
+                    <span>{{ session('error') }}</span>
                 </div>
             @endif
 
@@ -320,11 +329,51 @@
                 .then(response => response.json())
                 .then(data => {
                     const cssClass = data.success ? 'alert-success' : 'alert-warning';
-                    result.innerHTML = '<div class="alert ' + cssClass + ' mb-0">' + (data.message || '') + '</div>';
+                    const icon = data.success ? 'ti-circle-check' : 'ti-alert-triangle';
+                    result.innerHTML = '<div class="alert ' + cssClass + ' mb-0 d-flex align-items-center"><i class="ti ' + icon + ' me-2"></i><span>' + (data.message || '') + '</span></div>';
                 })
                 .catch(error => {
                     console.error('Cuéntica test connection error:', error);
-                    result.innerHTML = '<div class="alert alert-danger mb-0">{{ __('Error inesperado al probar la conexión.') }}</div>';
+                    result.innerHTML = '<div class="alert alert-danger mb-0 d-flex align-items-center"><i class="ti ti-alert-circle me-2"></i><span>{{ __('Error inesperado al probar la conexión.') }}</span></div>';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            });
+        })();
+
+        // WordPress connection test
+        (function() {
+            const btn = document.getElementById('btnTestWordPress');
+            if (!btn) {
+                return;
+            }
+
+            const result = document.getElementById('wordpressTestResult');
+            const originalText = btn.innerHTML;
+
+            btn.addEventListener('click', function() {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>{{ __('Probando...') }}';
+                result.innerHTML = '';
+
+                fetch(btn.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const cssClass = data.success ? 'alert-success' : 'alert-warning';
+                    const icon = data.success ? 'ti-circle-check' : 'ti-alert-triangle';
+                    result.innerHTML = '<div class="alert ' + cssClass + ' mb-0 d-flex align-items-center"><i class="ti ' + icon + ' me-2"></i><span>' + (data.message || '') + '</span></div>';
+                })
+                .catch(error => {
+                    console.error('WordPress test connection error:', error);
+                    result.innerHTML = '<div class="alert alert-danger mb-0 d-flex align-items-center"><i class="ti ti-alert-circle me-2"></i><span>{{ __('Error inesperado al probar la conexión.') }}</span></div>';
                 })
                 .finally(() => {
                     btn.disabled = false;

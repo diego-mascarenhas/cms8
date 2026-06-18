@@ -33,6 +33,7 @@ class WordPressContentSyncTest extends TestCase
     {
         Bus::fake();
         Http::fake([
+            'wp.test/wp-json/' => Http::response(['namespaces' => ['wp/v2']], 200),
             'wp.test/wp-json/wp/v2/posts' => Http::response([
                 'id' => 555,
                 'modified_gmt' => '2026-06-18T10:00:00',
@@ -60,6 +61,7 @@ class WordPressContentSyncTest extends TestCase
     {
         Bus::fake();
         Http::fake([
+            'wp.test/wp-json/' => Http::response(['namespaces' => ['wp/v2']], 200),
             'wp.test/wp-json/wp/v2/posts/777' => Http::response([
                 'id' => 777,
                 'modified_gmt' => '2026-06-18T11:00:00',

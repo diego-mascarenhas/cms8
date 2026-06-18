@@ -23,7 +23,7 @@ class PostController extends Controller
 
         $postTypes = PostType::query()->orderBy('menu_order')->orderBy('label')->get();
         $currentType = $this->resolveCurrentType($type, $postTypes);
-        $wordpressSyncEnabled = WordPressContentSyncService::make($request->user()->currentTeam)->isEnabled();
+        $wordpressSyncEnabled = WordPressContentSyncService::make($request->user()->currentTeam)->isConfigured();
 
         return $dataTable
             ->forPostType($currentType?->name)
@@ -135,7 +135,7 @@ class PostController extends Controller
         $team = $request->user()->currentTeam;
         $service = WordPressContentSyncService::make($team);
 
-        if (! $service->isEnabled())
+        if (! $service->isConfigured())
         {
             return back()->with('error', __('app.WordPress sync is not configured for this team.'));
         }

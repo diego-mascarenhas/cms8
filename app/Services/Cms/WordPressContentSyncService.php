@@ -55,6 +55,17 @@ class WordPressContentSyncService
         }
     }
 
+    /**
+     * Whether WordPress credentials are present (enough for a manual sync).
+     */
+    public function isConfigured(): bool
+    {
+        return $this->wp->isConfigured();
+    }
+
+    /**
+     * Whether automatic real-time sync is enabled (credentials + opt-in flag).
+     */
     public function isEnabled(): bool
     {
         return $this->wp->isConfigured()

@@ -291,6 +291,15 @@ class TeamSettingController extends Controller
                 ]);
             }
 
+            if ($group === 'wordpress' && ! array_key_exists('wordpress_cms_sync_enabled', $settings))
+            {
+                $team->setSetting('wordpress_cms_sync_enabled', false, [
+                    'group' => 'wordpress',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
             if ($group === 'fiscal')
             {
                 foreach (['fiscal_platform', 'fiscal_country'] as $clearableKey)
@@ -471,6 +480,7 @@ class TeamSettingController extends Controller
             'webdav_calendar_inbound_sync_enabled',
             'webdav_tasks_inbound_sync_enabled',
             'public_catalog_enabled',
+            'wordpress_cms_sync_enabled',
         ];
 
         if (in_array($key, $integerFields))
@@ -866,6 +876,15 @@ class TeamSettingController extends Controller
                         'section' => 'connection',
                         'row' => 1,
                     ],
+                    'wordpress_cms_sync_enabled' => [
+                        'label' => 'Sincronización bidireccional del CMS',
+                        'type' => 'checkbox',
+                        'value' => $team->getSetting('wordpress_cms_sync_enabled') ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => 'Al activarlo, los cambios en el CMS (páginas y entradas) se envían a WordPress automáticamente, y los cambios en WordPress se traen vía webhook.',
+                        'section' => 'connection',
+                        'row' => 1,
+                    ],
                     'wordpress_username' => [
                         'label' => 'Username',
                         'type' => 'text',
@@ -885,6 +904,16 @@ class TeamSettingController extends Controller
                         'help' => 'Generado en WordPress: Usuarios → tu usuario → Contraseñas de aplicación. Se almacena cifrado.',
                         'section' => 'connection',
                         'row' => 2,
+                    ],
+                    'wordpress_webhook_secret' => [
+                        'label' => 'Webhook Secret',
+                        'type' => 'text',
+                        'value' => $team->getSetting('wordpress_webhook_secret'),
+                        'is_encrypted' => false,
+                        'placeholder' => 'cadena-secreta-compartida',
+                        'help' => 'Pega esta misma cadena en el plugin "Humano CMS Sync" de WordPress. Endpoint: '.url('/api/wordpress/webhook/'.$team->id),
+                        'section' => 'connection',
+                        'row' => 3,
                     ],
                 ],
             ],
@@ -2097,6 +2126,13 @@ class TeamSettingController extends Controller
     /**
      * Test Twilio connection
      */
+    public function testWordPressConnection(Team $team): JsonResponse
+    {
+        $this->authorize('update', $team);
+
+        return response()->json((new \App\Services\WordPressService($team))->verifyConnection());
+    }
+
     public function testTwilioConnection(Team $team)
     {
         $this->authorize('update', $team);

@@ -56,6 +56,60 @@ class WordPressService
         return 'Basic '.base64_encode($user.':'.$password);
     }
 
+    /**
+     * Whether the site serves the REST API at /wp-json/ (pretty permalinks). Cached per instance.
+     * When false, requests fall back to the permalink-independent /?rest_route= form.
+     */
+    private ?bool $prettyPermalinks = null;
+
+    private function usesPrettyPermalinks(): bool
+    {
+        if ($this->prettyPermalinks !== null)
+        {
+            return $this->prettyPermalinks;
+        }
+
+        try
+        {
+            $response = Http::acceptJson()->timeout(8)->get($this->baseUrl().'/wp-json/');
+            $json = $response->json();
+            $this->prettyPermalinks = $response->successful()
+                && is_array($json)
+                && (isset($json['namespaces']) || isset($json['routes']));
+        } catch (\Throwable)
+        {
+            $this->prettyPermalinks = false;
+        }
+
+        return $this->prettyPermalinks;
+    }
+
+    /**
+     * Build a REST URL for a full namespace path (e.g. "/wp/v2/posts"), independent of the
+     * site's permalink structure: uses /wp-json/ when available, else /?rest_route=.
+     *
+     * @param  array<string, mixed>  $query
+     */
+    private function restUrl(string $namespacePath, array $query = []): string
+    {
+        $namespacePath = '/'.ltrim($namespacePath, '/');
+
+        if ($this->usesPrettyPermalinks())
+        {
+            $url = $this->baseUrl().'/wp-json'.$namespacePath;
+
+            return $query === [] ? $url : $url.'?'.http_build_query($query);
+        }
+
+        $params = array_merge(['rest_route' => $namespacePath], $query);
+
+        return $this->baseUrl().'/?'.http_build_query($params);
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<int|string, mixed>|null
+     */
     protected function request(string $method, string $path, array $query = []): ?array
     {
         if (! $this->isConfigured())
@@ -63,13 +117,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->get($url, array_merge(['per_page' => 100], $query));
+            ])->acceptJson()->get($this->restUrl($path, array_merge(['per_page' => 100], $query)));
 
             if ($response->successful())
             {
@@ -91,6 +143,9 @@ class WordPressService
         }
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     protected function getOne(string $path): ?array
     {
         if (! $this->isConfigured())
@@ -98,13 +153,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->get($url);
+            ])->acceptJson()->get($this->restUrl($path));
 
             if ($response->successful())
             {
@@ -137,13 +190,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->put($url, $body);
+            ])->acceptJson()->put($this->restUrl($path), $body);
 
             if ($response->successful())
             {
@@ -176,13 +227,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->post($url, $body);
+            ])->acceptJson()->post($this->restUrl($path), $body);
 
             if ($response->successful())
             {
@@ -209,7 +258,7 @@ class WordPressService
      */
     public function getPosts(int $page = 1, int $perPage = 100): array
     {
-        $data = $this->request('GET', '/posts', ['page' => $page, 'per_page' => $perPage]);
+        $data = $this->request('GET', '/wp/v2/posts', ['page' => $page, 'per_page' => $perPage]);
 
         return is_array($data) ? $data : [];
     }
@@ -219,7 +268,7 @@ class WordPressService
      */
     public function getPages(int $page = 1, int $perPage = 100): array
     {
-        $data = $this->request('GET', '/pages', ['page' => $page, 'per_page' => $perPage]);
+        $data = $this->request('GET', '/wp/v2/pages', ['page' => $page, 'per_page' => $perPage]);
 
         return is_array($data) ? $data : [];
     }
@@ -230,11 +279,59 @@ class WordPressService
     }
 
     /**
+     * Verify the WordPress connection and authentication by calling /wp/v2/users/me.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public function verifyConnection(): array
+    {
+        if (! $this->isConfigured())
+        {
+            return ['success' => false, 'message' => __('Faltan credenciales de WordPress (URL, usuario o contraseña de aplicación).')];
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()->timeout(10)->get($this->restUrl('/wp/v2/users/me', ['context' => 'edit']));
+
+            $json = $response->json();
+
+            // Valid authenticated user: the response must be a JSON object with a numeric id.
+            if ($response->successful() && is_array($json) && isset($json['id']))
+            {
+                $name = $json['name'] ?? $json['slug'] ?? ('#'.$json['id']);
+
+                return ['success' => true, 'message' => __('Conexión correcta. Autenticado como: :name', ['name' => $name])];
+            }
+
+            // The endpoint did not return JSON (likely HTML homepage): REST API not reachable.
+            if (! is_array($json))
+            {
+                return ['success' => false, 'message' => __('La API REST de WordPress no respondió JSON. Verifica la URL del sitio (debe ser la raíz de WordPress).')];
+            }
+
+            // JSON error from WordPress (e.g. invalid credentials).
+            $code = $json['code'] ?? '';
+            if ($response->status() === 401 || in_array($code, ['rest_not_logged_in', 'incorrect_password', 'invalid_username', 'rest_cannot_access'], true))
+            {
+                return ['success' => false, 'message' => __('Credenciales inválidas. Revisa el usuario y la contraseña de aplicación.')];
+            }
+
+            return ['success' => false, 'message' => __('Error :status: :message', ['status' => $response->status(), 'message' => $json['message'] ?? __('no se pudo autenticar')])];
+        } catch (\Throwable $e)
+        {
+            return ['success' => false, 'message' => __('No se pudo conectar: :error', ['error' => $e->getMessage()])];
+        }
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function getPost(int $id): ?array
     {
-        $data = $this->getOne('/posts/'.$id);
+        $data = $this->getOne('/wp/v2/posts/'.$id);
 
         return is_array($data) ? $data : null;
     }
@@ -244,7 +341,7 @@ class WordPressService
      */
     public function getPage(int $id): ?array
     {
-        $data = $this->getOne('/pages/'.$id);
+        $data = $this->getOne('/wp/v2/pages/'.$id);
 
         return is_array($data) ? $data : null;
     }
@@ -255,7 +352,7 @@ class WordPressService
      */
     public function updatePost(int $id, array $data): ?array
     {
-        return $this->put('/posts/'.$id, $data);
+        return $this->put('/wp/v2/posts/'.$id, $data);
     }
 
     /**
@@ -264,7 +361,7 @@ class WordPressService
      */
     public function updatePage(int $id, array $data): ?array
     {
-        return $this->put('/pages/'.$id, $data);
+        return $this->put('/wp/v2/pages/'.$id, $data);
     }
 
     /**
@@ -275,7 +372,7 @@ class WordPressService
      */
     public function createContent(string $type, array $data): ?array
     {
-        $endpoint = $type === 'page' ? '/pages' : '/posts';
+        $endpoint = $type === 'page' ? '/wp/v2/pages' : '/wp/v2/posts';
 
         return $this->post($endpoint, $data);
     }
@@ -288,7 +385,7 @@ class WordPressService
      */
     public function updateContent(string $type, int $id, array $data): ?array
     {
-        $endpoint = $type === 'page' ? '/pages/'.$id : '/posts/'.$id;
+        $endpoint = $type === 'page' ? '/wp/v2/pages/'.$id : '/wp/v2/posts/'.$id;
 
         return $this->put($endpoint, $data);
     }
@@ -342,13 +439,11 @@ class WordPressService
             return [];
         }
 
-        $url = $this->baseUrl().'/wp-json/wc/v3/products';
-
         try
         {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
+            $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->get($url, ['page' => $page, 'per_page' => $perPage]);
+            ])->acceptJson()->get($this->restUrl('/wc/v3/products', ['page' => $page, 'per_page' => $perPage]));
 
             if ($response->successful())
             {
@@ -360,7 +455,7 @@ class WordPressService
             return [];
         } catch (\Throwable $e)
         {
-            \Illuminate\Support\Facades\Log::warning('WordPress getProducts failed', ['message' => $e->getMessage()]);
+            Log::warning('WordPress getProducts failed', ['message' => $e->getMessage()]);
 
             return [];
         }
