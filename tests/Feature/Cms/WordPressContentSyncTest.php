@@ -324,6 +324,26 @@ class WordPressContentSyncTest extends TestCase
             && ($request->data()['categories'] ?? []) === [99]);
     }
 
+    public function test_pull_stores_excerpt_as_plain_text(): void
+    {
+        Bus::fake();
+        $team = $this->syncTeam();
+        $service = WordPressContentSyncService::make($team);
+
+        $service->pullItem([
+            'id' => 930,
+            'slug' => 'excerpt-html',
+            'status' => 'publish',
+            'title' => ['rendered' => 'Excerpt HTML'],
+            'content' => ['rendered' => '<p>Body</p>'],
+            'excerpt' => ['rendered' => "<p>Resumen &amp; cosas</p>\n"],
+            'modified_gmt' => '2026-06-18T12:00:00',
+        ], 'post');
+
+        $post = Post::withoutGlobalScopes()->where('wp_id', 930)->first();
+        $this->assertSame('Resumen & cosas', $post->post_excerpt);
+    }
+
     public function test_pull_stores_custom_fields_from_wordpress_payload(): void
     {
         Bus::fake();

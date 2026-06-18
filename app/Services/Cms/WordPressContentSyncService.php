@@ -317,7 +317,7 @@ class WordPressContentSyncService
             'post_type' => $type,
             'post_title' => $this->rendered($wp, 'title'),
             'post_content' => $this->rendered($wp, 'content'),
-            'post_excerpt' => $this->rendered($wp, 'excerpt'),
+            'post_excerpt' => $this->cleanExcerpt($this->rendered($wp, 'excerpt')),
             'post_status' => (string) ($wp['status'] ?? Post::STATUS_PUBLISH),
             'post_name' => (string) ($wp['slug'] ?? ''),
             'menu_order' => (int) ($wp['menu_order'] ?? 0),
@@ -616,6 +616,15 @@ class WordPressContentSyncService
     /**
      * @param  array<string, mixed>  $wp
      */
+    /**
+     * WordPress returns the excerpt wrapped in HTML (e.g. "<p>…</p>") via excerpt.rendered.
+     * The CMS excerpt field is plain text, so strip tags and decode entities.
+     */
+    private function cleanExcerpt(string $html): string
+    {
+        return trim(html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
     private function rendered(array $wp, string $key): string
     {
         $value = $wp[$key] ?? null;
