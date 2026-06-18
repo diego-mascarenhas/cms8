@@ -4,6 +4,8 @@ namespace App\Services\Cms;
 
 use App\Models\Post;
 use App\Models\Team;
+use App\Models\Term;
+use App\Models\TermTaxonomy;
 use App\Services\WordPressService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -83,6 +85,8 @@ class WordPressContentSyncService
      */
     public function syncAll(): array
     {
+        $this->syncAllTerms();
+
         $pulled = 0;
         foreach (self::SYNCED_TYPES as $type)
         {
@@ -114,6 +118,20 @@ class WordPressContentSyncService
         foreach ($unlinked as $post)
         {
             if ($this->pushPost($post))
+            {
+                $pushed++;
+            }
+        }
+
+        $linked = Post::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->whereIn('post_type', self::SYNCED_TYPES)
+            ->whereNotNull('wp_id')
+            ->get();
+
+        foreach ($linked as $post)
+        {
+            if ($this->localWins($post) && $this->pushPost($post))
             {
                 $pushed++;
             }
@@ -279,6 +297,11 @@ class WordPressContentSyncService
 
         if ($existing && ! $this->wordPressWins($existing, $wpModifiedGmt))
         {
+            if ($type === 'post')
+            {
+                $this->syncPostTerms($existing, $wp);
+            }
+
             return false;
         }
 
@@ -297,16 +320,24 @@ class WordPressContentSyncService
             'synced_at' => now(),
         ];
 
-        self::withoutPush(function () use ($existing, $attributes)
+        $post = $existing;
+
+        self::withoutPush(function () use ($existing, $attributes, &$post)
         {
             if ($existing)
             {
                 $existing->fill($attributes)->save();
+                $post = $existing;
             } else
             {
-                Post::withoutGlobalScopes()->create($attributes);
+                $post = Post::withoutGlobalScopes()->create($attributes);
             }
         });
+
+        if ($post && $type === 'post')
+        {
+            $this->syncPostTerms($post, $wp);
+        }
 
         return true;
     }
@@ -339,6 +370,23 @@ class WordPressContentSyncService
             if ($parentWpId)
             {
                 $body['parent'] = (int) $parentWpId;
+            }
+        }
+
+        if ($post->post_type === 'post')
+        {
+            $post->loadMissing('termTaxonomies.term');
+            $categoryWpIds = $this->wordPressTermIdsForPost($post, TermTaxonomy::TAXONOMY_CATEGORY);
+            $tagWpIds = $this->wordPressTermIdsForPost($post, TermTaxonomy::TAXONOMY_TAG);
+
+            if ($categoryWpIds !== [])
+            {
+                $body['categories'] = $categoryWpIds;
+            }
+
+            if ($tagWpIds !== [])
+            {
+                $body['tags'] = $tagWpIds;
             }
         }
 
@@ -386,6 +434,26 @@ class WordPressContentSyncService
         return true;
     }
 
+    /**
+     * Local Humano edit should be pushed when it is newer than the last known WordPress state.
+     */
+    private function localWins(Post $post): bool
+    {
+        $localModified = $post->post_modified_gmt;
+        if (! $localModified)
+        {
+            return false;
+        }
+
+        $lastSeen = $post->wp_modified_gmt;
+        if (! $lastSeen)
+        {
+            return true;
+        }
+
+        return $localModified->greaterThan($lastSeen);
+    }
+
     private function localParentId(int $wpParentId, string $type): int
     {
         if ($wpParentId === 0)
@@ -418,5 +486,158 @@ class WordPressContentSyncService
     private function normalizeType(string $type): string
     {
         return $type === 'page' ? 'page' : 'post';
+    }
+
+    /**
+     * Pull every WordPress category and tag into local terms tables.
+     */
+    public function syncAllTerms(): void
+    {
+        $categories = $this->wp->getAllCategories();
+        usort($categories, fn (array $a, array $b) => ((int) ($a['parent'] ?? 0)) <=> ((int) ($b['parent'] ?? 0)));
+
+        foreach ($categories as $category)
+        {
+            $this->pullTermItem($category, TermTaxonomy::TAXONOMY_CATEGORY);
+        }
+
+        foreach ($this->wp->getAllTags() as $tag)
+        {
+            $this->pullTermItem($tag, TermTaxonomy::TAXONOMY_TAG);
+        }
+    }
+
+    /**
+     * Upsert one WordPress taxonomy item (category or tag).
+     *
+     * @param  array<string, mixed>  $wp
+     */
+    public function pullTermItem(array $wp, string $taxonomy): ?int
+    {
+        $wpId = (int) ($wp['id'] ?? 0);
+        if ($wpId === 0)
+        {
+            return null;
+        }
+
+        $term = Term::withoutGlobalScopes()->updateOrCreate(
+            ['team_id' => $this->team->id, 'wp_id' => $wpId],
+            [
+                'name' => (string) ($wp['name'] ?? ''),
+                'slug' => (string) ($wp['slug'] ?? ''),
+            ],
+        );
+
+        $parent = 0;
+        $wpParentId = (int) ($wp['parent'] ?? 0);
+        if ($wpParentId > 0)
+        {
+            $parent = $this->localTermTaxonomyIdByWpTermId($wpParentId, $taxonomy) ?? 0;
+        }
+
+        $termTaxonomy = TermTaxonomy::withoutGlobalScopes()->updateOrCreate(
+            ['term_id' => $term->id, 'taxonomy' => $taxonomy],
+            [
+                'team_id' => $this->team->id,
+                'description' => (string) ($wp['description'] ?? ''),
+                'parent' => $parent,
+                'count' => (int) ($wp['count'] ?? 0),
+            ],
+        );
+
+        return $termTaxonomy->id;
+    }
+
+    /**
+     * Attach categories and tags from a WordPress post payload to the local post.
+     *
+     * @param  array<string, mixed>  $wp
+     */
+    private function syncPostTerms(Post $post, array $wp): void
+    {
+        $termTaxonomyIds = [];
+
+        foreach ((array) ($wp['categories'] ?? []) as $wpCategoryId)
+        {
+            $termTaxonomyId = $this->ensureTermFromWpId((int) $wpCategoryId, TermTaxonomy::TAXONOMY_CATEGORY);
+            if ($termTaxonomyId)
+            {
+                $termTaxonomyIds[] = $termTaxonomyId;
+            }
+        }
+
+        foreach ((array) ($wp['tags'] ?? []) as $wpTagId)
+        {
+            $termTaxonomyId = $this->ensureTermFromWpId((int) $wpTagId, TermTaxonomy::TAXONOMY_TAG);
+            if ($termTaxonomyId)
+            {
+                $termTaxonomyIds[] = $termTaxonomyId;
+            }
+        }
+
+        $syncData = [];
+        foreach (array_unique($termTaxonomyIds) as $termTaxonomyId)
+        {
+            $syncData[$termTaxonomyId] = ['team_id' => $post->team_id];
+        }
+
+        self::withoutPush(fn () => $post->termTaxonomies()->sync($syncData));
+    }
+
+    private function ensureTermFromWpId(int $wpTermId, string $taxonomy): ?int
+    {
+        if ($wpTermId === 0)
+        {
+            return null;
+        }
+
+        $existingId = $this->localTermTaxonomyIdByWpTermId($wpTermId, $taxonomy);
+        if ($existingId)
+        {
+            return $existingId;
+        }
+
+        $wpItem = $taxonomy === TermTaxonomy::TAXONOMY_CATEGORY
+            ? $this->wp->getCategory($wpTermId)
+            : $this->wp->getTag($wpTermId);
+
+        if (! is_array($wpItem))
+        {
+            return null;
+        }
+
+        return $this->pullTermItem($wpItem, $taxonomy);
+    }
+
+    private function localTermTaxonomyIdByWpTermId(int $wpTermId, string $taxonomy): ?int
+    {
+        $termId = Term::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->where('wp_id', $wpTermId)
+            ->value('id');
+
+        if (! $termId)
+        {
+            return null;
+        }
+
+        return TermTaxonomy::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->where('term_id', $termId)
+            ->where('taxonomy', $taxonomy)
+            ->value('id');
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function wordPressTermIdsForPost(Post $post, string $taxonomy): array
+    {
+        return $post->termTaxonomies
+            ->where('taxonomy', $taxonomy)
+            ->map(fn (TermTaxonomy $termTaxonomy) => (int) $termTaxonomy->term?->wp_id)
+            ->filter(fn (int $wpId) => $wpId > 0)
+            ->values()
+            ->all();
     }
 }

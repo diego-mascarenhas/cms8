@@ -401,6 +401,62 @@ class WordPressService
     }
 
     /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCategories(int $page = 1, int $perPage = 100): array
+    {
+        $data = $this->request('GET', '/wp/v2/categories', ['page' => $page, 'per_page' => $perPage]);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getTags(int $page = 1, int $perPage = 100): array
+    {
+        $data = $this->request('GET', '/wp/v2/tags', ['page' => $page, 'per_page' => $perPage]);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getCategory(int $id): ?array
+    {
+        $data = $this->getOne('/wp/v2/categories/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getTag(int $id): ?array
+    {
+        $data = $this->getOne('/wp/v2/tags/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllCategories(int $perPage = 100): array
+    {
+        return $this->paginateAll(fn (int $page) => $this->getCategories($page, $perPage));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllTags(int $perPage = 100): array
+    {
+        return $this->paginateAll(fn (int $page) => $this->getTags($page, $perPage));
+    }
+
+    /**
      * Iterate every post/page across all pages of results.
      *
      * @return array<int, array<string, mixed>>
@@ -563,5 +619,27 @@ class WordPressService
 
             return false;
         }
+    }
+
+    /**
+     * @param  callable(int): array<int, array<string, mixed>>  $fetchPage
+     * @return array<int, array<string, mixed>>
+     */
+    private function paginateAll(callable $fetchPage, int $perPage = 100): array
+    {
+        $all = [];
+        $page = 1;
+
+        do
+        {
+            $batch = $fetchPage($page);
+            foreach ($batch as $item)
+            {
+                $all[] = $item;
+            }
+            $page++;
+        } while (count($batch) === $perPage && $page <= 50);
+
+        return $all;
     }
 }

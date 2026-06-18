@@ -116,21 +116,78 @@ class PostManagementTest extends TestCase
 
         $post = Post::create([
             'team_id' => $user->current_team_id,
-            'post_type' => 'page',
+            'post_type' => 'post',
             'post_title' => 'Tagged',
             'post_status' => 'publish',
         ]);
 
         $this->actingAs($user)->put(route('cms.posts.update', $post->id), [
-            'post_type' => 'page',
+            'post_type' => 'post',
             'post_title' => 'Tagged',
             'post_status' => 'publish',
-            'terms' => [$termTaxonomy->id],
+            'category_terms' => [$termTaxonomy->id],
         ])->assertRedirect();
 
         $this->assertDatabaseHas('term_relationships', [
             'object_id' => $post->id,
             'term_taxonomy_id' => $termTaxonomy->id,
+        ]);
+    }
+
+    public function test_edit_form_shows_wordpress_like_category_panel_for_posts(): void
+    {
+        $user = $this->adminWithTeam();
+        $term = Term::create([
+            'team_id' => $user->current_team_id,
+            'name' => 'News',
+            'slug' => 'news',
+        ]);
+        TermTaxonomy::create([
+            'team_id' => $user->current_team_id,
+            'term_id' => $term->id,
+            'taxonomy' => TermTaxonomy::TAXONOMY_CATEGORY,
+        ]);
+
+        $post = Post::create([
+            'team_id' => $user->current_team_id,
+            'post_type' => 'post',
+            'post_title' => 'Tagged',
+            'post_status' => 'publish',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('cms.posts.edit', $post->id))
+            ->assertOk()
+            ->assertSee(__('app.Categories'), false)
+            ->assertSee(__('app.Tags'), false)
+            ->assertSee('name="category_terms[]"', false)
+            ->assertSee('News', false);
+    }
+
+    public function test_store_creates_new_tags_from_comma_separated_input(): void
+    {
+        $user = $this->adminWithTeam();
+        $post = Post::create([
+            'team_id' => $user->current_team_id,
+            'post_type' => 'post',
+            'post_title' => 'Tagged',
+            'post_status' => 'publish',
+        ]);
+
+        $this->actingAs($user)->put(route('cms.posts.update', $post->id), [
+            'post_type' => 'post',
+            'post_title' => 'Tagged',
+            'post_status' => 'publish',
+            'new_tags' => 'Lanzamiento, Producto',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('terms', [
+            'team_id' => $user->current_team_id,
+            'slug' => 'lanzamiento',
+        ]);
+        $this->assertDatabaseHas('terms', [
+            'team_id' => $user->current_team_id,
+            'slug' => 'producto',
         ]);
     }
 

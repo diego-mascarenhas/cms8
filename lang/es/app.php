@@ -443,6 +443,8 @@ return [
     'Category' => 'Categoría',
     'Type' => 'Tipo',
     'Tags' => 'Etiquetas',
+    'Separate tags with commas' => 'Separa las etiquetas con comas',
+    'None' => 'Ninguna',
     'Gallery' => 'Galería',
     'Reset' => 'Restablecer',
     'Order Gallery' => 'Ordenar Galería',

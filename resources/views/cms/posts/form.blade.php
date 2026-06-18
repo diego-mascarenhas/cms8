@@ -133,17 +133,80 @@
                 </div>
             </div>
 
-            @if($availableTerms->isNotEmpty())
+            @if($supportsCategory)
             <div class="card mb-4">
-                <h5 class="card-header">{{ __('app.Taxonomies') }}</h5>
+                <h5 class="card-header">{{ __('app.Categories') }}</h5>
                 <div class="card-body">
-                    <select name="terms[]" class="form-select select2" multiple data-placeholder="{{ __('app.Select') }}">
-                        @foreach($availableTerms as $termTaxonomy)
-                            <option value="{{ $termTaxonomy->id }}" {{ in_array($termTaxonomy->id, $selectedTermIds) ? 'selected' : '' }}>
-                                {{ $termTaxonomy->term?->name }} ({{ $termTaxonomy->taxonomy }})
+                    <div class="taxonomy-checklist mb-3" style="max-height: 220px; overflow-y: auto;">
+                        @forelse($categories as $category)
+                            @php
+                                $depth = 0;
+                                $parentId = (int) $category->parent;
+                                while ($parentId > 0 && $depth < 5) {
+                                    $parent = $categories->firstWhere('id', $parentId);
+                                    if (! $parent) {
+                                        break;
+                                    }
+                                    $depth++;
+                                    $parentId = (int) $parent->parent;
+                                }
+                            @endphp
+                            <div class="form-check mb-1" style="margin-left: {{ $depth * 1.25 }}rem;">
+                                <input class="form-check-input" type="checkbox" name="category_terms[]"
+                                    value="{{ $category->id }}" id="category-{{ $category->id }}"
+                                    {{ in_array($category->id, old('category_terms', $selectedCategoryIds), true) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="category-{{ $category->id }}">
+                                    {{ $category->term?->name }}
+                                </label>
+                            </div>
+                        @empty
+                            <p class="text-muted small mb-0">{{ __('app.No categories in this module') }}</p>
+                        @endforelse
+                    </div>
+
+                    <div class="border-top pt-3">
+                        <button class="btn btn-sm btn-link p-0 mb-2" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#new-category-panel" aria-expanded="false">
+                            {{ __('app.New Category') }}
+                        </button>
+                        <div class="collapse" id="new-category-panel">
+                            <label class="form-label small mb-1" for="new_category_name">{{ __('app.Name') }}</label>
+                            <input type="text" id="new_category_name" name="new_category[name]"
+                                class="form-control form-control-sm mb-2"
+                                value="{{ old('new_category.name') }}">
+                            <label class="form-label small mb-1" for="new_category_parent">{{ __('app.Parent Category') }}</label>
+                            <select id="new_category_parent" name="new_category[parent]" class="form-select form-select-sm">
+                                <option value="0">{{ __('app.None') }}</option>
+                                @foreach($categories as $category)
+                                    <option value="{{ $category->id }}" {{ (int) old('new_category.parent') === $category->id ? 'selected' : '' }}>
+                                        {{ $category->term?->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            @if($supportsTags)
+            <div class="card mb-4">
+                <h5 class="card-header">{{ __('app.Tags') }}</h5>
+                <div class="card-body">
+                    <select name="tag_terms[]" class="form-select select2" multiple
+                        data-placeholder="{{ __('app.Tags') }}">
+                        @foreach($tags as $tag)
+                            <option value="{{ $tag->id }}"
+                                {{ in_array($tag->id, old('tag_terms', $selectedTagIds), true) ? 'selected' : '' }}>
+                                {{ $tag->term?->name }}
                             </option>
                         @endforeach
                     </select>
+                    <label class="form-label mt-3 mb-1 small text-muted" for="new_tags">
+                        {{ __('app.Separate tags with commas') }}
+                    </label>
+                    <input type="text" id="new_tags" name="new_tags" class="form-control form-control-sm"
+                        value="{{ old('new_tags') }}" placeholder="{{ __('app.Tags') }}">
                 </div>
             </div>
             @endif

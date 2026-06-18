@@ -113,6 +113,155 @@ class WordPressContentSyncTest extends TestCase
         ]);
     }
 
+    public function test_pull_syncs_categories_and_tags_from_wordpress_payload(): void
+    {
+        Bus::fake();
+        Http::fake([
+            'wp.test/wp-json/' => Http::response(['namespaces' => ['wp/v2']], 200),
+            'wp.test/wp-json/wp/v2/categories/3' => Http::response([
+                'id' => 3,
+                'name' => 'News',
+                'slug' => 'news',
+                'description' => '',
+                'parent' => 0,
+                'count' => 1,
+            ], 200),
+            'wp.test/wp-json/wp/v2/tags/7' => Http::response([
+                'id' => 7,
+                'name' => 'Launch',
+                'slug' => 'launch',
+                'description' => '',
+                'count' => 1,
+            ], 200),
+        ]);
+
+        $team = $this->syncTeam();
+        $service = WordPressContentSyncService::make($team);
+
+        $service->pullItem([
+            'id' => 901,
+            'slug' => 'with-terms',
+            'status' => 'publish',
+            'title' => ['rendered' => 'With terms'],
+            'content' => ['rendered' => '<p>Body</p>'],
+            'categories' => [3],
+            'tags' => [7],
+            'modified_gmt' => '2026-06-18T12:00:00',
+        ], 'post');
+
+        $this->assertDatabaseHas('terms', [
+            'team_id' => $team->id,
+            'wp_id' => 3,
+            'slug' => 'news',
+        ]);
+        $this->assertDatabaseHas('terms', [
+            'team_id' => $team->id,
+            'wp_id' => 7,
+            'slug' => 'launch',
+        ]);
+
+        $post = Post::withoutGlobalScopes()->where('wp_id', 901)->first();
+        $this->assertNotNull($post);
+        $this->assertCount(2, $post->termTaxonomies);
+    }
+
+    public function test_sync_all_terms_pulls_categories_and_tags(): void
+    {
+        Bus::fake();
+        Http::fake([
+            'wp.test/wp-json/' => Http::response(['namespaces' => ['wp/v2']], 200),
+            'wp.test/wp-json/wp/v2/categories*' => Http::response([
+                [
+                    'id' => 3,
+                    'name' => 'News',
+                    'slug' => 'news',
+                    'description' => 'Latest',
+                    'parent' => 0,
+                    'count' => 2,
+                ],
+            ], 200),
+            'wp.test/wp-json/wp/v2/tags*' => Http::response([
+                [
+                    'id' => 7,
+                    'name' => 'Launch',
+                    'slug' => 'launch',
+                    'description' => '',
+                    'count' => 1,
+                ],
+            ], 200),
+        ]);
+
+        $team = $this->syncTeam();
+        WordPressContentSyncService::make($team)->syncAllTerms();
+
+        $this->assertDatabaseHas('terms', [
+            'team_id' => $team->id,
+            'wp_id' => 3,
+            'name' => 'News',
+        ]);
+        $this->assertDatabaseHas('term_taxonomy', [
+            'team_id' => $team->id,
+            'taxonomy' => 'category',
+            'description' => 'Latest',
+        ]);
+        $this->assertDatabaseHas('terms', [
+            'team_id' => $team->id,
+            'wp_id' => 7,
+            'slug' => 'launch',
+        ]);
+    }
+
+    public function test_sync_all_pushes_linked_posts_when_local_is_newer(): void
+    {
+        Bus::fake();
+        Http::fake(function ($request)
+        {
+            $url = $request->url();
+
+            if (str_contains($url, '/wp-json/') && ! str_contains($url, 'rest_route'))
+            {
+                if ($request->method() === 'GET' && preg_match('#/wp-json/?$#', $url))
+                {
+                    return Http::response(['namespaces' => ['wp/v2']], 200);
+                }
+
+                if ($request->method() === 'PUT' && str_contains($url, '/wp/v2/pages/42'))
+                {
+                    return Http::response([
+                        'id' => 42,
+                        'modified_gmt' => '2026-06-18T14:00:00',
+                    ], 200);
+                }
+
+                if ($request->method() === 'GET')
+                {
+                    return Http::response([], 200);
+                }
+            }
+
+            return Http::response([], 404);
+        });
+
+        $team = $this->syncTeam();
+        $post = Post::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'post_type' => 'page',
+            'post_status' => Post::STATUS_PUBLISH,
+            'post_title' => 'Inicio sync',
+            'post_name' => 'inicio-sync',
+            'wp_id' => 42,
+            'wp_modified_gmt' => Carbon::parse('2026-06-18T09:00:00'),
+            'post_modified_gmt' => Carbon::parse('2026-06-18T13:00:00'),
+        ]);
+
+        $result = WordPressContentSyncService::make($team)->syncAll();
+
+        $this->assertSame(1, $result['pushed']);
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && str_contains($request->url(), '/wp-json/wp/v2/pages/42')
+            && ($request->data()['title'] ?? null) === 'Inicio sync');
+    }
+
     public function test_pull_skips_when_local_is_newer_last_write_wins(): void
     {
         Bus::fake();

@@ -492,6 +492,9 @@ return [
     'Create your first category' => 'Create your first category',
 
     'Categories' => 'Categories',
+    'Tags' => 'Tags',
+    'Separate tags with commas' => 'Separate tags with commas',
+    'None' => 'None',
     'Edit Category' => 'Edit category',
     'New Category' => 'New Category',
     'Category hierarchy' => 'Category hierarchy',

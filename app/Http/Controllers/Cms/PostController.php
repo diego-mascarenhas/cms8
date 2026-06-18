@@ -8,6 +8,7 @@ use App\Http\Requests\Cms\StorePostRequest;
 use App\Http\Requests\Cms\UpdatePostRequest;
 use App\Models\Post;
 use App\Models\PostType;
+use App\Models\Term;
 use App\Models\TermTaxonomy;
 use App\Services\Cms\WordPressContentSyncService;
 use Illuminate\Contracts\View\View;
@@ -36,17 +37,16 @@ class PostController extends Controller
 
         $postTypes = PostType::query()->orderBy('menu_order')->get();
         $currentType = $this->resolveCurrentType($request->query('type'), $postTypes);
-        $availableTerms = $this->termsForType($currentType);
-        $selectedTermIds = [];
 
-        return view('cms.posts.form', [
-            'post' => null,
-            'postTypes' => $postTypes,
-            'currentType' => $currentType,
-            'availableTerms' => $availableTerms,
-            'selectedTermIds' => $selectedTermIds,
-            'listingUrl' => $this->listingUrl($currentType?->name),
-        ]);
+        return view('cms.posts.form', array_merge(
+            [
+                'post' => null,
+                'postTypes' => $postTypes,
+                'currentType' => $currentType,
+                'listingUrl' => $this->listingUrl($currentType?->name),
+            ],
+            $this->formTaxonomyState($currentType),
+        ));
     }
 
     public function store(StorePostRequest $request): RedirectResponse
@@ -79,17 +79,16 @@ class PostController extends Controller
 
         $postTypes = PostType::query()->orderBy('menu_order')->get();
         $currentType = $postTypes->firstWhere('name', $post->post_type);
-        $availableTerms = $this->termsForType($currentType);
-        $selectedTermIds = $post->termTaxonomies()->pluck('term_taxonomy.id')->all();
 
-        return view('cms.posts.form', [
-            'post' => $post,
-            'postTypes' => $postTypes,
-            'currentType' => $currentType,
-            'availableTerms' => $availableTerms,
-            'selectedTermIds' => $selectedTermIds,
-            'listingUrl' => $this->listingUrl($post->post_type),
-        ]);
+        return view('cms.posts.form', array_merge(
+            [
+                'post' => $post,
+                'postTypes' => $postTypes,
+                'currentType' => $currentType,
+                'listingUrl' => $this->listingUrl($post->post_type),
+            ],
+            $this->formTaxonomyState($currentType, $post),
+        ));
     }
 
     public function update(UpdatePostRequest $request, Post $post): RedirectResponse
@@ -173,7 +172,7 @@ class PostController extends Controller
             }
         }
 
-        $termIds = collect($data['terms'] ?? [])->map(fn ($id) => (int) $id)->all();
+        $termIds = $this->resolveTermTaxonomyIds($post->team_id, $data);
         $validTermTaxonomyIds = TermTaxonomy::query()->whereIn('id', $termIds)->pluck('id')->all();
         $syncData = [];
         foreach ($validTermTaxonomyIds as $termTaxonomyId)
@@ -181,6 +180,118 @@ class PostController extends Controller
             $syncData[$termTaxonomyId] = ['team_id' => $post->team_id];
         }
         $post->termTaxonomies()->sync($syncData);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, int>
+     */
+    private function resolveTermTaxonomyIds(int $teamId, array $data): array
+    {
+        $termIds = collect($data['terms'] ?? [])
+            ->merge($data['category_terms'] ?? [])
+            ->merge($data['tag_terms'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->all();
+
+        $newCategoryName = trim((string) ($data['new_category']['name'] ?? ''));
+        if ($newCategoryName !== '')
+        {
+            $termIds[] = $this->ensureTermTaxonomy(
+                $teamId,
+                $newCategoryName,
+                TermTaxonomy::TAXONOMY_CATEGORY,
+                (int) ($data['new_category']['parent'] ?? 0),
+            );
+        }
+
+        $newTags = trim((string) ($data['new_tags'] ?? ''));
+        if ($newTags !== '')
+        {
+            foreach (array_filter(array_map('trim', explode(',', $newTags))) as $tagName)
+            {
+                $termIds[] = $this->ensureTermTaxonomy($teamId, $tagName, TermTaxonomy::TAXONOMY_TAG);
+            }
+        }
+
+        return array_values(array_unique($termIds));
+    }
+
+    private function ensureTermTaxonomy(int $teamId, string $name, string $taxonomy, int $parentTaxonomyId = 0): int
+    {
+        $slug = Str::slug($name) ?: Str::random(8);
+
+        $term = Term::withoutGlobalScopes()->firstOrCreate(
+            ['team_id' => $teamId, 'slug' => $slug],
+            ['name' => $name],
+        );
+
+        if ($term->name !== $name)
+        {
+            $term->name = $name;
+            $term->save();
+        }
+
+        $termTaxonomy = TermTaxonomy::withoutGlobalScopes()->firstOrCreate(
+            ['term_id' => $term->id, 'taxonomy' => $taxonomy],
+            ['team_id' => $teamId, 'parent' => $parentTaxonomyId],
+        );
+
+        if ($parentTaxonomyId > 0 && (int) $termTaxonomy->parent !== $parentTaxonomyId)
+        {
+            $termTaxonomy->parent = $parentTaxonomyId;
+            $termTaxonomy->save();
+        }
+
+        return $termTaxonomy->id;
+    }
+
+    /**
+     * @return array{
+     *     supportsCategory: bool,
+     *     supportsTags: bool,
+     *     categories: \Illuminate\Support\Collection<int, TermTaxonomy>,
+     *     tags: \Illuminate\Support\Collection<int, TermTaxonomy>,
+     *     selectedCategoryIds: array<int, int>,
+     *     selectedTagIds: array<int, int>
+     * }
+     */
+    private function formTaxonomyState(?PostType $type, ?Post $post = null): array
+    {
+        $taxonomies = $type?->taxonomies ?? [];
+        $supportsCategory = in_array(TermTaxonomy::TAXONOMY_CATEGORY, $taxonomies, true);
+        $supportsTags = in_array(TermTaxonomy::TAXONOMY_TAG, $taxonomies, true);
+
+        $selectedIds = $post
+            ? $post->termTaxonomies()->pluck('term_taxonomy.id')->all()
+            : [];
+
+        $categories = $supportsCategory
+            ? TermTaxonomy::query()
+                ->with('term')
+                ->taxonomy(TermTaxonomy::TAXONOMY_CATEGORY)
+                ->orderBy('parent')
+                ->orderBy('id')
+                ->get()
+            : collect();
+
+        $tags = $supportsTags
+            ? TermTaxonomy::query()
+                ->with('term')
+                ->taxonomy(TermTaxonomy::TAXONOMY_TAG)
+                ->orderBy('id')
+                ->get()
+            : collect();
+
+        return [
+            'supportsCategory' => $supportsCategory,
+            'supportsTags' => $supportsTags,
+            'categories' => $categories,
+            'tags' => $tags,
+            'selectedCategoryIds' => $categories->whereIn('id', $selectedIds)->pluck('id')->all(),
+            'selectedTagIds' => $tags->whereIn('id', $selectedIds)->pluck('id')->all(),
+        ];
     }
 
     /**
@@ -198,21 +309,5 @@ class PostController extends Controller
         }
 
         return $postTypes->first();
-    }
-
-    /**
-     * @return \Illuminate\Support\Collection<int, TermTaxonomy>
-     */
-    private function termsForType(?PostType $type)
-    {
-        if (! $type || empty($type->taxonomies))
-        {
-            return collect();
-        }
-
-        return TermTaxonomy::query()
-            ->with('term')
-            ->whereIn('taxonomy', $type->taxonomies)
-            ->get();
     }
 }

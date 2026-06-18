@@ -43,6 +43,14 @@ class StorePostRequest extends FormRequest
             'meta' => ['nullable', 'array'],
             'terms' => ['nullable', 'array'],
             'terms.*' => ['integer'],
+            'category_terms' => ['nullable', 'array'],
+            'category_terms.*' => ['integer'],
+            'tag_terms' => ['nullable', 'array'],
+            'tag_terms.*' => ['integer'],
+            'new_category' => ['nullable', 'array'],
+            'new_category.name' => ['nullable', 'string', 'max:255'],
+            'new_category.parent' => ['nullable', 'integer', 'min:0'],
+            'new_tags' => ['nullable', 'string', 'max:1000'],
         ];
     }
 }
