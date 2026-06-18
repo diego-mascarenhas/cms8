@@ -269,11 +269,18 @@
       "module_key": "landings"
     },
     {
-      "url": "contents",
-      "name": "Contents",
+      "url": "cms/posts?post_type=page",
+      "name": "Pages",
       "icon": "menu-icon tf-icons ti ti-file-text",
-      "slug": "contents.index",
-      "module_key": "contents"
+      "slug": "cms.posts.index",
+      "module_key": "cms"
+    },
+    {
+      "url": "cms/posts?post_type=post",
+      "name": "Posts",
+      "icon": "menu-icon tf-icons ti ti-news",
+      "slug": "cms.posts.index",
+      "module_key": "cms"
     },
     {
       "url": "multimedia/list",

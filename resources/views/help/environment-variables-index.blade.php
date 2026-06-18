@@ -77,6 +77,18 @@
                         <div class="card border h-100">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-plug-connected me-2 text-primary"></i>
+                                    {{ __('WordPress MCP in Cursor') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('Plugin MCP Adapter, Application Password y configuración de ~/.cursor/mcp.json para conectar Cursor con WordPress.') }}</p>
+                                <a href="{{ route('help.wordpress-mcp-cursor') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
                                     <i class="ti ti-database me-2 text-danger"></i>
                                     {{ __('PostgreSQL: unaccent y búsqueda') }}
                                 </h6>

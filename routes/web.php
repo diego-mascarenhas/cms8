@@ -16,8 +16,6 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ContactInteractionController;
-use App\Http\Controllers\ContentController;
-use App\Http\Controllers\ContentFieldConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
@@ -780,24 +778,14 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/team-file/{team_file}/download', [TeamFileController::class, 'download'])->name('team-file.download');
     Route::post('/team-file/{team_file}/restore-version/{history}', [TeamFileController::class, 'restoreVersion'])->name('team-file.restore-version');
 
-    // Contents Routes
-    Route::get('/contents', [ContentController::class, 'index'])->name('contents.index');
-    Route::get('/contents/create', [ContentController::class, 'create'])->name('contents.create');
-    Route::post('/contents', [ContentController::class, 'store'])->name('contents.store');
-    Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
-    Route::get('/contents/{content}/edit', [ContentController::class, 'edit'])->name('contents.edit');
-    Route::put('/contents/{content}', [ContentController::class, 'update'])->name('contents.update');
-    Route::delete('/contents/{content}', [ContentController::class, 'destroy'])->name('contents.destroy');
-    Route::post('/contents/order', [ContentController::class, 'updateOrder'])->name('contents.order');
-
-    // Content Field Configs Routes
-    Route::get('/content-field-configs', [ContentFieldConfigController::class, 'index'])->name('content-field-configs.index');
-    Route::get('/content-field-configs/create', [ContentFieldConfigController::class, 'create'])->name('content-field-configs.create');
-    Route::post('/content-field-configs', [ContentFieldConfigController::class, 'store'])->name('content-field-configs.store');
-    Route::get('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'show'])->name('content-field-configs.show');
-    Route::get('/content-field-configs/{content_field_config}/edit', [ContentFieldConfigController::class, 'edit'])->name('content-field-configs.edit');
-    Route::put('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'update'])->name('content-field-configs.update');
-    Route::delete('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'destroy'])->name('content-field-configs.destroy');
+    // CMS Posts Routes (WordPress-like content management)
+    Route::get('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'index'])->name('cms.posts.index');
+    Route::get('/cms/posts/create', [App\Http\Controllers\Cms\PostController::class, 'create'])->name('cms.posts.create');
+    Route::post('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'store'])->name('cms.posts.store');
+    Route::get('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'show'])->name('cms.posts.show');
+    Route::get('/cms/posts/{post}/edit', [App\Http\Controllers\Cms\PostController::class, 'edit'])->name('cms.posts.edit');
+    Route::put('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'update'])->name('cms.posts.update');
+    Route::delete('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'destroy'])->name('cms.posts.destroy');
 
     // Public routes for client responses (no auth required)
     Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
@@ -1376,7 +1364,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/api', [HelpController::class, 'api'])->name('api');
     Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');
     Route::get('/api/contacts', [HelpController::class, 'apiContacts'])->name('api.contacts');
-    Route::get('/api/contents', [HelpController::class, 'apiContents'])->name('api.contents');
+    Route::get('/api/posts', [HelpController::class, 'apiPosts'])->name('api.posts');
     Route::get('/api/enterprises', [HelpController::class, 'apiEnterprises'])->name('api.enterprises');
     Route::get('/api/payments', [HelpController::class, 'apiPayments'])->name('api.payments');
     Route::get('/api/products', [HelpController::class, 'apiProducts'])->name('api.products');
@@ -1389,6 +1377,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
+    Route::get('/wordpress-mcp-cursor', [HelpController::class, 'wordpressMcpCursor'])->name('wordpress-mcp-cursor');
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
     Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');

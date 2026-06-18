@@ -87,10 +87,10 @@ $isFront = false;
           </a>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('help.api.contents') ? 'active' : '' }}">
-          <a href="{{ route('help.api.contents') }}" class="menu-link">
+        <li class="menu-item {{ request()->routeIs('help.api.posts') ? 'active' : '' }}">
+          <a href="{{ route('help.api.posts') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-file-text"></i>
-            <div>{{ __('Contents') }}</div>
+            <div>{{ __('Posts') }}</div>
           </a>
         </li>
 

@@ -8,12 +8,10 @@ use App\Models\Category;
 use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
-use App\Support\ContentsSectionCategoryData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
 use Spatie\Tags\Tag;
 
 class CategoryController extends Controller
@@ -156,10 +154,6 @@ class CategoryController extends Controller
             'parent_id' => $category->parent_id,
             'description' => $category->description,
             'order' => $category->order ?? 0,
-            'content_ordering' => is_array($data['content_ordering'] ?? null) ? $data['content_ordering'] : [],
-            'contents_section_slug' => $data['slug'] ?? null,
-            'content_locales' => ContentsSectionCategoryData::mergeContentLocalesFromStorage($data['content_locales'] ?? null),
-            'content_form' => ContentsSectionCategoryData::mergeContentFormVisibility($data['content_form'] ?? null),
             'cover_max_width' => $coverData['max_width'] ?? null,
             'cover_max_height' => $coverData['max_height'] ?? null,
             'cover_variants' => $selectedVariants,
@@ -274,173 +268,6 @@ class CategoryController extends Controller
             {
                 return ! is_null($value);
             }));
-        }
-
-        if ($module && $module->key === 'contents')
-        {
-            // Handle content ordering configuration
-            $contentOrdering = [];
-            if ($request->has('content_ordering') && is_array($request->input('content_ordering')))
-            {
-                foreach ($request->input('content_ordering') as $ordering)
-                {
-                    if (! empty($ordering['column']) && ! empty($ordering['direction']))
-                    {
-                        $contentOrdering[] = [
-                            'column' => $ordering['column'],
-                            'direction' => $ordering['direction'],
-                        ];
-                    }
-                }
-            }
-
-            // If no custom ordering, use default
-            if (empty($contentOrdering))
-            {
-                $contentOrdering = [
-                    ['column' => 'order', 'direction' => 'asc'],
-                    ['column' => 'created_at', 'direction' => 'desc'],
-                ];
-            }
-
-            $categoryData['content_ordering'] = $contentOrdering;
-
-            if ($request->has('content_form') && is_array($request->input('content_form')))
-            {
-                $defaults = ContentsSectionCategoryData::defaultContentFormVisibility();
-                $incoming = $request->input('content_form', []);
-                $merged = [];
-                foreach (array_keys($defaults) as $key)
-                {
-                    if (array_key_exists($key, $incoming))
-                    {
-                        $value = $incoming[$key];
-                        $merged[$key] = $value === true || $value === 1 || $value === '1' || $value === 'true';
-                    } else
-                    {
-                        $merged[$key] = $defaults[$key];
-                    }
-                }
-                $categoryData['content_form'] = $merged;
-            } elseif (! isset($categoryData['content_form']))
-            {
-                $categoryData['content_form'] = ContentsSectionCategoryData::defaultContentFormVisibility();
-            }
-
-            if ($request->has('content_locales_present'))
-            {
-                $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromRequest(
-                    is_array($request->input('content_locales')) ? $request->input('content_locales') : [],
-                );
-            } elseif (! isset($categoryData['content_locales']))
-            {
-                $categoryData['content_locales'] = ContentsSectionCategoryData::mergeContentLocalesFromStorage(null);
-            }
-
-            $pageSections = is_array($categoryData['page_sections'] ?? null) ? $categoryData['page_sections'] : [];
-            $pageSections['history_timeline'] = $request->boolean('page_sections.history_timeline');
-            $categoryData['page_sections'] = $pageSections;
-
-            $rawSlug = trim((string) $request->input('contents_section_slug', ''));
-            if ($rawSlug !== '')
-            {
-                $slug = Str::slug($rawSlug);
-                if ($slug !== '')
-                {
-                    $categoryData['slug'] = $slug;
-                } else
-                {
-                    unset($categoryData['slug']);
-                }
-            } else
-            {
-                unset($categoryData['slug']);
-            }
-
-            $heading = trim((string) $request->input('history_section_heading', ''));
-            if ($heading !== '')
-            {
-                $categoryData['history'] = ['heading' => $heading];
-            } else
-            {
-                unset($categoryData['history']);
-            }
-
-            $coverMaxWidth = $request->filled('cover_max_width') ? (int) $request->input('cover_max_width') : null;
-            $coverMaxHeight = $request->filled('cover_max_height') ? (int) $request->input('cover_max_height') : null;
-            $coverCrop = $request->boolean('cover_crop');
-            $variantDefaults = [
-                'logo_strip' => ['width' => 100, 'height' => 60, 'fit' => 'contain'],
-                'thumb' => ['width' => 320, 'height' => 320, 'fit' => 'crop'],
-                'hero' => ['width' => 1600, 'height' => 900, 'fit' => 'crop'],
-                'square' => ['width' => 800, 'height' => 800, 'fit' => 'crop'],
-                'og' => ['width' => 1200, 'height' => 630, 'fit' => 'crop'],
-                'web' => ['width' => 1400, 'height' => 1400, 'fit' => 'max'],
-            ];
-            $selectedVariants = is_array($request->input('cover_variants')) ? $request->input('cover_variants') : [];
-            $variantFits = is_array($request->input('cover_variant_fit')) ? $request->input('cover_variant_fit') : [];
-            $variantWidths = is_array($request->input('cover_variant_width')) ? $request->input('cover_variant_width') : [];
-            $variantHeights = is_array($request->input('cover_variant_height')) ? $request->input('cover_variant_height') : [];
-            $coverVariants = [];
-
-            foreach ($selectedVariants as $variantKey)
-            {
-                if (! is_string($variantKey) || ! isset($variantDefaults[$variantKey]))
-                {
-                    continue;
-                }
-
-                $defaultCfg = $variantDefaults[$variantKey];
-                $width = isset($variantWidths[$variantKey]) && $variantWidths[$variantKey] !== ''
-                    ? (int) $variantWidths[$variantKey]
-                    : $defaultCfg['width'];
-                $height = isset($variantHeights[$variantKey]) && $variantHeights[$variantKey] !== ''
-                    ? (int) $variantHeights[$variantKey]
-                    : $defaultCfg['height'];
-                $fit = isset($variantFits[$variantKey]) && is_string($variantFits[$variantKey]) && $variantFits[$variantKey] !== ''
-                    ? $variantFits[$variantKey]
-                    : $defaultCfg['fit'];
-
-                $coverVariants[$variantKey] = [
-                    'width' => $width,
-                    'height' => $height,
-                    'fit' => $fit,
-                ];
-            }
-
-            $customVariantSelected = in_array('custom', $selectedVariants, true);
-            if ($customVariantSelected)
-            {
-                $customSlug = 'custom';
-                $customWidth = $request->filled('cover_custom_variant_width') ? (int) $request->input('cover_custom_variant_width') : null;
-                $customHeight = $request->filled('cover_custom_variant_height') ? (int) $request->input('cover_custom_variant_height') : null;
-                $customFit = trim((string) $request->input('cover_custom_variant_fit', 'max'));
-
-                if ($customWidth || $customHeight)
-                {
-                    $coverVariants[$customSlug] = [
-                        'width' => $customWidth,
-                        'height' => $customHeight,
-                        'fit' => in_array($customFit, ['crop', 'contain', 'max', 'stretch'], true) ? $customFit : 'max',
-                    ];
-                }
-            }
-
-            if ($coverMaxWidth || $coverMaxHeight || $coverVariants !== [])
-            {
-                $categoryData['cover'] = array_filter([
-                    'max_width' => $coverMaxWidth,
-                    'max_height' => $coverMaxHeight,
-                    'crop' => $coverCrop,
-                    'variants' => $coverVariants,
-                ], function ($value)
-                {
-                    return $value !== null;
-                });
-            } else
-            {
-                unset($categoryData['cover']);
-            }
         }
 
         $category->fill([

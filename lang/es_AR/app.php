@@ -864,4 +864,23 @@ return [
     'whatsapp_registration_invalid_name' => 'Necesitamos tu nombre y apellido (por ejemplo: María García).',
     'whatsapp_registration_invalid_email' => "No parece ser una dirección de email válida.\n\n¿Podrás escribirla nuevamente?",
     'whatsapp_registration_error' => "Lo sentimos, ha ocurrido un error al guardar tus datos.\nPor favor escríbenos a administracion@revisionalpha.com para que podamos ayudarte.",
+
+    // CMS module
+    'Manage your site content' => 'Gestiona el contenido de tu sitio',
+    'New' => 'Nuevo',
+    'Post' => 'Entrada',
+    'Slug' => 'Slug',
+    'Leave blank to generate from the title.' => 'Déjalo en blanco para generarlo desde el título.',
+    'Excerpt' => 'Extracto',
+    'Publish' => 'Publicación',
+    'Parent' => 'Superior',
+    'Taxonomies' => 'Taxonomías',
+    'Select' => 'Seleccionar',
+    'Author' => 'Autor',
+    'Modified' => 'Modificado',
+    'Scheduled' => 'Programado',
+    'Failed to delete' => 'No se pudo eliminar',
+    'Post created successfully.' => 'Entrada creada correctamente.',
+    'Post updated successfully.' => 'Entrada actualizada correctamente.',
+    'Post deleted successfully.' => 'Entrada eliminada correctamente.',
 ];

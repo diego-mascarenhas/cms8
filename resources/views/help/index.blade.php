@@ -194,6 +194,11 @@
                                 <div class="card-body">
                                     <p class="lead mb-3">{{ __('Help section MCP Cursor lead') }}</p>
                                     <p class="mb-3">{{ __('Help section MCP Cursor body') }}</p>
+                                    <p class="mb-3">
+                                        <a href="{{ route('help.wordpress-mcp-cursor') }}" class="btn btn-sm btn-label-primary">
+                                            <i class="ti ti-brand-wordpress me-1"></i>{{ __('WordPress MCP in Cursor') }}
+                                        </a>
+                                    </p>
                                     <h6 class="mt-4 mb-2">{{ __('Install MCP in Cursor:') }}</h6>
                                     <ol class="mb-3 ps-3">
                                         <li class="mb-2">{!! __('Open Cursor MCP config file step') !!}</li>

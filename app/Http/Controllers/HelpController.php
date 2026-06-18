@@ -126,11 +126,11 @@ class HelpController extends Controller
     }
 
     /**
-     * Display contents API documentation
+     * Display CMS posts API documentation
      */
-    public function apiContents()
+    public function apiPosts()
     {
-        return view('help.api-contents', [
+        return view('help.api-posts', [
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
@@ -281,6 +281,16 @@ class HelpController extends Controller
     public function stripeWebhook()
     {
         return view('help.stripe-webhook', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * WordPress MCP Adapter + Cursor mcp.json setup.
+     */
+    public function wordpressMcpCursor()
+    {
+        return view('help.wordpress-mcp-cursor', [
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
