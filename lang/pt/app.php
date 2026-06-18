@@ -177,4 +177,9 @@ return [
     'Edit' => 'Editar',
     'Create' => 'Criar',
     'Search' => 'Pesquisar',
+
+    // CMS WordPress sync
+    'Sync with WordPress' => 'Sincronizar com o WordPress',
+    'WordPress sync is not configured for this team.' => 'A sincronização com o WordPress não está configurada para esta equipa.',
+    'WordPress sync completed: :pulled pulled, :pushed pushed.' => 'Sincronização com o WordPress concluída: :pulled importados, :pushed enviados.',
 ];

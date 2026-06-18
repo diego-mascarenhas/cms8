@@ -27,7 +27,7 @@
         </h4>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
-        <a href="{{ route('cms.posts.index', ['post_type' => $typeName]) }}" class="btn btn-label-secondary">
+        <a href="{{ $listingUrl }}" class="btn btn-label-secondary">
             <i class="ti ti-arrow-left me-1"></i>{{ __('app.Back') }}
         </a>
     </div>

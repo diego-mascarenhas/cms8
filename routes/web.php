@@ -778,14 +778,19 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/team-file/{team_file}/download', [TeamFileController::class, 'download'])->name('team-file.download');
     Route::post('/team-file/{team_file}/restore-version/{history}', [TeamFileController::class, 'restoreVersion'])->name('team-file.restore-version');
 
-    // CMS Posts Routes (WordPress-like content management)
-    Route::get('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'index'])->name('cms.posts.index');
+    // CMS Routes (WordPress-like content management)
+    Route::post('/cms/posts/sync-wordpress', [App\Http\Controllers\Cms\PostController::class, 'syncWordPress'])->name('cms.posts.sync-wordpress');
+    // Clean typed listings (distinct route names so the sidebar highlights only the active one)
+    Route::get('/cms/pages', [App\Http\Controllers\Cms\PostController::class, 'index'])->defaults('type', 'page')->name('cms.pages.index');
+    Route::get('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'index'])->defaults('type', 'post')->name('cms.posts.index');
+    Route::get('/cms/type/{type}', [App\Http\Controllers\Cms\PostController::class, 'index'])->name('cms.type.index');
+    // CRUD (id-based)
     Route::get('/cms/posts/create', [App\Http\Controllers\Cms\PostController::class, 'create'])->name('cms.posts.create');
     Route::post('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'store'])->name('cms.posts.store');
-    Route::get('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'show'])->name('cms.posts.show');
-    Route::get('/cms/posts/{post}/edit', [App\Http\Controllers\Cms\PostController::class, 'edit'])->name('cms.posts.edit');
-    Route::put('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'update'])->name('cms.posts.update');
-    Route::delete('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'destroy'])->name('cms.posts.destroy');
+    Route::get('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'show'])->whereNumber('post')->name('cms.posts.show');
+    Route::get('/cms/posts/{post}/edit', [App\Http\Controllers\Cms\PostController::class, 'edit'])->whereNumber('post')->name('cms.posts.edit');
+    Route::put('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'update'])->whereNumber('post')->name('cms.posts.update');
+    Route::delete('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'destroy'])->whereNumber('post')->name('cms.posts.destroy');
 
     // Public routes for client responses (no auth required)
     Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
@@ -822,13 +827,8 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/store/{id}', [StoreController::class, 'destroy'])->name('store.destroy');
 
     // WordPress (posts & pages) - content from WordPress site
+    // Content editing moved to the CMS module (/cms/posts). Only the assistant content sync remains.
     Route::post('/wordpress/sync', [App\Http\Controllers\WordPressController::class, 'sync'])->name('wordpress.sync');
-    Route::get('/wordpress/posts', [App\Http\Controllers\WordPressController::class, 'posts'])->name('wordpress.posts');
-    Route::get('/wordpress/posts/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPost'])->name('wordpress.posts.edit');
-    Route::put('/wordpress/posts/{id}', [App\Http\Controllers\WordPressController::class, 'updatePost'])->name('wordpress.posts.update');
-    Route::get('/wordpress/pages', [App\Http\Controllers\WordPressController::class, 'pages'])->name('wordpress.pages');
-    Route::get('/wordpress/pages/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPage'])->name('wordpress.pages.edit');
-    Route::put('/wordpress/pages/{id}', [App\Http\Controllers\WordPressController::class, 'updatePage'])->name('wordpress.pages.update');
 
     // Order Routes
     Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');

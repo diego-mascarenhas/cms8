@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Jobs\PushPostToWordPressJob;
+use App\Services\Cms\WordPressContentSyncService;
 use App\Support\TeamPostsApiCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,6 +39,8 @@ class Post extends Model
     protected $fillable = [
         'team_id',
         'wp_id',
+        'wp_modified_gmt',
+        'synced_at',
         'post_author',
         'post_date',
         'post_date_gmt',
@@ -63,6 +67,8 @@ class Post extends Model
         'post_date_gmt' => 'datetime',
         'post_modified' => 'datetime',
         'post_modified_gmt' => 'datetime',
+        'wp_modified_gmt' => 'datetime',
+        'synced_at' => 'datetime',
         'menu_order' => 'integer',
         'post_parent' => 'integer',
         'comment_count' => 'integer',
@@ -110,6 +116,21 @@ class Post extends Model
 
         static::saved($bump);
         static::deleted($bump);
+
+        static::saved(function (self $post)
+        {
+            if (WordPressContentSyncService::isPushSuppressed())
+            {
+                return;
+            }
+
+            if (! in_array($post->post_type, WordPressContentSyncService::SYNCED_TYPES, true))
+            {
+                return;
+            }
+
+            PushPostToWordPressJob::dispatch((int) $post->id)->afterCommit();
+        });
     }
 
     public function team(): BelongsTo

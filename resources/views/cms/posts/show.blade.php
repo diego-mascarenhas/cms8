@@ -17,7 +17,7 @@
             <i class="ti ti-edit me-1"></i>{{ __('app.Edit') }}
         </a>
         @endcan
-        <a href="{{ route('cms.posts.index', ['post_type' => $post->post_type]) }}" class="btn btn-label-secondary">
+        <a href="{{ $listingUrl }}" class="btn btn-label-secondary">
             <i class="ti ti-arrow-left me-1"></i>{{ __('app.Back') }}
         </a>
     </div>

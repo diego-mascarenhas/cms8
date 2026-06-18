@@ -9,6 +9,7 @@ use App\Http\Requests\Cms\UpdatePostRequest;
 use App\Models\Post;
 use App\Models\PostType;
 use App\Models\TermTaxonomy;
+use App\Services\Cms\WordPressContentSyncService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,16 +17,17 @@ use Illuminate\Support\Str;
 
 class PostController extends Controller
 {
-    public function index(PostDataTable $dataTable, Request $request)
+    public function index(PostDataTable $dataTable, Request $request, ?string $type = null)
     {
         $this->authorize('viewAny', Post::class);
 
         $postTypes = PostType::query()->orderBy('menu_order')->orderBy('label')->get();
-        $currentType = $this->resolveCurrentType($request, $postTypes);
+        $currentType = $this->resolveCurrentType($type, $postTypes);
+        $wordpressSyncEnabled = WordPressContentSyncService::make($request->user()->currentTeam)->isEnabled();
 
         return $dataTable
             ->forPostType($currentType?->name)
-            ->render('cms.posts.index', compact('postTypes', 'currentType'));
+            ->render('cms.posts.index', compact('postTypes', 'currentType', 'wordpressSyncEnabled'));
     }
 
     public function create(Request $request): View
@@ -33,7 +35,7 @@ class PostController extends Controller
         $this->authorize('create', Post::class);
 
         $postTypes = PostType::query()->orderBy('menu_order')->get();
-        $currentType = $this->resolveCurrentType($request, $postTypes);
+        $currentType = $this->resolveCurrentType($request->query('type'), $postTypes);
         $availableTerms = $this->termsForType($currentType);
         $selectedTermIds = [];
 
@@ -43,6 +45,7 @@ class PostController extends Controller
             'currentType' => $currentType,
             'availableTerms' => $availableTerms,
             'selectedTermIds' => $selectedTermIds,
+            'listingUrl' => $this->listingUrl($currentType?->name),
         ]);
     }
 
@@ -54,7 +57,7 @@ class PostController extends Controller
         $this->persist($post, $request->validated());
 
         return redirect()
-            ->route('cms.posts.index', ['post_type' => $post->post_type])
+            ->to($this->listingUrl($post->post_type))
             ->with('success', __('app.Post created successfully.'));
     }
 
@@ -64,7 +67,10 @@ class PostController extends Controller
 
         $post->load(['meta', 'termTaxonomies.term', 'author']);
 
-        return view('cms.posts.show', compact('post'));
+        return view('cms.posts.show', [
+            'post' => $post,
+            'listingUrl' => $this->listingUrl($post->post_type),
+        ]);
     }
 
     public function edit(Post $post): View
@@ -82,6 +88,7 @@ class PostController extends Controller
             'currentType' => $currentType,
             'availableTerms' => $availableTerms,
             'selectedTermIds' => $selectedTermIds,
+            'listingUrl' => $this->listingUrl($post->post_type),
         ]);
     }
 
@@ -92,7 +99,7 @@ class PostController extends Controller
         $this->persist($post, $request->validated());
 
         return redirect()
-            ->route('cms.posts.index', ['post_type' => $post->post_type])
+            ->to($this->listingUrl($post->post_type))
             ->with('success', __('app.Post updated successfully.'));
     }
 
@@ -104,8 +111,41 @@ class PostController extends Controller
         $post->delete();
 
         return redirect()
-            ->route('cms.posts.index', ['post_type' => $type])
+            ->to($this->listingUrl($type))
             ->with('success', __('app.Post deleted successfully.'));
+    }
+
+    /**
+     * Clean listing URL for a given post type (dedicated routes for page/post, generic otherwise).
+     */
+    private function listingUrl(?string $type): string
+    {
+        return match ($type)
+        {
+            'page' => route('cms.pages.index'),
+            'post', null => route('cms.posts.index'),
+            default => route('cms.type.index', ['type' => $type]),
+        };
+    }
+
+    public function syncWordPress(Request $request): RedirectResponse
+    {
+        $this->authorize('create', Post::class);
+
+        $team = $request->user()->currentTeam;
+        $service = WordPressContentSyncService::make($team);
+
+        if (! $service->isEnabled())
+        {
+            return back()->with('error', __('app.WordPress sync is not configured for this team.'));
+        }
+
+        $result = $service->syncAll();
+
+        return back()->with('success', __('app.WordPress sync completed: :pulled pulled, :pushed pushed.', [
+            'pulled' => $result['pulled'],
+            'pushed' => $result['pushed'],
+        ]));
     }
 
     /**
@@ -146,11 +186,11 @@ class PostController extends Controller
     /**
      * @param  \Illuminate\Support\Collection<int, PostType>  $postTypes
      */
-    private function resolveCurrentType(Request $request, $postTypes): ?PostType
+    private function resolveCurrentType(?string $type, $postTypes): ?PostType
     {
-        if ($request->filled('post_type'))
+        if ($type !== null && $type !== '')
         {
-            $match = $postTypes->firstWhere('name', $request->string('post_type'));
+            $match = $postTypes->firstWhere('name', $type);
             if ($match)
             {
                 return $match;

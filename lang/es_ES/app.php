@@ -883,4 +883,9 @@ return [
     'Post created successfully.' => 'Entrada creada correctamente.',
     'Post updated successfully.' => 'Entrada actualizada correctamente.',
     'Post deleted successfully.' => 'Entrada eliminada correctamente.',
+
+    // CMS WordPress sync
+    'Sync with WordPress' => 'Sincronizar con WordPress',
+    'WordPress sync is not configured for this team.' => 'La sincronización con WordPress no está configurada para este equipo.',
+    'WordPress sync completed: :pulled pulled, :pushed pushed.' => 'Sincronización con WordPress completada: :pulled importados, :pushed enviados.',
 ];

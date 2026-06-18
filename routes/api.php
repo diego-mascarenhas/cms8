@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\TodayController;
 use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
+use App\Http\Controllers\Api\WordPressCmsWebhookController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ProspectSearchController;
@@ -75,6 +76,11 @@ Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function
     Route::get('posts', [PublicPostController::class, 'index'])->name('api.public.posts.index');
     Route::get('posts/{postType}/{slug}', [PublicPostController::class, 'show'])->name('api.public.posts.show');
 });
+
+// WordPress CMS sync webhook (authenticated by per-team shared secret)
+Route::post('wordpress/webhook/{team}', WordPressCmsWebhookController::class)
+    ->middleware('throttle:240,1')
+    ->name('api.wordpress.cms.webhook');
 
 // Prospect Search (public, for React frontend / prospection)
 Route::middleware('throttle:30,1')->group(function ()

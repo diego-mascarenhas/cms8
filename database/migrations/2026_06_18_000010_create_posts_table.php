@@ -19,6 +19,9 @@ return new class extends Migration
             // Multi-tenant + import bookkeeping (not present in WordPress core).
             $table->unsignedBigInteger('team_id');
             $table->unsignedBigInteger('wp_id')->nullable();
+            // Bidirectional WordPress sync tracking (last-write-wins).
+            $table->dateTime('wp_modified_gmt')->nullable();
+            $table->dateTime('synced_at')->nullable();
 
             // WordPress core columns.
             $table->unsignedBigInteger('post_author')->nullable();

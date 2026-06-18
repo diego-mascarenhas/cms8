@@ -721,4 +721,9 @@ return [
     'Edit' => 'Edit',
     'Create' => 'Create',
     'Search' => 'Search',
+
+    // CMS WordPress sync
+    'Sync with WordPress' => 'Sync with WordPress',
+    'WordPress sync is not configured for this team.' => 'WordPress sync is not configured for this team.',
+    'WordPress sync completed: :pulled pulled, :pushed pushed.' => 'WordPress sync completed: :pulled pulled, :pushed pushed.',
 ];

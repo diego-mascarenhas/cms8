@@ -36,7 +36,7 @@ class PostManagementTest extends TestCase
         $user = $this->adminWithTeam();
 
         $this->actingAs($user)
-            ->get(route('cms.posts.index', ['post_type' => 'page']))
+            ->get(route('cms.pages.index'))
             ->assertOk()
             ->assertSee('Páginas');
     }
@@ -52,7 +52,7 @@ class PostManagementTest extends TestCase
             'post_status' => 'publish',
         ]);
 
-        $response->assertRedirect(route('cms.posts.index', ['post_type' => 'page']));
+        $response->assertRedirect(route('cms.pages.index'));
         $this->assertDatabaseHas('posts', [
             'team_id' => $user->current_team_id,
             'post_type' => 'page',

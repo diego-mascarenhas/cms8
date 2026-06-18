@@ -23,8 +23,16 @@
         <p class="text-muted">{{ __('app.Manage your site content') }}</p>
     </div>
     @can('create', \App\Models\Post::class)
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('cms.posts.create', ['post_type' => $currentType?->name]) }}" class="btn btn-primary">
+    <div class="mt-3 mt-md-0 d-flex gap-2">
+        @if(!empty($wordpressSyncEnabled))
+        <form action="{{ route('cms.posts.sync-wordpress') }}" method="POST" class="d-inline">
+            @csrf
+            <button type="submit" class="btn btn-label-secondary">
+                <i class="ti ti-refresh me-1"></i> {{ __('app.Sync with WordPress') }}
+            </button>
+        </form>
+        @endif
+        <a href="{{ route('cms.posts.create', ['type' => $currentType?->name]) }}" class="btn btn-primary">
             <i class="ti ti-plus me-1"></i> {{ __('app.New') }} {{ $currentType?->label_singular ?? __('app.Post') }}
         </a>
     </div>
@@ -69,9 +77,16 @@ $(function() {
     let table = window.LaravelDataTables['posts-table'];
 
     $('#filter_post_type').on('change', function() {
-        const url = new URL(window.location.href);
-        url.searchParams.set('post_type', this.value);
-        window.location.href = url.toString();
+        const type = this.value;
+        let target;
+        if (type === 'page') {
+            target = '{{ route('cms.pages.index') }}';
+        } else if (type === 'post') {
+            target = '{{ route('cms.posts.index') }}';
+        } else {
+            target = '{{ url('cms/type') }}/' + encodeURIComponent(type);
+        }
+        window.location.href = target;
     });
 
     setTimeout(function() {

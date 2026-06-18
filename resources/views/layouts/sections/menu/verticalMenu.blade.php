@@ -67,6 +67,16 @@ $configData = Helper::appClasses();
     $activeClass = 'active';
     }
     }
+
+    // Disambiguate menu items that share a route but differ by query string (e.g. CMS post_type).
+    if ($activeClass !== null && isset($menu->active_query)) {
+    foreach ((array) $menu->active_query as $queryKey => $queryValue) {
+    if ((string) request()->query($queryKey) !== (string) $queryValue) {
+    $activeClass = null;
+    break;
+    }
+    }
+    }
     @endphp
 
     {{-- main menu --}}

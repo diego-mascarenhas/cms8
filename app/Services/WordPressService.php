@@ -166,6 +166,45 @@ class WordPressService
     }
 
     /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>|null
+     */
+    protected function post(string $path, array $body): ?array
+    {
+        if (! $this->isConfigured())
+        {
+            return null;
+        }
+
+        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->post($url, $body);
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::warning('WordPress API POST failed', [
+                'path' => $path,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress API POST error', ['path' => $path, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function getPosts(int $page = 1, int $perPage = 100): array
@@ -226,6 +265,68 @@ class WordPressService
     public function updatePage(int $id, array $data): ?array
     {
         return $this->put('/pages/'.$id, $data);
+    }
+
+    /**
+     * Create a post or page in WordPress.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createContent(string $type, array $data): ?array
+    {
+        $endpoint = $type === 'page' ? '/pages' : '/posts';
+
+        return $this->post($endpoint, $data);
+    }
+
+    /**
+     * Update a post or page in WordPress.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function updateContent(string $type, int $id, array $data): ?array
+    {
+        $endpoint = $type === 'page' ? '/pages/'.$id : '/posts/'.$id;
+
+        return $this->put($endpoint, $data);
+    }
+
+    /**
+     * Fetch a single post or page by id and WordPress type.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getContent(string $type, int $id): ?array
+    {
+        return $type === 'page' ? $this->getPage($id) : $this->getPost($id);
+    }
+
+    /**
+     * Iterate every post/page across all pages of results.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllContent(string $type, int $perPage = 100): array
+    {
+        $all = [];
+        $page = 1;
+
+        do
+        {
+            $batch = $type === 'page'
+                ? $this->getPages($page, $perPage)
+                : $this->getPosts($page, $perPage);
+
+            foreach ($batch as $item)
+            {
+                $all[] = $item;
+            }
+            $page++;
+        } while (count($batch) === $perPage && $page <= 50);
+
+        return $all;
     }
 
     /**
