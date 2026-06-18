@@ -124,7 +124,7 @@ class Post extends Model
                 return;
             }
 
-            if (! in_array($post->post_type, WordPressContentSyncService::SYNCED_TYPES, true))
+            if (! in_array($post->post_type, WordPressContentSyncService::PUSHABLE_TYPES, true))
             {
                 return;
             }

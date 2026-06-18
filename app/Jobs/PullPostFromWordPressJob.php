@@ -42,7 +42,12 @@ class PullPostFromWordPressJob implements ShouldQueue
             return;
         }
 
-        $normalizedType = $this->type === 'page' ? 'page' : 'post';
+        $normalizedType = match ($this->type)
+        {
+            'page' => 'page',
+            'attachment' => 'attachment',
+            default => 'post',
+        };
 
         if (in_array($this->action, ['deleted', 'trashed'], true))
         {

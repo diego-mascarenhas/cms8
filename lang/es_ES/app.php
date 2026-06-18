@@ -888,4 +888,16 @@ return [
     'Sync with WordPress' => 'Sincronizar con WordPress',
     'WordPress sync is not configured for this team.' => 'La sincronización con WordPress no está configurada para este equipo.',
     'WordPress sync completed: :pulled pulled, :pushed pushed.' => 'Sincronización con WordPress completada: :pulled importados, :pushed enviados.',
+
+    // CMS media
+    'Media' => 'Medios',
+    'Manage your media library' => 'Gestiona tu biblioteca de medios',
+    'Upload' => 'Subir',
+    'Uploaded files are synced to the WordPress media library.' => 'Los archivos subidos se sincronizan con la biblioteca de medios de WordPress.',
+    'Local only' => 'Solo local',
+    'No media yet. Upload your first file.' => 'Aún no hay medios. Sube tu primer archivo.',
+    'Insert image' => 'Insertar imagen',
+    'Featured image' => 'Imagen destacada',
+    'Select image' => 'Seleccionar imagen',
+    'Media library' => 'Biblioteca de medios',
 ];

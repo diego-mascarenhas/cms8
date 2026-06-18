@@ -7,6 +7,7 @@ use App\Models\Team;
 use App\Services\WordPressService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Bidirectional content sync between Humano CMS posts and WordPress.
@@ -18,8 +19,11 @@ use Illuminate\Support\Facades\Log;
  */
 class WordPressContentSyncService
 {
-    /** WordPress post types Humano mirrors. */
+    /** WordPress post types Humano mirrors as content. */
     public const SYNCED_TYPES = ['post', 'page'];
+
+    /** Post types whose save triggers an automatic push (content + media). */
+    public const PUSHABLE_TYPES = ['post', 'page', 'attachment'];
 
     private static bool $suppressPush = false;
 
@@ -91,6 +95,15 @@ class WordPressContentSyncService
             }
         }
 
+        // Media library (attachments).
+        foreach ($this->wp->getAllMedia() as $mediaItem)
+        {
+            if ($this->pullMediaItem($mediaItem))
+            {
+                $pulled++;
+            }
+        }
+
         $pushed = 0;
         $unlinked = Post::withoutGlobalScopes()
             ->where('team_id', $this->team->id)
@@ -106,6 +119,20 @@ class WordPressContentSyncService
             }
         }
 
+        $unlinkedAttachments = Post::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->where('post_type', 'attachment')
+            ->whereNull('wp_id')
+            ->get();
+
+        foreach ($unlinkedAttachments as $attachment)
+        {
+            if ($this->pushAttachment($attachment))
+            {
+                $pushed++;
+            }
+        }
+
         return ['pulled' => $pulled, 'pushed' => $pushed];
     }
 
@@ -114,6 +141,13 @@ class WordPressContentSyncService
      */
     public function pullById(int $wpId, string $type): bool
     {
+        if ($type === 'attachment')
+        {
+            $mediaItem = $this->wp->getMediaItem($wpId);
+
+            return is_array($mediaItem) ? $this->pullMediaItem($mediaItem) : false;
+        }
+
         $type = $this->normalizeType($type);
         $wpItem = $this->wp->getContent($type, $wpId);
 
@@ -123,6 +157,102 @@ class WordPressContentSyncService
         }
 
         return $this->pullItem($wpItem, $type);
+    }
+
+    /**
+     * Upsert one WordPress media item into the local posts table as an attachment.
+     *
+     * @param  array<string, mixed>  $wp
+     */
+    public function pullMediaItem(array $wp): bool
+    {
+        $wpId = (int) ($wp['id'] ?? 0);
+        if ($wpId === 0)
+        {
+            return false;
+        }
+
+        $wpModifiedGmt = isset($wp['modified_gmt']) ? Carbon::parse($wp['modified_gmt']) : now();
+
+        $existing = Post::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->where('wp_id', $wpId)
+            ->where('post_type', 'attachment')
+            ->first();
+
+        if ($existing && ! $this->wordPressWins($existing, $wpModifiedGmt))
+        {
+            return false;
+        }
+
+        $sourceUrl = (string) ($wp['source_url'] ?? ($wp['guid']['rendered'] ?? ''));
+        $thumbUrl = (string) ($wp['media_details']['sizes']['thumbnail']['source_url'] ?? $sourceUrl);
+
+        $attributes = [
+            'team_id' => $this->team->id,
+            'wp_id' => $wpId,
+            'post_type' => 'attachment',
+            'post_title' => $this->rendered($wp, 'title') ?: (string) ($wp['slug'] ?? 'media'),
+            'post_status' => (string) ($wp['status'] ?? 'inherit'),
+            'post_name' => (string) ($wp['slug'] ?? ''),
+            'post_mime_type' => (string) ($wp['mime_type'] ?? ''),
+            'guid' => $sourceUrl,
+            'wp_modified_gmt' => $wpModifiedGmt,
+            'synced_at' => now(),
+        ];
+
+        self::withoutPush(function () use ($existing, $attributes, $sourceUrl, $thumbUrl)
+        {
+            $post = $existing ?: new Post;
+            $post->fill($attributes)->save();
+            $post->setMeta('_wp_source_url', $sourceUrl);
+            $post->setMeta('_humano_thumb_url', $thumbUrl);
+        });
+
+        return true;
+    }
+
+    /**
+     * Upload a locally-stored attachment to the WordPress media library.
+     */
+    public function pushAttachment(Post $post): bool
+    {
+        if ($post->post_type !== 'attachment' || $post->wp_id)
+        {
+            return false;
+        }
+
+        $relativePath = $post->getMeta('_humano_file_path');
+        if (! $relativePath || ! Storage::disk('public')->exists($relativePath))
+        {
+            return false;
+        }
+
+        $absolutePath = Storage::disk('public')->path($relativePath);
+        $filename = basename($relativePath);
+        $mime = $post->post_mime_type ?: (Storage::disk('public')->mimeType($relativePath) ?: 'application/octet-stream');
+
+        $response = $this->wp->uploadMedia($absolutePath, $filename, $mime);
+
+        if (! is_array($response) || ! isset($response['id']))
+        {
+            Log::warning('WordPress attachment push failed', ['post_id' => $post->id, 'team_id' => $post->team_id]);
+
+            return false;
+        }
+
+        self::withoutPush(function () use ($post, $response)
+        {
+            $post->forceFill([
+                'wp_id' => (int) $response['id'],
+                'guid' => $response['source_url'] ?? $post->guid,
+                'wp_modified_gmt' => isset($response['modified_gmt']) ? Carbon::parse($response['modified_gmt']) : now(),
+                'synced_at' => now(),
+            ])->saveQuietly();
+            $post->setMeta('_wp_source_url', $response['source_url'] ?? '');
+        });
+
+        return true;
     }
 
     /**

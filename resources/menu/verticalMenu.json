@@ -269,6 +269,13 @@
       "module_key": "cms"
     },
     {
+      "url": "cms/media",
+      "name": "Media",
+      "icon": "menu-icon tf-icons ti ti-photo",
+      "slug": "cms.media.index",
+      "module_key": "cms"
+    },
+    {
       "url": "multimedia/list",
       "name": "Multimedia",
       "icon": "menu-icon tf-icons ti ti-photo",

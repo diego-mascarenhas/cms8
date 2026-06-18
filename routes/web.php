@@ -781,6 +781,11 @@ Route::middleware(['auth'])->group(function ()
 
     // CMS Routes (WordPress-like content management)
     Route::post('/cms/posts/sync-wordpress', [App\Http\Controllers\Cms\PostController::class, 'syncWordPress'])->name('cms.posts.sync-wordpress');
+    // Media library (attachments)
+    Route::get('/cms/media', [App\Http\Controllers\Cms\MediaController::class, 'index'])->name('cms.media.index');
+    Route::get('/cms/media/list', [App\Http\Controllers\Cms\MediaController::class, 'list'])->name('cms.media.list');
+    Route::post('/cms/media', [App\Http\Controllers\Cms\MediaController::class, 'store'])->name('cms.media.store');
+    Route::delete('/cms/media/{post}', [App\Http\Controllers\Cms\MediaController::class, 'destroy'])->whereNumber('post')->name('cms.media.destroy');
     // Clean typed listings (distinct route names so the sidebar highlights only the active one)
     Route::get('/cms/pages', [App\Http\Controllers\Cms\PostController::class, 'index'])->defaults('type', 'page')->name('cms.pages.index');
     Route::get('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'index'])->defaults('type', 'post')->name('cms.posts.index');

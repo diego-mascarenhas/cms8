@@ -37,6 +37,13 @@ class PushPostToWordPressJob implements ShouldQueue
             return;
         }
 
+        if ($post->post_type === 'attachment')
+        {
+            $service->pushAttachment($post);
+
+            return;
+        }
+
         $service->pushPost($post);
     }
 }

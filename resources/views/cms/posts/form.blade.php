@@ -16,6 +16,12 @@
 @php
     $isEdit = isset($post) && $post;
     $typeName = $isEdit ? $post->post_type : ($currentType?->name ?? 'post');
+    $featuredId = $isEdit ? $post->getMeta('_thumbnail_id') : null;
+    $featuredUrl = null;
+    if ($featuredId) {
+        $featuredAttachment = \App\Models\Post::find((int) $featuredId);
+        $featuredUrl = $featuredAttachment?->getMeta('_humano_thumb_url') ?: $featuredAttachment?->guid;
+    }
 @endphp
 
 @section('content')
@@ -60,7 +66,12 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">{{ __('app.Content') }}</label>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label mb-0">{{ __('app.Content') }}</label>
+                            <button type="button" class="btn btn-sm btn-label-primary" id="btn-insert-media">
+                                <i class="ti ti-photo me-1"></i>{{ __('app.Insert image') }}
+                            </button>
+                        </div>
                         <div id="post-editor" style="min-height: 250px;">{!! old('post_content', $isEdit ? $post->post_content : '') !!}</div>
                         <textarea name="post_content" id="post_content" class="d-none">{{ old('post_content', $isEdit ? $post->post_content : '') }}</textarea>
                     </div>
@@ -104,6 +115,24 @@
                 </div>
             </div>
 
+            <div class="card mb-4">
+                <h5 class="card-header">{{ __('app.Featured image') }}</h5>
+                <div class="card-body">
+                    <input type="hidden" name="meta[_thumbnail_id]" id="thumbnail_id" value="{{ $featuredId }}">
+                    <div id="featured-preview" class="mb-2 {{ $featuredUrl ? '' : 'd-none' }}">
+                        <img src="{{ $featuredUrl }}" alt="" class="img-fluid rounded border" id="featured-preview-img" style="max-height: 180px;">
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-label-primary" id="btn-select-featured">
+                            <i class="ti ti-photo me-1"></i>{{ __('app.Select image') }}
+                        </button>
+                        <button type="button" class="btn btn-sm btn-label-secondary {{ $featuredUrl ? '' : 'd-none' }}" id="btn-remove-featured">
+                            <i class="ti ti-x me-1"></i>{{ __('app.Remove') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             @if($availableTerms->isNotEmpty())
             <div class="card mb-4">
                 <h5 class="card-header">{{ __('app.Taxonomies') }}</h5>
@@ -125,6 +154,8 @@
         </div>
     </div>
 </form>
+
+@include('cms.posts.partials.media-picker')
 @endsection
 
 @section('page-script')
@@ -132,10 +163,51 @@
 $(function() {
     $('.select2').select2();
 
-    var quill = new Quill('#post-editor', { theme: 'snow' });
+    var quill = new Quill('#post-editor', {
+        theme: 'snow',
+        modules: {
+            toolbar: [
+                [{ header: [2, 3, false] }],
+                ['bold', 'italic', 'underline', 'link'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['clean']
+            ]
+        }
+    });
 
     $('#post-form').on('submit', function() {
         document.querySelector('#post_content').value = quill.root.innerHTML;
+    });
+
+    // Insert image from the media library into the editor.
+    document.getElementById('btn-insert-media')?.addEventListener('click', function() {
+        window.openMediaPicker(function(media) {
+            if (!media.is_image) { return; }
+            const range = quill.getSelection(true);
+            quill.insertEmbed(range ? range.index : quill.getLength(), 'image', media.url, 'user');
+        });
+    });
+
+    // Featured image selection.
+    const thumbInput = document.getElementById('thumbnail_id');
+    const preview = document.getElementById('featured-preview');
+    const previewImg = document.getElementById('featured-preview-img');
+    const removeBtn = document.getElementById('btn-remove-featured');
+
+    document.getElementById('btn-select-featured')?.addEventListener('click', function() {
+        window.openMediaPicker(function(media) {
+            if (!media.is_image) { return; }
+            thumbInput.value = media.id;
+            previewImg.src = media.thumb || media.url;
+            preview.classList.remove('d-none');
+            removeBtn.classList.remove('d-none');
+        });
+    });
+
+    removeBtn?.addEventListener('click', function() {
+        thumbInput.value = '';
+        preview.classList.add('d-none');
+        removeBtn.classList.add('d-none');
     });
 });
 </script>

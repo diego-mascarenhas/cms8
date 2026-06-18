@@ -460,4 +460,108 @@ class WordPressService
             return [];
         }
     }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getMedia(int $page = 1, int $perPage = 100): array
+    {
+        $data = $this->request('GET', '/wp/v2/media', ['page' => $page, 'per_page' => $perPage]);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Iterate every media item across all pages of results.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllMedia(int $perPage = 100): array
+    {
+        $all = [];
+        $page = 1;
+
+        do
+        {
+            $batch = $this->getMedia($page, $perPage);
+            foreach ($batch as $item)
+            {
+                $all[] = $item;
+            }
+            $page++;
+        } while (count($batch) === $perPage && $page <= 50);
+
+        return $all;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getMediaItem(int $id): ?array
+    {
+        $data = $this->getOne('/wp/v2/media/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * Upload a binary file to the WordPress media library (multipart).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function uploadMedia(string $absolutePath, string $filename, string $mimeType): ?array
+    {
+        if (! $this->isConfigured() || ! is_file($absolutePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()
+                ->attach('file', file_get_contents($absolutePath), $filename, ['Content-Type' => $mimeType])
+                ->post($this->restUrl('/wp/v2/media'));
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::warning('WordPress media upload failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress media upload error', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    public function deleteMedia(int $id): bool
+    {
+        if (! $this->isConfigured())
+        {
+            return false;
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()->delete($this->restUrl('/wp/v2/media/'.$id, ['force' => 'true']));
+
+            return $response->successful();
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress media delete error', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+    }
 }
