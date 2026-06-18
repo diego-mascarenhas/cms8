@@ -110,6 +110,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('help.plugins') ? 'active' : '' }}">
+          <a href="{{ route('help.plugins') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-puzzle"></i>
+            <div>{{ __('help_plugins.sidebar_title') }}</div>
+          </a>
+        </li>
+
         <li class="menu-item {{ request()->routeIs('help.stripe-webhook') ? 'active' : '' }}">
           <a href="{{ route('help.stripe-webhook') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-brand-stripe"></i>

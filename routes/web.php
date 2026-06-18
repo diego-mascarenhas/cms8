@@ -1384,6 +1384,8 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
     Route::get('/wordpress-mcp-cursor', [HelpController::class, 'wordpressMcpCursor'])->name('wordpress-mcp-cursor');
+    Route::get('/plugins', [HelpController::class, 'plugins'])->name('plugins');
+    Route::get('/plugins/{slug}/download', [HelpController::class, 'downloadPlugin'])->name('plugins.download');
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
     Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
