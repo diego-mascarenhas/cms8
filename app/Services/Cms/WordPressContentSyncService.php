@@ -25,6 +25,9 @@ class WordPressContentSyncService
     /** WordPress post types Humano mirrors as content. */
     public const SYNCED_TYPES = ['post', 'page'];
 
+    /** Post meta key under which the IDONEO Custom Fields map (JSON) is stored locally. */
+    public const CUSTOM_FIELDS_META = '_icf_fields';
+
     /** Post types whose save triggers an automatic push (content + media). */
     public const PUSHABLE_TYPES = ['post', 'page', 'attachment'];
 
@@ -303,6 +306,7 @@ class WordPressContentSyncService
             {
                 $this->syncPostTerms($existing, $wp);
             }
+            $this->syncPostCustomFields($existing, $wp);
 
             return false;
         }
@@ -341,7 +345,64 @@ class WordPressContentSyncService
             $this->syncPostTerms($post, $wp);
         }
 
+        if ($post)
+        {
+            $this->syncPostCustomFields($post, $wp);
+        }
+
         return true;
+    }
+
+    /**
+     * Store IDONEO Custom Fields values coming from WordPress (REST "icf_fields") into
+     * local post meta so they round-trip with the rest of the content.
+     *
+     * @param  array<string, mixed>  $wp
+     */
+    private function syncPostCustomFields(Post $post, array $wp): void
+    {
+        if (! array_key_exists('icf_fields', $wp))
+        {
+            return;
+        }
+
+        $fields = $wp['icf_fields'];
+        if (is_object($fields))
+        {
+            $fields = (array) $fields;
+        }
+        if (! is_array($fields))
+        {
+            return;
+        }
+
+        self::withoutPush(function () use ($post, $fields)
+        {
+            if ($fields === [])
+            {
+                $post->meta()->where('meta_key', self::CUSTOM_FIELDS_META)->delete();
+
+                return;
+            }
+            $post->setMeta(self::CUSTOM_FIELDS_META, json_encode($fields));
+        });
+    }
+
+    /**
+     * Decode the locally stored custom fields map for a post.
+     *
+     * @return array<string, mixed>
+     */
+    private function localCustomFields(Post $post): array
+    {
+        $raw = $post->getMeta(self::CUSTOM_FIELDS_META);
+        if (! is_string($raw) || $raw === '')
+        {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
@@ -466,6 +527,12 @@ class WordPressContentSyncService
             {
                 $body['tags'] = $tagWpIds;
             }
+        }
+
+        $customFields = $this->localCustomFields($post);
+        if ($customFields !== [])
+        {
+            $body['icf_fields'] = $customFields;
         }
 
         $response = $post->wp_id

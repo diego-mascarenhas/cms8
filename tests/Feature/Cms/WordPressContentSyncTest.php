@@ -324,6 +324,68 @@ class WordPressContentSyncTest extends TestCase
             && ($request->data()['categories'] ?? []) === [99]);
     }
 
+    public function test_pull_stores_custom_fields_from_wordpress_payload(): void
+    {
+        Bus::fake();
+        $team = $this->syncTeam();
+        $service = WordPressContentSyncService::make($team);
+
+        $service->pullItem([
+            'id' => 920,
+            'slug' => 'with-cf',
+            'status' => 'publish',
+            'title' => ['rendered' => 'With custom fields'],
+            'content' => ['rendered' => '<p>Body</p>'],
+            'modified_gmt' => '2026-06-18T12:00:00',
+            'icf_fields' => [
+                'subtitle' => 'Hola mundo',
+                'slides' => [
+                    ['title' => 'Slide 1'],
+                    ['title' => 'Slide 2'],
+                ],
+            ],
+        ], 'post');
+
+        $post = Post::withoutGlobalScopes()->where('wp_id', 920)->first();
+        $this->assertNotNull($post);
+        $stored = json_decode((string) $post->getMeta('_icf_fields'), true);
+        $this->assertSame('Hola mundo', $stored['subtitle']);
+        $this->assertCount(2, $stored['slides']);
+    }
+
+    public function test_push_post_sends_custom_fields_to_wordpress(): void
+    {
+        Bus::fake();
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if ($request->method() === 'GET' && preg_match('#/wp-json/?$#', parse_url($url, PHP_URL_PATH) ?? '')) {
+                return Http::response(['namespaces' => ['wp/v2']], 200);
+            }
+            if ($request->method() === 'PUT' && str_contains($url, '/wp/v2/posts/5')) {
+                return Http::response(['id' => 5, 'modified_gmt' => '2026-06-18T14:00:00'], 200);
+            }
+            return Http::response([], 404);
+        });
+
+        $team = $this->syncTeam();
+        $post = Post::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'post_type' => 'post',
+            'post_status' => Post::STATUS_PUBLISH,
+            'post_title' => 'CF push',
+            'post_name' => 'cf-push',
+            'wp_id' => 5,
+        ]);
+        $post->setMeta('_icf_fields', json_encode(['subtitle' => 'Hola', 'cta' => 'Click']));
+
+        $this->assertTrue(WordPressContentSyncService::make($team)->pushPost($post->fresh(['meta', 'termTaxonomies.term'])));
+
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && str_contains($request->url(), '/wp-json/wp/v2/posts/5')
+            && ($request->data()['icf_fields']['subtitle'] ?? null) === 'Hola'
+            && ($request->data()['icf_fields']['cta'] ?? null) === 'Click');
+    }
+
     public function test_pull_skips_when_local_is_newer_last_write_wins(): void
     {
         Bus::fake();
