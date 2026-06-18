@@ -79,12 +79,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <label class="form-label mb-0">{{ __('app.Content') }}</label>
-                            <button type="button" class="btn btn-sm btn-label-primary" id="btn-insert-media">
-                                <i class="ti ti-photo me-1"></i>{{ __('app.Insert image') }}
-                            </button>
-                        </div>
+                        <label class="form-label">{{ __('app.Content') }}</label>
                         <div id="post-editor" style="min-height: 250px;">{!! old('post_content', $isEdit ? $post->post_content : '') !!}</div>
                         <textarea name="post_content" id="post_content" class="d-none">{{ old('post_content', $isEdit ? $post->post_content : '') }}</textarea>
                     </div>
@@ -239,15 +234,29 @@
 $(function() {
     $('.select2').select2();
 
+    function insertMediaImage() {
+        window.openMediaPicker(function(media) {
+            if (!media.is_image) { return; }
+            const range = quill.getSelection(true);
+            quill.insertEmbed(range ? range.index : quill.getLength(), 'image', media.url, 'user');
+        });
+    }
+
     var quill = new Quill('#post-editor', {
         theme: 'snow',
         modules: {
-            toolbar: [
-                [{ header: [2, 3, false] }],
-                ['bold', 'italic', 'underline', 'link'],
-                [{ list: 'ordered' }, { list: 'bullet' }],
-                ['clean']
-            ]
+            toolbar: {
+                container: [
+                    [{ header: [2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'link'],
+                    [{ list: 'ordered' }, { list: 'bullet' }],
+                    ['image'],
+                    ['clean']
+                ],
+                handlers: {
+                    image: insertMediaImage
+                }
+            }
         }
     });
 
@@ -292,15 +301,6 @@ $(function() {
             slugInput.value = slugify(titleInput.value);
         }
         syncSlugPreview();
-    });
-
-    // Insert image from the media library into the editor.
-    document.getElementById('btn-insert-media')?.addEventListener('click', function() {
-        window.openMediaPicker(function(media) {
-            if (!media.is_image) { return; }
-            const range = quill.getSelection(true);
-            quill.insertEmbed(range ? range.index : quill.getLength(), 'image', media.url, 'user');
-        });
     });
 
     // Featured image selection.
