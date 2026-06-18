@@ -441,6 +441,24 @@ class WordPressService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createCategory(array $data): ?array
+    {
+        return $this->post('/wp/v2/categories', $data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createTag(array $data): ?array
+    {
+        return $this->post('/wp/v2/tags', $data);
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function getAllCategories(int $perPage = 100): array

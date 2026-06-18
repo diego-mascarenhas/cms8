@@ -5,6 +5,8 @@ namespace Tests\Feature\Cms;
 use App\Jobs\PullPostFromWordPressJob;
 use App\Models\Post;
 use App\Models\Team;
+use App\Models\Term;
+use App\Models\TermTaxonomy;
 use App\Models\User;
 use App\Services\Cms\WordPressContentSyncService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -260,6 +262,66 @@ class WordPressContentSyncTest extends TestCase
         Http::assertSent(fn ($request) => $request->method() === 'PUT'
             && str_contains($request->url(), '/wp-json/wp/v2/pages/42')
             && ($request->data()['title'] ?? null) === 'Inicio sync');
+    }
+
+    public function test_push_post_creates_local_category_on_wordpress_and_assigns_it(): void
+    {
+        Bus::fake();
+        Http::fake(function ($request)
+        {
+            $url = $request->url();
+
+            if ($request->method() === 'GET' && (str_contains($url, '/wp-json/') || str_contains($url, 'rest_route=')))
+            {
+                if (str_contains($url, '/wp-json/?') || preg_match('#/wp-json/?$#', parse_url($url, PHP_URL_PATH) ?? ''))
+                {
+                    return Http::response(['namespaces' => ['wp/v2']], 200);
+                }
+
+                return Http::response([], 200);
+            }
+
+            if ($request->method() === 'POST' && (str_contains($url, '/wp/v2/categories') || str_contains($url, 'rest_route=%2Fwp%2Fv2%2Fcategories')))
+            {
+                return Http::response(['id' => 99, 'slug' => 'desde-el-mac'], 201);
+            }
+
+            if ($request->method() === 'PUT' && (str_contains($url, '/wp/v2/posts/5') || str_contains($url, 'rest_route=%2Fwp%2Fv2%2Fposts%2F5')))
+            {
+                return Http::response(['id' => 5, 'modified_gmt' => '2026-06-18T14:00:00'], 200);
+            }
+
+            return Http::response([], 404);
+        });
+
+        $team = $this->syncTeam();
+        $term = Term::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Desde el Mac',
+            'slug' => 'desde-el-mac',
+        ]);
+        $termTaxonomy = TermTaxonomy::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'term_id' => $term->id,
+            'taxonomy' => TermTaxonomy::TAXONOMY_CATEGORY,
+        ]);
+
+        $post = Post::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'post_type' => 'post',
+            'post_status' => Post::STATUS_PUBLISH,
+            'post_title' => 'Nueva',
+            'post_name' => 'nueva',
+            'wp_id' => 5,
+        ]);
+        $post->termTaxonomies()->sync([$termTaxonomy->id => ['team_id' => $team->id]]);
+
+        $this->assertTrue(WordPressContentSyncService::make($team)->pushPost($post->fresh(['termTaxonomies.term'])));
+        $this->assertSame(99, (int) $term->fresh()->wp_id);
+
+        Http::assertSent(fn ($request) => $request->method() === 'PUT'
+            && str_contains($request->url(), '/wp-json/wp/v2/posts/5')
+            && ($request->data()['categories'] ?? []) === [99]);
     }
 
     public function test_pull_skips_when_local_is_newer_last_write_wins(): void

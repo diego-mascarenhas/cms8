@@ -11,7 +11,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Pushes a single Humano CMS post to WordPress when the team has sync enabled.
+ * Pushes a single Humano CMS post to WordPress when the team has credentials configured.
  * Dispatched from the Post saved hook (outside of incoming-sync suppression).
  */
 class PushPostToWordPressJob implements ShouldQueue
@@ -32,7 +32,7 @@ class PushPostToWordPressJob implements ShouldQueue
         }
 
         $service = WordPressContentSyncService::make($post->team);
-        if (! $service->isEnabled())
+        if (! $service->isConfigured())
         {
             return;
         }

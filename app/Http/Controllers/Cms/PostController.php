@@ -14,6 +14,7 @@ use App\Services\Cms\WordPressContentSyncService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PostController extends Controller
@@ -152,34 +153,37 @@ class PostController extends Controller
      */
     private function persist(Post $post, array $data): void
     {
-        $post->post_type = $data['post_type'];
-        $post->post_title = $data['post_title'] ?? null;
-        $post->post_content = $data['post_content'] ?? null;
-        $post->post_excerpt = $data['post_excerpt'] ?? null;
-        $post->post_status = $data['post_status'];
-        $post->post_parent = $data['post_parent'] ?? 0;
-        $post->menu_order = $data['menu_order'] ?? 0;
-        $post->post_name = ! empty($data['post_name'])
-            ? Str::slug($data['post_name'])
-            : Str::slug((string) ($data['post_title'] ?? ''));
-        $post->save();
-
-        if (isset($data['meta']) && is_array($data['meta']))
+        DB::transaction(function () use ($post, $data)
         {
-            foreach ($data['meta'] as $key => $value)
+            $post->post_type = $data['post_type'];
+            $post->post_title = $data['post_title'] ?? null;
+            $post->post_content = $data['post_content'] ?? null;
+            $post->post_excerpt = $data['post_excerpt'] ?? null;
+            $post->post_status = $data['post_status'];
+            $post->post_parent = $data['post_parent'] ?? 0;
+            $post->menu_order = $data['menu_order'] ?? 0;
+            $post->post_name = ! empty($data['post_name'])
+                ? Str::slug($data['post_name'])
+                : Str::slug((string) ($data['post_title'] ?? ''));
+            $post->save();
+
+            if (isset($data['meta']) && is_array($data['meta']))
             {
-                $post->setMeta((string) $key, is_array($value) ? json_encode($value) : $value);
+                foreach ($data['meta'] as $key => $value)
+                {
+                    $post->setMeta((string) $key, is_array($value) ? json_encode($value) : $value);
+                }
             }
-        }
 
-        $termIds = $this->resolveTermTaxonomyIds($post->team_id, $data);
-        $validTermTaxonomyIds = TermTaxonomy::query()->whereIn('id', $termIds)->pluck('id')->all();
-        $syncData = [];
-        foreach ($validTermTaxonomyIds as $termTaxonomyId)
-        {
-            $syncData[$termTaxonomyId] = ['team_id' => $post->team_id];
-        }
-        $post->termTaxonomies()->sync($syncData);
+            $termIds = $this->resolveTermTaxonomyIds($post->team_id, $data);
+            $validTermTaxonomyIds = TermTaxonomy::query()->whereIn('id', $termIds)->pluck('id')->all();
+            $syncData = [];
+            foreach ($validTermTaxonomyIds as $termTaxonomyId)
+            {
+                $syncData[$termTaxonomyId] = ['team_id' => $post->team_id];
+            }
+            $post->termTaxonomies()->sync($syncData);
+        });
     }
 
     /**

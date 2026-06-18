@@ -10,6 +10,7 @@ use App\Support\TeamPostsApiCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
@@ -203,42 +204,45 @@ class TeamPostController extends Controller
      */
     private function persist(Team $team, Post $post, array $data): Post
     {
-        $post->team_id = $team->id;
-        $post->post_type = $data['post_type'];
-        $post->post_title = $data['post_title'] ?? $post->post_title;
-        $post->post_content = $data['post_content'] ?? $post->post_content;
-        $post->post_excerpt = $data['post_excerpt'] ?? $post->post_excerpt;
-        $post->post_status = $data['post_status'] ?? ($post->post_status ?: Post::STATUS_PUBLISH);
-        $post->post_parent = $data['post_parent'] ?? $post->post_parent ?? 0;
-        $post->menu_order = $data['menu_order'] ?? $post->menu_order ?? 0;
-        $post->post_name = $data['post_name'] ?? ($post->post_name ?: Str::slug((string) ($data['post_title'] ?? '')));
-        $post->post_author = $post->post_author ?? null;
-        $post->save();
-
-        if (array_key_exists('meta', $data) && is_array($data['meta']))
+        return DB::transaction(function () use ($team, $post, $data)
         {
-            foreach ($data['meta'] as $key => $value)
-            {
-                $post->setMeta((string) $key, is_array($value) ? json_encode($value) : $value);
-            }
-        }
+            $post->team_id = $team->id;
+            $post->post_type = $data['post_type'];
+            $post->post_title = $data['post_title'] ?? $post->post_title;
+            $post->post_content = $data['post_content'] ?? $post->post_content;
+            $post->post_excerpt = $data['post_excerpt'] ?? $post->post_excerpt;
+            $post->post_status = $data['post_status'] ?? ($post->post_status ?: Post::STATUS_PUBLISH);
+            $post->post_parent = $data['post_parent'] ?? $post->post_parent ?? 0;
+            $post->menu_order = $data['menu_order'] ?? $post->menu_order ?? 0;
+            $post->post_name = $data['post_name'] ?? ($post->post_name ?: Str::slug((string) ($data['post_title'] ?? '')));
+            $post->post_author = $post->post_author ?? null;
+            $post->save();
 
-        if (array_key_exists('terms', $data) && is_array($data['terms']))
-        {
-            $validTermTaxonomyIds = TermTaxonomy::withoutGlobalScope('team')
-                ->where('term_taxonomy.team_id', $team->id)
-                ->whereIn('id', $data['terms'])
-                ->pluck('id')
-                ->all();
-            $syncData = [];
-            foreach ($validTermTaxonomyIds as $termTaxonomyId)
+            if (array_key_exists('meta', $data) && is_array($data['meta']))
             {
-                $syncData[$termTaxonomyId] = ['team_id' => $team->id];
+                foreach ($data['meta'] as $key => $value)
+                {
+                    $post->setMeta((string) $key, is_array($value) ? json_encode($value) : $value);
+                }
             }
-            $post->termTaxonomies()->sync($syncData);
-        }
 
-        return $post->fresh(['meta', 'termTaxonomies.term', 'author:id,name']);
+            if (array_key_exists('terms', $data) && is_array($data['terms']))
+            {
+                $validTermTaxonomyIds = TermTaxonomy::withoutGlobalScope('team')
+                    ->where('term_taxonomy.team_id', $team->id)
+                    ->whereIn('id', $data['terms'])
+                    ->pluck('id')
+                    ->all();
+                $syncData = [];
+                foreach ($validTermTaxonomyIds as $termTaxonomyId)
+                {
+                    $syncData[$termTaxonomyId] = ['team_id' => $team->id];
+                }
+                $post->termTaxonomies()->sync($syncData);
+            }
+
+            return $post->fresh(['meta', 'termTaxonomies.term', 'author:id,name']);
+        });
     }
 
     /**

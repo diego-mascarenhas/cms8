@@ -10,6 +10,7 @@ use App\Services\WordPressService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * Bidirectional content sync between Humano CMS posts and WordPress.
@@ -86,6 +87,7 @@ class WordPressContentSyncService
     public function syncAll(): array
     {
         $this->syncAllTerms();
+        $this->pushUnlinkedTerms();
 
         $pulled = 0;
         foreach (self::SYNCED_TYPES as $type)
@@ -340,6 +342,82 @@ class WordPressContentSyncService
         }
 
         return true;
+    }
+
+    /**
+     * Push local categories and tags that are not yet linked to WordPress.
+     */
+    public function pushUnlinkedTerms(): void
+    {
+        $terms = Term::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->whereNull('wp_id')
+            ->with('taxonomies')
+            ->get();
+
+        foreach ($terms as $term)
+        {
+            foreach ($term->taxonomies as $termTaxonomy)
+            {
+                $this->pushTermTaxonomy($termTaxonomy);
+            }
+        }
+    }
+
+    /**
+     * Create or resolve a local taxonomy row on WordPress and store its wp_id.
+     */
+    public function pushTermTaxonomy(TermTaxonomy $termTaxonomy): ?int
+    {
+        $termTaxonomy->loadMissing('term');
+        $term = $termTaxonomy->term;
+        if (! $term)
+        {
+            return null;
+        }
+
+        if ($term->wp_id)
+        {
+            return (int) $term->wp_id;
+        }
+
+        $body = [
+            'name' => (string) $term->name,
+            'slug' => $term->slug ?: Str::slug((string) $term->name),
+        ];
+
+        if ($termTaxonomy->taxonomy === TermTaxonomy::TAXONOMY_CATEGORY && (int) $termTaxonomy->parent > 0)
+        {
+            $parentWpId = $this->wordPressTermIdForLocalTaxonomyId((int) $termTaxonomy->parent);
+            if ($parentWpId)
+            {
+                $body['parent'] = $parentWpId;
+            }
+        }
+
+        $response = $termTaxonomy->taxonomy === TermTaxonomy::TAXONOMY_CATEGORY
+            ? $this->wp->createCategory($body)
+            : $this->wp->createTag($body);
+
+        if (! is_array($response) || ! isset($response['id']))
+        {
+            Log::warning('WordPress term push failed', [
+                'team_id' => $this->team->id,
+                'taxonomy' => $termTaxonomy->taxonomy,
+                'term_id' => $term->id,
+            ]);
+
+            return null;
+        }
+
+        $wpId = (int) $response['id'];
+
+        self::withoutPush(function () use ($term, $wpId)
+        {
+            $term->forceFill(['wp_id' => $wpId])->saveQuietly();
+        });
+
+        return $wpId;
     }
 
     /**
@@ -633,11 +711,32 @@ class WordPressContentSyncService
      */
     private function wordPressTermIdsForPost(Post $post, string $taxonomy): array
     {
-        return $post->termTaxonomies
-            ->where('taxonomy', $taxonomy)
-            ->map(fn (TermTaxonomy $termTaxonomy) => (int) $termTaxonomy->term?->wp_id)
-            ->filter(fn (int $wpId) => $wpId > 0)
-            ->values()
-            ->all();
+        $wpIds = [];
+
+        foreach ($post->termTaxonomies->where('taxonomy', $taxonomy) as $termTaxonomy)
+        {
+            $wpId = $this->pushTermTaxonomy($termTaxonomy);
+            if ($wpId)
+            {
+                $wpIds[] = $wpId;
+            }
+        }
+
+        return array_values(array_unique($wpIds));
+    }
+
+    private function wordPressTermIdForLocalTaxonomyId(int $termTaxonomyId): ?int
+    {
+        $termTaxonomy = TermTaxonomy::withoutGlobalScopes()
+            ->where('team_id', $this->team->id)
+            ->with('term')
+            ->find($termTaxonomyId);
+
+        if (! $termTaxonomy)
+        {
+            return null;
+        }
+
+        return $this->pushTermTaxonomy($termTaxonomy);
     }
 }
