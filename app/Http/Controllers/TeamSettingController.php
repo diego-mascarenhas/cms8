@@ -911,7 +911,7 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('wordpress_webhook_secret'),
                         'is_encrypted' => false,
                         'placeholder' => 'cadena-secreta-compartida',
-                        'help' => 'Pega esta misma cadena en el plugin "Humano CMS Sync" de WordPress. Endpoint: '.url('/api/wordpress/webhook/'.$team->id),
+                        'help' => 'Pega esta misma cadena en el plugin "IDONEO CMS Sync para Humano" de WordPress. Endpoint: '.url('/api/wordpress/webhook/'.$team->id),
                         'section' => 'connection',
                         'row' => 3,
                     ],
