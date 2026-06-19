@@ -24,7 +24,18 @@ class GuidePresentationTest extends TestCase
             ->assertSee('<base href="/homes/humano/presentations/">', false)
             ->assertSee('programa de referidos', false)
             ->assertSee('Activa Stripe', false)
-            ->assertSee('Comisión por referido', false);
+            ->assertSee('Comisión por referido', false)
+            ->assertSee('/presentacion/cms-wordpress', false);
+    }
+
+    public function test_cms_wordpress_presentation_injects_base_tag_for_assets(): void
+    {
+        $this->get('/presentacion/cms-wordpress')
+            ->assertOk()
+            ->assertSee('<base href="/homes/humano/presentations/">', false)
+            ->assertSee('contenido con WordPress', false)
+            ->assertSee('IDONEO CMS Sync', false)
+            ->assertSee('Se actualizó la entrada', false);
     }
 
     public function test_calendario_presentation_injects_base_tag_for_assets(): void

@@ -59,6 +59,13 @@ class HumanoGuidePresentations
                 'description' => __('Comparte tu enlace o invita por email: cobras comisión por cada suscripción que llegue con tu código de referido.'),
                 'icon' => 'affiliate',
             ],
+            [
+                'url' => GuidePresentation::url('cms-wordpress'),
+                'title' => __('CMS y WordPress'),
+                'subtitle' => __('Contenido sincronizado'),
+                'description' => __('Gestiona entradas y páginas en Humano, conéctalas con WordPress vía plugins IDONEO y deja que el asistente responda o edite contenido.'),
+                'icon' => 'brand-wordpress',
+            ],
         ];
     }
 }
