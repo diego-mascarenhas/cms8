@@ -175,7 +175,7 @@
 @endsection
 
 @section('page-script')
-    <script src="{{ asset('assets/js/app-chat.js') }}"></script>
+    <script src="{{ asset('assets/js/app-chat.js') }}?v={{ @filemtime(public_path('assets/js/app-chat.js')) ?: time() }}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var chatImageModal = document.getElementById('chatImageModal');
@@ -1826,6 +1826,9 @@
                         '<a href="#" class="d-block px-4 py-2 text-muted text-decoration-none cursor-pointer" role="button" onclick="event.preventDefault();" data-bs-toggle="sidebar" data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">' +
                         '<h6 class="text-muted mb-0">' + escapeHtml(msg) + '</h6>' +
                         '</a></li>';
+                    if (typeof window.applyChatSidebarSearch === 'function') {
+                        window.applyChatSidebarSearch();
+                    }
                     return;
                 }
                 var html = contacts.map(function (c) {
@@ -1844,6 +1847,9 @@
                     return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
                 }).join('');
                 listEl.innerHTML = html;
+                if (typeof window.applyChatSidebarSearch === 'function') {
+                    window.applyChatSidebarSearch();
+                }
             }
             function fetchChatList() {
                 var body = document.getElementById('chat-history-body');

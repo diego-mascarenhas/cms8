@@ -39,6 +39,9 @@ class ChatWhatsAppSidebarControlsTest extends TestCase
         $appChatJs = file_get_contents(base_path('resources/assets/js/app-chat.js'));
         $this->assertNotFalse($appChatJs);
         $this->assertStringContainsString('bindChatWhatsAppSidebarControls', $appChatJs);
+        $this->assertStringContainsString('applyChatSidebarSearch', $appChatJs);
+        $this->assertStringContainsString('#chat-list-whatsapp li:not(.chat-contact-list-item-title)', $appChatJs);
+        $this->assertStringContainsString('if (!listItem0)', $appChatJs);
         $this->assertLessThan(
             strpos($appChatJs, "document.addEventListener('DOMContentLoaded'"),
             strpos($appChatJs, 'bindChatWhatsAppSidebarControls'),
