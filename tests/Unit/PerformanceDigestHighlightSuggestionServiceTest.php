@@ -39,8 +39,10 @@ class PerformanceDigestHighlightSuggestionServiceTest extends TestCase
         $this->assertStringContainsString('mensajes', $itemsEs[0]['label']);
         $this->assertNotSame('', $enriched[0]['suggestion']);
         $this->assertNotNull($enriched[0]['action_url']);
+        $this->assertNull($enriched[0]['schedule_action'] ?? null);
         $this->assertArrayHasKey('detail_mode', $enriched[0]);
         $this->assertArrayHasKey('messages', $enriched[0]);
+        $this->assertSame('single', $enriched[0]['detail_mode']);
     }
 
     public function test_for_insight_rebuilds_items_from_snapshot_metrics(): void

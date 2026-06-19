@@ -2,17 +2,21 @@
 
 namespace App\Jobs;
 
+use App\Mail\DigestScheduledReplyMail;
 use App\Models\ScheduledMessage;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Traits\ConfiguresTeamMail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SendScheduledMessageJob implements ShouldQueue
 {
+    use ConfiguresTeamMail;
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
@@ -48,6 +52,13 @@ class SendScheduledMessageJob implements ShouldQueue
 
         try
         {
+            if ($scheduled->channel === 'email')
+            {
+                $this->sendScheduledEmail($scheduled, $team);
+
+                return;
+            }
+
             $baseUrl = $team->getWhatsAppServiceBaseUrl();
 
             if (empty($baseUrl))
@@ -79,5 +90,26 @@ class SendScheduledMessageJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    private function sendScheduledEmail(ScheduledMessage $scheduled, \App\Models\Team $team): void
+    {
+        $this->configureMailForTeam($team);
+
+        $subject = trim((string) ($scheduled->metadata['subject'] ?? ''));
+        if ($subject === '')
+        {
+            $subject = (string) __('app.performance_digest_scheduled_email_default_subject');
+        }
+
+        Mail::to($scheduled->recipient)->send(new DigestScheduledReplyMail($subject, $scheduled->body));
+
+        $scheduled->markAsSent();
+
+        Log::info('Scheduled email sent', [
+            'id' => $scheduled->id,
+            'recipient' => $scheduled->recipient,
+            'team_id' => $team->id,
+        ]);
     }
 }

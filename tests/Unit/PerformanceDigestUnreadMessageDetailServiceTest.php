@@ -52,8 +52,8 @@ class PerformanceDigestUnreadMessageDetailServiceTest extends TestCase
         $this->assertStringContainsString('Cuánto cuesta', $details[0]['preview']);
         $this->assertStringNotContainsString('sobre', mb_strtolower($details[0]['suggestion']));
         $this->assertStringNotContainsString('«', $details[0]['suggestion']);
-        $this->assertMatchesRegularExpression('/^(Hola|Buenos días|Hi|Good morning)\b/u', $details[0]['suggestion']);
-        $this->assertNotSame('', $details[0]['response_hint']);
+        $this->assertSame('whatsapp', $details[0]['schedule_action']);
+        $this->assertSame(__('app.performance_digest_schedule_whatsapp'), $details[0]['action_label']);
     }
 
     public function test_email_unread_returns_one_detail_per_email(): void
@@ -90,8 +90,37 @@ class PerformanceDigestUnreadMessageDetailServiceTest extends TestCase
         $this->assertSame('email', $details[0]['channel']);
         $this->assertStringContainsString('Presupuesto servicio', $details[0]['preview']);
         $this->assertStringContainsString('Hola Ana', $details[0]['suggestion']);
-        $this->assertStringNotContainsString('«', $details[0]['suggestion']);
-        $this->assertStringContainsString('compose=1', $details[0]['action_url'] ?? '');
-        $this->assertStringContainsString('ana%40example.com', $details[0]['action_url'] ?? '');
+        $this->assertSame('email', $details[0]['schedule_action']);
+        $this->assertSame('ana@example.com', $details[0]['schedule_recipient']);
+        $this->assertSame(__('app.performance_digest_schedule_email'), $details[0]['action_label']);
+        $this->assertNull($details[0]['action_url']);
+    }
+
+    public function test_email_unread_pretty_prints_json_body(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+
+        Module::firstOrCreate(['key' => 'mailbox'], ['name' => 'Mailbox', 'is_core' => false]);
+        $team->enableModule('mailbox');
+        $team = $team->fresh();
+
+        $mailbox = Mailbox::factory()->create(['team_id' => $team->id]);
+
+        Email::factory()->create([
+            'mailbox_id' => $mailbox->id,
+            'team_id' => $team->id,
+            'from_address' => 'Webhook <webhook@example.com>',
+            'subject' => 'Event payload',
+            'body_text' => '{"event":"invoice.paid","amount":1200,"customer":{"name":"Ana"}}',
+            'seen' => false,
+        ]);
+
+        $details = app(PerformanceDigestUnreadMessageDetailService::class)->forHighlightKey('email_unread', $team);
+
+        $this->assertCount(1, $details);
+        $this->assertStringContainsString('"event": "invoice.paid"', $details[0]['preview']);
+        $this->assertStringContainsString('"amount": 1200', $details[0]['preview']);
+        $this->assertStringContainsString('"name": "Ana"', $details[0]['preview']);
     }
 }

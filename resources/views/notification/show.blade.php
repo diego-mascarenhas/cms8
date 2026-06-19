@@ -15,12 +15,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const textEl = document.getElementById('digest-suggestion-text');
     const actionEl = document.getElementById('digest-suggestion-action');
     const actionLabelEl = document.getElementById('digest-suggestion-action-label');
+    const scheduleBtn = document.getElementById('digest-suggestion-schedule');
+    const scheduleLabelEl = document.getElementById('digest-suggestion-schedule-label');
     const copyBtn = document.getElementById('digest-suggestion-copy');
     const copyDefaultLabel = @json(__('app.performance_digest_suggestion_copy'));
     const copyDoneLabel = @json(__('app.performance_digest_suggestion_copied'));
     const howToRespondLabel = @json(__('app.performance_digest_response_hint_label'));
     const suggestedReplyLabel = @json(__('app.performance_digest_suggested_reply_label'));
     const receivedAtLabel = @json(__('app.performance_digest_message_received_at'));
+    const scheduleUrl = @json(route('notification.schedule-digest-reply', $notification));
+    const cancelScheduleBaseUrl = @json(url('/notification/'.$notification->id.'/schedule-digest-reply'));
+    const scheduleErrorLabel = @json(__('app.performance_digest_schedule_error'));
+    const scheduleCancelLabel = @json(__('app.performance_digest_schedule_cancel'));
+    const scheduleCancelErrorLabel = @json(__('app.performance_digest_schedule_cancel_error'));
+    const scheduledBadgeTemplate = @json(__('app.performance_digest_scheduled_badge', ['datetime' => '__DATETIME__']));
+    const scheduleEmailLabel = @json(__('app.performance_digest_schedule_email'));
+    const scheduleWhatsAppLabel = @json(__('app.performance_digest_schedule_whatsapp'));
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     if (!card || !items.length) {
         return;
     }
@@ -33,15 +44,235 @@ document.addEventListener('DOMContentLoaded', function () {
             .replace(/"/g, '&quot;');
     }
 
-    function renderMessageCards(messages) {
+    function formatJsonForDisplay(value) {
+        const text = String(value || '').trim();
+        if (text === '' || (text.charAt(0) !== '{' && text.charAt(0) !== '[')) {
+            return { text: String(value || ''), isJson: false };
+        }
+        try {
+            return { text: JSON.stringify(JSON.parse(text), null, 2), isJson: true };
+        } catch (error) {
+            return { text: String(value || ''), isJson: false };
+        }
+    }
+
+    function scheduledBadgeHtml(label) {
+        const text = scheduledBadgeTemplate.replace('__DATETIME__', escapeHtml(label || ''));
+        return '<span class="badge bg-label-success align-self-center"><i class="ti ti-clock me-1"></i>' + text + '</span>';
+    }
+
+    function renderScheduleActionArea(context) {
+        if (context.scheduled_message_id) {
+            return scheduledBadgeHtml(context.scheduled_label || '')
+                + '<button type="button" class="btn btn-label-danger btn-sm digest-cancel-schedule"'
+                + ' data-scheduled-message-id="' + escapeHtml(context.scheduled_message_id) + '"'
+                + ' data-message-index="' + escapeHtml(context.message_index ?? '') + '"'
+                + ' data-highlight-key="' + escapeHtml(context.highlight_key || '') + '">'
+                + '<i class="ti ti-x me-1"></i>' + escapeHtml(scheduleCancelLabel) + '</button>';
+        }
+
+        if (context.schedule_action) {
+            return '<button type="button" class="btn btn-primary btn-sm digest-schedule-reply"'
+                + ' data-message-index="' + escapeHtml(context.message_index ?? '') + '"'
+                + ' data-highlight-key="' + escapeHtml(context.highlight_key || '') + '"'
+                + ' data-digest-message-id="' + escapeHtml(context.digest_message_id || '') + '"'
+                + ' data-schedule-action="' + escapeHtml(context.schedule_action) + '"'
+                + ' data-schedule-recipient="' + escapeHtml(context.schedule_recipient || '') + '"'
+                + ' data-schedule-subject="' + escapeHtml(context.schedule_subject || '') + '">'
+                + '<i class="ti ti-clock me-1"></i>' + escapeHtml(context.action_label || '') + '</button>';
+        }
+
+        if (context.action_url) {
+            return '<a href="' + escapeHtml(context.action_url) + '" class="btn btn-primary btn-sm" target="_blank" rel="noopener">'
+                + '<i class="ti ti-external-link me-1"></i>' + escapeHtml(context.action_label || '') + '</a>';
+        }
+
+        return '';
+    }
+
+    function applyScheduledStateToItem(item, payload) {
+        if (item.detail_mode === 'messages' && item.messages && item.messages.length) {
+            const index = payload.message_index !== null && payload.message_index !== undefined && payload.message_index !== ''
+                ? Number(payload.message_index)
+                : null;
+
+            if (index !== null && item.messages[index]) {
+                item.messages[index].scheduled_message_id = payload.scheduled_message_id || null;
+                item.messages[index].scheduled_at = payload.scheduled_at || null;
+                item.messages[index].scheduled_label = payload.scheduled_label || null;
+                item.messages[index].schedule_action = payload.scheduled_message_id ? null : item.messages[index].schedule_action;
+                return;
+            }
+        }
+
+        item.scheduled_message_id = payload.scheduled_message_id || null;
+        item.scheduled_at = payload.scheduled_at || null;
+        item.scheduled_label = payload.scheduled_label || null;
+        if (payload.scheduled_message_id) {
+            item.schedule_action = null;
+            item.action_url = null;
+            item.action_label = null;
+        }
+    }
+
+    function restoreScheduleMeta(context) {
+        if (context.channel === 'email' && context.schedule_recipient) {
+            context.schedule_action = 'email';
+            context.action_label = scheduleEmailLabel;
+        } else if (context.channel === 'whatsapp' && context.schedule_recipient) {
+            context.schedule_action = 'whatsapp';
+            context.action_label = scheduleWhatsAppLabel;
+        } else if (context.key === 'email_unread' && context.schedule_recipient) {
+            context.schedule_action = 'email';
+            context.action_label = scheduleEmailLabel;
+        } else if ((context.key === 'whatsapp_unread' || context.key === 'whatsapp_inbound') && context.schedule_recipient) {
+            context.schedule_action = 'whatsapp';
+            context.action_label = scheduleWhatsAppLabel;
+        }
+    }
+
+    function clearScheduledStateOnItem(item, messageIndex) {
+        if (item.detail_mode === 'messages' && item.messages && item.messages.length) {
+            const index = messageIndex !== null && messageIndex !== undefined && messageIndex !== ''
+                ? Number(messageIndex)
+                : null;
+
+            if (index !== null && item.messages[index]) {
+                const message = item.messages[index];
+                message.scheduled_message_id = null;
+                message.scheduled_at = null;
+                message.scheduled_label = null;
+                restoreScheduleMeta(message);
+                return;
+            }
+        }
+
+        item.scheduled_message_id = null;
+        item.scheduled_at = null;
+        item.scheduled_label = null;
+        restoreScheduleMeta(item);
+    }
+
+    function bindCancelScheduleButton(button, onSuccess) {
+        if (!button) {
+            return;
+        }
+
+        button.addEventListener('click', function () {
+            const scheduledMessageId = button.getAttribute('data-scheduled-message-id');
+            if (!scheduledMessageId || !cancelScheduleBaseUrl || !csrfToken) {
+                return;
+            }
+
+            const originalHtml = button.innerHTML;
+            button.disabled = true;
+
+            fetch(cancelScheduleBaseUrl + '/' + scheduledMessageId, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            }).then(function (result) {
+                if (result.ok && result.data.success) {
+                    if (typeof onSuccess === 'function') {
+                        onSuccess(button);
+                    }
+                    return;
+                }
+
+                alert(result.data.message || scheduleCancelErrorLabel);
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }).catch(function () {
+                alert(scheduleCancelErrorLabel);
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            });
+        });
+    }
+
+    function bindScheduleButton(button, getBody, getContext) {
+        if (!button) {
+            return;
+        }
+
+        button.addEventListener('click', function () {
+            const body = getBody();
+            if (!body || !scheduleUrl || !csrfToken) {
+                return;
+            }
+
+            const originalHtml = button.innerHTML;
+            button.disabled = true;
+
+            const context = getContext ? getContext() : {};
+
+            fetch(scheduleUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                body: JSON.stringify({
+                    schedule_action: button.getAttribute('data-schedule-action'),
+                    schedule_recipient: button.getAttribute('data-schedule-recipient'),
+                    schedule_subject: button.getAttribute('data-schedule-subject') || '',
+                    highlight_key: context.highlight_key || '',
+                    digest_message_id: context.digest_message_id || null,
+                    body: body,
+                }),
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            }).then(function (result) {
+                if (result.ok && result.data.success) {
+                    if (typeof context.onScheduled === 'function') {
+                        context.onScheduled(result.data, button);
+                    }
+                    return;
+                }
+
+                alert(result.data.message || scheduleErrorLabel);
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            }).catch(function () {
+                alert(scheduleErrorLabel);
+                button.disabled = false;
+                button.innerHTML = originalHtml;
+            });
+        });
+    }
+
+    function renderMessageCards(messages, highlightKey) {
         if (!messagesContainer) {
             return;
         }
 
         messagesContainer.innerHTML = messages.map(function (message, index) {
-            const actionButton = message.action_url
-                ? '<a href="' + escapeHtml(message.action_url) + '" class="btn btn-primary btn-sm" target="_blank" rel="noopener"><i class="ti ti-external-link me-1"></i>' + escapeHtml(message.action_label || '') + '</a>'
-                : '';
+            const actionArea = renderScheduleActionArea({
+                scheduled_message_id: message.scheduled_message_id,
+                scheduled_label: message.scheduled_label,
+                schedule_action: message.schedule_action,
+                schedule_recipient: message.schedule_recipient,
+                schedule_subject: message.schedule_subject,
+                action_url: message.action_url,
+                action_label: message.action_label,
+                message_index: index,
+                highlight_key: highlightKey,
+                digest_message_id: message.id || '',
+            });
+            const previewFormatted = formatJsonForDisplay(message.preview || '');
+            const suggestionFormatted = formatJsonForDisplay(message.suggestion || '');
+            const previewBlock = previewFormatted.isJson
+                ? '<pre class="mb-0 text-body small font-monospace" style="white-space: pre-wrap;">' + escapeHtml(previewFormatted.text) + '</pre>'
+                : '<p class="mb-0 text-body" style="white-space: pre-wrap;">' + escapeHtml(previewFormatted.text) + '</p>';
 
             return ''
                 + '<div class="border rounded p-3 mb-3 digest-message-thread" data-message-index="' + index + '">'
@@ -50,14 +281,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 + '    <small class="text-muted">' + escapeHtml(receivedAtLabel) + ': ' + escapeHtml(message.received_at || '') + '</small></div>'
                 + '  </div>'
                 + '  <div class="bg-lighter rounded p-3 mb-3">'
-                + '    <p class="mb-0 text-body" style="white-space: pre-wrap;">' + escapeHtml(message.preview || '') + '</p>'
+                +      previewBlock
                 + '  </div>'
                 + '  <p class="small text-muted mb-1"><strong>' + escapeHtml(howToRespondLabel) + ':</strong> ' + escapeHtml(message.response_hint || '') + '</p>'
                 + '  <label class="form-label small fw-medium mb-1">' + escapeHtml(suggestedReplyLabel) + '</label>'
-                + '  <textarea class="form-control mb-2 digest-message-suggestion" rows="4" readonly>' + escapeHtml(message.suggestion || '') + '</textarea>'
-                + '  <div class="d-flex flex-wrap gap-2">'
+                + '  <textarea class="form-control mb-2 digest-message-suggestion' + (suggestionFormatted.isJson ? ' font-monospace' : '') + '" rows="4" readonly>' + escapeHtml(suggestionFormatted.text) + '</textarea>'
+                + '  <div class="d-flex flex-wrap gap-2 digest-message-actions">'
                 + '    <button type="button" class="btn btn-label-secondary btn-sm digest-message-copy" data-message-index="' + index + '"><i class="ti ti-copy me-1"></i>' + escapeHtml(copyDefaultLabel) + '</button>'
-                + actionButton
+                + actionArea
                 + '  </div>'
                 + '</div>';
         }).join('');
@@ -77,6 +308,100 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         });
+
+        messagesContainer.querySelectorAll('.digest-schedule-reply').forEach(function (button) {
+            bindScheduleButton(button, function () {
+                const index = button.getAttribute('data-message-index');
+                const textarea = messagesContainer.querySelector('.digest-message-thread[data-message-index="' + index + '"] .digest-message-suggestion');
+                return textarea ? textarea.value : '';
+            }, function () {
+                return {
+                    highlight_key: button.getAttribute('data-highlight-key') || '',
+                    digest_message_id: button.getAttribute('data-digest-message-id') || null,
+                    message_index: button.getAttribute('data-message-index'),
+                    onScheduled: function (data) {
+                        const highlightKey = button.getAttribute('data-highlight-key');
+                        const item = items.find(function (entry) { return entry.key === highlightKey; });
+                        if (item) {
+                            applyScheduledStateToItem(item, {
+                                message_index: button.getAttribute('data-message-index'),
+                                scheduled_message_id: data.scheduled_message_id,
+                                scheduled_at: data.scheduled_at,
+                                scheduled_label: data.scheduled_label,
+                            });
+                            renderMessageCards(item.messages, highlightKey);
+                        }
+                    },
+                };
+            });
+        });
+
+        messagesContainer.querySelectorAll('.digest-cancel-schedule').forEach(function (button) {
+            bindCancelScheduleButton(button, function () {
+                const highlightKey = button.getAttribute('data-highlight-key');
+                const item = items.find(function (entry) { return entry.key === highlightKey; });
+                if (item) {
+                    clearScheduledStateOnItem(item, button.getAttribute('data-message-index'));
+                    renderMessageCards(item.messages, highlightKey);
+                }
+            });
+        });
+    }
+
+    function renderSinglePanelScheduleActions(item) {
+        const container = document.getElementById('digest-single-schedule-actions');
+        if (!container) {
+            return;
+        }
+
+        container.innerHTML = renderScheduleActionArea({
+            scheduled_message_id: item.scheduled_message_id,
+            scheduled_label: item.scheduled_label,
+            schedule_action: item.schedule_action,
+            schedule_recipient: item.schedule_recipient,
+            schedule_subject: item.schedule_subject,
+            action_url: item.action_url,
+            action_label: item.action_label,
+            highlight_key: item.key,
+            digest_message_id: '',
+            message_index: '',
+        });
+
+        container.querySelectorAll('.digest-schedule-reply').forEach(function (button) {
+            bindScheduleButton(button, function () {
+                return textEl ? textEl.value : '';
+            }, function () {
+                return {
+                    highlight_key: item.key,
+                    onScheduled: function (data) {
+                        applyScheduledStateToItem(item, {
+                            scheduled_message_id: data.scheduled_message_id,
+                            scheduled_at: data.scheduled_at,
+                            scheduled_label: data.scheduled_label,
+                        });
+                        renderSinglePanelScheduleActions(item);
+                    },
+                };
+            });
+        });
+
+        container.querySelectorAll('.digest-cancel-schedule').forEach(function (button) {
+            bindCancelScheduleButton(button, function () {
+                clearScheduledStateOnItem(item, null);
+                renderSinglePanelScheduleActions(item);
+            });
+        });
+    }
+
+    function updateSinglePanelActions(item) {
+        if (scheduleBtn) {
+            scheduleBtn.classList.add('d-none');
+        }
+        if (actionEl) {
+            actionEl.classList.add('d-none');
+        }
+
+        renderSinglePanelScheduleActions(item);
     }
 
     function showItem(key) {
@@ -98,21 +423,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (item.detail_mode === 'messages' && item.messages && item.messages.length) {
             singlePanel.classList.add('d-none');
             messagesPanel.classList.remove('d-none');
-            renderMessageCards(item.messages);
+            renderMessageCards(item.messages, item.key);
         } else {
             messagesPanel.classList.add('d-none');
             singlePanel.classList.remove('d-none');
-            textEl.value = item.suggestion;
-
-            if (item.action_url) {
-                actionEl.href = item.action_url;
-                if (actionLabelEl) {
-                    actionLabelEl.textContent = item.action_label || '';
-                }
-                actionEl.classList.remove('d-none');
+            const suggestionFormatted = formatJsonForDisplay(item.suggestion || '');
+            textEl.value = suggestionFormatted.text;
+            if (suggestionFormatted.isJson) {
+                textEl.classList.add('font-monospace');
             } else {
-                actionEl.classList.add('d-none');
+                textEl.classList.remove('font-monospace');
             }
+
+            updateSinglePanelActions(item);
         }
 
         card.classList.remove('d-none');
@@ -329,6 +652,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <div class="d-flex flex-wrap gap-2">
                         <button type="button" class="btn btn-label-secondary btn-sm" id="digest-suggestion-copy">
                             <i class="ti ti-copy me-1"></i>{{ __('app.performance_digest_suggestion_copy') }}
+                        </button>
+                        <div class="d-flex flex-wrap gap-2" id="digest-single-schedule-actions"></div>
+                        <button type="button" class="btn btn-primary btn-sm d-none" id="digest-suggestion-schedule">
+                            <i class="ti ti-clock me-1"></i><span id="digest-suggestion-schedule-label"></span>
                         </button>
                         <a href="#" class="btn btn-primary btn-sm d-none" id="digest-suggestion-action" target="_blank" rel="noopener">
                             <i class="ti ti-external-link me-1"></i><span id="digest-suggestion-action-label"></span>

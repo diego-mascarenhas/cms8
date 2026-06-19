@@ -1035,6 +1035,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list');
     Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create');
     Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store');
+    Route::post('/notification/{notification}/schedule-digest-reply', [NotificationController::class, 'scheduleDigestReply'])->name('notification.schedule-digest-reply');
+    Route::delete('/notification/{notification}/schedule-digest-reply/{scheduledMessage}', [NotificationController::class, 'cancelDigestReply'])->name('notification.cancel-digest-reply');
     Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show');
     Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit');
     Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update');

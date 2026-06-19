@@ -109,6 +109,7 @@ class DemoDigestScenariosSeederTest extends TestCase
 
         $this->assertNotNull($carlos);
         $this->assertStringContainsString('F-2026', $carlos['suggestion']);
-        $this->assertStringContainsString('/invoices/', $carlos['action_url'] ?? '');
+        $this->assertSame('whatsapp', $carlos['schedule_action']);
+        $this->assertSame('34600222001', $carlos['schedule_recipient']);
     }
 }

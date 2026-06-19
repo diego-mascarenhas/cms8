@@ -248,6 +248,24 @@ class DemoDigestScenariosSeeder extends Seeder
                 ],
             ],
             [
+                'key' => 'revision_alpha_billing_email',
+                'phone' => '34600123456',
+                'email' => 'administracion@revisionalpha.com',
+                'enterprise_email' => 'info@revisionalpha.es',
+                'enterprise_name' => 'REVISION ALPHA',
+                'invoices' => [
+                    ['number' => 'F-REV-2026-12', 'total' => 1840.00, 'balance' => 1840.00, 'due_days_ago' => 9],
+                ],
+                'whatsapp' => null,
+                'mailbox' => [
+                    'message_key' => 'digest-revision-alpha-admin',
+                    'subject' => 'Consulta facturación pendiente',
+                    'body' => 'Buenos días, ¿podéis enviarme el detalle de las facturas impagas y los links de pago?',
+                    'from' => 'Marina <administracion@revisionalpha.com>',
+                    'hours_ago' => 1,
+                ],
+            ],
+            [
                 'key' => 'revision_alpha_partial_whatsapp',
                 'phone' => '34600222998',
                 'email' => 'finanzas@revisionalpha.es',

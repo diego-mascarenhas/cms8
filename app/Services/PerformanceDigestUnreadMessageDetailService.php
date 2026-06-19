@@ -6,6 +6,7 @@ use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Email;
 use App\Models\Team;
+use App\Support\PerformanceDigestReplyParser;
 use Illuminate\Support\Str;
 
 class PerformanceDigestUnreadMessageDetailService
@@ -28,6 +29,9 @@ class PerformanceDigestUnreadMessageDetailService
      *     received_at: string,
      *     response_hint: string,
      *     suggestion: string,
+     *     schedule_action: string|null,
+     *     schedule_recipient: string,
+     *     schedule_subject: string|null,
      *     action_url: string|null,
      *     action_label: string|null
      * }>
@@ -108,14 +112,15 @@ class PerformanceDigestUnreadMessageDetailService
         $contact = $this->findContactByPhone($team->id, $phoneDigits);
         $firstName = $this->resolveContactFirstName($contact);
         $contactName = $firstName ?? (string) __('app.performance_digest_message_unknown_contact');
-        $body = trim((string) $message->body);
+        $body = $this->normalizeMessageBodyForDisplay(trim((string) $message->body));
         $preview = $body !== '' ? Str::limit($body, 500) : (string) __('app.performance_digest_message_empty_body');
         $invoiceContext = $this->invoiceContextService->forContactAndMessage($team, $contact, $body);
         $calendarContext = $invoiceContext === null
             ? $this->calendarSchedulingService->forMessage($team, $contact, $body)
             : null;
+        $suggestion = $this->buildWhatsAppSuggestion($contact, $body, $team, $invoiceContext, $calendarContext);
 
-        return [
+        return array_merge([
             'id' => (int) $message->id,
             'channel' => 'whatsapp',
             'contact_name' => $contactName,
@@ -125,10 +130,16 @@ class PerformanceDigestUnreadMessageDetailService
             'preview' => $preview,
             'received_at' => $message->created_at?->format('d/m/Y H:i') ?? '',
             'response_hint' => $this->resolveResponseHint($body, $invoiceContext, $calendarContext),
-            'suggestion' => $this->buildWhatsAppSuggestion($contact, $body, $team, $invoiceContext, $calendarContext),
-            'action_url' => $this->resolveWhatsAppActionUrl($phoneDigits, $invoiceContext, $calendarContext),
-            'action_label' => $this->resolveActionLabel('whatsapp', $invoiceContext, $calendarContext),
-        ];
+            'suggestion' => $suggestion,
+        ], $this->resolveScheduleMeta(
+            channel: 'whatsapp',
+            contact: $contact,
+            recipientEmail: '',
+            phoneDigits: $phoneDigits,
+            invoiceContext: $invoiceContext,
+            calendarContext: $calendarContext,
+            suggestion: $suggestion,
+        ));
     }
 
     /**
@@ -190,34 +201,23 @@ class PerformanceDigestUnreadMessageDetailService
             ?? $this->resolveFirstNameFromDisplayName($parsedFrom['name']);
         $contactName = $firstName ?? ($parsedFrom['name'] !== '' ? $parsedFrom['name'] : (string) __('app.performance_digest_message_unknown_contact'));
         $subject = trim((string) $email->subject);
-        $body = trim(strip_tags((string) ($email->body_text ?: $email->body_html)));
+        $body = $this->normalizeMessageBodyForDisplay(
+            trim(strip_tags((string) ($email->body_text ?: $email->body_html))),
+        );
         $preview = $this->buildEmailPreview($subject, $body);
         $contactLabel = $subject !== ''
             ? $contactName.' · '.$subject
             : $contactName;
-
-        $actionUrl = null;
-        if (\Illuminate\Support\Facades\Route::has('mail-list'))
-        {
-            $params = ['compose' => 1];
-            if ($parsedFrom['email'] !== '')
-            {
-                $params['to'] = $parsedFrom['email'];
-            }
-            if ($firstName !== null)
-            {
-                $params['name'] = $firstName;
-            }
-            $actionUrl = route('mail-list', $params);
-        }
 
         $messageText = $body !== '' ? $body : $subject;
         $invoiceContext = $this->invoiceContextService->forContactAndMessage($team, $contact, $messageText);
         $calendarContext = $invoiceContext === null
             ? $this->calendarSchedulingService->forMessage($team, $contact, $messageText)
             : null;
+        $suggestion = $this->buildEmailSuggestion($contact, $parsedFrom['name'], $subject, $body, $team, $invoiceContext, $calendarContext);
+        $phoneDigits = $this->normalizePhoneDigits((string) ($contact?->phone ?? ''));
 
-        return [
+        return array_merge([
             'id' => (int) $email->id,
             'channel' => 'email',
             'contact_name' => $contactName,
@@ -225,10 +225,16 @@ class PerformanceDigestUnreadMessageDetailService
             'preview' => $preview,
             'received_at' => $email->message_date?->format('d/m/Y H:i') ?? '',
             'response_hint' => $this->resolveResponseHint($messageText, $invoiceContext, $calendarContext),
-            'suggestion' => $this->buildEmailSuggestion($contact, $parsedFrom['name'], $subject, $body, $team, $invoiceContext, $calendarContext),
-            'action_url' => $this->resolveEmailActionUrl($actionUrl, $invoiceContext, $calendarContext),
-            'action_label' => $this->resolveActionLabel('email', $invoiceContext, $calendarContext),
-        ];
+            'suggestion' => $suggestion,
+        ], $this->resolveScheduleMeta(
+            channel: 'email',
+            contact: $contact,
+            recipientEmail: $parsedFrom['email'],
+            phoneDigits: $phoneDigits,
+            invoiceContext: $invoiceContext,
+            calendarContext: $calendarContext,
+            suggestion: $suggestion,
+        ));
     }
 
     private function buildEmailPreview(string $subject, string $body): string
@@ -250,6 +256,38 @@ class PerformanceDigestUnreadMessageDetailService
         }
 
         return (string) __('app.performance_digest_message_empty_body');
+    }
+
+    private function normalizeMessageBodyForDisplay(string $body): string
+    {
+        $body = trim($body);
+        if ($body === '')
+        {
+            return '';
+        }
+
+        return $this->prettyPrintJsonIfApplicable($body) ?? $body;
+    }
+
+    private function prettyPrintJsonIfApplicable(string $text): ?string
+    {
+        $candidate = trim($text);
+        if ($candidate === '' || (! str_starts_with($candidate, '{') && ! str_starts_with($candidate, '[')))
+        {
+            return null;
+        }
+
+        try
+        {
+            $decoded = json_decode($candidate, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException)
+        {
+            return null;
+        }
+
+        $encoded = json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return $encoded !== false ? $encoded : null;
     }
 
     /**
@@ -350,6 +388,109 @@ class PerformanceDigestUnreadMessageDetailService
         return (string) __('app.performance_digest_whatsapp_reply_'.$hintKey, [
             'greeting' => $greeting,
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $invoiceContext
+     * @param  array<string, mixed>|null  $calendarContext
+     * @return array{
+     *     schedule_action: string|null,
+     *     schedule_recipient: string,
+     *     schedule_subject: string|null,
+     *     action_url: string|null,
+     *     action_label: string|null
+     * }
+     */
+    private function resolveScheduleMeta(
+        string $channel,
+        ?Contact $contact,
+        string $recipientEmail,
+        string $phoneDigits,
+        ?array $invoiceContext,
+        ?array $calendarContext,
+        string $suggestion,
+    ): array {
+        if ($invoiceContext !== null)
+        {
+            if ($channel === 'email' && filter_var($recipientEmail, FILTER_VALIDATE_EMAIL))
+            {
+                $parsed = PerformanceDigestReplyParser::parseEmailSuggestion($suggestion);
+
+                return [
+                    'schedule_action' => 'email',
+                    'schedule_recipient' => strtolower($recipientEmail),
+                    'schedule_subject' => $parsed['subject'] !== '' ? $parsed['subject'] : null,
+                    'action_url' => null,
+                    'action_label' => (string) __('app.performance_digest_schedule_email'),
+                ];
+            }
+
+            $phone = $phoneDigits !== ''
+                ? $phoneDigits
+                : $this->normalizePhoneDigits((string) ($contact?->phone ?? ''));
+
+            if ($phone === '')
+            {
+                return [
+                    'schedule_action' => null,
+                    'schedule_recipient' => '',
+                    'schedule_subject' => null,
+                    'action_url' => $this->resolveInvoiceActionUrl($invoiceContext),
+                    'action_label' => (string) __('app.performance_digest_suggestion_action_invoice'),
+                ];
+            }
+
+            return [
+                'schedule_action' => 'whatsapp',
+                'schedule_recipient' => $phone,
+                'schedule_subject' => null,
+                'action_url' => null,
+                'action_label' => (string) __('app.performance_digest_schedule_whatsapp'),
+            ];
+        }
+
+        if ($channel === 'email' && filter_var($recipientEmail, FILTER_VALIDATE_EMAIL))
+        {
+            $parsed = PerformanceDigestReplyParser::parseEmailSuggestion($suggestion);
+
+            return [
+                'schedule_action' => 'email',
+                'schedule_recipient' => strtolower($recipientEmail),
+                'schedule_subject' => $parsed['subject'] !== '' ? $parsed['subject'] : null,
+                'action_url' => null,
+                'action_label' => (string) __('app.performance_digest_schedule_email'),
+            ];
+        }
+
+        if ($channel === 'whatsapp' && $phoneDigits !== '')
+        {
+            return [
+                'schedule_action' => 'whatsapp',
+                'schedule_recipient' => $phoneDigits,
+                'schedule_subject' => null,
+                'action_url' => null,
+                'action_label' => (string) __('app.performance_digest_schedule_whatsapp'),
+            ];
+        }
+
+        if ($calendarContext !== null && ($calendarContext['calendar_url'] ?? null) !== null)
+        {
+            return [
+                'schedule_action' => null,
+                'schedule_recipient' => '',
+                'schedule_subject' => null,
+                'action_url' => $calendarContext['calendar_url'],
+                'action_label' => (string) __('app.performance_digest_suggestion_action_calendar'),
+            ];
+        }
+
+        return [
+            'schedule_action' => null,
+            'schedule_recipient' => '',
+            'schedule_subject' => null,
+            'action_url' => null,
+            'action_label' => null,
+        ];
     }
 
     /**
