@@ -43,6 +43,17 @@ class AssistantFabTest extends TestCase
         $response->assertDontSee('id="assistant-fab"', false);
     }
 
+    public function test_chat_page_does_not_render_floating_button(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+
+        $response = $this->actingAs($user->fresh())->get(route('chat.index'));
+
+        $response->assertOk();
+        $response->assertDontSee('id="assistant-fab"', false);
+    }
+
     public function test_full_assistant_page_keeps_chat_header_and_voice_toggle(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
