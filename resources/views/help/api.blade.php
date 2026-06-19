@@ -210,9 +210,9 @@
                                     <i class="ti ti-sparkles me-2"></i>
                                     {{ __('Prompts API') }}
                                 </a>
-                                <a href="{{ route('help.api.contents') }}" class="btn btn-info">
+                                <a href="{{ route('help.api.posts') }}" class="btn btn-info">
                                     <i class="ti ti-file-text me-2"></i>
-                                    {{ __('Contents API') }}
+                                    {{ __('Posts API') }}
                                 </a>
                                 <a href="{{ route('help.api.enterprises') }}" class="btn btn-secondary">
                                     <i class="ti ti-building me-2"></i>

@@ -19,7 +19,7 @@
     <form
       class="slash-lead-modal-form"
       data-slash-lead-modal-form
-      action="{{ route('slash.lead.store') }}"
+      action="{{ $leadStoreUrl ?? route('slash.lead.store') }}"
       method="POST"
       novalidate
     >

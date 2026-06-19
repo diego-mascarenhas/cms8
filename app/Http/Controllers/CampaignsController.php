@@ -9,9 +9,9 @@ use App\Helpers\DnsHelper;
 use App\Http\Requests\UpdateCampaignRequest;
 use App\Http\Requests\UpdateCampaignSequenceRequest;
 use App\Models\Campaign;
-use App\Models\Content;
 use App\Models\Message;
 use App\Models\MessageType;
+use App\Models\Post;
 use App\Models\Product;
 use App\Models\SubscriptionProduct;
 use App\Models\Template;
@@ -51,14 +51,14 @@ class CampaignsController extends Controller
 
         $catalogProducts = Product::query()->active()->orderBy('name')->get(['id', 'name']);
         $subscriptionProducts = SubscriptionProduct::query()->active()->orderBy('name')->limit(500)->get(['id', 'name', 'recurring_interval']);
-        $formContents = Content::query()
-            ->where('status', 1)
-            ->orderBy('order')
+        $formContents = Post::query()
+            ->where('post_status', Post::STATUS_PUBLISH)
+            ->orderBy('menu_order')
             ->orderBy('id')
             ->limit(500)
-            ->get(['id', 'title']);
+            ->get(['id', 'post_title']);
 
-        $formContentsForSelect = $formContents->map(fn (Content $c): array => [
+        $formContentsForSelect = $formContents->map(fn (Post $c): array => [
             'id' => $c->id,
             'label' => $this->contentPrimaryTitle($c),
         ]);
@@ -1028,24 +1028,10 @@ HTML;
         return $refs;
     }
 
-    private function contentPrimaryTitle(Content $content): string
+    private function contentPrimaryTitle(Post $post): string
     {
-        $title = $content->title;
-        if (! is_array($title))
-        {
-            $s = trim((string) $title);
+        $title = trim((string) $post->post_title);
 
-            return $s !== '' ? $s : '—';
-        }
-
-        foreach ($title as $value)
-        {
-            if (is_string($value) && trim($value) !== '')
-            {
-                return $value;
-            }
-        }
-
-        return '—';
+        return $title !== '' ? $title : '—';
     }
 }

@@ -15,6 +15,8 @@ class GuidePresentation
         'prospeccion',
         'facturacion',
         'afiliados',
+        'cms-wordpress',
+        'insight-diario',
     ];
 
     public static function isValid(string $slug): bool

@@ -346,7 +346,8 @@ class WhatsAppLocalWebhookController extends Controller
 
     private function resolveTeam(Request $request): ?Team
     {
-        $to = $request->input('to');
+        $payload = $request->all();
+        $to = $payload['to'] ?? $payload['ourJid'] ?? null;
         if (! empty($to))
         {
             $normalized = preg_replace('/[^0-9]/', '', (string) $to);

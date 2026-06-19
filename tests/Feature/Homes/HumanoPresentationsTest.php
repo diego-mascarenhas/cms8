@@ -44,4 +44,20 @@ class HumanoPresentationsTest extends TestCase
         $this->assertStringContainsString('Comisión por referido', $html);
         $this->assertStringContainsString('__AFFILIATE_COMMISSION_PERCENT__%', $html);
     }
+
+    public function test_cms_wordpress_presentation_exists_and_has_expected_content(): void
+    {
+        $path = public_path('homes/humano/presentations/cms-wordpress.html');
+
+        $this->assertFileExists($path);
+
+        $html = file_get_contents($path);
+
+        $this->assertIsString($html);
+        $this->assertStringContainsString('contenido con WordPress', $html);
+        $this->assertStringContainsString('IDONEO Custom Fields', $html);
+        $this->assertStringContainsString('/help/plugins', $html);
+        $this->assertStringContainsString('icf_fields', $html);
+        $this->assertStringContainsString('/cms/posts', $html);
+    }
 }

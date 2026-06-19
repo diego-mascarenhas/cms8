@@ -115,6 +115,7 @@ class DatabaseSeeder extends Seeder
             TeamDemoSeeder::class,  // Demo team (Chat on, Users hidden, modules in module_team)
             TextileProductsSeeder::class,  // Demo product catalogue (Ropa, Calzado, Accesorios + stores)
             DemoDataForTimeReportingSeeder::class,  // Projects with tasks (for API / time reporting)
+            PostTypeSeeder::class,  // CMS core post types (post, page, attachment) per team
         ]);
 
         // Activity log was removed from the application

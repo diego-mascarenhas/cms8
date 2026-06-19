@@ -248,20 +248,6 @@
       "menuHeader": "Sitio web"
     },
     {
-      "url": "wordpress/posts",
-      "name": "Posts",
-      "icon": "menu-icon tf-icons ti ti-article",
-      "slug": "wordpress.posts",
-      "module_key": "website"
-    },
-    {
-      "url": "wordpress/pages",
-      "name": "Pages",
-      "icon": "menu-icon tf-icons ti ti-file-description",
-      "slug": "wordpress.pages",
-      "module_key": "website"
-    },
-    {
       "url": "pages/landing/editor",
       "name": "Landing Page",
       "icon": "menu-icon tf-icons ti ti-globe",
@@ -269,11 +255,25 @@
       "module_key": "landings"
     },
     {
-      "url": "contents",
-      "name": "Contents",
+      "url": "cms/pages",
+      "name": "Pages",
       "icon": "menu-icon tf-icons ti ti-file-text",
-      "slug": "contents.index",
-      "module_key": "contents"
+      "slug": "cms.pages.index",
+      "module_key": "cms"
+    },
+    {
+      "url": "cms/posts",
+      "name": "Posts",
+      "icon": "menu-icon tf-icons ti ti-news",
+      "slug": "cms.posts.index",
+      "module_key": "cms"
+    },
+    {
+      "url": "cms/media",
+      "name": "Media",
+      "icon": "menu-icon tf-icons ti ti-photo",
+      "slug": "cms.media.index",
+      "module_key": "cms"
     },
     {
       "url": "multimedia/list",

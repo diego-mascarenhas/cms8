@@ -137,6 +137,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Scroll to bottom function
     function scrollToBottom() {
+      if (!chatHistoryBody) {
+        return;
+      }
+
       chatHistoryBody.scrollTo(0, chatHistoryBody.scrollHeight);
     }
     scrollToBottom();
@@ -181,57 +185,96 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
 
-    // Filter Chats
-    if (searchInput) {
-      searchInput.addEventListener('keyup', e => {
-        let searchValue = e.currentTarget.value.toLowerCase(),
-          searchChatListItemsCount = 0,
-          searchContactListItemsCount = 0,
-          chatListItem0 = document.querySelector('.chat-list-item-0'),
-          contactListItem0 = document.querySelector('.contact-list-item-0'),
-          searchChatListItems = [].slice.call(
-            document.querySelectorAll(
-              '#chat-list li:not(.chat-contact-list-item-title), #chat-list-assistant-clients li:not(.chat-contact-list-item-title)'
-            )
-          ),
-          searchContactListItems = [].slice.call(
-            document.querySelectorAll('#contact-list li:not(.chat-contact-list-item-title)')
-          );
+    function setChatListItemVisible(listItem, visible) {
+      if (!listItem) {
+        return;
+      }
 
-        // Search in chats
-        searchChatContacts(searchChatListItems, searchChatListItemsCount, searchValue, chatListItem0);
-        // Search in contacts
-        searchChatContacts(searchContactListItems, searchContactListItemsCount, searchValue, contactListItem0);
-      });
-    }
-
-    // Search chat and contacts function
-    function searchChatContacts(searchListItems, searchListItemsCount, searchValue, listItem0) {
-      searchListItems.forEach(searchListItem => {
-        let searchListItemText = searchListItem.textContent.toLowerCase();
-        if (searchValue) {
-          if (-1 < searchListItemText.indexOf(searchValue)) {
-            searchListItem.classList.add('d-flex');
-            searchListItem.classList.remove('d-none');
-            searchListItemsCount++;
-          } else {
-            searchListItem.classList.add('d-none');
-          }
-        } else {
-          searchListItem.classList.add('d-flex');
-          searchListItem.classList.remove('d-none');
-          searchListItemsCount++;
-        }
-      });
-      // Display no search fount if searchListItemsCount == 0
-      if (searchListItemsCount == 0) {
-        listItem0.classList.remove('d-none');
+      if (visible) {
+        listItem.classList.remove('d-none');
       } else {
-        listItem0.classList.add('d-none');
+        listItem.classList.add('d-none');
       }
     }
 
+    function syncWhatsAppSectionSearchVisibility(searchValue) {
+      const whatsappSection = document.getElementById('whatsapp-conversations-section');
+      if (!whatsappSection) {
+        return;
+      }
+
+      if (!searchValue) {
+        const showWhatsAppToggle = document.getElementById('sidebar-show-whatsapp-conversations-toggle');
+        if (showWhatsAppToggle) {
+          whatsappSection.classList.toggle('d-none', !showWhatsAppToggle.checked);
+        } else {
+          whatsappSection.classList.remove('d-none');
+        }
+
+        return;
+      }
+
+      const visibleItems = whatsappSection.querySelectorAll(
+        '#chat-list-whatsapp li.chat-contact-list-item:not(.d-none):not(.chat-list-item-0)'
+      );
+      whatsappSection.classList.toggle('d-none', visibleItems.length === 0);
+    }
+
+    // Search chat and contacts function
+    function searchChatContacts(searchListItems, searchValue, listItem0) {
+      let matchedCount = 0;
+
+      searchListItems.forEach(searchListItem => {
+        const searchListItemText = searchListItem.textContent.toLowerCase();
+        const matches = searchValue === '' || searchListItemText.includes(searchValue);
+
+        setChatListItemVisible(searchListItem, matches);
+        if (matches) {
+          matchedCount++;
+        }
+      });
+
+      if (!listItem0) {
+        return matchedCount;
+      }
+
+      setChatListItemVisible(listItem0, searchValue !== '' && matchedCount === 0);
+
+      return matchedCount;
+    }
+
+    function applyChatSidebarSearch() {
+      const searchInputEl = document.querySelector('.chat-search-input');
+      const searchValue = searchInputEl ? searchInputEl.value.trim().toLowerCase() : '';
+      const chatListItem0 = document.querySelector('#chat-list .chat-list-item-0');
+      const contactListItem0 = document.querySelector('#contact-list .contact-list-item-0');
+      const searchChatListItems = [].slice.call(
+        document.querySelectorAll(
+          '#chat-list li:not(.chat-contact-list-item-title), #chat-list-assistant-clients li:not(.chat-contact-list-item-title)'
+        )
+      );
+      const searchContactListItems = [].slice.call(
+        document.querySelectorAll('#contact-list li:not(.chat-contact-list-item-title)')
+      );
+      const searchWhatsAppListItems = [].slice.call(
+        document.querySelectorAll('#chat-list-whatsapp li:not(.chat-contact-list-item-title):not(.chat-list-item-0)')
+      );
+
+      searchChatContacts(searchChatListItems, searchValue, chatListItem0);
+      searchChatContacts(searchContactListItems, searchValue, contactListItem0);
+      searchChatContacts(searchWhatsAppListItems, searchValue, null);
+      syncWhatsAppSectionSearchVisibility(searchValue);
+    }
+
+    window.applyChatSidebarSearch = applyChatSidebarSearch;
+
+    // Filter Chats
+    if (searchInput) {
+      searchInput.addEventListener('input', applyChatSidebarSearch);
+    }
+
     // Send Message
+    if (formSendMessage) {
     formSendMessage.addEventListener('submit', e => {
       e.preventDefault();
       if (messageInput.value) {
@@ -278,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       }
     });
+    }
 
     // on click of chatHistoryHeaderMenu, Remove data-overlay attribute from chatSidebarLeftClose to resolve overlay overlapping issue for two sidebar
     let chatHistoryHeaderMenu = document.querySelector(".chat-history-header [data-target='#app-chat-contacts']"),

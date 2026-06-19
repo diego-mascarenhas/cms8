@@ -304,6 +304,11 @@ class ChatAssistantReplyService
                 $toolResults = $response->toolResults;
             }
 
+            if ($text === '')
+            {
+                $text = $this->fallbackTextFromToolOutputs();
+            }
+
             return [
                 'success' => true,
                 'text' => $text !== '' ? $text : 'No response text',
@@ -458,6 +463,22 @@ EOT;
     }
 
     /**
+     * When the model ends a turn without text but tools ran (e.g. it only called
+     * update_cms_content), surface the last tool output so the user sees a confirmation
+     * instead of "No response text".
+     */
+    protected function fallbackTextFromToolOutputs(): string
+    {
+        $outputs = $this->assistantTools->getToolOutputsInRequest();
+        if ($outputs === [])
+        {
+            return '';
+        }
+
+        return trim((string) end($outputs));
+    }
+
+    /**
      * Build laravel/ai Tool instances from AssistantToolsService definitions.
      *
      * @return array<int, \Laravel\Ai\Contracts\Tool>
@@ -581,6 +602,11 @@ Campaign messages (News / newsletter / email campaigns):
 - Spanish UX: In Humano, **estado del contacto** (Lead, En seguimiento, Conversión, Perdido, Cliente, Finalizado, …) is the **CRM lifecycle** filter for who receives the campaign; **categoría** is a separate audience filter. Whether the newsletter **sends** is **envío de la campaña** / **campaña pausada o enviando**. Never summarize sending on/off using the bare word **"Estado"** — say **envío activo/pausado**, **envío de la campaña**, or **campaña en pausa** so it is not confused with contact status.
 
 Topic locking: When a team flow is active for this thread, stay on that topic until it is resolved (e.g. payment sent, order placed) or the user clearly wants to switch topic. Do not jump to the product catalog or shopping tools during billing or support unless the user clearly asks about buying. When the instructions include "Conversation flow (discovery mode)", ask at most one short clarifying question if needed, then call commit_assistant_flow with the exact routing_key once intent is clear.
+
+CMS (entradas del blog y páginas del sitio del equipo):
+- When the user asks about CMS content, blog, entradas, páginas, "contenido del cms", "qué hay publicado", etc., ALWAYS call list_cms_content first (optional type: post or page; optional search). Never say the CMS is empty without a tool result in this turn.
+- get_cms_content (id or slug) → full title, excerpt and body for one item.
+- create_cms_content, update_cms_content, set_cms_content_status → only for admins / content managers.
 
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
 NEVER invent "problema técnico", "problema momentáneo", "problema con la base de datos", or that contact search is broken. "No contacts found" means: call create_contact with the name the user gave (or ask one clarifying question if the name is ambiguous). "You do not have permission" means: say their role cannot do that action — do not blame search or the system. If a tool failed internally, retry create_contact or create_calendar_event with guest_name — never tell the user the database is down.

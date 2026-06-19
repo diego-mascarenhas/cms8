@@ -258,10 +258,10 @@ class ModuleSeeder extends Seeder
             'group' => 'content',
             'order' => 1,
         ],
-        'contents' => [
-            'name' => 'Contents',
+        'cms' => [
+            'name' => 'CMS',
             'icon' => 'file-text',
-            'description' => 'Website contents management module',
+            'description' => 'WordPress-like content management (posts, pages, taxonomies)',
             'group' => 'content',
             'order' => 2,
         ],
@@ -481,7 +481,8 @@ class ModuleSeeder extends Seeder
     {
         $this->command->info('Creando módulos...');
 
-        foreach ($this->coreModules as $key => $moduleData) {
+        foreach ($this->coreModules as $key => $moduleData)
+        {
             Module::updateOrCreate(
                 ['key' => $key],
                 [
@@ -496,7 +497,8 @@ class ModuleSeeder extends Seeder
             $this->command->info("Módulo core '{$moduleData['name']}' creado o actualizado");
         }
 
-        foreach ($this->additionalModules as $key => $moduleData) {
+        foreach ($this->additionalModules as $key => $moduleData)
+        {
             Module::updateOrCreate(
                 ['key' => $key],
                 [

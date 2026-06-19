@@ -68,8 +68,7 @@ return [
         // Additional modules (content)
         'multimedia' => false,
         'team_files' => false,
-        'content-sections' => false,
-        'contents' => false,
+        'cms' => false,
         'website' => false,
         'academy' => false,
         'landings' => false,

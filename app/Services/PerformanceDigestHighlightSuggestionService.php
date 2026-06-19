@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Team;
 use App\Models\UserDailyPerformanceInsight;
+use App\Support\PerformanceDigestReplyParser;
 use Illuminate\Support\Facades\Route;
 
 class PerformanceDigestHighlightSuggestionService
@@ -67,14 +68,18 @@ class PerformanceDigestHighlightSuggestionService
                 $suggestion = (string) __('app.performance_digest_suggestion_default', ['count' => $count]);
             }
 
-            $actionUrl = $this->actionUrlForKey($key);
-            $actionLabelKey = 'app.performance_digest_suggestion_action_'.$key;
-            $actionLabel = __($actionLabelKey);
-            if ($actionLabel === $actionLabelKey)
+            $scheduleMeta = $this->resolveHighlightScheduleMeta($key, $messages, $suggestion);
+            $actionUrl = $scheduleMeta['action_url'];
+            $actionLabel = $scheduleMeta['action_label'];
+
+            if ($actionLabel === null && $actionUrl !== null)
             {
-                $actionLabel = $actionUrl !== null
-                    ? (string) __('app.performance_digest_suggestion_action_default')
-                    : null;
+                $actionLabelKey = 'app.performance_digest_suggestion_action_'.$key;
+                $actionLabel = __($actionLabelKey);
+                if ($actionLabel === $actionLabelKey)
+                {
+                    $actionLabel = (string) __('app.performance_digest_suggestion_action_default');
+                }
             }
 
             $enriched[] = [
@@ -84,12 +89,108 @@ class PerformanceDigestHighlightSuggestionService
                 'suggestion' => $suggestion,
                 'action_url' => $actionUrl,
                 'action_label' => $actionLabel,
+                'schedule_action' => $scheduleMeta['schedule_action'],
+                'schedule_recipient' => $scheduleMeta['schedule_recipient'],
+                'schedule_subject' => $scheduleMeta['schedule_subject'],
                 'detail_mode' => $detailMode,
                 'messages' => $messages,
             ];
         }
 
         return $enriched;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $messages
+     * @return array{
+     *     schedule_action: string|null,
+     *     schedule_recipient: string,
+     *     schedule_subject: string|null,
+     *     action_url: string|null,
+     *     action_label: string|null
+     * }
+     */
+    private function resolveHighlightScheduleMeta(string $key, array $messages, string $suggestion): array
+    {
+        if ($messages !== [])
+        {
+            $first = $messages[0];
+            $scheduleAction = $first['schedule_action'] ?? null;
+
+            if (is_string($scheduleAction) && $scheduleAction !== '')
+            {
+                return [
+                    'schedule_action' => $scheduleAction,
+                    'schedule_recipient' => (string) ($first['schedule_recipient'] ?? ''),
+                    'schedule_subject' => $first['schedule_subject'] ?? null,
+                    'action_url' => null,
+                    'action_label' => (string) ($first['action_label'] ?? ''),
+                ];
+            }
+        }
+
+        if ($key === 'email_unread')
+        {
+            $parsed = PerformanceDigestReplyParser::parseEmailSuggestion($suggestion);
+            $recipient = $this->firstScheduleRecipientFromMessages($messages, 'email');
+
+            if ($recipient !== null)
+            {
+                return [
+                    'schedule_action' => 'email',
+                    'schedule_recipient' => $recipient,
+                    'schedule_subject' => $parsed['subject'] !== '' ? $parsed['subject'] : null,
+                    'action_url' => null,
+                    'action_label' => (string) __('app.performance_digest_schedule_email'),
+                ];
+            }
+        }
+
+        if (in_array($key, ['whatsapp_unread', 'whatsapp_inbound'], true))
+        {
+            $recipient = $this->firstScheduleRecipientFromMessages($messages, 'whatsapp');
+
+            if ($recipient !== null)
+            {
+                return [
+                    'schedule_action' => 'whatsapp',
+                    'schedule_recipient' => $recipient,
+                    'schedule_subject' => null,
+                    'action_url' => null,
+                    'action_label' => (string) __('app.performance_digest_schedule_whatsapp'),
+                ];
+            }
+        }
+
+        return [
+            'schedule_action' => null,
+            'schedule_recipient' => '',
+            'schedule_subject' => null,
+            'action_url' => $this->actionUrlForKey($key),
+            'action_label' => null,
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $messages
+     */
+    private function firstScheduleRecipientFromMessages(array $messages, string $channel): ?string
+    {
+        foreach ($messages as $message)
+        {
+            if (($message['schedule_action'] ?? null) !== $channel)
+            {
+                continue;
+            }
+
+            $recipient = trim((string) ($message['schedule_recipient'] ?? ''));
+            if ($recipient !== '')
+            {
+                return $recipient;
+            }
+        }
+
+        return null;
     }
 
     /**

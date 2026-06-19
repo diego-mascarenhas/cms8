@@ -68,6 +68,8 @@ class UpdateTeamSettingsRequest extends FormRequest
             'wordpress.wordpress_url' => 'nullable|url|max:255',
             'wordpress.wordpress_username' => 'nullable|string|max:255',
             'wordpress.wordpress_application_password' => 'nullable|string|max:255',
+            'wordpress.wordpress_cms_sync_enabled' => 'nullable|boolean',
+            'wordpress.wordpress_webhook_secret' => 'nullable|string|max:255',
 
             // WooCommerce settings
             'woocommerce.woocommerce_url' => 'nullable|url|max:255',

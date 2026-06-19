@@ -415,6 +415,8 @@ class ChatController extends Controller
                     ->orderBy('created_at')
                     ->get();
 
+                $messages = $this->mergePendingScheduledMessages($messages, $selectedPhone);
+
                 // Mark inbound messages as read when user views the conversation
                 $norm = $this->normalizePhoneForList($selectedPhone);
                 $this->conversationQueryForTeam()
@@ -460,7 +462,10 @@ class ChatController extends Controller
 
         foreach ($messages as $message)
         {
-            $message->body = TextHelper::sanitizeAndLink($message->body);
+            if ($message instanceof Conversation)
+            {
+                $message->body = TextHelper::sanitizeAndLink($message->body);
+            }
         }
 
         $clientRecipientPhone = $selectedAssistantUser ? $this->getWhatsAppPhoneForUser($selectedAssistantUser) : '';
@@ -757,6 +762,8 @@ class ChatController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        $messages = $this->mergePendingScheduledMessages($messages, (string) $phone);
+
         $norm = $this->normalizePhoneForList((string) $phone);
         $this->conversationQueryForTeam()
             ->where('direction', 'inbound')
@@ -778,8 +785,29 @@ class ChatController extends Controller
         $authUser = auth()->user();
 
         return response()->json([
-            'messages' => $messages->map(function (Conversation $message) use ($messageUsers, $authUser)
+            'messages' => $messages->map(function ($message) use ($messageUsers, $authUser)
             {
+                if (! empty($message->is_scheduled))
+                {
+                    $sender = $message->user_id
+                        ? ($messageUsers->get($message->user_id) ?? $authUser)
+                        : $authUser;
+
+                    return [
+                        'id' => $message->id,
+                        'direction' => 'outbound',
+                        'body' => $message->body,
+                        'status' => 'scheduled',
+                        'is_scheduled' => true,
+                        'scheduled_at' => $message->scheduled_at?->toIso8601String(),
+                        'scheduled_message_id' => $message->scheduled_message_id,
+                        'created_at' => $message->scheduled_at?->toIso8601String(),
+                        'user_id' => $message->user_id,
+                        'media' => [],
+                        'sender_avatar' => ChatMessageAvatar::forUser($sender, 'bg-label-primary'),
+                    ];
+                }
+
                 $payload = $message->toArray();
                 $sender = $message->user_id
                     ? ($messageUsers->get($message->user_id) ?? $authUser)
@@ -2204,6 +2232,60 @@ class ChatController extends Controller
         ]);
     }
 
+    public function updateScheduledMessage(Request $request, ScheduledMessage $scheduledMessage): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeScheduledMessage($scheduledMessage);
+
+        if (! $scheduledMessage->isPending())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('This scheduled message can no longer be edited.'),
+            ], 422);
+        }
+
+        $request->validate([
+            'scheduled_at' => ['required', 'date', 'after:now'],
+        ]);
+
+        $scheduledAt = \Carbon\Carbon::parse($request->input('scheduled_at'));
+
+        $scheduledMessage->update([
+            'scheduled_at' => $scheduledAt,
+        ]);
+
+        SendScheduledMessageJob::dispatch($scheduledMessage->id)->delay($scheduledAt);
+
+        return response()->json([
+            'success' => true,
+            'scheduled_at' => $scheduledAt->toIso8601String(),
+            'scheduled_message_id' => $scheduledMessage->id,
+        ]);
+    }
+
+    public function destroyScheduledMessage(ScheduledMessage $scheduledMessage): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeScheduledMessage($scheduledMessage);
+
+        if (! $scheduledMessage->isPending())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('This scheduled message can no longer be deleted.'),
+            ], 422);
+        }
+
+        $scheduledMessage->markAsCancelled();
+
+        return response()->json(['success' => true]);
+    }
+
+    private function authorizeScheduledMessage(ScheduledMessage $scheduledMessage): void
+    {
+        $team = auth()->user()?->currentTeam;
+        abort_unless($team && (int) $scheduledMessage->team_id === (int) $team->id, 403);
+    }
+
     public function whatsappStatus()
     {
         $driver = config('whatsapp.driver');
@@ -2713,5 +2795,76 @@ class ChatController extends Controller
         }
 
         return $payload;
+    }
+
+    /**
+     * @param  Collection<int, Conversation|object>  $messages
+     * @return Collection<int, Conversation|object>
+     */
+    private function mergePendingScheduledMessages(Collection $messages, string $phone): Collection
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return $messages;
+        }
+
+        $digits = preg_replace('/\D/', '', $phone);
+        if ($digits === '')
+        {
+            return $messages;
+        }
+
+        $pending = ScheduledMessage::query()
+            ->where('team_id', $team->id)
+            ->where('status', 'pending')
+            ->where('recipient', $digits)
+            ->orderBy('scheduled_at')
+            ->get();
+
+        if ($pending->isEmpty())
+        {
+            return $messages;
+        }
+
+        $scheduledDisplay = $pending->map(fn (ScheduledMessage $scheduled) => $this->scheduledMessageToChatDisplay($scheduled));
+
+        return $messages->concat($scheduledDisplay)
+            ->sortBy(fn ($message) => $this->chatDisplayMessageTimestamp($message))
+            ->values();
+    }
+
+    private function scheduledMessageToChatDisplay(ScheduledMessage $scheduled): object
+    {
+        return (object) [
+            'id' => 'scheduled-'.$scheduled->id,
+            'direction' => 'outbound',
+            'body' => $scheduled->body,
+            'status' => 'scheduled',
+            'is_scheduled' => true,
+            'scheduled_at' => $scheduled->scheduled_at,
+            'scheduled_message_id' => $scheduled->id,
+            'created_at' => $scheduled->scheduled_at,
+            'user_id' => $scheduled->scheduled_by_user_id,
+            'media' => [],
+            'from' => $scheduled->recipient,
+            'to' => $scheduled->recipient,
+        ];
+    }
+
+    private function chatDisplayMessageTimestamp(object $message): int
+    {
+        if (! empty($message->is_scheduled) && $message->scheduled_at)
+        {
+            return $message->scheduled_at instanceof \Carbon\CarbonInterface
+                ? $message->scheduled_at->getTimestamp()
+                : (int) strtotime((string) $message->scheduled_at);
+        }
+
+        $created = $message->created_at ?? null;
+
+        return $created instanceof \Carbon\CarbonInterface
+            ? $created->getTimestamp()
+            : (int) strtotime((string) $created);
     }
 }

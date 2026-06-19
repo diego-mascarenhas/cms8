@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\NotificationDataTable;
+use App\Http\Requests\ScheduleDigestReplyRequest;
 use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
 use App\Models\Notification;
 use App\Models\NotificationType;
+use App\Models\ScheduledMessage;
 use App\Models\UserDailyPerformanceInsight;
 use App\Services\PerformanceDigestHighlightSuggestionService;
+use App\Services\PerformanceDigestScheduleReplyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -86,11 +89,113 @@ class NotificationController extends Controller
 
         if ($dailyPerformanceInsight && $notification->team)
         {
-            $performanceDigestHighlights = app(PerformanceDigestHighlightSuggestionService::class)
+            $highlights = app(PerformanceDigestHighlightSuggestionService::class)
                 ->forInsight($dailyPerformanceInsight, $notification->team);
+
+            $performanceDigestHighlights = app(PerformanceDigestScheduleReplyService::class)
+                ->attachToHighlights($highlights, $notification);
         }
 
         return view('notification.show', compact('notification', 'dailyPerformanceInsight', 'performanceDigestHighlights'));
+    }
+
+    public function scheduleDigestReply(
+        ScheduleDigestReplyRequest $request,
+        Notification $notification,
+        PerformanceDigestScheduleReplyService $scheduleReplyService,
+    ): JsonResponse {
+        $user = auth()->user();
+        $team = $user?->currentTeam;
+
+        if (! $team || (int) $notification->team_id !== (int) $team->id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Unauthorized'),
+            ], 403);
+        }
+
+        $validated = $request->validated();
+        $channel = (string) $validated['schedule_action'];
+        $recipient = (string) $validated['schedule_recipient'];
+
+        if ($channel === 'email' && ! filter_var($recipient, FILTER_VALIDATE_EMAIL))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => (string) __('app.performance_digest_schedule_invalid_email'),
+            ], 422);
+        }
+
+        if ($channel === 'whatsapp' && preg_replace('/\D/', '', $recipient) === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => (string) __('app.performance_digest_schedule_invalid_phone'),
+            ], 422);
+        }
+
+        $scheduled = $scheduleReplyService->schedule(
+            $team,
+            $user,
+            $channel,
+            $recipient,
+            (string) $validated['body'],
+            isset($validated['schedule_subject']) ? (string) $validated['schedule_subject'] : null,
+            (int) $notification->id,
+            isset($validated['highlight_key']) ? (string) $validated['highlight_key'] : null,
+            isset($validated['digest_message_id']) ? (int) $validated['digest_message_id'] : null,
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => (string) __('app.performance_digest_schedule_success', [
+                'datetime' => $scheduleReplyService->formattedScheduleLabel($scheduled->scheduled_at),
+            ]),
+            'scheduled_at' => $scheduled->scheduled_at->toIso8601String(),
+            'scheduled_message_id' => $scheduled->id,
+            'scheduled_label' => $scheduleReplyService->formattedScheduleLabel($scheduled->scheduled_at),
+        ]);
+    }
+
+    public function cancelDigestReply(
+        Notification $notification,
+        ScheduledMessage $scheduledMessage,
+        PerformanceDigestScheduleReplyService $scheduleReplyService,
+    ): JsonResponse {
+        $user = auth()->user();
+        $team = $user?->currentTeam;
+
+        if (! $team || (int) $notification->team_id !== (int) $team->id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Unauthorized'),
+            ], 403);
+        }
+
+        if (! $scheduleReplyService->belongsToDigestNotification($scheduledMessage, $notification))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => (string) __('app.performance_digest_schedule_cancel_invalid'),
+            ], 403);
+        }
+
+        if (! $scheduledMessage->isPending())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => (string) __('app.performance_digest_schedule_cancel_not_pending'),
+            ], 422);
+        }
+
+        $scheduleReplyService->cancel($scheduledMessage);
+
+        return response()->json([
+            'success' => true,
+            'message' => (string) __('app.performance_digest_schedule_cancel_success'),
+        ]);
     }
 
     private function resolveDailyPerformanceInsightForNotification(Notification $notification): ?UserDailyPerformanceInsight

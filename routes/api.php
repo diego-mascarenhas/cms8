@@ -6,7 +6,6 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ClientController;
 use App\Http\Controllers\Api\ContactController;
-use App\Http\Controllers\Api\ContentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FareController;
 use App\Http\Controllers\Api\InvoiceController;
@@ -18,17 +17,18 @@ use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationInboxController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamAssistantController;
 use App\Http\Controllers\Api\TeamContactController;
-use App\Http\Controllers\Api\TeamContentController;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\TeamEnterpriseController;
 use App\Http\Controllers\Api\TeamOrderController;
 use App\Http\Controllers\Api\TeamPaymentController;
+use App\Http\Controllers\Api\TeamPostController;
 use App\Http\Controllers\Api\TeamProductController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TeamPromptController;
@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\TodayController;
 use App\Http\Controllers\Api\UserAssistantController;
 use App\Http\Controllers\Api\UserController as ApiUserController;
+use App\Http\Controllers\Api\WordPressCmsWebhookController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ProspectSearchController;
@@ -68,6 +69,18 @@ Route::prefix('embed/demo')->middleware('throttle:60,1')->group(function ()
     Route::get('calendar', [LandingEmbedDemoController::class, 'calendar']);
     Route::post('assistant', [LandingEmbedDemoController::class, 'assistant']);
 });
+
+// Public CMS read API (anonymous, resolved by team slug; opt-in via cms_public_enabled)
+Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function ()
+{
+    Route::get('posts', [PublicPostController::class, 'index'])->name('api.public.posts.index');
+    Route::get('posts/{postType}/{slug}', [PublicPostController::class, 'show'])->name('api.public.posts.show');
+});
+
+// WordPress CMS sync webhook (authenticated by per-team shared secret)
+Route::post('wordpress/webhook/{team}', WordPressCmsWebhookController::class)
+    ->middleware('throttle:240,1')
+    ->name('api.wordpress.cms.webhook');
 
 // Prospect Search (public, for React frontend / prospection)
 Route::middleware('throttle:30,1')->group(function ()
@@ -548,15 +561,6 @@ Route::middleware('auth:sanctum')->group(function ()
         'destroy' => 'api.fares.destroy',
     ]);
 
-    // Contents - for user-based authentication (Sanctum tokens)
-    Route::apiResource('contents', ContentController::class)->names([
-        'index' => 'api.contents.index',
-        'store' => 'api.contents.store',
-        'show' => 'api.contents.show',
-        'update' => 'api.contents.update',
-        'destroy' => 'api.contents.destroy',
-    ]);
-
     // WhatsApp conversation list and thread messages (same handlers as web /chat/list, /chat/messages, /chat/send).
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
@@ -595,14 +599,12 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     // Team projects
     Route::resource('projects', TeamProjectController::class);
 
-    // Team contents
-    Route::apiResource('contents', TeamContentController::class)->names([
-        'index' => 'api.team.contents.index',
-        'store' => 'api.team.contents.store',
-        'show' => 'api.team.contents.show',
-        'update' => 'api.team.contents.update',
-        'destroy' => 'api.team.contents.destroy',
-    ]);
+    // Team CMS posts (WordPress-like)
+    Route::get('posts', [TeamPostController::class, 'index'])->name('api.team.posts.index');
+    Route::post('posts', [TeamPostController::class, 'store'])->name('api.team.posts.store');
+    Route::get('posts/{id}', [TeamPostController::class, 'show'])->whereNumber('id')->name('api.team.posts.show');
+    Route::match(['put', 'patch'], 'posts/{id}', [TeamPostController::class, 'update'])->whereNumber('id')->name('api.team.posts.update');
+    Route::delete('posts/{id}', [TeamPostController::class, 'destroy'])->whereNumber('id')->name('api.team.posts.destroy');
 
     // Team enterprises
     Route::resource('enterprises', TeamEnterpriseController::class);

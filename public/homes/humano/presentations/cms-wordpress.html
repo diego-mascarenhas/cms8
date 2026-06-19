@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="/homes/humano/presentations/">
+<title>Humano · CMS y WordPress</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-cms-flow{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:stretch}
+.pres-cms-step{border-radius:16px;padding:18px 16px;background:linear-gradient(165deg,rgba(90,88,150,.28),rgba(24,22,48,.52));border:1px solid rgba(150,148,220,.18);display:flex;flex-direction:column;gap:8px}
+.pres-cms-step-num{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--accent)}
+.pres-cms-step h4{font-size:14px;font-weight:700;color:#fff;margin:0}
+.pres-cms-step p{font-size:11.5px;color:#b8bae0;line-height:1.45;margin:0}
+.pres-cms-list{margin:4px 0 0;padding-left:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.pres-cms-list li{font-size:10.5px;color:#9094b8;line-height:1.4;padding-left:12px;position:relative}
+.pres-cms-list li::before{content:'';position:absolute;left:0;top:6px;width:4px;height:4px;border-radius:50%;background:var(--accent);opacity:.85}
+.pres-cms-tag{display:inline-flex;align-items:center;gap:6px;margin-top:auto;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.04em;color:#d8dcff;background:rgba(105,108,255,.18);border:1px solid rgba(150,148,220,.22);width:fit-content}
+.pres-cms-panel{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;background:#f5f5f9;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;display:grid;grid-template-columns:1.1fr .9fr}
+.pres-cms-editor{padding:20px 22px;border-right:1px solid #e4e6ef;background:#fff}
+.pres-cms-editor h3{font-size:14px;font-weight:700;margin:0 0 12px;color:#566a7f}
+.pres-cms-field{margin-bottom:10px}
+.pres-cms-field label{display:block;font-size:10px;font-weight:700;color:#a1acb8;text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.pres-cms-input{height:34px;border-radius:8px;border:1px solid #e4e6ef;background:#fafafa;padding:0 10px;font-size:11px;color:#566a7f}
+.pres-cms-textarea{min-height:72px;border-radius:8px;border:1px solid #e4e6ef;background:#fafafa;padding:8px 10px;font-size:11px;color:#566a7f;line-height:1.45}
+.pres-cms-toolbar{display:flex;gap:6px;padding:6px 8px;border:1px solid #e4e6ef;border-bottom:none;border-radius:8px 8px 0 0;background:#fafafa}
+.pres-cms-toolbar span{width:22px;height:22px;border-radius:6px;background:#eceef5;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#697a8d}
+.pres-cms-side{padding:20px 18px;display:flex;flex-direction:column;gap:12px}
+.pres-cms-card{background:#fff;border-radius:10px;border:1px solid #e4e6ef;padding:12px 14px}
+.pres-cms-card h4{font-size:11px;font-weight:700;margin:0 0 8px;color:#566a7f}
+.pres-cms-check{display:flex;align-items:center;gap:8px;font-size:11px;color:#697a8d;margin-bottom:6px}
+.pres-cms-check i{color:#696cff;font-size:12px}
+.pres-cms-plugins{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.pres-cms-plugin{border-radius:18px;padding:20px 18px;background:linear-gradient(165deg,rgba(90,88,150,.26),rgba(24,22,48,.5));border:1px solid rgba(150,148,220,.16);display:flex;flex-direction:column;gap:8px}
+.pres-cms-plugin h4{font-size:15px;font-weight:700;color:#fff;margin:0}
+.pres-cms-plugin p{font-size:11.5px;color:#a4a6c8;line-height:1.45;margin:0}
+.pres-cms-plugin .pres-cms-list li{color:#8e92b8}
+.pres-cms-plugin .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:10px;font-weight:700;color:#d8dcff;background:rgba(105,108,255,.18);border:1px solid rgba(150,148,220,.22);width:fit-content;margin-top:auto}
+.pres-cms-assistant{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;background:#fff;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;display:flex;flex-direction:column}
+.pres-cms-assistant-head{padding:14px 18px;border-bottom:1px solid #e4e6ef;background:#fafafa;font-size:13px;font-weight:700}
+.pres-cms-assistant-body{flex:1;padding:16px 18px;background:#f5f5f9;display:flex;flex-direction:column;gap:10px}
+.pres-cms-bubble{align-self:flex-start;max-width:78%;padding:12px 14px;border-radius:12px;font-size:11px;line-height:1.5}
+.pres-cms-bubble.user{align-self:flex-end;background:#696cff;color:#fff}
+.pres-cms-bubble.bot{background:#fff;border:1px solid #e4e6ef;color:#566a7f}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">BLOQUE 08 · GUÍA</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:920px">CMS · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">contenido con WordPress</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:620px;line-height:1.6">Gestiona entradas y páginas en Humano, sincronízalas con WordPress y deja que el asistente responda o edite contenido por chat, WhatsApp o la API.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="afiliados.html">← Capítulo anterior: Afiliados</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">CMS</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">CONTENIDO</span></div>
+   <h2 class="u" style="--d:.26s">Entradas y páginas <em>en un solo lugar</em></h2>
+   <p class="u" style="--d:.36s">El módulo CMS de Humano replica la experiencia de WordPress: título, slug automático, categorías, etiquetas, extracto y editor enriquecido con imágenes.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">Entradas</span>
+    <span class="dv-chip">Páginas</span>
+    <span class="dv-chip">Medios</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · CMS</span><span class="r">Intro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">CMS · FLUJO</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>De Humano a WordPress <em style="font-style:normal;color:var(--accent)">y viceversa</em></h2>
+  <p class="sub">Cuatro pasos: instalas los plugins IDONEO, conectas la sincronización, editas el contenido y ambos sitios quedan alineados.</p>
+ </div>
+ <div class="pres-cms-flow u sc" style="--d:.22s">
+  <div class="pres-cms-step">
+   <div class="pres-cms-step-num">01</div>
+   <h4>Instala plugins</h4>
+   <p>Descarga los ZIP oficiales IDONEO desde la ayuda de Humano e instálalos en tu WordPress de producción.</p>
+   <ul class="pres-cms-list">
+    <li>Ve a <strong style="color:#c8caf0">/help/plugins</strong> y descarga los tres ZIP</li>
+    <li>En wp-admin: Plugins → Añadir nuevo → Subir plugin</li>
+    <li>Orden recomendado: Custom Fields, CMS Sync y Chat</li>
+    <li>Activa cada plugin tras instalarlo</li>
+   </ul>
+   <span class="pres-cms-tag"><i class="ti ti-puzzle ti-xs"></i> Custom Fields + Sync + Chat</span>
+  </div>
+  <div class="pres-cms-step">
+   <div class="pres-cms-step-num">02</div>
+   <h4>Conecta el equipo</h4>
+   <p>Configura URL de Humano, Team ID, webhook secret y token de API en los ajustes de cada plugin.</p>
+   <ul class="pres-cms-list">
+    <li><strong style="color:#c8caf0">CMS Sync:</strong> URL, Team ID y webhook secret</li>
+    <li>El secret debe coincidir con Ajustes del equipo en Humano</li>
+    <li><strong style="color:#c8caf0">Chat:</strong> URL de Humano y token de API del equipo</li>
+    <li>En producción usa tu dominio real (no .test) y SSL activo</li>
+   </ul>
+   <span class="pres-cms-tag"><i class="ti ti-key ti-xs"></i> Misma credencial del equipo</span>
+  </div>
+  <div class="pres-cms-step">
+   <div class="pres-cms-step-num">03</div>
+   <h4>Edita contenido</h4>
+   <p>Crea o actualiza entradas y páginas en Humano o en WordPress: categorías, etiquetas y campos personalizados viajan con el post.</p>
+   <ul class="pres-cms-list">
+    <li>Entradas y páginas en <strong style="color:#c8caf0">/cms/posts</strong> y <strong style="color:#c8caf0">/cms/pages</strong></li>
+    <li>Slug automático desde el título; permalink editable</li>
+    <li>Categorías jerárquicas y etiquetas separadas por comas</li>
+    <li>Editor Quill con imágenes desde la biblioteca de medios</li>
+   </ul>
+   <span class="pres-cms-tag"><i class="ti ti-edit ti-xs"></i> Editor tipo WordPress</span>
+  </div>
+  <div class="pres-cms-step">
+   <div class="pres-cms-step-num">04</div>
+   <h4>Sincroniza</h4>
+   <p>CMS Sync notifica cambios en tiempo real; Humano empuja o importa posts, taxonomías y valores de IDONEO Custom Fields.</p>
+   <ul class="pres-cms-list">
+    <li>Webhook al guardar o borrar en WordPress</li>
+    <li>Humano empuja cambios locales al remoto en segundo plano</li>
+    <li>Categorías y etiquetas nuevas se crean en ambos lados</li>
+    <li>Campos ICF viajan como <strong style="color:#c8caf0">icf_fields</strong> en la REST API</li>
+   </ul>
+   <span class="pres-cms-tag"><i class="ti ti-refresh ti-xs"></i> Bidireccional</span>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · CMS</span><span class="r">Flujo</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">CMS · EDITOR</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Formulario <em style="font-style:normal;color:var(--accent)">como en WordPress</em></h2>
+  <p class="sub">Slug automático desde el título, permalink editable, checklist de categorías, etiquetas y editor Quill con botón de imagen en la barra.</p>
+ </div>
+ <div class="pres-cms-panel u sc" style="--d:.22s">
+  <div class="pres-cms-editor">
+   <h3>Nueva entrada</h3>
+   <div class="pres-cms-field"><label>Título</label><div class="pres-cms-input">Lanzamiento de nuestra nueva web</div></div>
+   <div class="pres-cms-field"><label>Slug</label><div class="pres-cms-input">lanzamiento-de-nuestra-nueva-web</div></div>
+   <div class="pres-cms-field"><label>Contenido</label>
+    <div class="pres-cms-toolbar"><span>B</span><span>I</span><span><i class="ti ti-photo"></i></span></div>
+    <div class="pres-cms-textarea">Presentamos la nueva web con blog integrado y sincronización con WordPress.</div>
+   </div>
+  </div>
+  <div class="pres-cms-side">
+   <div class="pres-cms-card">
+    <h4>Categorías</h4>
+    <div class="pres-cms-check"><i class="ti ti-check"></i> Noticias</div>
+    <div class="pres-cms-check"><i class="ti ti-check"></i> Producto</div>
+    <div class="pres-cms-check"><i class="ti ti-square"></i> Desde el Mac</div>
+   </div>
+   <div class="pres-cms-card">
+    <h4>Etiquetas</h4>
+    <div class="pres-cms-input" style="height:auto;padding:8px 10px">web, lanzamiento, cms</div>
+   </div>
+   <div class="pres-cms-card">
+    <h4>Estado</h4>
+    <div class="pres-cms-input">Publicada</div>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · CMS</span><span class="r">Editor</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">CMS · PLUGINS</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Plugins <em style="font-style:normal;color:var(--accent)">IDONEO</em> para WordPress</h2>
+  <p class="sub">Tres extensiones oficiales: campos personalizados, sincronización de contenido y chat conectado al asistente de Humano.</p>
+ </div>
+ <div class="pres-cms-plugins u sc" style="--d:.22s">
+  <div class="pres-cms-plugin">
+   <h4>IDONEO Custom Fields</h4>
+   <p>Campos personalizados nivel PRO para cualquier tipo de contenido, sin depender de ACF.</p>
+   <ul class="pres-cms-list">
+    <li>Texto, WYSIWYG, imagen, galería, repeater y flexible content</li>
+    <li>Grupos de campos con reglas de ubicación por post type</li>
+    <li>Páginas de opciones para ajustes globales del sitio</li>
+    <li>Valores expuestos en REST como <strong style="color:#c8caf0">icf_fields</strong></li>
+    <li>Humano los importa y empuja junto con cada entrada</li>
+   </ul>
+   <span class="badge"><i class="ti ti-forms ti-xs"></i> Sin configuración extra</span>
+  </div>
+  <div class="pres-cms-plugin">
+   <h4>IDONEO CMS Sync</h4>
+   <p>Puente en tiempo real entre el CMS de Humano y tu WordPress.</p>
+   <ul class="pres-cms-list">
+    <li>Webhook al guardar, actualizar o eliminar posts y páginas</li>
+    <li>Sincroniza medios adjuntos y metadatos del contenido</li>
+    <li>Importa y empuja categorías y etiquetas automáticamente</li>
+    <li>Pull completo desde Ajustes del equipo o por webhook</li>
+    <li>Configuración en Ajustes → IDONEO CMS Sync para Humano</li>
+   </ul>
+   <span class="badge"><i class="ti ti-refresh ti-xs"></i> Tiempo real</span>
+  </div>
+  <div class="pres-cms-plugin">
+   <h4>IDONEO Chat for Humano</h4>
+   <p>Widget de chat en tu sitio WordPress conectado al asistente del equipo.</p>
+   <ul class="pres-cms-list">
+    <li>Shortcode para insertar el chat en cualquier página</li>
+    <li>Respuestas del asistente con contexto de tu equipo</li>
+    <li>Puede consultar entradas y páginas publicadas del CMS</li>
+    <li>Token de API en Ajustes → IDONEO Chat for Humano</li>
+    <li>Verificación SSL recomendada en producción</li>
+   </ul>
+   <span class="badge"><i class="ti ti-message-chatbot ti-xs"></i> Shortcode + ajustes</span>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · CMS</span><span class="r">Plugins</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">CMS · ASISTENTE</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>El asistente <em style="font-style:normal;color:var(--accent)">conoce tu CMS</em></h2>
+  <p class="sub">Por chat web o WhatsApp puede listar entradas y páginas, mostrar detalle y —si eres admin— crear, editar o cambiar el estado.</p>
+ </div>
+ <div class="pres-cms-assistant u sc" style="--d:.22s">
+  <div class="pres-cms-assistant-head"><i class="ti ti-message-chatbot me-1"></i> Asistente Humano</div>
+  <div class="pres-cms-assistant-body">
+   <div class="pres-cms-bubble user">¿Qué entradas publicadas tenemos?</div>
+   <div class="pres-cms-bubble bot">Posts (3):<br>· Lanzamiento de nuestra nueva web (id: 5)<br>· CF Sync Demo (id: 15)<br>· Epa! (id: 10)</div>
+   <div class="pres-cms-bubble user">Cambia el título del primero a "Web renovada"</div>
+   <div class="pres-cms-bubble bot">Se actualizó la entrada id 5 "Web renovada".</div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · CMS</span><span class="r">Asistente</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">GUÍAS</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">RECORRIDO COMPLETO</span></div>
+  <h2 class="u" style="--d:.14s">Del contenido al <em>canal correcto</em></h2>
+  <p class="u" style="--d:.24s">Humano, WordPress, API REST y asistente comparten el mismo CMS por equipo. Descarga los plugins, configura la sync y publica una vez.</p>
+  <a class="cta-link u" style="--d:.36s" href="/help/plugins">Descargar plugins IDONEO →</a>
+  <div class="pres-nav-row u" style="--d:.44s">
+   <a href="primeros-pasos.html">Volver a Primeros pasos</a>
+   <a href="afiliados.html">← Afiliados</a>
+  </div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

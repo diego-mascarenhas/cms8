@@ -71,9 +71,14 @@ class ModifyMenuBasedOnRole
                 $team->load('modules');
             }
 
-            // Cache menu for 1 hour per user/team combination
+            // Cache menu for 1 hour per user/team combination.
+            // Include the menu file mtimes so edits to the JSON bust the cache automatically.
             $teamKey = $team?->id ?? 'none';
-            $cacheKey = "menu_user_{$user->id}_team_{$teamKey}";
+            $menuVersion = (int) max(
+                @filemtime(base_path('resources/menu/verticalMenu.json')) ?: 0,
+                @filemtime(base_path('resources/menu/horizontalMenu.json')) ?: 0,
+            );
+            $cacheKey = "menu_user_{$user->id}_team_{$teamKey}_v{$menuVersion}";
             $menuData = Cache::remember($cacheKey, 3600, function () use ($user, $team)
             {
                 $menuConfig = MenuHelper::getMenuConfig();

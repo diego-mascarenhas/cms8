@@ -3,6 +3,7 @@
 @php
     $chatFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
     $chatFpLocaleBundle = in_array($chatFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+    $chatScheduleMin = \Carbon\Carbon::now(config('app.timezone'))->format('Y-m-d H:i');
 @endphp
 
 @section('title', 'Chat')
@@ -98,6 +99,24 @@
         #chat-send-error-bar {
             flex-shrink: 0;
         }
+        .chat-scheduled-meta-trigger {
+            cursor: pointer;
+            color: inherit;
+            border: 0;
+            background: transparent;
+            padding: 0;
+            font: inherit;
+            line-height: inherit;
+            display: inline;
+        }
+        .chat-scheduled-meta-trigger:hover,
+        .chat-scheduled-meta-trigger:focus,
+        .chat-scheduled-meta-trigger:active {
+            color: inherit;
+            text-decoration: none;
+            box-shadow: none;
+            outline: none;
+        }
         /* WhatsApp badge: show disconnect only on hover/focus (local driver, connected).
            Flexbox centering on a full-size overlay avoids .btn:hover overriding transform. */
         .chat-wa-badge-disconnect-wrap {
@@ -156,7 +175,7 @@
 @endsection
 
 @section('page-script')
-    <script src="{{ asset('assets/js/app-chat.js') }}"></script>
+    <script src="{{ asset('assets/js/app-chat.js') }}?v={{ @filemtime(public_path('assets/js/app-chat.js')) ?: time() }}"></script>
     <script>
     document.addEventListener('DOMContentLoaded', function () {
         var chatImageModal = document.getElementById('chatImageModal');
@@ -298,44 +317,21 @@
             });
         }
 
-        function syncSendButtonWithAiToggle(aiOn) {
-            var sendBtn = document.querySelector('#chat-form .send-msg-btn');
-            if (!sendBtn) return;
-            var iconSend = sendBtn.querySelector('.send-msg-icon');
-            var iconAi   = sendBtn.querySelector('.send-msg-icon-ai');
-            var textSend = sendBtn.querySelector('.send-msg-text');
-            var textAi   = sendBtn.querySelector('.send-msg-text-ai');
-            // Bootstrap utility classes use !important so we need setProperty to override them
-            function hide(el) { if (el) el.style.setProperty('display', 'none', 'important'); }
-            function show(el) { if (el) el.style.removeProperty('display'); }
-            if (aiOn) { hide(iconSend); show(iconAi); hide(textSend); show(textAi); }
-            else      { show(iconSend); hide(iconAi); show(textSend); hide(textAi); }
-        }
-
-        function syncSendButtonForContext() {
+        function setChatSendButtonsDisabled(disabled) {
             var form = document.getElementById('chat-form');
-            var isAssistantView = form && form.getAttribute('data-view-assistant') === '1';
-            if (isAssistantView) {
-                syncSendButtonWithAiToggle(false);
-                return;
-            }
-            if (!useAiToggle) {
-                syncSendButtonWithAiToggle(false);
-                return;
-            }
-            syncSendButtonWithAiToggle(useAiToggle.checked);
+            if (!form) return;
+            form.querySelectorAll('.chat-send-primary-btn, [name="send_intent"]').forEach(function (btn) {
+                btn.disabled = disabled;
+            });
         }
 
         (function persistAiTogglePreference() {
             var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) {
-                syncSendButtonForContext();
                 return;
             }
             useAiToggle.checked = toggleDefault;
-            syncSendButtonForContext();
             useAiToggle.addEventListener('change', function() {
-                syncSendButtonForContext();
                 var token = document.querySelector('meta[name="csrf-token"]');
                 var cidEl = document.getElementById('contact-id');
                 var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
@@ -433,12 +429,20 @@
         let currentAttachmentPreviews = [];
         let localDocumentEvents = [];
 
+        function decodeHtmlEntities(text) {
+            if (!text) return '';
+            var el = document.createElement('textarea');
+            el.innerHTML = String(text);
+            return el.value;
+        }
+
         function renderMarkdownForChat(text) {
             if (!text) return '';
+            var normalized = decodeHtmlEntities(String(text));
             if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
-                return marked.parse(String(text), { gfm: true, breaks: true });
+                return marked.parse(normalized, { gfm: true, breaks: true });
             }
-            return (text || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            return normalized.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
         }
         /** Pixels from bottom of scroll area; user is "following" new messages when below this threshold. */
         function chatHistoryPinThresholdPx() {
@@ -666,12 +670,14 @@
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
             if (!msg && !hasAudio && !hasAttachments) return;
             hideChatSendErrorBar();
-            var sendBtn = form.querySelector('.send-msg-btn');
-            if (sendBtn) sendBtn.disabled = true;
-            function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
+            var sendIntent = 'send';
+            if (e.submitter && e.submitter.name === 'send_intent') {
+                sendIntent = e.submitter.value || 'send';
+            }
+            setChatSendButtonsDisabled(true);
+            function reenableSend() { setChatSendButtonsDisabled(false); }
             var isAssistantViewForm = form.getAttribute('data-view-assistant') === '1';
-            var useAiToggleEl = document.getElementById('use-ai-toggle');
-            var aiOn = isAssistantViewForm ? true : (useAiToggleEl ? useAiToggleEl.checked : false);
+            var aiOn = isAssistantViewForm ? true : (sendIntent === 'suggest');
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
@@ -1184,6 +1190,7 @@
                         messageInput.value = '';
                         currentUserMessage = '';
                         currentAiResponse = '';
+                        if (window.refreshContactChatMessages) window.refreshContactChatMessages();
                         var toastEl = document.createElement('div');
                         toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
                         toastEl.style.zIndex = 9999;
@@ -1203,6 +1210,224 @@
             });
         }
         // --- End schedule message ---
+
+        (function initChatComposeScheduleModal() {
+            var confirmBtn = document.getElementById('chat-schedule-confirm-btn');
+            var deleteBtn = document.getElementById('chat-schedule-delete-btn');
+            var scheduleInput = document.getElementById('chat-schedule-at-input');
+            var scheduleModalEl = document.getElementById('chatScheduleModal');
+            var scheduleTitleEl = document.getElementById('chatScheduleModalLabel');
+            if (!confirmBtn || !scheduleInput || !scheduleModalEl) {
+                return;
+            }
+
+            var chatComposeScheduleFp = null;
+            var createTitle = scheduleTitleEl ? scheduleTitleEl.textContent : '';
+            var editTitle = @json(__('Editar mensaje programado'));
+            var confirmCreateLabel = @json(__('Programar'));
+            var confirmEditLabel = @json(__('Guardar'));
+
+            function resetChatScheduleModalForCreate() {
+                scheduleModalEl.removeAttribute('data-editing-id');
+                if (scheduleTitleEl) {
+                    scheduleTitleEl.textContent = createTitle;
+                }
+                confirmBtn.textContent = confirmCreateLabel;
+                if (deleteBtn) {
+                    deleteBtn.classList.add('d-none');
+                }
+                if (chatComposeScheduleFp) {
+                    chatComposeScheduleFp.clear();
+                } else if (scheduleInput) {
+                    scheduleInput.value = '';
+                }
+            }
+
+            function chatScheduleMinimumDate() {
+                var now = new Date();
+                var increment = 5;
+                var ms = increment * 60 * 1000;
+                return new Date(Math.ceil(now.getTime() / ms) * ms);
+            }
+
+            function refreshChatScheduleMinDate() {
+                if (!chatComposeScheduleFp) {
+                    return;
+                }
+                chatComposeScheduleFp.set('minDate', chatScheduleMinimumDate());
+            }
+
+            function initChatComposeScheduleFlatpickr() {
+                if (chatComposeScheduleFp || typeof flatpickr === 'undefined') {
+                    return;
+                }
+                var fpOpts = {
+                    enableTime: true,
+                    time_24hr: true,
+                    dateFormat: 'd/m/Y H:i',
+                    minDate: chatScheduleMinimumDate(),
+                    minuteIncrement: 5,
+                    allowInput: false,
+                    clickOpens: true,
+                };
+                if (chatFpLocaleKey && flatpickr.l10ns && flatpickr.l10ns[chatFpLocaleKey]) {
+                    fpOpts.locale = flatpickr.l10ns[chatFpLocaleKey];
+                } else {
+                    fpOpts.locale = { firstDayOfWeek: 1 };
+                }
+                chatComposeScheduleFp = flatpickr(scheduleInput, fpOpts);
+            }
+
+            window.openChatScheduleEditModal = function (trigger) {
+                if (!trigger) {
+                    return;
+                }
+                initChatComposeScheduleFlatpickr();
+                refreshChatScheduleMinDate();
+                var scheduledId = trigger.getAttribute('data-scheduled-id') || '';
+                var scheduledAt = trigger.getAttribute('data-scheduled-at') || '';
+                if (!scheduledId) {
+                    return;
+                }
+                scheduleModalEl.setAttribute('data-editing-id', scheduledId);
+                if (scheduleTitleEl) {
+                    scheduleTitleEl.textContent = editTitle;
+                }
+                confirmBtn.textContent = confirmEditLabel;
+                if (deleteBtn) {
+                    deleteBtn.classList.remove('d-none');
+                }
+                if (chatComposeScheduleFp && scheduledAt) {
+                    chatComposeScheduleFp.setDate(new Date(scheduledAt), true);
+                }
+                if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(scheduleModalEl).show();
+                }
+            };
+
+            scheduleModalEl.addEventListener('shown.bs.modal', function () {
+                initChatComposeScheduleFlatpickr();
+                refreshChatScheduleMinDate();
+            });
+            scheduleModalEl.addEventListener('hidden.bs.modal', resetChatScheduleModalForCreate);
+
+            confirmBtn.addEventListener('click', function () {
+                var editingId = scheduleModalEl.getAttribute('data-editing-id');
+                var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
+                var cleanTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
+                var selectedDates = chatComposeScheduleFp ? chatComposeScheduleFp.selectedDates : [];
+
+                if (!editingId && !msg) {
+                    alert(@json(__('Escribe un mensaje para programar.')));
+                    return;
+                }
+                if (!editingId && !cleanTo) {
+                    alert(@json(__('No hay destinatario.')));
+                    return;
+                }
+                if (!selectedDates.length) {
+                    alert(@json(__('Selecciona la fecha y hora de envío.')));
+                    return;
+                }
+
+                var tokenEl = document.querySelector('meta[name="csrf-token"]');
+                var token = tokenEl ? tokenEl.getAttribute('content') : '';
+                var scheduledAt = selectedDates[0].toISOString();
+                var isEditing = !!editingId;
+                var url = isEditing
+                    ? '{{ url('chat/scheduled-message') }}/' + encodeURIComponent(editingId)
+                    : '{{ route("chat.schedule-message") }}';
+                var method = isEditing ? 'PATCH' : 'POST';
+                var payload = { scheduled_at: scheduledAt, channel: 'whatsapp' };
+                if (!isEditing) {
+                    payload.recipient = cleanTo;
+                    payload.body = msg;
+                }
+
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + (isEditing ? confirmEditLabel : @json(__('Programando...')));
+
+                fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify(payload)
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        if (!isEditing && messageInput) {
+                            messageInput.value = '';
+                        }
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            var inst = bootstrap.Modal.getInstance(scheduleModalEl);
+                            if (inst) {
+                                inst.hide();
+                            }
+                        }
+                        if (window.refreshContactChatMessages) {
+                            window.refreshContactChatMessages();
+                        }
+                        var label = new Date(data.scheduled_at).toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
+                        var toastEl = document.createElement('div');
+                        toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
+                        toastEl.style.zIndex = 9999;
+                        toastEl.innerHTML = '<i class="ti ti-calendar-check me-1"></i>' + (isEditing ? @json(__('Mensaje reprogramado para')) : @json(__('Mensaje programado para'))) + ' ' + label + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                        document.body.appendChild(toastEl);
+                        setTimeout(function () { toastEl.remove(); }, 5000);
+                    } else {
+                        alert(data.message || '{{ __("Error al programar el mensaje.") }}');
+                    }
+                })
+                .catch(function () {
+                    alert('{{ __("Error de conexión al programar.") }}');
+                })
+                .finally(function () {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = isEditing ? confirmEditLabel : confirmCreateLabel;
+                });
+            });
+
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function () {
+                    var editingId = scheduleModalEl.getAttribute('data-editing-id');
+                    if (!editingId) {
+                        return;
+                    }
+                    if (!window.confirm(@json(__('¿Eliminar este mensaje programado?')))) {
+                        return;
+                    }
+                    var tokenEl = document.querySelector('meta[name="csrf-token"]');
+                    var token = tokenEl ? tokenEl.getAttribute('content') : '';
+                    deleteBtn.disabled = true;
+                    fetch('{{ url('chat/scheduled-message') }}/' + encodeURIComponent(editingId), {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+                    })
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.success) {
+                            if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                                var inst = bootstrap.Modal.getInstance(scheduleModalEl);
+                                if (inst) {
+                                    inst.hide();
+                                }
+                            }
+                            if (window.refreshContactChatMessages) {
+                                window.refreshContactChatMessages();
+                            }
+                        } else {
+                            alert(data.message || '{{ __("Error al eliminar el mensaje programado.") }}');
+                        }
+                    })
+                    .catch(function () {
+                        alert('{{ __("Error de conexión al eliminar.") }}');
+                    })
+                    .finally(function () {
+                        deleteBtn.disabled = false;
+                    });
+                });
+            }
+        })();
 
         var chatAssistantRegenerateBtn = document.getElementById('chatAssistantRegenerateBtn');
         if (chatAssistantRegenerateBtn) {
@@ -1305,7 +1530,7 @@
                     var taFinal = document.getElementById('aiResponsePreview');
                     if (taFinal) taFinal.disabled = false;
                     if (regenIsAssistant) return;
-                    var sb = document.querySelector('#chat-form .send-msg-btn');
+                    var sb = document.querySelector('#chat-form .chat-send-primary-btn');
                     if (sb) sb.disabled = false;
                 });
             });
@@ -1349,7 +1574,7 @@
                     var isAssistant = m.role === 'assistant';
                     var content = isAssistant && typeof renderMarkdownForChat === 'function'
                         ? renderMarkdownForChat(m.content || '')
-                        : escapeHtml(m.content || '').replace(/\n/g, '<br>');
+                        : escapeHtml(decodeHtmlEntities(m.content || '')).replace(/\n/g, '<br>');
                     var time = formatDate(m.created_at);
                     var sideClass = isAssistant ? '' : 'chat-message-right';
                     var timeClass = isAssistant ? '' : 'text-end';
@@ -1443,12 +1668,29 @@
                 div.textContent = s;
                 return div.innerHTML;
             }
-            function formatTime(createdAt) {
-                if (!createdAt) return '';
-                var d = new Date(createdAt);
-                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            function formatTime(message) {
+                if (!message) return '';
+                var isScheduled = !!(message.is_scheduled || message.status === 'scheduled');
+                var at = (isScheduled && message.scheduled_at) ? message.scheduled_at : message.created_at;
+                if (!at) return '';
+                var d = new Date(at);
+                var now = new Date();
+                var sameDay = d.getFullYear() === now.getFullYear()
+                    && d.getMonth() === now.getMonth()
+                    && d.getDate() === now.getDate();
+                var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                if (isScheduled && !sameDay) {
+                    var dateStr = d.toLocaleDateString('{{ str_replace('_', '-', app()->getLocale()) }}', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                    });
+                    return dateStr + ' ' + timeStr;
+                }
+                return timeStr;
             }
-            function statusIcon(status) {
+            function statusIcon(status, isScheduled) {
+                if (isScheduled || status === 'scheduled') return '<i class="ti ti-calendar-time ti-xs me-1"></i>';
                 if (status === 'failed' || status === 'undelivered') return '<i class="ti ti-alert-circle ti-xs me-1 text-danger"></i>';
                 if (status === 'read') return '<i class="ti ti-checks ti-xs me-1 text-primary"></i>';
                 if (status === 'delivered') return '<i class="ti ti-checks ti-xs me-1 text-success"></i>';
@@ -1464,8 +1706,11 @@
                     var inbound = (m.direction || '').toLowerCase() === 'inbound';
                     var sideClass = inbound ? '' : 'chat-message-right';
                     var timeClass = inbound ? '' : 'text-end';
-                    var bodyEscaped = escapeHtml(m.body || '').replace(/\n/g, '<br>');
-                    var time = formatTime(m.created_at);
+                    var bodyEscaped = escapeHtml(decodeHtmlEntities(m.body || '')).replace(/\n/g, '<br>');
+                    var time = formatTime(m);
+                    var isScheduled = !!m.is_scheduled || m.status === 'scheduled';
+                    var scheduledId = m.scheduled_message_id || (String(m.id || '').replace(/^scheduled-/, ''));
+                    var scheduledAtIso = m.scheduled_at || '';
                     var fromSuffix = (m.from || '').toString().slice(-2);
                     var inboundAvatar = chatMessageAvatars.contact || { initials: fromSuffix, label_class: 'bg-label-success' };
                     var outboundAvatar = m.sender_avatar || chatMessageAvatars.current_user || { initials: fromSuffix, label_class: 'bg-label-primary' };
@@ -1482,9 +1727,12 @@
                         return '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener">' + escapeHtml(typeof item === 'object' ? (item.filename || 'Archivo') : 'Archivo') + '</a>';
                     }).join('') : '';
                     if (inbound) {
-                        return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden">' + buildChatAvatarHtml(inboundAvatar, 'me-3') + '<div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1"><small>' + time + '</small></div></div></div></li>';
+                        return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden">' + buildChatAvatarHtml(inboundAvatar, 'me-3') + '<div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1"><small>' + escapeHtml(time) + '</small></div></div></div></li>';
                     }
-                    return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div><div class="' + timeClass + ' text-muted mt-1">' + statusIcon(m.status) + '<small>' + time + '</small></div></div>' + buildChatAvatarHtml(outboundAvatar, 'ms-3') + '</div></li>';
+                    var metaHtml = isScheduled
+                        ? '<div class="' + timeClass + ' text-muted mt-1"><span class="chat-scheduled-meta-trigger" role="button" tabindex="0" data-scheduled-id="' + escapeHtml(String(scheduledId)) + '" data-scheduled-at="' + escapeHtml(String(scheduledAtIso)) + '" title="{{ e(__('Editar mensaje programado')) }}">' + statusIcon(m.status, true) + '<small>' + escapeHtml(time) + '</small></span></div>'
+                        : '<div class="' + timeClass + ' text-muted mt-1">' + statusIcon(m.status, isScheduled) + '<small>' + escapeHtml(time) + '</small></div>';
+                    return '<li class="chat-message ' + sideClass + '"><div class="d-flex overflow-hidden"><div class="chat-message-wrapper flex-grow-1"><div class="chat-message-text"><p class="mb-0">' + bodyEscaped + '</p>' + (mediaHtml ? '<div class="chat-media mt-2">' + mediaHtml + '</div>' : '') + '</div>' + metaHtml + '</div>' + buildChatAvatarHtml(outboundAvatar, 'ms-3') + '</div></li>';
                 }).join('');
                 var scrollEl = document.querySelector('.chat-history-body');
                 var wasPinnedWa = chatHistoryIsPinnedToBottom(scrollEl);
@@ -1514,6 +1762,27 @@
             }
             setInterval(fetchContactMessages, 4000);
             window.addEventListener('focus', fetchContactMessages);
+            window.refreshContactChatMessages = fetchContactMessages;
+
+            list.addEventListener('click', function (e) {
+                var trigger = e.target.closest('.chat-scheduled-meta-trigger');
+                if (!trigger || typeof window.openChatScheduleEditModal !== 'function') {
+                    return;
+                }
+                e.preventDefault();
+                window.openChatScheduleEditModal(trigger);
+            });
+            list.addEventListener('keydown', function (e) {
+                if (e.key !== 'Enter' && e.key !== ' ') {
+                    return;
+                }
+                var trigger = e.target.closest('.chat-scheduled-meta-trigger');
+                if (!trigger || typeof window.openChatScheduleEditModal !== 'function') {
+                    return;
+                }
+                e.preventDefault();
+                window.openChatScheduleEditModal(trigger);
+            });
         })();
 
         // Poll WhatsApp conversation list so new chats appear in the sidebar without refresh
@@ -1557,6 +1826,9 @@
                         '<a href="#" class="d-block px-4 py-2 text-muted text-decoration-none cursor-pointer" role="button" onclick="event.preventDefault();" data-bs-toggle="sidebar" data-overlay="app-overlay-ex" data-target="#app-chat-sidebar-left">' +
                         '<h6 class="text-muted mb-0">' + escapeHtml(msg) + '</h6>' +
                         '</a></li>';
+                    if (typeof window.applyChatSidebarSearch === 'function') {
+                        window.applyChatSidebarSearch();
+                    }
                     return;
                 }
                 var html = contacts.map(function (c) {
@@ -1575,6 +1847,9 @@
                     return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
                 }).join('');
                 listEl.innerHTML = html;
+                if (typeof window.applyChatSidebarSearch === 'function') {
+                    window.applyChatSidebarSearch();
+                }
             }
             function fetchChatList() {
                 var body = document.getElementById('chat-history-body');
@@ -2737,9 +3012,14 @@
                                     </small>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="{{ __('Start a new assistant conversation (hides history, keeps it stored)') }}" aria-label="{{ __('New assistant conversation') }}">
-                                <i class="ti ti-refresh"></i>
-                            </button>
+                            <div class="d-flex align-items-center gap-2">
+                                @if($selectedAssistantUser ?? null)
+                                    @include('chat.partials.header-assistant-toggle')
+                                @endif
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="{{ __('Start a new assistant conversation (hides history, keeps it stored)') }}" aria-label="{{ __('New assistant conversation') }}">
+                                    <i class="ti ti-refresh"></i>
+                                </button>
+                            </div>
                         </div>
                         @elseif ($selectedPhone)
                         <div class="d-flex justify-content-between align-items-center">
@@ -2770,6 +3050,7 @@
                                         <i class="ti ti-users ti-xs me-1"></i>Vincular con contacto
                                     </a>
                                 @endif
+                                @include('chat.partials.header-assistant-toggle')
                             </div>
                         </div>
                         @else
@@ -2811,7 +3092,7 @@
                                             @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text assistant-markdown">
-                                                    <div class="mb-0">{!! \Illuminate\Support\Str::markdown($msg['content']) !!}</div>
+                                                    <div class="mb-0">{!! \Illuminate\Support\Str::markdown(html_entity_decode($msg['content'], ENT_QUOTES | ENT_HTML5, 'UTF-8')) !!}</div>
                                                 </div>
                                                 <div class="text-muted mt-1 {{ $msg['role'] !== 'assistant' ? 'text-end' : '' }}">
                                                     <small>{{ $msg['created_at']->format('d/m/Y H:i') }}</small>
@@ -2837,6 +3118,15 @@
                                 @foreach ($messages as $message)
                                     @php
                                         $isInbound = $message->direction === 'inbound';
+                                        $isScheduledOutbound = ! $isInbound && (($message->status ?? '') === 'scheduled' || ! empty($message->is_scheduled));
+                                        $displayTime = $isScheduledOutbound && ! empty($message->scheduled_at)
+                                            ? \Carbon\Carbon::parse($message->scheduled_at)
+                                            : $message->created_at;
+                                        $scheduledDisplayLabel = ($isScheduledOutbound ?? false) && $displayTime instanceof \Carbon\CarbonInterface
+                                            ? ($displayTime->isToday()
+                                                ? $displayTime->format('h:i A')
+                                                : $displayTime->format('d/m/Y h:i A'))
+                                            : null;
                                         $media = $message->media ?? [];
                                         if (is_string($media)) {
                                             $media = json_decode($media, true) ?? [];
@@ -2849,7 +3139,11 @@
                                             @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
-                                                    <p class="mb-0">{!! nl2br($message->body) !!}</p>
+                                                    @if ($isScheduledOutbound)
+                                                        <p class="mb-0">{!! nl2br(e($message->body)) !!}</p>
+                                                    @else
+                                                        <p class="mb-0">{!! nl2br($message->body) !!}</p>
+                                                    @endif
                                                     @if (!empty($media))
                                                         <div class="chat-media mt-2">
                                                             @foreach ($media as $item)
@@ -2874,20 +3168,32 @@
                                                     @endif
                                                 </div>
                                                 <div class="{{ !$isInbound ? 'text-end' : '' }} text-muted mt-1">
-                                                    @if (!$isInbound)
-                                                        @if($message->hasFailed())
-                                                            <i class='ti ti-alert-circle ti-xs me-1 text-danger'></i>
-                                                        @elseif($message->isRead())
-                                                            <i class='ti ti-checks ti-xs me-1 text-primary'></i>
-                                                        @elseif($message->isDelivered())
-                                                            <i class='ti ti-checks ti-xs me-1 text-success'></i>
-                                                        @elseif($message->status === 'sent')
-                                                            <i class='ti ti-check ti-xs me-1 text-success'></i>
-                                                        @else
-                                                            <i class='ti ti-clock ti-xs me-1'></i>
+                                                    @if ($isScheduledOutbound)
+                                                        <span class="chat-scheduled-meta-trigger"
+                                                            role="button"
+                                                            tabindex="0"
+                                                            data-scheduled-id="{{ $message->scheduled_message_id }}"
+                                                            data-scheduled-at="{{ $displayTime->toIso8601String() }}"
+                                                            title="{{ __('Editar mensaje programado') }}">
+                                                            <i class='ti ti-calendar-time ti-xs me-1'></i>
+                                                            <small>{{ $scheduledDisplayLabel }}</small>
+                                                        </span>
+                                                    @else
+                                                        @if (!$isInbound)
+                                                            @if($message instanceof \App\Models\Conversation && $message->hasFailed())
+                                                                <i class='ti ti-alert-circle ti-xs me-1 text-danger'></i>
+                                                            @elseif($message instanceof \App\Models\Conversation && $message->isRead())
+                                                                <i class='ti ti-checks ti-xs me-1 text-primary'></i>
+                                                            @elseif($message instanceof \App\Models\Conversation && $message->isDelivered())
+                                                                <i class='ti ti-checks ti-xs me-1 text-success'></i>
+                                                            @elseif($message instanceof \App\Models\Conversation && $message->status === 'sent')
+                                                                <i class='ti ti-check ti-xs me-1 text-success'></i>
+                                                            @elseif (!$isInbound)
+                                                                <i class='ti ti-clock ti-xs me-1'></i>
+                                                            @endif
                                                         @endif
+                                                        <small>{{ $displayTime->format('h:i A') }}</small>
                                                     @endif
-                                                    <small>{{ $message->created_at->format('h:i A') }}</small>
                                                 </div>
                                             </div>
                                             @if (!$isInbound)
@@ -2962,29 +3268,32 @@
                                 <div id="chat-attachment-count" class="small text-muted me-2"></div>
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
-
-                                @if(!($viewAssistant ?? false) || ($selectedAssistantUser ?? null))
-                                <div class="d-flex align-items-center me-3">
-                                    <div>
-                                        <div class="d-flex align-items-center">
-                                            <div class="form-check form-switch mb-0">
-                                            <input type="checkbox" class="form-check-input" id="use-ai-toggle">
-                                            </div>
-                                            <i class="ti ti-robot ms-2"></i>
-                                        </div>
-                                        <small class="text-muted d-block mt-1">{{ __('Asistente') }}</small>
-                                    </div>
-                                </div>
-                                @endif
                             </div>
 
                             <div class="message-actions d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary d-flex align-items-center send-msg-btn waves-effect waves-light">
-                                    <i class="ti ti-send me-md-1 me-0 send-msg-icon"></i>
-                                    <i class="ti ti-sparkles me-md-1 me-0 send-msg-icon-ai" style="display:none"></i>
-                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Enviar') }}</span>
-                                    <span class="align-middle d-md-inline-block send-msg-text-ai" style="display:none">{{ __('Sugerir') }}</span>
-                                </button>
+                                <div class="btn-group">
+                                    <button type="submit" name="send_intent" value="send" class="btn btn-primary chat-send-primary-btn waves-effect waves-light">
+                                        <i class="ti ti-send me-md-1"></i>
+                                        <span class="align-middle d-md-inline-block">{{ __('Enviar') }}</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <span class="visually-hidden">{{ __('app.message_save_options_dropdown') }}</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        @if (!($viewAssistant ?? false) && ($selectedPhone ?? null))
+                                            <li>
+                                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#chatScheduleModal">
+                                                    <i class="ti ti-calendar-time me-1"></i>{{ __('Programar') }}
+                                                </button>
+                                            </li>
+                                        @endif
+                                        <li>
+                                            <button type="submit" name="send_intent" value="suggest" class="dropdown-item">
+                                                <i class="ti ti-sparkles me-1"></i>{{ __('Sugerir') }}
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -3165,6 +3474,35 @@
                         </button>
                         <button type="button" class="btn btn-primary" id="sendAiResponseBtn">{{ __('Enviar respuesta') }}</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="chatScheduleModal" tabindex="-1" aria-labelledby="chatScheduleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chatScheduleModalLabel">{{ __('app.message_schedule_modal_title') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="chat-schedule-at-input" class="form-label">{{ __('app.message_schedule_modal_datetime_label') }}</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="chat-schedule-at-input"
+                        data-min-datetime="{{ $chatScheduleMin }}"
+                        autocomplete="off"
+                        readonly
+                        required
+                    >
+                    <div class="form-text">{{ __('app.message_schedule_modal_help') }}</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-danger d-none" id="chat-schedule-delete-btn">{{ __('Eliminar') }}</button>
+                    <button type="button" class="btn btn-label-secondary ms-auto" data-bs-dismiss="modal">{{ __('app.message_schedule_modal_cancel') }}</button>
+                    <button type="button" class="btn btn-primary" id="chat-schedule-confirm-btn">{{ __('Programar') }}</button>
                 </div>
             </div>
         </div>

@@ -17,6 +17,7 @@ use App\Models\Message;
 use App\Models\Module;
 use App\Models\Opportunity;
 use App\Models\OpportunityStage;
+use App\Models\Post;
 use App\Models\Product;
 use App\Models\Prompt;
 use App\Models\Task;
@@ -77,6 +78,14 @@ class AssistantToolsService
     protected array $executedToolsInRequest = [];
 
     /**
+     * Human-readable outputs returned by tools during the current request, in order.
+     * Used as a fallback reply when the model ends a turn without text.
+     *
+     * @var list<string>
+     */
+    protected array $toolOutputsInRequest = [];
+
+    /**
      * Test-only or explicit override; production uses {@see resolveWhatsAppGatewayForToolSend()}.
      */
     protected ?WhatsAppGateway $whatsAppGatewayOverride = null;
@@ -106,6 +115,7 @@ class AssistantToolsService
         $this->whatsAppGatewayOverride = null;
         $this->recentContactIdsInRequest = [];
         $this->executedToolsInRequest = [];
+        $this->toolOutputsInRequest = [];
     }
 
     public function wasToolExecuted(string $name): bool
@@ -119,6 +129,16 @@ class AssistantToolsService
     public function getExecutedToolsInRequest(): array
     {
         return $this->executedToolsInRequest;
+    }
+
+    /**
+     * Outputs returned by tools this request, for use as a fallback reply.
+     *
+     * @return list<string>
+     */
+    public function getToolOutputsInRequest(): array
+    {
+        return $this->toolOutputsInRequest;
     }
 
     private function recordExecutedTool(string $name): void
@@ -350,6 +370,75 @@ class AssistantToolsService
                         'year' => ['type' => 'integer', 'description' => 'Base year for averages (default: current year)'],
                     ],
                     'required' => ['multiplier'],
+                ],
+            ],
+            [
+                'name' => 'list_cms_content',
+                'description' => 'List CMS website content (entradas/posts and páginas/pages) for the current team to inform answers across channels (web chat, WhatsApp). Returns id, type, title, status and slug. Call this whenever the user asks about CMS, blog, páginas or entradas — never assume the CMS is empty without calling it. Published only for guests; content managers see all statuses unless status is filtered. Use search to filter by words.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'type' => ['type' => 'string', 'description' => 'Filter by type: post or page (optional)', 'enum' => ['post', 'page']],
+                        'search' => ['type' => 'string', 'description' => 'Words to search in title/content (optional)'],
+                        'status' => ['type' => 'string', 'description' => 'Content managers only: publish, draft, pending, private (optional; omit to list all statuses)'],
+                        'limit' => ['type' => 'integer', 'description' => 'Max results (default 10, max 25)'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'get_cms_content',
+                'description' => 'Get the full body of one CMS page or post by slug or id (title, content, excerpt, categories, status). Use this to answer questions with the site content. Non-published content is only returned to content managers.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'description' => 'Content id (preferred when known)'],
+                        'slug' => ['type' => 'string', 'description' => 'Slug when id is unknown'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'create_cms_content',
+                'description' => 'Create a CMS page or post (admins / content managers only). Provide title; optionally content (HTML), excerpt, status (publish or draft, default draft) and slug. Changes also sync to WordPress when configured.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'type' => ['type' => 'string', 'description' => 'post or page (default post)', 'enum' => ['post', 'page']],
+                        'title' => ['type' => 'string', 'description' => 'Title'],
+                        'content' => ['type' => 'string', 'description' => 'Body HTML (optional)'],
+                        'excerpt' => ['type' => 'string', 'description' => 'Short excerpt, plain text (optional)'],
+                        'status' => ['type' => 'string', 'description' => 'publish or draft (default draft)', 'enum' => ['publish', 'draft']],
+                        'slug' => ['type' => 'string', 'description' => 'URL slug (optional; generated from title)'],
+                    ],
+                    'required' => ['title'],
+                ],
+            ],
+            [
+                'name' => 'update_cms_content',
+                'description' => 'Update a CMS page or post (admins / content managers only). Provide id and any of: title, content (HTML), excerpt, slug.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'description' => 'Content id to update'],
+                        'title' => ['type' => 'string', 'description' => 'New title (optional)'],
+                        'content' => ['type' => 'string', 'description' => 'New body HTML (optional)'],
+                        'excerpt' => ['type' => 'string', 'description' => 'New excerpt, plain text (optional)'],
+                        'slug' => ['type' => 'string', 'description' => 'New URL slug (optional)'],
+                    ],
+                    'required' => ['id'],
+                ],
+            ],
+            [
+                'name' => 'set_cms_content_status',
+                'description' => 'Publish or unpublish (set to draft) a CMS page or post (admins / content managers only).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'id' => ['type' => 'integer', 'description' => 'Content id'],
+                        'status' => ['type' => 'string', 'description' => 'publish or draft', 'enum' => ['publish', 'draft']],
+                    ],
+                    'required' => ['id', 'status'],
                 ],
             ],
             [
@@ -808,8 +897,18 @@ class AssistantToolsService
                 'list_product_catalog' => $this->listProductCatalog($teamId, $input),
                 'search_products' => $this->searchProducts($teamId, $input),
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
+                'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
+                'get_cms_content' => $this->getCmsContent($teamId, $user, $input),
+                'create_cms_content' => $this->createCmsContent($teamId, $user, $input),
+                'update_cms_content' => $this->updateCmsContent($teamId, $input),
+                'set_cms_content_status' => $this->setCmsContentStatus($teamId, $input),
                 default => "Unknown tool: {$name}.",
             };
+
+            if (is_string($result) && $result !== '')
+            {
+                $this->toolOutputsInRequest[] = $result;
+            }
 
             return $result;
         } catch (\Throwable $e)
@@ -3418,6 +3517,299 @@ class AssistantToolsService
         })->implode("\n");
 
         return $this->truncate("Matches:\n".$lines);
+    }
+
+    /**
+     * CMS post types the assistant can read/manage.
+     *
+     * @return list<string>
+     */
+    private function cmsContentTypes(): array
+    {
+        return ['post', 'page'];
+    }
+
+    private function cmsTypeLabel(string $type): string
+    {
+        return $type === 'page' ? 'página' : 'entrada';
+    }
+
+    private function cmsStatusLabel(string $status): string
+    {
+        return match ($status)
+        {
+            Post::STATUS_PUBLISH => 'publicada',
+            Post::STATUS_DRAFT => 'borrador',
+            Post::STATUS_PENDING => 'pendiente',
+            Post::STATUS_PRIVATE => 'privada',
+            Post::STATUS_FUTURE => 'programada',
+            default => $status,
+        };
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function listCmsContent(int $teamId, User $user, array $input): string
+    {
+        $type = strtolower(trim((string) ($input['type'] ?? '')));
+        $search = trim((string) ($input['search'] ?? ''));
+        $status = strtolower(trim((string) ($input['status'] ?? '')));
+        $limit = max(1, min((int) ($input['limit'] ?? 10), 25));
+
+        $query = Post::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('post_type', $this->cmsContentTypes());
+
+        if (in_array($type, $this->cmsContentTypes(), true))
+        {
+            $query->where('post_type', $type);
+        }
+
+        $manageableStatuses = [Post::STATUS_PUBLISH, Post::STATUS_DRAFT, Post::STATUS_PENDING, Post::STATUS_PRIVATE, Post::STATUS_FUTURE];
+        if ($this->canManageCmsContent($user, $teamId))
+        {
+            if (in_array($status, $manageableStatuses, true))
+            {
+                $query->where('post_status', $status);
+            }
+        } else
+        {
+            $query->where('post_status', Post::STATUS_PUBLISH);
+        }
+
+        if ($search !== '')
+        {
+            $query->where(function ($q) use ($search): void
+            {
+                $q->where('post_title', 'LIKE', '%'.$search.'%')
+                    ->orWhere('post_content', 'LIKE', '%'.$search.'%');
+            });
+        }
+
+        $items = $query->orderByDesc('post_modified')->limit($limit)->get();
+
+        if ($items->isEmpty())
+        {
+            $message = 'No se encontró contenido del CMS'.($search !== '' ? ' para: '.$search : '');
+            if (in_array($type, $this->cmsContentTypes(), true))
+            {
+                $otherType = $type === 'page' ? 'post' : 'page';
+                $otherQuery = Post::withoutGlobalScopes()
+                    ->where('team_id', $teamId)
+                    ->where('post_type', $otherType);
+                if (! $this->canManageCmsContent($user, $teamId))
+                {
+                    $otherQuery->where('post_status', Post::STATUS_PUBLISH);
+                }
+                $otherCount = $otherQuery->count();
+                if ($otherCount > 0)
+                {
+                    $message .= sprintf(
+                        '. Hay %d %s publicadas; probá list_cms_content con type=%s.',
+                        $otherCount,
+                        $otherType === 'page' ? 'páginas' : 'entradas',
+                        $otherType,
+                    );
+                }
+            }
+
+            return $message.'.';
+        }
+
+        $lines = $items->map(fn (Post $p) => sprintf(
+            'id %d | %s | %s | estado: %s | slug: %s',
+            $p->id,
+            $this->cmsTypeLabel($p->post_type),
+            $p->post_title ?: '(sin título)',
+            $this->cmsStatusLabel((string) $p->post_status),
+            $p->post_name ?: '—',
+        ))->implode("\n");
+
+        return $this->truncate("Contenido del CMS:\n".$lines."\n\nUsá get_cms_content con id o slug para leer el cuerpo completo.");
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function getCmsContent(int $teamId, User $user, array $input): string
+    {
+        $id = (int) ($input['id'] ?? 0);
+        $slug = trim((string) ($input['slug'] ?? ''));
+        if ($id === 0 && $slug === '')
+        {
+            return 'Indicá id o slug.';
+        }
+
+        $query = Post::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('post_type', $this->cmsContentTypes())
+            ->with(['termTaxonomies.term']);
+
+        if ($id > 0)
+        {
+            $query->where('id', $id);
+        } else
+        {
+            $query->where('post_name', $slug);
+        }
+
+        $post = $query->first();
+        if (! $post)
+        {
+            return 'No se encontró el contenido.';
+        }
+
+        if ($post->post_status !== Post::STATUS_PUBLISH && ! $this->canManageCmsContent($user, $teamId))
+        {
+            return 'No se encontró el contenido.';
+        }
+
+        $categories = $post->termTaxonomies
+            ->map(fn ($tt) => $tt->term?->name)
+            ->filter()
+            ->implode(', ');
+        $body = trim(strip_tags((string) $post->post_content));
+
+        $out = [
+            'id: '.$post->id,
+            'tipo: '.$this->cmsTypeLabel((string) $post->post_type),
+            'título: '.($post->post_title ?: '(sin título)'),
+            'estado: '.$this->cmsStatusLabel((string) $post->post_status),
+            'slug: '.($post->post_name ?: '—'),
+            'categorías: '.($categories !== '' ? $categories : '—'),
+            'extracto: '.(trim((string) $post->post_excerpt) ?: '—'),
+            'contenido: '.$body,
+        ];
+
+        return $this->truncate(implode("\n", $out));
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function createCmsContent(int $teamId, User $user, array $input): string
+    {
+        $type = strtolower(trim((string) ($input['type'] ?? 'post')));
+        if (! in_array($type, $this->cmsContentTypes(), true))
+        {
+            $type = 'post';
+        }
+
+        $title = trim((string) ($input['title'] ?? ''));
+        if ($title === '')
+        {
+            return 'El título es obligatorio.';
+        }
+
+        $status = strtolower(trim((string) ($input['status'] ?? Post::STATUS_DRAFT)));
+        if (! in_array($status, [Post::STATUS_PUBLISH, Post::STATUS_DRAFT], true))
+        {
+            $status = Post::STATUS_DRAFT;
+        }
+
+        $slug = trim((string) ($input['slug'] ?? ''));
+
+        $post = new Post;
+        $post->team_id = $teamId;
+        $post->post_type = $type;
+        $post->post_title = $title;
+        $post->post_content = (string) ($input['content'] ?? '');
+        $post->post_excerpt = trim(strip_tags((string) ($input['excerpt'] ?? '')));
+        $post->post_status = $status;
+        $post->post_author = $user->id;
+        $post->post_name = $slug !== '' ? Str::slug($slug) : Str::slug($title);
+        $post->save();
+
+        return $this->truncate(sprintf(
+            'Se creó la %s id %d "%s" (estado: %s, slug: %s).',
+            $this->cmsTypeLabel($type),
+            $post->id,
+            $post->post_title,
+            $this->cmsStatusLabel((string) $post->post_status),
+            $post->post_name,
+        ));
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function updateCmsContent(int $teamId, array $input): string
+    {
+        $id = (int) ($input['id'] ?? 0);
+        if ($id === 0)
+        {
+            return 'El id es obligatorio.';
+        }
+
+        $post = Post::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('post_type', $this->cmsContentTypes())
+            ->find($id);
+        if (! $post)
+        {
+            return 'No se encontró el contenido.';
+        }
+
+        if (array_key_exists('title', $input))
+        {
+            $post->post_title = trim((string) $input['title']);
+        }
+        if (array_key_exists('content', $input))
+        {
+            $post->post_content = (string) $input['content'];
+        }
+        if (array_key_exists('excerpt', $input))
+        {
+            $post->post_excerpt = trim(strip_tags((string) $input['excerpt']));
+        }
+        if (! empty($input['slug']))
+        {
+            $post->post_name = Str::slug((string) $input['slug']);
+        }
+        $post->save();
+
+        return $this->truncate(sprintf('Se actualizó la %s id %d "%s".', $this->cmsTypeLabel((string) $post->post_type), $post->id, $post->post_title));
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function setCmsContentStatus(int $teamId, array $input): string
+    {
+        $id = (int) ($input['id'] ?? 0);
+        $status = strtolower(trim((string) ($input['status'] ?? '')));
+        if ($id === 0)
+        {
+            return 'El id es obligatorio.';
+        }
+        if (! in_array($status, [Post::STATUS_PUBLISH, Post::STATUS_DRAFT], true))
+        {
+            return 'El estado debe ser publish (publicada) o draft (borrador).';
+        }
+
+        $post = Post::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('post_type', $this->cmsContentTypes())
+            ->find($id);
+        if (! $post)
+        {
+            return 'No se encontró el contenido.';
+        }
+
+        $post->post_status = $status;
+        $post->save();
+
+        $estado = $status === Post::STATUS_PUBLISH ? 'publicada' : 'en borrador';
+
+        return sprintf('La %s id %d ahora está %s.', $this->cmsTypeLabel((string) $post->post_type), $post->id, $estado);
+    }
+
+    private function canManageCmsContent(User $user, int $teamId): bool
+    {
+        $this->toolAuthorization->prepareTeamContext($user, $teamId);
+
+        return Gate::forUser($user)->allows('viewAny', Post::class);
     }
 
     private function addToWhatsAppCart(int $teamId, array $input): string

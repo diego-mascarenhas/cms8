@@ -28,7 +28,8 @@ document.addEventListener('DOMContentLoaded', function () {
       refreshEmails = document.querySelector('.email-refresh'),
       emailViewContainer = document.getElementById('app-email-view'),
       emailFilterFolderLists = [].slice.call(document.querySelectorAll('.email-filter-folders li')),
-      emailListItemActions = [].slice.call(document.querySelectorAll('.email-list-item-actions li'));
+      emailListItemActions = [].slice.call(document.querySelectorAll('.email-list-item-actions li')),
+      livewireManaged = Boolean(window.emailListLivewireManaged);
 
     // Initialize PerfectScrollbar
     // ------------------------------
@@ -82,6 +83,8 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     }
 
+    // List interactions below are Vuexy demo behavior; skip when Livewire manages the inbox.
+    if (!livewireManaged) {
     // Bookmark email
     if (bookmarkEmail) {
       bookmarkEmail.forEach(emailItem => {
@@ -201,6 +204,8 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
 
+    } // end !livewireManaged
+
     // Toggle CC/BCC input
     if (toggleBCC) {
       toggleBCC.addEventListener('click', e => {
@@ -215,12 +220,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Empty compose email message inputs when modal is hidden
-    emailCompose.addEventListener('hidden.bs.modal', event => {
-      document.querySelector('.email-editor .ql-editor').innerHTML = '';
-      $('#emailContacts').val('');
-      initSelect2();
-    });
+    if (emailCompose) {
+      emailCompose.addEventListener('hidden.bs.modal', event => {
+        document.querySelector('.email-editor .ql-editor').innerHTML = '';
+        $('#emailContacts').val('');
+        initSelect2();
+      });
+    }
 
+    if (!livewireManaged) {
     // Delete multiple email
     if (emailListDelete) {
       emailListDelete.addEventListener('click', e => {
@@ -292,6 +300,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
       });
     }
+
+    } // end !livewireManaged
 
     // Earlier msgs
     // ? Using jquery vars due to jQuery animation (slideToggle) dependency
@@ -367,7 +377,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Email List Items Actions
-    if (emailListItemActions) {
+    if (!livewireManaged && emailListItemActions) {
       emailListItemActions.forEach(emailListItemAction => {
         emailListItemAction.addEventListener('click', e => {
           e.stopPropagation();

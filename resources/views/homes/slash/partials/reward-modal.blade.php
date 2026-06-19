@@ -31,7 +31,7 @@
       </div>
     </div>
     <div class="slash-lead-modal-actions">
-      <a href="#precios" class="slash-btn slash-btn-accent" data-slash-reward-modal-go>{{ __('slash_landing.lead.success_cta') }}</a>
+      <a href="{{ $rewardCtaUrl ?? '#precios' }}" class="slash-btn slash-btn-accent" data-slash-reward-modal-go>{{ __('slash_landing.lead.success_cta') }}</a>
     </div>
   </div>
 </div>

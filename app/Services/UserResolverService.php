@@ -476,12 +476,11 @@ class UserResolverService
             {
                 $query->whereHas('teams', function ($teamQuery) use ($teamId)
                 {
-                    $teamQuery->where('teams.id', $teamId)
-                        ->whereIn('team_user.role', ['admin', 'editor', 'collaborator']);
+                    $teamQuery->where('teams.id', $teamId);
                 })
                     ->orWhereHas('roles', function ($roleQuery)
                     {
-                        $roleQuery->whereIn('name', ['admin', 'root']);
+                        $roleQuery->where('name', 'root');
                     });
             })
             ->get();
@@ -493,7 +492,7 @@ class UserResolverService
                 continue;
             }
 
-            if ($candidate->hasAnyRole(['admin', 'root']) || $this->userIsTeamStaff($candidate, $teamId))
+            if ($this->shouldTreatUserAsInboundTeamStaff($candidate, $teamId))
             {
                 return $candidate;
             }
@@ -512,7 +511,7 @@ class UserResolverService
                 continue;
             }
 
-            if ($candidate->hasAnyRole(['admin', 'root']) || $this->userIsTeamStaff($candidate, $teamId))
+            if ($this->shouldTreatUserAsInboundTeamStaff($candidate, $teamId))
             {
                 return $candidate;
             }
@@ -537,16 +536,21 @@ class UserResolverService
 
     private function ensureTeamMembershipRole(User $user, int $teamId): void
     {
-        $desiredRole = $this->resolveTeamPivotRoleForUser($user, $teamId);
         $membership = $user->teams()->where('team_id', $teamId)->first();
 
         if ($membership === null)
         {
-            $user->teams()->attach($teamId, ['role' => $desiredRole]);
+            if (! $this->isPlatformRootUser($user))
+            {
+                return;
+            }
+
+            $user->teams()->attach($teamId, ['role' => 'admin']);
 
             return;
         }
 
+        $desiredRole = $this->resolveTeamPivotRoleForUser($user, $teamId);
         $currentRole = (string) ($membership->pivot->role ?? '');
         if ($currentRole === 'client' && $desiredRole !== 'client')
         {
@@ -556,25 +560,47 @@ class UserResolverService
 
     private function resolveTeamPivotRoleForUser(User $user, int $teamId): string
     {
-        if ($user->hasAnyRole(['admin', 'root']))
+        if ($this->isPlatformRootUser($user))
         {
             return 'admin';
         }
 
-        if ($this->userIsTeamStaff($user, $teamId))
+        $existingRole = $user->teams()
+            ->where('teams.id', $teamId)
+            ->value('team_user.role');
+
+        if (is_string($existingRole) && in_array($existingRole, ['admin', 'editor', 'collaborator'], true))
         {
-            $existingRole = $user->teams()
-                ->where('teams.id', $teamId)
-                ->value('team_user.role');
+            return $existingRole;
+        }
 
-            if (is_string($existingRole) && in_array($existingRole, ['admin', 'editor', 'collaborator'], true))
-            {
-                return $existingRole;
-            }
-
+        if ($user->hasRole('admin') && $existingRole === 'client')
+        {
             return 'admin';
         }
 
         return 'client';
+    }
+
+    private function isPlatformRootUser(User $user): bool
+    {
+        return $user->hasRole('root');
+    }
+
+    private function userHasStaffPivotOnTeam(User $user, int $teamId): bool
+    {
+        $role = $user->teams()->where('teams.id', $teamId)->value('team_user.role');
+
+        return is_string($role) && in_array($role, ['admin', 'editor', 'collaborator'], true);
+    }
+
+    private function shouldTreatUserAsInboundTeamStaff(User $user, int $teamId): bool
+    {
+        if ($this->isPlatformRootUser($user) || $this->userHasStaffPivotOnTeam($user, $teamId))
+        {
+            return true;
+        }
+
+        return $user->hasRole('admin') && $user->teams()->where('team_id', $teamId)->exists();
     }
 }

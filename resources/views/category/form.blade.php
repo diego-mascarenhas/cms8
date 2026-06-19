@@ -436,26 +436,18 @@
                         <div class="card-body">
                             <input type="hidden" name="content_locales_present" value="1">
                             @php
-                                $localeLabels = \App\Support\ContentsSectionCategoryData::supportedLocaleLabels();
-                                $mergedLocales = \App\Support\ContentsSectionCategoryData::mergeContentLocalesFromStorage($categoryData['content_locales'] ?? null);
-                                $contentFormFields = \App\Support\ContentsSectionCategoryData::mergeContentFormVisibility($categoryData['content_form'] ?? null);
-                                $isCreatingCategory = ! isset($category);
-
-                                if ($isCreatingCategory && old('content_locales') === null)
-                                {
-                                    // New category: start with no locales selected.
-                                    $mergedLocales = [];
-                                }
-
-                                if ($isCreatingCategory && old('content_form') === null)
-                                {
-                                    // New category: start with selected fields disabled by default.
-                                    $contentFormFields['show_subtitle'] = false;
-                                    $contentFormFields['show_main_content'] = false;
-                                    $contentFormFields['show_url'] = false;
-                                    $contentFormFields['show_seo'] = false;
-                                    $contentFormFields['show_multimedia'] = false;
-                                }
+                                // Legacy contents-section builder retained as hidden UI (CMS module replaced contents).
+                                $localeLabels = \App\Support\ApplicationLocales::labels();
+                                $mergedLocales = [];
+                                $contentFormFields = [
+                                    'show_title' => true,
+                                    'show_subtitle' => false,
+                                    'show_url' => false,
+                                    'show_main_content' => false,
+                                    'show_featured' => true,
+                                    'show_seo' => false,
+                                    'show_multimedia' => false,
+                                ];
                             @endphp
                             <h6 class="mb-2">{{ __('app.Content form visibility') }}</h6>
                             <p class="form-text mb-3">{{ __('app.Content form visibility hint') }}</p>

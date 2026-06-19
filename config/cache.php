@@ -121,4 +121,6 @@ return [
 
     'team_contents_index_ttl' => env('TEAM_CONTENTS_INDEX_CACHE_TTL', '-1'),
 
+    'team_posts_index_ttl' => env('TEAM_POSTS_INDEX_CACHE_TTL', '-1'),
+
 ];

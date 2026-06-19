@@ -1,0 +1,30 @@
+<?php
+
+return [
+    'sidebar_title' => 'Plugins de WordPress',
+    'title' => 'Plugins de WordPress IDONEO',
+    'intro' => 'Descarga los plugins oficiales de IDONEO para conectar tu sitio WordPress con Humano. Instálalos en tu WordPress de producción y configura cada uno según se indica más abajo.',
+
+    'download' => 'Descargar',
+    'not_available' => 'No disponible',
+    'version' => 'Versión',
+    'size_label' => 'Tamaño',
+
+    'custom_fields_desc' => 'Crea campos personalizados, repetidores, contenido flexible, galerías y páginas de opciones para cualquier tipo de contenido. Funcionalidad nivel PRO. Los valores se sincronizan con Humano automáticamente.',
+    'cms_sync_desc' => 'Notifica a Humano en tiempo real cuando se guardan o eliminan entradas, páginas o medios, manteniendo el contenido sincronizado (bidireccional).',
+    'chat_desc' => 'Añade un widget de chat conectado a tu asistente de Humano, usando un token de API del equipo.',
+
+    'install_title' => 'Cómo instalar',
+    'install_step_download' => 'Descarga el ZIP del plugin con el botón de abajo.',
+    'install_step_upload' => 'En wp-admin ve a Plugins → Añadir nuevo → Subir plugin y selecciona el ZIP.',
+    'install_step_activate' => 'Pulsa Instalar ahora y luego Activar.',
+    'order_note' => 'Orden recomendado: primero Custom Fields, luego CMS Sync y por último Chat.',
+
+    'config_title' => 'Configuración tras activar',
+    'cms_sync_config' => 'Ve a Ajustes → IDONEO CMS Sync para Humano y configura la URL de Humano, el Team ID y el Webhook secret (debe coincidir con el de Humano → Ajustes del equipo).',
+    'chat_config' => 'Ve a Ajustes → IDONEO Chat for Humano y configura la URL de Humano y el Token de API del equipo. Mantén la verificación SSL activada en producción.',
+    'custom_fields_config' => 'No requiere configuración. Crea grupos de campos en IDONEO Fields; los valores se sincronizan con Humano vía la API REST.',
+
+    'production_note' => 'En producción usa tu dominio real de Humano (no un dominio .test) y mantén la verificación SSL activada.',
+    'token_note' => 'Token de API de tu equipo actual:',
+];

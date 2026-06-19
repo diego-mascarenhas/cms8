@@ -59,7 +59,7 @@ class TeamDemoSeeder extends Seeder
         // 2. Assign modules from Humano demo plan (assistant by default)
         $this->assignCoreModules($team);
 
-        $this->call(DemoObaContentsSectionSeeder::class);
+        $this->call(PostTypeSeeder::class);
 
         // Re-sync after optional OBA seeder so contents stays off assistant demo plan
         $this->assignCoreModules($team->fresh());

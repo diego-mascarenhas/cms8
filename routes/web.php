@@ -16,8 +16,6 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ContactInteractionController;
-use App\Http\Controllers\ContentController;
-use App\Http\Controllers\ContentFieldConfigController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
@@ -34,8 +32,10 @@ use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\Homes\CmsLandingController;
 use App\Http\Controllers\Homes\GuidePresentationController;
 use App\Http\Controllers\Homes\HumanoLandingController;
+use App\Http\Controllers\Homes\PerformanceInsightLandingController;
 use App\Http\Controllers\Homes\SlashLandingController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\IncomeController;
@@ -122,6 +122,12 @@ Route::get('/', [HomeController::class, 'index']);
 Route::get('/inicio', [HumanoLandingController::class, 'index'])->name('humano');
 Route::get('/slash', [SlashLandingController::class, 'index'])->name('slash');
 Route::middleware('throttle:10,1')->post('/slash/lead', [SlashLandingController::class, 'storeLead'])->name('slash.lead.store');
+Route::get('/cms', [CmsLandingController::class, 'index'])->name('cms.landing');
+Route::middleware('throttle:10,1')->post('/cms/lead', [CmsLandingController::class, 'storeLead'])->name('cms.lead.store');
+Route::get('/cms/newsletter', [CmsLandingController::class, 'newsletter'])->name('cms.newsletter');
+Route::get('/insight-diario', [PerformanceInsightLandingController::class, 'index'])->name('performance-insight.landing');
+Route::middleware('throttle:10,1')->post('/insight-diario/lead', [PerformanceInsightLandingController::class, 'storeLead'])->name('performance-insight.lead.store');
+Route::get('/insight-diario/newsletter', [PerformanceInsightLandingController::class, 'newsletter'])->name('performance-insight.newsletter');
 Route::redirect('/front-pages/landing', '/inicio', 301);
 Route::redirect('/humano-presentacion.html', '/presentacion/primeros-pasos', 301);
 Route::redirect('/affiliates', '/presentacion/afiliados', 301)->name('affiliates');
@@ -336,6 +342,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
     Route::post('/team/{team}/test-cuentica', [TeamSettingController::class, 'testCuenticaConnection'])->name('team-settings.test-cuentica');
+    Route::post('/team/{team}/test-wordpress', [TeamSettingController::class, 'testWordPressConnection'])->name('team-settings.test-wordpress');
     Route::get('/integrations/google/connect', [GoogleIntegrationController::class, 'connect'])->name('integrations.google.connect');
     Route::get('/integrations/google/callback', [GoogleIntegrationController::class, 'callback'])->name('integrations.google.callback');
     Route::delete('/integrations/google/disconnect', [GoogleIntegrationController::class, 'disconnect'])->name('integrations.google.disconnect');
@@ -591,6 +598,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('chat.whatsapp-status');
     Route::post('/chat/schedule-message', [ChatController::class, 'scheduleMessage'])->name('chat.schedule-message');
+    Route::patch('/chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'updateScheduledMessage'])->name('chat.scheduled-message.update');
+    Route::delete('/chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'destroyScheduledMessage'])->name('chat.scheduled-message.destroy');
     Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
     Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
     Route::post('/chat/whatsapp-warmup-qr', [ChatController::class, 'whatsappWarmupQr'])->name('chat.whatsapp-warmup-qr');
@@ -780,24 +789,24 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/team-file/{team_file}/download', [TeamFileController::class, 'download'])->name('team-file.download');
     Route::post('/team-file/{team_file}/restore-version/{history}', [TeamFileController::class, 'restoreVersion'])->name('team-file.restore-version');
 
-    // Contents Routes
-    Route::get('/contents', [ContentController::class, 'index'])->name('contents.index');
-    Route::get('/contents/create', [ContentController::class, 'create'])->name('contents.create');
-    Route::post('/contents', [ContentController::class, 'store'])->name('contents.store');
-    Route::get('/contents/{content}', [ContentController::class, 'show'])->name('contents.show');
-    Route::get('/contents/{content}/edit', [ContentController::class, 'edit'])->name('contents.edit');
-    Route::put('/contents/{content}', [ContentController::class, 'update'])->name('contents.update');
-    Route::delete('/contents/{content}', [ContentController::class, 'destroy'])->name('contents.destroy');
-    Route::post('/contents/order', [ContentController::class, 'updateOrder'])->name('contents.order');
-
-    // Content Field Configs Routes
-    Route::get('/content-field-configs', [ContentFieldConfigController::class, 'index'])->name('content-field-configs.index');
-    Route::get('/content-field-configs/create', [ContentFieldConfigController::class, 'create'])->name('content-field-configs.create');
-    Route::post('/content-field-configs', [ContentFieldConfigController::class, 'store'])->name('content-field-configs.store');
-    Route::get('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'show'])->name('content-field-configs.show');
-    Route::get('/content-field-configs/{content_field_config}/edit', [ContentFieldConfigController::class, 'edit'])->name('content-field-configs.edit');
-    Route::put('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'update'])->name('content-field-configs.update');
-    Route::delete('/content-field-configs/{content_field_config}', [ContentFieldConfigController::class, 'destroy'])->name('content-field-configs.destroy');
+    // CMS Routes (WordPress-like content management)
+    Route::post('/cms/posts/sync-wordpress', [App\Http\Controllers\Cms\PostController::class, 'syncWordPress'])->name('cms.posts.sync-wordpress');
+    // Media library (attachments)
+    Route::get('/cms/media', [App\Http\Controllers\Cms\MediaController::class, 'index'])->name('cms.media.index');
+    Route::get('/cms/media/list', [App\Http\Controllers\Cms\MediaController::class, 'list'])->name('cms.media.list');
+    Route::post('/cms/media', [App\Http\Controllers\Cms\MediaController::class, 'store'])->name('cms.media.store');
+    Route::delete('/cms/media/{post}', [App\Http\Controllers\Cms\MediaController::class, 'destroy'])->whereNumber('post')->name('cms.media.destroy');
+    // Clean typed listings (distinct route names so the sidebar highlights only the active one)
+    Route::get('/cms/pages', [App\Http\Controllers\Cms\PostController::class, 'index'])->defaults('type', 'page')->name('cms.pages.index');
+    Route::get('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'index'])->defaults('type', 'post')->name('cms.posts.index');
+    Route::get('/cms/type/{type}', [App\Http\Controllers\Cms\PostController::class, 'index'])->name('cms.type.index');
+    // CRUD (id-based)
+    Route::get('/cms/posts/create', [App\Http\Controllers\Cms\PostController::class, 'create'])->name('cms.posts.create');
+    Route::post('/cms/posts', [App\Http\Controllers\Cms\PostController::class, 'store'])->name('cms.posts.store');
+    Route::get('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'show'])->whereNumber('post')->name('cms.posts.show');
+    Route::get('/cms/posts/{post}/edit', [App\Http\Controllers\Cms\PostController::class, 'edit'])->whereNumber('post')->name('cms.posts.edit');
+    Route::put('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'update'])->whereNumber('post')->name('cms.posts.update');
+    Route::delete('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'destroy'])->whereNumber('post')->name('cms.posts.destroy');
 
     // Public routes for client responses (no auth required)
     Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
@@ -834,13 +843,8 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/store/{id}', [StoreController::class, 'destroy'])->name('store.destroy');
 
     // WordPress (posts & pages) - content from WordPress site
+    // Content editing moved to the CMS module (/cms/posts). Only the assistant content sync remains.
     Route::post('/wordpress/sync', [App\Http\Controllers\WordPressController::class, 'sync'])->name('wordpress.sync');
-    Route::get('/wordpress/posts', [App\Http\Controllers\WordPressController::class, 'posts'])->name('wordpress.posts');
-    Route::get('/wordpress/posts/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPost'])->name('wordpress.posts.edit');
-    Route::put('/wordpress/posts/{id}', [App\Http\Controllers\WordPressController::class, 'updatePost'])->name('wordpress.posts.update');
-    Route::get('/wordpress/pages', [App\Http\Controllers\WordPressController::class, 'pages'])->name('wordpress.pages');
-    Route::get('/wordpress/pages/{id}/edit', [App\Http\Controllers\WordPressController::class, 'editPage'])->name('wordpress.pages.edit');
-    Route::put('/wordpress/pages/{id}', [App\Http\Controllers\WordPressController::class, 'updatePage'])->name('wordpress.pages.update');
 
     // Order Routes
     Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
@@ -1035,6 +1039,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/notification/list', [NotificationController::class, 'index'])->name('notification-list');
     Route::get('/notification/create', [NotificationController::class, 'create'])->name('notification.create');
     Route::post('/notification', [NotificationController::class, 'store'])->name('notification.store');
+    Route::post('/notification/{notification}/schedule-digest-reply', [NotificationController::class, 'scheduleDigestReply'])->name('notification.schedule-digest-reply');
+    Route::delete('/notification/{notification}/schedule-digest-reply/{scheduledMessage}', [NotificationController::class, 'cancelDigestReply'])->name('notification.cancel-digest-reply');
     Route::get('/notification/{notification}', [NotificationController::class, 'show'])->name('notification.show');
     Route::get('/notification/{notification}/edit', [NotificationController::class, 'edit'])->name('notification.edit');
     Route::put('/notification/{notification}', [NotificationController::class, 'update'])->name('notification.update');
@@ -1376,7 +1382,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/api', [HelpController::class, 'api'])->name('api');
     Route::get('/api/authentication', [HelpController::class, 'apiAuthentication'])->name('api.authentication');
     Route::get('/api/contacts', [HelpController::class, 'apiContacts'])->name('api.contacts');
-    Route::get('/api/contents', [HelpController::class, 'apiContents'])->name('api.contents');
+    Route::get('/api/posts', [HelpController::class, 'apiPosts'])->name('api.posts');
     Route::get('/api/enterprises', [HelpController::class, 'apiEnterprises'])->name('api.enterprises');
     Route::get('/api/payments', [HelpController::class, 'apiPayments'])->name('api.payments');
     Route::get('/api/products', [HelpController::class, 'apiProducts'])->name('api.products');
@@ -1389,6 +1395,9 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
+    Route::get('/wordpress-mcp-cursor', [HelpController::class, 'wordpressMcpCursor'])->name('wordpress-mcp-cursor');
+    Route::get('/plugins', [HelpController::class, 'plugins'])->name('plugins');
+    Route::get('/plugins/{slug}/download', [HelpController::class, 'downloadPlugin'])->name('plugins.download');
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
     Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');

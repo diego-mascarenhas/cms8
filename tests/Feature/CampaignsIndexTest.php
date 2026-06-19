@@ -4,9 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Campaign;
 use App\Models\Category;
-use App\Models\Content;
 use App\Models\Currency;
 use App\Models\Message;
+use App\Models\Post;
 use App\Models\Product;
 use App\Models\SubscriptionProduct;
 use App\Models\Template;
@@ -240,18 +240,13 @@ class CampaignsIndexTest extends TestCase
             'active' => true,
             'currency' => 'usd',
         ]);
-        $content = Content::create([
+        $content = Post::create([
             'team_id' => $teamId,
-            'section_category_id' => $category->id,
-            'category_id' => null,
-            'template' => 'default',
-            'order' => 0,
-            'status' => 1,
-            'title' => ['es' => 'Formulario webinar'],
-            'content' => ['es' => ''],
-            'data' => [],
-            'created_by' => $user->id,
-            'updated_by' => $user->id,
+            'post_type' => 'post',
+            'post_status' => Post::STATUS_PUBLISH,
+            'post_title' => 'Formulario webinar',
+            'post_content' => '',
+            'post_author' => $user->id,
         ]);
 
         $campaign = Campaign::factory()->create([

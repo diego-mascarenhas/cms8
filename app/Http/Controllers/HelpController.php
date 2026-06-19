@@ -126,11 +126,11 @@ class HelpController extends Controller
     }
 
     /**
-     * Display contents API documentation
+     * Display CMS posts API documentation
      */
-    public function apiContents()
+    public function apiPosts()
     {
-        return view('help.api-contents', [
+        return view('help.api-posts', [
             'apiToken' => $this->getUserApiToken(),
         ]);
     }
@@ -283,5 +283,95 @@ class HelpController extends Controller
         return view('help.stripe-webhook', [
             'apiToken' => $this->getUserApiToken(),
         ]);
+    }
+
+    /**
+     * WordPress MCP Adapter + Cursor mcp.json setup.
+     */
+    public function wordpressMcpCursor()
+    {
+        return view('help.wordpress-mcp-cursor', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
+     * Catalog of downloadable IDONEO WordPress plugins.
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function pluginCatalog(): array
+    {
+        return [
+            'idoneo-custom-fields' => [
+                'name' => 'IDONEO Custom Fields',
+                'file' => 'idoneo-custom-fields.zip',
+                'version' => '1.0.0',
+                'icon' => 'ti ti-forms',
+                'description' => __('help_plugins.custom_fields_desc'),
+            ],
+            'idoneo-cms-sync-for-humano' => [
+                'name' => 'IDONEO CMS Sync para Humano',
+                'file' => 'idoneo-cms-sync-for-humano.zip',
+                'version' => '0.1.0',
+                'icon' => 'ti ti-refresh',
+                'description' => __('help_plugins.cms_sync_desc'),
+            ],
+            'idoneo-chat-for-humano' => [
+                'name' => 'IDONEO Chat for Humano',
+                'file' => 'idoneo-chat-for-humano.zip',
+                'version' => '0.9.3',
+                'icon' => 'ti ti-message-chatbot',
+                'description' => __('help_plugins.chat_desc'),
+            ],
+        ];
+    }
+
+    /**
+     * Display the WordPress plugins download page (manual + downloads).
+     */
+    public function plugins()
+    {
+        $catalog = $this->pluginCatalog();
+        foreach ($catalog as $slug => &$plugin)
+        {
+            $path = public_path('downloads/wordpress-plugins/'.$plugin['file']);
+            $plugin['available'] = is_file($path);
+            $plugin['size'] = $plugin['available'] ? $this->humanFilesize((int) filesize($path)) : null;
+        }
+        unset($plugin);
+
+        return view('help.plugins', [
+            'apiToken' => $this->getUserApiToken(),
+            'plugins' => $catalog,
+        ]);
+    }
+
+    /**
+     * Stream a plugin zip as a download (slug is validated against the catalog).
+     */
+    public function downloadPlugin(string $slug): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $catalog = $this->pluginCatalog();
+        abort_unless(isset($catalog[$slug]), 404);
+
+        $path = public_path('downloads/wordpress-plugins/'.$catalog[$slug]['file']);
+        abort_unless(is_file($path), 404);
+
+        return response()->download($path, $catalog[$slug]['file']);
+    }
+
+    private function humanFilesize(int $bytes): string
+    {
+        if ($bytes >= 1048576)
+        {
+            return round($bytes / 1048576, 1).' MB';
+        }
+        if ($bytes >= 1024)
+        {
+            return round($bytes / 1024).' KB';
+        }
+
+        return $bytes.' B';
     }
 }

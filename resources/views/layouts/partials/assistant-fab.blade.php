@@ -1,4 +1,4 @@
-@if (! request()->routeIs('assistant', 'chatbot'))
+@if (! request()->routeIs('assistant', 'chatbot', 'chat.index'))
 <style>
     .assistant-fab-host {
         bottom: 0.875rem;

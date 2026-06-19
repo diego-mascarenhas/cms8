@@ -103,6 +103,20 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('help.wordpress-mcp-cursor') ? 'active' : '' }}">
+          <a href="{{ route('help.wordpress-mcp-cursor') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-plug-connected"></i>
+            <div>{{ __('WordPress MCP in Cursor') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.plugins') ? 'active' : '' }}">
+          <a href="{{ route('help.plugins') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-puzzle"></i>
+            <div>{{ __('help_plugins.sidebar_title') }}</div>
+          </a>
+        </li>
+
         <li class="menu-item {{ request()->routeIs('help.stripe-webhook') ? 'active' : '' }}">
           <a href="{{ route('help.stripe-webhook') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-brand-stripe"></i>
@@ -135,10 +149,10 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('help.api.contents') ? 'active' : '' }}">
-          <a href="{{ route('help.api.contents') }}" class="menu-link">
+        <li class="menu-item {{ request()->routeIs('help.api.posts') ? 'active' : '' }}">
+          <a href="{{ route('help.api.posts') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-file-text"></i>
-            <div>{{ __('Contents') }}</div>
+            <div>{{ __('Posts') }}</div>
           </a>
         </li>
 

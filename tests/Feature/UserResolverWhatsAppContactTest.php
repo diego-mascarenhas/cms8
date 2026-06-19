@@ -35,6 +35,7 @@ class UserResolverWhatsAppContactTest extends TestCase
 
         Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
     }
 
     public function test_link_phone_creates_contact_with_team_owner_as_creator(): void
@@ -206,6 +207,55 @@ class UserResolverWhatsAppContactTest extends TestCase
         $service->linkPhoneToContactInTeam((int) $team->id, '34611111111');
 
         $role = $admin->fresh()->teams()->where('team_id', $team->id)->value('team_user.role');
+        $this->assertSame('admin', $role);
+    }
+
+    public function test_link_phone_does_not_add_foreign_team_admin_as_member(): void
+    {
+        $foreignAdmin = User::factory()->create([
+            'email' => 'leotolosaperez@gmail.com',
+            'phone' => 34600111222,
+        ]);
+        $foreignAdmin->assignRole('admin');
+        $foreignTeam = Team::factory()->create(['user_id' => $foreignAdmin->id]);
+        $foreignAdmin->teams()->attach($foreignTeam->id, ['role' => 'admin']);
+
+        $hostOwner = User::factory()->create();
+        $hostTeam = Team::factory()->create(['user_id' => $hostOwner->id]);
+
+        $service = app(UserResolverService::class);
+        $service->linkPhoneToContactInTeam((int) $hostTeam->id, '34600111222', 'Leonardo Tolosa Perez');
+
+        $this->assertFalse(
+            $foreignAdmin->fresh()->teams()->where('team_id', $hostTeam->id)->exists(),
+            'A user who is admin on another team must not be auto-added to this team.',
+        );
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $hostTeam->id)
+            ->where('phone', 34600111222)
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertNull($contact->user_id);
+        $this->assertSame('Leonardo Tolosa Perez', $contact->name);
+    }
+
+    public function test_link_phone_adds_platform_root_user_to_team_as_admin(): void
+    {
+        $rootUser = User::factory()->create([
+            'email' => 'root@humano.test',
+            'phone' => 34600333444,
+        ]);
+        $rootUser->assignRole('root');
+
+        $hostOwner = User::factory()->create();
+        $hostTeam = Team::factory()->create(['user_id' => $hostOwner->id]);
+
+        $service = app(UserResolverService::class);
+        $service->linkPhoneToContactInTeam((int) $hostTeam->id, '34600333444');
+
+        $role = $rootUser->fresh()->teams()->where('team_id', $hostTeam->id)->value('team_user.role');
         $this->assertSame('admin', $role);
     }
 }

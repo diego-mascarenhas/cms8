@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use App\Support\ContentsSectionCategoryData;
-use App\Support\TeamContentsApiCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -58,77 +56,6 @@ class Category extends Model
         }
 
         return static::query()->whereIn('id', array_values($normalized))->pluck('id')->all();
-    }
-
-    protected static function booted(): void
-    {
-        static::saved(function (Category $category)
-        {
-            self::maybeBumpTeamContentsApiCache($category);
-        });
-
-        static::deleted(function (Category $category)
-        {
-            self::maybeBumpTeamContentsApiCache($category);
-        });
-    }
-
-    private static function maybeBumpTeamContentsApiCache(Category $category): void
-    {
-        if (! $category->team_id)
-        {
-            return;
-        }
-
-        $contentsModuleId = Module::where('key', 'contents')->value('id');
-        if (! $contentsModuleId || (int) $category->module_id !== (int) $contentsModuleId)
-        {
-            return;
-        }
-
-        TeamContentsApiCache::bumpTeam((int) $category->team_id);
-    }
-
-    /**
-     * Visibility flags for standard fields on the contents form (from {@see Category::$data} `content_form`).
-     *
-     * @return array{
-     *     show_title: bool,
-     *     show_subtitle: bool,
-     *     show_url: bool,
-     *     show_main_content: bool,
-     *     show_featured: bool,
-     *     show_seo: bool,
-     *     show_multimedia: bool
-     * }
-     */
-    public function contentFormVisibility(): array
-    {
-        return ContentsSectionCategoryData::mergeContentFormVisibility($this->data['content_form'] ?? null);
-    }
-
-    /**
-     * Locale codes enabled for the contents form for this section (from {@see Category::$data} `content_locales`).
-     *
-     * @return list<string>
-     */
-    public function contentFormLocales(): array
-    {
-        return ContentsSectionCategoryData::mergeContentLocalesFromStorage($this->data['content_locales'] ?? null);
-    }
-
-    /**
-     * Whether this contents section category exposes the history timeline for external consumers (see {@see Category::$data} `page_sections`).
-     */
-    public function contentsPageSectionHistoryTimeline(): bool
-    {
-        $pageSections = $this->data['page_sections'] ?? null;
-        if (! is_array($pageSections))
-        {
-            return false;
-        }
-
-        return ! empty($pageSections['history_timeline']);
     }
 
     /**
@@ -251,83 +178,6 @@ class Category extends Model
     public function contacts()
     {
         return $this->belongsToMany(\App\Models\Contact::class, 'contact_category', 'category_id', 'contact_id');
-    }
-
-    /**
-     * Contents using this category as primary category_id (not section).
-     */
-    public function contentByPrimaryCategory()
-    {
-        return $this->hasMany(Content::class, 'category_id');
-    }
-
-    /**
-     * Get contents associated with this category as section.
-     */
-    public function contents()
-    {
-        $query = $this->hasMany(\App\Models\Content::class, 'section_category_id');
-
-        // Get ordering configuration from category data
-        $ordering = $this->getContentOrdering();
-
-        // Apply ordering based on configuration
-        foreach ($ordering as $orderBy)
-        {
-            if (isset($orderBy['column']) && isset($orderBy['direction']))
-            {
-                $query->orderBy($orderBy['column'], $orderBy['direction']);
-            }
-        }
-
-        return $query;
-    }
-
-    /**
-     * Get content ordering configuration for this category.
-     * Returns array of ordering rules from category data or default.
-     */
-    public function getContentOrdering(): array
-    {
-        // Check if custom ordering is configured in category data
-        if (isset($this->data['content_ordering']) && is_array($this->data['content_ordering']))
-        {
-            return $this->data['content_ordering'];
-        }
-
-        // Default ordering: order field first, then created_at desc
-        return [
-            ['column' => 'order', 'direction' => 'asc'],
-            ['column' => 'created_at', 'direction' => 'desc'],
-        ];
-    }
-
-    /**
-     * Set content ordering configuration for this category.
-     */
-    public function setContentOrdering(array $ordering): void
-    {
-        $data = $this->data ?? [];
-        $data['content_ordering'] = $ordering;
-        $this->data = $data;
-    }
-
-    /**
-     * Get active contents associated with this category as section.
-     */
-    public function activeContents()
-    {
-        return $this->contents()->where('status', 3);
-    }
-
-    /**
-     * Get content field configs associated with this category as section.
-     */
-    public function contentFieldConfigs()
-    {
-        return $this->hasMany(\App\Models\ContentFieldConfig::class, 'section_category_id')
-            ->where('is_active', true)
-            ->orderBy('order');
     }
 
     /**
@@ -458,8 +308,6 @@ class Category extends Model
             + $this->products()->count()
             + $this->tasks()->count()
             + $this->projects()->count()
-            + $this->contents()->count()
-            + $this->contentByPrimaryCategory()->count()
             + Multimedia::where('category_id', $this->id)->count()
             + Software::where('category_id', $this->id)->count()
             + ServiceType::where('category_id', $this->id)->count();

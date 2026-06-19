@@ -35,7 +35,7 @@ class UpdateCampaignRequest extends FormRequest
             $rules['exclude_content_ids'] = ['nullable', 'array'];
             $rules['exclude_content_ids.*'] = [
                 'integer',
-                Rule::exists('contents', 'id')->where(fn ($q) => $q->where('team_id', $teamId)),
+                Rule::exists('posts', 'id')->where(fn ($q) => $q->where('team_id', $teamId)),
             ];
         }
 

@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Models\Module;
 use App\Models\Team;
 use App\Services\DefaultAssistantFlowPromptsService;
+use Database\Seeders\PostTypeSeeder;
 use Laravel\Jetstream\Events\TeamCreated;
 
 class EnableCoreModulesForTeam
@@ -45,5 +46,7 @@ class EnableCoreModulesForTeam
         }
 
         DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+
+        PostTypeSeeder::seedForTeam($team);
     }
 }

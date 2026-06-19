@@ -111,6 +111,41 @@ class MailInboxTest extends TestCase
         $this->assertSame(EmailFolder::Trash->value, $email->fresh()->folder->value);
     }
 
+    public function test_delete_single_moves_to_trash(): void
+    {
+        $user = $this->userWithTeam();
+        $email = $this->createEmail($user->currentTeam);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->call('deleteSingle', $email->id);
+
+        $this->assertSame(EmailFolder::Trash->value, $email->fresh()->folder->value);
+    }
+
+    public function test_archive_single_moves_to_archive(): void
+    {
+        $user = $this->userWithTeam();
+        $email = $this->createEmail($user->currentTeam);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->call('archiveSingle', $email->id);
+
+        $this->assertSame(EmailFolder::Archive->value, $email->fresh()->folder->value);
+    }
+
+    public function test_mail_page_sets_livewire_managed_flag(): void
+    {
+        $user = $this->userWithTeam();
+        $this->createEmail($user->currentTeam);
+
+        $response = $this->actingAs($user)->get(route('mail-list'));
+
+        $response->assertOk();
+        $response->assertSee('window.emailListLivewireManaged = true', false);
+    }
+
     public function test_pagination_label_reflects_total(): void
     {
         $user = $this->userWithTeam();

@@ -13,7 +13,28 @@ class TeamResolveInboundWebhookTeamIdTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_uses_route_team_when_present(): void
+    public function test_prefers_destination_number_over_route_team_when_mapped(): void
+    {
+        $user = User::factory()->create();
+        $routeTeam = Team::factory()->create(['user_id' => $user->id]);
+        $numberTeam = Team::factory()->create(['user_id' => $user->id]);
+
+        TeamSetting::query()->create([
+            'team_id' => $numberTeam->id,
+            'key' => 'whatsapp_from',
+            'value' => '5491112223333',
+            'type' => 'string',
+            'group' => 'twilio',
+            'is_encrypted' => false,
+        ]);
+
+        $this->assertSame(
+            $numberTeam->id,
+            Team::resolveInboundWebhookTeamId($routeTeam->id, '5491112223333'),
+        );
+    }
+
+    public function test_falls_back_to_route_team_when_destination_number_is_unmapped(): void
     {
         $this->assertSame(42, Team::resolveInboundWebhookTeamId(42, '5491111111111'));
     }

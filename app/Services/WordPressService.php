@@ -56,6 +56,60 @@ class WordPressService
         return 'Basic '.base64_encode($user.':'.$password);
     }
 
+    /**
+     * Whether the site serves the REST API at /wp-json/ (pretty permalinks). Cached per instance.
+     * When false, requests fall back to the permalink-independent /?rest_route= form.
+     */
+    private ?bool $prettyPermalinks = null;
+
+    private function usesPrettyPermalinks(): bool
+    {
+        if ($this->prettyPermalinks !== null)
+        {
+            return $this->prettyPermalinks;
+        }
+
+        try
+        {
+            $response = Http::acceptJson()->timeout(8)->get($this->baseUrl().'/wp-json/');
+            $json = $response->json();
+            $this->prettyPermalinks = $response->successful()
+                && is_array($json)
+                && (isset($json['namespaces']) || isset($json['routes']));
+        } catch (\Throwable)
+        {
+            $this->prettyPermalinks = false;
+        }
+
+        return $this->prettyPermalinks;
+    }
+
+    /**
+     * Build a REST URL for a full namespace path (e.g. "/wp/v2/posts"), independent of the
+     * site's permalink structure: uses /wp-json/ when available, else /?rest_route=.
+     *
+     * @param  array<string, mixed>  $query
+     */
+    private function restUrl(string $namespacePath, array $query = []): string
+    {
+        $namespacePath = '/'.ltrim($namespacePath, '/');
+
+        if ($this->usesPrettyPermalinks())
+        {
+            $url = $this->baseUrl().'/wp-json'.$namespacePath;
+
+            return $query === [] ? $url : $url.'?'.http_build_query($query);
+        }
+
+        $params = array_merge(['rest_route' => $namespacePath], $query);
+
+        return $this->baseUrl().'/?'.http_build_query($params);
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<int|string, mixed>|null
+     */
     protected function request(string $method, string $path, array $query = []): ?array
     {
         if (! $this->isConfigured())
@@ -63,13 +117,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->get($url, array_merge(['per_page' => 100], $query));
+            ])->acceptJson()->get($this->restUrl($path, array_merge(['per_page' => 100], $query)));
 
             if ($response->successful())
             {
@@ -91,6 +143,9 @@ class WordPressService
         }
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
     protected function getOne(string $path): ?array
     {
         if (! $this->isConfigured())
@@ -98,13 +153,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->get($url);
+            ])->acceptJson()->get($this->restUrl($path));
 
             if ($response->successful())
             {
@@ -137,13 +190,11 @@ class WordPressService
             return null;
         }
 
-        $url = $this->baseUrl().'/wp-json/wp/v2'.$path;
-
         try
         {
             $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->put($url, $body);
+            ])->acceptJson()->put($this->restUrl($path), $body);
 
             if ($response->successful())
             {
@@ -166,11 +217,48 @@ class WordPressService
     }
 
     /**
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>|null
+     */
+    protected function post(string $path, array $body): ?array
+    {
+        if (! $this->isConfigured())
+        {
+            return null;
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()->post($this->restUrl($path), $body);
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::warning('WordPress API POST failed', [
+                'path' => $path,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress API POST error', ['path' => $path, 'message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function getPosts(int $page = 1, int $perPage = 100): array
     {
-        $data = $this->request('GET', '/posts', ['page' => $page, 'per_page' => $perPage]);
+        $data = $this->request('GET', '/wp/v2/posts', ['page' => $page, 'per_page' => $perPage]);
 
         return is_array($data) ? $data : [];
     }
@@ -180,7 +268,7 @@ class WordPressService
      */
     public function getPages(int $page = 1, int $perPage = 100): array
     {
-        $data = $this->request('GET', '/pages', ['page' => $page, 'per_page' => $perPage]);
+        $data = $this->request('GET', '/wp/v2/pages', ['page' => $page, 'per_page' => $perPage]);
 
         return is_array($data) ? $data : [];
     }
@@ -191,11 +279,59 @@ class WordPressService
     }
 
     /**
+     * Verify the WordPress connection and authentication by calling /wp/v2/users/me.
+     *
+     * @return array{success: bool, message: string}
+     */
+    public function verifyConnection(): array
+    {
+        if (! $this->isConfigured())
+        {
+            return ['success' => false, 'message' => __('Faltan credenciales de WordPress (URL, usuario o contraseña de aplicación).')];
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()->timeout(10)->get($this->restUrl('/wp/v2/users/me', ['context' => 'edit']));
+
+            $json = $response->json();
+
+            // Valid authenticated user: the response must be a JSON object with a numeric id.
+            if ($response->successful() && is_array($json) && isset($json['id']))
+            {
+                $name = $json['name'] ?? $json['slug'] ?? ('#'.$json['id']);
+
+                return ['success' => true, 'message' => __('Conexión correcta. Autenticado como: :name', ['name' => $name])];
+            }
+
+            // The endpoint did not return JSON (likely HTML homepage): REST API not reachable.
+            if (! is_array($json))
+            {
+                return ['success' => false, 'message' => __('La API REST de WordPress no respondió JSON. Verifica la URL del sitio (debe ser la raíz de WordPress).')];
+            }
+
+            // JSON error from WordPress (e.g. invalid credentials).
+            $code = $json['code'] ?? '';
+            if ($response->status() === 401 || in_array($code, ['rest_not_logged_in', 'incorrect_password', 'invalid_username', 'rest_cannot_access'], true))
+            {
+                return ['success' => false, 'message' => __('Credenciales inválidas. Revisa el usuario y la contraseña de aplicación.')];
+            }
+
+            return ['success' => false, 'message' => __('Error :status: :message', ['status' => $response->status(), 'message' => $json['message'] ?? __('no se pudo autenticar')])];
+        } catch (\Throwable $e)
+        {
+            return ['success' => false, 'message' => __('No se pudo conectar: :error', ['error' => $e->getMessage()])];
+        }
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function getPost(int $id): ?array
     {
-        $data = $this->getOne('/posts/'.$id);
+        $data = $this->getOne('/wp/v2/posts/'.$id);
 
         return is_array($data) ? $data : null;
     }
@@ -205,7 +341,7 @@ class WordPressService
      */
     public function getPage(int $id): ?array
     {
-        $data = $this->getOne('/pages/'.$id);
+        $data = $this->getOne('/wp/v2/pages/'.$id);
 
         return is_array($data) ? $data : null;
     }
@@ -216,7 +352,7 @@ class WordPressService
      */
     public function updatePost(int $id, array $data): ?array
     {
-        return $this->put('/posts/'.$id, $data);
+        return $this->put('/wp/v2/posts/'.$id, $data);
     }
 
     /**
@@ -225,7 +361,143 @@ class WordPressService
      */
     public function updatePage(int $id, array $data): ?array
     {
-        return $this->put('/pages/'.$id, $data);
+        return $this->put('/wp/v2/pages/'.$id, $data);
+    }
+
+    /**
+     * Create a post or page in WordPress.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createContent(string $type, array $data): ?array
+    {
+        $endpoint = $type === 'page' ? '/wp/v2/pages' : '/wp/v2/posts';
+
+        return $this->post($endpoint, $data);
+    }
+
+    /**
+     * Update a post or page in WordPress.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function updateContent(string $type, int $id, array $data): ?array
+    {
+        $endpoint = $type === 'page' ? '/wp/v2/pages/'.$id : '/wp/v2/posts/'.$id;
+
+        return $this->put($endpoint, $data);
+    }
+
+    /**
+     * Fetch a single post or page by id and WordPress type.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function getContent(string $type, int $id): ?array
+    {
+        return $type === 'page' ? $this->getPage($id) : $this->getPost($id);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCategories(int $page = 1, int $perPage = 100): array
+    {
+        $data = $this->request('GET', '/wp/v2/categories', ['page' => $page, 'per_page' => $perPage]);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getTags(int $page = 1, int $perPage = 100): array
+    {
+        $data = $this->request('GET', '/wp/v2/tags', ['page' => $page, 'per_page' => $perPage]);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getCategory(int $id): ?array
+    {
+        $data = $this->getOne('/wp/v2/categories/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getTag(int $id): ?array
+    {
+        $data = $this->getOne('/wp/v2/tags/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createCategory(array $data): ?array
+    {
+        return $this->post('/wp/v2/categories', $data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>|null
+     */
+    public function createTag(array $data): ?array
+    {
+        return $this->post('/wp/v2/tags', $data);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllCategories(int $perPage = 100): array
+    {
+        return $this->paginateAll(fn (int $page) => $this->getCategories($page, $perPage));
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllTags(int $perPage = 100): array
+    {
+        return $this->paginateAll(fn (int $page) => $this->getTags($page, $perPage));
+    }
+
+    /**
+     * Iterate every post/page across all pages of results.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllContent(string $type, int $perPage = 100): array
+    {
+        $all = [];
+        $page = 1;
+
+        do
+        {
+            $batch = $type === 'page'
+                ? $this->getPages($page, $perPage)
+                : $this->getPosts($page, $perPage);
+
+            foreach ($batch as $item)
+            {
+                $all[] = $item;
+            }
+            $page++;
+        } while (count($batch) === $perPage && $page <= 50);
+
+        return $all;
     }
 
     /**
@@ -241,13 +513,11 @@ class WordPressService
             return [];
         }
 
-        $url = $this->baseUrl().'/wp-json/wc/v3/products';
-
         try
         {
-            $response = \Illuminate\Support\Facades\Http::withHeaders([
+            $response = Http::withHeaders([
                 'Authorization' => $this->basicAuth(),
-            ])->get($url, ['page' => $page, 'per_page' => $perPage]);
+            ])->acceptJson()->get($this->restUrl('/wc/v3/products', ['page' => $page, 'per_page' => $perPage]));
 
             if ($response->successful())
             {
@@ -259,9 +529,135 @@ class WordPressService
             return [];
         } catch (\Throwable $e)
         {
-            \Illuminate\Support\Facades\Log::warning('WordPress getProducts failed', ['message' => $e->getMessage()]);
+            Log::warning('WordPress getProducts failed', ['message' => $e->getMessage()]);
 
             return [];
         }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getMedia(int $page = 1, int $perPage = 100): array
+    {
+        $data = $this->request('GET', '/wp/v2/media', ['page' => $page, 'per_page' => $perPage]);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Iterate every media item across all pages of results.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getAllMedia(int $perPage = 100): array
+    {
+        $all = [];
+        $page = 1;
+
+        do
+        {
+            $batch = $this->getMedia($page, $perPage);
+            foreach ($batch as $item)
+            {
+                $all[] = $item;
+            }
+            $page++;
+        } while (count($batch) === $perPage && $page <= 50);
+
+        return $all;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getMediaItem(int $id): ?array
+    {
+        $data = $this->getOne('/wp/v2/media/'.$id);
+
+        return is_array($data) ? $data : null;
+    }
+
+    /**
+     * Upload a binary file to the WordPress media library (multipart).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function uploadMedia(string $absolutePath, string $filename, string $mimeType): ?array
+    {
+        if (! $this->isConfigured() || ! is_file($absolutePath))
+        {
+            return null;
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()
+                ->attach('file', file_get_contents($absolutePath), $filename, ['Content-Type' => $mimeType])
+                ->post($this->restUrl('/wp/v2/media'));
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::warning('WordPress media upload failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return null;
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress media upload error', ['message' => $e->getMessage()]);
+
+            return null;
+        }
+    }
+
+    public function deleteMedia(int $id): bool
+    {
+        if (! $this->isConfigured())
+        {
+            return false;
+        }
+
+        try
+        {
+            $response = Http::withHeaders([
+                'Authorization' => $this->basicAuth(),
+            ])->acceptJson()->delete($this->restUrl('/wp/v2/media/'.$id, ['force' => 'true']));
+
+            return $response->successful();
+        } catch (\Throwable $e)
+        {
+            Log::error('WordPress media delete error', ['message' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  callable(int): array<int, array<string, mixed>>  $fetchPage
+     * @return array<int, array<string, mixed>>
+     */
+    private function paginateAll(callable $fetchPage, int $perPage = 100): array
+    {
+        $all = [];
+        $page = 1;
+
+        do
+        {
+            $batch = $fetchPage($page);
+            foreach ($batch as $item)
+            {
+                $all[] = $item;
+            }
+            $page++;
+        } while (count($batch) === $perPage && $page <= 50);
+
+        return $all;
     }
 }

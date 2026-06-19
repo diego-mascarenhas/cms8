@@ -154,7 +154,75 @@ class PerformanceDigestContactInvoiceContextServiceTest extends TestCase
         $this->assertStringContainsString('Hola Ana', $details[0]['suggestion']);
         $this->assertStringContainsString('F-2024-99', $details[0]['suggestion']);
         $this->assertStringContainsString('factura', mb_strtolower($details[0]['suggestion']));
-        $this->assertStringContainsString('/invoices/', $details[0]['action_url'] ?? '');
+        $this->assertSame('whatsapp', $details[0]['schedule_action']);
+        $this->assertSame('34600111222', $details[0]['schedule_recipient']);
+    }
+
+    public function test_email_with_unpaid_invoice_schedules_email_not_whatsapp(): void
+    {
+        $this->seedInvoiceAndContactDependencies();
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        Module::firstOrCreate(['key' => 'mailbox'], ['name' => 'Mailbox', 'is_core' => false]);
+        Module::firstOrCreate(['key' => 'invoices'], ['name' => 'Invoices', 'is_core' => false]);
+        $team->enableModule('mailbox');
+        $team->enableModule('invoices');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Idoneo SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Laura',
+            'surname' => 'Idoneo',
+            'phone' => '34600222999',
+            'email' => 'contabilidad@idoneo.es',
+            'current_enterprise_id' => $enterprise->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+            'country' => 724,
+            'language' => 'es',
+            'engagment' => 'temperate',
+            'user_id' => $user->id,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-2026-88',
+            'date' => now()->toDateString(),
+            'due_date' => now()->subDays(5)->toDateString(),
+            'gross_amount' => 500,
+            'discount' => 0,
+            'total_amount' => 500,
+            'balance' => 500,
+            'status' => 2,
+        ]);
+
+        $mailbox = \App\Models\Mailbox::factory()->create(['team_id' => $team->id]);
+
+        \App\Models\Email::factory()->create([
+            'mailbox_id' => $mailbox->id,
+            'team_id' => $team->id,
+            'from_address' => 'contabilidad@idoneo.es',
+            'subject' => 'Factura pendiente',
+            'body_text' => 'Buenos días, les recordamos el vencimiento de la factura.',
+            'seen' => false,
+        ]);
+
+        $details = app(PerformanceDigestUnreadMessageDetailService::class)->forHighlightKey('email_unread', $team->fresh());
+
+        $this->assertCount(1, $details);
+        $this->assertSame('email', $details[0]['schedule_action']);
+        $this->assertSame('contabilidad@idoneo.es', $details[0]['schedule_recipient']);
+        $this->assertSame(__('app.performance_digest_schedule_email'), $details[0]['action_label']);
     }
 
     public function test_billing_inquiry_uses_invoice_history_when_no_unpaid_balance(): void
