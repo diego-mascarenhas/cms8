@@ -225,10 +225,10 @@
                                                     <i class="ti ti-mail ti-sm"></i>
                                                 </li>
                                             @endif
-                                            <li class="list-inline-item email-delete" wire:click.stop="deleteSingle({{ $group['latest_email_id'] }})">
+                                            <li class="list-inline-item email-delete cursor-pointer" wire:click.stop="deleteSingle({{ $group['latest_email_id'] }})" title="{{ __('Delete') }}">
                                                 <i class="ti ti-trash ti-sm"></i>
                                             </li>
-                                            <li class="list-inline-item" wire:click.stop="archiveSingle({{ $group['latest_email_id'] }})">
+                                            <li class="list-inline-item email-archive cursor-pointer" wire:click.stop="archiveSingle({{ $group['latest_email_id'] }})" title="{{ __('Archive') }}">
                                                 <i class="ti ti-archive ti-sm"></i>
                                             </li>
                                         </ul>

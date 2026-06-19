@@ -55,6 +55,7 @@
     <script>
         window.emailEditorPlaceholder = @json(__('Write your message...'));
         window.emailContactsSelectPlaceholder = @json(__('Select recipients'));
+        window.emailListLivewireManaged = true;
     </script>
     <script src="{{ asset('assets/js/app-email.js') }}"></script>
     <script>
