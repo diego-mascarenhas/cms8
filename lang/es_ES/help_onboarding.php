@@ -4,7 +4,7 @@ return [
     'page_title' => 'Onboarding — Primeros pasos tras el pago',
     'title' => 'Onboarding: de la suscripción a WhatsApp conectado',
     'lead' => 'Esta guía describe los tres pasos esenciales después de contratar Humano: pagar el plan, configurar tu negocio y vincular WhatsApp. Es el recorrido que verás en el panel nada más entrar.',
-    'video_note' => 'Esta documentación está pensada como guion para los tutoriales en vídeo del onboarding (checkout, configuración del negocio y escaneo del QR).',
+    'video_note' => 'Esta documentación está pensada como guion para los tutoriales en vídeo del onboarding (pago, configuración del negocio y escaneo del QR).',
 
     'overview_heading' => 'Resumen del recorrido',
     'overview_intro' => 'El orden habitual es el siguiente. Tras completar el pago, Humano te lleva al panel con un aviso amarillo en la parte superior para que no te pierdas los pasos pendientes.',
@@ -20,18 +20,18 @@ return [
     'dashboard_banner_whatsapp' => 'Conectar WhatsApp — abre la pantalla del código QR.',
     'dashboard_banner_hint' => 'Si ya completaste la configuración del negocio pero WhatsApp sigue desconectado, el aviso puede mostrar solo el botón de WhatsApp.',
 
-    'step1_heading' => '1. Checkout desde Precios',
-    'step1_intro' => 'Empezá en la página pública de planes. Ahí comparás Assistant, Business y Mentor, elegís facturación mensual o anual y pasás al checkout seguro de Stripe.',
+    'step1_heading' => '1. Pago desde Precios',
+    'step1_intro' => 'Empezá en la página pública de planes. Ahí comparás Assistant, Business y Mentor, elegís facturación mensual o anual y pasás al pago seguro de Stripe.',
     'step1_path_label' => 'Ruta',
     'step1_steps' => [
         'Abre la página de precios de tu sitio Humano.',
         'Elige el plan que mejor se adapte a tu negocio.',
         'Si está disponible, alterná entre facturación mensual y anual antes de pagar.',
-        'Tocá «Suscribirse» (o el botón equivalente del plan) para ir al checkout de Stripe.',
-        'Completa el pago con tarjeta. Si tienes un código promocional, ingrésalo en el checkout cuando Stripe lo muestre.',
+        'Tocá «Suscribirse» (o el botón equivalente del plan) para ir al pago de Stripe.',
+        'Completa el pago con tarjeta. Si tienes un código promocional, ingrésalo al pagar cuando Stripe lo muestre.',
         'Al confirmarse el pago, Humano crea o activa tu espacio de trabajo y te redirige al panel con un mensaje de bienvenida.',
     ],
-    'step1_after_payment' => 'Si ya tenías cuenta y el pago se asoció a tu usuario, inicia sesión con el mismo correo del checkout. Si el alta fue automática tras el pago, quedarás autenticado al volver del checkout.',
+    'step1_after_payment' => 'Si ya tenías cuenta y el pago se asoció a tu usuario, inicia sesión con el mismo correo del pago. Si el alta fue automática tras el pago, quedarás autenticado al volver del pago.',
 
     'step2_heading' => '2. Configuración de tu negocio',
     'step2_intro' => 'Este paso alimenta al asistente con el contexto de tu marca: nombre, rubro, contacto, redes y el desafío principal de tu negocio. Sin completarlo, el aviso amarillo del panel seguirá visible.',
@@ -68,10 +68,10 @@ return [
     'back_to_help' => '← Volver al centro de ayuda',
 
     'sidebar_title' => 'Onboarding tras el pago',
-    'index_card_title' => 'Onboarding: checkout, negocio y WhatsApp',
+    'index_card_title' => 'Onboarding: pago, negocio y WhatsApp',
     'index_card_cta' => 'Ver guía completa',
     'index_card_intro' => 'Guía paso a paso para cuando ya pagaste y entraste a la plataforma: elegir plan, configurar tu negocio y conectar WhatsApp con el código QR.',
-    'index_card_step_checkout' => 'Checkout en /pricing (Stripe).',
+    'index_card_step_checkout' => 'Pago en /pricing (Stripe).',
     'index_card_step_business' => 'Configuración del negocio con el botón «Configurar negocio» del panel.',
     'index_card_step_whatsapp' => 'Escaneo del QR en /registration/onboarding/qr.',
 ];

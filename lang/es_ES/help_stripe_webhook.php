@@ -37,7 +37,7 @@ return [
         'payment_method.automatically_updated',
     ],
 
-    'events_checkout' => 'Si la app crea sesiones de Stripe Checkout (suscripciones o registro con pago), añade también:',
+    'events_checkout' => 'Si la app crea sesiones de pago con Stripe (suscripciones o registro), añade también:',
     'events_checkout_item' => 'checkout.session.completed',
 
     'dashboard_heading' => 'Añadir eventos en el Dashboard de Stripe',

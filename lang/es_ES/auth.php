@@ -65,7 +65,7 @@ return [
     'registration' => [
         'billing_title' => 'Completa tu registro',
         'billing_heading' => 'Pago requerido',
-        'billing_plan_sidebar_registration' => 'Enlaza el producto de registro en el catálogo (subscription products) para ver aquí nombre e importe. El cobro sigue el precio de Stripe del checkout de registro.',
+        'billing_plan_sidebar_registration' => 'Enlaza el producto de registro en el catálogo (subscription products) para ver aquí nombre e importe. El cobro sigue el precio de Stripe del pago de registro.',
         'billing_description' => 'Completa el pago con Stripe para desbloquear la plataforma.',
         'pay_with_stripe' => 'Pagar con Stripe',
         'sign_out' => 'Cerrar sesión',
