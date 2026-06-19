@@ -3,6 +3,7 @@
 @php
     $chatFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
     $chatFpLocaleBundle = in_array($chatFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+    $chatScheduleMin = \Carbon\Carbon::now(config('app.timezone'))->format('Y-m-d H:i');
 @endphp
 
 @section('title', 'Chat')
@@ -298,44 +299,21 @@
             });
         }
 
-        function syncSendButtonWithAiToggle(aiOn) {
-            var sendBtn = document.querySelector('#chat-form .send-msg-btn');
-            if (!sendBtn) return;
-            var iconSend = sendBtn.querySelector('.send-msg-icon');
-            var iconAi   = sendBtn.querySelector('.send-msg-icon-ai');
-            var textSend = sendBtn.querySelector('.send-msg-text');
-            var textAi   = sendBtn.querySelector('.send-msg-text-ai');
-            // Bootstrap utility classes use !important so we need setProperty to override them
-            function hide(el) { if (el) el.style.setProperty('display', 'none', 'important'); }
-            function show(el) { if (el) el.style.removeProperty('display'); }
-            if (aiOn) { hide(iconSend); show(iconAi); hide(textSend); show(textAi); }
-            else      { show(iconSend); hide(iconAi); show(textSend); hide(textAi); }
-        }
-
-        function syncSendButtonForContext() {
+        function setChatSendButtonsDisabled(disabled) {
             var form = document.getElementById('chat-form');
-            var isAssistantView = form && form.getAttribute('data-view-assistant') === '1';
-            if (isAssistantView) {
-                syncSendButtonWithAiToggle(false);
-                return;
-            }
-            if (!useAiToggle) {
-                syncSendButtonWithAiToggle(false);
-                return;
-            }
-            syncSendButtonWithAiToggle(useAiToggle.checked);
+            if (!form) return;
+            form.querySelectorAll('.chat-send-primary-btn, [name="send_intent"]').forEach(function (btn) {
+                btn.disabled = disabled;
+            });
         }
 
         (function persistAiTogglePreference() {
             var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
             if (!useAiToggle) {
-                syncSendButtonForContext();
                 return;
             }
             useAiToggle.checked = toggleDefault;
-            syncSendButtonForContext();
             useAiToggle.addEventListener('change', function() {
-                syncSendButtonForContext();
                 var token = document.querySelector('meta[name="csrf-token"]');
                 var cidEl = document.getElementById('contact-id');
                 var contactId = cidEl && cidEl.value ? parseInt(cidEl.value, 10) : 0;
@@ -666,12 +644,14 @@
             var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
             if (!msg && !hasAudio && !hasAttachments) return;
             hideChatSendErrorBar();
-            var sendBtn = form.querySelector('.send-msg-btn');
-            if (sendBtn) sendBtn.disabled = true;
-            function reenableSend() { if (sendBtn) sendBtn.disabled = false; }
+            var sendIntent = 'send';
+            if (e.submitter && e.submitter.name === 'send_intent') {
+                sendIntent = e.submitter.value || 'send';
+            }
+            setChatSendButtonsDisabled(true);
+            function reenableSend() { setChatSendButtonsDisabled(false); }
             var isAssistantViewForm = form.getAttribute('data-view-assistant') === '1';
-            var useAiToggleEl = document.getElementById('use-ai-toggle');
-            var aiOn = isAssistantViewForm ? true : (useAiToggleEl ? useAiToggleEl.checked : false);
+            var aiOn = isAssistantViewForm ? true : (sendIntent === 'suggest');
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
@@ -1204,6 +1184,106 @@
         }
         // --- End schedule message ---
 
+        (function initChatComposeScheduleModal() {
+            var confirmBtn = document.getElementById('chat-schedule-confirm-btn');
+            var scheduleInput = document.getElementById('chat-schedule-at-input');
+            var scheduleModalEl = document.getElementById('chatScheduleModal');
+            if (!confirmBtn || !scheduleInput || !scheduleModalEl) {
+                return;
+            }
+
+            var chatComposeScheduleFp = null;
+
+            function initChatComposeScheduleFlatpickr() {
+                if (chatComposeScheduleFp || typeof flatpickr === 'undefined') {
+                    return;
+                }
+                var fpOpts = {
+                    enableTime: true,
+                    time_24hr: true,
+                    dateFormat: 'd/m/Y H:i',
+                    minDate: 'today',
+                    minuteIncrement: 5,
+                    allowInput: false,
+                    clickOpens: true,
+                };
+                var minDt = scheduleInput.getAttribute('data-min-datetime');
+                if (minDt) {
+                    fpOpts.minDate = minDt;
+                }
+                if (chatFpLocaleKey && flatpickr.l10ns && flatpickr.l10ns[chatFpLocaleKey]) {
+                    fpOpts.locale = flatpickr.l10ns[chatFpLocaleKey];
+                } else {
+                    fpOpts.locale = { firstDayOfWeek: 1 };
+                }
+                chatComposeScheduleFp = flatpickr(scheduleInput, fpOpts);
+            }
+
+            scheduleModalEl.addEventListener('shown.bs.modal', initChatComposeScheduleFlatpickr);
+
+            confirmBtn.addEventListener('click', function () {
+                var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
+                var cleanTo = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
+                var selectedDates = chatComposeScheduleFp ? chatComposeScheduleFp.selectedDates : [];
+
+                if (!msg) {
+                    alert(@json(__('Escribe un mensaje para programar.')));
+                    return;
+                }
+                if (!cleanTo) {
+                    alert(@json(__('No hay destinatario.')));
+                    return;
+                }
+                if (!selectedDates.length) {
+                    alert(@json(__('Selecciona la fecha y hora de envío.')));
+                    return;
+                }
+
+                var tokenEl = document.querySelector('meta[name="csrf-token"]');
+                var token = tokenEl ? tokenEl.getAttribute('content') : '';
+                var scheduledAt = selectedDates[0].toISOString();
+
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>{{ __("Programando...") }}';
+
+                fetch('{{ route("chat.schedule-message") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    body: JSON.stringify({ recipient: cleanTo, body: msg, scheduled_at: scheduledAt, channel: 'whatsapp' })
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.success) {
+                        if (messageInput) {
+                            messageInput.value = '';
+                        }
+                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                            var inst = bootstrap.Modal.getInstance(scheduleModalEl);
+                            if (inst) {
+                                inst.hide();
+                            }
+                        }
+                        var label = new Date(data.scheduled_at).toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
+                        var toastEl = document.createElement('div');
+                        toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
+                        toastEl.style.zIndex = 9999;
+                        toastEl.innerHTML = '<i class="ti ti-calendar-check me-1"></i>{{ __("Mensaje programado para") }} ' + label + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                        document.body.appendChild(toastEl);
+                        setTimeout(function () { toastEl.remove(); }, 5000);
+                    } else {
+                        alert(data.message || '{{ __("Error al programar el mensaje.") }}');
+                    }
+                })
+                .catch(function () {
+                    alert('{{ __("Error de conexión al programar.") }}');
+                })
+                .finally(function () {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '{{ __("Programar") }}';
+                });
+            });
+        })();
+
         var chatAssistantRegenerateBtn = document.getElementById('chatAssistantRegenerateBtn');
         if (chatAssistantRegenerateBtn) {
             chatAssistantRegenerateBtn.addEventListener('click', function() {
@@ -1305,7 +1385,7 @@
                     var taFinal = document.getElementById('aiResponsePreview');
                     if (taFinal) taFinal.disabled = false;
                     if (regenIsAssistant) return;
-                    var sb = document.querySelector('#chat-form .send-msg-btn');
+                    var sb = document.querySelector('#chat-form .chat-send-primary-btn');
                     if (sb) sb.disabled = false;
                 });
             });
@@ -2737,9 +2817,14 @@
                                     </small>
                                 </div>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="{{ __('Start a new assistant conversation (hides history, keeps it stored)') }}" aria-label="{{ __('New assistant conversation') }}">
-                                <i class="ti ti-refresh"></i>
-                            </button>
+                            <div class="d-flex align-items-center gap-2">
+                                @if($selectedAssistantUser ?? null)
+                                    @include('chat.partials.header-assistant-toggle')
+                                @endif
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-icon" id="assistant-refresh-btn" title="{{ __('Start a new assistant conversation (hides history, keeps it stored)') }}" aria-label="{{ __('New assistant conversation') }}">
+                                    <i class="ti ti-refresh"></i>
+                                </button>
+                            </div>
                         </div>
                         @elseif ($selectedPhone)
                         <div class="d-flex justify-content-between align-items-center">
@@ -2770,6 +2855,7 @@
                                         <i class="ti ti-users ti-xs me-1"></i>Vincular con contacto
                                     </a>
                                 @endif
+                                @include('chat.partials.header-assistant-toggle')
                             </div>
                         </div>
                         @else
@@ -2962,29 +3048,32 @@
                                 <div id="chat-attachment-count" class="small text-muted me-2"></div>
                                 <textarea class="form-control message-input border-0 me-3 shadow-none"
                                     placeholder="{{ __('Type your message here...') }}" style="resize: none;"></textarea>
-
-                                @if(!($viewAssistant ?? false) || ($selectedAssistantUser ?? null))
-                                <div class="d-flex align-items-center me-3">
-                                    <div>
-                                        <div class="d-flex align-items-center">
-                                            <div class="form-check form-switch mb-0">
-                                            <input type="checkbox" class="form-check-input" id="use-ai-toggle">
-                                            </div>
-                                            <i class="ti ti-robot ms-2"></i>
-                                        </div>
-                                        <small class="text-muted d-block mt-1">{{ __('Asistente') }}</small>
-                                    </div>
-                                </div>
-                                @endif
                             </div>
 
                             <div class="message-actions d-flex align-items-center">
-                                <button type="submit" class="btn btn-primary d-flex align-items-center send-msg-btn waves-effect waves-light">
-                                    <i class="ti ti-send me-md-1 me-0 send-msg-icon"></i>
-                                    <i class="ti ti-sparkles me-md-1 me-0 send-msg-icon-ai" style="display:none"></i>
-                                    <span class="align-middle d-md-inline-block d-none send-msg-text">{{ __('Enviar') }}</span>
-                                    <span class="align-middle d-md-inline-block send-msg-text-ai" style="display:none">{{ __('Sugerir') }}</span>
-                                </button>
+                                <div class="btn-group">
+                                    <button type="submit" name="send_intent" value="send" class="btn btn-primary chat-send-primary-btn waves-effect waves-light">
+                                        <i class="ti ti-send me-md-1"></i>
+                                        <span class="align-middle d-md-inline-block">{{ __('Enviar') }}</span>
+                                    </button>
+                                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <span class="visually-hidden">{{ __('app.message_save_options_dropdown') }}</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        @if (!($viewAssistant ?? false) && ($selectedPhone ?? null))
+                                            <li>
+                                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#chatScheduleModal">
+                                                    <i class="ti ti-calendar-time me-1"></i>{{ __('Programar') }}
+                                                </button>
+                                            </li>
+                                        @endif
+                                        <li>
+                                            <button type="submit" name="send_intent" value="suggest" class="dropdown-item">
+                                                <i class="ti ti-sparkles me-1"></i>{{ __('Sugerir') }}
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
                         </form>
                     </div>
@@ -3165,6 +3254,34 @@
                         </button>
                         <button type="button" class="btn btn-primary" id="sendAiResponseBtn">{{ __('Enviar respuesta') }}</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="chatScheduleModal" tabindex="-1" aria-labelledby="chatScheduleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chatScheduleModalLabel">{{ __('app.message_schedule_modal_title') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                </div>
+                <div class="modal-body">
+                    <label for="chat-schedule-at-input" class="form-label">{{ __('app.message_schedule_modal_datetime_label') }}</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="chat-schedule-at-input"
+                        data-min-datetime="{{ $chatScheduleMin }}"
+                        autocomplete="off"
+                        readonly
+                        required
+                    >
+                    <div class="form-text">{{ __('app.message_schedule_modal_help') }}</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('app.message_schedule_modal_cancel') }}</button>
+                    <button type="button" class="btn btn-primary" id="chat-schedule-confirm-btn">{{ __('Programar') }}</button>
                 </div>
             </div>
         </div>
