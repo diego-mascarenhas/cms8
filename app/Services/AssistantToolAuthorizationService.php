@@ -6,6 +6,7 @@ use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\Invoice;
 use App\Models\Opportunity;
+use App\Models\Post;
 use App\Models\Product;
 use App\Models\Prompt;
 use App\Models\Team;
@@ -42,6 +43,17 @@ class AssistantToolAuthorizationService
     ];
 
     /**
+     * CMS read tools available on every channel (return only published content for
+     * non-managers; the tool itself enforces that). Managing content is gated below.
+     *
+     * @var list<string>
+     */
+    private const CMS_READ_TOOLS = [
+        'list_cms_content',
+        'get_cms_content',
+    ];
+
+    /**
      * @var array<string, array{0: string, 1: class-string}>
      */
     private const TOOL_POLICY = [
@@ -69,6 +81,9 @@ class AssistantToolAuthorizationService
         'update_message' => ['update', Prompt::class],
         'list_product_catalog' => ['viewAny', Product::class],
         'search_products' => ['viewAny', Product::class],
+        'create_cms_content' => ['create', Post::class],
+        'update_cms_content' => ['update', Post::class],
+        'set_cms_content_status' => ['update', Post::class],
         'get_financial_projection' => ['viewAny', Invoice::class],
         'get_financial_category_breakdown' => ['viewAny', Invoice::class],
         'run_financial_growth_scenario' => ['viewAny', Invoice::class],
@@ -187,6 +202,11 @@ class AssistantToolAuthorizationService
             return null;
         }
 
+        if (in_array($toolName, self::CMS_READ_TOOLS, true))
+        {
+            return null;
+        }
+
         $policy = self::TOOL_POLICY[$toolName] ?? null;
         if ($policy !== null)
         {
@@ -238,6 +258,19 @@ class AssistantToolAuthorizationService
             if ($modelClass === Prompt::class)
             {
                 return Gate::forUser($user)->allows('create', Prompt::class);
+            }
+
+            if ($modelClass === Post::class)
+            {
+                $teamId = $user->currentTeam?->id;
+                if ($teamId === null)
+                {
+                    return false;
+                }
+
+                $probe = new Post(['team_id' => $teamId]);
+
+                return Gate::forUser($user)->allows('update', $probe);
             }
         }
 

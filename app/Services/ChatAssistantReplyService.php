@@ -304,6 +304,11 @@ class ChatAssistantReplyService
                 $toolResults = $response->toolResults;
             }
 
+            if ($text === '')
+            {
+                $text = $this->fallbackTextFromToolOutputs();
+            }
+
             return [
                 'success' => true,
                 'text' => $text !== '' ? $text : 'No response text',
@@ -455,6 +460,22 @@ Salida requerida: **únicamente el texto del primer mensaje** que el operador en
 - No uses la herramienta send_whatsapp_message (no aplica en vista previa).
 
 EOT;
+    }
+
+    /**
+     * When the model ends a turn without text but tools ran (e.g. it only called
+     * update_cms_content), surface the last tool output so the user sees a confirmation
+     * instead of "No response text".
+     */
+    protected function fallbackTextFromToolOutputs(): string
+    {
+        $outputs = $this->assistantTools->getToolOutputsInRequest();
+        if ($outputs === [])
+        {
+            return '';
+        }
+
+        return trim((string) end($outputs));
     }
 
     /**
