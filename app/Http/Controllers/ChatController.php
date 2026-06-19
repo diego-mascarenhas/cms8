@@ -2411,11 +2411,11 @@ class ChatController extends Controller
     }
 
     /**
-     * Missing QR must not return a tiny PNG (browsers upscale it to a solid block).
+     * QR not ready yet — 204 avoids browser console 404 noise while the client polls.
      */
     private function missingQrImageResponse(): \Illuminate\Http\Response
     {
-        return response('', 404)
+        return response('', 204)
             ->header('Cache-Control', 'no-store');
     }
 

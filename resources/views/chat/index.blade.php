@@ -1922,43 +1922,39 @@
                         var qrRetries = 0;
                         var maxRetries = 24;
                         function setQrSrc() {
-                            var src = qrImg.dataset.qrBase + '?t=' + Date.now();
-                            qrImg.onload = function () {
-                                if (isValidWhatsAppQrImage(qrImg)) {
-                                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                            fetchWhatsAppQrObjectUrl(qrImg.dataset.qrBase)
+                                .then(function (objectUrl) {
+                                    return assignWhatsAppQrToImage(qrImg, objectUrl).then(function () {
+                                        return objectUrl;
+                                    });
+                                })
+                                .then(function () {
+                                    if (qrContainer) {
+                                        qrContainer.classList.remove('chat-qr-loading');
+                                    }
                                     qrImg.classList.remove('d-none');
-                                    if (document.getElementById('chat-qr-fallback')) document.getElementById('chat-qr-fallback').classList.add('d-none');
-                                    qrImg.onload = null;
-                                    qrImg.onerror = null;
-                                } else if (qrRetries < maxRetries) {
-                                    qrRetries += 1;
-                                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
-                                    setTimeout(setQrSrc, 1100);
-                                } else {
-                                    if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
+                                    if (document.getElementById('chat-qr-fallback')) {
+                                        document.getElementById('chat-qr-fallback').classList.add('d-none');
+                                    }
+                                })
+                                .catch(function () {
+                                    if (qrRetries < maxRetries) {
+                                        qrRetries += 1;
+                                        if (qrContainer) {
+                                            qrContainer.classList.add('chat-qr-loading');
+                                        }
+                                        setTimeout(setQrSrc, 1100);
+                                        return;
+                                    }
+                                    if (qrContainer) {
+                                        qrContainer.classList.remove('chat-qr-loading');
+                                    }
                                     qrImg.classList.add('d-none');
                                     var fbEnd = document.getElementById('chat-qr-fallback');
-                                    if (fbEnd) fbEnd.classList.add('d-none');
-                                    qrImg.onload = null;
-                                    qrImg.onerror = null;
-                                }
-                            };
-                            qrImg.onerror = function () {
-                                if (qrRetries < maxRetries) {
-                                    qrRetries += 1;
-                                    if (qrContainer) qrContainer.classList.add('chat-qr-loading');
-                                    setTimeout(setQrSrc, 1100);
-                                    return;
-                                }
-                                if (qrContainer) qrContainer.classList.remove('chat-qr-loading');
-                                qrImg.classList.add('d-none');
-                                var fbErr = document.getElementById('chat-qr-fallback');
-                                if (fbErr) fbErr.classList.add('d-none');
-                                qrImg.onload = null;
-                                qrImg.onerror = null;
-                            };
-                            qrImg.removeAttribute('src');
-                            setTimeout(function () { qrImg.src = src; }, 0);
+                                    if (fbEnd) {
+                                        fbEnd.classList.add('d-none');
+                                    }
+                                });
                         }
                         setTimeout(setQrSrc, 650);
                     } else {
@@ -1992,6 +1988,56 @@
 
         function isValidWhatsAppQrImage(img) {
             return !!img && img.naturalWidth >= waQrMinPx && img.naturalHeight >= waQrMinPx;
+        }
+
+        function fetchWhatsAppQrObjectUrl(qrBase) {
+            var url = qrBase + (qrBase.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+
+            return fetch(url, {
+                credentials: 'same-origin',
+                headers: { Accept: 'image/png' },
+            }).then(function (response) {
+                if (response.status === 204 || response.status === 404) {
+                    throw new Error('qr-not-ready');
+                }
+                if (!response.ok) {
+                    throw new Error('qr-fetch-failed');
+                }
+
+                return response.blob();
+            }).then(function (blob) {
+                if (!blob || blob.size < 100) {
+                    throw new Error('qr-not-ready');
+                }
+
+                return URL.createObjectURL(blob);
+            });
+        }
+
+        function assignWhatsAppQrToImage(img, objectUrl) {
+            return new Promise(function (resolve, reject) {
+                if (!img) {
+                    reject(new Error('qr-img-missing'));
+
+                    return;
+                }
+
+                img.onload = function () {
+                    img.onload = null;
+                    img.onerror = null;
+                    if (isValidWhatsAppQrImage(img)) {
+                        resolve(img);
+                    } else {
+                        reject(new Error('qr-not-ready'));
+                    }
+                };
+                img.onerror = function () {
+                    img.onload = null;
+                    img.onerror = null;
+                    reject(new Error('qr-not-ready'));
+                };
+                img.src = objectUrl;
+            });
         }
 
         function hideWhatsAppQrUi() {
@@ -2256,54 +2302,39 @@
                     }
 
                     function bumpQrSrc() {
-                        var src = probeImg.dataset.qrBase + '?t=' + Date.now();
-                        probeImg.onload = function () {
-                            fetch(waStatusUrlForQr, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
-                                .then(function (r) { return r.json(); })
-                                .then(function (statusData) {
-                                    if (statusData && (statusData.isTeamConnected || statusData.status === 'connected')) {
-                                        hideWhatsAppQrUi();
-                                        if (typeof applyWaStatus === 'function') {
-                                            applyWaStatus(statusData);
-                                        }
-                                        window.location.reload();
-                                        return;
-                                    }
-                                    if (isValidWhatsAppQrImage(probeImg)) {
-                                        applyQrSuccessAll(probeImg.src);
-                                    } else if (qrRetries < maxRetries) {
-                                        qrRetries += 1;
-                                        setScopesLoadingUi(true);
-                                        setTimeout(bumpQrSrc, retryMs);
-                                    } else {
-                                        finishFailure();
-                                    }
-                                })
-                                .catch(function () {
-                                    if (isValidWhatsAppQrImage(probeImg)) {
-                                        applyQrSuccessAll(probeImg.src);
-                                    } else if (qrRetries < maxRetries) {
-                                        qrRetries += 1;
-                                        setScopesLoadingUi(true);
-                                        setTimeout(bumpQrSrc, retryMs);
-                                    } else {
-                                        finishFailure();
-                                    }
+                        fetchWhatsAppQrObjectUrl(probeImg.dataset.qrBase)
+                            .then(function (objectUrl) {
+                                return assignWhatsAppQrToImage(probeImg, objectUrl).then(function () {
+                                    return objectUrl;
                                 });
-                        };
-                        probeImg.onerror = function () {
-                            if (qrRetries < maxRetries) {
-                                qrRetries += 1;
-                                setScopesLoadingUi(true);
-                                setTimeout(bumpQrSrc, retryMs);
-                            } else {
-                                finishFailure();
-                            }
-                        };
-                        probeImg.removeAttribute('src');
-                        setTimeout(function () {
-                            probeImg.src = src;
-                        }, 0);
+                            })
+                            .then(function () {
+                                fetch(waStatusUrlForQr, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+                                    .then(function (r) { return r.json(); })
+                                    .then(function (statusData) {
+                                        if (statusData && (statusData.isTeamConnected || statusData.status === 'connected')) {
+                                            hideWhatsAppQrUi();
+                                            if (typeof applyWaStatus === 'function') {
+                                                applyWaStatus(statusData);
+                                            }
+                                            window.location.reload();
+                                            return;
+                                        }
+                                        applyQrSuccessAll(probeImg.src);
+                                    })
+                                    .catch(function () {
+                                        applyQrSuccessAll(probeImg.src);
+                                    });
+                            })
+                            .catch(function () {
+                                if (qrRetries < maxRetries) {
+                                    qrRetries += 1;
+                                    setScopesLoadingUi(true);
+                                    setTimeout(bumpQrSrc, retryMs);
+                                } else {
+                                    finishFailure();
+                                }
+                            });
                     }
 
                     function startQrImagePoll() {
@@ -2561,7 +2592,7 @@
                             <div class="d-grid gap-2 mt-3">
                                 @if(!empty($qrImageUrl))
                                     <div class="d-inline-block text-center" id="chat-qr-container">
-                                        <img id="chat-whatsapp-qr-img" src="{{ url($qrImageUrl) }}?t={{ time() }}" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" loading="eager" data-qr-base="{{ url($qrImageUrl) }}">
+                                        <img id="chat-whatsapp-qr-img" alt="WhatsApp QR" class="d-block mx-auto d-none" width="200" height="200" decoding="async" data-qr-base="{{ url($qrImageUrl) }}">
                                         <div id="chat-qr-fallback" class="mb-2 d-none">
                                             <div class="chat-qr-fallback-frame mx-auto">
                                                 <div class="chat-qr-loading-overlay d-flex flex-column align-items-center justify-content-center gap-2" role="status" aria-live="polite">
