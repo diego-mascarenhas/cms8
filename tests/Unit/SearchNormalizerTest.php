@@ -20,6 +20,36 @@ class SearchNormalizerTest extends TestCase
         $this->assertSame('jose maria', SearchNormalizer::normalize('  José MARÍA  '));
     }
 
+    public function test_normalize_matches_nfd_accent_fold_used_by_chat_sidebar_search(): void
+    {
+        if (! class_exists(\Normalizer::class))
+        {
+            $this->markTestSkipped('intl Normalizer extension required.');
+        }
+
+        foreach (['José MARÍA', 'Niño', 'Acción', 'Andrés', 'cañón', ' José '] as $input)
+        {
+            $this->assertSame(
+                SearchNormalizer::normalize($input),
+                $this->nfdAccentFoldLower($input),
+                'Chat sidebar normalizeSearchText should match SearchNormalizer for: '.$input,
+            );
+        }
+    }
+
+    private function nfdAccentFoldLower(string $value): string
+    {
+        $value = mb_strtolower(trim($value), 'UTF-8');
+        $decomposed = \Normalizer::normalize($value, \Normalizer::FORM_D);
+
+        if ($decomposed === false)
+        {
+            return $value;
+        }
+
+        return preg_replace('/\p{M}/u', '', $decomposed) ?? $value;
+    }
+
     public function test_like_pattern_wraps_normalized_term(): void
     {
         $this->assertSame('%foo%', SearchNormalizer::likePatternNormalized('FOO'));

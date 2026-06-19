@@ -68,7 +68,30 @@ class RegistrationBillingModeTest extends TestCase
         $this->actingAs($user)
             ->get(route('registration.onboarding.qr'))
             ->assertOk()
-            ->assertSee(route('registration.onboarding.chat-link-qr-image'), false);
+            ->assertSee(route('registration.onboarding.chat-link-qr-image'), false)
+            ->assertSee('data-qr-base="'.route('registration.onboarding.chat-link-qr-image').'"', false)
+            ->assertDontSee(route('registration.onboarding.chat-link-qr-image').'?t=', false);
+    }
+
+    public function test_registration_onboarding_qr_page_defers_local_whatsapp_qr_image_load(): void
+    {
+        config([
+            'registration.mode' => 'free',
+            'whatsapp.driver' => 'local',
+            'whatsapp.local.base_url' => 'http://wa.test',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $qrRoute = route('chat.whatsapp-qr-image');
+
+        $this->actingAs($user)
+            ->get(route('registration.onboarding.qr'))
+            ->assertOk()
+            ->assertSee('data-qr-base="'.$qrRoute.'"', false)
+            ->assertDontSee($qrRoute.'?t=', false);
     }
 
     public function test_registration_onboarding_chat_link_qr_image_returns_png(): void

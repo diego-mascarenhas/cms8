@@ -101,14 +101,12 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
               </div>
               <img
                 id="registration-onboarding-static-qr-img"
-                src="{{ $qrImageUrl }}?t={{ time() }}"
                 alt="{{ __('auth.registration.qr_whatsapp_image_alt') }}"
                 class="d-block mx-auto rounded border"
                 width="200"
                 height="200"
-                loading="eager"
-                onload="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');"
-                onerror="var el=document.getElementById('registration-onboarding-static-qr-loading'); if(el) el.classList.add('d-none');">
+                decoding="async"
+                data-qr-base="{{ $qrImageUrl }}">
             </div>
             <p class="small text-muted mb-0 mt-2 text-center px-1">{{ __('auth.registration.qr_whatsapp_timing_hint') }}</p>
           </div>
@@ -116,12 +114,11 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
           <div id="registration-wa-qr-block" class="d-flex flex-column align-items-center mb-4">
             <div id="registration-wa-qr-container" @class(['mx-auto', 'registration-wa-qr-loading' => $registrationWaShowLoader])>
               <img id="registration-wa-qr-img"
-                src="{{ $qrImageUrl }}?t={{ time() }}"
                 alt="{{ __('auth.registration.qr_whatsapp_image_alt') }}"
                 class="d-block mx-auto d-none rounded"
                 width="200"
                 height="200"
-                loading="eager"
+                decoding="async"
                 data-qr-base="{{ $qrImageUrl }}">
               <div id="registration-wa-qr-fallback" @class(['mb-2', 'd-none' => !$registrationWaShowLoader])>
                 <div class="chat-qr-fallback-frame position-relative mx-auto rounded overflow-hidden">
@@ -181,8 +178,62 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
   var msgEl = document.getElementById('registration-wa-qr-refresh-message');
   var retryMs = 1100;
   var maxRetries = 36;
+  var waQrMinPx = 100;
   var serviceErrMsg = @json(__('auth.registration.qr_whatsapp_service_unreachable'));
   var loadErrMsg = @json(__('auth.registration.qr_whatsapp_load_failed'));
+
+  function isValidWhatsAppQrImage(img) {
+    return !!img && img.naturalWidth >= waQrMinPx && img.naturalHeight >= waQrMinPx;
+  }
+
+  function fetchWhatsAppQrObjectUrl(qrBase) {
+    var url = qrBase + (qrBase.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+
+    return fetch(url, {
+      credentials: 'same-origin',
+      headers: { Accept: 'image/png' },
+    }).then(function (response) {
+      if (response.status === 204 || response.status === 404) {
+        throw new Error('qr-not-ready');
+      }
+      if (!response.ok) {
+        throw new Error('qr-fetch-failed');
+      }
+
+      return response.blob();
+    }).then(function (blob) {
+      if (!blob || blob.size < 100) {
+        throw new Error('qr-not-ready');
+      }
+
+      return URL.createObjectURL(blob);
+    });
+  }
+
+  function assignWhatsAppQrToImage(img, objectUrl) {
+    return new Promise(function (resolve, reject) {
+      if (!img) {
+        reject(new Error('qr-img-missing'));
+        return;
+      }
+
+      img.onload = function () {
+        img.onload = null;
+        img.onerror = null;
+        if (isValidWhatsAppQrImage(img)) {
+          resolve(img);
+        } else {
+          reject(new Error('qr-not-ready'));
+        }
+      };
+      img.onerror = function () {
+        img.onload = null;
+        img.onerror = null;
+        reject(new Error('qr-not-ready'));
+      };
+      img.src = objectUrl;
+    });
+  }
 
   function setLoadingUi(active) {
     if (!qrContainer) return;
@@ -239,38 +290,25 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
     if (!qrImg || !qrImg.dataset.qrBase) return;
     var retries = 0;
     function bumpSrc() {
-      var src = qrImg.dataset.qrBase + '?t=' + Date.now();
-      qrImg.onload = function () {
-        if (qrImg.naturalWidth > 20) {
+      fetchWhatsAppQrObjectUrl(qrImg.dataset.qrBase)
+        .then(function (objectUrl) {
+          return assignWhatsAppQrToImage(qrImg, objectUrl);
+        })
+        .then(function () {
           setLoadingUi(false);
           qrImg.classList.remove('d-none');
           if (fallback) fallback.classList.add('d-none');
           if (msgEl) msgEl.classList.add('d-none');
-          qrImg.onload = null;
-          qrImg.onerror = null;
-        } else if (retries < maxRetries) {
-          retries += 1;
-          setLoadingUi(true);
-          setTimeout(bumpSrc, retryMs);
-        } else {
+        })
+        .catch(function () {
+          if (retries < maxRetries) {
+            retries += 1;
+            setLoadingUi(true);
+            setTimeout(bumpSrc, retryMs);
+            return;
+          }
           showServiceError(loadErrMsg);
-          qrImg.onload = null;
-          qrImg.onerror = null;
-        }
-      };
-      qrImg.onerror = function () {
-        if (retries < maxRetries) {
-          retries += 1;
-          setLoadingUi(true);
-          setTimeout(bumpSrc, retryMs);
-        } else {
-          showServiceError(loadErrMsg);
-        }
-        qrImg.onload = null;
-        qrImg.onerror = null;
-      };
-      qrImg.removeAttribute('src');
-      setTimeout(function () { qrImg.src = src; }, 0);
+        });
     }
     setTimeout(bumpSrc, 450);
   }
@@ -358,6 +396,49 @@ $registrationWaShowLoader = !($teamWhatsAppIsConnected ?? false) && !empty($qrIm
       startFlow(true);
     });
   }
+})();
+</script>
+@endpush
+@endif
+
+@if (!empty($qrImageUrl) && !($teamWhatsAppIsConnected ?? false) && ($onboardingQrScanTargetsChatOnly ?? false))
+@push('scripts')
+<script>
+(function () {
+  var qrImg = document.getElementById('registration-onboarding-static-qr-img');
+  var loadingEl = document.getElementById('registration-onboarding-static-qr-loading');
+  if (!qrImg || !qrImg.dataset.qrBase) {
+    return;
+  }
+
+  fetch(qrImg.dataset.qrBase + (qrImg.dataset.qrBase.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now(), {
+    credentials: 'same-origin',
+    headers: { Accept: 'image/png' },
+  }).then(function (response) {
+    if (!response.ok) {
+      throw new Error('qr-fetch-failed');
+    }
+    return response.blob();
+  }).then(function (blob) {
+    if (!blob || blob.size < 100) {
+      throw new Error('qr-not-ready');
+    }
+    qrImg.onload = function () {
+      if (loadingEl) {
+        loadingEl.classList.add('d-none');
+      }
+    };
+    qrImg.onerror = function () {
+      if (loadingEl) {
+        loadingEl.classList.add('d-none');
+      }
+    };
+    qrImg.src = URL.createObjectURL(blob);
+  }).catch(function () {
+    if (loadingEl) {
+      loadingEl.classList.add('d-none');
+    }
+  });
 })();
 </script>
 @endpush
