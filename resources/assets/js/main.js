@@ -565,13 +565,6 @@ if (typeof $ !== 'undefined') {
       searchInput = $('.search-input'),
       contentBackdrop = $('.content-backdrop');
 
-    console.log('[INIT] Search elements found:', {
-      toggler: searchToggler.length,
-      wrapper: searchInputWrapper.length,
-      input: searchInput.length,
-      backdrop: contentBackdrop.length
-    });
-
     // Open search input on click of search icon
     if (searchToggler.length) {
       searchToggler.on('click', function () {

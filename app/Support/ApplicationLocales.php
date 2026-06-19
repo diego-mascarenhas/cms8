@@ -122,4 +122,14 @@ final class ApplicationLocales
     {
         return self::templateCustomizerLang($locale);
     }
+
+    /**
+     * BCP 47 language tag for HTML lang and Open Graph (es-ES, es-AR, en, …).
+     */
+    public static function htmlLang(?string $locale = null): string
+    {
+        $locale = self::normalize($locale ?? app()->getLocale());
+
+        return str_replace('_', '-', $locale);
+    }
 }

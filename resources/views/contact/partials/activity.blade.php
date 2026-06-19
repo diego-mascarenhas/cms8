@@ -70,7 +70,7 @@
             if (!el || typeof flatpickr === 'undefined') {
                 return;
             }
-            var locale = @json(app()->getLocale());
+            var locale = @json(\App\Support\ApplicationLocales::javascriptLocale());
             var initialValue = @json($occurredAtDefault);
 
             function initOccurredAtPicker() {

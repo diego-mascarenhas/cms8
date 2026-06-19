@@ -37,7 +37,7 @@ return [
         ],
         'email_placeholder' => 'tu@email.com',
         'cta' => 'Empezar',
-        'note' => 'Checkout seguro con Stripe. Cancela cuando quieras.',
+        'note' => 'Pago seguro con Stripe. Cancela cuando quieras.',
         'image_alt' => 'Panel Humano',
     ],
 
@@ -116,7 +116,7 @@ return [
         'success_badge' => 'Solo por dejar tu email',
         'success_kicker' => 'Empieza hoy, no la semana que viene',
         'success_title' => '50% de descuento tus primeros 6 meses',
-        'success_body' => 'Te acabamos de desbloquear un código exclusivo. Cópialo, elige plan abajo y aplícalo en el checkout de Stripe — válido desde hoy mismo.',
+        'success_body' => 'Te acabamos de desbloquear un código exclusivo. Cópialo, elige plan abajo y aplícalo en el pago de Stripe — válido desde hoy mismo.',
         'success_code_label' => 'Código exclusivo',
         'success_copy' => 'Copiar código',
         'success_copied' => '¡Copiado!',
@@ -242,7 +242,7 @@ return [
 
     'faqs' => [
         ['q' => '¿Qué es Humano.app?', 'a' => 'Es el sistema operativo de tu negocio digital: contactos, agenda, tareas, WhatsApp, facturación y automatización con IA, en una sola plataforma en la nube.'],
-        ['q' => '¿Puedo probar antes de pagar?', 'a' => 'Sí. Puedes suscribirte desde la página de precios con checkout seguro en Stripe.'],
+        ['q' => '¿Puedo probar antes de pagar?', 'a' => 'Sí. Puedes suscribirte desde la página de precios con pago seguro en Stripe.'],
         ['q' => '¿Los datos son míos?', 'a' => 'Sí. Puedes exportar tu información cuando quieras. La plataforma se aloja en infraestructura europea robusta.'],
         ['q' => '¿Por qué usar Humano en lugar de Excel?', 'a' => 'Porque centraliza contactos, comunicación, tareas y cobros con roles claros. Menos errores, menos tiempo administrativo y más foco en clientes.'],
         ['q' => '¿Es seguro para mi negocio?', 'a' => 'Sí. Usamos autenticación estándar, permisos por rol e infraestructura en Europa. Tus datos permanecen bajo tu control y son exportables.'],

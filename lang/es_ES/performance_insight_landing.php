@@ -2,7 +2,7 @@
 
 return [
     'page_title' => 'Insight diario · Tu prioridad de equipo cada mañana',
-    'meta_description' => 'Humano resume WhatsApp, correo, tareas, facturas y citas en un briefing diario con IA. Actúa con respuestas sugeridas y envíos programados.',
+    'meta_description' => 'Humano resume WhatsApp, correo, tareas, facturas y citas en un informe diario con IA. Actúa con respuestas sugeridas y envíos programados.',
 
     'nav' => [
         'metrics' => 'Métricas',
@@ -42,7 +42,7 @@ return [
     'dashboard' => [
         'eyebrow' => 'Panel',
         'title' => 'Tarjeta de insight en el dashboard',
-        'lead' => 'El administrador abre Humano y ve el briefing del día: titular, foco, mensaje y los puntos clave del resumen.',
+        'lead' => 'El administrador abre Humano y ve el informe del día: titular, foco, mensaje y los puntos clave del resumen.',
         'headline' => '⚡ Enfócate',
         'focus' => 'Cobrar facturas vencidas hoy',
         'message' => 'Tienes 5 facturas impagadas y 3 tareas vencidas. Prioriza el seguimiento a IDONEO y responde los WhatsApp de facturación antes del mediodía.',
@@ -78,7 +78,7 @@ return [
 
     'features' => [
         'eyebrow' => 'Qué incluye',
-        'title' => 'Briefing listo para actuar',
+        'title' => 'Informe listo para actuar',
         'items' => [
             [
                 'title' => 'IA + plantillas de respaldo',
@@ -101,7 +101,7 @@ return [
 
     'cta' => [
         'title' => '¿Listo para empezar el día con claridad?',
-        'lead' => 'Activa el módulo Performance Insights en tu equipo y recibe el primer briefing mañana a las 06:15.',
+        'lead' => 'Activa el módulo Performance Insights en tu equipo y recibe el primer informe mañana a las 06:15.',
         'button' => 'Quiero el insight diario',
         'secondary' => 'Ver presentación',
     ],
@@ -116,7 +116,7 @@ return [
     'newsletter' => [
         'page_title' => 'Newsletter · Insight diario Humano',
         'preview_note' => 'Vista previa de la pieza para campañas. Copiá el HTML o usala como referencia en el editor de plantillas.',
-        'subject' => 'Nuevo: tu briefing diario de operaciones en Humano',
+        'subject' => 'Nuevo: tu informe diario de operaciones en Humano',
         'preheader' => 'Titular, foco y acciones concretas cada mañana — WhatsApp, correo, tareas y facturas.',
         'headline' => 'Empieza el día sabiendo qué importa',
         'intro' => 'Performance Insight resume la operativa de tu equipo en un mensaje claro: qué revisar, a quién responder y qué cobrar. Con respuestas sugeridas y envío programado en dos horas.',

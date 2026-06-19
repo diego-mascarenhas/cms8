@@ -266,13 +266,18 @@
 </div>
 @endsection
 
-@section('page-script')
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Income vs Expenses Chart
-    const incomeExpenseChartEl = document.querySelector('#incomeExpenseChart');
+document.addEventListener('DOMContentLoaded', function () {
+    if (typeof ApexCharts === 'undefined') {
+        return;
+    }
+
     const monthlyData = @json($monthlyData);
-    
+    const numberLocale = (document.documentElement.lang || 'es-ES').replace('_', '-');
+    let incomeExpenseChart = null;
+    let profitChart = null;
+
     const incomeExpenseConfig = {
         chart: {
             type: 'bar',
@@ -282,12 +287,12 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         series: [
             {
-                name: '{{ __("Income") }}',
-                data: monthlyData.map(d => d.income)
+                name: @json(__('Income')),
+                data: monthlyData.map(function (d) { return d.income; })
             },
             {
-                name: '{{ __("Expenses") }}',
-                data: monthlyData.map(d => d.expense)
+                name: @json(__('Expenses')),
+                data: monthlyData.map(function (d) { return d.expense; })
             }
         ],
         colors: ['#28c76f', '#ea5455'],
@@ -305,12 +310,12 @@ document.addEventListener('DOMContentLoaded', function() {
             colors: ['transparent']
         },
         xaxis: {
-            categories: monthlyData.map(d => d.month)
+            categories: monthlyData.map(function (d) { return d.month; })
         },
         yaxis: {
             labels: {
-                formatter: function(val) {
-                    return new Intl.NumberFormat('es-ES', {
+                formatter: function (val) {
+                    return new Intl.NumberFormat(numberLocale, {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0
                     }).format(val);
@@ -320,8 +325,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fill: { opacity: 1 },
         tooltip: {
             y: {
-                formatter: function(val) {
-                    return new Intl.NumberFormat('es-ES', {
+                formatter: function (val) {
+                    return new Intl.NumberFormat(numberLocale, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }).format(val);
@@ -334,13 +339,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    if (incomeExpenseChartEl) {
-        const incomeExpenseChart = new ApexCharts(incomeExpenseChartEl, incomeExpenseConfig);
-        incomeExpenseChart.render();
-    }
-
-    // Profit Chart
-    const profitChartEl = document.querySelector('#profitChart');
     const profitConfig = {
         chart: {
             type: 'area',
@@ -349,8 +347,8 @@ document.addEventListener('DOMContentLoaded', function() {
             sparkline: { enabled: false }
         },
         series: [{
-            name: '{{ __("Profit") }}',
-            data: monthlyData.map(d => d.profit)
+            name: @json(__('Profit')),
+            data: monthlyData.map(function (d) { return d.profit; })
         }],
         colors: ['#00cfe8'],
         stroke: {
@@ -367,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         },
         xaxis: {
-            categories: monthlyData.map(d => d.month),
+            categories: monthlyData.map(function (d) { return d.month; }),
             labels: {
                 rotate: -45,
                 rotateAlways: true
@@ -375,8 +373,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         yaxis: {
             labels: {
-                formatter: function(val) {
-                    return new Intl.NumberFormat('es-ES', {
+                formatter: function (val) {
+                    return new Intl.NumberFormat(numberLocale, {
                         minimumFractionDigits: 0,
                         maximumFractionDigits: 0
                     }).format(val);
@@ -385,8 +383,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         tooltip: {
             y: {
-                formatter: function(val) {
-                    return new Intl.NumberFormat('es-ES', {
+                formatter: function (val) {
+                    return new Intl.NumberFormat(numberLocale, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2
                     }).format(val);
@@ -399,10 +397,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    if (profitChartEl) {
-        const profitChart = new ApexCharts(profitChartEl, profitConfig);
-        profitChart.render();
+    function chartContainersReady() {
+        const incomeEl = document.querySelector('#incomeExpenseChart');
+        const profitEl = document.querySelector('#profitChart');
+
+        return (!incomeEl || incomeEl.offsetWidth > 0) && (!profitEl || profitEl.offsetWidth > 0);
     }
+
+    function renderFinanceCharts() {
+        const incomeExpenseChartEl = document.querySelector('#incomeExpenseChart');
+        const profitChartEl = document.querySelector('#profitChart');
+
+        if (incomeExpenseChartEl) {
+            if (incomeExpenseChart) {
+                incomeExpenseChart.destroy();
+                incomeExpenseChart = null;
+            }
+            incomeExpenseChart = new ApexCharts(incomeExpenseChartEl, incomeExpenseConfig);
+            incomeExpenseChart.render().catch(function () {});
+        }
+
+        if (profitChartEl) {
+            if (profitChart) {
+                profitChart.destroy();
+                profitChart = null;
+            }
+            profitChart = new ApexCharts(profitChartEl, profitConfig);
+            profitChart.render().catch(function () {});
+        }
+    }
+
+    function scheduleFinanceCharts(attempt) {
+        attempt = attempt || 0;
+
+        if (chartContainersReady()) {
+            renderFinanceCharts();
+            return;
+        }
+
+        if (attempt >= 30) {
+            renderFinanceCharts();
+            return;
+        }
+
+        setTimeout(function () {
+            scheduleFinanceCharts(attempt + 1);
+        }, 100);
+    }
+
+    scheduleFinanceCharts();
+
+    window.addEventListener('load', function () {
+        scheduleFinanceCharts();
+    });
 });
 </script>
-@endsection
+@endpush

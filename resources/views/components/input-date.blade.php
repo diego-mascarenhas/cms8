@@ -2,15 +2,14 @@
 
 @php
     $dateValue = $value ? \Carbon\Carbon::parse($value) : null;
-    $locale = App::getLocale();
-    $dateFormat = [
+    $jsLocale = \App\Support\ApplicationLocales::javascriptLocale();
+    $dateFormat = match ($jsLocale) {
         'en' => 'Y-m-d',
-        'es' => 'd-m-Y',
-        'fr' => 'd-m-Y',
+        'es', 'fr' => 'd-m-Y',
         'de' => 'd.m.Y',
-        'it' => 'd/m/Y',
-        'pt' => 'd/m/Y',
-    ][$locale] ?? 'Y-m-d';
+        'it', 'pt' => 'd/m/Y',
+        default => 'Y-m-d',
+    };
 @endphp
 
 <div class="form-group">
@@ -31,7 +30,7 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const locale = '{{ $locale }}';
+        const locale = @json($jsLocale);
         const dateFormat = '{{ $dateFormat }}';
         const initialValue = '{{ $dateValue ? $dateValue->format('Y-m-d') : '' }}';
         
