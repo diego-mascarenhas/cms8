@@ -52,4 +52,9 @@ class ScheduledMessage extends Model
     {
         $this->update(['status' => 'failed', 'failed_at' => now(), 'error_message' => $error]);
     }
+
+    public function markAsCancelled(): void
+    {
+        $this->update(['status' => 'cancelled']);
+    }
 }

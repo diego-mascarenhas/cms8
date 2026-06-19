@@ -594,6 +594,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
     Route::get('/chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('chat.whatsapp-status');
     Route::post('/chat/schedule-message', [ChatController::class, 'scheduleMessage'])->name('chat.schedule-message');
+    Route::patch('/chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'updateScheduledMessage'])->name('chat.scheduled-message.update');
+    Route::delete('/chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'destroyScheduledMessage'])->name('chat.scheduled-message.destroy');
     Route::get('/chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('chat.whatsapp-qr-image');
     Route::post('/chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('chat.whatsapp-refresh-qr');
     Route::post('/chat/whatsapp-warmup-qr', [ChatController::class, 'whatsappWarmupQr'])->name('chat.whatsapp-warmup-qr');

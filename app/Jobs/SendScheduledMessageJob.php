@@ -30,6 +30,13 @@ class SendScheduledMessageJob implements ShouldQueue
             return;
         }
 
+        if ($scheduled->scheduled_at->isFuture())
+        {
+            self::dispatch($this->scheduledMessageId)->delay($scheduled->scheduled_at);
+
+            return;
+        }
+
         $team = $scheduled->team;
 
         if (! $team)

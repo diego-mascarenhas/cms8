@@ -104,4 +104,71 @@ class ScheduleMessageTest extends TestCase
         ]);
         $this->assertNotNull($scheduled->fresh()->sent_at);
     }
+
+    public function test_pending_scheduled_messages_appear_in_chat_timeline(): void
+    {
+        $user = $this->userWithTeam();
+        $scheduledAt = now()->addHours(3);
+
+        ScheduledMessage::create([
+            'team_id' => $user->currentTeam->id,
+            'scheduled_by_user_id' => $user->id,
+            'recipient' => '722372858',
+            'channel' => 'whatsapp',
+            'body' => 'Mensaje con "comillas" programado',
+            'scheduled_at' => $scheduledAt,
+            'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('chat.messages', ['phone' => '722372858']));
+
+        $response->assertOk();
+        $response->assertJsonFragment([
+            'body' => 'Mensaje con "comillas" programado',
+            'status' => 'scheduled',
+            'is_scheduled' => true,
+        ]);
+        $this->assertStringNotContainsString(
+            '&quot;',
+            (string) $response->json('messages.0.body'),
+        );
+    }
+
+    public function test_scheduled_message_can_be_rescheduled_and_cancelled(): void
+    {
+        Queue::fake();
+        $user = $this->userWithTeam();
+        $scheduled = ScheduledMessage::create([
+            'team_id' => $user->currentTeam->id,
+            'scheduled_by_user_id' => $user->id,
+            'recipient' => '722372858',
+            'channel' => 'whatsapp',
+            'body' => 'Hola',
+            'scheduled_at' => now()->addHour(),
+            'status' => 'pending',
+        ]);
+
+        $newTime = now()->addHours(2);
+
+        $this->actingAs($user)
+            ->patchJson(route('chat.scheduled-message.update', $scheduled), [
+                'scheduled_at' => $newTime->toIso8601String(),
+            ])
+            ->assertOk()
+            ->assertJsonFragment(['success' => true]);
+
+        $this->assertSame(
+            $newTime->toDateTimeString(),
+            $scheduled->fresh()->scheduled_at->toDateTimeString(),
+        );
+
+        Queue::assertPushed(SendScheduledMessageJob::class);
+
+        $this->actingAs($user)
+            ->deleteJson(route('chat.scheduled-message.destroy', $scheduled))
+            ->assertOk()
+            ->assertJsonFragment(['success' => true]);
+
+        $this->assertSame('cancelled', $scheduled->fresh()->status);
+    }
 }
