@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humano · Insight diario</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-insight-card{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;
+ background:#fff;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;display:flex;flex-direction:column;max-width:520px}
+.pres-insight-card-head{padding:18px 22px 10px;border-bottom:1px solid #eceef1}
+.pres-insight-card-head h4{margin:0 0 6px;font-size:18px;font-weight:800;color:#233446}
+.pres-insight-focus{font-size:12px;font-weight:700;color:#696cff}
+.pres-insight-body{padding:16px 22px 20px;font-size:12px;line-height:1.55}
+.pres-insight-body ul{margin:10px 0 0;padding:0;list-style:none;font-size:11px;color:#8592a3}
+.pres-insight-body li{margin-bottom:4px}
+.pres-insight-body li::before{content:"•";color:#696cff;margin-right:6px}
+.pres-chart-wrap{position:absolute;left:84px;right:84px;top:248px;bottom:84px;display:flex;gap:24px;align-items:stretch}
+.pres-chart-panel{flex:1;border-radius:18px;background:#fff;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);padding:20px 22px 18px;font-family:var(--font);display:flex;flex-direction:column}
+.pres-chart-panel h5{margin:0 0 4px;font-size:13px;font-weight:800;color:#233446;text-transform:uppercase;letter-spacing:.04em}
+.pres-chart-sub{margin:0 0 12px;font-size:10px;color:#a1acb8}
+.pres-bars{position:relative;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;height:168px;padding:12px 14px 8px;
+ background:linear-gradient(180deg,#f8f8fc 0%,#fff 100%);border:1px solid #eceef1;border-radius:12px;flex:1;min-height:168px}
+.pres-bars::before{content:"";position:absolute;left:14px;right:14px;top:12px;bottom:28px;pointer-events:none;
+ background:repeating-linear-gradient(180deg,transparent,transparent 31px,rgba(105,108,255,.08) 31px,rgba(105,108,255,.08) 32px)}
+.pres-bar-col{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;min-width:0}
+.pres-bar{width:100%;max-width:38px;min-height:14px;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,#8592ff 0%,#696cff 100%);
+ box-shadow:0 4px 12px rgba(105,108,255,.25);height:var(--h,48px)}
+.pres-bar-val{font-size:9px;font-weight:700;color:#696cff;line-height:1;margin-bottom:2px}
+.pres-bar-lbl{font-size:10px;color:#8592a3;font-weight:700}
+.pres-ratio{flex:0 0 180px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:18px;
+ background:linear-gradient(160deg,#1a1730,#12101f);box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font)}
+.pres-ratio-ring{width:110px;height:110px;border-radius:50%;background:conic-gradient(#696cff 78%,rgba(255,255,255,.08) 0);
+ display:grid;place-items:center;position:relative;margin-bottom:12px}
+.pres-ratio-ring::after{content:"";width:84px;height:84px;border-radius:50%;background:#12101f;position:absolute}
+.pres-ratio-num{position:relative;z-index:1;font-size:28px;font-weight:800;color:#fff;line-height:1}
+.pres-ratio-num small{display:block;font-size:10px;color:#9496b8;text-align:center;margin-top:4px}
+.pres-ratio p{margin:0;font-size:11px;color:#9496b8;text-align:center;max-width:140px;line-height:1.45}
+.pres-notif{position:absolute;left:64px;right:64px;top:218px;bottom:68px;border-radius:18px;overflow:hidden;
+ background:#fff;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;padding:14px 18px}
+.pres-notif-thread{padding:8px 0;min-width:0}
+.pres-notif-thread+.pres-notif-thread{border-top:1px solid #eceef1;margin-top:2px;padding-top:12px}
+.pres-notif-head{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.pres-notif-channel{display:inline-flex;align-items:center;gap:5px;font-size:9px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+ padding:4px 8px;border-radius:999px;flex-shrink:0}
+.pres-notif-channel-mail{background:rgba(105,108,255,.12);color:#696cff}
+.pres-notif-channel-wa{background:rgba(37,211,102,.14);color:#128c7e}
+.pres-notif h5{margin:0;font-size:12px;color:#233446;font-weight:800;flex:1;min-width:0;line-height:1.35;word-break:break-word}
+.pres-notif-preview{background:#f5f5f9;border-radius:10px;padding:9px 11px;font-size:10px;margin-bottom:7px;line-height:1.4}
+.pres-notif-ta{width:100%;min-height:44px;border:1px solid #d9dee3;border-radius:8px;padding:7px 10px;font-size:10px;
+ font-family:inherit;color:#566a7f;resize:none;margin-bottom:7px;line-height:1.4}
+.pres-notif-actions{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.pres-notif-actions span{font-size:9.5px;padding:5px 9px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.pres-pill-copy{border:1px solid #d9dee3;background:#fff;color:#566a7f}
+.pres-pill-ok{background:rgba(113,221,55,.12);color:#71dd37}
+.pres-pill-cancel{background:rgba(255,62,29,.08);color:#ff3e1d;border:1px solid rgba(255,62,29,.25)}
+.pres-pill-schedule-wa{background:#25d366;color:#fff;border:none;box-shadow:0 2px 8px rgba(37,211,102,.35)}
+.pres-wa-chat{background:#e5ddd5;border-radius:10px;padding:8px 10px;margin-bottom:6px}
+.pres-wa-bubble{max-width:92%;padding:7px 9px;border-radius:8px;font-size:9.5px;line-height:1.4;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+.pres-wa-in{background:#fff;color:#233446;border-top-left-radius:2px}
+.pres-signal{position:absolute;left:84px;right:84px;top:260px;bottom:96px;display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pres-signal-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px 16px;font-family:var(--font)}
+.pres-signal-item strong{display:block;font-size:12px;color:#eceeff;margin-bottom:6px}
+.pres-signal-item span{font-size:11px;color:var(--muted);line-height:1.45;display:block}
+.pres-signal-bar{height:5px;border-radius:999px;background:rgba(255,255,255,.08);margin-top:10px;overflow:hidden}
+.pres-signal-bar i{display:block;height:100%;background:linear-gradient(90deg,#696cff,#25d366);border-radius:inherit}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">MÓDULO · PERFORMANCE INSIGHT</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:900px">Insight diario · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">tu prioridad cada mañana</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:560px;line-height:1.6">Un briefing con titular, foco en cinco palabras y acciones concretas. WhatsApp, correo, tareas, facturas y citas en un solo lugar.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="/insight-diario">Landing del producto</a> · <a href="cms-wordpress.html">← CMS WordPress</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand" aria-label="Insight diario"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">INSIGHT · QUÉ ES</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">RESUMEN MATUTINO</span></div>
+   <h2 class="u" style="--d:.26s">Para administradores, <em>generado a las 06:15</em></h2>
+   <p class="u" style="--d:.36s">Humano cruza los módulos activos del equipo, calcula un ratio de rendimiento y redacta titular, foco y mensaje con IA (con plantillas de respaldo).</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">Dashboard</span>
+    <span class="dv-chip">Notificación</span>
+    <span class="dv-chip">Email</span>
+    <span class="dv-chip">Historial 60 días</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Insight diario</span><span class="r">Intro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">INSIGHT · MÉTRICAS</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Gráficos y ratio de <em style="font-style:normal;color:var(--accent)">rendimiento</em></h2>
+  <p class="sub">Actividad de los últimos 7 días y señales que alimentan el foco del día.</p>
+ </div>
+ <div class="pres-chart-wrap u sc" style="--d:.22s">
+  <div class="pres-chart-panel">
+   <h5>Actividad semanal</h5>
+   <p class="pres-chart-sub">Interacciones del equipo · últimos 7 días</p>
+   <div class="pres-bars">
+    <div class="pres-bar-col"><span class="pres-bar-val">18</span><div class="pres-bar" style="--h:58px"></div><span class="pres-bar-lbl">L</span></div>
+    <div class="pres-bar-col"><span class="pres-bar-val">29</span><div class="pres-bar" style="--h:94px"></div><span class="pres-bar-lbl">M</span></div>
+    <div class="pres-bar-col"><span class="pres-bar-val">24</span><div class="pres-bar" style="--h:76px"></div><span class="pres-bar-lbl">X</span></div>
+    <div class="pres-bar-col"><span class="pres-bar-val">38</span><div class="pres-bar" style="--h:122px"></div><span class="pres-bar-lbl">J</span></div>
+    <div class="pres-bar-col"><span class="pres-bar-val">31</span><div class="pres-bar" style="--h:100px"></div><span class="pres-bar-lbl">V</span></div>
+    <div class="pres-bar-col"><span class="pres-bar-val">14</span><div class="pres-bar" style="--h:52px"></div><span class="pres-bar-lbl">S</span></div>
+    <div class="pres-bar-col"><span class="pres-bar-val">22</span><div class="pres-bar" style="--h:82px"></div><span class="pres-bar-lbl">D</span></div>
+   </div>
+  </div>
+  <div class="pres-ratio">
+   <div class="pres-ratio-ring"><div class="pres-ratio-num">78<small>/100</small></div></div>
+   <p>Ratio de rendimiento del equipo hoy</p>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Insight diario</span><span class="r">Gráficos</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">INSIGHT · SEÑALES</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Highlights del <em style="font-style:normal;color:var(--accent)">resumen del día</em></h2>
+  <p class="sub">Cada punto es clicable en la notificación y abre respuestas sugeridas.</p>
+ </div>
+ <div class="pres-signal u sc" style="--d:.22s">
+  <div class="pres-signal-item"><strong>WhatsApp sin leer · 12</strong><span>Mensajes entrantes pendientes de revisión.</span><div class="pres-signal-bar"><i style="width:85%"></i></div></div>
+  <div class="pres-signal-item"><strong>Correos pendientes · 8</strong><span>Buzón del equipo con hilos sin abrir.</span><div class="pres-signal-bar"><i style="width:62%"></i></div></div>
+  <div class="pres-signal-item"><strong>Facturas impagadas · 5</strong><span>Saldos vencidos con contexto de contacto.</span><div class="pres-signal-bar"><i style="width:55%"></i></div></div>
+  <div class="pres-signal-item"><strong>Tareas vencidas · 3</strong><span>Pendientes fuera de plazo del equipo.</span><div class="pres-signal-bar"><i style="width:40%"></i></div></div>
+  <div class="pres-signal-item"><strong>Citas hoy · 4</strong><span>Agenda del día para preparar seguimiento.</span><div class="pres-signal-bar"><i style="width:30%"></i></div></div>
+  <div class="pres-signal-item"><strong>Clientes estresados</strong><span>Contactos con sentimiento negativo reciente.</span><div class="pres-signal-bar"><i style="width:25%"></i></div></div>
+ </div>
+ <div class="ftr"><span>Humano · Insight diario</span><span class="r">Señales</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">INSIGHT · DASHBOARD</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Captura · tarjeta en el <em style="font-style:normal;color:var(--accent)">panel</em></h2>
+  <p class="sub">Al entrar, el administrador ve el briefing sin abrir la notificación.</p>
+ </div>
+ <div class="pres-insight-card u sc" style="--d:.22s">
+  <div class="pres-insight-card-head">
+   <h4>⚡ Enfócate</h4>
+   <div class="pres-insight-focus">Cobrar facturas vencidas hoy</div>
+  </div>
+  <div class="pres-insight-body">
+   Tienes 5 facturas impagadas y 3 tareas vencidas. Prioriza el seguimiento a IDONEO y responde los WhatsApp de facturación antes del mediodía.
+   <ul>
+    <li>5 facturas con saldo pendiente</li>
+    <li>8 correos sin leer en buzón</li>
+    <li>4 citas programadas para hoy</li>
+   </ul>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Insight diario</span><span class="r">Dashboard</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">INSIGHT · ACCIÓN</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Captura · respuesta sugerida y <em style="font-style:normal;color:var(--accent)">programación</em></h2>
+  <p class="sub">Copia el texto, programa correo o WhatsApp en 2 horas, o desprograma si cambia la prioridad.</p>
+ </div>
+ <div class="pres-notif u sc" style="--d:.22s">
+  <div class="pres-notif-thread pres-notif-email">
+   <div class="pres-notif-head">
+    <span class="pres-notif-channel pres-notif-channel-mail"><i class="ti ti-mail"></i> Correo</span>
+    <h5>contabilidad@idoneo.dev · Re: Factura pendiente</h5>
+   </div>
+   <div class="pres-notif-preview">Buenos días, adjuntamos el detalle de la factura pendiente de revisión. ¿Podéis confirmar fecha de pago?</div>
+   <textarea class="pres-notif-ta" readonly>Hola Laura. Te escribo por la factura F-IDO-2026-01 vencida (4.820,00 €). ¿Podemos coordinar el pago esta semana?</textarea>
+   <div class="pres-notif-actions">
+    <span class="pres-pill-copy"><i class="ti ti-copy"></i> Copiar texto</span>
+    <span class="pres-pill-ok"><i class="ti ti-clock"></i> Programado para 19/06/2026 12:44</span>
+    <span class="pres-pill-cancel"><i class="ti ti-x"></i> Desprogramar</span>
+   </div>
+  </div>
+  <div class="pres-notif-thread pres-notif-wa">
+   <div class="pres-notif-head">
+    <span class="pres-notif-channel pres-notif-channel-wa"><i class="ti ti-brand-whatsapp"></i> WhatsApp</span>
+    <h5>Miguel · +34 600 222 007</h5>
+   </div>
+   <div class="pres-wa-chat">
+    <div class="pres-wa-bubble pres-wa-in">Hola, necesito el detalle de las facturas pendientes de pago.</div>
+   </div>
+   <textarea class="pres-notif-ta" readonly>Hola Miguel. Tienes 3 facturas pendientes por 2.930,50 €. La más urgente es la F-2026-071. ¿Te paso el desglose por aquí?</textarea>
+   <div class="pres-notif-actions">
+    <span class="pres-pill-copy"><i class="ti ti-copy"></i> Copiar texto</span>
+    <span class="pres-pill-schedule-wa"><i class="ti ti-brand-whatsapp"></i> Programar WhatsApp (2 h)</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Insight diario</span><span class="r">Notificación</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">INSIGHT · CONFIG</div></div>
+ <div class="cgrid" style="top:248px">
+  <div class="ccard u" style="--d:.2s"><div class="top"><div class="bi badge-ic"><i class="ti ti-toggle-right" style="font-size:20px;color:#fff"></i></div><div class="cn">01</div></div>
+   <h4>Activar módulo</h4><p>Performance Insights en ajustes del equipo.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.27s"><div class="top"><div class="bi badge-ic"><i class="ti ti-bell" style="font-size:20px;color:#fff"></i></div><div class="cn">02</div></div>
+   <h4>Notificación in-app</h4><p>Toggle para recibir el insight en la campana.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.34s"><div class="top"><div class="bi badge-ic"><i class="ti ti-mail" style="font-size:20px;color:#fff"></i></div><div class="cn">03</div></div>
+   <h4>Email matutino</h4><p>Mismo contenido con highlights y ratio en Markdown.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.41s"><div class="top"><div class="bi badge-ic"><i class="ti ti-history" style="font-size:20px;color:#fff"></i></div><div class="cn">04</div></div>
+   <h4>Historial</h4><p>/performance-insights/list — filtro por fecha.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.48s"><div class="top"><div class="bi badge-ic"><i class="ti ti-sparkles" style="font-size:20px;color:#fff"></i></div><div class="cn">05</div></div>
+   <h4>/generar-insight</h4><p>Regenera manualmente desde asistente web o WhatsApp.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.55s"><div class="top"><div class="bi badge-ic"><i class="ti ti-clock" style="font-size:20px;color:#fff"></i></div><div class="cn">06</div></div>
+   <h4>Envío programado</h4><p>Respuestas sugeridas con delay de 2 horas.</p><div class="uline"></div></div>
+ </div>
+ <div class="ftr"><span>Humano · Insight diario</span><span class="r">Config</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><a href="/insight-diario" class="brand"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMPEZAR</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">PERFORMANCE INSIGHT</span></div>
+  <h2 class="u" style="--d:.14s">Activa el insight y empieza <em>mañana a las 06:15</em></h2>
+  <p class="u" style="--d:.24s">Landing, newsletter y documentación del producto listas para compartir con tu equipo.</p>
+  <a class="cta-link u" style="--d:.36s" href="/insight-diario">Ver landing Insight diario →</a>
+  <div class="pres-nav-row u" style="--d:.44s"><a href="/insight-diario/newsletter">Newsletter</a> · <a href="cms-wordpress.html">← CMS WordPress</a></div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

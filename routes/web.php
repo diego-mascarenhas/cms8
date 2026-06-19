@@ -35,6 +35,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Homes\CmsLandingController;
 use App\Http\Controllers\Homes\GuidePresentationController;
 use App\Http\Controllers\Homes\HumanoLandingController;
+use App\Http\Controllers\Homes\PerformanceInsightLandingController;
 use App\Http\Controllers\Homes\SlashLandingController;
 use App\Http\Controllers\HostingController;
 use App\Http\Controllers\IncomeController;
@@ -124,6 +125,9 @@ Route::middleware('throttle:10,1')->post('/slash/lead', [SlashLandingController:
 Route::get('/cms', [CmsLandingController::class, 'index'])->name('cms.landing');
 Route::middleware('throttle:10,1')->post('/cms/lead', [CmsLandingController::class, 'storeLead'])->name('cms.lead.store');
 Route::get('/cms/newsletter', [CmsLandingController::class, 'newsletter'])->name('cms.newsletter');
+Route::get('/insight-diario', [PerformanceInsightLandingController::class, 'index'])->name('performance-insight.landing');
+Route::middleware('throttle:10,1')->post('/insight-diario/lead', [PerformanceInsightLandingController::class, 'storeLead'])->name('performance-insight.lead.store');
+Route::get('/insight-diario/newsletter', [PerformanceInsightLandingController::class, 'newsletter'])->name('performance-insight.newsletter');
 Route::redirect('/front-pages/landing', '/inicio', 301);
 Route::redirect('/humano-presentacion.html', '/presentacion/primeros-pasos', 301);
 Route::redirect('/affiliates', '/presentacion/afiliados', 301)->name('affiliates');

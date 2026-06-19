@@ -66,6 +66,13 @@ class HumanoGuidePresentations
                 'description' => __('Gestiona entradas y páginas en Humano, conéctalas con WordPress vía plugins IDONEO y deja que el asistente responda o edite contenido.'),
                 'icon' => 'brand-wordpress',
             ],
+            [
+                'url' => GuidePresentation::url('insight-diario'),
+                'title' => __('Insight diario'),
+                'subtitle' => __('Rendimiento del equipo'),
+                'description' => __('Resumen matutino con métricas, foco del día y respuestas sugeridas para WhatsApp y correo.'),
+                'icon' => 'chart-line',
+            ],
         ];
     }
 }
