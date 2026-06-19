@@ -4,6 +4,23 @@
 
 'use strict';
 
+/**
+ * Client-side search folding aligned with App\Support\SearchNormalizer::normalize().
+ */
+function normalizeSearchText(value) {
+  if (value == null) {
+    return '';
+  }
+
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+window.normalizeSearchText = normalizeSearchText;
+
 (function bindChatWhatsAppSidebarControls() {
   const avatar = document.getElementById('chat-contacts-wa-avatar');
   const sidebar = document.getElementById('app-chat-sidebar-left');
@@ -223,10 +240,11 @@ document.addEventListener('DOMContentLoaded', function () {
     // Search chat and contacts function
     function searchChatContacts(searchListItems, searchValue, listItem0) {
       let matchedCount = 0;
+      const normalizedSearchValue = normalizeSearchText(searchValue);
 
       searchListItems.forEach(searchListItem => {
-        const searchListItemText = searchListItem.textContent.toLowerCase();
-        const matches = searchValue === '' || searchListItemText.includes(searchValue);
+        const searchListItemText = normalizeSearchText(searchListItem.textContent);
+        const matches = normalizedSearchValue === '' || searchListItemText.includes(normalizedSearchValue);
 
         setChatListItemVisible(searchListItem, matches);
         if (matches) {
@@ -245,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function applyChatSidebarSearch() {
       const searchInputEl = document.querySelector('.chat-search-input');
-      const searchValue = searchInputEl ? searchInputEl.value.trim().toLowerCase() : '';
+      const searchValue = searchInputEl ? searchInputEl.value.trim() : '';
       const chatListItem0 = document.querySelector('#chat-list .chat-list-item-0');
       const contactListItem0 = document.querySelector('#contact-list .contact-list-item-0');
       const searchChatListItems = [].slice.call(
