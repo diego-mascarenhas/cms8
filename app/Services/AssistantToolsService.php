@@ -374,13 +374,13 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_cms_content',
-                'description' => 'List CMS website content (entradas/posts and páginas/pages) for the current team to inform answers across channels (web chat, WhatsApp). Returns id, type, title, status and slug. Only published content is returned unless the user manages content. Use search to filter by words.',
+                'description' => 'List CMS website content (entradas/posts and páginas/pages) for the current team to inform answers across channels (web chat, WhatsApp). Returns id, type, title, status and slug. Call this whenever the user asks about CMS, blog, páginas or entradas — never assume the CMS is empty without calling it. Published only for guests; content managers see all statuses unless status is filtered. Use search to filter by words.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'type' => ['type' => 'string', 'description' => 'Filter by type: post or page (optional)', 'enum' => ['post', 'page']],
                         'search' => ['type' => 'string', 'description' => 'Words to search in title/content (optional)'],
-                        'status' => ['type' => 'string', 'description' => 'Content managers only: publish, draft, pending, private (optional; default published)'],
+                        'status' => ['type' => 'string', 'description' => 'Content managers only: publish, draft, pending, private (optional; omit to list all statuses)'],
                         'limit' => ['type' => 'integer', 'description' => 'Max results (default 10, max 25)'],
                     ],
                     'required' => [],
@@ -3567,9 +3567,12 @@ class AssistantToolsService
         }
 
         $manageableStatuses = [Post::STATUS_PUBLISH, Post::STATUS_DRAFT, Post::STATUS_PENDING, Post::STATUS_PRIVATE, Post::STATUS_FUTURE];
-        if ($this->canManageCmsContent($user) && in_array($status, $manageableStatuses, true))
+        if ($this->canManageCmsContent($user, $teamId))
         {
-            $query->where('post_status', $status);
+            if (in_array($status, $manageableStatuses, true))
+            {
+                $query->where('post_status', $status);
+            }
         } else
         {
             $query->where('post_status', Post::STATUS_PUBLISH);
@@ -3588,7 +3591,30 @@ class AssistantToolsService
 
         if ($items->isEmpty())
         {
-            return 'No se encontró contenido del CMS'.($search !== '' ? ' para: '.$search : '').'.';
+            $message = 'No se encontró contenido del CMS'.($search !== '' ? ' para: '.$search : '');
+            if (in_array($type, $this->cmsContentTypes(), true))
+            {
+                $otherType = $type === 'page' ? 'post' : 'page';
+                $otherQuery = Post::withoutGlobalScopes()
+                    ->where('team_id', $teamId)
+                    ->where('post_type', $otherType);
+                if (! $this->canManageCmsContent($user, $teamId))
+                {
+                    $otherQuery->where('post_status', Post::STATUS_PUBLISH);
+                }
+                $otherCount = $otherQuery->count();
+                if ($otherCount > 0)
+                {
+                    $message .= sprintf(
+                        '. Hay %d %s publicadas; probá list_cms_content con type=%s.',
+                        $otherCount,
+                        $otherType === 'page' ? 'páginas' : 'entradas',
+                        $otherType,
+                    );
+                }
+            }
+
+            return $message.'.';
         }
 
         $lines = $items->map(fn (Post $p) => sprintf(
@@ -3634,7 +3660,7 @@ class AssistantToolsService
             return 'No se encontró el contenido.';
         }
 
-        if ($post->post_status !== Post::STATUS_PUBLISH && ! $this->canManageCmsContent($user))
+        if ($post->post_status !== Post::STATUS_PUBLISH && ! $this->canManageCmsContent($user, $teamId))
         {
             return 'No se encontró el contenido.';
         }
@@ -3779,8 +3805,10 @@ class AssistantToolsService
         return sprintf('La %s id %d ahora está %s.', $this->cmsTypeLabel((string) $post->post_type), $post->id, $estado);
     }
 
-    private function canManageCmsContent(User $user): bool
+    private function canManageCmsContent(User $user, int $teamId): bool
     {
+        $this->toolAuthorization->prepareTeamContext($user, $teamId);
+
         return Gate::forUser($user)->allows('viewAny', Post::class);
     }
 

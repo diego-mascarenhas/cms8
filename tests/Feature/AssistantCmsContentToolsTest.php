@@ -136,4 +136,55 @@ class AssistantCmsContentToolsTest extends TestCase
         $list = $service->execute('list_cms_content', ['status' => 'draft']);
         $this->assertStringContainsString('Mi borrador', $list);
     }
+
+    public function test_admin_lists_all_statuses_without_status_filter(): void
+    {
+        Bus::fake();
+        [$user, $team] = $this->adminUserWithTeam();
+
+        Post::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'post_type' => 'post',
+            'post_status' => Post::STATUS_PUBLISH,
+            'post_title' => 'Publicada visible',
+            'post_name' => 'publicada-visible',
+        ]);
+        Post::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'post_type' => 'post',
+            'post_status' => Post::STATUS_DRAFT,
+            'post_title' => 'Borrador admin',
+            'post_name' => 'borrador-admin',
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id);
+
+        $list = $service->execute('list_cms_content', []);
+        $this->assertStringContainsString('Publicada visible', $list);
+        $this->assertStringContainsString('Borrador admin', $list);
+    }
+
+    public function test_empty_page_list_hints_when_posts_exist(): void
+    {
+        Bus::fake();
+        [$user, $team] = $this->adminUserWithTeam();
+
+        Post::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'post_type' => 'post',
+            'post_status' => Post::STATUS_PUBLISH,
+            'post_title' => 'Solo entrada',
+            'post_name' => 'solo-entrada',
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id);
+
+        $list = $service->execute('list_cms_content', ['type' => 'page']);
+        $this->assertStringContainsString('No se encontró contenido del CMS', $list);
+        $this->assertStringContainsString('type=post', $list);
+    }
 }

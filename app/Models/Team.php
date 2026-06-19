@@ -532,21 +532,20 @@ class Team extends JetstreamTeam
      */
     public static function resolveInboundWebhookTeamId(?int $routeTeamId, string $cleanToDigits): ?int
     {
-        if ($routeTeamId !== null && $routeTeamId > 0)
-        {
-            return $routeTeamId;
-        }
-        if ($cleanToDigits === '' || strlen($cleanToDigits) < 8)
-        {
-            return null;
-        }
-        if (Schema::hasTable('team_settings'))
+        $cleanToDigits = preg_replace('/[^0-9]/', '', $cleanToDigits) ?? '';
+
+        if ($cleanToDigits !== '' && strlen($cleanToDigits) >= 8 && Schema::hasTable('team_settings'))
         {
             $byNumber = static::findByWhatsAppNumber($cleanToDigits);
             if ($byNumber !== null)
             {
                 return (int) $byNumber->id;
             }
+        }
+
+        if ($routeTeamId !== null && $routeTeamId > 0)
+        {
+            return $routeTeamId;
         }
 
         return null;
