@@ -59,4 +59,12 @@ class ApplicationLocalesTest extends TestCase
         $this->assertSame('es', ApplicationLocales::javascriptLocale('es_AR'));
         $this->assertSame('en', ApplicationLocales::javascriptLocale('en'));
     }
+
+    public function test_html_lang_uses_bcp47_hyphen_format(): void
+    {
+        $this->assertSame('es-ES', ApplicationLocales::htmlLang('es_ES'));
+        $this->assertSame('es-AR', ApplicationLocales::htmlLang('es_AR'));
+        $this->assertSame('en', ApplicationLocales::htmlLang('en'));
+        $this->assertSame('es-ES', ApplicationLocales::htmlLang('es'));
+    }
 }
