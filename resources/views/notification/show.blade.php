@@ -18,19 +18,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const scheduleBtn = document.getElementById('digest-suggestion-schedule');
     const scheduleLabelEl = document.getElementById('digest-suggestion-schedule-label');
     const copyBtn = document.getElementById('digest-suggestion-copy');
-    const copyDefaultLabel = @json(__('app.performance_digest_suggestion_copy'));
-    const copyDoneLabel = @json(__('app.performance_digest_suggestion_copied'));
-    const howToRespondLabel = @json(__('app.performance_digest_response_hint_label'));
-    const suggestedReplyLabel = @json(__('app.performance_digest_suggested_reply_label'));
-    const receivedAtLabel = @json(__('app.performance_digest_message_received_at'));
+    const copyDefaultLabel = @json(__('app.performance_digest_suggestion_copy', [], 'es'));
+    const copyDoneLabel = @json(__('app.performance_digest_suggestion_copied', [], 'es'));
+    const howToRespondLabel = @json(__('app.performance_digest_response_hint_label', [], 'es'));
+    const suggestedReplyLabel = @json(__('app.performance_digest_suggested_reply_label', [], 'es'));
+    const receivedAtLabel = @json(__('app.performance_digest_message_received_at', [], 'es'));
     const scheduleUrl = @json(route('notification.schedule-digest-reply', $notification));
     const cancelScheduleBaseUrl = @json(url('/notification/'.$notification->id.'/schedule-digest-reply'));
-    const scheduleErrorLabel = @json(__('app.performance_digest_schedule_error'));
-    const scheduleCancelLabel = @json(__('app.performance_digest_schedule_cancel'));
-    const scheduleCancelErrorLabel = @json(__('app.performance_digest_schedule_cancel_error'));
-    const scheduledBadgeTemplate = @json(__('app.performance_digest_scheduled_badge', ['datetime' => '__DATETIME__']));
-    const scheduleEmailLabel = @json(__('app.performance_digest_schedule_email'));
-    const scheduleWhatsAppLabel = @json(__('app.performance_digest_schedule_whatsapp'));
+    const scheduleErrorLabel = @json(__('app.performance_digest_schedule_error', [], 'es'));
+    const scheduleCancelLabel = @json(__('app.performance_digest_schedule_cancel', [], 'es'));
+    const scheduleCancelErrorLabel = @json(__('app.performance_digest_schedule_cancel_error', [], 'es'));
+    const scheduledBadgeTemplate = @json(__('app.performance_digest_scheduled_badge', ['datetime' => '__DATETIME__'], 'es'));
+    const scheduleEmailLabel = @json(__('app.performance_digest_schedule_email', [], 'es'));
+    const scheduleWhatsAppLabel = @json(__('app.performance_digest_schedule_whatsapp', [], 'es'));
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     if (!card || !items.length) {
         return;
@@ -72,6 +72,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         if (context.schedule_action) {
+            const scheduleButtonLabel = context.schedule_action === 'email'
+                ? scheduleEmailLabel
+                : (context.schedule_action === 'whatsapp' ? scheduleWhatsAppLabel : (context.action_label || ''));
+
             return '<button type="button" class="btn btn-primary btn-sm digest-schedule-reply"'
                 + ' data-message-index="' + escapeHtml(context.message_index ?? '') + '"'
                 + ' data-highlight-key="' + escapeHtml(context.highlight_key || '') + '"'
@@ -79,7 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 + ' data-schedule-action="' + escapeHtml(context.schedule_action) + '"'
                 + ' data-schedule-recipient="' + escapeHtml(context.schedule_recipient || '') + '"'
                 + ' data-schedule-subject="' + escapeHtml(context.schedule_subject || '') + '">'
-                + '<i class="ti ti-clock me-1"></i>' + escapeHtml(context.action_label || '') + '</button>';
+                + '<i class="ti ti-clock me-1"></i>' + escapeHtml(scheduleButtonLabel) + '</button>';
         }
 
         if (context.action_url) {
@@ -519,44 +523,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- Main Content -->
 <div class="row">
-    <!-- Notification Details -->
     <div class="col-md-8">
-        <div class="card mb-4">
-            <h5 class="card-header">
-                <i class="ti ti-bell me-2"></i>{{ __('Notification Information') }}
-            </h5>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium">Tipo de notificación</label>
-                        <p class="text-body">{{ $notification->type->name }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium">Estado</label>
-                        <div>
-                            {!! $notification->status_badge !!}
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium">Contacto</label>
-                        <p class="text-body">
-                            @if($notification->contact)
-                                <a href="{{ route('contact.show', $notification->contact->id) }}" class="text-decoration-none">
-                                    {{ $notification->contact->name }} {{ $notification->contact->surname }}
-                                </a>
-                            @else
-                                <span class="text-danger">Contacto no disponible</span>
-                            @endif
-                        </p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label fw-medium">Email del contacto</label>
-                        <p class="text-body">{{ $notification->contact ? $notification->contact->email : 'N/A' }}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- Message Content -->
         <div class="card mb-4">
             <h5 class="card-header">
@@ -634,38 +601,6 @@ document.addEventListener('DOMContentLoaded', function () {
             </div>
         </div>
 
-        @if(!empty($performanceDigestHighlights))
-        <div class="card mb-4 d-none" id="digest-suggestion-card">
-            <h5 class="card-header">
-                <i class="ti ti-sparkles me-2"></i>{{ __('app.performance_digest_suggestion_card_title') }}
-            </h5>
-            <div class="card-body">
-                <p class="text-muted small mb-2" id="digest-suggestion-label"></p>
-                <p class="text-muted small mb-3">{{ __('app.performance_digest_future_ai_note') }}</p>
-
-                <div id="digest-suggestion-messages" class="d-none">
-                    <div id="digest-messages-container"></div>
-                </div>
-
-                <div id="digest-suggestion-single">
-                    <textarea class="form-control mb-3" id="digest-suggestion-text" rows="5" readonly></textarea>
-                    <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-label-secondary btn-sm" id="digest-suggestion-copy">
-                            <i class="ti ti-copy me-1"></i>{{ __('app.performance_digest_suggestion_copy') }}
-                        </button>
-                        <div class="d-flex flex-wrap gap-2" id="digest-single-schedule-actions"></div>
-                        <button type="button" class="btn btn-primary btn-sm d-none" id="digest-suggestion-schedule">
-                            <i class="ti ti-clock me-1"></i><span id="digest-suggestion-schedule-label"></span>
-                        </button>
-                        <a href="#" class="btn btn-primary btn-sm d-none" id="digest-suggestion-action" target="_blank" rel="noopener">
-                            <i class="ti ti-external-link me-1"></i><span id="digest-suggestion-action-label"></span>
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
-
         @if($notification->is_sent && $notification->email_metadata)
         <!-- Email Metadata -->
         <div class="card mb-4">
@@ -707,43 +642,78 @@ document.addEventListener('DOMContentLoaded', function () {
         @endif
     </div>
 
-    <!-- Sidebar -->
     <div class="col-md-4">
-        <!-- Notification Timeline -->
         <div class="card mb-4">
             <h5 class="card-header">
-                <i class="ti ti-clock me-2"></i>{{ __('Timeline') }}
+                <i class="ti ti-bell me-2"></i>{{ __('Notification Information') }}
             </h5>
             <div class="card-body">
-                <div class="timeline">
-                    <div class="timeline-item">
-                        <div class="timeline-point bg-primary"></div>
-                        <div class="timeline-content">
-                            <h6 class="mb-1">Notificación creada</h6>
-                            <small class="text-muted">{{ $notification->formatted_created_date }}</small>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-medium">Tipo de notificación</label>
+                        <p class="text-body mb-0">{{ $notification->type->name }}</p>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-medium">Estado</label>
+                        <div>
+                            {!! $notification->status_badge !!}
                         </div>
                     </div>
-                    @if($notification->is_sent)
-                    <div class="timeline-item">
-                        <div class="timeline-point bg-success"></div>
-                        <div class="timeline-content">
-                            <h6 class="mb-1">Notificación enviada</h6>
-                            <small class="text-muted">{{ $notification->formatted_sent_date }}</small>
-                        </div>
+                    <div class="col-12">
+                        <label class="form-label fw-medium">Contacto</label>
+                        <p class="text-body mb-0">
+                            @if($notification->contact)
+                                <a href="{{ route('contact.show', $notification->contact->id) }}" class="text-decoration-none">
+                                    {{ $notification->contact->name }} {{ $notification->contact->surname }}
+                                </a>
+                            @else
+                                <span class="text-danger">Contacto no disponible</span>
+                            @endif
+                        </p>
                     </div>
-                    @endif
-                    @if($notification->is_read)
-                    <div class="timeline-item">
-                        <div class="timeline-point bg-info"></div>
-                        <div class="timeline-content">
-                            <h6 class="mb-1">Notificación leída</h6>
-                            <small class="text-muted">{{ $notification->read_at ? $notification->read_at->format('d/m/Y H:i') : 'Fecha desconocida' }}</small>
-                        </div>
+                    <div class="col-12">
+                        <label class="form-label fw-medium">Email del contacto</label>
+                        <p class="text-body mb-0">{{ $notification->contact ? $notification->contact->email : 'N/A' }}</p>
                     </div>
-                    @endif
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+@if(!empty($performanceDigestHighlights))
+<div class="row">
+    <div class="col-12">
+        <div class="card mb-4 d-none" id="digest-suggestion-card">
+            <h5 class="card-header">
+                <i class="ti ti-sparkles me-2"></i>{{ __('app.performance_digest_suggestion_card_title', [], 'es') }}
+            </h5>
+            <div class="card-body">
+                <p class="text-muted small mb-2" id="digest-suggestion-label"></p>
+                <p class="text-muted small mb-3">{{ __('app.performance_digest_future_ai_note', [], 'es') }}</p>
+
+                <div id="digest-suggestion-messages" class="d-none">
+                    <div id="digest-messages-container"></div>
+                </div>
+
+                <div id="digest-suggestion-single">
+                    <textarea class="form-control mb-3" id="digest-suggestion-text" rows="5" readonly></textarea>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-label-secondary btn-sm" id="digest-suggestion-copy">
+                            <i class="ti ti-copy me-1"></i>{{ __('app.performance_digest_suggestion_copy', [], 'es') }}
+                        </button>
+                        <div class="d-flex flex-wrap gap-2" id="digest-single-schedule-actions"></div>
+                        <button type="button" class="btn btn-primary btn-sm d-none" id="digest-suggestion-schedule">
+                            <i class="ti ti-clock me-1"></i><span id="digest-suggestion-schedule-label"></span>
+                        </button>
+                        <a href="#" class="btn btn-primary btn-sm d-none" id="digest-suggestion-action" target="_blank" rel="noopener">
+                            <i class="ti ti-external-link me-1"></i><span id="digest-suggestion-action-label"></span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @endsection 
