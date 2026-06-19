@@ -123,7 +123,7 @@
               <div class="cms-wa-body">
                 <div class="cms-bubble cms-bubble-out">¿Qué páginas del CMS tenemos?</div>
                 <div class="cms-bubble cms-bubble-in">Páginas (3):<br>· Contacto<br>· Sobre nosotros<br>· Página de ejemplo</div>
-                <div class="cms-bubble cms-bubble-out">Publicá la de Contacto mañana</div>
+                <div class="cms-bubble cms-bubble-out">Publica la de Contacto mañana</div>
                 <div class="cms-bubble cms-bubble-in">Listo. La página Contacto queda programada.</div>
               </div>
             </div>
@@ -166,9 +166,9 @@
             <div class="cms-phone-screen">
               <div class="cms-wa-head"><span class="cms-wa-avatar"></span> Administrador</div>
               <div class="cms-wa-body">
-                <div class="cms-bubble cms-bubble-out">Listá las entradas publicadas del CMS</div>
+                <div class="cms-bubble cms-bubble-out">Lista las entradas publicadas del CMS</div>
                 <div class="cms-bubble cms-bubble-in">Entradas (5):<br>· Lanzamiento web<br>· Cómo empezar con el CMS<br>· CF Sync Demo…</div>
-                <div class="cms-bubble cms-bubble-out">Cambiá el título del primero a "Web renovada"</div>
+                <div class="cms-bubble cms-bubble-out">Cambia el título del primero a "Web renovada"</div>
                 <div class="cms-bubble cms-bubble-in">Se actualizó la entrada id 5 "Web renovada".</div>
               </div>
             </div>

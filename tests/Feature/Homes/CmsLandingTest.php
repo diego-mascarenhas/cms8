@@ -36,6 +36,34 @@ class CmsLandingTest extends TestCase
             ->assertSee(__('slash_landing.footer.brand_name'), false);
     }
 
+    public function test_cms_landing_uses_spain_spanish_by_default(): void
+    {
+        $this->get('/cms')
+            ->assertOk()
+            ->assertSee('Escribes en el chat del equipo', false)
+            ->assertSee('Publica la de Contacto mañana', false)
+            ->assertDontSee('Escribís en el chat del equipo', false)
+            ->assertDontSee('Publicá la de Contacto mañana', false);
+    }
+
+    public function test_cms_landing_uses_argentina_spanish_when_session_locale_is_es_ar(): void
+    {
+        $this->withSession(['locale' => 'es_AR'])
+            ->get('/cms')
+            ->assertOk()
+            ->assertSee('Escribís en el chat del equipo', false)
+            ->assertDontSee('Escribes en el chat del equipo', false);
+    }
+
+    public function test_cms_newsletter_preview_uses_spain_spanish_by_default(): void
+    {
+        $this->get('/cms/newsletter')
+            ->assertOk()
+            ->assertSee('Para ti (administrador)', false)
+            ->assertSee('Lista, edita y publica por WhatsApp con el asistente', false)
+            ->assertDontSee('Para vos (administrador)', false);
+    }
+
     public function test_guest_can_view_cms_newsletter_preview(): void
     {
         $this->get('/cms/newsletter')
