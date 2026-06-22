@@ -33,17 +33,19 @@ class StoreExpenseRequest extends FormRequest
                 'nullable',
                 'integer',
                 Rule::exists('enterprises', 'id')->where(fn ($query) => $query
-                    ->where('team_id', $teamId)
-                    ->where('type_id', 2)),
+                    ->where('team_id', $teamId)),
             ],
+            'document_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'date' => ['required', 'date'],
             'document_number' => ['nullable', 'string', 'max:120'],
             'expense_category' => ['nullable', 'string', 'max:150'],
-            'concept' => ['required', 'string', 'max:255'],
-            'base_amount' => ['required', 'numeric', 'min:0.01'],
-            'vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'retention_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'allocation_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
+            'currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.concept' => ['required', 'string', 'max:255'],
+            'lines.*.base_amount' => ['required', 'numeric', 'min:0.01'],
+            'lines.*.vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'lines.*.retention_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'lines.*.allocation_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
             'cash_criteria' => ['sometimes', 'boolean'],
             'is_investment' => ['sometimes', 'boolean'],
             'payment_date' => ['required', 'date'],
@@ -65,11 +67,42 @@ class StoreExpenseRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $lines = $this->input('lines', []);
+
+        if (! is_array($lines))
+        {
+            $lines = [];
+        }
+
+        $normalizedLines = [];
+
+        foreach ($lines as $line)
+        {
+            if (! is_array($line))
+            {
+                continue;
+            }
+
+            $concept = trim((string) ($line['concept'] ?? ''));
+            $baseAmount = $line['base_amount'] ?? null;
+
+            if ($concept === '' && blank($baseAmount))
+            {
+                continue;
+            }
+
+            $normalizedLines[] = [
+                'concept' => $concept,
+                'base_amount' => $baseAmount,
+                'vat_percent' => $line['vat_percent'] ?? 0,
+                'retention_percent' => $line['retention_percent'] ?? 0,
+                'allocation_percent' => $line['allocation_percent'] ?? 100,
+            ];
+        }
+
         $this->merge([
             'document_type' => (string) $this->input('document_type', 'invoice'),
-            'vat_percent' => $this->input('vat_percent', 0),
-            'retention_percent' => $this->input('retention_percent', 0),
-            'allocation_percent' => $this->input('allocation_percent', 100),
+            'lines' => $normalizedLines,
             'cash_criteria' => $this->boolean('cash_criteria'),
             'is_investment' => $this->boolean('is_investment'),
             'submit_action' => (string) $this->input('submit_action', 'save'),

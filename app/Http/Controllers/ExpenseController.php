@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ExpenseDataTable;
 use App\Enums\TransactionType;
 use App\Http\Requests\StoreExpenseRequest;
+use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
@@ -76,10 +77,9 @@ class ExpenseController extends Controller
 
     public function create(): View
     {
-        $suppliers = Enterprise::query()
-            ->suppliers()
+        $enterprises = Enterprise::query()
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'type_id']);
 
         $paymentAccounts = PaymentAccount::query()
             ->with('currency')
@@ -90,27 +90,33 @@ class ExpenseController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        $currencies = Currency::query()
+            ->active()
+            ->orderBy('code')
+            ->get(['id', 'code', 'name', 'symbol']);
+
         $documentTypes = [
-            'invoice' => __('Invoice'),
-            'receipt' => __('Ticket / Receipt'),
-            'tax' => __('Tax'),
-            'depreciation' => __('Depreciation'),
-            'dividend' => __('Dividend'),
-            'payroll' => __('Payroll'),
-            'loan' => __('Loan'),
+            'invoice' => 'Factura',
+            'receipt' => 'Ticket/Recibo',
+            'tax' => 'Impuesto',
+            'depreciation' => 'Amortización',
+            'dividend' => 'Dividendo',
+            'payroll' => 'Nómina',
+            'loan' => 'Préstamo',
         ];
 
         $statusOptions = [
-            1 => __('In Process'),
-            2 => __('Approved'),
-            3 => __('Pending'),
-            4 => __('Rejected'),
+            1 => 'En proceso',
+            2 => 'Aprobado',
+            3 => 'Pendiente',
+            4 => 'Rechazado',
         ];
 
         return view('expense.create', compact(
-            'suppliers',
+            'enterprises',
             'paymentAccounts',
             'paymentTypes',
+            'currencies',
             'documentTypes',
             'statusOptions',
         ));
@@ -119,12 +125,19 @@ class ExpenseController extends Controller
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $lineSummaries = $this->buildLineSummaries($validated['lines']);
 
         $status = ($validated['submit_action'] ?? 'save') === 'draft'
             ? 1
             : (int) $validated['status'];
 
-        $amount = $this->resolveFinalAmount($validated);
+        $linesTotal = (float) collect($lineSummaries)->sum('allocated_total');
+
+        $amount = filled($validated['payment_amount'] ?? null)
+            ? round((float) $validated['payment_amount'], 2)
+            : round(max($linesTotal, 0.01), 2);
+
+        $currencyCode = $this->resolveCurrencyCode($validated);
 
         Payment::query()->create([
             'team_id' => (int) $request->user()->currentTeam->id,
@@ -135,14 +148,14 @@ class ExpenseController extends Controller
             'account_id' => (int) $validated['account_id'],
             'type_id' => (int) $validated['type_id'],
             'amount' => $amount,
-            'remarks' => $this->buildRemarks($validated, $amount),
+            'remarks' => $this->buildRemarks($validated, $amount, $currencyCode, $lineSummaries),
             'status' => $status,
             'source_provider' => 'manual',
         ]);
 
         $message = $status === 1
-            ? __('Expense draft saved successfully.')
-            : __('Expense created successfully.');
+            ? 'Borrador de gasto guardado correctamente.'
+            : 'Gasto guardado correctamente.';
 
         return redirect()->route('expense.index')->with('success', $message);
     }
@@ -150,50 +163,102 @@ class ExpenseController extends Controller
     /**
      * @param  array<string, mixed>  $validated
      */
-    private function resolveFinalAmount(array $validated): float
+    private function resolveCurrencyCode(array $validated): string
     {
-        $baseAmount = (float) $validated['base_amount'];
-        $vatPercent = (float) ($validated['vat_percent'] ?? 0);
-        $retentionPercent = (float) ($validated['retention_percent'] ?? 0);
-        $allocationPercent = (float) ($validated['allocation_percent'] ?? 100);
-
-        $vatAmount = round($baseAmount * ($vatPercent / 100), 2);
-        $retentionAmount = round($baseAmount * ($retentionPercent / 100), 2);
-        $lineTotal = $baseAmount + $vatAmount - $retentionAmount;
-        $allocatedTotal = round($lineTotal * ($allocationPercent / 100), 2);
-
-        if (filled($validated['payment_amount'] ?? null))
+        if (! empty($validated['currency_id']))
         {
-            return round((float) $validated['payment_amount'], 2);
+            $selectedCurrencyCode = Currency::query()
+                ->whereKey((int) $validated['currency_id'])
+                ->value('code');
+
+            if (filled($selectedCurrencyCode))
+            {
+                return strtoupper((string) $selectedCurrencyCode);
+            }
         }
 
-        return round(max($allocatedTotal, 0.01), 2);
+        $accountCurrencyCode = PaymentAccount::query()
+            ->with('currency')
+            ->whereKey((int) $validated['account_id'])
+            ->first()
+            ?->currency
+            ?->code;
+
+        if (filled($accountCurrencyCode))
+        {
+            return strtoupper((string) $accountCurrencyCode);
+        }
+
+        return 'EUR';
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lines
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildLineSummaries(array $lines): array
+    {
+        return collect($lines)->values()->map(function (array $line): array
+        {
+            $baseAmount = round((float) ($line['base_amount'] ?? 0), 2);
+            $vatPercent = (float) ($line['vat_percent'] ?? 0);
+            $retentionPercent = (float) ($line['retention_percent'] ?? 0);
+            $allocationPercent = (float) ($line['allocation_percent'] ?? 100);
+
+            $vatAmount = round($baseAmount * ($vatPercent / 100), 2);
+            $retentionAmount = round($baseAmount * ($retentionPercent / 100), 2);
+            $lineTotal = round($baseAmount + $vatAmount - $retentionAmount, 2);
+            $allocatedTotal = round($lineTotal * ($allocationPercent / 100), 2);
+
+            return [
+                'concept' => (string) ($line['concept'] ?? ''),
+                'base_amount' => $baseAmount,
+                'vat_percent' => $vatPercent,
+                'retention_percent' => $retentionPercent,
+                'allocation_percent' => $allocationPercent,
+                'vat_amount' => $vatAmount,
+                'retention_amount' => $retentionAmount,
+                'line_total' => $lineTotal,
+                'allocated_total' => $allocatedTotal,
+            ];
+        })->all();
     }
 
     /**
      * @param  array<string, mixed>  $validated
      */
-    private function buildRemarks(array $validated, float $amount): ?string
+    private function buildRemarks(array $validated, float $amount, string $currencyCode, array $lineSummaries): ?string
     {
+        $lineRemarks = collect($lineSummaries)->map(function (array $line, int $index): string
+        {
+            return sprintf(
+                'Línea %d: %s | Base: %.2f | IVA: %.2f%% | Retención: %.2f%% | Imputa: %.2f%% | Total: %.2f',
+                $index + 1,
+                (string) $line['concept'],
+                (float) $line['base_amount'],
+                (float) $line['vat_percent'],
+                (float) $line['retention_percent'],
+                (float) $line['allocation_percent'],
+                (float) $line['allocated_total'],
+            );
+        })->implode(' || ');
+
         $remarks = array_filter([
-            'Document type: '.(string) $validated['document_type'],
+            'Tipo de documento: '.(string) $validated['document_type'],
             filled($validated['document_number'] ?? null)
-                ? 'Document number: '.(string) $validated['document_number']
+                ? 'Número de documento: '.(string) $validated['document_number']
                 : null,
             filled($validated['expense_category'] ?? null)
-                ? 'Expense category: '.(string) $validated['expense_category']
+                ? 'Tipo de gasto: '.(string) $validated['expense_category']
                 : null,
-            'Concept: '.(string) $validated['concept'],
-            'Base: '.number_format((float) $validated['base_amount'], 2, '.', ''),
-            'VAT (%): '.number_format((float) ($validated['vat_percent'] ?? 0), 2, '.', ''),
-            'Retention (%): '.number_format((float) ($validated['retention_percent'] ?? 0), 2, '.', ''),
-            'Allocation (%): '.number_format((float) ($validated['allocation_percent'] ?? 100), 2, '.', ''),
-            'Payment date: '.(string) $validated['payment_date'],
-            'Final amount: '.number_format($amount, 2, '.', ''),
-            ! empty($validated['cash_criteria']) ? 'Cash criteria: yes' : null,
-            ! empty($validated['is_investment']) ? 'Investment: yes' : null,
+            $lineRemarks,
+            'Fecha de pago: '.(string) $validated['payment_date'],
+            'Moneda: '.$currencyCode,
+            'Total final: '.number_format($amount, 2, '.', '').' '.$currencyCode,
+            ! empty($validated['cash_criteria']) ? 'Criterio de caja: sí' : null,
+            ! empty($validated['is_investment']) ? 'Inversión: sí' : null,
             filled($validated['tags'] ?? null)
-                ? 'Tags: '.(string) $validated['tags']
+                ? 'Etiquetas: '.(string) $validated['tags']
                 : null,
             filled($validated['remarks'] ?? null)
                 ? trim((string) $validated['remarks'])

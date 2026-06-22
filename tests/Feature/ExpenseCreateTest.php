@@ -33,7 +33,7 @@ class ExpenseCreateTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertSee('Register a new expense', false)
+            ->assertSee('Registrar un nuevo gasto', false)
             ->assertSee($account->name, false);
     }
 
@@ -49,11 +49,15 @@ class ExpenseCreateTest extends TestCase
                 'date' => '2026-06-22',
                 'document_number' => 'FAC-001',
                 'expense_category' => 'Software subscriptions',
-                'concept' => 'Monthly SaaS',
-                'base_amount' => '100.00',
-                'vat_percent' => '21',
-                'retention_percent' => '0',
-                'allocation_percent' => '100',
+                'lines' => [
+                    [
+                        'concept' => 'Monthly SaaS',
+                        'base_amount' => '100.00',
+                        'vat_percent' => '21',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
                 'payment_date' => '2026-06-22',
                 'payment_amount' => '',
                 'type_id' => $paymentType->id,
@@ -84,8 +88,7 @@ class ExpenseCreateTest extends TestCase
             ->post(route('expense.store'), [])
             ->assertSessionHasErrors([
                 'date',
-                'concept',
-                'base_amount',
+                'lines',
                 'payment_date',
                 'type_id',
                 'account_id',
