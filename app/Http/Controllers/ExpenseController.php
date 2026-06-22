@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ExpenseDataTable;
 use App\Enums\TransactionType;
 use App\Http\Requests\StoreExpenseRequest;
+use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Payment;
@@ -138,6 +139,7 @@ class ExpenseController extends Controller
             : round(max($linesTotal, 0.01), 2);
 
         $currencyCode = $this->resolveCurrencyCode($validated);
+        $expenseCategoryName = $this->resolveExpenseCategoryName($validated);
 
         Payment::query()->create([
             'team_id' => (int) $request->user()->currentTeam->id,
@@ -148,7 +150,7 @@ class ExpenseController extends Controller
             'account_id' => (int) $validated['account_id'],
             'type_id' => (int) $validated['type_id'],
             'amount' => $amount,
-            'remarks' => $this->buildRemarks($validated, $amount, $currencyCode, $lineSummaries),
+            'remarks' => $this->buildRemarks($validated, $amount, $currencyCode, $lineSummaries, $expenseCategoryName),
             'status' => $status,
             'source_provider' => 'manual',
         ]);
@@ -158,6 +160,31 @@ class ExpenseController extends Controller
             : 'Gasto guardado correctamente.';
 
         return redirect()->route('expense.index')->with('success', $message);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveExpenseCategoryName(array $validated): ?string
+    {
+        if (! empty($validated['expense_category_id']))
+        {
+            $categoryName = Category::query()
+                ->whereKey((int) $validated['expense_category_id'])
+                ->value('name');
+
+            if (filled($categoryName))
+            {
+                return (string) $categoryName;
+            }
+        }
+
+        if (filled($validated['expense_category'] ?? null))
+        {
+            return (string) $validated['expense_category'];
+        }
+
+        return null;
     }
 
     /**
@@ -227,8 +254,13 @@ class ExpenseController extends Controller
     /**
      * @param  array<string, mixed>  $validated
      */
-    private function buildRemarks(array $validated, float $amount, string $currencyCode, array $lineSummaries): ?string
-    {
+    private function buildRemarks(
+        array $validated,
+        float $amount,
+        string $currencyCode,
+        array $lineSummaries,
+        ?string $expenseCategoryName,
+    ): ?string {
         $lineRemarks = collect($lineSummaries)->map(function (array $line, int $index): string
         {
             return sprintf(
@@ -248,8 +280,8 @@ class ExpenseController extends Controller
             filled($validated['document_number'] ?? null)
                 ? 'Número de documento: '.(string) $validated['document_number']
                 : null,
-            filled($validated['expense_category'] ?? null)
-                ? 'Tipo de gasto: '.(string) $validated['expense_category']
+            filled($expenseCategoryName)
+                ? 'Tipo de gasto: '.(string) $expenseCategoryName
                 : null,
             $lineRemarks,
             'Fecha de pago: '.(string) $validated['payment_date'],

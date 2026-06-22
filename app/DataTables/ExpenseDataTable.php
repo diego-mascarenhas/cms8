@@ -35,6 +35,12 @@ class ExpenseDataTable extends DataTable
                     return '<a href="'.e(route('invoice.show', $data->invoice->id)).'" class="text-body">'.e($data->invoice->number).'</a>';
                 }
 
+                $documentNumber = $this->extractDocumentNumberFromRemarks((string) ($data->remarks ?? ''));
+                if (filled($documentNumber))
+                {
+                    return '<span class="text-body">'.e($documentNumber).'</span>';
+                }
+
                 $user = auth()->user();
                 if ($user && $user->hasAnyRole(['admin', 'collaborator']))
                 {
@@ -47,9 +53,13 @@ class ExpenseDataTable extends DataTable
             })
             ->filterColumn('invoice_id', function ($query, $keyword)
             {
-                $query->whereHas('invoice', function ($q) use ($keyword)
+                $query->where(function ($innerQuery) use ($keyword)
                 {
-                    $q->whereRaw('number LIKE ?', ["%{$keyword}%"]);
+                    $innerQuery->whereHas('invoice', function ($invoiceQuery) use ($keyword)
+                    {
+                        $invoiceQuery->whereRaw('number LIKE ?', ["%{$keyword}%"]);
+                    })->orWhereRaw('remarks LIKE ?', ["%Número de documento: {$keyword}%"])
+                        ->orWhereRaw('remarks LIKE ?', ["%Document number: {$keyword}%"]);
                 });
             })
             ->editColumn('enterprise_id', function ($data)
@@ -180,5 +190,32 @@ class ExpenseDataTable extends DataTable
     protected function filename(): string
     {
         return 'Expense_'.date('YmdHis');
+    }
+
+    private function extractDocumentNumberFromRemarks(string $remarks): ?string
+    {
+        if ($remarks === '')
+        {
+            return null;
+        }
+
+        $patterns = [
+            '/Número de documento:\s*([^|]+)/u',
+            '/Document number:\s*([^|]+)/u',
+        ];
+
+        foreach ($patterns as $pattern)
+        {
+            if (preg_match($pattern, $remarks, $matches) === 1)
+            {
+                $documentNumber = trim((string) ($matches[1] ?? ''));
+                if ($documentNumber !== '')
+                {
+                    return $documentNumber;
+                }
+            }
+        }
+
+        return null;
     }
 }

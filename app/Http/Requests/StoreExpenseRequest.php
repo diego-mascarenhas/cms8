@@ -38,6 +38,7 @@ class StoreExpenseRequest extends FormRequest
             'document_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'date' => ['required', 'date'],
             'document_number' => ['nullable', 'string', 'max:120'],
+            'expense_category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'expense_category' => ['nullable', 'string', 'max:150'],
             'currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
             'lines' => ['required', 'array', 'min:1'],

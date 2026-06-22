@@ -116,27 +116,16 @@
                     </div>
 
                     <div class="col-12">
-                        <label for="expense_category" class="form-label">Tipo de gasto</label>
-                        <input
-                            type="text"
-                            id="expense_category"
-                            name="expense_category"
-                            class="form-control @error('expense_category') is-invalid @enderror"
-                            value="{{ old('expense_category') }}"
-                            list="expense-category-options"
-                            placeholder="Compras, suscripciones, aprovisionamientos..."
-                        >
-                        <datalist id="expense-category-options">
-                            <option value="Material de oficina"></option>
-                            <option value="Suscripciones de software"></option>
-                            <option value="Transporte"></option>
-                            <option value="Marketing"></option>
-                            <option value="Servicios"></option>
-                            <option value="Servicios profesionales"></option>
-                        </datalist>
-                        @error('expense_category')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
+                        <x-module-categories-select
+                            id="expense_category_id"
+                            label="Tipo de gasto"
+                            moduleKey="expenses"
+                            :selected="old('expense_category_id')"
+                            :allowEmpty="true"
+                            emptyText="Selecciona una categoría"
+                            :allowQuickCreate="false"
+                            :allowManageModal="false"
+                        />
                     </div>
 
                     <div class="col-12">
@@ -337,7 +326,7 @@
                     @enderror
                 </div>
                 <div class="col-md-2">
-                    <label for="account_id" class="form-label">Cuenta de mi empresa <span class="text-danger">*</span></label>
+                    <label for="account_id" class="form-label">Cuenta <span class="text-danger">*</span></label>
                     <select id="account_id" name="account_id" class="form-select select2 @error('account_id') is-invalid @enderror" required>
                         <option value="">Selecciona cuenta</option>
                         @foreach ($paymentAccounts as $account)
