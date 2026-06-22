@@ -23,9 +23,9 @@
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary me-2">
             <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
         </a>
-        <button class="btn btn-primary">
+        <a href="{{ route('expense.create') }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-plus me-1"></i> {{ __('Add Expense') }}
-        </button>
+        </a>
     </div>
 </div>
 
