@@ -21,6 +21,7 @@ Return ONLY valid JSON with this structure:
   "enterprise_name": "string|null",
   "document_number": "string|null",
   "invoice_date": "YYYY-MM-DD|null",
+  "due_date": "YYYY-MM-DD|null",
   "payment_date": "YYYY-MM-DD|null",
   "currency_code": "ISO code like EUR/USD/ARS|null",
   "total_amount": number|null,
@@ -75,6 +76,8 @@ PROMPT;
             'enterprise_name' => $detectedData['enterprise_name'] ?? null,
             'document_number' => $detectedData['document_number'] ?? null,
             'date' => $this->normalizeDate($detectedData['invoice_date'] ?? null),
+            'due_date' => $this->normalizeDate($detectedData['due_date'] ?? null)
+                ?? $this->normalizeDate($detectedData['invoice_date'] ?? null),
             'payment_date' => $this->normalizeDate($detectedData['payment_date'] ?? null)
                 ?? $this->normalizeDate($detectedData['invoice_date'] ?? null),
             'currency_id' => $currencyId,
@@ -178,6 +181,7 @@ PROMPT;
                 'enterprise_name' => null,
                 'document_number' => null,
                 'invoice_date' => null,
+                'due_date' => null,
                 'payment_date' => null,
                 'currency_code' => null,
                 'total_amount' => null,
@@ -188,6 +192,7 @@ PROMPT;
         $enterpriseName = $this->extractEnterpriseName($text);
         $documentNumber = $this->extractDocumentNumber($text);
         $invoiceDate = $this->extractDateByLabel($text, ['fecha factura', 'fecha', 'invoice date', 'date']);
+        $dueDate = $this->extractDateByLabel($text, ['fecha vencimiento', 'vencimiento', 'due date', 'payment due']);
         $currencyCode = $this->extractCurrencyCode($text);
         $vatPercent = $this->extractPercentageByLabel($text, ['iva', 'vat']);
         $retentionPercent = $this->extractPercentageByLabel($text, ['retención', 'retencion', 'withholding']);
@@ -219,6 +224,7 @@ PROMPT;
             'enterprise_name' => $enterpriseName,
             'document_number' => $documentNumber,
             'invoice_date' => $invoiceDate,
+            'due_date' => $dueDate ?? $invoiceDate,
             'payment_date' => $invoiceDate,
             'currency_code' => $currencyCode,
             'total_amount' => $totalAmount,
@@ -292,7 +298,7 @@ PROMPT;
         }
 
         $merged = $heuristicData;
-        $fields = ['enterprise_name', 'document_number', 'invoice_date', 'payment_date', 'currency_code', 'total_amount'];
+        $fields = ['enterprise_name', 'document_number', 'invoice_date', 'due_date', 'payment_date', 'currency_code', 'total_amount'];
 
         foreach ($fields as $field)
         {

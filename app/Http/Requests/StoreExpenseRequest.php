@@ -37,6 +37,7 @@ class StoreExpenseRequest extends FormRequest
             ],
             'document_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
             'date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date'],
             'document_number' => ['nullable', 'string', 'max:120'],
             'expense_category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'expense_category' => ['nullable', 'string', 'max:150'],
@@ -103,6 +104,7 @@ class StoreExpenseRequest extends FormRequest
 
         $this->merge([
             'document_type' => (string) $this->input('document_type', 'invoice'),
+            'due_date' => $this->input('due_date', $this->input('date')),
             'lines' => $normalizedLines,
             'cash_criteria' => $this->boolean('cash_criteria'),
             'is_investment' => $this->boolean('is_investment'),

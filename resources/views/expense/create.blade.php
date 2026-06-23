@@ -77,6 +77,11 @@
                         <p class="mb-1 text-muted">Opcional: factura, ticket o documento fiscal</p>
                         <p id="selected-document-name" class="mb-0 text-primary small"></p>
                         <p id="document-detection-status" class="mb-0 text-muted small mt-1"></p>
+                        <div id="document-detection-loading" class="d-none mt-2">
+                            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+                            <span class="small text-muted">Analizando documento...</span>
+                        </div>
+                        <div id="document-detection-preview" class="d-none mt-3 w-100 text-start"></div>
                         <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
                     </div>
                 </div>
@@ -111,6 +116,14 @@
                     </div>
 
                     <div class="col-md-6">
+                        <label for="due_date" class="form-label">Fecha vencimiento</label>
+                        <input type="text" id="due_date" name="due_date" class="form-control expense-date @error('due_date') is-invalid @enderror" value="{{ old('due_date', old('date', now()->toDateString())) }}">
+                        @error('due_date')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="col-12">
                         <label for="document_number" class="form-label">N.º factura</label>
                         <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
                         @error('document_number')
@@ -155,86 +168,92 @@
                     <table class="table table-bordered">
                         <thead class="table-light">
                             <tr>
-                                <th>Concepto</th>
-                                <th class="text-end">Base</th>
-                                <th class="text-end">IVA %</th>
-                                <th class="text-end text-nowrap">Retención %</th>
-                                <th class="text-end">Imputa %</th>
-                                <th class="text-center">Acción</th>
+                                <th>Detalle del concepto</th>
+                                <th class="text-center" style="width: 90px;">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="expense-lines-body">
                             @foreach ($oldLines as $index => $line)
                                 <tr class="expense-line" data-line-index="{{ $index }}">
-                                <td>
-                                        <input
-                                            type="text"
-                                            name="lines[{{ $index }}][concept]"
-                                            class="form-control line-concept @error('lines.'.$index.'.concept') is-invalid @enderror"
-                                            value="{{ data_get($line, 'concept', '') }}"
-                                            required
-                                        >
-                                        @error('lines.'.$index.'.concept')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </td>
-                                <td>
-                                        <input
-                                            type="number"
-                                            name="lines[{{ $index }}][base_amount]"
-                                            class="form-control text-end line-base @error('lines.'.$index.'.base_amount') is-invalid @enderror"
-                                            min="0.01"
-                                            step="0.01"
-                                            value="{{ data_get($line, 'base_amount', '0.00') }}"
-                                            required
-                                        >
-                                        @error('lines.'.$index.'.base_amount')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </td>
-                                <td>
-                                        <input
-                                            type="number"
-                                            name="lines[{{ $index }}][vat_percent]"
-                                            class="form-control text-end line-vat @error('lines.'.$index.'.vat_percent') is-invalid @enderror"
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            value="{{ data_get($line, 'vat_percent', '0') }}"
-                                        >
-                                        @error('lines.'.$index.'.vat_percent')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </td>
-                                <td>
-                                        <input
-                                            type="number"
-                                            name="lines[{{ $index }}][retention_percent]"
-                                            class="form-control text-end line-retention @error('lines.'.$index.'.retention_percent') is-invalid @enderror"
-                                            min="0"
-                                            max="100"
-                                            step="0.01"
-                                            value="{{ data_get($line, 'retention_percent', '0') }}"
-                                        >
-                                        @error('lines.'.$index.'.retention_percent')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </td>
-                                <td>
-                                        <input
-                                            type="number"
-                                            name="lines[{{ $index }}][allocation_percent]"
-                                            class="form-control text-end line-allocation @error('lines.'.$index.'.allocation_percent') is-invalid @enderror"
-                                            min="0.01"
-                                            max="100"
-                                            step="0.01"
-                                            value="{{ data_get($line, 'allocation_percent', '100') }}"
-                                        >
-                                        @error('lines.'.$index.'.allocation_percent')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </td>
-                                    <td class="text-center">
+                                    <td>
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">Concepto</label>
+                                            <input
+                                                type="text"
+                                                name="lines[{{ $index }}][concept]"
+                                                class="form-control line-concept @error('lines.'.$index.'.concept') is-invalid @enderror"
+                                                value="{{ data_get($line, 'concept', '') }}"
+                                                required
+                                            >
+                                            @error('lines.'.$index.'.concept')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+
+                                        <div class="row g-2">
+                                            <div class="col-md-3">
+                                                <label class="form-label small mb-1">Base</label>
+                                                <input
+                                                    type="number"
+                                                    name="lines[{{ $index }}][base_amount]"
+                                                    class="form-control text-end line-base @error('lines.'.$index.'.base_amount') is-invalid @enderror"
+                                                    min="0.01"
+                                                    step="0.01"
+                                                    value="{{ data_get($line, 'base_amount', '0.00') }}"
+                                                    required
+                                                >
+                                                @error('lines.'.$index.'.base_amount')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small mb-1">IVA %</label>
+                                                <input
+                                                    type="number"
+                                                    name="lines[{{ $index }}][vat_percent]"
+                                                    class="form-control text-end line-vat @error('lines.'.$index.'.vat_percent') is-invalid @enderror"
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.01"
+                                                    value="{{ data_get($line, 'vat_percent', '0') }}"
+                                                >
+                                                @error('lines.'.$index.'.vat_percent')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small mb-1 text-nowrap">Retención %</label>
+                                                <input
+                                                    type="number"
+                                                    name="lines[{{ $index }}][retention_percent]"
+                                                    class="form-control text-end line-retention @error('lines.'.$index.'.retention_percent') is-invalid @enderror"
+                                                    min="0"
+                                                    max="100"
+                                                    step="0.01"
+                                                    value="{{ data_get($line, 'retention_percent', '0') }}"
+                                                >
+                                                @error('lines.'.$index.'.retention_percent')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label small mb-1">Imputa %</label>
+                                                <input
+                                                    type="number"
+                                                    name="lines[{{ $index }}][allocation_percent]"
+                                                    class="form-control text-end line-allocation @error('lines.'.$index.'.allocation_percent') is-invalid @enderror"
+                                                    min="0.01"
+                                                    max="100"
+                                                    step="0.01"
+                                                    value="{{ data_get($line, 'allocation_percent', '100') }}"
+                                                >
+                                                @error('lines.'.$index.'.allocation_percent')
+                                                    <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center align-middle">
                                         <button type="button" class="btn btn-sm btn-icon btn-label-danger remove-line-btn" title="Eliminar línea">
                                             <i class="ti ti-trash"></i>
                                         </button>
@@ -435,6 +454,8 @@
         var $documentInput = $('#document_file');
         var $documentName = $('#selected-document-name');
         var $documentDetectionStatus = $('#document-detection-status');
+        var $documentDetectionLoading = $('#document-detection-loading');
+        var $documentDetectionPreview = $('#document-detection-preview');
         var $linesBody = $('#expense-lines-body');
         var $currencySelect = $('#currency_id');
         var $summaryVatLines = $('#summary-vat-lines');
@@ -459,6 +480,8 @@
             } else {
                 $documentName.text('');
                 $documentDetectionStatus.text('');
+                $documentDetectionPreview.addClass('d-none').empty();
+                $documentDetectionLoading.addClass('d-none');
             }
         }
 
@@ -503,12 +526,31 @@
 
             return [
                 '<tr class="expense-line" data-line-index="' + index + '">',
-                '  <td><input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '" required></td>',
-                '  <td><input type="number" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" min="0.01" step="0.01" value="' + escapeHtml(baseAmount) + '" required></td>',
-                '  <td><input type="number" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" min="0" max="100" step="0.01" value="' + escapeHtml(vatPercent) + '"></td>',
-                '  <td><input type="number" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" min="0" max="100" step="0.01" value="' + escapeHtml(retentionPercent) + '"></td>',
-                '  <td><input type="number" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" min="0.01" max="100" step="0.01" value="' + escapeHtml(allocationPercent) + '"></td>',
-                '  <td class="text-center">',
+                '  <td>',
+                '    <div class="mb-2">',
+                '      <label class="form-label small mb-1">Concepto</label>',
+                '      <input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '" required>',
+                '    </div>',
+                '    <div class="row g-2">',
+                '      <div class="col-md-3">',
+                '        <label class="form-label small mb-1">Base</label>',
+                '        <input type="number" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" min="0.01" step="0.01" value="' + escapeHtml(baseAmount) + '" required>',
+                '      </div>',
+                '      <div class="col-md-3">',
+                '        <label class="form-label small mb-1">IVA %</label>',
+                '        <input type="number" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" min="0" max="100" step="0.01" value="' + escapeHtml(vatPercent) + '">',
+                '      </div>',
+                '      <div class="col-md-3">',
+                '        <label class="form-label small mb-1 text-nowrap">Retención %</label>',
+                '        <input type="number" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" min="0" max="100" step="0.01" value="' + escapeHtml(retentionPercent) + '">',
+                '      </div>',
+                '      <div class="col-md-3">',
+                '        <label class="form-label small mb-1">Imputa %</label>',
+                '        <input type="number" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" min="0.01" max="100" step="0.01" value="' + escapeHtml(allocationPercent) + '">',
+                '      </div>',
+                '    </div>',
+                '  </td>',
+                '  <td class="text-center align-middle">',
                 '    <button type="button" class="btn btn-sm btn-icon btn-label-danger remove-line-btn" title="Eliminar línea"><i class="ti ti-trash"></i></button>',
                 '  </td>',
                 '</tr>',
@@ -526,6 +568,56 @@
             } else {
                 $(inputSelector).val(dateValue).trigger('change');
             }
+        }
+
+        function buildDetectionPreviewHtml(data) {
+            var lines = Array.isArray(data.lines) ? data.lines : [];
+            var details = [];
+
+            if (data.enterprise_name) {
+                details.push('<div><span class="text-muted">Empresa:</span> <strong>' + escapeHtml(data.enterprise_name) + '</strong></div>');
+            }
+            if (data.document_number) {
+                details.push('<div><span class="text-muted">N.º factura:</span> <strong>' + escapeHtml(data.document_number) + '</strong></div>');
+            }
+            if (data.date) {
+                details.push('<div><span class="text-muted">Fecha factura:</span> <strong>' + escapeHtml(data.date) + '</strong></div>');
+            }
+            if (data.due_date) {
+                details.push('<div><span class="text-muted">Vencimiento:</span> <strong>' + escapeHtml(data.due_date) + '</strong></div>');
+            }
+            if (data.currency_code) {
+                details.push('<div><span class="text-muted">Moneda:</span> <strong>' + escapeHtml(data.currency_code) + '</strong></div>');
+            }
+            if (data.payment_amount) {
+                details.push('<div><span class="text-muted">Total detectado:</span> <strong>' + escapeHtml(formatAmount(data.payment_amount)) + '</strong></div>');
+            }
+
+            var linePreview = '';
+            if (lines.length > 0) {
+                var maxPreviewLines = Math.min(lines.length, 3);
+                var renderedLines = [];
+
+                for (var i = 0; i < maxPreviewLines; i += 1) {
+                    var line = lines[i] || {};
+                    renderedLines.push(
+                        '<li class="small mb-1">' +
+                        '<strong>' + escapeHtml(line.concept || 'Concepto') + '</strong>' +
+                        ' | Base: ' + escapeHtml(formatAmount(line.base_amount || 0)) +
+                        ' | IVA: ' + escapeHtml(formatPercent(line.vat_percent || 0)) + '%' +
+                        '</li>'
+                    );
+                }
+
+                linePreview = '<div class="mt-2"><span class="text-muted small">Líneas detectadas:</span><ul class="mb-0 ps-3 mt-1">' + renderedLines.join('') + '</ul></div>';
+            }
+
+            return [
+                '<div class="border rounded p-2 bg-label-secondary">',
+                details.join(''),
+                linePreview,
+                '</div>',
+            ].join('');
         }
 
         function applyDetectedDocumentData(data) {
@@ -546,6 +638,10 @@
 
             if (data.date) {
                 setExpenseDate('#date', String(data.date));
+            }
+
+            if (data.due_date) {
+                setExpenseDate('#due_date', String(data.due_date));
             }
 
             if (data.payment_date) {
@@ -571,6 +667,11 @@
                 $('#payment_amount').val(formatAmount(data.payment_amount));
             }
 
+            var previewHtml = buildDetectionPreviewHtml(data);
+            if (previewHtml !== '') {
+                $documentDetectionPreview.html(previewHtml).removeClass('d-none');
+            }
+
             refreshSummary();
         }
 
@@ -586,6 +687,8 @@
                 .removeClass('text-danger text-success')
                 .addClass('text-muted')
                 .text('Analizando documento...');
+            $documentDetectionPreview.addClass('d-none').empty();
+            $documentDetectionLoading.removeClass('d-none');
 
             $.ajax({
                 url: detectDocumentUrl,
@@ -597,6 +700,8 @@
                     'X-CSRF-TOKEN': csrfToken
                 },
                 success: function (response) {
+                    $documentDetectionLoading.addClass('d-none');
+
                     if (!response || response.success !== true) {
                         $documentDetectionStatus
                             .removeClass('text-muted text-success')
@@ -612,6 +717,7 @@
                         .text('Documento detectado. Campos autocompletados.');
                 },
                 error: function () {
+                    $documentDetectionLoading.addClass('d-none');
                     $documentDetectionStatus
                         .removeClass('text-muted text-success')
                         .addClass('text-danger')

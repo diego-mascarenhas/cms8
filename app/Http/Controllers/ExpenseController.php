@@ -195,7 +195,7 @@ class ExpenseController extends Controller
                 'operation' => 'buy',
                 'number' => $this->composeInvoiceNumber($validated),
                 'date' => $validated['date'],
-                'due_date' => $validated['payment_date'],
+                'due_date' => $validated['due_date'] ?? $validated['payment_date'],
                 'gross_amount' => $invoiceTotal,
                 'discount' => 0,
                 'total_amount' => $invoiceTotal,
@@ -405,6 +405,9 @@ class ExpenseController extends Controller
             'Tipo de documento: '.(string) $validated['document_type'],
             filled($validated['document_number'] ?? null)
                 ? 'Número de documento: '.(string) $validated['document_number']
+                : null,
+            filled($validated['due_date'] ?? null)
+                ? 'Fecha de vencimiento: '.(string) $validated['due_date']
                 : null,
             filled($expenseCategoryName)
                 ? 'Tipo de gasto: '.(string) $expenseCategoryName
