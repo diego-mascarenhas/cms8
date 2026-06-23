@@ -30,7 +30,7 @@ class StoreExpenseRequest extends FormRequest
                 'loan',
             ])],
             'enterprise_id' => [
-                'nullable',
+                'required',
                 'integer',
                 Rule::exists('enterprises', 'id')->where(fn ($query) => $query
                     ->where('team_id', $teamId)),

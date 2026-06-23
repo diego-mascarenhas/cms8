@@ -8,11 +8,16 @@ use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Enterprise;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\InvoiceType;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ExpenseController extends Controller
@@ -127,6 +132,7 @@ class ExpenseController extends Controller
     {
         $validated = $request->validated();
         $lineSummaries = $this->buildLineSummaries($validated['lines']);
+        $teamId = (int) $request->user()->currentTeam->id;
 
         $status = ($validated['submit_action'] ?? 'save') === 'draft'
             ? 1
@@ -138,22 +144,64 @@ class ExpenseController extends Controller
             ? round((float) $validated['payment_amount'], 2)
             : round(max($linesTotal, 0.01), 2);
 
+        $invoiceTotal = round(max($linesTotal, 0.01), 2);
+        $invoiceBalance = round(max($invoiceTotal - $amount, 0), 2);
         $currencyCode = $this->resolveCurrencyCode($validated);
+        $currencyId = $this->resolveCurrencyId($validated);
+        $invoiceTypeId = $this->resolveInvoiceTypeId();
+        $expenseCategoryId = isset($validated['expense_category_id'])
+            ? (int) $validated['expense_category_id']
+            : null;
         $expenseCategoryName = $this->resolveExpenseCategoryName($validated);
 
-        Payment::query()->create([
-            'team_id' => (int) $request->user()->currentTeam->id,
-            'enterprise_id' => $validated['enterprise_id'] ?? null,
-            'transaction_type' => TransactionType::EXPENSE,
-            'date' => $validated['date'],
-            'invoice_id' => null,
-            'account_id' => (int) $validated['account_id'],
-            'type_id' => (int) $validated['type_id'],
-            'amount' => $amount,
-            'remarks' => $this->buildRemarks($validated, $amount, $currencyCode, $lineSummaries, $expenseCategoryName),
-            'status' => $status,
-            'source_provider' => 'manual',
-        ]);
+        DB::transaction(function () use (
+            $validated,
+            $teamId,
+            $invoiceTypeId,
+            $invoiceTotal,
+            $invoiceBalance,
+            $currencyId,
+            $amount,
+            $status,
+            $currencyCode,
+            $lineSummaries,
+            $expenseCategoryId,
+            $expenseCategoryName
+        ): void {
+            $invoice = Invoice::withoutGlobalScopes()->create([
+                'team_id' => $teamId,
+                'enterprise_id' => (int) $validated['enterprise_id'],
+                'billing_id' => null,
+                'type_id' => $invoiceTypeId,
+                'operation' => 'buy',
+                'number' => $this->composeInvoiceNumber($validated),
+                'date' => $validated['date'],
+                'due_date' => $validated['payment_date'],
+                'gross_amount' => $invoiceTotal,
+                'discount' => 0,
+                'total_amount' => $invoiceTotal,
+                'balance' => $invoiceBalance,
+                'currency_id' => $currencyId,
+                'status' => 2,
+                'source_provider' => 'manual',
+            ]);
+
+            $this->createInvoiceItems($invoice, $lineSummaries, $expenseCategoryId);
+
+            Payment::query()->create([
+                'team_id' => $teamId,
+                'enterprise_id' => (int) $validated['enterprise_id'],
+                'transaction_type' => TransactionType::EXPENSE,
+                'date' => $validated['date'],
+                'invoice_id' => $invoice->id,
+                'account_id' => (int) $validated['account_id'],
+                'type_id' => (int) $validated['type_id'],
+                'amount' => $amount,
+                'remarks' => $this->buildRemarks($validated, $amount, $currencyCode, $lineSummaries, $expenseCategoryName),
+                'status' => $status,
+                'source_provider' => 'manual',
+            ]);
+        });
 
         $message = $status === 1
             ? 'Borrador de gasto guardado correctamente.'
@@ -185,6 +233,65 @@ class ExpenseController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveCurrencyId(array $validated): ?int
+    {
+        if (! empty($validated['currency_id']))
+        {
+            return (int) $validated['currency_id'];
+        }
+
+        $accountCurrencyId = PaymentAccount::query()
+            ->whereKey((int) $validated['account_id'])
+            ->value('currency_id');
+
+        if ($accountCurrencyId !== null)
+        {
+            return (int) $accountCurrencyId;
+        }
+
+        return null;
+    }
+
+    private function resolveInvoiceTypeId(): int
+    {
+        return (int) (InvoiceType::query()->orderBy('id')->value('id') ?? 1);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function composeInvoiceNumber(array $validated): string
+    {
+        if (filled($validated['document_number'] ?? null))
+        {
+            return trim((string) $validated['document_number']);
+        }
+
+        return 'GC-'.Carbon::now()->format('YmdHis').'-'.Str::upper(Str::random(4));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lineSummaries
+     */
+    private function createInvoiceItems(Invoice $invoice, array $lineSummaries, ?int $categoryId): void
+    {
+        foreach ($lineSummaries as $lineSummary)
+        {
+            InvoiceItem::query()->create([
+                'invoice_id' => $invoice->id,
+                'category_id' => $categoryId,
+                'description' => (string) $lineSummary['concept'],
+                'quantity' => 1,
+                'unit_price' => (float) $lineSummary['allocated_total'],
+                'discount' => 0,
+                'tax_percentage' => 0,
+            ]);
+        }
     }
 
     /**

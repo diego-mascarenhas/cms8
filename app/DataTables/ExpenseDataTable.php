@@ -36,12 +36,21 @@ class ExpenseDataTable extends DataTable
                 }
 
                 $documentNumber = $this->extractDocumentNumberFromRemarks((string) ($data->remarks ?? ''));
+                $user = auth()->user();
+                $canLinkInvoice = $user && $user->hasAnyRole(['admin', 'collaborator']);
+
                 if (filled($documentNumber))
                 {
+                    if ($canLinkInvoice)
+                    {
+                        return '<a href="'.e(route('payments.link-invoice', $data->id)).'" class="text-body" title="'.e(__('payment_invoice.link.action_title')).'">'
+                            .e($documentNumber)
+                            .'</a>';
+                    }
+
                     return '<span class="text-body">'.e($documentNumber).'</span>';
                 }
 
-                $user = auth()->user();
                 if ($user && $user->hasAnyRole(['admin', 'collaborator']))
                 {
                     return '<a href="'.e(route('payments.link-invoice', $data->id)).'" class="text-body" title="'.e(__('payment_invoice.link.action_title')).'">'

@@ -66,6 +66,8 @@
             </div>
         </div>
 
+        <h5 class="mb-3">Factura de compra</h5>
+
         <div class="row g-3">
             <div class="col-lg-7">
                 <div id="document-drop-zone" class="border rounded p-4 h-100" style="border-style: dashed !important; cursor: pointer;">
@@ -100,7 +102,7 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label for="date" class="form-label">Fecha <span class="text-danger">*</span></label>
+                        <label for="date" class="form-label">Fecha factura <span class="text-danger">*</span></label>
                         <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', now()->toDateString()) }}" required>
                         @error('date')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -108,7 +110,7 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label for="document_number" class="form-label">Número de documento</label>
+                        <label for="document_number" class="form-label">N.º factura</label>
                         <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
                         @error('document_number')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -296,7 +298,7 @@
 
         <hr class="my-4">
 
-        <h5 class="mb-3">Pagos</h5>
+        <h5 class="mb-3">Pago</h5>
         <div class="p-3 rounded bg-label-warning">
             <div class="row g-3">
                 <div class="col-md-2">
@@ -307,7 +309,7 @@
                     @enderror
                 </div>
                 <div class="col-md-2">
-                    <label for="payment_amount" class="form-label">Importe</label>
+                    <label for="payment_amount" class="form-label">Importe pagado</label>
                     <input type="number" id="payment_amount" name="payment_amount" class="form-control text-end @error('payment_amount') is-invalid @enderror" step="0.01" min="0.01" value="{{ old('payment_amount') }}" placeholder="Automático según totales">
                     @error('payment_amount')
                         <div class="invalid-feedback">{{ $message }}</div>
