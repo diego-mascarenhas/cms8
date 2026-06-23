@@ -896,6 +896,7 @@ Route::middleware(['auth'])->group(function ()
     // Expense module
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');
     Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
+    Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
     Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
 
     // Financial Dashboard (Accounting)

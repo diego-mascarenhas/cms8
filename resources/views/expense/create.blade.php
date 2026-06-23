@@ -76,6 +76,7 @@
                         <p class="mb-2 fw-medium">Suelta un archivo o haz clic para subir</p>
                         <p class="mb-1 text-muted">Opcional: factura, ticket o documento fiscal</p>
                         <p id="selected-document-name" class="mb-0 text-primary small"></p>
+                        <p id="document-detection-status" class="mb-0 text-muted small mt-1"></p>
                         <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
                     </div>
                 </div>
@@ -433,17 +434,31 @@
         var $dropZone = $('#document-drop-zone');
         var $documentInput = $('#document_file');
         var $documentName = $('#selected-document-name');
+        var $documentDetectionStatus = $('#document-detection-status');
         var $linesBody = $('#expense-lines-body');
         var $currencySelect = $('#currency_id');
         var $summaryVatLines = $('#summary-vat-lines');
+        var detectDocumentUrl = @json(route('expense.detect-document'));
+        var csrfToken = @json(csrf_token());
         var nextLineIndex = $linesBody.find('.expense-line').length;
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
 
         function updateDocumentName() {
             var file = $documentInput[0].files[0];
             if (file) {
                 $documentName.text('Archivo seleccionado: ' + file.name);
+                detectExpenseDocument(file);
             } else {
                 $documentName.text('');
+                $documentDetectionStatus.text('');
             }
         }
 
@@ -478,19 +493,131 @@
 
         $documentInput.on('change', updateDocumentName);
 
-        function createLineRow(index) {
+        function createLineRow(index, lineData) {
+            var line = lineData || {};
+            var concept = line.concept ? String(line.concept) : '';
+            var baseAmount = Number.isFinite(parseFloat(line.base_amount)) ? parseFloat(line.base_amount).toFixed(2) : '0.00';
+            var vatPercent = Number.isFinite(parseFloat(line.vat_percent)) ? parseFloat(line.vat_percent).toFixed(2) : '0';
+            var retentionPercent = Number.isFinite(parseFloat(line.retention_percent)) ? parseFloat(line.retention_percent).toFixed(2) : '0';
+            var allocationPercent = Number.isFinite(parseFloat(line.allocation_percent)) ? parseFloat(line.allocation_percent).toFixed(2) : '100';
+
             return [
                 '<tr class="expense-line" data-line-index="' + index + '">',
-                '  <td><input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" required></td>',
-                '  <td><input type="number" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" min="0.01" step="0.01" value="0.00" required></td>',
-                '  <td><input type="number" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" min="0" max="100" step="0.01" value="0"></td>',
-                '  <td><input type="number" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" min="0" max="100" step="0.01" value="0"></td>',
-                '  <td><input type="number" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" min="0.01" max="100" step="0.01" value="100"></td>',
+                '  <td><input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '" required></td>',
+                '  <td><input type="number" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" min="0.01" step="0.01" value="' + escapeHtml(baseAmount) + '" required></td>',
+                '  <td><input type="number" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" min="0" max="100" step="0.01" value="' + escapeHtml(vatPercent) + '"></td>',
+                '  <td><input type="number" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" min="0" max="100" step="0.01" value="' + escapeHtml(retentionPercent) + '"></td>',
+                '  <td><input type="number" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" min="0.01" max="100" step="0.01" value="' + escapeHtml(allocationPercent) + '"></td>',
                 '  <td class="text-center">',
                 '    <button type="button" class="btn btn-sm btn-icon btn-label-danger remove-line-btn" title="Eliminar línea"><i class="ti ti-trash"></i></button>',
                 '  </td>',
                 '</tr>',
             ].join('');
+        }
+
+        function setExpenseDate(inputSelector, dateValue) {
+            if (!dateValue) {
+                return;
+            }
+
+            var inputElement = $(inputSelector).get(0);
+            if (inputElement && inputElement._flatpickr) {
+                inputElement._flatpickr.setDate(dateValue, true, 'Y-m-d');
+            } else {
+                $(inputSelector).val(dateValue).trigger('change');
+            }
+        }
+
+        function applyDetectedDocumentData(data) {
+            if (!data || typeof data !== 'object') {
+                return;
+            }
+
+            if (data.enterprise_id) {
+                var enterpriseValue = String(data.enterprise_id);
+                if ($('#enterprise_id option[value="' + enterpriseValue + '"]').length > 0) {
+                    $('#enterprise_id').val(enterpriseValue).trigger('change');
+                }
+            }
+
+            if (data.document_number) {
+                $('#document_number').val(String(data.document_number));
+            }
+
+            if (data.date) {
+                setExpenseDate('#date', String(data.date));
+            }
+
+            if (data.payment_date) {
+                setExpenseDate('#payment_date', String(data.payment_date));
+            }
+
+            if (data.currency_id) {
+                var currencyValue = String(data.currency_id);
+                if ($('#currency_id option[value="' + currencyValue + '"]').length > 0) {
+                    $('#currency_id').val(currencyValue).trigger('change');
+                }
+            }
+
+            if (Array.isArray(data.lines) && data.lines.length > 0) {
+                $linesBody.empty();
+                data.lines.forEach(function (line, index) {
+                    $linesBody.append(createLineRow(index, line));
+                });
+                nextLineIndex = data.lines.length;
+            }
+
+            if (data.payment_amount && (!$('#payment_amount').val() || $('#payment_amount').val() === '')) {
+                $('#payment_amount').val(formatAmount(data.payment_amount));
+            }
+
+            refreshSummary();
+        }
+
+        function detectExpenseDocument(file) {
+            if (!file || !detectDocumentUrl) {
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('document_file', file);
+
+            $documentDetectionStatus
+                .removeClass('text-danger text-success')
+                .addClass('text-muted')
+                .text('Analizando documento...');
+
+            $.ajax({
+                url: detectDocumentUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                success: function (response) {
+                    if (!response || response.success !== true) {
+                        $documentDetectionStatus
+                            .removeClass('text-muted text-success')
+                            .addClass('text-danger')
+                            .text('No se pudo interpretar el documento.');
+                        return;
+                    }
+
+                    applyDetectedDocumentData(response.data || {});
+                    $documentDetectionStatus
+                        .removeClass('text-muted text-danger')
+                        .addClass('text-success')
+                        .text('Documento detectado. Campos autocompletados.');
+                },
+                error: function () {
+                    $documentDetectionStatus
+                        .removeClass('text-muted text-success')
+                        .addClass('text-danger')
+                        .text('No se pudo analizar el documento. Revisa OCR/AI en ajustes.');
+                }
+            });
         }
 
         $('#add-expense-line').on('click', function () {

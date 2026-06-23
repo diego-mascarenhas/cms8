@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ExpenseDataTable;
 use App\Enums\TransactionType;
+use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Models\Category;
 use App\Models\Currency;
@@ -14,7 +15,9 @@ use App\Models\InvoiceType;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Services\ExpenseDocumentDetectionService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -126,6 +129,22 @@ class ExpenseController extends Controller
             'documentTypes',
             'statusOptions',
         ));
+    }
+
+    public function detectDocument(
+        DetectExpenseDocumentRequest $request,
+        ExpenseDocumentDetectionService $expenseDocumentDetectionService,
+    ): JsonResponse {
+        $teamId = (int) $request->user()->currentTeam->id;
+        $detectedData = $expenseDocumentDetectionService->detectFromUploadedFile(
+            $request->file('document_file'),
+            $teamId,
+        );
+
+        return response()->json([
+            'success' => true,
+            'data' => $detectedData,
+        ]);
     }
 
     public function store(StoreExpenseRequest $request): RedirectResponse
