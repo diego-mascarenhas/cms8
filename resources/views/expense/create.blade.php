@@ -202,7 +202,7 @@
 
                                         <div class="row g-2">
                                             <div class="col-md-3">
-                                                <label class="form-label small mb-1">Base</label>
+                                                <label class="form-label small mb-1 d-block text-end">Base</label>
                                                 <input
                                                     type="number"
                                                     name="lines[{{ $index }}][base_amount]"
@@ -217,7 +217,7 @@
                                                 @enderror
                                             </div>
                                             <div class="col-md-3">
-                                                <label class="form-label small mb-1">IVA %</label>
+                                                <label class="form-label small mb-1 d-block text-end">IVA %</label>
                                                 <input
                                                     type="number"
                                                     name="lines[{{ $index }}][vat_percent]"
@@ -232,7 +232,7 @@
                                                 @enderror
                                             </div>
                                             <div class="col-md-3">
-                                                <label class="form-label small mb-1 text-nowrap">Retención %</label>
+                                                <label class="form-label small mb-1 d-block text-end text-nowrap">Retención %</label>
                                                 <input
                                                     type="number"
                                                     name="lines[{{ $index }}][retention_percent]"
@@ -247,7 +247,7 @@
                                                 @enderror
                                             </div>
                                             <div class="col-md-3">
-                                                <label class="form-label small mb-1">Imputa %</label>
+                                                <label class="form-label small mb-1 d-block text-end">Imputa %</label>
                                                 <input
                                                     type="number"
                                                     name="lines[{{ $index }}][allocation_percent]"
@@ -274,7 +274,7 @@
                 @enderror
 
                 <button type="button" id="add-expense-line" class="btn btn-sm btn-outline-primary mt-2">
-                    <i class="ti ti-plus me-1"></i> Añadir línea
+                    <i class="ti ti-plus me-1"></i> Añadir ítem
                 </button>
             </div>
 
@@ -603,19 +603,19 @@
                 '    </div>',
                 '    <div class="row g-2">',
                 '      <div class="col-md-3">',
-                '        <label class="form-label small mb-1">Base</label>',
+                '        <label class="form-label small mb-1 d-block text-end">Base</label>',
                 '        <input type="number" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" min="0.01" step="0.01" value="' + escapeHtml(baseAmount) + '" required>',
                 '      </div>',
                 '      <div class="col-md-3">',
-                '        <label class="form-label small mb-1">IVA %</label>',
+                '        <label class="form-label small mb-1 d-block text-end">IVA %</label>',
                 '        <input type="number" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" min="0" max="100" step="0.01" value="' + escapeHtml(vatPercent) + '">',
                 '      </div>',
                 '      <div class="col-md-3">',
-                '        <label class="form-label small mb-1 text-nowrap">Retención %</label>',
+                '        <label class="form-label small mb-1 d-block text-end text-nowrap">Retención %</label>',
                 '        <input type="number" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" min="0" max="100" step="0.01" value="' + escapeHtml(retentionPercent) + '">',
                 '      </div>',
                 '      <div class="col-md-3">',
-                '        <label class="form-label small mb-1">Imputa %</label>',
+                '        <label class="form-label small mb-1 d-block text-end">Imputa %</label>',
                 '        <input type="number" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" min="0.01" max="100" step="0.01" value="' + escapeHtml(allocationPercent) + '">',
                 '      </div>',
                 '    </div>',

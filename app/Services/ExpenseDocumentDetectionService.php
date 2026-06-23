@@ -41,6 +41,8 @@ Rules:
 - Keep numbers as decimal numbers.
 - If a tax/retention is unknown, use 0.
 - allocation_percent must be 100 when unknown.
+- enterprise_name MUST be the issuer/supplier (not customer/recipient/buyer).
+- document_number MUST NOT be a phone number.
 - Do not include markdown or explanations.
 PROMPT;
 
@@ -62,7 +64,7 @@ PROMPT;
         }
 
         $ocrResult = $this->extractOcrText($absolutePath, $teamId);
-        $heuristicData = $this->extractStructuredDataWithHeuristics($ocrResult['text']);
+        $heuristicData = $this->extractStructuredDataWithHeuristics($ocrResult['text'], $teamId);
         $aiData = $this->extractStructuredDataWithAi($ocrResult['text'], $teamId, $ocrResult['mode']);
         $detectedData = $this->mergeDetectedData($heuristicData, $aiData);
 
@@ -171,7 +173,7 @@ PROMPT;
     /**
      * @return array<string, mixed>
      */
-    private function extractStructuredDataWithHeuristics(?string $ocrText): array
+    private function extractStructuredDataWithHeuristics(?string $ocrText, int $teamId): array
     {
         $text = trim((string) $ocrText);
 
@@ -189,8 +191,9 @@ PROMPT;
             ];
         }
 
-        $enterpriseName = $this->extractEnterpriseName($text);
-        $documentNumber = $this->extractDocumentNumber($text);
+        $knownPhones = $this->extractPhoneCandidates($text);
+        $enterpriseName = $this->extractEnterpriseName($text, $teamId);
+        $documentNumber = $this->extractDocumentNumber($text, $knownPhones);
         $invoiceDate = $this->extractDateByLabel($text, ['fecha factura', 'fecha', 'invoice date', 'date']);
         $dueDate = $this->extractDateByLabel($text, ['fecha vencimiento', 'vencimiento', 'due date', 'payment due']);
         $currencyCode = $this->extractCurrencyCode($text);
@@ -198,8 +201,8 @@ PROMPT;
         $retentionPercent = $this->extractPercentageByLabel($text, ['retención', 'retencion', 'withholding']);
         $totalAmount = $this->extractTotalAmount($text);
 
-        $lines = [];
-        if ($totalAmount !== null && $totalAmount > 0)
+        $lines = $this->extractInvoiceLines($text, $vatPercent, $retentionPercent, $totalAmount);
+        if ($lines === [] && $totalAmount !== null && $totalAmount > 0)
         {
             $estimatedBase = $totalAmount;
             if ($vatPercent > 0)
@@ -308,26 +311,34 @@ PROMPT;
             }
         }
 
-        if (! empty($aiData['lines']) && is_array($aiData['lines']))
+        $heuristicLines = is_array($heuristicData['lines'] ?? null) ? $heuristicData['lines'] : [];
+        $aiLines = is_array($aiData['lines'] ?? null) ? $aiData['lines'] : [];
+
+        if ($aiLines !== [] && $heuristicLines === [])
         {
-            $merged['lines'] = $aiData['lines'];
+            $merged['lines'] = $aiLines;
+        } elseif ($aiLines !== [] && count($aiLines) >= count($heuristicLines))
+        {
+            $merged['lines'] = $aiLines;
         }
 
         return $merged;
     }
 
-    private function extractEnterpriseName(string $text): ?string
+    private function extractEnterpriseName(string $text, int $teamId): ?string
     {
-        $patterns = [
+        $ownCompanyNames = $this->resolveOwnCompanyNames($teamId);
+        $labeledPatterns = [
             '/(?:empresa|proveedor|raz[oó]n social|supplier|vendor)\s*[:\-]\s*([^\r\n]+)/iu',
+            '/(?:emisor|issuer|from)\s*[:\-]\s*([^\r\n]+)/iu',
         ];
 
-        foreach ($patterns as $pattern)
+        foreach ($labeledPatterns as $pattern)
         {
             if (preg_match($pattern, $text, $matches) === 1)
             {
                 $candidate = trim((string) ($matches[1] ?? ''));
-                if ($candidate !== '')
+                if ($candidate !== '' && ! $this->isOwnCompanyCandidate($candidate, $ownCompanyNames))
                 {
                     return Str::limit($candidate, 255, '');
                 }
@@ -335,7 +346,10 @@ PROMPT;
         }
 
         $lines = preg_split('/\R+/', $text) ?: [];
-        foreach ($lines as $line)
+        $bestCandidate = null;
+        $bestScore = 0;
+
+        foreach ($lines as $index => $line)
         {
             $candidate = trim($line);
             if (mb_strlen($candidate) < 4 || mb_strlen($candidate) > 80)
@@ -355,28 +369,61 @@ PROMPT;
                 || str_contains($lowerCandidate, 'fecha')
                 || str_contains($lowerCandidate, 'total')
                 || str_contains($lowerCandidate, 'iva')
+                || str_contains($lowerCandidate, 'cliente')
+                || str_contains($lowerCandidate, 'customer')
+                || str_contains($lowerCandidate, 'destinatario')
+                || str_contains($lowerCandidate, 'comprador')
             ) {
                 continue;
             }
 
-            return Str::limit($candidate, 255, '');
+            if ($this->isOwnCompanyCandidate($candidate, $ownCompanyNames))
+            {
+                continue;
+            }
+
+            $score = 0;
+            if ((int) $index < 8)
+            {
+                $score += 20;
+            }
+            if (preg_match('/\b(s\.?l\.?|s\.?a\.?|llc|inc|ltda|gmbh|group|telecom|communications)\b/iu', $candidate) === 1)
+            {
+                $score += 25;
+            }
+            if (preg_match('/\b(proveedor|supplier|vendor|emisor|issuer)\b/iu', $candidate) === 1)
+            {
+                $score += 20;
+            }
+
+            if ($score > $bestScore)
+            {
+                $bestScore = $score;
+                $bestCandidate = $candidate;
+            }
+        }
+
+        if ($bestCandidate !== null && $bestScore >= 20)
+        {
+            return Str::limit($bestCandidate, 255, '');
         }
 
         return null;
     }
 
-    private function extractDocumentNumber(string $text): ?string
+    private function extractDocumentNumber(string $text, array $knownPhones): ?string
     {
         $patterns = [
-            '/(?:n[úu]m(?:ero)?(?:\s+de)?(?:\s+factura)?|invoice(?:\s+no|\s+number)?|factura(?:\s+n[ºo])?)\s*[:#\-]?\s*([A-Z0-9\-\/\.]{3,})/iu',
+            '/(?:n[úu]m(?:ero)?\s+(?:de\s+)?factura|n[º°o]\s*factura|factura\s*(?:n[º°o]|#|num(?:ero)?)|invoice\s*(?:no|number|#)|ref(?:erencia)?\s+factura)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
+            '/(?:factura|invoice)\s*[:#\-]?\s*([A-Z]{1,4}[-\/]?[0-9][A-Z0-9\-\/\.]{2,})/iu',
         ];
 
         foreach ($patterns as $pattern)
         {
             if (preg_match($pattern, $text, $matches) === 1)
             {
-                $candidate = trim((string) ($matches[1] ?? ''));
-                if ($candidate !== '')
+                $candidate = trim((string) ($matches[1] ?? ''), " \t\n\r\0\x0B:;,.#");
+                if ($candidate !== '' && ! $this->isLikelyPhoneNumber($candidate, $knownPhones))
                 {
                     return Str::limit($candidate, 120, '');
                 }
@@ -685,5 +732,282 @@ PROMPT;
             ->value();
 
         return (string) $value;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function resolveOwnCompanyNames(int $teamId): array
+    {
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        $businessConfig = $team?->getSetting('business_config', []);
+        if (is_string($businessConfig))
+        {
+            $businessConfig = json_decode($businessConfig, true) ?: [];
+        }
+
+        return collect([
+            $team?->name,
+            is_array($businessConfig) ? ($businessConfig['business_name'] ?? null) : null,
+            'REVISION ALPHA S.L.',
+        ])
+            ->filter(fn ($name): bool => is_string($name) && trim($name) !== '')
+            ->map(fn (string $name): string => $this->normalizeText($name))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function isOwnCompanyCandidate(string $candidate, array $ownCompanyNames): bool
+    {
+        $normalizedCandidate = $this->normalizeText($candidate);
+        if ($normalizedCandidate === '' || $ownCompanyNames === [])
+        {
+            return false;
+        }
+
+        foreach ($ownCompanyNames as $ownCompanyName)
+        {
+            if ($ownCompanyName === '')
+            {
+                continue;
+            }
+
+            if (
+                $normalizedCandidate === $ownCompanyName
+                || str_contains($normalizedCandidate, $ownCompanyName)
+                || str_contains($ownCompanyName, $normalizedCandidate)
+            ) {
+                return true;
+            }
+
+            similar_text($normalizedCandidate, $ownCompanyName, $similarity);
+            if ((float) $similarity >= 90.0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractPhoneCandidates(string $text): array
+    {
+        preg_match_all('/(?<![A-Z0-9])(?:\+?\d[\d\s\-\(\)\.]{6,}\d)(?![A-Z0-9])/iu', $text, $matches);
+
+        return collect($matches[0] ?? [])
+            ->map(function (string $raw): ?string
+            {
+                $normalized = preg_replace('/[^\d+]/', '', trim($raw)) ?? '';
+                if ($normalized === '')
+                {
+                    return null;
+                }
+
+                if (str_starts_with($normalized, '+'))
+                {
+                    $normalized = '+'.(preg_replace('/[^\d]/', '', substr($normalized, 1)) ?? '');
+                } else
+                {
+                    $normalized = preg_replace('/[^\d]/', '', $normalized) ?? '';
+                }
+
+                $digitsLength = strlen(ltrim($normalized, '+'));
+                if ($digitsLength < 8 || $digitsLength > 15)
+                {
+                    return null;
+                }
+
+                return $normalized;
+            })
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function isLikelyPhoneNumber(string $candidate, array $knownPhones): bool
+    {
+        if (preg_match('/[A-Z]/iu', $candidate) === 1)
+        {
+            return false;
+        }
+
+        $normalizedCandidate = preg_replace('/[^\d+]/', '', trim($candidate)) ?? '';
+        if ($normalizedCandidate === '')
+        {
+            return true;
+        }
+
+        $digitsOnlyCandidate = ltrim($normalizedCandidate, '+');
+        foreach ($knownPhones as $phone)
+        {
+            $digitsOnlyPhone = ltrim((string) $phone, '+');
+            if ($digitsOnlyPhone !== '' && $digitsOnlyPhone === $digitsOnlyCandidate)
+            {
+                return true;
+            }
+        }
+
+        if (str_starts_with($normalizedCandidate, '+') && strlen($digitsOnlyCandidate) >= 8 && strlen($digitsOnlyCandidate) <= 15)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return array<int, array{concept:string,base_amount:float,vat_percent:float,retention_percent:float,allocation_percent:int}>
+     */
+    private function extractInvoiceLines(
+        string $text,
+        float $defaultVatPercent,
+        float $defaultRetentionPercent,
+        ?float $totalAmount,
+    ): array {
+        $rows = preg_split('/\R+/', $text) ?: [];
+        $detectedLines = [];
+        $pendingConcept = null;
+
+        foreach ($rows as $row)
+        {
+            $line = trim($row);
+            if ($line === '')
+            {
+                continue;
+            }
+
+            if ($this->isSummaryOrMetaLine($line))
+            {
+                continue;
+            }
+
+            $amounts = $this->extractAmountsFromLine($line);
+            if ($amounts === [])
+            {
+                $conceptOnly = $this->cleanConceptText($line);
+                if ($conceptOnly !== '' && mb_strlen($conceptOnly) >= 6)
+                {
+                    $pendingConcept = $conceptOnly;
+                }
+
+                continue;
+            }
+
+            $baseAmount = (float) ($amounts[0] ?? 0);
+            if ($baseAmount <= 0)
+            {
+                continue;
+            }
+
+            if ($totalAmount !== null && $totalAmount > 0 && $baseAmount > ($totalAmount * 2) && count($amounts) === 1)
+            {
+                continue;
+            }
+
+            $concept = $this->cleanConceptText($line);
+            if (($concept === '' || mb_strlen($concept) < 4) && $pendingConcept !== null)
+            {
+                $concept = $pendingConcept;
+            }
+            $pendingConcept = null;
+
+            if ($concept === '')
+            {
+                continue;
+            }
+
+            $percentages = $this->extractPercentagesFromLine($line);
+            $vatPercent = $defaultVatPercent;
+            $retentionPercent = $defaultRetentionPercent;
+
+            if ($percentages !== [])
+            {
+                $vatPercent = (float) ($percentages[0] ?? $defaultVatPercent);
+                $retentionPercent = (float) ($percentages[1] ?? $defaultRetentionPercent);
+            }
+
+            if (preg_match('/\b(retenci[oó]n|retencion|irpf|withholding)\b/iu', $line) === 1 && $percentages !== [])
+            {
+                $retentionPercent = (float) ($percentages[count($percentages) - 1] ?? $defaultRetentionPercent);
+            }
+
+            $deduplicationKey = $this->normalizeText($concept).'|'.number_format($baseAmount, 2, '.', '');
+            if (isset($detectedLines[$deduplicationKey]))
+            {
+                continue;
+            }
+
+            $detectedLines[$deduplicationKey] = [
+                'concept' => Str::limit($concept, 255, ''),
+                'base_amount' => round($baseAmount, 2),
+                'vat_percent' => round(max($vatPercent, 0), 2),
+                'retention_percent' => round(max($retentionPercent, 0), 2),
+                'allocation_percent' => 100,
+            ];
+        }
+
+        return array_values($detectedLines);
+    }
+
+    private function isSummaryOrMetaLine(string $line): bool
+    {
+        $normalizedLine = $this->normalizeText($line);
+
+        return str_contains($normalizedLine, 'total')
+            || str_contains($normalizedLine, 'subtotal')
+            || str_contains($normalizedLine, 'factura')
+            || str_contains($normalizedLine, 'invoice')
+            || str_contains($normalizedLine, 'fecha')
+            || str_contains($normalizedLine, 'vencimiento')
+            || str_contains($normalizedLine, 'telefono')
+            || str_contains($normalizedLine, 'nif')
+            || str_contains($normalizedLine, 'cif')
+            || str_contains($normalizedLine, 'iban')
+            || str_contains($normalizedLine, 'cliente')
+            || str_contains($normalizedLine, 'destinatario');
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    private function extractAmountsFromLine(string $line): array
+    {
+        preg_match_all('/[$€]?\s*\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{2})|[$€]?\s*\d+(?:[.,]\d{2})/u', $line, $matches);
+
+        return collect($matches[0] ?? [])
+            ->map(fn (string $amount): float => round($this->toFloat($amount), 2))
+            ->filter(fn (float $amount): bool => $amount > 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, float>
+     */
+    private function extractPercentagesFromLine(string $line): array
+    {
+        preg_match_all('/([0-9]{1,2}(?:[.,][0-9]{1,2})?)\s*%/u', $line, $matches);
+
+        return collect($matches[1] ?? [])
+            ->map(fn (string $percentage): float => round($this->toFloat($percentage), 2))
+            ->filter(fn (float $percentage): bool => $percentage >= 0)
+            ->values()
+            ->all();
+    }
+
+    private function cleanConceptText(string $line): string
+    {
+        $concept = preg_replace('/[$€]?\s*\d{1,3}(?:[.\s]\d{3})*(?:[.,]\d{2})|[$€]?\s*\d+(?:[.,]\d{2})/u', ' ', $line) ?? $line;
+        $concept = preg_replace('/([0-9]{1,2}(?:[.,][0-9]{1,2})?)\s*%/u', ' ', $concept) ?? $concept;
+        $concept = str_replace(['|', ';', '  '], ' ', $concept);
+        $concept = preg_replace('/\s+/', ' ', $concept) ?? $concept;
+
+        return trim($concept);
     }
 }
