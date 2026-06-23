@@ -70,21 +70,32 @@
 
         <div class="row g-3">
             <div class="col-lg-7">
-                <div id="document-drop-zone" class="border rounded p-4 h-100" style="border-style: dashed !important; cursor: pointer;">
-                    <div class="d-flex flex-column align-items-center justify-content-center text-center h-100">
-                        <i class="ti ti-cloud-upload ti-lg mb-2 text-muted"></i>
-                        <p class="mb-2 fw-medium">Suelta un archivo o haz clic para subir</p>
-                        <p class="mb-1 text-muted">Opcional: factura, ticket o documento fiscal</p>
-                        <p id="selected-document-name" class="mb-0 text-primary small"></p>
+                <label id="document-drop-zone" for="document_file" class="border rounded p-4 h-100 d-block position-relative overflow-hidden" style="border-style: dashed !important; cursor: pointer;">
+                    <div id="document-file-meta" class="d-none position-absolute top-0 end-0 p-2 d-flex align-items-center gap-2" style="z-index: 2; max-width: 85%;">
+                        <span id="selected-document-name" class="text-primary small text-truncate"></span>
+                        <button
+                            type="button"
+                            id="remove-document-file"
+                            class="border-0 bg-transparent text-danger p-0"
+                            title="Eliminar documento"
+                            style="line-height: 1;"
+                        >
+                            <i class="ti ti-trash ti-xs"></i>
+                        </button>
+                    </div>
+                    <div class="d-flex flex-column align-items-center justify-content-center text-center h-100 w-100">
+                        <i id="document-drop-icon" class="ti ti-cloud-upload ti-lg mb-2 text-muted"></i>
+                        <p id="document-drop-title" class="mb-2 fw-medium">Suelta un archivo o haz clic para subir</p>
+                        <p id="document-drop-subtitle" class="mb-1 text-muted">Opcional: factura, ticket o documento fiscal</p>
+                        <div id="document-file-preview" class="d-none mt-2 w-100 h-100 d-flex align-items-center justify-content-center"></div>
                         <p id="document-detection-status" class="mb-0 text-muted small mt-1"></p>
                         <div id="document-detection-loading" class="d-none mt-2">
                             <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
                             <span class="small text-muted">Analizando documento...</span>
                         </div>
-                        <div id="document-detection-preview" class="d-none mt-3 w-100 text-start"></div>
                         <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
                     </div>
-                </div>
+                </label>
                 @error('document_file')
                     <small class="text-danger d-block mt-2">{{ $message }}</small>
                 @enderror
@@ -166,18 +177,17 @@
             <div class="col-lg-8">
                 <div class="table-responsive">
                     <table class="table table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Detalle del concepto</th>
-                                <th class="text-center" style="width: 90px;">Acción</th>
-                            </tr>
-                        </thead>
                         <tbody id="expense-lines-body">
                             @foreach ($oldLines as $index => $line)
                                 <tr class="expense-line" data-line-index="{{ $index }}">
                                     <td>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label class="form-label small mb-0">Concepto</label>
+                                            <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">
+                                                <i class="ti ti-trash ti-xs"></i>
+                                            </button>
+                                        </div>
                                         <div class="mb-2">
-                                            <label class="form-label small mb-1">Concepto</label>
                                             <input
                                                 type="text"
                                                 name="lines[{{ $index }}][concept]"
@@ -252,11 +262,6 @@
                                                 @enderror
                                             </div>
                                         </div>
-                                    </td>
-                                    <td class="text-center align-middle">
-                                        <button type="button" class="btn btn-sm btn-icon btn-label-danger remove-line-btn" title="Eliminar línea">
-                                            <i class="ti ti-trash"></i>
-                                        </button>
                                     </td>
                                 </tr>
                             @endforeach
@@ -452,16 +457,22 @@
 
         var $dropZone = $('#document-drop-zone');
         var $documentInput = $('#document_file');
+        var $documentDropIcon = $('#document-drop-icon');
+        var $documentDropTitle = $('#document-drop-title');
+        var $documentDropSubtitle = $('#document-drop-subtitle');
+        var $documentFileMeta = $('#document-file-meta');
+        var $removeDocumentFileButton = $('#remove-document-file');
         var $documentName = $('#selected-document-name');
+        var $documentFilePreview = $('#document-file-preview');
         var $documentDetectionStatus = $('#document-detection-status');
         var $documentDetectionLoading = $('#document-detection-loading');
-        var $documentDetectionPreview = $('#document-detection-preview');
         var $linesBody = $('#expense-lines-body');
         var $currencySelect = $('#currency_id');
         var $summaryVatLines = $('#summary-vat-lines');
         var detectDocumentUrl = @json(route('expense.detect-document'));
         var csrfToken = @json(csrf_token());
         var nextLineIndex = $linesBody.find('.expense-line').length;
+        var documentPreviewObjectUrl = null;
 
         function escapeHtml(value) {
             return String(value)
@@ -475,19 +486,66 @@
         function updateDocumentName() {
             var file = $documentInput[0].files[0];
             if (file) {
-                $documentName.text('Archivo seleccionado: ' + file.name);
+                $documentName.text(file.name);
+                setDropzoneUploadedState(true);
+                renderDocumentFilePreview(file);
                 detectExpenseDocument(file);
             } else {
                 $documentName.text('');
                 $documentDetectionStatus.text('');
-                $documentDetectionPreview.addClass('d-none').empty();
                 $documentDetectionLoading.addClass('d-none');
+                setDropzoneUploadedState(false);
+                clearDocumentFilePreview();
             }
         }
 
-        $dropZone.on('click', function () {
-            $documentInput.trigger('click');
-        });
+        function clearDocumentFilePreview() {
+            if (documentPreviewObjectUrl) {
+                URL.revokeObjectURL(documentPreviewObjectUrl);
+                documentPreviewObjectUrl = null;
+            }
+            $documentFilePreview.addClass('d-none').empty();
+        }
+
+        function setDropzoneUploadedState(hasFile) {
+            $documentDropIcon.toggleClass('d-none', hasFile);
+            $documentDropTitle.toggleClass('d-none', hasFile);
+            $documentDropSubtitle.toggleClass('d-none', hasFile);
+            $documentFileMeta.toggleClass('d-none', !hasFile);
+        }
+
+        function renderDocumentFilePreview(file) {
+            clearDocumentFilePreview();
+
+            if (!file) {
+                return;
+            }
+
+            var mimeType = (file.type || '').toLowerCase();
+            documentPreviewObjectUrl = URL.createObjectURL(file);
+
+            if (mimeType.indexOf('image/') === 0) {
+                $documentFilePreview
+                    .html(
+                        '<div class="border rounded p-2 bg-white w-100">' +
+                        '<img src="' + escapeHtml(documentPreviewObjectUrl) + '" alt="Vista previa documento" class="img-fluid rounded" style="max-height: 310px; width: 100%; object-fit: contain;">' +
+                        '</div>'
+                    )
+                    .removeClass('d-none');
+                return;
+            }
+
+            if (mimeType === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                $documentFilePreview
+                    .html(
+                        '<div class="border rounded p-2 bg-white w-100">' +
+                        '<iframe src="' + escapeHtml(documentPreviewObjectUrl) + '#toolbar=0&navpanes=0&scrollbar=1" title="Vista previa PDF" style="width: 100%; height: 310px; border: 0;"></iframe>' +
+                        '</div>'
+                    )
+                    .removeClass('d-none');
+                return;
+            }
+        }
 
         $dropZone.on('dragover', function (event) {
             event.preventDefault();
@@ -516,6 +574,13 @@
 
         $documentInput.on('change', updateDocumentName);
 
+        $removeDocumentFileButton.on('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            $documentInput.val('');
+            updateDocumentName();
+        });
+
         function createLineRow(index, lineData) {
             var line = lineData || {};
             var concept = line.concept ? String(line.concept) : '';
@@ -527,8 +592,13 @@
             return [
                 '<tr class="expense-line" data-line-index="' + index + '">',
                 '  <td>',
+                '    <div class="d-flex justify-content-between align-items-center mb-2">',
+                '      <label class="form-label small mb-0">Concepto</label>',
+                '      <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">',
+                '        <i class="ti ti-trash ti-xs"></i>',
+                '      </button>',
+                '    </div>',
                 '    <div class="mb-2">',
-                '      <label class="form-label small mb-1">Concepto</label>',
                 '      <input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '" required>',
                 '    </div>',
                 '    <div class="row g-2">',
@@ -550,9 +620,6 @@
                 '      </div>',
                 '    </div>',
                 '  </td>',
-                '  <td class="text-center align-middle">',
-                '    <button type="button" class="btn btn-sm btn-icon btn-label-danger remove-line-btn" title="Eliminar línea"><i class="ti ti-trash"></i></button>',
-                '  </td>',
                 '</tr>',
             ].join('');
         }
@@ -568,56 +635,6 @@
             } else {
                 $(inputSelector).val(dateValue).trigger('change');
             }
-        }
-
-        function buildDetectionPreviewHtml(data) {
-            var lines = Array.isArray(data.lines) ? data.lines : [];
-            var details = [];
-
-            if (data.enterprise_name) {
-                details.push('<div><span class="text-muted">Empresa:</span> <strong>' + escapeHtml(data.enterprise_name) + '</strong></div>');
-            }
-            if (data.document_number) {
-                details.push('<div><span class="text-muted">N.º factura:</span> <strong>' + escapeHtml(data.document_number) + '</strong></div>');
-            }
-            if (data.date) {
-                details.push('<div><span class="text-muted">Fecha factura:</span> <strong>' + escapeHtml(data.date) + '</strong></div>');
-            }
-            if (data.due_date) {
-                details.push('<div><span class="text-muted">Vencimiento:</span> <strong>' + escapeHtml(data.due_date) + '</strong></div>');
-            }
-            if (data.currency_code) {
-                details.push('<div><span class="text-muted">Moneda:</span> <strong>' + escapeHtml(data.currency_code) + '</strong></div>');
-            }
-            if (data.payment_amount) {
-                details.push('<div><span class="text-muted">Total detectado:</span> <strong>' + escapeHtml(formatAmount(data.payment_amount)) + '</strong></div>');
-            }
-
-            var linePreview = '';
-            if (lines.length > 0) {
-                var maxPreviewLines = Math.min(lines.length, 3);
-                var renderedLines = [];
-
-                for (var i = 0; i < maxPreviewLines; i += 1) {
-                    var line = lines[i] || {};
-                    renderedLines.push(
-                        '<li class="small mb-1">' +
-                        '<strong>' + escapeHtml(line.concept || 'Concepto') + '</strong>' +
-                        ' | Base: ' + escapeHtml(formatAmount(line.base_amount || 0)) +
-                        ' | IVA: ' + escapeHtml(formatPercent(line.vat_percent || 0)) + '%' +
-                        '</li>'
-                    );
-                }
-
-                linePreview = '<div class="mt-2"><span class="text-muted small">Líneas detectadas:</span><ul class="mb-0 ps-3 mt-1">' + renderedLines.join('') + '</ul></div>';
-            }
-
-            return [
-                '<div class="border rounded p-2 bg-label-secondary">',
-                details.join(''),
-                linePreview,
-                '</div>',
-            ].join('');
         }
 
         function applyDetectedDocumentData(data) {
@@ -667,11 +684,6 @@
                 $('#payment_amount').val(formatAmount(data.payment_amount));
             }
 
-            var previewHtml = buildDetectionPreviewHtml(data);
-            if (previewHtml !== '') {
-                $documentDetectionPreview.html(previewHtml).removeClass('d-none');
-            }
-
             refreshSummary();
         }
 
@@ -686,8 +698,7 @@
             $documentDetectionStatus
                 .removeClass('text-danger text-success')
                 .addClass('text-muted')
-                .text('Analizando documento...');
-            $documentDetectionPreview.addClass('d-none').empty();
+                .text('');
             $documentDetectionLoading.removeClass('d-none');
 
             $.ajax({
@@ -714,7 +725,7 @@
                     $documentDetectionStatus
                         .removeClass('text-muted text-danger')
                         .addClass('text-success')
-                        .text('Documento detectado. Campos autocompletados.');
+                        .text('');
                 },
                 error: function () {
                     $documentDetectionLoading.addClass('d-none');
@@ -725,6 +736,8 @@
                 }
             });
         }
+
+        setDropzoneUploadedState(false);
 
         $('#add-expense-line').on('click', function () {
             $linesBody.append(createLineRow(nextLineIndex));

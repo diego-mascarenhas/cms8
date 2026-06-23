@@ -7,12 +7,15 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -116,6 +119,51 @@ class ExpenseCreateTest extends TestCase
                 'account_id',
                 'status',
             ]);
+    }
+
+    public function test_store_persists_uploaded_document_using_team_hash_path(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-06-22',
+                'document_number' => 'FAC-HASH-001',
+                'expense_category' => 'Comunicaciones',
+                'lines' => [
+                    [
+                        'concept' => 'Factura mensual telefonía',
+                        'base_amount' => '100.00',
+                        'vat_percent' => '21',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
+                'payment_date' => '2026-06-22',
+                'payment_amount' => '',
+                'type_id' => $paymentType->id,
+                'account_id' => $account->id,
+                'status' => 2,
+                'submit_action' => 'save',
+                'document_file' => UploadedFile::fake()->create('Factura Yoigo Enero.pdf', 200, 'application/pdf'),
+            ])
+            ->assertRedirect(route('expense.index'));
+
+        $teamHash = Team::generateTeamHash((int) $user->current_team_id);
+        $storedFiles = Storage::disk('public')->allFiles("expenses/{$teamHash}");
+
+        $this->assertNotEmpty($storedFiles);
+
+        $payment = Payment::withoutGlobalScopes()->latest()->first();
+        $this->assertNotNull($payment);
+        $this->assertStringContainsString('/storage/expenses/'.$teamHash.'/', (string) $payment->remarks);
     }
 
     private function makeAdminUser(): User

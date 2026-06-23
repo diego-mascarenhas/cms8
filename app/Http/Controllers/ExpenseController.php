@@ -15,10 +15,12 @@ use App\Models\InvoiceType;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
+use App\Models\Team;
 use App\Services\ExpenseDocumentDetectionService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -152,6 +154,7 @@ class ExpenseController extends Controller
         $validated = $request->validated();
         $lineSummaries = $this->buildLineSummaries($validated['lines']);
         $teamId = (int) $request->user()->currentTeam->id;
+        $documentFile = $request->file('document_file');
 
         $status = ($validated['submit_action'] ?? 'save') === 'draft'
             ? 1
@@ -185,7 +188,8 @@ class ExpenseController extends Controller
             $currencyCode,
             $lineSummaries,
             $expenseCategoryId,
-            $expenseCategoryName
+            $expenseCategoryName,
+            $documentFile
         ): void {
             $invoice = Invoice::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
@@ -205,6 +209,12 @@ class ExpenseController extends Controller
                 'source_provider' => 'manual',
             ]);
 
+            $storedDocumentPath = $this->storeExpenseDocumentFile(
+                $documentFile,
+                $teamId,
+                (int) $invoice->id,
+            );
+
             $this->createInvoiceItems($invoice, $lineSummaries, $expenseCategoryId);
 
             Payment::query()->create([
@@ -216,7 +226,14 @@ class ExpenseController extends Controller
                 'account_id' => (int) $validated['account_id'],
                 'type_id' => (int) $validated['type_id'],
                 'amount' => $amount,
-                'remarks' => $this->buildRemarks($validated, $amount, $currencyCode, $lineSummaries, $expenseCategoryName),
+                'remarks' => $this->buildRemarks(
+                    $validated,
+                    $amount,
+                    $currencyCode,
+                    $lineSummaries,
+                    $expenseCategoryName,
+                    $storedDocumentPath,
+                ),
                 'status' => $status,
                 'source_provider' => 'manual',
             ]);
@@ -227,6 +244,39 @@ class ExpenseController extends Controller
             : 'Gasto guardado correctamente.';
 
         return redirect()->route('expense.index')->with('success', $message);
+    }
+
+    /**
+     * Store uploaded expense document using team hash path.
+     */
+    private function storeExpenseDocumentFile(?UploadedFile $documentFile, int $teamId, int $invoiceId): ?string
+    {
+        if (! $documentFile instanceof UploadedFile)
+        {
+            return null;
+        }
+
+        $teamHash = Team::generateTeamHash($teamId);
+        $invoiceHash = substr(md5('invoice_salt_'.$invoiceId.'_'.config('app.key')), 0, 8);
+
+        $originalName = pathinfo((string) $documentFile->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = strtolower((string) $documentFile->getClientOriginalExtension());
+        $normalizedName = Str::slug(Str::ascii($originalName));
+
+        if ($normalizedName === '')
+        {
+            $normalizedName = 'documento';
+        }
+
+        if ($extension === '')
+        {
+            $extension = 'pdf';
+        }
+
+        $fileName = $normalizedName.'-'.now()->format('YmdHis').'.'.$extension;
+        $directory = "expenses/{$teamHash}/{$invoiceHash}";
+
+        return $documentFile->storeAs($directory, $fileName, 'public');
     }
 
     /**
@@ -386,6 +436,7 @@ class ExpenseController extends Controller
         string $currencyCode,
         array $lineSummaries,
         ?string $expenseCategoryName,
+        ?string $storedDocumentPath = null,
     ): ?string {
         $lineRemarks = collect($lineSummaries)->map(function (array $line, int $index): string
         {
@@ -411,6 +462,9 @@ class ExpenseController extends Controller
                 : null,
             filled($expenseCategoryName)
                 ? 'Tipo de gasto: '.(string) $expenseCategoryName
+                : null,
+            filled($storedDocumentPath)
+                ? 'Documento: '.asset('storage/'.ltrim((string) $storedDocumentPath, '/'))
                 : null,
             $lineRemarks,
             'Fecha de pago: '.(string) $validated['payment_date'],
