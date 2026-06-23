@@ -121,12 +121,10 @@
                         <x-module-categories-select
                             id="expense_category_id"
                             label="Tipo de gasto"
-                            moduleKey="expenses"
+                            moduleKey="products"
                             :selected="old('expense_category_id')"
                             :allowEmpty="true"
                             emptyText="Selecciona una categoría"
-                            :allowQuickCreate="false"
-                            :allowManageModal="false"
                         />
                     </div>
 
