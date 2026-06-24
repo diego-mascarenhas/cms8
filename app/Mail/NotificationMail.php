@@ -26,13 +26,15 @@ class NotificationMail extends Mailable
      */
     public function build()
     {
-        return $this->subject($this->notification->subject)
-            ->view('emails.notification')
-            ->with([
-                'notification' => $this->notification,
-                'contact' => $this->notification->contact,
-                'sender' => $this->notification->user,
-                'team' => $this->notification->team,
-            ]);
+        $data = [
+            'notification' => $this->notification,
+            'contact' => $this->notification->contact,
+            'sender' => $this->notification->user,
+            'team' => $this->notification->team,
+        ];
+
+        $mail = $this->subject($this->notification->subject);
+
+        return $mail->view('emails.notification', $data);
     }
 }

@@ -592,6 +592,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
     Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
     Route::put('/list60/{id}', [List60Controller::class, 'update'])->name('list60.update');
+    Route::post('/list60/{id}/send-outreach', [List60Controller::class, 'sendOutreach'])->name('list60.send-outreach');
     Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
     // Chat

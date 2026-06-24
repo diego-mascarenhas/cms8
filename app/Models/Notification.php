@@ -217,6 +217,12 @@ class Notification extends Model
         return $this->type?->name === 'Daily Performance Insight';
     }
 
+    public function isPlainTextFormat(): bool
+    {
+        return is_array($this->metadata)
+            && ($this->metadata['format'] ?? null) === 'plain_text';
+    }
+
     public function getFormattedReadAtAttribute(): ?string
     {
         return $this->read_at?->isoFormat('D MMM YYYY, HH:mm');

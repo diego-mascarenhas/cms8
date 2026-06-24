@@ -3,9 +3,11 @@
 namespace App\DataTables;
 
 use App\Models\List60;
+use App\Support\ApplicationDateTime;
 use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
+use Illuminate\Support\Collection;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
 use Yajra\DataTables\Html\Column;
@@ -13,6 +15,14 @@ use Yajra\DataTables\Services\DataTable;
 
 class List60DataTable extends DataTable
 {
+    /** @var Collection<int, \App\Models\User> */
+    public Collection $teamUsers;
+
+    public function __construct()
+    {
+        $this->teamUsers = collect();
+    }
+
     /**
      * Build the DataTable class.
      *
@@ -25,8 +35,7 @@ class List60DataTable extends DataTable
             {
                 return view('list60.action', [
                     'id' => $row->id,
-                    'contact_id' => $row->contact_id,
-                    'responsible_id' => $row->responsible_id,
+                    'contact' => $row->contact,
                 ]);
             })
             ->setRowId('id')
@@ -51,19 +60,47 @@ class List60DataTable extends DataTable
             })
             ->addColumn('responsible_name', function ($row)
             {
+                if (auth()->user()->hasRole('admin'))
+                {
+                    return view('list60.responsible-select', [
+                        'list60Id' => $row->id,
+                        'responsibleId' => $row->responsible_id,
+                        'teamUsers' => $this->teamUsers,
+                    ])->render();
+                }
+
                 return $row->responsible?->name ?? __('Unassigned');
-            })
-            ->addColumn('sources', function ($row)
-            {
-                return $row->contact->sources_icons_html;
             })
             ->editColumn('date_next', function ($row)
             {
-                return Carbon::parse($row->date_next)->translatedFormat('d F');
+                $parsed = Carbon::parse($row->date_next);
+                $iso = $parsed->format('Y-m-d');
+                $label = ApplicationDateTime::formatUpcomingContactDate($parsed);
+                $title = e(ApplicationDateTime::formatUpcomingContactDateTitle($parsed));
+
+                return '<span data-field="date_next" data-value="'.$iso.'" title="'.$title.'">'.e($label).'</span>';
             })
-            ->editColumn('type_id', function ($row)
+            ->addColumn('categories', function ($row)
             {
-                return $row->type->name ?? __('Undefined');
+                $badges = $row->contact->categories->map(function ($category)
+                {
+                    return '<span class="badge bg-label-primary me-1">'.e($category->name).'</span>';
+                })->join(' ');
+
+                return $badges !== '' ? $badges : '&nbsp;';
+            })
+            ->filterColumn('categories', function ($query, $keyword)
+            {
+                if ($keyword !== '' && is_numeric($keyword))
+                {
+                    $query->whereHas('contact.categories', function ($q) use ($keyword)
+                    {
+                        $q->where('id', $keyword);
+                    });
+                } elseif ($keyword !== '')
+                {
+                    $query->whereRaw('0 = 1');
+                }
             })
             ->filterColumn('contact_id', function ($query, $keyword)
             {
@@ -72,7 +109,7 @@ class List60DataTable extends DataTable
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
-            ->rawColumns(['name', 'action', 'contact_id', 'sources', 'status_id']);
+            ->rawColumns(['name', 'action', 'contact_id', 'status_id', 'date_next', 'categories', 'responsible_name']);
     }
 
     public function query(List60 $model): QueryBuilder
@@ -87,12 +124,11 @@ class List60DataTable extends DataTable
         return $query->whereHas('contact')
             ->with([
                 'contact.enterprises',
-                'contact.sources',
+                'contact.categories',
                 'contact.status',
                 'contact.user.roles',
                 'contact.user.teams',
                 'status',
-                'type',
                 'responsible:id,name',
             ]);
     }
@@ -104,7 +140,7 @@ class List60DataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(4, direction: 'asc')
+            ->orderBy(3, direction: 'asc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
@@ -126,21 +162,16 @@ class List60DataTable extends DataTable
                 ->title(__('Status'))
                 ->className('text-center')
                 ->addClass('min-phone'),
-            Column::make('sources')
-                ->title(__('Networks'))
-                ->className('text-center')
-                ->addClass('min-desktop')
-                ->searchable(false)
-                ->orderable(false)
-                ->width(150),
             Column::make('date_next')
-                ->title(__('Next contact'))
+                ->title(__('app.list60_next_column'))
                 ->className('text-center')
                 ->addClass('min-phone'),
-            Column::make('type_id')
-                ->title(__('Type'))
+            Column::make('categories')
+                ->title(__('Categories'))
                 ->className('text-center')
-                ->addClass('min-desktop'),
+                ->addClass('min-desktop')
+                ->searchable(true)
+                ->orderable(false),
             Column::make('responsible_name')
                 ->title(__('Responsible'))
                 ->className('text-center')

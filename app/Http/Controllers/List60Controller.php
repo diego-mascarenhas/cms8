@@ -3,8 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\List60DataTable;
+use App\Http\Requests\SendContactOutreachRequest;
+use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\List60;
 use App\Models\User;
+use App\Services\ContactOutreachService;
+use App\Support\List60NextContactDate;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -17,6 +22,20 @@ class List60Controller extends Controller
         {
             return redirect()->route('error-without-team');
         }
+
+        $teamUsers = User::query()
+            ->whereHas('teams', function ($q)
+            {
+                $q->where('team_id', auth()->user()->currentTeam->id);
+            })
+            ->whereHas('roles', function ($q)
+            {
+                $q->whereIn('name', ['admin', 'collaborator', 'employee']);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $dataTable->teamUsers = $teamUsers;
 
         return $dataTable->render('list60.index');
     }
@@ -63,23 +82,19 @@ class List60Controller extends Controller
                 ], 400);
             }
 
-            $nextDate = now();
-            $businessDays = 0;
-
-            while ($businessDays < 7)
-            {
-                $nextDate = $nextDate->addDay();
-                if (! $nextDate->isWeekend())
-                {
-                    $businessDays++;
-                }
-            }
-
             $list60 = new List60;
             $list60->contact_id = $request->contact_id;
-            $list60->date_next = $nextDate;
+            $list60->date_next = List60NextContactDate::afterOutreach();
             $list60->responsible_id = auth()->id();
             $list60->save();
+
+            $followingStatus = ContactStatus::query()->where('name', 'En seguimiento')->first();
+            if ($followingStatus)
+            {
+                Contact::query()
+                    ->where('id', $request->contact_id)
+                    ->update(['status_id' => $followingStatus->id]);
+            }
 
             return response()->json([
                 'success' => 'Contacto agregado exitosamente a la Lista de 60',
@@ -116,46 +131,50 @@ class List60Controller extends Controller
     public function update(Request $request, string $id)
     {
         $request->validate([
-            'responsible_id' => ['required', 'integer', Rule::exists('users', 'id')],
-            'date_next' => ['nullable', 'date'],
+            'responsible_id' => ['sometimes', 'required', 'integer', Rule::exists('users', 'id')],
+            'date_next' => ['sometimes', 'nullable', 'date'],
         ]);
 
         $record = List60::with('contact')->findOrFail($id);
 
-        // Only admins or current responsible can reassign
+        // Only admins or current responsible can update
         $user = auth()->user();
         if (! $user->hasRole('admin') && $record->responsible_id !== $user->id)
         {
             return response()->json(['error' => 'No autorizado'], 403);
         }
 
-        // Ensure target user belongs to current team and has allowed role
-        $target = User::where('id', $request->responsible_id)
-            ->whereHas('teams', function ($q)
-            {
-                $q->where('team_id', auth()->user()->currentTeam->id);
-            })
-            ->whereHas('roles', function ($q)
-            {
-                $q->whereIn('name', ['admin', 'collaborator', 'employee']);
-            })
-            ->first();
-
-        if (! $target)
+        if ($request->has('responsible_id'))
         {
-            return response()->json(['error' => 'Usuario no válido para este equipo'], 422);
+            $target = User::where('id', $request->responsible_id)
+                ->whereHas('teams', function ($q)
+                {
+                    $q->where('team_id', auth()->user()->currentTeam->id);
+                })
+                ->whereHas('roles', function ($q)
+                {
+                    $q->whereIn('name', ['admin', 'collaborator', 'employee']);
+                })
+                ->first();
+
+            if (! $target)
+            {
+                return response()->json(['error' => 'Usuario no válido para este equipo'], 422);
+            }
+
+            $record->responsible_id = $target->id;
         }
 
-        $record->responsible_id = $target->id;
         if ($request->filled('date_next'))
         {
             $record->date_next = Carbon::parse($request->date_next);
         }
+
         $record->save();
 
         return response()->json([
             'success' => 'Asignación actualizada',
-            'responsible_name' => $target->name,
+            'responsible_name' => $record->responsible?->name,
             'date_next' => $record->date_next ? Carbon::parse($record->date_next)->format('Y-m-d') : null,
         ]);
     }
@@ -170,5 +189,40 @@ class List60Controller extends Controller
         $model->delete();
 
         return response()->json(['success' => 'El contacto se ha eliminado de la Lista de 60'], 200);
+    }
+
+    public function sendOutreach(SendContactOutreachRequest $request, string $id, ContactOutreachService $outreach)
+    {
+        $record = List60::with('contact')->findOrFail($id);
+
+        if (! $record->contact)
+        {
+            return response()->json(['error' => 'Contacto no encontrado'], 404);
+        }
+
+        $user = auth()->user();
+        if (! $user->hasRole('admin') && $record->responsible_id !== $user->id)
+        {
+            return response()->json(['error' => 'No autorizado'], 403);
+        }
+
+        $validated = $request->validated();
+
+        $interaction = $outreach->send(
+            $user,
+            $record->contact,
+            $validated['channel'],
+            $validated['message'],
+            $validated['subject'] ?? null,
+        );
+
+        $record->date_next = List60NextContactDate::afterOutreach();
+        $record->save();
+
+        return response()->json([
+            'success' => __('app.list60_outreach_success'),
+            'interaction_id' => $interaction->id,
+            'date_next' => $record->date_next->format('Y-m-d'),
+        ]);
     }
 }
