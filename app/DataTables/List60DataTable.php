@@ -54,7 +54,7 @@ class List60DataTable extends DataTable
 
                 return DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
             })
-            ->editColumn('status_id', function ($row)
+            ->addColumn('list60_status', function ($row)
             {
                 return $row->status_label;
             })
@@ -109,7 +109,7 @@ class List60DataTable extends DataTable
                     $q->where('name', 'like', "%{$keyword}%");
                 });
             })
-            ->rawColumns(['name', 'action', 'contact_id', 'status_id', 'date_next', 'categories', 'responsible_name']);
+            ->rawColumns(['name', 'action', 'contact_id', 'list60_status', 'date_next', 'categories', 'responsible_name']);
     }
 
     public function query(List60 $model): QueryBuilder
@@ -125,7 +125,6 @@ class List60DataTable extends DataTable
             ->with([
                 'contact.enterprises',
                 'contact.categories',
-                'contact.status',
                 'contact.user.roles',
                 'contact.user.teams',
                 'status',
@@ -158,10 +157,12 @@ class List60DataTable extends DataTable
                 ->title(value: __('Name'))
                 ->addClass('all')
                 ->orderable(false),
-            Column::make('status_id')
-                ->title(__('Status'))
+            Column::make('list60_status')
+                ->title(__('app.list60_contact_count_column'))
                 ->className('text-center')
-                ->addClass('min-phone'),
+                ->addClass('min-phone')
+                ->orderable(false)
+                ->searchable(false),
             Column::make('date_next')
                 ->title(__('app.list60_next_column'))
                 ->className('text-center')

@@ -6,8 +6,10 @@ use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\List60;
+use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\User;
+use App\Support\List60StatusAdvancer;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -76,6 +78,7 @@ class List60StoreTest extends TestCase
         $this->assertDatabaseHas('list60', [
             'contact_id' => $contact->id,
             'responsible_id' => $this->user->id,
+            'status_id' => List60StatusAdvancer::initialStatusId(),
         ]);
 
         $contact->refresh();
@@ -130,15 +133,17 @@ class List60StoreTest extends TestCase
         ]);
         $contact->categories()->attach($category->id);
 
+        $sinContactar = List60Status::query()->where('name', 'Sin contactar')->firstOrFail();
+
         List60::query()->create([
             'contact_id' => $contact->id,
             'type_id' => 1,
             'date_next' => now()->addWeek(),
-            'status_id' => 1,
+            'status_id' => $sinContactar->id,
             'responsible_id' => $this->user->id,
         ]);
 
-        $columnKeys = ['id', 'contact_id', 'status_id', 'date_next', 'categories', 'responsible_name', 'action'];
+        $columnKeys = ['id', 'contact_id', 'list60_status', 'date_next', 'categories', 'responsible_name', 'action'];
         $columns = [];
         foreach ($columnKeys as $data)
         {
@@ -168,5 +173,10 @@ class List60StoreTest extends TestCase
         $this->assertIsString($categoriesHtml);
         $this->assertStringContainsString('Staff VIP', $categoriesHtml);
         $this->assertStringContainsString('badge bg-label-primary', $categoriesHtml);
+
+        $statusHtml = data_get($response->json(), 'data.0.list60_status');
+        $this->assertIsString($statusHtml);
+        $this->assertStringContainsString('Sin contactar', $statusHtml);
+        $this->assertStringContainsString('badge', $statusHtml);
     }
 }

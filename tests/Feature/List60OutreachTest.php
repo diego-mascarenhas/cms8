@@ -8,6 +8,7 @@ use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
 use App\Models\List60;
+use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\Notification;
 use App\Models\User;
@@ -105,11 +106,14 @@ class List60OutreachTest extends TestCase
             'phone' => '34600111222',
         ]);
 
+        $sinContactar = List60Status::query()->where('name', 'Sin contactar')->firstOrFail();
+        $oneContact = List60Status::query()->where('name', '1 Contacto')->firstOrFail();
+
         $list60 = List60::query()->create([
             'contact_id' => $contact->id,
             'type_id' => 1,
             'date_next' => now()->addWeek(),
-            'status_id' => 1,
+            'status_id' => $sinContactar->id,
             'responsible_id' => $this->user->id,
         ]);
 
@@ -125,6 +129,7 @@ class List60OutreachTest extends TestCase
 
         $list60->refresh();
         $this->assertTrue($list60->date_next->isSameDay(List60NextContactDate::afterOutreach()));
+        $this->assertSame($oneContact->id, $list60->status_id);
 
         $interaction = ContactInteraction::query()->where('contact_id', $contact->id)->first();
         $this->assertNotNull($interaction);
@@ -141,11 +146,14 @@ class List60OutreachTest extends TestCase
             'email' => 'cliente@example.com',
         ]);
 
+        $sinContactar = List60Status::query()->where('name', 'Sin contactar')->firstOrFail();
+        $oneContact = List60Status::query()->where('name', '1 Contacto')->firstOrFail();
+
         $list60 = List60::query()->create([
             'contact_id' => $contact->id,
             'type_id' => 1,
             'date_next' => now()->addWeek(),
-            'status_id' => 1,
+            'status_id' => $sinContactar->id,
             'responsible_id' => $this->user->id,
         ]);
 
@@ -159,6 +167,7 @@ class List60OutreachTest extends TestCase
 
         $list60->refresh();
         $this->assertTrue($list60->date_next->isSameDay(List60NextContactDate::afterOutreach()));
+        $this->assertSame($oneContact->id, $list60->status_id);
 
         $notification = Notification::query()->where('contact_id', $contact->id)->first();
         $this->assertNotNull($notification);

@@ -10,6 +10,7 @@ use App\Models\List60;
 use App\Models\User;
 use App\Services\ContactOutreachService;
 use App\Support\List60NextContactDate;
+use App\Support\List60StatusAdvancer;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -86,6 +87,7 @@ class List60Controller extends Controller
             $list60->contact_id = $request->contact_id;
             $list60->date_next = List60NextContactDate::afterOutreach();
             $list60->responsible_id = auth()->id();
+            $list60->status_id = List60StatusAdvancer::initialStatusId();
             $list60->save();
 
             $followingStatus = ContactStatus::query()->where('name', 'En seguimiento')->first();
@@ -217,6 +219,7 @@ class List60Controller extends Controller
         );
 
         $record->date_next = List60NextContactDate::afterOutreach();
+        $record->status_id = List60StatusAdvancer::statusIdAfterOutreach((int) $record->status_id);
         $record->save();
 
         return response()->json([
