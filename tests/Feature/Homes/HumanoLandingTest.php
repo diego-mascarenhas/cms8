@@ -37,6 +37,8 @@ class HumanoLandingTest extends TestCase
             ->assertSee(__('Tareas'), false)
             ->assertSee(GuidePresentation::url('prospeccion'), false)
             ->assertSee(__('Prospección'), false)
+            ->assertSee(GuidePresentation::url('lista-de-60'), false)
+            ->assertSee(__('list60'), false)
             ->assertSee(GuidePresentation::url('facturacion'), false)
             ->assertSee(__('Facturación'), false)
             ->assertSee(GuidePresentation::url('afiliados'), false)

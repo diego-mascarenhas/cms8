@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humano · Lista de 60</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-slide-stack{position:absolute;left:84px;right:84px;top:78px;bottom:64px;
+ display:flex;flex-direction:column;gap:14px;min-height:0}
+.pres-slide-stack .shead{position:static;left:auto;top:auto;width:auto;flex:0 0 auto}
+.pres-slide-stack .shead h2{font-size:36px;line-height:1.08}
+.pres-slide-stack .shead .sub{margin-top:8px;font-size:14px;max-width:920px;line-height:1.45}
+.pres-slide-note{flex:0 0 auto;margin:0;font-size:12px;color:var(--muted);line-height:1.45}
+.pres-slide-flow-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;flex:1 1 auto;min-height:0;align-content:start}
+.pres-slide-flow-grid .ccard{padding:18px 16px}
+/* Vuexy-like panel shell */
+.pres-panel{position:relative;flex:1 1 auto;min-height:0;border-radius:12px;overflow:hidden;
+ background:#f5f5f9;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;padding:16px}
+.pres-panel-card{background:#fff;border-radius:10px;border:1px solid #e4e6ef;overflow:hidden}
+.pres-dt-toolbar{display:flex;justify-content:flex-end;padding:12px 14px 0}
+.pres-dt-search{display:flex;align-items:center;gap:6px;font-size:11px;color:#a1acb8}
+.pres-dt-search .inp{height:30px;width:160px;border:1px solid #d9dee3;border-radius:6px;padding:0 10px;font-size:11px;color:#566a7f;background:#fff}
+.pres-dt-table{width:100%;border-collapse:collapse;font-size:11px}
+.pres-dt-table th,.pres-dt-table td{padding:9px 12px;border-bottom:1px solid #f0f2f4;vertical-align:middle}
+.pres-dt-table th{font-size:10px;font-weight:700;color:#a1acb8;background:#fafafa;text-align:center}
+.pres-dt-table th:first-child,.pres-dt-table td:first-child{text-align:left}
+.pres-dt-table td{color:#566a7f;text-align:center}
+.pres-dt-table td:first-child{text-align:left}
+.pres-dt-name{font-weight:600;color:#696cff}
+.pres-dt-sub{font-size:10px;color:#a1acb8;display:block;margin-top:2px}
+.pres-badge-pill{display:inline-block;padding:4px 10px;border-radius:50rem;font-size:10px;font-weight:600;white-space:nowrap}
+.pres-badge-pill.secondary{background:rgba(133,146,163,.16);color:#8592a3}
+.pres-badge-pill.success{background:rgba(113,221,55,.16);color:#71dd37}
+.pres-badge-pill.warning{background:rgba(255,171,0,.16);color:#ffab00}
+.pres-badge-pill.danger{background:rgba(255,62,29,.16);color:#ff3e1d}
+.pres-badge-pill.info{background:rgba(3,195,236,.16);color:#03c3ec}
+.pres-badge-pill.primary{background:rgba(105,108,255,.16);color:#696cff}
+.pres-cat-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:9px;font-weight:600;
+ background:rgba(105,108,255,.16);color:#696cff;margin:1px}
+.pres-select-sm{height:28px;min-width:92px;border:1px solid #d9dee3;border-radius:6px;font-size:10px;padding:0 8px;color:#566a7f;background:#fff}
+.pres-actions{display:flex;justify-content:center;align-items:center;gap:10px;color:#697a8d}
+.pres-actions i{font-size:15px}
+.pres-actions .danger{color:#ff3e1d}
+/* Bootstrap-like modal */
+.pres-bs-modal{background:#fff;border-radius:10px;border:1px solid #e4e6ef;overflow:hidden;max-width:520px;margin:0 auto}
+.pres-bs-modal.lg{max-width:640px}
+.pres-bs-modal-hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #e4e6ef}
+.pres-bs-modal-hd h5{margin:0;font-size:14px;font-weight:600;color:#566a7f}
+.pres-bs-modal-bd{padding:16px 18px}
+.pres-bs-modal-ft{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid #e4e6ef}
+.pres-form-label{display:block;font-size:11px;font-weight:600;color:#566a7f;margin-bottom:5px}
+.pres-form-control{width:100%;border:1px solid #d9dee3;border-radius:8px;padding:8px 10px;font-size:11px;color:#566a7f;background:#fff;font-family:inherit}
+.pres-form-control.ta{min-height:110px;resize:none;line-height:1.45}
+.pres-form-control.notes-readonly{background:rgba(133,146,163,.12);border-color:transparent;color:#566a7f}
+.pres-form-select{width:100%;height:36px;border:1px solid #d9dee3;border-radius:8px;padding:0 10px;font-size:11px;color:#566a7f;background:#fff}
+.pres-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-size:11px;font-weight:600;border:1px solid transparent}
+.pres-btn.primary{background:#696cff;color:#fff}
+.pres-btn.secondary{background:rgba(133,146,163,.16);color:#8592a3;border-color:transparent}
+.pres-btn.outline-primary{background:#fff;color:#696cff;border-color:#696cff}
+.pres-btn.outline-secondary{background:#fff;color:#8592a3;border-color:#d9dee3}
+.pres-btn.sm{padding:5px 10px;font-size:10px}
+.pres-btn-group{display:inline-flex;border-radius:8px;overflow:hidden;border:1px solid #696cff}
+.pres-btn-group .pres-btn{border-radius:0;border:none;margin:0}
+.pres-btn-group .pres-btn.on{background:#696cff;color:#fff}
+.pres-btn-group .pres-btn.off{background:#fff;color:#696cff}
+.pres-contact-row{display:flex;align-items:center;gap:14px;padding:10px 12px;background:#fff;border:1px solid #e4e6ef;border-radius:8px;margin-bottom:12px;font-size:11px}
+.pres-contact-row .name{flex:1;font-weight:600}
+.pres-contact-row .acts{display:flex;gap:12px;color:#697a8d}
+.pres-quick-dates{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pres-quick-dates span{padding:5px 9px;border-radius:6px;font-size:10px;font-weight:600;border:1px solid #d9dee3;color:#8592a3;background:#fff}
+.pres-status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pres-status-item{background:#fff;border:1px solid #e4e6ef;border-radius:10px;padding:12px;text-align:center}
+.pres-status-item strong{display:block;font-size:11px;color:#566a7f;margin-bottom:8px}
+.pres-split{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-height:0}
+.pres-split>.pres-panel{min-height:0}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">BLOQUE 06 · PLAN HUNTER</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:920px">Lista de 60 · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">seguimiento prioritario</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:580px;line-height:1.6">Menú Contactos → Lista de 60. Hasta 60 filas en una sola vista, ordenadas por fecha de próximo contacto.</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="prospeccion.html">← Capítulo anterior: Prospección</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">LISTA DE 60</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">01</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">SEGUIMIENTO COMERCIAL</span></div>
+   <h2 class="u" style="--d:.26s">La tabla del <em>plan Hunter</em></h2>
+   <p class="u" style="--d:.36s">Menú Contactos → Lista de 60. Sin paginación: ves los 60 contactos de un vistazo. Colaboradores solo ven sus responsabilidades; admin ve y reasigna todo.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">Columna Contactado</span>
+    <span class="dv-chip">Orden por Próximo</span>
+    <span class="dv-chip">Módulo list60</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Intro</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">AÑADIR</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Icono de lista en <em style="font-style:normal;color:var(--accent)">Contactos</em></h2>
+   <p class="sub">En la lista de contactos, el icono de checklist abre el modal. Si ya está en la lista, el icono aparece en verde sin acción.</p>
+  </div>
+  <div class="pres-split u sc" style="--d:.2s">
+   <div class="pres-panel">
+    <div class="pres-contact-row">
+     <span class="name">Miguel Ruiz</span>
+     <span class="acts">
+      <i class="ti ti-mood-happy" title="Sentimiento"></i>
+      <i class="ti ti-message-chatbot" title="Chat"></i>
+      <i class="ti ti-mail" title="Mail"></i>
+      <i class="ti ti-list-check" title="Lista de 60"></i>
+      <i class="ti ti-eye" title="Ver"></i>
+     </span>
+    </div>
+    <p class="pres-slide-note">Mismos iconos de acción que en la lista de contactos: sentimiento, chat, mail, lista y ver.</p>
+   </div>
+   <div class="pres-panel" style="display:flex;align-items:center">
+    <div class="pres-bs-modal lg" style="width:100%">
+     <div class="pres-bs-modal-hd">
+      <h5>Agregar a Lista de 60: <strong>Miguel Ruiz</strong></h5>
+      <span style="color:#a1acb8">×</span>
+     </div>
+     <div class="pres-bs-modal-bd">
+      <div style="margin-bottom:12px">
+       <label class="pres-form-label">Responsable (*)</label>
+       <select class="pres-form-select"><option selected>Laura Martínez</option><option>Pedro Sánchez</option></select>
+      </div>
+      <div style="margin-bottom:12px">
+       <label class="pres-form-label">Categorías</label>
+       <div class="pres-form-select" style="height:auto;min-height:36px;padding:6px 10px;display:flex;flex-wrap:wrap;gap:4px">
+        <span class="pres-cat-badge">Cliente potencial ×</span>
+       </div>
+      </div>
+      <div>
+       <label class="pres-form-label">Notas</label>
+       <textarea class="pres-form-control ta" placeholder="Escribe tus notas aquí...">Interesado en plan Business. Pedir demo la semana que viene.</textarea>
+      </div>
+     </div>
+     <div class="pres-bs-modal-ft">
+      <span class="pres-btn secondary">Cancelar</span>
+      <span class="pres-btn primary">Agregar a la lista</span>
+     </div>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Alta</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">TABLA</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Columnas reales del <em style="font-style:normal;color:var(--accent)">DataTable</em></h2>
+   <p class="sub">Nombre (con empresa debajo), Contactado, Próximo, Categorías, Responsable y Acciones. Búsqueda arriba a la derecha.</p>
+  </div>
+  <div class="pres-panel u sc" style="--d:.2s">
+   <div class="pres-panel-card">
+    <div class="pres-dt-toolbar">
+     <div class="pres-dt-search">Buscar: <input class="inp" value="" readonly></div>
+    </div>
+    <table class="pres-dt-table">
+     <thead>
+      <tr>
+       <th>Nombre</th>
+       <th>Contactado</th>
+       <th>Próximo</th>
+       <th>Categorías</th>
+       <th>Responsable</th>
+       <th>Acciones</th>
+      </tr>
+     </thead>
+     <tbody>
+      <tr>
+       <td><span class="pres-dt-name">Ana Torres</span><span class="pres-dt-sub">Beta Corp</span></td>
+       <td><span class="pres-badge-pill secondary">Sin contactar</span></td>
+       <td>Hoy</td>
+       <td><span class="pres-cat-badge">Referido</span></td>
+       <td><select class="pres-select-sm"><option>Pedro Sánchez</option></select></td>
+       <td><div class="pres-actions"><i class="ti ti-eye"></i><i class="ti ti-send"></i><i class="ti ti-calendar"></i><i class="ti ti-x danger"></i></div></td>
+      </tr>
+      <tr>
+       <td><span class="pres-dt-name">Miguel Ruiz</span><span class="pres-dt-sub">Acme SL</span></td>
+       <td><span class="pres-badge-pill success">1 Contacto</span></td>
+       <td>Mañana</td>
+       <td><span class="pres-cat-badge">Cliente potencial</span></td>
+       <td><select class="pres-select-sm"><option selected>Laura Martínez</option></select></td>
+       <td><div class="pres-actions"><i class="ti ti-eye"></i><i class="ti ti-send"></i><i class="ti ti-calendar"></i><i class="ti ti-x danger"></i></div></td>
+      </tr>
+      <tr>
+       <td><span class="pres-dt-name">Carlos Vega</span><span class="pres-dt-sub">Nova Tech</span></td>
+       <td><span class="pres-badge-pill warning">2 Contactos</span></td>
+       <td>En 3 días</td>
+       <td><span class="pres-cat-badge">VIP</span></td>
+       <td><select class="pres-select-sm"><option selected>Laura Martínez</option></select></td>
+       <td><div class="pres-actions"><i class="ti ti-eye"></i><i class="ti ti-send"></i><i class="ti ti-calendar"></i><i class="ti ti-x danger"></i></div></td>
+      </tr>
+     </tbody>
+    </table>
+   </div>
+   <p class="pres-slide-note" style="margin-top:10px"><i class="ti ti-send"></i> envía · <i class="ti ti-calendar"></i> edita Próximo (admin) · <i class="ti ti-x"></i> quita de la lista (admin)</p>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Vista</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">PRÓXIMO</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Modal <em style="font-style:normal;color:var(--accent)">Próximo contacto</em></h2>
+   <p class="sub">El icono de calendario abre atajos (+1 día, +1 semana…) y un datepicker. Tras enviar un mensaje, la fecha se recalcula sola a +7 días hábiles.</p>
+  </div>
+  <div class="pres-panel u sc" style="--d:.2s;display:flex;align-items:center;justify-content:center">
+   <div class="pres-bs-modal" style="width:100%;max-width:460px">
+    <div class="pres-bs-modal-hd">
+     <h5>Próximo contacto</h5>
+     <span style="color:#a1acb8">×</span>
+    </div>
+    <div class="pres-bs-modal-bd">
+     <label class="pres-form-label">Próximo contacto</label>
+     <div class="pres-quick-dates">
+      <span>Hoy</span><span>+1 día</span><span>+2 días</span><span>+3 días</span><span>+4 días</span><span>+5 días</span><span>+1 semana</span><span>+2 semanas</span><span>+1 mes</span>
+     </div>
+     <input class="pres-form-control" value="26-06-2026" readonly>
+    </div>
+    <div class="pres-bs-modal-ft">
+     <span class="pres-btn secondary">Cancelar</span>
+     <span class="pres-btn primary">Guardar</span>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Fecha</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">CONTACTAR</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Modal <em style="font-style:normal;color:var(--accent)">Contactar</em></h2>
+   <p class="sub">Al abrir, carga sentimiento, categorías y notas del contacto. Elige WhatsApp o Email; el asunto solo aparece si envías correo.</p>
+  </div>
+  <div class="pres-panel u sc" style="--d:.2s;display:flex;align-items:center;justify-content:center">
+   <div class="pres-bs-modal" style="width:100%;max-width:500px">
+    <div class="pres-bs-modal-hd">
+     <h5>Contactar</h5>
+     <span style="color:#a1acb8">×</span>
+    </div>
+    <div class="pres-bs-modal-bd">
+     <p style="font-weight:600;font-size:12px;margin:0 0 4px">Miguel Ruiz</p>
+     <p style="font-size:10px;color:#a1acb8;margin:0 0 8px">Estado de ánimo: Positivo 🙂</p>
+     <div style="margin-bottom:10px"><span class="pres-cat-badge">Cliente potencial</span></div>
+     <div style="margin-bottom:12px">
+      <label class="pres-form-label" style="color:#a1acb8;font-weight:500">Notas</label>
+      <div class="pres-form-control notes-readonly ta" style="min-height:52px">Interesado en plan Business. Pedir demo la semana que viene.</div>
+     </div>
+     <div style="margin-bottom:12px">
+      <label class="pres-form-label">Canal</label>
+      <div class="pres-btn-group">
+       <span class="pres-btn sm on"><i class="ti ti-brand-whatsapp"></i> WhatsApp</span>
+       <span class="pres-btn sm off"><i class="ti ti-mail"></i> Email</span>
+      </div>
+     </div>
+     <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+       <label class="pres-form-label" style="margin:0">Mensaje</label>
+       <span class="pres-btn outline-primary sm"><i class="ti ti-sparkles"></i> Sugerir</span>
+      </div>
+      <textarea class="pres-form-control ta">Hola Miguel, ¿te va bien una demo de 20 minutos el jueves? Así vemos el plan Business con tu equipo.</textarea>
+     </div>
+    </div>
+    <div class="pres-bs-modal-ft">
+     <span class="pres-btn secondary">Cancelar</span>
+     <span class="pres-btn primary"><i class="ti ti-send"></i> Enviar</span>
+    </div>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Outreach</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">ESTADOS</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Badges de la columna <em style="font-style:normal;color:var(--accent)">Contactado</em></h2>
+  <p class="sub">Cada envío desde el modal avanza el estado (hasta 3 Contactos), registra actividad en el contacto y mueve la fecha Próximo automáticamente.</p>
+ </div>
+ <div class="pres-panel u sc" style="--d:.22s;position:absolute;left:84px;right:84px;top:248px;bottom:84px">
+  <div class="pres-status-grid">
+   <div class="pres-status-item"><strong>Sin contactar</strong><span class="pres-badge-pill secondary">Sin contactar</span></div>
+   <div class="pres-status-item"><strong>1 Contacto</strong><span class="pres-badge-pill success">1 Contacto</span></div>
+   <div class="pres-status-item"><strong>2 Contactos</strong><span class="pres-badge-pill warning">2 Contactos</span></div>
+   <div class="pres-status-item"><strong>3 Contactos</strong><span class="pres-badge-pill danger">3 Contactos</span></div>
+   <div class="pres-status-item"><strong>Parado</strong><span class="pres-badge-pill secondary">Parado</span></div>
+   <div class="pres-status-item"><strong>Sin respuesta</strong><span class="pres-badge-pill info">Sin respuesta</span></div>
+  </div>
+  <p class="pres-slide-note" style="margin-top:16px;text-align:center">Email en texto plano · WhatsApp al número del contacto · El contacto pasa a «En seguimiento» si existe ese estado</p>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Estados</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">FLUJO</div></div>
+ <div class="pres-slide-stack">
+  <div class="shead u" style="--d:.08s">
+   <h2>Del prospecto al <em style="font-style:normal;color:var(--accent)">cierre</em></h2>
+   <p class="sub">Importas en Prospección, priorizas en Lista de 60 y sigues con chat, tareas y facturación.</p>
+  </div>
+  <div class="pres-slide-flow-grid u" style="--d:.2s">
+   <div class="ccard u" style="--d:.22s"><div class="top"><div class="bi badge-ic"><i class="ti ti-search" style="font-size:20px;color:#fff"></i></div><div class="cn">01</div></div>
+    <h4>Prospección</h4><p>Encuentras perfiles y los importas a Contactos.</p><div class="uline"></div></div>
+   <div class="ccard u" style="--d:.29s"><div class="top"><div class="bi badge-ic"><i class="ti ti-list-check" style="font-size:20px;color:#fff"></i></div><div class="cn">02</div></div>
+    <h4>Lista de 60</h4><p>Añades los prioritarios y programas el seguimiento.</p><div class="uline"></div></div>
+   <div class="ccard u" style="--d:.36s"><div class="top"><div class="bi badge-ic"><i class="ti ti-brand-whatsapp" style="font-size:20px;color:#fff"></i></div><div class="cn">03</div></div>
+    <h4>Chat</h4><p>La conversación continúa en el hilo de WhatsApp.</p><div class="uline"></div></div>
+   <div class="ccard u" style="--d:.43s"><div class="top"><div class="bi badge-ic"><i class="ti ti-receipt" style="font-size:20px;color:#fff"></i></div><div class="cn">04</div></div>
+    <h4>Facturación</h4><p>Cuando cierras, registras cobros y facturas.</p><div class="uline"></div></div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Lista de 60</span><span class="r">Flujo</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMPEZAR</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">PLAN HUNTER</span></div>
+  <h2 class="u" style="--d:.14s">Contactos → <em>Lista de 60</em></h2>
+  <p class="u" style="--d:.24s">Activa el módulo en tu plan Hunter. El manual en Ayuda → Contactos enlaza esta presentación.</p>
+  <a class="cta-link u" style="--d:.32s" href="facturacion.html">Continuar con Facturación →</a>
+  <div class="pres-nav-row u" style="--d:.36s">
+   <a href="/">Ver planes en la landing →</a>
+   <a href="prospeccion.html">← Prospección</a>
+   <a href="chat-contactos-modulos.html">Chat y contactos</a>
+  </div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

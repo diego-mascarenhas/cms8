@@ -109,6 +109,8 @@ class SlashLandingTest extends TestCase
             ->assertSee(\App\Support\GuidePresentation::url('primeros-pasos'), false)
             ->assertSee(\App\Support\GuidePresentation::url('calendario'), false)
             ->assertSee(__('Prospección'), false)
+            ->assertSee(\App\Support\GuidePresentation::url('lista-de-60'), false)
+            ->assertSee(__('list60'), false)
             ->assertSee(\App\Support\GuidePresentation::url('facturacion'), false)
             ->assertSee(__('Facturación'), false)
             ->assertSee('M5.931 6.936', false)

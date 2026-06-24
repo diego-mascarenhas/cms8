@@ -60,4 +60,20 @@ class HumanoPresentationsTest extends TestCase
         $this->assertStringContainsString('icf_fields', $html);
         $this->assertStringContainsString('/cms/posts', $html);
     }
+
+    public function test_lista_de_60_presentation_exists_and_has_expected_content(): void
+    {
+        $path = public_path('homes/humano/presentations/lista-de-60.html');
+
+        $this->assertFileExists($path);
+
+        $html = file_get_contents($path);
+
+        $this->assertIsString($html);
+        $this->assertStringContainsString('seguimiento prioritario', $html);
+        $this->assertStringContainsString('Próximo contacto', $html);
+        $this->assertStringContainsString('Agregar a la lista', $html);
+        $this->assertStringContainsString('facturacion.html', $html);
+        $this->assertStringContainsString('prospeccion.html', $html);
+    }
 }

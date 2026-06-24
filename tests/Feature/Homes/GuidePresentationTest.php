@@ -51,6 +51,16 @@ class GuidePresentationTest extends TestCase
             ->assertRedirect('/presentacion/afiliados');
     }
 
+    public function test_lista_de_60_presentation_injects_base_tag_for_assets(): void
+    {
+        $this->get('/presentacion/lista-de-60')
+            ->assertOk()
+            ->assertSee('<base href="/homes/humano/presentations/">', false)
+            ->assertSee('seguimiento prioritario', false)
+            ->assertSee('Sugerir', false)
+            ->assertSee('Sin contactar', false);
+    }
+
     public function test_legacy_static_html_paths_redirect_to_presentacion_routes(): void
     {
         $this->get('/homes/humano/presentations/facturacion.html')

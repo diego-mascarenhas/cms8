@@ -25,9 +25,30 @@
                 <p>{{ __('Desde la función de prospección puedes buscar personas y empresas en fuentes externas (por ejemplo Apollo) y añadirlas como contactos. Sirve para ampliar tu base de contactos con datos de calidad sin tener que introducirlos a mano.') }}</p>
 
                 <h5 class="mt-4">{{ __('Lista de 60') }}</h5>
-                <p>{{ __('La Lista de 60 es una lista prioritaria (por ejemplo los 60 contactos más importantes a los que hacer seguimiento). Puedes añadir o quitar contactos de esta lista para concentrarte en quienes más importan y no perder el hilo con nadie.') }}</p>
+                <p>{{ __('app.list60_manual_intro') }}</p>
 
-                <p class="mb-0">{{ __('Los contactos se utilizan en proyectos, mensajes, chat y otros módulos; son la base de tu CRM en Humano.') }}</p>
+                <h6 class="mt-3">{{ __('app.list60_manual_add_title') }}</h6>
+                <p>{{ __('app.list60_manual_add_body') }}</p>
+
+                <h6 class="mt-3">{{ __('app.list60_manual_table_title') }}</h6>
+                <p>{{ __('app.list60_manual_table_body') }}</p>
+
+                <h6 class="mt-3">{{ __('app.list60_manual_outreach_title') }}</h6>
+                <p>{{ __('app.list60_manual_outreach_body') }}</p>
+
+                <h6 class="mt-3">{{ __('app.list60_manual_follow_up_title') }}</h6>
+                <p>{{ __('app.list60_manual_follow_up_body') }}</p>
+
+                <h6 class="mt-3">{{ __('app.list60_manual_status_title') }}</h6>
+                <p>{{ __('app.list60_manual_status_body') }}</p>
+
+                <p class="mb-0 mt-3">
+                    <a href="{{ \App\Support\GuidePresentation::url('lista-de-60') }}" class="btn btn-sm btn-label-primary" target="_blank" rel="noopener">
+                        <i class="ti ti-presentation me-1"></i>{{ __('app.list60_manual_view_presentation') }}
+                    </a>
+                </p>
+
+                <p class="mb-0 mt-4">{{ __('Los contactos se utilizan en proyectos, mensajes, chat y otros módulos; son la base de tu CRM en Humano.') }}</p>
             </div>
         </div>
     </div>
