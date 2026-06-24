@@ -36,7 +36,7 @@ $contentLayout = (isset($container) ? (($container === 'container-xxl') ? "layou
   <!-- Canonical SEO -->
   <link rel="canonical" href="{{ config('variables.productPage') ? config('variables.productPage') : '' }}">
   <!-- Favicon -->
-  <link rel="icon" href="{{ asset('assets/logo.png') }}" type="image/png">
+  @include('layouts.partials.favicon')
 
   @php
     $includeSharePreview = (bool) ($includeSharePreview ?? false);

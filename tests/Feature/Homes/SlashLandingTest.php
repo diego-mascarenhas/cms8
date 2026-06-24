@@ -61,6 +61,8 @@ class SlashLandingTest extends TestCase
             ->assertDontSee('slash-glow-frame', false)
             ->assertSee('data-slash-spotlight', false)
             ->assertSee('color-scheme" content="dark"', false)
+            ->assertSee('rel="icon" href="'.asset('assets/logo-iso.svg').'"', false)
+            ->assertSee('type="image/svg+xml"', false)
             ->assertSee('property="og:image" content="'.url('/images/system-onboarding/whatsapp-image.jpg').'"', false)
             ->assertSee('name="twitter:image" content="'.url('/images/system-onboarding/whatsapp-image.jpg').'"', false)
             ->assertSee('property="og:description" content="La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp."', false)

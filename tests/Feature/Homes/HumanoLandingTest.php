@@ -13,6 +13,8 @@ class HumanoLandingTest extends TestCase
     {
         $this->get('/inicio')
             ->assertOk()
+            ->assertSee('rel="icon" href="'.asset('assets/logo-iso.svg').'"', false)
+            ->assertSee('type="image/svg+xml"', false)
             ->assertSee('property="og:description" content="La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp."', false)
             ->assertSee('property="og:title" content="HumanoApp"', false)
             ->assertSee('La nueva forma de gestionar tu negocio.', false)

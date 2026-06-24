@@ -14,7 +14,7 @@
 	<!-- Canonical SEO -->
 	<link rel="canonical" href="{{ url('/') }}">
 	<!-- Favicon -->
-	<link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon/favicon.ico') }}"/>
+	@include('layouts.partials.favicon')
 
 	<!-- Include Styles -->
 	<!-- $isFront is used to append the front layout styles only on the front layout otherwise the variable will be blank -->

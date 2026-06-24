@@ -9,6 +9,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ __('cms_landing.newsletter.page_title') }}</title>
+  @include('layouts.partials.favicon')
   <link rel="stylesheet" href="{{ \App\Support\CmsHomeAsset::url('css/landing.css') }}">
   <link rel="stylesheet" href="{{ asset('homes/shared/css/brand-footer.css') }}">
 </head>

@@ -33,6 +33,7 @@
   <meta name="description" content="{{ __('slash_landing.meta_description') }}">
   <meta name="color-scheme" content="dark">
   <title>{{ __('slash_landing.page_title') }}</title>
+  @include('layouts.partials.favicon')
   @php
     $slashOgImagePath = config('variables.ogImage', 'assets/logo.png');
     $slashOgImageUrl = str_starts_with($slashOgImagePath, 'http') ? $slashOgImagePath : url('/'.ltrim($slashOgImagePath, '/'));
