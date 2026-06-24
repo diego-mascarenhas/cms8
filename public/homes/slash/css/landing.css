@@ -1229,6 +1229,16 @@ body.slash-page {
   height: 22px;
 }
 
+.slash-guide-badge-youtube {
+  background: rgba(255, 0, 0, 0.12);
+  color: #ff4d4d;
+  border-color: rgba(255, 77, 77, 0.25);
+}
+
+.slash-guide-card-youtube .slash-guide-sub {
+  color: #ff4d4d;
+}
+
 .slash-guide-card .slash-guide-sub {
   color: var(--slash-accent);
   font-size: 0.8rem;

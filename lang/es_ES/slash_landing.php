@@ -15,6 +15,7 @@ return [
         'pricing' => 'Precios',
         'faq' => 'FAQ',
         'data_privacy' => 'Privacidad de datos e IA',
+        'youtube_tutorials' => 'Humano • Onboarding',
         'contact' => 'Contacto',
         'product' => 'Producto',
         'resources' => 'Recursos',
@@ -93,6 +94,12 @@ return [
         'lead' => 'Presentaciones paso a paso por módulo. Empezamos por cómo funciona la plataforma.',
         'cta' => 'Ver presentación',
         'prospecting_description' => 'Busca perfiles por cargo y ubicación e impórtalos a tu agenda con créditos de prospectos.',
+        'youtube_card' => [
+            'subtitle' => 'YouTube',
+            'title' => 'Humano • Onboarding',
+            'description' => 'Serie de vídeos paso a paso para configurar tu negocio y empezar a usar Humano.',
+            'cta' => 'Ver la playlist',
+        ],
     ],
 
     'pricing' => [

@@ -324,6 +324,7 @@
           <p class="slash-lead">{{ __('slash_landing.guides.lead') }}</p>
         </div>
         <div class="slash-grid">
+          @include('homes.partials.landing-youtube-guide-card')
           @foreach ($guidePresentations as $guide)
             <a href="{{ $guide['url'] }}" class="slash-card slash-guide-card">
               <div class="slash-guide-top">
@@ -580,6 +581,7 @@
           <h4>{{ __('slash_landing.nav.resources') }}</h4>
           <ul>
             <li><a href="#guias">{{ __('slash_landing.nav.guides') }}</a></li>
+            @include('homes.partials.landing-youtube-footer-link')
             <li><a href="#faq">{{ __('slash_landing.nav.faq') }}</a></li>
             <li>
               <a

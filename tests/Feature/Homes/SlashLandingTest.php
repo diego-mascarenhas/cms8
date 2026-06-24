@@ -116,6 +116,10 @@ class SlashLandingTest extends TestCase
             ->assertSee('M5.931 6.936', false)
             ->assertSee('M4 10a2 2 0 0 1 2-2h2', false)
             ->assertSee('Ver presentación', false)
+            ->assertSee('https://www.youtube.com/playlist?list=PLebHHjcT7KEc', false)
+            ->assertSee(__('slash_landing.nav.youtube_tutorials'), false)
+            ->assertSee(__('slash_landing.guides.youtube_card.title'), false)
+            ->assertDontSee('https://www.youtube.com/@revisionalpha', false)
             ->assertSee(SlashHomeAsset::url('css/landing.css'), false)
             ->assertSee(asset('homes/shared/css/brand-footer.css'), false)
             ->assertSee(SlashHomeAsset::url('vendor/gsap/gsap.min.js'), false)
@@ -158,6 +162,34 @@ class SlashLandingTest extends TestCase
             ->assertDontSee('Hecho con foco humano.', false)
             ->assertSee('¿Qué es Humano.app?', false)
             ->assertSee('¿Por qué usar Humano en lugar de Excel?', false);
+    }
+
+    public function test_slash_landing_links_to_onboarding_playlist_when_configured(): void
+    {
+        config([
+            'slash_landing.youtube_onboarding_playlist_url' => 'https://www.youtube.com/playlist?list=PLtest123',
+            'slash_landing.youtube_onboarding_playlist_id' => '',
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertSee('https://www.youtube.com/playlist?list=PLtest123', false)
+            ->assertSee(__('slash_landing.guides.youtube_card.title'), false)
+            ->assertDontSee('https://www.youtube.com/@revisionalpha', false);
+    }
+
+    public function test_slash_landing_hides_youtube_links_when_url_is_not_configured(): void
+    {
+        config([
+            'slash_landing.youtube_onboarding_playlist_url' => '',
+            'slash_landing.youtube_onboarding_playlist_id' => '',
+            'slash_landing.youtube_channel_url' => '',
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertDontSee(__('slash_landing.nav.youtube_tutorials'), false)
+            ->assertDontSee('slash-guide-card-youtube', false);
     }
 
     public function test_slash_landing_footer_contact_links_to_whatsapp_web(): void
