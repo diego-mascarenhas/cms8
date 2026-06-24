@@ -3,10 +3,16 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Models\Prompt;
 use App\Models\User;
+use App\Support\List60OutreachPromptDefaults;
 
 class List60OutreachSuggestionService
 {
+    public const ROUTING_KEY_FIRST_CONTACT = 'list60:primer_contacto';
+
+    public const ROUTING_KEY_FOLLOW_UP = 'list60:seguimiento';
+
     public function __construct(
         private readonly UserResolverService $userResolver,
         private readonly AgentConversationContextService $contextService,
@@ -25,6 +31,7 @@ class List60OutreachSuggestionService
         string $notes,
         ?array $sentiment,
         array $categories,
+        ?string $list60StatusName = null,
     ): array {
         $team = $user->currentTeam;
         if (! $team)
@@ -50,7 +57,7 @@ class List60OutreachSuggestionService
             AgentConversationContextService::DEFAULT_HISTORY_LIMIT,
         );
 
-        $instruction = $this->buildInstruction($channel, $contact, $notes, $sentiment, $categories);
+        $instruction = $this->buildInstruction($teamId, $channel, $contact, $notes, $sentiment, $categories, $list60StatusName);
 
         $replyResponse = $this->replyService->getReply(
             $instruction,
@@ -101,25 +108,39 @@ class List60OutreachSuggestionService
      * @param  list<string>  $categories
      */
     private function buildInstruction(
+        int $teamId,
         string $channel,
         Contact $contact,
         string $notes,
         ?array $sentiment,
         array $categories,
+        ?string $list60StatusName = null,
     ): string {
+        DefaultAssistantFlowPromptsService::syncForTeam($teamId);
+
+        $routingKey = $this->routingKeyForStatus($list60StatusName);
+        $prompt = Prompt::findByRoutingKey($routingKey, $teamId);
+
         $parts = [
-            'You are helping a sales operator follow up with a CRM contact from the Lista de 60 outreach screen.',
-            'Contact name: '.$contact->name,
+            $this->resolveObjectiveInstruction($prompt, $list60StatusName),
+            '',
+            'Contexto del contacto:',
+            '- Nombre del contacto: '.$contact->name,
         ];
+
+        if ($list60StatusName !== null && $list60StatusName !== '')
+        {
+            $parts[] = '- Estado en Lista de 60: '.$list60StatusName;
+        }
 
         if ($categories !== [])
         {
-            $parts[] = 'Contact categories: '.implode(', ', $categories);
+            $parts[] = '- Categorías: '.implode(', ', $categories);
         }
 
         if ($sentiment)
         {
-            $sentimentLine = 'Current emotional state: '.$sentiment['name'];
+            $sentimentLine = '- Estado emocional: '.$sentiment['name'];
             if (! empty($sentiment['emoji']))
             {
                 $sentimentLine .= ' '.$sentiment['emoji'];
@@ -133,21 +154,57 @@ class List60OutreachSuggestionService
 
         if (trim($notes) !== '')
         {
-            $parts[] = 'CRM notes about this contact: '.trim($notes);
+            $parts[] = '- Notas del CRM: '.trim($notes);
         }
+
+        $parts[] = '';
+        $parts[] = 'Idioma: español, salvo que el contexto indique otro idioma.';
 
         if ($channel === 'email')
         {
-            $parts[] = 'Draft a follow-up email. Reply with a single JSON object only (no markdown fences, no commentary). Keys: "subject" (short subject line) and "body" (plain text email: greeting, short paragraphs, closing).';
-            $parts[] = 'Use a clear professional tone. Prefer Spanish unless notes/context imply another language.';
+            $parts[] = 'Canal: email en texto plano.';
+            $parts[] = 'Responde solo con un objeto JSON (sin markdown ni comentarios). Claves: "subject" (asunto breve y directo) y "body" (cuerpo del email: saludo, párrafos cortos, cierre).';
         } else
         {
-            $parts[] = 'Draft a short WhatsApp follow-up message (plain text, conversational, 1-4 short paragraphs max, no HTML).';
-            $parts[] = 'Reply with a single JSON object only (no markdown fences, no commentary). Key: "message" (the WhatsApp text).';
-            $parts[] = 'Prefer Spanish unless notes/context imply another language.';
+            $parts[] = 'Canal: WhatsApp (texto plano, conversacional, máximo 4 párrafos cortos, sin HTML).';
+            $parts[] = 'Responde solo con un objeto JSON (sin markdown ni comentarios). Clave: "message" (texto del WhatsApp).';
         }
 
-        return implode("\n\n", $parts);
+        return implode("\n", $parts);
+    }
+
+    public function routingKeyForStatus(?string $list60StatusName): string
+    {
+        if ($list60StatusName === 'Sin contactar' || $list60StatusName === null || $list60StatusName === '')
+        {
+            return self::ROUTING_KEY_FIRST_CONTACT;
+        }
+
+        return self::ROUTING_KEY_FOLLOW_UP;
+    }
+
+    private function resolveObjectiveInstruction(?Prompt $prompt, ?string $list60StatusName): string
+    {
+        if ($prompt !== null && $prompt->is_active)
+        {
+            $instruction = trim((string) $prompt->prompt_instruction);
+            if ($instruction !== '')
+            {
+                return $instruction;
+            }
+        }
+
+        return $this->defaultObjectiveInstruction($list60StatusName);
+    }
+
+    private function defaultObjectiveInstruction(?string $list60StatusName): string
+    {
+        if ($list60StatusName === 'Sin contactar' || $list60StatusName === null || $list60StatusName === '')
+        {
+            return List60OutreachPromptDefaults::firstContactInstruction();
+        }
+
+        return List60OutreachPromptDefaults::followUpInstruction();
     }
 
     /**

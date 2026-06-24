@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
+use App\Support\List60OutreachPromptDefaults;
 
 /**
  * Seeds default "assistant flow" instructions into module_prompts (editable in /prompt/list).
@@ -170,6 +171,24 @@ Sos el asistente de **proyección y análisis financiero** del equipo. Los núme
 - No es asesoría fiscal/legal; aclará que es análisis sobre facturación histórica del equipo.
 - Si el usuario pide reducir costos, citá categorías reales del breakdown y sugerí acciones cualitativas además del % numérico.
 PROMPT,
+            ],
+            [
+                'module_key' => 'list60',
+                'section_key' => 'primer_contacto',
+                'section_label' => 'Lista de 60: primer contacto',
+                'order' => 22,
+                'is_active' => true,
+                'helper_text' => 'Botón Sugerir en Lista de 60 cuando el contacto está «Sin contactar». Routing key: list60:primer_contacto',
+                'prompt_instruction' => List60OutreachPromptDefaults::firstContactInstruction(),
+            ],
+            [
+                'module_key' => 'list60',
+                'section_key' => 'seguimiento',
+                'section_label' => 'Lista de 60: seguimiento comercial',
+                'order' => 23,
+                'is_active' => true,
+                'helper_text' => 'Botón Sugerir en Lista de 60 tras el primer contacto (1/2/3 Contactos, etc.). Routing key: list60:seguimiento',
+                'prompt_instruction' => List60OutreachPromptDefaults::followUpInstruction(),
             ],
         ];
     }
