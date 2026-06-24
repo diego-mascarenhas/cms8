@@ -7,12 +7,15 @@ use App\Enums\ContactInteractionType;
 use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
+use App\Models\ContactSentiment;
+use App\Models\ContactSentimentHistory;
 use App\Models\List60;
 use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\Notification;
 use App\Models\User;
 use App\Support\List60NextContactDate;
+use Database\Seeders\ContactSentimentSeeder;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -21,6 +24,7 @@ use Database\Seeders\List60StatusesSeeder;
 use Database\Seeders\NotificationTypesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
+use Laravel\Ai\AnonymousAgent;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -183,5 +187,95 @@ class List60OutreachTest extends TestCase
         $this->assertNotNull($interaction);
         $this->assertSame(ContactInteractionType::Email, $interaction->type);
         $this->assertSame('Seguimiento comercial', $interaction->subject);
+    }
+
+    public function test_outreach_context_returns_notes_and_sentiment(): void
+    {
+        $this->seed(ContactSentimentSeeder::class);
+
+        $sentiment = ContactSentiment::query()->firstOrFail();
+        $contact = Contact::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'phone' => '34600111222',
+            'data' => ['notes' => 'Cliente interesado en renovación'],
+        ]);
+
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => $sentiment->id,
+            'notes' => 'Muy receptivo',
+        ]);
+
+        $list60 = List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => now()->addWeek(),
+            'status_id' => 1,
+            'responsible_id' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson(route('list60.outreach-context', $list60->id));
+
+        $response->assertOk();
+        $response->assertJsonPath('contact_name', $contact->name);
+        $response->assertJsonPath('notes', 'Cliente interesado en renovación');
+        $response->assertJsonPath('sentiment.name', $sentiment->name);
+        $response->assertJsonPath('sentiment.notes', 'Muy receptivo');
+        $response->assertJsonPath('can_whatsapp', true);
+    }
+
+    public function test_suggest_outreach_whatsapp_returns_message(): void
+    {
+        AnonymousAgent::fake(['{"message":"Hola Diego, ¿cómo estás?"}']);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'phone' => '34600111222',
+            'data' => ['notes' => 'Seguimiento comercial'],
+        ]);
+
+        $list60 = List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => now()->addWeek(),
+            'status_id' => 1,
+            'responsible_id' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson(route('list60.suggest-outreach', $list60->id), [
+            'channel' => 'whatsapp',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('message', 'Hola Diego, ¿cómo estás?');
+    }
+
+    public function test_suggest_outreach_email_returns_subject_and_body(): void
+    {
+        AnonymousAgent::fake(['{"subject":"Seguimiento","body":"Cuerpo del email sugerido."}']);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'email' => 'cliente@example.com',
+            'data' => ['notes' => 'Seguimiento comercial'],
+        ]);
+
+        $list60 = List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => now()->addWeek(),
+            'status_id' => 1,
+            'responsible_id' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson(route('list60.suggest-outreach', $list60->id), [
+            'channel' => 'email',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('subject', 'Seguimiento');
+        $response->assertJsonPath('body', 'Cuerpo del email sugerido.');
     }
 }

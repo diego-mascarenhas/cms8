@@ -590,6 +590,9 @@ Route::middleware(['auth'])->group(function ()
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
+    Route::get('/list60/prefill/{contact}', [List60Controller::class, 'prefill'])->name('list60.prefill');
+    Route::get('/list60/{id}/outreach-context', [List60Controller::class, 'outreachContext'])->name('list60.outreach-context');
+    Route::post('/list60/{id}/suggest-outreach', [List60Controller::class, 'suggestOutreach'])->name('list60.suggest-outreach');
     Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
     Route::put('/list60/{id}', [List60Controller::class, 'update'])->name('list60.update');
     Route::post('/list60/{id}/send-outreach', [List60Controller::class, 'sendOutreach'])->name('list60.send-outreach');

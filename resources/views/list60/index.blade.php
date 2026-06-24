@@ -124,7 +124,12 @@
                     <input type="hidden" id="outreach_list60_id">
                     <div class="mb-3">
                         <p class="mb-1 fw-medium" id="outreach_contact_name"></p>
-                        <div id="outreach_contact_categories" class="d-flex flex-wrap gap-1"></div>
+                        <p class="mb-0 small text-muted" id="outreach_contact_sentiment"></p>
+                        <div id="outreach_contact_categories" class="d-flex flex-wrap gap-1 mt-2"></div>
+                        <div class="mt-3" id="outreach_notes_wrap" style="display: none;">
+                            <label class="form-label text-muted small mb-1">{{ __('Notes') }}</label>
+                            <div id="outreach_contact_notes" class="form-control bg-label-secondary border-0 text-body" style="min-height: 4.5rem; white-space: pre-wrap;"></div>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label d-block">{{ __('app.list60_outreach_channel_label') }}</label>
@@ -144,7 +149,12 @@
                         <input type="text" id="outreach_subject" class="form-control">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="outreach_message">{{ __('app.list60_outreach_message') }}</label>
+                        <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+                            <label class="form-label mb-0" for="outreach_message">{{ __('app.list60_outreach_message') }}</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="outreach_suggest_btn" onclick="suggestOutreachMessage()">
+                                <i class="ti ti-sparkles me-1"></i>{{ __('Sugerir') }}
+                            </button>
+                        </div>
                         <textarea id="outreach_message" class="form-control" rows="5"></textarea>
                     </div>
                 </div>
@@ -227,8 +237,6 @@
                     event.preventDefault();
                     openOutreachModal(
                         outreachTrigger.dataset.list60Id,
-                        outreachTrigger.dataset.contactName,
-                        outreachTrigger.dataset.categories,
                         outreachTrigger.dataset.canWhatsapp === '1',
                         outreachTrigger.dataset.canEmail === '1'
                     );
@@ -251,28 +259,17 @@
             }
         }
 
-        function openOutreachModal(list60Id, contactName, categoriesJson, canWhatsapp, canEmail) {
+        function openOutreachModal(list60Id, canWhatsapp, canEmail) {
             document.getElementById('outreach_list60_id').value = list60Id;
-            document.getElementById('outreach_contact_name').textContent = contactName || '';
+            document.getElementById('outreach_contact_name').textContent = '';
+            document.getElementById('outreach_contact_sentiment').textContent = '';
             document.getElementById('outreach_subject').value = '';
             document.getElementById('outreach_message').value = '';
+            document.getElementById('outreach_notes_wrap').style.display = 'none';
+            document.getElementById('outreach_contact_notes').textContent = '';
 
             const categoriesEl = document.getElementById('outreach_contact_categories');
             categoriesEl.innerHTML = '';
-            let categories = [];
-            try {
-                categories = categoriesJson ? JSON.parse(categoriesJson) : [];
-            } catch (e) {
-                categories = [];
-            }
-            if (Array.isArray(categories) && categories.length > 0) {
-                categories.forEach(function (name) {
-                    const badge = document.createElement('span');
-                    badge.className = 'badge bg-label-primary';
-                    badge.textContent = name;
-                    categoriesEl.appendChild(badge);
-                });
-            }
 
             const whatsappInput = document.getElementById('outreach_channel_whatsapp');
             const emailInput = document.getElementById('outreach_channel_email');
@@ -295,7 +292,131 @@
             }
 
             toggleOutreachSubject();
-            new bootstrap.Modal(document.getElementById('list60OutreachModal')).show();
+
+            const modalEl = document.getElementById('list60OutreachModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+
+            fetch("{{ route('list60.outreach-context', ['id' => ':ID']) }}".replace(':ID', list60Id), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || @json(__('Error')));
+                }
+                return data;
+            })
+            .then((data) => {
+                document.getElementById('outreach_contact_name').textContent = data.contact_name || '';
+
+                const sentimentEl = document.getElementById('outreach_contact_sentiment');
+                if (data.sentiment && data.sentiment.name) {
+                    const sentimentNotes = data.sentiment.notes ? ` — ${data.sentiment.notes}` : '';
+                    sentimentEl.textContent = `${@json(__('app.list60_outreach_sentiment'))}: ${data.sentiment.name} ${data.sentiment.emoji || ''}${sentimentNotes}`.trim();
+                } else {
+                    sentimentEl.textContent = @json(__('app.list60_outreach_no_sentiment'));
+                }
+
+                categoriesEl.innerHTML = '';
+                if (Array.isArray(data.categories) && data.categories.length > 0) {
+                    data.categories.forEach(function (name) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-label-primary';
+                        badge.textContent = name;
+                        categoriesEl.appendChild(badge);
+                    });
+                }
+
+                const notesWrap = document.getElementById('outreach_notes_wrap');
+                const notesEl = document.getElementById('outreach_contact_notes');
+                if (data.notes && String(data.notes).trim() !== '') {
+                    notesEl.textContent = data.notes;
+                    notesWrap.style.display = '';
+                } else {
+                    notesEl.textContent = '';
+                    notesWrap.style.display = 'none';
+                }
+
+                if (typeof data.can_whatsapp === 'boolean') {
+                    whatsappInput.disabled = !data.can_whatsapp;
+                    if (whatsappLabel) {
+                        whatsappLabel.classList.toggle('disabled', !data.can_whatsapp);
+                    }
+                }
+                if (typeof data.can_email === 'boolean') {
+                    emailInput.disabled = !data.can_email;
+                    if (emailLabel) {
+                        emailLabel.classList.toggle('disabled', !data.can_email);
+                    }
+                }
+
+                if (data.can_whatsapp) {
+                    whatsappInput.checked = true;
+                } else if (data.can_email) {
+                    emailInput.checked = true;
+                }
+
+                toggleOutreachSubject();
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                toastr.error(error.message || @json(__('Error')));
+            });
+        }
+
+        function suggestOutreachMessage() {
+            const list60Id = document.getElementById('outreach_list60_id').value;
+            const channel = document.querySelector('input[name="outreach_channel"]:checked')?.value;
+            const suggestBtn = document.getElementById('outreach_suggest_btn');
+            const messageField = document.getElementById('outreach_message');
+
+            if (!channel) {
+                toastr.error(@json(__('app.list60_outreach_error_invalid_channel')));
+                return;
+            }
+
+            suggestBtn.disabled = true;
+            const originalHtml = suggestBtn.innerHTML;
+            suggestBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>{{ __('app.list60_outreach_suggesting') }}';
+
+            fetch("{{ route('list60.suggest-outreach', ['id' => ':ID']) }}".replace(':ID', list60Id), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ channel: channel }),
+            })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || data.error || @json(__('Error')));
+                }
+                return data;
+            })
+            .then((data) => {
+                if (channel === 'email') {
+                    if (data.subject) {
+                        document.getElementById('outreach_subject').value = data.subject;
+                    }
+                    messageField.value = data.body || data.message || '';
+                } else {
+                    messageField.value = data.message || data.body || '';
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                toastr.error(error.message || @json(__('Error')));
+            })
+            .finally(() => {
+                suggestBtn.disabled = false;
+                suggestBtn.innerHTML = originalHtml;
+            });
         }
 
         function sendOutreach() {

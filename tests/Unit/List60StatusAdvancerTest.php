@@ -19,6 +19,16 @@ class List60StatusAdvancerTest extends TestCase
         $this->seed(List60StatusesSeeder::class);
     }
 
+    public function test_initial_status_creates_missing_sin_contactar(): void
+    {
+        List60Status::query()->where('name', 'Sin contactar')->delete();
+
+        $id = List60StatusAdvancer::initialStatusId();
+
+        $this->assertGreaterThan(0, $id);
+        $this->assertDatabaseHas('list60_statuses', ['id' => $id, 'name' => 'Sin contactar']);
+    }
+
     public function test_initial_status_is_sin_contactar(): void
     {
         $sinContactar = List60Status::query()->where('name', 'Sin contactar')->firstOrFail();

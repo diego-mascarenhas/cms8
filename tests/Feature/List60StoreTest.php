@@ -85,6 +85,74 @@ class List60StoreTest extends TestCase
         $this->assertSame($followingStatus->id, $contact->status_id);
     }
 
+    public function test_store_assigns_responsible_categories_and_notes(): void
+    {
+        $this->seed(ModuleSeeder::class);
+
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $collaborator = User::factory()->create();
+        $this->user->currentTeam->users()->attach($collaborator, ['role' => 'editor']);
+        $collaborator->forceFill(['current_team_id' => $this->user->currentTeam->id])->save();
+        $collaborator->assignRole('collaborator');
+
+        $contactsModuleId = Module::query()->where('key', 'contacts')->value('id');
+        $category = Category::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'module_id' => $contactsModuleId,
+            'name' => 'Prospecto caliente',
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'data' => ['notes' => 'Nota anterior'],
+        ]);
+
+        $response = $this->actingAs($this->user)->postJson(route('list60.store'), [
+            'contact_id' => $contact->id,
+            'responsible_id' => $collaborator->id,
+            'category_ids' => [$category->id],
+            'notes' => 'Nota de seguimiento comercial',
+        ]);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('list60', [
+            'contact_id' => $contact->id,
+            'responsible_id' => $collaborator->id,
+            'status_id' => List60StatusAdvancer::initialStatusId(),
+        ]);
+
+        $contact->refresh();
+        $this->assertTrue($contact->categories->contains('id', $category->id));
+        $this->assertSame('Nota de seguimiento comercial', $contact->data->notes);
+    }
+
+    public function test_prefill_returns_contact_notes_and_categories(): void
+    {
+        $this->seed(ModuleSeeder::class);
+
+        $contactsModuleId = Module::query()->where('key', 'contacts')->value('id');
+        $category = Category::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'module_id' => $contactsModuleId,
+            'name' => 'VIP',
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'data' => ['notes' => 'Nota existente'],
+        ]);
+        $contact->categories()->attach($category->id);
+
+        $response = $this->actingAs($this->user)->getJson(route('list60.prefill', $contact));
+
+        $response->assertOk();
+        $response->assertJsonPath('name', $contact->name);
+        $response->assertJsonPath('notes', 'Nota existente');
+        $response->assertJsonPath('category_ids', [$category->id]);
+    }
+
     public function test_update_can_change_responsible_without_date_next(): void
     {
         Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
