@@ -18,6 +18,42 @@ class LandingYouTubeTest extends TestCase
         $this->assertSame('https://www.youtube.com/playlist?list=PLebHHjcT7KEc', LandingYouTube::url());
     }
 
+    public function test_thumbnail_url_uses_youtube_cdn(): void
+    {
+        $this->assertSame(
+            'https://i.ytimg.com/vi/MQGOooSA9MM/hqdefault.jpg',
+            LandingYouTube::thumbnailUrl('MQGOooSA9MM'),
+        );
+    }
+
+    public function test_watch_url_includes_playlist_when_configured(): void
+    {
+        config([
+            'slash_landing.youtube_onboarding_playlist_url' => 'https://www.youtube.com/playlist?list=PLebHHjcT7KEc',
+        ]);
+
+        $this->assertSame(
+            'https://www.youtube.com/watch?v=MQGOooSA9MM&list=PLebHHjcT7KEc',
+            LandingYouTube::watchUrl('MQGOooSA9MM'),
+        );
+    }
+
+    public function test_featured_videos_returns_configured_onboarding_tutorials(): void
+    {
+        $videos = LandingYouTube::featuredVideos();
+
+        $this->assertCount(3, $videos);
+        $this->assertSame('MQGOooSA9MM', $videos[0]['youtube_id']);
+        $this->assertSame('Configuración del negocio', $videos[0]['title']);
+        $this->assertSame('uju-eMnSiO0', $videos[1]['youtube_id']);
+        $this->assertSame('luwXe0wu37E', $videos[2]['youtube_id']);
+    }
+
+    public function test_shows_featured_videos_section_when_enabled_and_videos_exist(): void
+    {
+        $this->assertTrue(LandingYouTube::showsFeaturedVideosSection());
+    }
+
     public function test_url_returns_channel_when_playlist_is_not_configured(): void
     {
         config([

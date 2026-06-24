@@ -83,7 +83,7 @@
       </a>
 
       <ul class="slash-nav-links" id="slashNavLinks">
-        @if (config('slash_landing.show_plan_stories_section'))
+        @if (\App\Support\LandingYouTube::showsFeaturedVideosSection())
         <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
         @endif
         <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
@@ -196,9 +196,8 @@
     </section>
     @endif
 
-    @if (config('slash_landing.show_plan_stories_section'))
+    @if (\App\Support\LandingYouTube::showsFeaturedVideosSection())
     @include('homes.slash.partials.plan-stories', [
-      'landingPlans' => $landingPlans,
       'planImages' => $planImages,
     ])
     @endif
@@ -569,7 +568,7 @@
         <div>
           <h4>{{ __('slash_landing.nav.product') }}</h4>
           <ul>
-            @if (config('slash_landing.show_plan_stories_section'))
+            @if (\App\Support\LandingYouTube::showsFeaturedVideosSection())
             <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
             @endif
             <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>

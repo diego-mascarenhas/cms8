@@ -54,9 +54,10 @@ return [
     ],
 
     'stories' => [
-        'title' => 'Conoce cada plan en acción',
-        'lead' => 'Un video por plan. Misma información que en :link, en formato visual.',
-        'lead_link' => 'precios',
+        'eyebrow' => 'En acción',
+        'title' => 'Empieza con Humano en vídeo',
+        'lead' => 'Los tres primeros tutoriales de :link.',
+        'lead_link' => 'Humano • Onboarding',
     ],
 
     'capabilities' => [

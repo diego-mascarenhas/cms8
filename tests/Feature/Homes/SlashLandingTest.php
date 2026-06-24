@@ -91,10 +91,17 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('humano_pricing.plans.business.name'), false)
             ->assertDontSee('id="plan-mentor"', false)
             ->assertDontSee('id="plan-innovation"', false)
-            ->assertDontSee('id="historias-planes"', false)
-            ->assertDontSee('data-slash-stories', false)
-            ->assertDontSee(__('slash_landing.stories.title'), false)
-            ->assertDontSee('slash-story-card', false)
+            ->assertSee('id="historias-planes"', false)
+            ->assertSee('data-slash-stories', false)
+            ->assertSee(__('slash_landing.stories.title'), false)
+            ->assertSee('i.ytimg.com/vi/MQGOooSA9MM/hqdefault.jpg', false)
+            ->assertSee('i.ytimg.com/vi/uju-eMnSiO0/hqdefault.jpg', false)
+            ->assertSee('i.ytimg.com/vi/luwXe0wu37E/hqdefault.jpg', false)
+            ->assertDontSee('data-youtube-id="MQGOooSA9MM"', false)
+            ->assertSee('Configuración del negocio', false)
+            ->assertSee('Conectar WhatsApp', false)
+            ->assertSee('Chat, contactos y módulos', false)
+            ->assertSee('slash-story-card', false)
             ->assertDontSee('id="producto"', false)
             ->assertDontSee(__('slash_landing.trust.title'), false)
             ->assertDontSee('María G.', false)
@@ -184,6 +191,8 @@ class SlashLandingTest extends TestCase
             'slash_landing.youtube_onboarding_playlist_url' => '',
             'slash_landing.youtube_onboarding_playlist_id' => '',
             'slash_landing.youtube_channel_url' => '',
+            'slash_landing.show_plan_stories_section' => false,
+            'slash_landing.onboarding_featured_videos' => [],
         ]);
 
         $this->get('/slash')
@@ -218,6 +227,19 @@ class SlashLandingTest extends TestCase
         $this->get('/slash')
             ->assertOk()
             ->assertSee('https://web.whatsapp.com/send?phone=34624159557', false);
+    }
+
+    public function test_slash_landing_hides_onboarding_videos_when_featured_videos_are_empty(): void
+    {
+        config([
+            'slash_landing.show_plan_stories_section' => true,
+            'slash_landing.onboarding_featured_videos' => [],
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertDontSee('id="historias-planes"', false)
+            ->assertDontSee('data-slash-stories', false);
     }
 
     public function test_slash_landing_can_show_trust_and_plan_stories_sections_when_enabled(): void
