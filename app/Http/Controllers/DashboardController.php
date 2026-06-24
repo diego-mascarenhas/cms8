@@ -16,6 +16,7 @@ use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Services\UserDailyPerformanceInsightService;
+use App\Support\DemoTeam;
 use Carbon\Carbon;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
@@ -440,7 +441,10 @@ class DashboardController extends Controller
         }
 
         $dailyPerformanceInsight = null;
-        if (auth()->user()->hasAnyRole(['admin', 'root']) && $activeTeam->hasModule('performance_insights'))
+        $canShowPerformanceInsight = auth()->user()->hasAnyRole(['admin', 'root'])
+            && ($activeTeam->hasModule('performance_insights') || DemoTeam::isDemoTeam($activeTeam));
+
+        if ($canShowPerformanceInsight)
         {
             $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
                 ->findTodayInsight(auth()->user(), $activeTeam);

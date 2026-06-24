@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Console\Commands\HumanoDemoOnboardingCaptureStateCommand;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\PhoneHelper;
 use App\Models\Team;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Support\DemoTeam;
 
 final class TeamWhatsAppChatPresentation
 {
@@ -34,6 +36,37 @@ final class TeamWhatsAppChatPresentation
 
         $baseUrl = $team?->getWhatsAppServiceBaseUrl();
         $baseUrl = is_string($baseUrl) ? rtrim($baseUrl, '/') : '';
+
+        if ($team !== null
+            && app()->environment(['local', 'testing'])
+            && DemoTeam::isDemoTeam($team)
+            && filter_var($team->getSetting(HumanoDemoOnboardingCaptureStateCommand::SETTING_SIMULATE_WHATSAPP_CONNECTED), FILTER_VALIDATE_BOOL))
+        {
+            $teamWhatsAppNumber = $team->getWhatsAppFrom();
+            $teamWhatsAppNumberFormatted = $teamWhatsAppNumber
+                ? PhoneHelper::formatForDisplayReadable($teamWhatsAppNumber)
+                : null;
+            $teamWhatsAppIsConnected = $teamWhatsAppNumber !== null && $teamWhatsAppNumber !== '';
+            $whatsappStatus = [
+                'status' => $teamWhatsAppIsConnected ? 'connected' : 'disconnected',
+                'number' => $teamWhatsAppNumber,
+            ];
+
+            if ($baseUrl !== '')
+            {
+                $qrImageUrl = route('chat.whatsapp-qr-image');
+            }
+
+            return compact(
+                'whatsappDriver',
+                'whatsappStatus',
+                'teamWhatsAppNumber',
+                'teamWhatsAppNumberFormatted',
+                'teamWhatsAppIsConnected',
+                'qrImageUrl',
+                'onboardingQrScanTargetsChatOnly',
+            );
+        }
 
         if ($whatsappDriver === 'local' && app()->bound(WhatsAppGateway::class))
         {

@@ -2,10 +2,11 @@
 
 use App\Http\Middleware\ApplyProdReadDatabaseWhenEnabled;
 use App\Http\Middleware\Authenticate;
-use App\Http\Middleware\EnsureRegistrationBillingComplete;
 use App\Http\Middleware\EnsurePasswordsUnlocked;
+use App\Http\Middleware\EnsureRegistrationBillingComplete;
 use App\Http\Middleware\LocaleMiddleware;
 use App\Http\Middleware\ModifyMenuBasedOnRole;
+use App\Http\Middleware\PrepareDemoPresentation;
 use App\Http\Middleware\PreventRequestsDuringMaintenance;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RoleMiddleware;
@@ -45,6 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
             TrackContactViewing::class,
             EnsureRegistrationBillingComplete::class,
             ApplyProdReadDatabaseWhenEnabled::class,
+            PrepareDemoPresentation::class,
             // TEMPORARILY DISABLED FOR TESTING
             // \App\Http\Middleware\DashboardRedirect::class,
         ]);

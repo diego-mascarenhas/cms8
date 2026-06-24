@@ -126,11 +126,11 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         ], $keys));
     }
 
-    public function test_demo_team_plan_slug_defaults_to_hunter(): void
+    public function test_demo_team_plan_slug_defaults_to_business(): void
     {
-        $this->assertSame('hunter', config('humano_pricing.demo_team_plan_slug'));
+        $this->assertSame('business', config('humano_pricing.demo_team_plan_slug'));
         $this->assertSame(
-            config('humano_pricing.plan_team_modules.hunter'),
+            config('humano_pricing.plan_team_modules.business'),
             config('humano_pricing.plan_team_modules.'.config('humano_pricing.demo_team_plan_slug')),
         );
     }
