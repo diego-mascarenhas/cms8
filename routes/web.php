@@ -590,8 +590,12 @@ Route::middleware(['auth'])->group(function ()
 
     // List60
     Route::get('/list60/list', [List60Controller::class, 'index'])->name('list60-list');
+    Route::get('/list60/prefill/{contact}', [List60Controller::class, 'prefill'])->name('list60.prefill');
+    Route::get('/list60/{id}/outreach-context', [List60Controller::class, 'outreachContext'])->name('list60.outreach-context');
+    Route::post('/list60/{id}/suggest-outreach', [List60Controller::class, 'suggestOutreach'])->name('list60.suggest-outreach');
     Route::post('/list60', [List60Controller::class, 'store'])->name('list60.store');
     Route::put('/list60/{id}', [List60Controller::class, 'update'])->name('list60.update');
+    Route::post('/list60/{id}/send-outreach', [List60Controller::class, 'sendOutreach'])->name('list60.send-outreach');
     Route::delete('/list60/{id}', [List60Controller::class, 'destroy'])->name('list60.destroy');
 
     // Chat
@@ -895,6 +899,9 @@ Route::middleware(['auth'])->group(function ()
 
     // Expense module
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');
+    Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
+    Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
+    Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
 
     // Financial Dashboard (Accounting)
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');

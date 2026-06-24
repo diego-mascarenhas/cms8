@@ -4,9 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Conversation;
 use App\Models\DocumentIngestion;
+use App\Models\Invoice;
 use App\Models\Team;
 use App\Services\DocumentIngestionService;
 use App\Services\DocumentOcrService;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -14,6 +18,17 @@ use Tests\TestCase;
 class DocumentIngestionServiceTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+        ]);
+    }
 
     /**
      * @test
@@ -31,6 +46,7 @@ class DocumentIngestionServiceTest extends TestCase
             ]));
 
         $team = Team::factory()->create();
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
         Storage::disk('public')->put('temp/chat-attachments/card.jpg', 'fake-image-bytes');
         $conversation = Conversation::create([
             'message_sid' => 'wa-msg-1',
@@ -146,5 +162,65 @@ class DocumentIngestionServiceTest extends TestCase
             'source_reference' => 'wa-msg-3',
             'classification_status' => 'needs_review',
         ]);
+    }
+
+    /**
+     * @test
+     */
+    public function it_creates_purchase_invoice_from_whatsapp_invoice_photo(): void
+    {
+        $ocrMock = $this->mock(DocumentOcrService::class);
+        $ocrMock->shouldReceive('extractTextFromLocalFile')
+            ->andReturn(implode("\n", [
+                'YOIGO',
+                'Factura',
+                'Número factura: YC260001189727',
+                'Fecha factura: 2026-01-01',
+                'Fecha vencimiento: 2026-01-05',
+                'TOTAL A PAGAR: 16,00 €',
+                'LA SINFÍN 40GB - 613194131',
+            ]));
+
+        $team = Team::factory()->create();
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+        Storage::disk('public')->put('temp/chat-attachments/invoice-photo.jpg', 'fake-image-bytes');
+
+        $conversation = Conversation::create([
+            'message_sid' => 'wa-msg-invoice-1',
+            'channel' => 'whatsapp',
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => 'factura adjunta',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => '/storage/temp/chat-attachments/invoice-photo.jpg',
+                    'content_type' => 'image/jpeg',
+                ],
+            ],
+        ]);
+
+        $records = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+            $conversation,
+            'WhatsApp',
+            'wa-msg-invoice-1',
+            $team->id,
+        );
+
+        $this->assertCount(1, $records);
+
+        $ingestion = DocumentIngestion::query()
+            ->where('conversation_id', $conversation->id)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($ingestion);
+        $this->assertSame('invoice', $ingestion->document_type);
+
+        $invoice = Invoice::withoutGlobalScopes()->find($ingestion->entity_id);
+        $this->assertNotNull($invoice);
+        $this->assertSame('buy', $invoice->operation);
+        $this->assertSame('YC260001189727', $invoice->number);
+        $this->assertSame('16.00', number_format((float) $invoice->total_amount, 2, '.', ''));
     }
 }

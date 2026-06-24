@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/animate-css/animate.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
 @endsection
 
 @section('vendor-script')
@@ -20,6 +21,12 @@
     <script src="{{ asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
+    <script src="{{ asset('vendors/data-tables/js/jquery.dataTables.min.js') }}"></script>
+    <script src="{{ asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js') }}"></script>
+    <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
+    <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
+    <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
 @endsection
 
 @section('page-script')
@@ -71,20 +78,16 @@
         </div>
     </div>
 
-    <!-- Assign Responsible Modal -->
+    <!-- Next contact date modal -->
     <div class="modal fade" id="assignResponsibleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Asignar responsable</h5>
+                    <h5 class="modal-title">Próximo contacto</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="list60_id">
-                    <div class="mb-3">
-                        <label class="form-label">Responsable</label>
-                        <select id="responsible_select" class="form-select"></select>
-                    </div>
                     <div>
                         <label class="form-label">Próximo contacto</label>
                         <div class="d-flex gap-2 mb-2 flex-wrap">
@@ -98,12 +101,68 @@
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="quickDate('w2')">+2 semanas</button>
                             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="quickDate('m1')">+1 mes</button>
                         </div>
-                        <input type="date" id="date_next_input" class="form-control">
+                        <input type="text" id="date_next_input" class="form-control" autocomplete="off">
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="saveAssignment()">Guardar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveDateNext()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Outreach modal -->
+    <div class="modal fade" id="list60OutreachModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">{{ __('app.list60_outreach_modal_title') }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="outreach_list60_id">
+                    <div class="mb-3">
+                        <p class="mb-1 fw-medium" id="outreach_contact_name"></p>
+                        <p class="mb-0 small text-muted" id="outreach_contact_sentiment"></p>
+                        <div id="outreach_contact_categories" class="d-flex flex-wrap gap-1 mt-2"></div>
+                        <div class="mt-3" id="outreach_notes_wrap" style="display: none;">
+                            <label class="form-label text-muted small mb-1">{{ __('Notes') }}</label>
+                            <div id="outreach_contact_notes" class="form-control bg-label-secondary border-0 text-body" style="min-height: 4.5rem; white-space: pre-wrap;"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label d-block">{{ __('app.list60_outreach_channel_label') }}</label>
+                        <div class="btn-group" role="group" id="outreach_channel_group">
+                            <input type="radio" class="btn-check" name="outreach_channel" id="outreach_channel_whatsapp" value="whatsapp" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="outreach_channel_whatsapp">
+                                <i class="ti ti-brand-whatsapp me-1"></i>{{ __('app.list60_outreach_channel_whatsapp') }}
+                            </label>
+                            <input type="radio" class="btn-check" name="outreach_channel" id="outreach_channel_email" value="email" autocomplete="off">
+                            <label class="btn btn-outline-primary" for="outreach_channel_email">
+                                <i class="ti ti-mail me-1"></i>{{ __('app.list60_outreach_channel_email') }}
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3" id="outreach_subject_wrap">
+                        <label class="form-label" for="outreach_subject">{{ __('app.list60_outreach_subject') }}</label>
+                        <input type="text" id="outreach_subject" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2 gap-2 flex-wrap">
+                            <label class="form-label mb-0" for="outreach_message">{{ __('app.list60_outreach_message') }}</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="outreach_suggest_btn" onclick="suggestOutreachMessage()">
+                                <i class="ti ti-sparkles me-1"></i>{{ __('Sugerir') }}
+                            </button>
+                        </div>
+                        <textarea id="outreach_message" class="form-control" rows="5"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                    <button type="button" class="btn btn-primary" id="outreach_send_btn" onclick="sendOutreach()">
+                        <i class="ti ti-send me-1"></i>{{ __('app.list60_outreach_send') }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -114,68 +173,378 @@
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 @endpush
 
-@section('vendor-script')
-    <script src="{{ asset('vendors/data-tables/js/jquery.dataTables.min.js') }}"></script>
-    <script src="{{ asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js') }}"></script>
-    <script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-    <script src="{{ asset('vendors/fullcalendar/lib/moment.min.js') }}"></script>
-    <script src="{{ asset('js/moment/' . app()->getLocale() . '.js') }}"></script>
-@endsection
+@php
+    $jsLocale = \App\Support\ApplicationLocales::javascriptLocale();
+    $flatpickrAltFormat = match ($jsLocale) {
+        'en' => 'Y-m-d',
+        'es', 'fr' => 'd-m-Y',
+        'de' => 'd.m.Y',
+        'it', 'pt' => 'd/m/Y',
+        default => 'Y-m-d',
+    };
+@endphp
 
 @push('scripts')
     <script>
-        function openAssignModal(id, currentId) {
-            document.getElementById('list60_id').value = id;
-            const select = document.getElementById('responsible_select');
-            select.innerHTML = '<option value="">Cargando...</option>';
-            // Prefill date from current row if present
-            const row = document.querySelector(`[data-entry-id='${id}']`);
-            const dateInput = document.getElementById('date_next_input');
-            if (row) {
-                const dateCell = row.querySelector('[data-field="date_next"]');
-                if (dateCell && dateCell.dataset.value) {
-                    dateInput.value = dateCell.dataset.value;
-                } else {
-                    dateInput.value = '';
-                }
-            } else {
-                dateInput.value = '';
+        let dateNextPicker = null;
+
+        function loadFlatpickrLocale(locale, callback) {
+            if (locale === 'en') {
+                callback();
+                return;
             }
 
-            fetch('/api/team-users?roles=admin,collaborator,employee')
-                .then(r => r.json())
-                .then(data => {
-                    select.innerHTML = '';
-                    data.users.forEach(u => {
-                        const opt = document.createElement('option');
-                        opt.value = u.id; opt.textContent = u.name + ' (' + u.role + ')';
-                        if (currentId && String(currentId) === String(u.id)) { opt.selected = true; }
-                        select.appendChild(opt);
-                    });
+            const script = document.createElement('script');
+            script.src = `https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/${locale}.js`;
+            script.onload = callback;
+            script.onerror = () => callback();
+            document.head.appendChild(script);
+        }
+
+        function initDateNextPicker() {
+            if (dateNextPicker) {
+                return;
+            }
+
+            const locale = @json($jsLocale);
+            const altFormat = @json($flatpickrAltFormat);
+
+            loadFlatpickrLocale(locale, function () {
+                if (locale !== 'en' && flatpickr.l10ns[locale]) {
+                    flatpickr.localize(flatpickr.l10ns[locale]);
+                }
+
+                dateNextPicker = flatpickr('#date_next_input', {
+                    dateFormat: 'Y-m-d',
+                    allowInput: true,
+                    altInput: true,
+                    altFormat: altFormat,
+                    monthSelectorType: 'static',
                 });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initDateNextPicker();
+
+            document.querySelectorAll('input[name="outreach_channel"]').forEach(function (input) {
+                input.addEventListener('change', toggleOutreachSubject);
+            });
+
+            document.addEventListener('click', function (event) {
+                const outreachTrigger = event.target.closest('.js-list60-outreach');
+                if (outreachTrigger) {
+                    event.preventDefault();
+                    openOutreachModal(
+                        outreachTrigger.dataset.list60Id,
+                        outreachTrigger.dataset.canWhatsapp === '1',
+                        outreachTrigger.dataset.canEmail === '1'
+                    );
+                    return;
+                }
+
+                const dateTrigger = event.target.closest('.js-list60-date');
+                if (dateTrigger) {
+                    event.preventDefault();
+                    openDateModal(dateTrigger.dataset.list60Id);
+                }
+            });
+        });
+
+        function toggleOutreachSubject() {
+            const channel = document.querySelector('input[name="outreach_channel"]:checked')?.value;
+            const subjectWrap = document.getElementById('outreach_subject_wrap');
+            if (subjectWrap) {
+                subjectWrap.style.display = channel === 'email' ? '' : 'none';
+            }
+        }
+
+        function openOutreachModal(list60Id, canWhatsapp, canEmail) {
+            document.getElementById('outreach_list60_id').value = list60Id;
+            document.getElementById('outreach_contact_name').textContent = '';
+            document.getElementById('outreach_contact_sentiment').textContent = '';
+            document.getElementById('outreach_subject').value = '';
+            document.getElementById('outreach_message').value = '';
+            document.getElementById('outreach_notes_wrap').style.display = 'none';
+            document.getElementById('outreach_contact_notes').textContent = '';
+
+            const categoriesEl = document.getElementById('outreach_contact_categories');
+            categoriesEl.innerHTML = '';
+
+            const whatsappInput = document.getElementById('outreach_channel_whatsapp');
+            const emailInput = document.getElementById('outreach_channel_email');
+            const whatsappLabel = document.querySelector('label[for="outreach_channel_whatsapp"]');
+            const emailLabel = document.querySelector('label[for="outreach_channel_email"]');
+
+            whatsappInput.disabled = !canWhatsapp;
+            emailInput.disabled = !canEmail;
+            if (whatsappLabel) {
+                whatsappLabel.classList.toggle('disabled', !canWhatsapp);
+            }
+            if (emailLabel) {
+                emailLabel.classList.toggle('disabled', !canEmail);
+            }
+
+            if (canWhatsapp) {
+                whatsappInput.checked = true;
+            } else if (canEmail) {
+                emailInput.checked = true;
+            }
+
+            toggleOutreachSubject();
+
+            const modalEl = document.getElementById('list60OutreachModal');
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+
+            fetch("{{ route('list60.outreach-context', ['id' => ':ID']) }}".replace(':ID', list60Id), {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || @json(__('Error')));
+                }
+                return data;
+            })
+            .then((data) => {
+                document.getElementById('outreach_contact_name').textContent = data.contact_name || '';
+
+                const sentimentEl = document.getElementById('outreach_contact_sentiment');
+                if (data.sentiment && data.sentiment.name) {
+                    const sentimentNotes = data.sentiment.notes ? ` — ${data.sentiment.notes}` : '';
+                    sentimentEl.textContent = `${@json(__('app.list60_outreach_sentiment'))}: ${data.sentiment.name} ${data.sentiment.emoji || ''}${sentimentNotes}`.trim();
+                } else {
+                    sentimentEl.textContent = @json(__('app.list60_outreach_no_sentiment'));
+                }
+
+                categoriesEl.innerHTML = '';
+                if (Array.isArray(data.categories) && data.categories.length > 0) {
+                    data.categories.forEach(function (name) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-label-primary';
+                        badge.textContent = name;
+                        categoriesEl.appendChild(badge);
+                    });
+                }
+
+                const notesWrap = document.getElementById('outreach_notes_wrap');
+                const notesEl = document.getElementById('outreach_contact_notes');
+                if (data.notes && String(data.notes).trim() !== '') {
+                    notesEl.textContent = data.notes;
+                    notesWrap.style.display = '';
+                } else {
+                    notesEl.textContent = '';
+                    notesWrap.style.display = 'none';
+                }
+
+                if (typeof data.can_whatsapp === 'boolean') {
+                    whatsappInput.disabled = !data.can_whatsapp;
+                    if (whatsappLabel) {
+                        whatsappLabel.classList.toggle('disabled', !data.can_whatsapp);
+                    }
+                }
+                if (typeof data.can_email === 'boolean') {
+                    emailInput.disabled = !data.can_email;
+                    if (emailLabel) {
+                        emailLabel.classList.toggle('disabled', !data.can_email);
+                    }
+                }
+
+                if (data.can_whatsapp) {
+                    whatsappInput.checked = true;
+                } else if (data.can_email) {
+                    emailInput.checked = true;
+                }
+
+                toggleOutreachSubject();
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                toastr.error(error.message || @json(__('Error')));
+            });
+        }
+
+        function suggestOutreachMessage() {
+            const list60Id = document.getElementById('outreach_list60_id').value;
+            const channel = document.querySelector('input[name="outreach_channel"]:checked')?.value;
+            const suggestBtn = document.getElementById('outreach_suggest_btn');
+            const messageField = document.getElementById('outreach_message');
+
+            if (!channel) {
+                toastr.error(@json(__('app.list60_outreach_error_invalid_channel')));
+                return;
+            }
+
+            suggestBtn.disabled = true;
+            const originalHtml = suggestBtn.innerHTML;
+            suggestBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>{{ __('app.list60_outreach_suggesting') }}';
+
+            fetch("{{ route('list60.suggest-outreach', ['id' => ':ID']) }}".replace(':ID', list60Id), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ channel: channel }),
+            })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || data.error || @json(__('Error')));
+                }
+                return data;
+            })
+            .then((data) => {
+                if (channel === 'email') {
+                    if (data.subject) {
+                        document.getElementById('outreach_subject').value = data.subject;
+                    }
+                    messageField.value = data.body || data.message || '';
+                } else {
+                    messageField.value = data.message || data.body || '';
+                }
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                toastr.error(error.message || @json(__('Error')));
+            })
+            .finally(() => {
+                suggestBtn.disabled = false;
+                suggestBtn.innerHTML = originalHtml;
+            });
+        }
+
+        function sendOutreach() {
+            const list60Id = document.getElementById('outreach_list60_id').value;
+            const channel = document.querySelector('input[name="outreach_channel"]:checked')?.value;
+            const message = document.getElementById('outreach_message').value.trim();
+            const subject = document.getElementById('outreach_subject').value.trim();
+            const sendBtn = document.getElementById('outreach_send_btn');
+
+            if (!channel) {
+                toastr.error(@json(__('app.list60_outreach_error_invalid_channel')));
+                return;
+            }
+
+            if (!message) {
+                toastr.error(@json(__('validation.required', ['attribute' => __('app.list60_outreach_message')])));
+                return;
+            }
+
+            sendBtn.disabled = true;
+
+            fetch(`/list60/${list60Id}/send-outreach`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    channel: channel,
+                    message: message,
+                    subject: subject || null
+                })
+            })
+            .then(async (response) => {
+                const data = await response.json();
+                if (!response.ok) {
+                    const errorMessage = data.message
+                        || (data.errors ? Object.values(data.errors).flat().join(' ') : null)
+                        || data.error
+                        || @json(__('whatsapp.send.error.generic'));
+                    throw new Error(errorMessage);
+                }
+                return data;
+            })
+            .then((data) => {
+                bootstrap.Modal.getInstance(document.getElementById('list60OutreachModal'))?.hide();
+                Swal.fire({
+                    icon: 'success',
+                    title: @json(__('Success')),
+                    text: data.success,
+                    customClass: {
+                        confirmButton: 'btn btn-success'
+                    },
+                    buttonsStyling: false
+                }).then(function () {
+                    location.reload();
+                });
+            })
+            .catch((error) => {
+                toastr.error(error.message || @json(__('whatsapp.send.error.generic')));
+            })
+            .finally(() => {
+                sendBtn.disabled = false;
+            });
+        }
+
+        function openDateModal(id) {
+            document.getElementById('list60_id').value = id;
+            const row = document.getElementById(id);
+            const dateCell = row ? row.querySelector('[data-field="date_next"]') : null;
+            const dateValue = dateCell && dateCell.dataset.value ? dateCell.dataset.value : '';
+
+            if (dateNextPicker) {
+                if (dateValue) {
+                    dateNextPicker.setDate(dateValue, true);
+                } else {
+                    dateNextPicker.clear();
+                }
+            }
 
             new bootstrap.Modal(document.getElementById('assignResponsibleModal')).show();
         }
 
-        function saveAssignment() {
+        function saveDateNext() {
             const id = document.getElementById('list60_id').value;
-            const responsibleId = document.getElementById('responsible_select').value;
-            const dateNext = document.getElementById('date_next_input').value;
+            const dateNext = dateNextPicker ? dateNextPicker.input.value : document.getElementById('date_next_input').value;
+
             fetch(`/list60/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ responsible_id: responsibleId, date_next: dateNext })
+                body: JSON.stringify({ date_next: dateNext })
             })
             .then(r => r.json())
             .then(resp => {
                 if (resp.success) {
                     location.reload();
                 } else {
+                    toastr.error(resp.error || 'Error al actualizar la fecha');
+                }
+            });
+        }
+
+        function updateList60Responsible(select) {
+            const id = select.dataset.list60Id;
+            const responsibleId = select.value;
+            const previousValue = select.dataset.previousValue || responsibleId;
+
+            fetch(`/list60/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ responsible_id: responsibleId })
+            })
+            .then(r => r.json())
+            .then(resp => {
+                if (!resp.success) {
+                    select.value = previousValue;
                     toastr.error(resp.error || 'Error al asignar responsable');
                 }
+            })
+            .catch(() => {
+                select.value = previousValue;
+                toastr.error('Error al asignar responsable');
             });
         }
 
@@ -187,20 +556,22 @@
         }
 
         function quickDate(code) {
-            const input = document.getElementById('date_next_input');
             const base = new Date();
             switch (code) {
                 case 'today':
-                    input.value = formatDate(base);
                     break;
-                case 'd1': base.setDate(base.getDate() + 1); input.value = formatDate(base); break;
-                case 'd2': base.setDate(base.getDate() + 2); input.value = formatDate(base); break;
-                case 'd3': base.setDate(base.getDate() + 3); input.value = formatDate(base); break;
-                case 'd4': base.setDate(base.getDate() + 4); input.value = formatDate(base); break;
-                case 'd5': base.setDate(base.getDate() + 5); input.value = formatDate(base); break;
-                case 'w1': base.setDate(base.getDate() + 7); input.value = formatDate(base); break;
-                case 'w2': base.setDate(base.getDate() + 14); input.value = formatDate(base); break;
-                case 'm1': base.setMonth(base.getMonth() + 1); input.value = formatDate(base); break;
+                case 'd1': base.setDate(base.getDate() + 1); break;
+                case 'd2': base.setDate(base.getDate() + 2); break;
+                case 'd3': base.setDate(base.getDate() + 3); break;
+                case 'd4': base.setDate(base.getDate() + 4); break;
+                case 'd5': base.setDate(base.getDate() + 5); break;
+                case 'w1': base.setDate(base.getDate() + 7); break;
+                case 'w2': base.setDate(base.getDate() + 14); break;
+                case 'm1': base.setMonth(base.getMonth() + 1); break;
+            }
+
+            if (dateNextPicker) {
+                dateNextPicker.setDate(formatDate(base), true);
             }
         }
         function deleteRecord(id, element) {

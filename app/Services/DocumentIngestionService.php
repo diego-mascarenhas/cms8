@@ -4,10 +4,17 @@ namespace App\Services;
 
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Currency;
 use App\Models\DocumentIngestion;
+use App\Models\Enterprise;
+use App\Models\EnterpriseType;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\InvoiceType;
 use App\Models\Source;
 use App\Models\Team;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class DocumentIngestionService
@@ -89,6 +96,18 @@ class DocumentIngestionService
                     $ingestion->update([
                         'classification_meta' => array_merge((array) ($ingestion->classification_meta ?? []), [
                             'contact_attach_error' => Str::limit($e->getMessage(), 1000, ''),
+                        ]),
+                    ]);
+                }
+
+                try
+                {
+                    $this->attachCreatedInvoiceIfApplicable($ingestion, $extractedData, $teamId, $sourceName);
+                } catch (\Throwable $e)
+                {
+                    $ingestion->update([
+                        'classification_meta' => array_merge((array) ($ingestion->classification_meta ?? []), [
+                            'invoice_attach_error' => Str::limit($e->getMessage(), 1000, ''),
                         ]),
                     ]);
                 }
@@ -174,6 +193,24 @@ class DocumentIngestionService
                 $documentIngestion->update([
                     'classification_meta' => array_merge((array) ($documentIngestion->classification_meta ?? []), [
                         'contact_attach_error' => Str::limit($e->getMessage(), 1000, ''),
+                    ]),
+                ]);
+            }
+
+            try
+            {
+                $sourceName = (string) data_get($documentIngestion->classification_meta ?? [], 'channel', '');
+                $this->attachCreatedInvoiceIfApplicable(
+                    $documentIngestion,
+                    $extractedData,
+                    $documentIngestion->team_id,
+                    $sourceName,
+                );
+            } catch (\Throwable $e)
+            {
+                $documentIngestion->update([
+                    'classification_meta' => array_merge((array) ($documentIngestion->classification_meta ?? []), [
+                        'invoice_attach_error' => Str::limit($e->getMessage(), 1000, ''),
                     ]),
                 ]);
             }
@@ -454,6 +491,8 @@ class DocumentIngestionService
             $company = $this->extractCompanyFromWebsite($website);
         }
 
+        $invoice = $this->extractInvoiceData($text, $company);
+
         return [
             'phones' => $phones,
             'emails' => $emails,
@@ -461,6 +500,7 @@ class DocumentIngestionService
             'name' => $name,
             'title' => $title,
             'company' => $company,
+            'invoice' => $invoice,
         ];
     }
 
@@ -687,6 +727,24 @@ class DocumentIngestionService
             return $classification;
         }
 
+        $invoiceData = is_array($extractedData['invoice'] ?? null) ? $extractedData['invoice'] : [];
+        $hasInvoiceSignals = (float) ($invoiceData['total_amount'] ?? 0) > 0
+            || filled($invoiceData['document_number'] ?? null)
+            || (
+                ! empty($invoiceData['has_invoice_keywords'])
+                && filled($invoiceData['supplier_name'] ?? null)
+                && filled($invoiceData['date'] ?? null)
+            );
+        if ($hasInvoiceSignals)
+        {
+            return [
+                'document_type' => 'invoice',
+                'classification_status' => 'classified',
+                'classification_confidence' => 0.84,
+                'reason' => 'OCR extracted invoice-like fields.',
+            ];
+        }
+
         $hasEmail = ! empty($extractedData['emails']);
         $hasPhone = ! empty($extractedData['phones']);
         $hasName = ! empty($extractedData['name']);
@@ -709,6 +767,444 @@ class DocumentIngestionService
             'classification_confidence' => 0.88,
             'reason' => 'OCR extracted contact-like fields from image.',
         ];
+    }
+
+    /**
+     * @param  array<string,mixed>  $extractedData
+     */
+    private function attachCreatedInvoiceIfApplicable(
+        DocumentIngestion $ingestion,
+        array $extractedData,
+        ?int $teamId,
+        ?string $sourceName,
+    ): void {
+        if (($ingestion->document_type ?? '') !== 'invoice' || $teamId === null || $teamId < 1)
+        {
+            return;
+        }
+
+        if ($sourceName === null || Str::lower(trim($sourceName)) !== 'whatsapp')
+        {
+            return;
+        }
+
+        if ($ingestion->entity_type === Invoice::class && $ingestion->entity_id !== null)
+        {
+            return;
+        }
+
+        if ($ingestion->entity_type !== null && $ingestion->entity_type !== Invoice::class)
+        {
+            return;
+        }
+
+        $invoiceData = is_array($extractedData['invoice'] ?? null) ? $extractedData['invoice'] : [];
+        $totalAmount = round((float) ($invoiceData['total_amount'] ?? 0), 2);
+        if ($totalAmount <= 0)
+        {
+            return;
+        }
+
+        $enterprise = $this->resolveOrCreateSupplierEnterprise(
+            $teamId,
+            (string) ($invoiceData['supplier_name'] ?? ''),
+            (string) ($extractedData['company'] ?? ''),
+        );
+        if (! $enterprise instanceof Enterprise)
+        {
+            return;
+        }
+
+        $invoiceTypeId = $this->resolveInvoiceTypeId();
+        if ($invoiceTypeId === null)
+        {
+            return;
+        }
+
+        $invoiceDate = $this->normalizeDateString((string) ($invoiceData['date'] ?? null)) ?? now()->toDateString();
+        $dueDate = $this->normalizeDateString((string) ($invoiceData['due_date'] ?? null)) ?? $invoiceDate;
+        $documentNumber = trim((string) ($invoiceData['document_number'] ?? ''));
+        if ($documentNumber === '')
+        {
+            $documentNumber = 'WA-'.now()->format('YmdHis').'-'.$ingestion->id;
+        }
+
+        $currencyId = $this->resolveCurrencyIdByCode((string) ($invoiceData['currency_code'] ?? null));
+        $lineConcept = trim((string) ($invoiceData['line_concept'] ?? ''));
+        if ($lineConcept === '')
+        {
+            $lineConcept = 'Factura recibida por WhatsApp';
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterprise->id,
+            'billing_id' => null,
+            'type_id' => $invoiceTypeId,
+            'operation' => 'buy',
+            'number' => Str::limit($documentNumber, 255, ''),
+            'date' => $invoiceDate,
+            'due_date' => $dueDate,
+            'gross_amount' => $totalAmount,
+            'discount' => 0,
+            'total_amount' => $totalAmount,
+            'balance' => $totalAmount,
+            'currency_id' => $currencyId,
+            'status' => 1,
+            'source_provider' => 'manual',
+            'source_reference_id' => 'document_ingestion:'.$ingestion->id,
+            'source_synced_at' => now(),
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'category_id' => null,
+            'description' => $lineConcept,
+            'quantity' => 1,
+            'unit_price' => $totalAmount,
+            'discount' => 0,
+            'tax_percentage' => 0,
+        ]);
+
+        $ingestion->entity_type = Invoice::class;
+        $ingestion->entity_id = $invoice->id;
+        $ingestion->save();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function extractInvoiceData(string $text, ?string $fallbackCompany): array
+    {
+        $invoiceDate = $this->extractDateByLabels($text, [
+            'fecha factura',
+            'fecha emision',
+            'fecha emisión',
+            'invoice date',
+            'fecha',
+        ]);
+        $dueDate = $this->extractDateByLabels($text, [
+            'fecha vencimiento',
+            'vencimiento',
+            'due date',
+            'payment due',
+        ]);
+
+        return [
+            'supplier_name' => $this->extractSupplierName($text, $fallbackCompany),
+            'document_number' => $this->extractInvoiceNumber($text),
+            'date' => $invoiceDate,
+            'due_date' => $dueDate ?? $invoiceDate,
+            'currency_code' => $this->extractCurrencyCode($text),
+            'total_amount' => $this->extractInvoiceTotal($text),
+            'line_concept' => $this->extractLikelyInvoiceConcept($text),
+            'has_invoice_keywords' => $this->containsInvoiceKeywords($text),
+        ];
+    }
+
+    private function containsInvoiceKeywords(string $text): bool
+    {
+        $normalized = Str::lower($text);
+
+        return str_contains($normalized, 'factura')
+            || str_contains($normalized, 'invoice')
+            || str_contains($normalized, 'iva')
+            || str_contains($normalized, 'total a pagar')
+            || str_contains($normalized, 'importe total');
+    }
+
+    private function extractInvoiceNumber(string $text): ?string
+    {
+        if (preg_match('/(?:factura|invoice|n[úu]mero(?:\s+de)?(?:\s+factura)?)\s*[:#\-]?\s*([A-Z0-9\-\/\.]{3,})/iu', $text, $matches) === 1)
+        {
+            return Str::limit(trim((string) ($matches[1] ?? '')), 120, '');
+        }
+
+        return null;
+    }
+
+    private function extractSupplierName(string $text, ?string $fallbackCompany): ?string
+    {
+        if ($fallbackCompany !== null && trim($fallbackCompany) !== '')
+        {
+            return Str::limit(trim($fallbackCompany), 255, '');
+        }
+
+        $lines = preg_split('/\R+/', $text) ?: [];
+        foreach ($lines as $line)
+        {
+            $candidate = trim($line);
+            if ($candidate === '' || mb_strlen($candidate) < 3 || mb_strlen($candidate) > 90)
+            {
+                continue;
+            }
+
+            $lower = Str::lower($candidate);
+            if (
+                str_contains($lower, 'factura')
+                || str_contains($lower, 'invoice')
+                || str_contains($lower, 'fecha')
+                || str_contains($lower, 'total')
+                || str_contains($lower, '@')
+                || str_contains($lower, 'www.')
+            ) {
+                continue;
+            }
+
+            if (preg_match('/\d/', $candidate) === 1)
+            {
+                continue;
+            }
+
+            return Str::limit($candidate, 255, '');
+        }
+
+        return null;
+    }
+
+    private function extractCurrencyCode(string $text): ?string
+    {
+        if (preg_match('/\b(EUR|USD|ARS|MXN|GBP|COP|CLP|PEN|UYU|BRL)\b/i', $text, $matches) === 1)
+        {
+            return strtoupper((string) $matches[1]);
+        }
+
+        if (str_contains($text, '€'))
+        {
+            return 'EUR';
+        }
+
+        if (str_contains($text, '$'))
+        {
+            return 'USD';
+        }
+
+        return null;
+    }
+
+    private function extractInvoiceTotal(string $text): ?float
+    {
+        $patterns = [
+            '/(?:total(?:\s+a\s+pagar)?|importe\s+total|amount\s+due)\s*[:\-]?\s*([$€]?\s*[0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)/iu',
+            '/(?:total)\s*[:\-]?\s*([$€]?\s*[0-9]+(?:[.,][0-9]{2})?)/iu',
+        ];
+
+        foreach ($patterns as $pattern)
+        {
+            if (preg_match($pattern, $text, $matches) === 1)
+            {
+                $parsedAmount = $this->parseDecimalAmount((string) ($matches[1] ?? '0'));
+                if ($parsedAmount > 0)
+                {
+                    return round($parsedAmount, 2);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function extractLikelyInvoiceConcept(string $text): ?string
+    {
+        $lines = preg_split('/\R+/', $text) ?: [];
+        foreach ($lines as $line)
+        {
+            $candidate = trim($line);
+            if ($candidate === '' || mb_strlen($candidate) < 8 || mb_strlen($candidate) > 140)
+            {
+                continue;
+            }
+
+            $lower = Str::lower($candidate);
+            if (
+                str_contains($lower, 'factura')
+                || str_contains($lower, 'invoice')
+                || str_contains($lower, 'fecha')
+                || str_contains($lower, 'total')
+                || str_contains($lower, '@')
+            ) {
+                continue;
+            }
+
+            return Str::limit($candidate, 255, '');
+        }
+
+        return null;
+    }
+
+    private function extractDateByLabels(string $text, array $labels): ?string
+    {
+        foreach ($labels as $label)
+        {
+            $pattern = '/'.preg_quote($label, '/').'\s*[:\-]?\s*([0-9]{1,4}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{1,4})/iu';
+            if (preg_match($pattern, $text, $matches) === 1)
+            {
+                return $this->normalizeDateString((string) ($matches[1] ?? null));
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizeDateString(?string $value): ?string
+    {
+        $dateValue = trim((string) $value);
+        if ($dateValue === '')
+        {
+            return null;
+        }
+
+        $normalized = str_replace(['.', '/'], '-', $dateValue);
+        $formats = ['Y-m-d', 'd-m-Y', 'd-m-y', 'm-d-Y', 'm-d-y', 'Y-d-m'];
+
+        foreach ($formats as $format)
+        {
+            try
+            {
+                $parsed = Carbon::createFromFormat($format, $normalized);
+                if ($parsed !== false)
+                {
+                    return $parsed->format('Y-m-d');
+                }
+            } catch (\Throwable)
+            {
+            }
+        }
+
+        try
+        {
+            return Carbon::parse($normalized)->format('Y-m-d');
+        } catch (\Throwable)
+        {
+            return null;
+        }
+    }
+
+    private function parseDecimalAmount(string $value): float
+    {
+        $amount = trim($value);
+        $amount = preg_replace('/[^0-9,\.\-]/', '', $amount) ?? '';
+        if ($amount === '')
+        {
+            return 0;
+        }
+
+        if (str_contains($amount, ',') && str_contains($amount, '.'))
+        {
+            if (strrpos($amount, ',') > strrpos($amount, '.'))
+            {
+                $amount = str_replace('.', '', $amount);
+                $amount = str_replace(',', '.', $amount);
+            } else
+            {
+                $amount = str_replace(',', '', $amount);
+            }
+        } elseif (str_contains($amount, ','))
+        {
+            $amount = str_replace(',', '.', $amount);
+        }
+
+        return (float) $amount;
+    }
+
+    private function resolveCurrencyIdByCode(?string $code): ?int
+    {
+        $normalizedCode = strtoupper(trim((string) $code));
+        if ($normalizedCode === '')
+        {
+            return null;
+        }
+
+        $currencyId = Currency::query()
+            ->whereRaw('UPPER(code) = ?', [$normalizedCode])
+            ->value('id');
+
+        return $currencyId !== null ? (int) $currencyId : null;
+    }
+
+    private function resolveInvoiceTypeId(): ?int
+    {
+        $id = InvoiceType::query()->orderBy('id')->value('id');
+
+        return $id !== null ? (int) $id : null;
+    }
+
+    private function resolveOrCreateSupplierEnterprise(int $teamId, string $supplierName, string $fallbackCompany): ?Enterprise
+    {
+        $candidateName = trim($supplierName) !== '' ? trim($supplierName) : trim($fallbackCompany);
+        if ($candidateName === '')
+        {
+            return null;
+        }
+
+        $normalizedTarget = $this->normalizeText($candidateName);
+
+        $existing = Enterprise::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->get(['id', 'name', 'type_id'])
+            ->sortByDesc(function (Enterprise $enterprise) use ($normalizedTarget): float
+            {
+                $normalizedName = $this->normalizeText($enterprise->name);
+                if ($normalizedName === $normalizedTarget)
+                {
+                    return 100.0;
+                }
+
+                if (
+                    str_contains($normalizedName, $normalizedTarget)
+                    || str_contains($normalizedTarget, $normalizedName)
+                ) {
+                    return 85.0;
+                }
+
+                similar_text($normalizedName, $normalizedTarget, $score);
+
+                return (float) $score;
+            })
+            ->first();
+
+        if ($existing instanceof Enterprise)
+        {
+            $normalizedExisting = $this->normalizeText($existing->name);
+            if (
+                $normalizedExisting === $normalizedTarget
+                || str_contains($normalizedExisting, $normalizedTarget)
+                || str_contains($normalizedTarget, $normalizedExisting)
+            ) {
+                return $existing;
+            }
+
+            similar_text($normalizedExisting, $normalizedTarget, $score);
+            if ((float) $score >= 60.0)
+            {
+                return $existing;
+            }
+        }
+
+        $supplierTypeId = EnterpriseType::query()
+            ->whereRaw('LOWER(name) in (?, ?)', ['supplier', 'proveedor'])
+            ->value('id');
+        if ($supplierTypeId === null)
+        {
+            $supplierTypeId = 2;
+        }
+
+        return Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'type_id' => (int) $supplierTypeId,
+            'status_id' => 1,
+            'name' => Str::limit($candidateName, 255, ''),
+        ]);
+    }
+
+    private function normalizeText(string $value): string
+    {
+        return (string) Str::of($value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9\s]/', ' ')
+            ->replaceMatches('/\s+/', ' ')
+            ->trim();
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Helpers\WhatsAppOutboundText;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\Store;
@@ -1347,7 +1348,15 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 $lines[] = '   - Teléfono: '.$phone;
             }
             $createdRecordUrl = $this->resolveCreatedRecordUrl($ingestion);
-            if ($createdRecordUrl !== null)
+            $createdInvoiceNumber = $this->resolveCreatedInvoiceNumber($ingestion);
+            if ($createdInvoiceNumber !== null)
+            {
+                $lines[] = '   - Factura creada: '.$createdInvoiceNumber;
+                if ($createdRecordUrl !== null)
+                {
+                    $lines[] = '   - Link: '.$createdRecordUrl;
+                }
+            } elseif ($createdRecordUrl !== null)
             {
                 $lines[] = '   - Registro creado: '.$createdRecordUrl;
             }
@@ -1393,6 +1402,27 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         }
 
         return null;
+    }
+
+    private function resolveCreatedInvoiceNumber(object $ingestion): ?string
+    {
+        $entityType = (string) ($ingestion->entity_type ?? '');
+        $entityId = (int) ($ingestion->entity_id ?? 0);
+        if ($entityType !== Invoice::class || $entityId <= 0)
+        {
+            return null;
+        }
+
+        $invoiceNumber = Invoice::withoutGlobalScopes()
+            ->whereKey($entityId)
+            ->value('number');
+
+        if (! is_string($invoiceNumber) || trim($invoiceNumber) === '')
+        {
+            return null;
+        }
+
+        return trim($invoiceNumber);
     }
 
     /**

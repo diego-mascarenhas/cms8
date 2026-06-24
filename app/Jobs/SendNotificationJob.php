@@ -62,37 +62,48 @@ class SendNotificationJob implements ShouldQueue
     {
         try
         {
-            $this->notification->load(['contact', 'user', 'team']);
+            $notification = $this->notification->fresh(['contact', 'user', 'team']);
 
-            if (! $this->notification->contact->email)
+            if (! $notification)
+            {
+                throw new \Exception('Notificación no encontrada');
+            }
+
+            if (! $notification->contact->email)
             {
                 throw new \Exception('El contacto no tiene email configurado');
             }
 
-            // Configure mail for the team (custom SMTP or system with advertising)
-            $this->configureMailForTeam($this->notification->team);
+            $this->configureMailForTeam($notification->team);
 
             Log::info('Sending notification email', [
-                'notification_id' => $this->notification->id,
-                'contact_email' => $this->notification->contact->email,
+                'notification_id' => $notification->id,
+                'contact_email' => $notification->contact->email,
                 'is_resend' => $this->isResend,
+                'plain_text' => $notification->isPlainTextFormat(),
             ]);
 
-            Mail::to($this->notification->contact->email)
-                ->send(new NotificationMail($this->notification));
+            if ($notification->isPlainTextFormat())
+            {
+                $this->sendPlainTextNotification($notification);
+            } else
+            {
+                Mail::to($notification->contact->email)
+                    ->send(new NotificationMail($notification));
+            }
 
             $sentData = [
-                'email' => $this->notification->contact->email,
+                'email' => $notification->contact->email,
                 'sent_at' => now()->toISOString(),
                 'is_resend' => $this->isResend,
                 'queue_processed_at' => now()->toISOString(),
             ];
 
-            $this->notification->markAsSent($sentData);
+            $notification->markAsSent($sentData);
 
             Log::info('Notification email sent successfully', [
-                'notification_id' => $this->notification->id,
-                'contact_email' => $this->notification->contact->email,
+                'notification_id' => $notification->id,
+                'contact_email' => $notification->contact->email,
             ]);
         } catch (\Exception $e)
         {
@@ -104,6 +115,18 @@ class SendNotificationJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    private function sendPlainTextNotification(Notification $notification): void
+    {
+        Mail::raw(
+            $notification->message,
+            function ($message) use ($notification): void
+            {
+                $message->to($notification->contact->email)
+                    ->subject($notification->subject);
+            },
+        );
     }
 
     /**

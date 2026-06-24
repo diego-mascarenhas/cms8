@@ -13,6 +13,10 @@ class List60 extends Model
 
     protected $fillable = ['contact_id', 'type_id', 'date_next', 'notes', 'status_id', 'responsible_id'];
 
+    protected $casts = [
+        'date_next' => 'date',
+    ];
+
     public function responsible()
     {
         return $this->belongsTo(User::class, 'responsible_id');

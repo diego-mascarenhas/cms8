@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Expenses'))
+@section('title', 'Gastos')
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
@@ -16,16 +16,16 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('Expenses') }}</h4>
-        <p class="text-muted">{{ __('Manage your expenses and costs') }}</p>
+        <h4 class="mb-1 mt-3">Gastos</h4>
+        <p class="text-muted">Gestiona tus gastos y costes</p>
     </div>
     <div class="mt-3 mt-md-0">
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary me-2">
-            <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
+            <i class="ti ti-list me-1"></i> Todos los pagos
         </a>
-        <button class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> {{ __('Add Expense') }}
-        </button>
+        <a href="{{ route('expense.create') }}" class="btn btn-primary waves-effect waves-light">
+            <i class="ti ti-plus me-1"></i> Añadir gasto
+        </a>
     </div>
 </div>
 
@@ -36,7 +36,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>{{ __('Current Month') }}</span>
+                        <span>Mes actual</span>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ number_format($currentMonthExpense, 2) }}</h3>
                             @if($percentageChange != 0)
@@ -45,7 +45,7 @@
                                 </p>
                             @endif
                         </div>
-                        <p class="mb-0">{{ __('vs last month') }}</p>
+                        <p class="mb-0">vs mes anterior</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-danger">
@@ -61,7 +61,7 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>{{ __('Year to Date') }}</span>
+                        <span>Año en curso</span>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ number_format($ytdExpense, 2) }}</h3>
                         </div>
@@ -81,11 +81,11 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>{{ __('Total Expenses') }}</span>
+                        <span>Total gastos</span>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ number_format($totalExpense, 2) }}</h3>
                         </div>
-                        <p class="mb-0">{{ __('All time') }}</p>
+                        <p class="mb-0">Histórico</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-danger">
@@ -101,11 +101,11 @@
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>{{ __('Accounts') }}</span>
+                        <span>Cuentas</span>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2">{{ count($accounts) }}</h3>
                         </div>
-                        <p class="mb-0">{{ __('Active accounts') }}</p>
+                        <p class="mb-0">Cuentas activas</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-primary">

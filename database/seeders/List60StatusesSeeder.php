@@ -15,6 +15,7 @@ class List60StatusesSeeder extends Seeder
             ['name' => '3 Contactos', 'label_class' => 'bg-label-danger'],
             ['name' => 'Parado', 'label_class' => 'bg-label-secondary'],
             ['name' => 'Sin respuesta', 'label_class' => 'bg-label-info'],
+            ['name' => 'Sin contactar', 'label_class' => 'bg-label-secondary'],
         ];
         foreach ($statuses as $status)
         {

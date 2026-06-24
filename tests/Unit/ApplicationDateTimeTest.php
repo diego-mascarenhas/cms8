@@ -43,4 +43,26 @@ class ApplicationDateTimeTest extends TestCase
 
         $this->assertSame('16 jun., 14:30', $formatted);
     }
+
+    public function test_format_upcoming_contact_date_uses_relative_labels_within_threshold(): void
+    {
+        app()->setLocale('es_ES');
+        Carbon::setTestNow(Carbon::parse('2026-06-16 10:00:00', config('app.timezone')));
+
+        $this->assertSame('Hoy', ApplicationDateTime::formatUpcomingContactDate('2026-06-16'));
+        $this->assertSame('Mañana', ApplicationDateTime::formatUpcomingContactDate('2026-06-17'));
+        $this->assertSame('En 5 días', ApplicationDateTime::formatUpcomingContactDate('2026-06-21'));
+        $this->assertSame('En 14 días', ApplicationDateTime::formatUpcomingContactDate('2026-06-30'));
+        $this->assertSame('Ayer', ApplicationDateTime::formatUpcomingContactDate('2026-06-15'));
+        $this->assertSame('Hace 3 días', ApplicationDateTime::formatUpcomingContactDate('2026-06-13'));
+    }
+
+    public function test_format_upcoming_contact_date_uses_absolute_date_beyond_threshold(): void
+    {
+        app()->setLocale('es_ES');
+        Carbon::setTestNow(Carbon::parse('2026-06-16 10:00:00', config('app.timezone')));
+
+        $this->assertSame('11 julio', ApplicationDateTime::formatUpcomingContactDate('2026-07-11'));
+        $this->assertSame('3 mayo 2025', ApplicationDateTime::formatUpcomingContactDate('2025-05-03'));
+    }
 }
