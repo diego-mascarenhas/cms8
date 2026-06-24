@@ -46,6 +46,13 @@ class HumanoGuidePresentations
                 'icon' => 'target',
             ],
             [
+                'url' => GuidePresentation::url('lista-de-60'),
+                'title' => __('list60'),
+                'subtitle' => __('list60_guide_subtitle'),
+                'description' => __('list60_guide_description'),
+                'icon' => 'list-check',
+            ],
+            [
                 'url' => GuidePresentation::url('facturacion'),
                 'title' => __('Facturación'),
                 'subtitle' => __('Cobros y contabilidad'),

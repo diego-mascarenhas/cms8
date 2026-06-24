@@ -19,6 +19,7 @@
   <meta name="description" content="{{ __('performance_insight_landing.meta_description') }}">
   <meta name="color-scheme" content="dark">
   <title>{{ __('performance_insight_landing.page_title') }}</title>
+  @include('layouts.partials.favicon')
   <link rel="canonical" href="{{ $pageUrl }}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ $pageUrl }}">

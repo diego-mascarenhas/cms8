@@ -1,94 +1,63 @@
 @php
-  /** @var list<array<string, mixed>> $landingPlans */
+  use App\Support\LandingYouTube;
+  use App\Support\SlashHomeAsset;
+
   /** @var array<string, string> $planImages */
-
-  $planStoryMeta = [
-    'assistant' => [
-      'youtube_id' => '',
-      'subtitle' => 'WhatsApp, contactos y tareas',
-    ],
-    'hunter' => [
-      'youtube_id' => '',
-      'subtitle' => 'Leads, email y landings',
-    ],
-    'business' => [
-      'youtube_id' => '',
-      'subtitle' => 'Marketing, ventas y cobros',
-    ],
-  ];
-
-  $storyPlans = $landingPlans;
-
-  $defaultStoryId = 'assistant';
-
-  foreach ($storyPlans as $plan) {
-    if (! empty($plan['popular'])) {
-      $defaultStoryId = $plan['id'];
-      break;
-    }
-  }
+  $featuredVideos = LandingYouTube::featuredVideos();
+  $slashStoryImg = static fn (string $path): string => SlashHomeAsset::url('img/'.$path);
 @endphp
 
+@if ($featuredVideos !== [])
 <section id="historias-planes" class="slash-section slash-stories">
   <div class="slash-container">
     <div class="slash-section-head">
-      <span class="slash-eyebrow">{{ __('humano_pricing.landing_plans_badge') }}</span>
+      <span class="slash-eyebrow">{{ __('slash_landing.stories.eyebrow') }}</span>
       <h2 class="slash-h2">{{ __('slash_landing.stories.title') }}</h2>
       <p class="slash-lead">
         {!! __('slash_landing.stories.lead', [
-          'link' => '<a href="#precios" style="color: var(--slash-accent);">'.e(__('slash_landing.stories.lead_link')).'</a>',
+          'link' => '<a href="'.e(LandingYouTube::url() ?? '#guias').'" target="_blank" rel="noopener noreferrer" style="color: var(--slash-accent);">'.e(__('slash_landing.stories.lead_link')).'</a>',
         ]) !!}
       </p>
     </div>
 
     <div class="slash-stories-stage" data-slash-stories>
       <div class="slash-stories-row">
-        @foreach ($storyPlans as $plan)
+        @foreach ($featuredVideos as $index => $video)
           @php
-            $planId = $plan['id'];
-            $meta = $planStoryMeta[$planId] ?? $planStoryMeta['assistant'];
-            $planImage = $planImages[$planId] ?? $planImages['assistant'];
-            $planName = __('humano_pricing.plans.'.$planId.'.name');
-            $youtubeId = trim((string) ($meta['youtube_id'] ?? ''));
-            $storyHref = $youtubeId !== ''
-              ? 'https://www.youtube.com/watch?v='.$youtubeId
-              : '#plan-'.$planId;
-            $isDefault = $planId === $defaultStoryId;
+            $youtubeId = $video['youtube_id'];
+            $storyHref = LandingYouTube::watchUrl($youtubeId);
+            $posterPath = $video['poster'] !== '' ? $video['poster'] : 'plans/assistant.png';
+            $posterImage = $planImages[basename($posterPath, '.png')] ?? $slashStoryImg($posterPath);
+            $isDefault = $index === 0;
           @endphp
           <article
             class="slash-story-card {{ $isDefault ? 'is-active is-default' : '' }}"
-            data-slash-story-card="{{ $planId }}"
+            data-slash-story-card="onboarding-{{ $index + 1 }}"
             tabindex="0"
             role="group"
-            aria-label="{{ $planName }}"
+            aria-label="{{ $video['title'] }}"
           >
             <a
               href="{{ $storyHref }}"
               class="slash-story-media"
-              @if ($youtubeId !== '') target="_blank" rel="noopener noreferrer" @endif
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <span class="slash-story-visual" aria-hidden="true">
-                @if ($youtubeId !== '')
-                  <div
-                    class="slash-story-video"
-                    data-youtube-id="{{ $youtubeId }}"
-                    data-video-title="{{ $planName }}"
-                  ></div>
-                @else
-                  <img
-                    class="slash-story-poster"
-                    src="{{ $planImage }}"
-                    alt=""
-                    loading="lazy"
-                    decoding="async"
-                  >
-                @endif
+                <img
+                  class="slash-story-poster"
+                  src="{{ LandingYouTube::thumbnailUrl($youtubeId) }}"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                >
+                <span class="slash-story-play">@include('homes.slash.partials.icon', ['name' => 'play'])</span>
               </span>
               <span class="slash-story-shade" aria-hidden="true"></span>
               <div class="slash-story-meta">
                 <img
                   class="slash-story-avatar"
-                  src="{{ $planImage }}"
+                  src="{{ $posterImage }}"
                   alt=""
                   width="40"
                   height="40"
@@ -96,8 +65,8 @@
                   decoding="async"
                 >
                 <div>
-                  <strong class="slash-story-name">{{ $planName }}</strong>
-                  <span class="slash-story-role">{{ $meta['subtitle'] }}</span>
+                  <strong class="slash-story-name">{{ $video['title'] }}</strong>
+                  <span class="slash-story-role">{{ $video['subtitle'] }}</span>
                 </div>
               </div>
             </a>
@@ -107,3 +76,4 @@
     </div>
   </div>
 </section>
+@endif

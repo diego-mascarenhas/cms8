@@ -33,6 +33,7 @@
   <meta name="description" content="{{ __('slash_landing.meta_description') }}">
   <meta name="color-scheme" content="dark">
   <title>{{ __('slash_landing.page_title') }}</title>
+  @include('layouts.partials.favicon')
   @php
     $slashOgImagePath = config('variables.ogImage', 'assets/logo.png');
     $slashOgImageUrl = str_starts_with($slashOgImagePath, 'http') ? $slashOgImagePath : url('/'.ltrim($slashOgImagePath, '/'));
@@ -83,7 +84,7 @@
       </a>
 
       <ul class="slash-nav-links" id="slashNavLinks">
-        @if (config('slash_landing.show_plan_stories_section'))
+        @if (\App\Support\LandingYouTube::showsFeaturedVideosSection())
         <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
         @endif
         <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
@@ -196,9 +197,8 @@
     </section>
     @endif
 
-    @if (config('slash_landing.show_plan_stories_section'))
+    @if (\App\Support\LandingYouTube::showsFeaturedVideosSection())
     @include('homes.slash.partials.plan-stories', [
-      'landingPlans' => $landingPlans,
       'planImages' => $planImages,
     ])
     @endif
@@ -324,6 +324,7 @@
           <p class="slash-lead">{{ __('slash_landing.guides.lead') }}</p>
         </div>
         <div class="slash-grid">
+          @include('homes.partials.landing-youtube-guide-card')
           @foreach ($guidePresentations as $guide)
             <a href="{{ $guide['url'] }}" class="slash-card slash-guide-card">
               <div class="slash-guide-top">
@@ -568,7 +569,7 @@
         <div>
           <h4>{{ __('slash_landing.nav.product') }}</h4>
           <ul>
-            @if (config('slash_landing.show_plan_stories_section'))
+            @if (\App\Support\LandingYouTube::showsFeaturedVideosSection())
             <li><a href="#historias-planes">{{ __('slash_landing.nav.in_action') }}</a></li>
             @endif
             <li><a href="#beneficios">{{ __('slash_landing.nav.benefits') }}</a></li>
@@ -580,6 +581,7 @@
           <h4>{{ __('slash_landing.nav.resources') }}</h4>
           <ul>
             <li><a href="#guias">{{ __('slash_landing.nav.guides') }}</a></li>
+            @include('homes.partials.landing-youtube-footer-link')
             <li><a href="#faq">{{ __('slash_landing.nav.faq') }}</a></li>
             <li>
               <a

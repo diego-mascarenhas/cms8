@@ -8,6 +8,7 @@ use App\Helpers\GrapesJsHelper;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\EnterpriseTaxStatusType;
@@ -29,6 +30,7 @@ use App\Models\User;
 use App\Services\DemoDataService;
 use App\Services\Finance\FinancialProjectionHistoryGenerator;
 use App\Services\TeamModulesByPricingPlanSyncer;
+use App\Support\DemoTeam;
 use Illuminate\Console\Command;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -40,11 +42,11 @@ use Illuminate\Support\Facades\DB;
 class TeamDemoSeeder extends Seeder
 {
     /**
-     * Módulos activos en el team Demo además del plan assistant. Vacía el array cuando termines.
+     * Extra modules enabled on the Demo team beyond {@see humano_pricing.demo_team_plan_slug} (business by default).
      *
      * @var list<string>
      */
-    public const DEMO_DEV_MODULES = ['financial'];
+    public const DEMO_DEV_MODULES = ['today', 'performance_insights'];
 
     private $teamId = 1;
 
@@ -91,7 +93,7 @@ class TeamDemoSeeder extends Seeder
         // 9. Configure prospect credits for testing
         $this->configureDemoProspectCredits($team);
 
-        // 10. Configure team shortcuts
+        // 10. Configure team shortcuts (icon stays off; see finalizeDemoPresentation)
         $this->configureTeamShortcuts($team);
 
         // 11. Create task boards
@@ -132,7 +134,25 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📈 Seeding 10-year financial projection history (HIST-* invoices)...');
         app(FinancialProjectionHistoryGenerator::class)->seedForTeam($team->fresh(), 10, true);
 
+        $this->finalizeDemoAdmin($team);
+        $this->trimDemoTeamAdmins($team);
+        $this->configureDemoPresentationSettings($team);
+
+        // Always last on fresh: dashboard charts, clientes CRM, kanban owner tasks (idempotent)
+        $this->finalizeDemoPresentationData($team);
+
         $this->command->info('✅ Demo Team setup completed successfully');
+    }
+
+    /**
+     * Dashboard + kanban presentation data for demos (runs at end of fresh seed so nothing overwrites it).
+     */
+    private function finalizeDemoPresentationData(Team $team): void
+    {
+        $this->command->info('🎬 Finalizing demo presentation (dashboard charts, kanban, clientes CRM)...');
+
+        $this->call(DemoDashboardRichDataSeeder::class);
+        $this->call(DemoKanbanTasksSeeder::class);
     }
 
     private function ensureDemoTeamExists(): Team
@@ -140,13 +160,16 @@ class TeamDemoSeeder extends Seeder
         $user = User::firstOrCreate(
             ['email' => 'admin@humano.app'],
             [
-                'name' => 'Admin Humano',
+                'name' => 'Idóneo',
                 'password' => bcrypt('Simplicity!'),
                 'email_verified_at' => now(),
                 'phone' => '34613194131',
             ],
         );
-        $user->update(['phone' => '34613194131']);
+        $user->update([
+            'name' => 'Idóneo',
+            'phone' => '34613194131',
+        ]);
 
         if (! $user->hasRole('admin'))
         {
@@ -385,8 +408,11 @@ class TeamDemoSeeder extends Seeder
         $enterprises = Enterprise::where('team_id', $this->teamId)->get();
 
         // Staff contacts (10)
+        $adminUser = User::query()->where('email', 'admin@humano.app')->first();
+        $defaultResponsibleId = $adminUser?->id ?? 1;
+
         $staffContacts = [
-            ['name' => 'Admin', 'surname' => 'Demo', 'email' => 'admin@humano.app', 'phone' => '34613194131', 'is_staff' => true],
+            ['name' => 'Idóneo', 'surname' => 'Demo', 'email' => 'admin@humano.app', 'phone' => '34613194131', 'is_staff' => true],
             ['name' => 'Demo', 'surname' => 'User', 'email' => 'demo@example.com', 'phone' => '34600111002', 'is_staff' => true],
             ['name' => 'Internal', 'surname' => 'Manager', 'email' => 'manager@humano.app', 'phone' => '34600111003', 'is_staff' => true],
             ['name' => 'Team', 'surname' => 'Lead', 'email' => 'lead@humano.app', 'phone' => '34600111004', 'is_staff' => true],
@@ -434,8 +460,8 @@ class TeamDemoSeeder extends Seeder
                     'name' => $contactData['name'],
                     'surname' => $contactData['surname'],
                     'phone' => $contactData['phone'],
-                    'creator_id' => 1,
-                    'responsible_id' => 1,
+                    'creator_id' => $defaultResponsibleId,
+                    'responsible_id' => $defaultResponsibleId,
                     'status_id' => 1,
                     'country' => 724,  // Spain
                     'language' => 'es',
@@ -465,8 +491,8 @@ class TeamDemoSeeder extends Seeder
                     'surname' => $contactData['surname'],
                     'phone' => $contactData['phone'],
                     'profile' => $contactData['profile'],
-                    'creator_id' => 1,
-                    'responsible_id' => 1,
+                    'creator_id' => $defaultResponsibleId,
+                    'responsible_id' => $defaultResponsibleId,
                     'status_id' => rand(1, 2),  // Active or In Progress
                     'country' => 724,  // Spain
                     'language' => 'es',
@@ -581,6 +607,84 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('✅ Shortcuts configured');
     }
 
+    /**
+     * Clean demo UX: real assistant responses, no navbar shortcuts grid, no test stub.
+     */
+    private function configureDemoPresentationSettings(Team $team): void
+    {
+        $this->command->info('🎬 Configuring demo presentation settings...');
+
+        $team->setSetting('assistant_chat_stub', false, [
+            'type' => 'boolean',
+            'group' => 'chat',
+        ]);
+
+        $team->setSetting('shortcuts_icon_visible', false, [
+            'type' => 'boolean',
+            'group' => 'shortcuts',
+            'is_encrypted' => false,
+        ]);
+
+        $team->enableModule('today');
+        $team->enableModule('performance_insights');
+
+        $team->setSetting('shortcuts_icon_visible', false, [
+            'type' => 'boolean',
+            'group' => 'shortcuts',
+            'is_encrypted' => false,
+        ]);
+
+        $this->command->info('✅ Demo presentation settings configured (Business + Hoy + insights, no shortcuts icon)');
+    }
+
+    /**
+     * Demo admin display name for contact lists (responsible / asesor column).
+     */
+    private function finalizeDemoAdmin(Team $team): void
+    {
+        $admin = User::query()->where('email', 'admin@humano.app')->first();
+
+        if (! $admin)
+        {
+            return;
+        }
+
+        $admin->update([
+            'name' => 'Idóneo',
+            'phone' => '34613194131',
+        ]);
+
+        User::query()
+            ->where('email', 'victor@machbel.com')
+            ->update(['name' => 'Machbel']);
+
+        Contact::query()
+            ->where('team_id', $team->id)
+            ->where('email', 'admin@humano.app')
+            ->update([
+                'name' => 'Idóneo',
+                'responsible_id' => $admin->id,
+                'creator_id' => $admin->id,
+            ]);
+
+        $this->command->info('✅ Demo admin finalized as Idóneo (asesor en contactos)');
+    }
+
+    private function trimDemoTeamAdmins(Team $team): void
+    {
+        $this->command->info('👤 Trimming Demo team administrators (max '.count(DemoTeam::ADMIN_EMAILS).')...');
+
+        $demoted = DemoTeam::trimAdministrators($team);
+
+        if ($demoted > 0)
+        {
+            $this->command->info("✅ Demo team administrators trimmed ({$demoted} demoted)");
+        } else
+        {
+            $this->command->info('✅ Demo team administrators already within limit');
+        }
+    }
+
     private function createDemoUsers(Team $team): void
     {
         $this->command->info('👥 Creating 30 demo users with different roles...');
@@ -589,13 +693,13 @@ class TeamDemoSeeder extends Seeder
         $victor = User::firstOrCreate(
             ['email' => 'victor@machbel.com'],
             [
-                'name' => 'Victor Machbel',
+                'name' => 'Machbel',
                 'phone' => 34665086080,
                 'password' => bcrypt('Simplicity!'),
                 'email_verified_at' => now(),
             ],
         );
-        $victor->update(['phone' => 34665086080]);
+        $victor->update(['name' => 'Machbel', 'phone' => 34665086080]);
         if (! $victor->hasRole('admin'))
         {
             $victor->assignRole('admin');
@@ -972,22 +1076,28 @@ class TeamDemoSeeder extends Seeder
     {
         $this->command->info('✅ Creating finalized contacts...');
 
-        // Status 3 = Finalized
+        $finalizedStatusId = (int) (ContactStatus::query()->where('name', 'Finalizado')->value('id') ?? 6);
+
         $finalizedEmails = [
             'antonio.romero@cliente11.com',
             'cristina.navarro@cliente12.com',
             'francisco.serrano@cliente13.com',
+            'lucia.blanco@cliente14.com',
+            'javier.castro@cliente15.com',
+            'elena.iglesias@cliente16.com',
+            'roberto.vargas@cliente17.com',
         ];
 
         Contact::whereIn('email', $finalizedEmails)
             ->where('team_id', $this->teamId)
-            ->update(['status_id' => 3]);
+            ->update(['status_id' => $finalizedStatusId]);
 
-        $count = Contact::whereIn('email', $finalizedEmails)
-            ->where('team_id', $this->teamId)
+        $count = Contact::where('team_id', $this->teamId)
+            ->where('status_id', $finalizedStatusId)
+            ->whereIn('email', $finalizedEmails)
             ->count();
 
-        $this->command->info("✅ {$count} contacts marked as finalized");
+        $this->command->info("✅ {$count} contacts marked as Finalizado");
     }
 
     private function seedDemoList60(): void
@@ -1541,58 +1651,81 @@ class TeamDemoSeeder extends Seeder
         $this->command->info('📅 Creating demo calendar events...');
 
         $teamId = $this->teamId;
-        $base = now()->startOfMonth();
+        $today = now()->startOfDay();
+
+        CalendarEvent::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where(function ($query)
+            {
+                $query->where('label', 'Family')
+                    ->orWhereIn('title', ['Family Trip', 'Family trip', 'Viaje familiar']);
+            })
+            ->delete();
 
         $events = [
             [
-                'title' => 'Design Review',
-                'start' => $base->copy()->setDay(16)->setTime(9, 52),
-                'end' => $base->copy()->setDay(16)->setTime(11, 0),
+                'title' => 'Demo comercial — Nordic Retail',
+                'start' => $today->copy()->setTime(9, 0),
+                'end' => $today->copy()->setTime(10, 0),
                 'label' => 'Business',
-                'notes' => 'Review Q1 designs with the team',
+                'notes' => 'Presentación plan Business y CRM',
             ],
             [
-                'title' => 'Dinner',
-                'start' => $base->copy()->setDay(18)->setTime(0, 0),
-                'end' => $base->copy()->setDay(18)->setTime(1, 0),
-                'all_day' => false,
-                'label' => 'Personal',
-                'notes' => 'Team dinner',
-            ],
-            [
-                'title' => 'Dart Game',
-                'start' => $base->copy()->setDay(18)->setTime(18, 0),
-                'end' => $base->copy()->setDay(18)->setTime(19, 30),
-                'label' => 'Personal',
-            ],
-            [
-                'title' => "Doctor's",
-                'start' => $base->copy()->setDay(20)->setTime(9, 0),
-                'end' => $base->copy()->setDay(20)->setTime(10, 0),
-                'label' => 'Personal',
-                'notes' => 'Annual check-up',
-            ],
-            [
-                'title' => 'Meeting with client',
-                'start' => $base->copy()->setDay(20)->setTime(14, 0),
-                'end' => $base->copy()->setDay(20)->setTime(15, 30),
+                'title' => 'Llamada seguimiento propuesta',
+                'start' => $today->copy()->setTime(11, 0),
+                'end' => $today->copy()->setTime(11, 45),
                 'label' => 'Business',
-                'url' => 'https://meet.example.com/demo',
+                'url' => 'https://meet.example.com/demo-seguimiento',
             ],
             [
-                'title' => 'Family Trip',
-                'start' => $base->copy()->setDay(22)->setTime(8, 0),
-                'end' => $base->copy()->setDay(24)->setTime(20, 0),
-                'all_day' => true,
-                'label' => 'Family',
-                'notes' => 'Weekend getaway',
-            ],
-            [
-                'title' => 'Monthly Meeting',
-                'start' => $base->copy()->endOfMonth()->setTime(10, 0),
-                'end' => $base->copy()->endOfMonth()->setTime(12, 0),
+                'title' => 'Reunión cierre — Cliente Premium',
+                'start' => $today->copy()->setTime(12, 30),
+                'end' => $today->copy()->setTime(13, 30),
                 'label' => 'Business',
-                'notes' => 'Monthly all-hands',
+            ],
+            [
+                'title' => 'Pipeline review comercial',
+                'start' => $today->copy()->setTime(16, 0),
+                'end' => $today->copy()->setTime(17, 0),
+                'label' => 'Business',
+                'notes' => 'Revisión oportunidades calientes del mes',
+            ],
+            [
+                'title' => 'Videollamada onboarding',
+                'start' => $today->copy()->setTime(18, 0),
+                'end' => $today->copy()->setTime(18, 45),
+                'label' => 'Business',
+            ],
+            [
+                'title' => 'Negociación contrato anual',
+                'start' => $today->copy()->addDay()->setTime(10, 0),
+                'end' => $today->copy()->addDay()->setTime(11, 30),
+                'label' => 'Business',
+            ],
+            [
+                'title' => 'Visita cliente — FoodTech Delivery',
+                'start' => $today->copy()->addDays(2)->setTime(9, 30),
+                'end' => $today->copy()->addDays(2)->setTime(12, 0),
+                'label' => 'Business',
+            ],
+            [
+                'title' => 'Workshop upselling Business',
+                'start' => $today->copy()->addDays(3)->setTime(15, 0),
+                'end' => $today->copy()->addDays(3)->setTime(17, 0),
+                'label' => 'Business',
+            ],
+            [
+                'title' => 'Kick-off proyecto integración',
+                'start' => $today->copy()->addDays(5)->setTime(11, 0),
+                'end' => $today->copy()->addDays(5)->setTime(12, 30),
+                'label' => 'Business',
+            ],
+            [
+                'title' => 'Monthly sales review',
+                'start' => $today->copy()->addDays(7)->setTime(10, 0),
+                'end' => $today->copy()->addDays(7)->setTime(12, 0),
+                'label' => 'Business',
+                'notes' => 'Revisión mensual del equipo comercial',
             ],
         ];
 

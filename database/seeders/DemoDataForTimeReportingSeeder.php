@@ -45,8 +45,8 @@ class DemoDataForTimeReportingSeeder extends Seeder
         // --- ~10 usuarios demo para el equipo: admin, colaboradores, empleados ---
         $demoPassword = Hash::make('password');
         $demoUsers = [
-            ['name' => 'Demo Admin One', 'email' => 'demo-admin1@humano.test', 'role' => 'admin'],
-            ['name' => 'Demo Admin Two', 'email' => 'demo-admin2@humano.test', 'role' => 'admin'],
+            ['name' => 'Demo Manager One', 'email' => 'demo-admin1@humano.test', 'role' => 'employee'],
+            ['name' => 'Demo Manager Two', 'email' => 'demo-admin2@humano.test', 'role' => 'employee'],
             ['name' => 'Carmen Colaboradora', 'email' => 'demo-collab1@humano.test', 'role' => 'collaborator'],
             ['name' => 'Pablo Colaborador', 'email' => 'demo-collab2@humano.test', 'role' => 'collaborator'],
             ['name' => 'Laura Colaboradora', 'email' => 'demo-collab3@humano.test', 'role' => 'collaborator'],

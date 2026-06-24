@@ -138,6 +138,16 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
             Presentaciones paso a paso por módulo.<br class="d-none d-xl-block" />
             Empezamos por cómo funciona la plataforma.
           </p>
+          @if ($landingYoutubeUrl = \App\Support\LandingYouTube::url())
+            <a
+              href="{{ $landingYoutubeUrl }}"
+              class="btn btn-label-danger mb-4"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <i class="ti ti-brand-youtube me-1"></i>{{ __('slash_landing.nav.youtube_tutorials') }}
+            </a>
+          @endif
           <div class="landing-reviews-btns">
             <button id="reviews-previous-btn" class="btn btn-label-primary reviews-btn me-3 scaleX-n1-rtl" type="button">
               <i class="ti ti-chevron-left ti-sm"></i>
@@ -151,6 +161,27 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
           <div class="swiper-reviews-carousel overflow-hidden mb-5 pb-md-2 pb-md-3">
             <div class="swiper" id="swiper-reviews">
               <div class="swiper-wrapper">
+                @if ($landingYoutubeUrl = \App\Support\LandingYouTube::url())
+                  <div class="swiper-slide">
+                    <a href="{{ $landingYoutubeUrl }}" class="card h-100 text-body text-decoration-none border-danger border-opacity-25" target="_blank" rel="noopener noreferrer">
+                      <div class="card-body d-flex flex-column justify-content-between h-100">
+                        <div class="mb-3 d-flex align-items-center gap-3">
+                          <span class="badge bg-label-danger rounded p-2 flex-shrink-0">
+                            <i class="ti ti-brand-youtube ti-md"></i>
+                          </span>
+                          <div class="min-w-0">
+                            <h6 class="mb-0">{{ __('slash_landing.guides.youtube_card.title') }}</h6>
+                            <p class="small text-danger mb-0 fw-semibold">{{ __('slash_landing.guides.youtube_card.subtitle') }}</p>
+                          </div>
+                        </div>
+                        <p class="mb-2">{{ __('slash_landing.guides.youtube_card.description') }}</p>
+                        <span class="text-danger small fw-semibold mt-3 d-inline-flex align-items-center gap-1">
+                          {{ __('slash_landing.guides.youtube_card.cta') }} <i class="ti ti-arrow-right ti-xs"></i>
+                        </span>
+                      </div>
+                    </a>
+                  </div>
+                @endif
                 @foreach ($guidePresentations as $guide)
                   <div class="swiper-slide">
                     <a href="{{ $guide['url'] }}" class="card h-100 text-body text-decoration-none">

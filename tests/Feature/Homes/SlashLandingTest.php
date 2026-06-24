@@ -61,6 +61,8 @@ class SlashLandingTest extends TestCase
             ->assertDontSee('slash-glow-frame', false)
             ->assertSee('data-slash-spotlight', false)
             ->assertSee('color-scheme" content="dark"', false)
+            ->assertSee('rel="icon" href="'.asset('assets/logo-iso.svg').'"', false)
+            ->assertSee('type="image/svg+xml"', false)
             ->assertSee('property="og:image" content="'.url('/images/system-onboarding/whatsapp-image.jpg').'"', false)
             ->assertSee('name="twitter:image" content="'.url('/images/system-onboarding/whatsapp-image.jpg').'"', false)
             ->assertSee('property="og:description" content="La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp."', false)
@@ -91,10 +93,17 @@ class SlashLandingTest extends TestCase
             ->assertSee(__('humano_pricing.plans.business.name'), false)
             ->assertDontSee('id="plan-mentor"', false)
             ->assertDontSee('id="plan-innovation"', false)
-            ->assertDontSee('id="historias-planes"', false)
-            ->assertDontSee('data-slash-stories', false)
-            ->assertDontSee(__('slash_landing.stories.title'), false)
-            ->assertDontSee('slash-story-card', false)
+            ->assertSee('id="historias-planes"', false)
+            ->assertSee('data-slash-stories', false)
+            ->assertSee(__('slash_landing.stories.title'), false)
+            ->assertSee('i.ytimg.com/vi/MQGOooSA9MM/hqdefault.jpg', false)
+            ->assertSee('i.ytimg.com/vi/uju-eMnSiO0/hqdefault.jpg', false)
+            ->assertSee('i.ytimg.com/vi/luwXe0wu37E/hqdefault.jpg', false)
+            ->assertDontSee('data-youtube-id="MQGOooSA9MM"', false)
+            ->assertSee('Configuración del negocio', false)
+            ->assertSee('Conectar WhatsApp', false)
+            ->assertSee('Chat, contactos y módulos', false)
+            ->assertSee('slash-story-card', false)
             ->assertDontSee('id="producto"', false)
             ->assertDontSee(__('slash_landing.trust.title'), false)
             ->assertDontSee('María G.', false)
@@ -109,11 +118,17 @@ class SlashLandingTest extends TestCase
             ->assertSee(\App\Support\GuidePresentation::url('primeros-pasos'), false)
             ->assertSee(\App\Support\GuidePresentation::url('calendario'), false)
             ->assertSee(__('Prospección'), false)
+            ->assertSee(\App\Support\GuidePresentation::url('lista-de-60'), false)
+            ->assertSee(__('list60'), false)
             ->assertSee(\App\Support\GuidePresentation::url('facturacion'), false)
             ->assertSee(__('Facturación'), false)
             ->assertSee('M5.931 6.936', false)
             ->assertSee('M4 10a2 2 0 0 1 2-2h2', false)
             ->assertSee('Ver presentación', false)
+            ->assertSee('https://www.youtube.com/playlist?list=PLebHHjcT7KEc', false)
+            ->assertSee(__('slash_landing.nav.youtube_tutorials'), false)
+            ->assertSee(__('slash_landing.guides.youtube_card.title'), false)
+            ->assertDontSee('https://www.youtube.com/@revisionalpha', false)
             ->assertSee(SlashHomeAsset::url('css/landing.css'), false)
             ->assertSee(asset('homes/shared/css/brand-footer.css'), false)
             ->assertSee(SlashHomeAsset::url('vendor/gsap/gsap.min.js'), false)
@@ -158,6 +173,36 @@ class SlashLandingTest extends TestCase
             ->assertSee('¿Por qué usar Humano en lugar de Excel?', false);
     }
 
+    public function test_slash_landing_links_to_onboarding_playlist_when_configured(): void
+    {
+        config([
+            'slash_landing.youtube_onboarding_playlist_url' => 'https://www.youtube.com/playlist?list=PLtest123',
+            'slash_landing.youtube_onboarding_playlist_id' => '',
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertSee('https://www.youtube.com/playlist?list=PLtest123', false)
+            ->assertSee(__('slash_landing.guides.youtube_card.title'), false)
+            ->assertDontSee('https://www.youtube.com/@revisionalpha', false);
+    }
+
+    public function test_slash_landing_hides_youtube_links_when_url_is_not_configured(): void
+    {
+        config([
+            'slash_landing.youtube_onboarding_playlist_url' => '',
+            'slash_landing.youtube_onboarding_playlist_id' => '',
+            'slash_landing.youtube_channel_url' => '',
+            'slash_landing.show_plan_stories_section' => false,
+            'slash_landing.onboarding_featured_videos' => [],
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertDontSee(__('slash_landing.nav.youtube_tutorials'), false)
+            ->assertDontSee('slash-guide-card-youtube', false);
+    }
+
     public function test_slash_landing_footer_contact_links_to_whatsapp_web(): void
     {
         config([
@@ -184,6 +229,19 @@ class SlashLandingTest extends TestCase
         $this->get('/slash')
             ->assertOk()
             ->assertSee('https://web.whatsapp.com/send?phone=34624159557', false);
+    }
+
+    public function test_slash_landing_hides_onboarding_videos_when_featured_videos_are_empty(): void
+    {
+        config([
+            'slash_landing.show_plan_stories_section' => true,
+            'slash_landing.onboarding_featured_videos' => [],
+        ]);
+
+        $this->get('/slash')
+            ->assertOk()
+            ->assertDontSee('id="historias-planes"', false)
+            ->assertDontSee('data-slash-stories', false);
     }
 
     public function test_slash_landing_can_show_trust_and_plan_stories_sections_when_enabled(): void

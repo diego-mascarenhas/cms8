@@ -136,6 +136,8 @@ class List60Controller extends Controller
             ];
         }
 
+        $record->loadMissing('status');
+
         $result = $suggestions->suggest(
             auth()->user(),
             $contact,
@@ -143,6 +145,7 @@ class List60Controller extends Controller
             $notes,
             $sentiment,
             $contact->categories->pluck('name')->all(),
+            $record->status?->name,
         );
 
         if (! $result['success'])

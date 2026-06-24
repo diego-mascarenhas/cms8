@@ -201,7 +201,8 @@
         @php
             $showProdReadToggle = app()->isLocal()
                 && config('app.allow_prod_read_toggle')
-                && config('app.prod_read_credentials_configured');
+                && config('app.prod_read_credentials_configured')
+                && ! \App\Support\DemoTeam::isDemoTeam(auth()->user()?->currentTeam);
         @endphp
         @auth
             @if ($showProdReadToggle)

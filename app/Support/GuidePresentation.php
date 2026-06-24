@@ -13,6 +13,7 @@ class GuidePresentation
         'calendario',
         'tareas',
         'prospeccion',
+        'lista-de-60',
         'facturacion',
         'afiliados',
         'cms-wordpress',
