@@ -96,7 +96,7 @@ class SlashLandingTest extends TestCase
             ->assertSee('id="historias-planes"', false)
             ->assertSee('data-slash-stories', false)
             ->assertSee(__('slash_landing.stories.title'), false)
-            ->assertSee('i.ytimg.com/vi/MQGOooSA9MM/hqdefault.jpg', false)
+            ->assertSee('i.ytimg.com/vi/QXVZJUaBYh4/hqdefault.jpg', false)
             ->assertSee('i.ytimg.com/vi/uju-eMnSiO0/hqdefault.jpg', false)
             ->assertSee('i.ytimg.com/vi/luwXe0wu37E/hqdefault.jpg', false)
             ->assertDontSee('data-youtube-id="MQGOooSA9MM"', false)

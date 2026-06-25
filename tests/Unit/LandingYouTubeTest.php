@@ -21,8 +21,8 @@ class LandingYouTubeTest extends TestCase
     public function test_thumbnail_url_uses_youtube_cdn(): void
     {
         $this->assertSame(
-            'https://i.ytimg.com/vi/MQGOooSA9MM/hqdefault.jpg',
-            LandingYouTube::thumbnailUrl('MQGOooSA9MM'),
+            'https://i.ytimg.com/vi/QXVZJUaBYh4/hqdefault.jpg',
+            LandingYouTube::thumbnailUrl('QXVZJUaBYh4'),
         );
     }
 
@@ -33,8 +33,8 @@ class LandingYouTubeTest extends TestCase
         ]);
 
         $this->assertSame(
-            'https://www.youtube.com/watch?v=MQGOooSA9MM&list=PLebHHjcT7KEc',
-            LandingYouTube::watchUrl('MQGOooSA9MM'),
+            'https://www.youtube.com/watch?v=QXVZJUaBYh4&list=PLebHHjcT7KEc',
+            LandingYouTube::watchUrl('QXVZJUaBYh4'),
         );
     }
 
@@ -43,7 +43,7 @@ class LandingYouTubeTest extends TestCase
         $videos = LandingYouTube::featuredVideos();
 
         $this->assertCount(3, $videos);
-        $this->assertSame('MQGOooSA9MM', $videos[0]['youtube_id']);
+        $this->assertSame('QXVZJUaBYh4', $videos[0]['youtube_id']);
         $this->assertSame('Configuración del negocio', $videos[0]['title']);
         $this->assertSame('uju-eMnSiO0', $videos[1]['youtube_id']);
         $this->assertSame('luwXe0wu37E', $videos[2]['youtube_id']);
