@@ -36,7 +36,7 @@ return [
     */
     'onboarding_featured_videos' => [
         [
-            'youtube_id' => env('SLASH_LANDING_YOUTUBE_VIDEO_01', 'MQGOooSA9MM'),
+            'youtube_id' => env('SLASH_LANDING_YOUTUBE_VIDEO_01', 'QXVZJUaBYh4'),
             'title' => 'Configuración del negocio',
             'subtitle' => 'Paso 1',
             'poster' => 'plans/assistant.png',
