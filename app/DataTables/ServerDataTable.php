@@ -29,7 +29,7 @@ class ServerDataTable extends DataTable
                 $statusClass = $server->status_id->color();
                 $statusText = $server->status_id->name();
 
-                return '<span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span>';
+                return '<div class="text-center"><span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span></div>';
             })
             ->rawColumns(['name', 'status_id', 'action']);
     }
@@ -59,12 +59,13 @@ class ServerDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('name')->title('Name'),
-            Column::make('ip')->title('IP Address'),
+            Column::make('name')->title('Nombre'),
+            Column::make('ip')->title('Dirección IP'),
             Column::make('server_url')->title('URL'),
-            Column::make('username')->title('Username'),
-            Column::make('status_id')->title('Status'),
+            Column::make('username')->title('Usuario'),
+            Column::make('status_id')->title('Estado')->addClass('text-center'),
             Column::computed('action')
+                ->title('Acciones')
                 ->exportable(false)
                 ->printable(false)
                 ->width(60)

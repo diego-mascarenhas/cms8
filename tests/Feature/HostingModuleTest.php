@@ -146,6 +146,7 @@ class HostingModuleTest extends TestCase
     public function test_cpanel_account_auth_syncs_single_domain(): void
     {
         Http::fake([
+            'https://demo.test:2087/json-api/listaccts*' => Http::response('Access denied', 403),
             'https://demo.test:2083/execute/Variables/get_user_information*' => Http::response([
                 'status' => 1,
                 'data' => [
@@ -211,6 +212,70 @@ class HostingModuleTest extends TestCase
             $result['plans'],
         );
         $this->assertFalse($result['reseller_limited']);
+    }
+
+    public function test_cpanel_reseller_account_auth_lists_all_accounts_via_whm(): void
+    {
+        Http::fake([
+            'https://huginn.test:2087/json-api/listaccts*' => Http::response([
+                'acct' => [
+                    [
+                        'domain' => 'revisionalpha.es',
+                        'user' => 'revision',
+                        'plan' => 'revision_enthusiast',
+                        'suspended' => 0,
+                        'diskused' => 100,
+                        'disklimit' => 10240,
+                    ],
+                    [
+                        'domain' => 'idoneo.dev',
+                        'user' => 'idoneo',
+                        'plan' => 'revision_mycloud',
+                        'suspended' => 0,
+                        'diskused' => 250,
+                        'disklimit' => 20480,
+                    ],
+                    [
+                        'domain' => 'example.org',
+                        'user' => 'example',
+                        'plan' => 'revision_wordpress',
+                        'suspended' => 0,
+                    ],
+                ],
+            ]),
+        ]);
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => null,
+            'name' => 'Reseller account',
+            'server_url' => 'huginn.test',
+            'username' => 'revision',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-password',
+            'success' => true,
+            'status_id' => 1,
+            'data' => ['auth_mode' => 'cpanel_user'],
+        ]);
+
+        $result = app(WHMService::class)->syncDomainsFromServer($server);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(3, $result['domains_synced']);
+        $this->assertDatabaseHas('domains', [
+            'domain' => 'revisionalpha.es',
+            'server_id' => $server->id,
+            'plan' => 'revision_enthusiast',
+        ]);
+        $this->assertDatabaseHas('domains', [
+            'domain' => 'idoneo.dev',
+            'server_id' => $server->id,
+            'plan' => 'revision_mycloud',
+        ]);
+        $this->assertDatabaseHas('domains', [
+            'domain' => 'example.org',
+            'server_id' => $server->id,
+            'plan' => 'revision_wordpress',
+        ]);
     }
 
     public function test_cpanel_account_auth_falls_back_to_current_plan_when_whm_listpkgs_fails(): void
@@ -966,12 +1031,80 @@ class HostingModuleTest extends TestCase
         $this->assertStringContainsString('<a href=', $domainColumn);
     }
 
+    public function test_hosting_datatable_shows_server_name_and_filters_by_server(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $serverA = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Huginn',
+            'server_url' => 'huginn.test',
+            'username' => 'root',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-token',
+            'success' => true,
+            'status_id' => 1,
+        ]);
+
+        $serverB = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Muninn',
+            'server_url' => 'muninn.test',
+            'username' => 'root',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-token',
+            'success' => true,
+            'status_id' => 1,
+        ]);
+
+        Domain::factory()->create([
+            'server_id' => $serverA->id,
+            'domain' => 'alpha.test',
+            'username' => 'alpha',
+            'suspended' => false,
+        ]);
+
+        Domain::factory()->create([
+            'server_id' => $serverB->id,
+            'domain' => 'beta.test',
+            'username' => 'beta',
+            'suspended' => true,
+        ]);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('hosting.index').'?'.http_build_query(array_merge(
+            $this->hostingDataTableQuery(),
+            ['server_filter' => $serverA->id],
+        )));
+
+        $response->assertOk();
+        $response->assertJsonPath('recordsTotal', 1);
+        $this->assertStringContainsString('Huginn', (string) collect($response->json('data'))->first()['server_name']);
+
+        $statusResponse = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('hosting.index').'?'.http_build_query(array_merge(
+            $this->hostingDataTableQuery(),
+            ['status_filter' => 'suspended'],
+        )));
+
+        $statusResponse->assertOk();
+        $statusResponse->assertJsonPath('recordsTotal', 1);
+        $this->assertStringContainsString('beta.test', (string) collect($statusResponse->json('data'))->first()['domain']);
+    }
+
     /**
      * @return array<string, mixed>
      */
     private function hostingDataTableQuery(): array
     {
-        $columnNames = ['id', 'domain', 'username', 'server_url', 'site_type', 'php_version', 'suspended', 'action'];
+        $columnNames = ['id', 'domain', 'username', 'server_name', 'site_type', 'php_version', 'suspended', 'action'];
 
         return [
             'draw' => 1,

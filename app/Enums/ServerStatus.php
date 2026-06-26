@@ -14,10 +14,10 @@ enum ServerStatus: int
     {
         return match ($this)
         {
-            self::Unknown => 'Unknown',
-            self::Active => 'Active',
-            self::Inactive => 'Inactive',
-            self::Maintenance => 'Maintenance',
+            self::Unknown => 'Desconocido',
+            self::Active => 'Activo',
+            self::Inactive => 'Inactivo',
+            self::Maintenance => 'Mantenimiento',
             self::Error => 'Error',
         };
     }

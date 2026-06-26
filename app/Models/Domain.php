@@ -184,7 +184,7 @@ class Domain extends Model
                 return null;
             }
 
-            $url = "https://{$server->server_url}:2087/json-api/php_get_vhost_versions";
+            $url = "https://{$server->hostname}:2087/json-api/php_get_vhost_versions";
             $query = http_build_query([
                 'api.filter.enable' => 1,
                 'api.filter.a.field' => 'vhost',

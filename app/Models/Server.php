@@ -44,6 +44,42 @@ class Server extends Model
         'data' => 'array',
     ];
 
+    public static function normalizeHostname(?string $value): ?string
+    {
+        if ($value === null)
+        {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if ($value === '')
+        {
+            return '';
+        }
+
+        $value = preg_replace('#^[a-z][a-z0-9+\-.]*://#i', '', $value) ?? $value;
+        $value = preg_replace('#^[a-z][a-z0-9+\-.]*//#i', '', $value) ?? $value;
+        $value = rtrim($value, '/');
+
+        if (str_contains($value, '/'))
+        {
+            $value = explode('/', $value, 2)[0];
+        }
+
+        return $value;
+    }
+
+    public function setServerUrlAttribute(?string $value): void
+    {
+        $this->attributes['server_url'] = self::normalizeHostname($value);
+    }
+
+    public function getHostnameAttribute(): ?string
+    {
+        return self::normalizeHostname($this->attributes['server_url'] ?? null);
+    }
+
     // Encrypt token when saving
     public function setEncryptedTokenAttribute($value)
     {
@@ -209,12 +245,12 @@ class Server extends Model
 
     public function getWebmailUrl(?string $email = null): ?string
     {
-        if ($this->server_url === null || $this->server_url === '')
+        if ($this->hostname === null || $this->hostname === '')
         {
             return null;
         }
 
-        $url = 'https://'.$this->server_url.':2096/';
+        $url = 'https://'.$this->hostname.':2096/';
 
         if ($email !== null && $email !== '')
         {

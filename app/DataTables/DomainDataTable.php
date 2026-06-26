@@ -3,6 +3,7 @@
 namespace App\DataTables;
 
 use App\Models\Domain;
+use App\Models\Server;
 use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -54,9 +55,16 @@ class DomainDataTable extends DataTable
             {
                 return $domain->php_version ?? '';
             })
-            ->addColumn('server_url', function ($domain)
+            ->addColumn('server_name', function ($domain)
             {
-                return $domain->server?->server_url ?? '';
+                return e($domain->server?->name ?? '');
+            })
+            ->filterColumn('server_name', function ($query, $keyword)
+            {
+                $query->whereHas('server', function ($builder) use ($keyword)
+                {
+                    $builder->where('name', 'like', '%'.$keyword.'%');
+                });
             })
             ->rawColumns(['domain', 'suspended', 'action']);
     }
@@ -71,20 +79,85 @@ class DomainDataTable extends DataTable
             $query->whereHas('server', fn ($builder) => $builder->where('team_id', $teamId));
         }
 
+        $serverFilter = request()->input('server_filter');
+        if ($serverFilter !== null && $serverFilter !== '')
+        {
+            $query->where('server_id', (int) $serverFilter);
+        }
+
+        $statusFilter = request()->input('status_filter');
+        if ($statusFilter === 'active')
+        {
+            $query->where('suspended', false);
+        } elseif ($statusFilter === 'suspended')
+        {
+            $query->where('suspended', true);
+        }
+
         return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $serverOptions = '<option value="">Todos</option>';
+        $serversQuery = Server::query()->orderBy('name');
+
+        if (auth()->check() && auth()->user()->currentTeam)
+        {
+            $serversQuery->where('team_id', auth()->user()->currentTeam->id);
+        }
+
+        foreach ($serversQuery->get(['id', 'name']) as $server)
+        {
+            $serverOptions .= '<option value="'.e((string) $server->id).'">'.e($server->name).'</option>';
+        }
+
+        $initComplete = "function () {
+    var api = this.api();
+    var f = jQuery('#domain-table_filter');
+    if (! f.length) { return; }
+    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+    if (! jQuery('#domain-filter-server').length) {
+        f.prepend(
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"domain-filter-server\" class=\"form-label mb-0 me-2 text-nowrap\">Servidor</label>' +
+            '<select id=\"domain-filter-server\" class=\"form-select form-select-sm\" style=\"min-width:12rem;max-width:16rem;\">{$serverOptions}</select>' +
+            '</div>' +
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"domain-filter-status\" class=\"form-label mb-0 me-2 text-nowrap\">Estado</label>' +
+            '<select id=\"domain-filter-status\" class=\"form-select form-select-sm\" style=\"min-width:9rem;max-width:12rem;\">' +
+            '<option value=\"\">Todos</option>' +
+            '<option value=\"active\">Activo</option>' +
+            '<option value=\"suspended\">Suspendido</option>' +
+            '</select></div>'
+        );
+    }
+    f.find('label').addClass('ms-auto mb-0');
+    jQuery('#domain-filter-server, #domain-filter-status').off('change.domainFilters').on('change.domainFilters', function () {
+        api.ajax.reload();
+    });
+}";
+
         return $this->builder()
             ->setTableId('domain-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.server_filter = ($('#domain-filter-server').val() || ''); data.status_filter = ($('#domain-filter-status').val() || '');",
+            )
             ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
+            ->parameters([
+                'initComplete' => $initComplete,
+                'drawCallback' => "function () {
+                    var f = jQuery('#domain-table_filter');
+                    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+                    f.find('label').addClass('ms-auto mb-0');
+                }",
+            ])
             ->language([
                 'url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json',
             ]);
@@ -96,7 +169,7 @@ class DomainDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('domain')->title('Dominio'),
             Column::make('username')->title('Usuario'),
-            Column::computed('server_url')->title('Servidor'),
+            Column::computed('server_name')->title('Servidor'),
             Column::make('site_type')->title('Tipo'),
             Column::make('php_version')->title('PHP'),
             Column::make('suspended')->title('Estado')->addClass('text-center'),
