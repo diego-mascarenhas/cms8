@@ -1,10 +1,11 @@
 @php
     $selectedPlan = old('plan', $selectedPlan ?? '');
     $selectedServerId = old('server_id', $selectedServerId ?? '');
+    $isRequired = $required ?? false;
 @endphp
 
 <div class="col-md-6">
-    <label for="plan" class="form-label">Plan</label>
+    <label for="plan" class="form-label">Plan @if($isRequired)(*)@endif</label>
     <select class="form-select @error('plan') is-invalid @enderror"
         id="plan"
         name="plan"

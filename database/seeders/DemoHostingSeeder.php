@@ -54,6 +54,11 @@ class DemoHostingSeeder extends Seeder
                 'status_id' => ServerStatus::Active->value,
                 'data' => [
                     'auth_mode' => 'cpanel_user',
+                    'provisioning_nameservers' => [
+                        'NS1.REVISIONALPHA.COM',
+                        'NS2.REVISIONALPHA.COM',
+                    ],
+                    'provisioning_spf' => 'v=spf1 include:spf.revisionalpha.com -all',
                 ],
             ],
         );

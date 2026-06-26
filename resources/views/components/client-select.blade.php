@@ -4,7 +4,7 @@
     <label for="{{ $id }}">{{ $label }}</label>
     <select id="{{ $id }}" name="{{ $id }}" class="form-control @error($id) is-invalid @enderror">
         @if($allowNull)
-            <option value="">Select {{ $label }}</option>
+            <option value="">Seleccionar {{ $label }}</option>
         @endif
         
         @foreach($options as $clientId => $clientName)

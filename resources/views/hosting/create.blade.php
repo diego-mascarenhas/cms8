@@ -3,14 +3,20 @@
 @section('title', isset($hosting) ? 'Editar Hosting' : 'Agregar Nuevo Hosting')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h4 class="fw-bold py-3 mb-0">
-        <span class="text-muted fw-light">Hosting /</span> {{ isset($hosting) ? 'Editar Hosting' : 'Agregar Nuevo Hosting' }}
-    </h4>
-    <a href="{{ route('hosting.index') }}" class="btn btn-secondary">
-        <i class="ti ti-arrow-left me-1"></i>
-        Volver a la Lista
-    </a>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3">
+            <span class="text-muted fw-light">Hosting/</span>
+            {{ isset($hosting) ? 'Editar' : 'Agregar Nuevo Hosting' }}
+        </h4>
+        <p class="text-muted">Provisiona y administra cuentas de hosting para tus clientes.</p>
+    </div>
+    <div class="mt-3 mt-md-0">
+        <a href="{{ route('hosting.index') }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-arrow-left me-1"></i>
+            Volver
+        </a>
+    </div>
 </div>
 
 <div class="row">
@@ -21,60 +27,122 @@
             </div>
             <div class="card-body">
                 @if(isset($hosting))
-                    <form method="POST" action="{{ route('hosting.update', $hosting->id) }}">
+                    <form method="POST" action="{{ route('hosting.update', $hosting->id) }}" novalidate>
                     @method('PUT')
                 @else
-                    <form method="POST" action="{{ route('hosting.store') }}">
+                    <form method="POST" action="{{ route('hosting.store') }}" id="hosting-form" novalidate>
                 @endif
                     @csrf
+
+                    @error('provision')
+                        <div class="alert alert-danger">
+                            <strong>No se pudo crear la cuenta en cPanel</strong>
+                            <div class="mb-0 mt-1" style="white-space: pre-wrap;">{{ $message }}</div>
+                        </div>
+                    @enderror
                     
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="domain" class="form-label">Nombre de Dominio</label>
-                            <input type="text" class="form-control @error('domain') is-invalid @enderror" 
-                                id="domain" name="domain" 
-                                value="{{ old('domain', $hosting->domain ?? '') }}" 
-                                required placeholder="ejemplo.com">
-                            @error('domain')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                            <x-input-general
+                                id="domain"
+                                label="Nombre de Dominio (*)"
+                                value="{{ old('domain', $hosting->domain ?? '') }}"
+                            />
+                        </div>
+
+                        @if(! isset($hosting))
+                        <div class="col-md-6">
+                            <x-client-select
+                                id="enterprise_id"
+                                label="Empresa (*)"
+                                :selected="old('enterprise_id', $enterpriseId ?? '')"
+                                :allowNull="false"
+                            />
+                        </div>
+                        @else
+                        <div class="col-md-6">
+                            <label for="service_id" class="form-label">Servicio</label>
+                            <select class="form-select @error('service_id') is-invalid @enderror" id="service_id" name="service_id">
+                                <option value="">Sin servicio vinculado</option>
+                                @foreach ($services ?? [] as $service)
+                                    <option value="{{ $service->id }}"
+                                        data-enterprise-id="{{ $service->enterprise_id }}"
+                                        @selected((string) old('service_id', $hosting->service_id ?? '') === (string) $service->id)>
+                                        {{ $service->enterprise?->name ?? '—' }}
+                                        — {{ $service->description ?: ($service->serviceType?->name ?? 'Servicio') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('service_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
-                        
+                        @endif
+                    </div>
+
+                    @if(! isset($hosting))
+                    <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="server_id" class="form-label">Servidor</label>
-                            <select class="form-select @error('server_id') is-invalid @enderror" id="server_id" name="server_id" required>
-                                <option value="">Seleccionar Servidor</option>
+                            <label for="service_id" class="form-label">Servicio existente</label>
+                            <select class="form-select @error('service_id') is-invalid @enderror" id="service_id" name="service_id">
+                                <option value="">Crear servicio nuevo al guardar</option>
+                                @foreach ($services ?? [] as $service)
+                                    <option value="{{ $service->id }}"
+                                        data-enterprise-id="{{ $service->enterprise_id }}"
+                                        @selected((string) old('service_id', $serviceId ?? '') === (string) $service->id)>
+                                        {{ $service->enterprise?->name ?? '—' }}
+                                        — {{ $service->description ?: ($service->serviceType?->name ?? 'Servicio') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('service_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Opcional. Si no eliges uno, se creará un servicio de hosting para la empresa.</div>
+                        </div>
+                    </div>
+                    @endif
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="server_id" class="form-label">Servidor (*)</label>
+                            <select class="form-select @error('server_id') is-invalid @enderror" id="server_id" name="server_id">
+                                @if($servers->count() !== 1)
+                                    <option value="" disabled @selected(! old('server_id', isset($hosting) ? $hosting->server_id : ''))>Seleccionar servidor</option>
+                                @endif
                                 @foreach ($servers as $server)
+                                    @php
+                                        $selectedServerId = old('server_id', isset($hosting) ? $hosting->server_id : ($servers->count() === 1 ? $server->id : ''));
+                                    @endphp
                                     <option value="{{ $server->id }}" 
-                                        {{ old('server_id', $hosting->server_id ?? '') == $server->id ? 'selected' : '' }}>
+                                        {{ (string) $selectedServerId === (string) $server->id ? 'selected' : '' }}>
                                         {{ $server->name }} ({{ $server->server_url }})
                                     </option>
                                 @endforeach
                             </select>
                             @error('server_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
+                        </div>
+
+                        <div class="col-md-6">
+                            <x-input-general
+                                id="username"
+                                label="Nombre de Usuario (*)"
+                                value="{{ old('username', $hosting->username ?? '') }}"
+                                maxlength="16"
+                            />
                         </div>
                     </div>
                     
                     <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="username" class="form-label">Nombre de Usuario</label>
-                            <input type="text" class="form-control @error('username') is-invalid @enderror" 
-                                id="username" name="username" 
-                                value="{{ old('username', $hosting->username ?? '') }}" 
-                                required placeholder="Usuario cPanel">
-                            @error('username')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                        
                         @include('hosting.partials.plan-select', [
-                            'selectedPlan' => old('plan', $hosting->plan ?? ''),
-                            'selectedServerId' => old('server_id', $hosting->server_id ?? ''),
+                            'selectedPlan' => old('plan', isset($hosting) ? $hosting->plan : ''),
+                            'selectedServerId' => old('server_id', isset($hosting) ? $hosting->server_id : ''),
+                            'required' => true,
                         ])
                     </div>
-                    
+
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="site_type" class="form-label">Tipo de Sitio</label>
@@ -118,22 +186,25 @@
                         </div>
                     </div>
                     
+                    @if(isset($hosting))
                     <div class="row mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="suspended" name="suspended" 
-                                    {{ old('suspended', $hosting->suspended ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="suspended">Suspendido</label>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="form-check form-switch mb-2">
-                                <input class="form-check-input" type="checkbox" id="needs_update" name="needs_update" 
+                                <input class="form-check-input" type="checkbox" id="needs_update" name="needs_update"
                                     {{ old('needs_update', $hosting->needs_update ?? false) ? 'checked' : '' }}>
-                                <label class="form-check-label" for="needs_update">Necesita Actualización</label>
+                                <label class="form-check-label" for="needs_update">Necesita actualización</label>
                             </div>
+                            <div class="form-text">Marca sitios pendientes de actualizar CMS, plugins o dependencias.</div>
                         </div>
                     </div>
+                    @else
+                    <div class="alert alert-info mb-3">
+                        La contraseña cPanel se generará automáticamente y se mostrará una sola vez al crear la cuenta.
+                        @if(! empty($hostingContactEmail))
+                            <span class="d-block mt-1">Email de contacto en cPanel: <strong>{{ $hostingContactEmail }}</strong></span>
+                        @endif
+                    </div>
+                    @endif
                     
                     <div class="row">
                         <div class="col-12">
@@ -156,8 +227,81 @@ document.addEventListener('DOMContentLoaded', function () {
     const serverSelect = document.getElementById('server_id');
     const planSelect = document.getElementById('plan');
     const planHelp = document.getElementById('plan-help');
+    const domainInput = document.getElementById('domain');
+    const usernameInput = document.getElementById('username');
     const selectedPlan = @json(old('plan', isset($hosting) ? $hosting->plan : ''));
     const plansUrlTemplate = @json(route('server.plans', ['server' => '__SERVER__']));
+    let usernameManuallyEdited = @json((bool) old('username'));
+
+    function suggestUsername(domain) {
+        domain = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+        let label = domain.split('.')[0] || domain;
+        let username = label.replace(/[-.]/g, '').replace(/[^a-z0-9_]/g, '');
+
+        if (! username || ! /^[a-z]/.test(username)) {
+            username = 'u' + label.replace(/[^a-z0-9_]/g, '');
+        }
+
+        username = username.slice(0, 16);
+
+        return username || 'site';
+    }
+
+    function applySuggestedUsername() {
+        if (! usernameManuallyEdited && usernameInput && domainInput && domainInput.value) {
+            usernameInput.value = suggestUsername(domainInput.value);
+        }
+    }
+
+    if (domainInput) {
+        domainInput.addEventListener('input', applySuggestedUsername);
+        domainInput.addEventListener('blur', function () {
+            this.value = this.value.trim().toLowerCase();
+            applySuggestedUsername();
+        });
+    }
+
+    if (usernameInput) {
+        usernameInput.addEventListener('input', function () {
+            usernameManuallyEdited = true;
+        });
+    }
+
+    applySuggestedUsername();
+
+    const enterpriseSelect = document.getElementById('enterprise_id');
+    const serviceSelect = document.getElementById('service_id');
+
+    function filterServicesByEnterprise() {
+        if (! enterpriseSelect || ! serviceSelect) {
+            return;
+        }
+
+        const enterpriseId = enterpriseSelect.value;
+
+        Array.from(serviceSelect.options).forEach(function (option) {
+            if (! option.value) {
+                option.hidden = false;
+
+                return;
+            }
+
+            option.hidden = enterpriseId !== '' && option.dataset.enterpriseId !== enterpriseId;
+        });
+
+        if (serviceSelect.value) {
+            const selected = serviceSelect.selectedOptions[0];
+
+            if (selected && selected.hidden) {
+                serviceSelect.value = '';
+            }
+        }
+    }
+
+    if (enterpriseSelect) {
+        enterpriseSelect.addEventListener('change', filterServicesByEnterprise);
+        filterServicesByEnterprise();
+    }
 
     if (! serverSelect || ! planSelect) {
         return;
@@ -240,6 +384,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (serverSelect.value) {
         loadPlans(serverSelect.value, selectedPlan);
+    }
+
+    const hostingForm = document.getElementById('hosting-form') || document.querySelector('form');
+
+    if (hostingForm) {
+        hostingForm.addEventListener('submit', function () {
+            planSelect.disabled = false;
+        });
     }
 });
 </script>

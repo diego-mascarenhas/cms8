@@ -147,6 +147,11 @@ class Service extends Model
         return $this->belongsTo(Currency::class);
     }
 
+    public function domains()
+    {
+        return $this->hasMany(Domain::class);
+    }
+
     public function services()
     {
         return $this->hasMany(Service::class);

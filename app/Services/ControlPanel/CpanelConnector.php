@@ -8,6 +8,7 @@ use App\Models\Server;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class CpanelConnector implements ControlPanelConnector
 {
@@ -293,6 +294,230 @@ class CpanelConnector implements ControlPanelConnector
         }
 
         return [];
+    }
+
+    public function createAccount(
+        Server $server,
+        string $username,
+        string $domain,
+        string $plan,
+        string $password,
+        ?string $contactEmail = null,
+    ): array {
+        if (! $this->supports($server) || ! $server->hasToken())
+        {
+            return [
+                'success' => false,
+                'error' => 'Server is not configured for cPanel or missing token',
+            ];
+        }
+
+        $params = [
+            'username' => $username,
+            'domain' => $domain,
+            'plan' => $plan,
+            'password' => $password,
+        ];
+
+        if ($contactEmail)
+        {
+            $params['contactemail'] = $contactEmail;
+        }
+
+        try
+        {
+            $response = $server->usesCpanelAccountAuth()
+                ? $this->whmBasicAuthRequest($server, '/json-api/createacct', $params)
+                : $this->whmRequest($server, '/json-api/createacct', $params);
+
+            if (! $response->successful())
+            {
+                Log::warning('cPanel createacct HTTP error', [
+                    'server_id' => $server->id,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                $payload = $response->json();
+
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage(
+                        is_array($payload) ? $payload : [],
+                        $response->body(),
+                    ),
+                ];
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload))
+            {
+                return [
+                    'success' => false,
+                    'error' => 'WHM returned an invalid response while creating the hosting account.',
+                ];
+            }
+
+            if (! $this->isWhmJsonApiSuccessful($payload))
+            {
+                Log::warning('cPanel createacct rejected', [
+                    'server_id' => $server->id,
+                    'domain' => $domain,
+                    'username' => $username,
+                    'response' => $payload,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage($payload),
+                ];
+            }
+
+            return ['success' => true];
+        } catch (\Exception $e)
+        {
+            Log::error('cPanel createacct failed: '.$e->getMessage(), [
+                'server_id' => $server->id,
+                'domain' => $domain,
+                'username' => $username,
+                'plan' => $plan,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Connection error: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    public function ensureSpfRecord(Server $server, Domain $domain, string $spfRecord): array
+    {
+        if ($spfRecord === '')
+        {
+            return [
+                'success' => false,
+                'error' => 'SPF record is not configured for this server',
+            ];
+        }
+
+        $existing = $this->getSpfTxtRecords($server, $domain);
+
+        if (! $existing['success'])
+        {
+            return $existing;
+        }
+
+        foreach ($existing['records'] as $record)
+        {
+            $text = (string) ($record['text'] ?? '');
+
+            if ($text !== '' && \App\Helpers\DnsHelper::spfIncludesRevisionAlpha($text))
+            {
+                return ['success' => true];
+            }
+        }
+
+        $targetSpf = $spfRecord;
+
+        if (($existing['records'][0]['text'] ?? '') !== '')
+        {
+            $targetSpf = $this->mergeSpfInclude((string) $existing['records'][0]['text'], $spfRecord);
+        }
+
+        $edits = [];
+
+        foreach ($existing['records'] as $record)
+        {
+            if ($record['line'] === null)
+            {
+                continue;
+            }
+
+            $edits[] = [
+                'action' => 'remove',
+                'line' => $record['line'],
+            ];
+        }
+
+        $edits[] = [
+            'action' => 'add',
+            'record_type' => 'TXT',
+            'dname' => $domain->domain.'.',
+            'ttl' => 14400,
+            'txtdata' => $targetSpf,
+        ];
+
+        return $this->uapiRequest($server, $domain, 'DNS', 'mass_edit_zone', [
+            'zone' => $domain->domain,
+            'serial' => time(),
+            'edit' => $edits,
+        ], expectData: false);
+    }
+
+    /**
+     * @return array{success: bool, error?: string, records?: array<int, array{line: int|null, text: string}>}
+     */
+    private function getSpfTxtRecords(Server $server, Domain $domain): array
+    {
+        $result = $this->uapiRequest($server, $domain, 'DNS', 'parse_zone', [
+            'zone' => $domain->domain,
+        ]);
+
+        if (! $result['success'])
+        {
+            return $result;
+        }
+
+        $apex = strtolower(rtrim($domain->domain, '.')).'.';
+
+        $records = collect($result['data'] ?? [])
+            ->filter(function (array $record) use ($apex)
+            {
+                $type = strtoupper((string) ($record['record_type'] ?? $record['type'] ?? ''));
+                $name = strtolower(rtrim((string) ($record['dname'] ?? $record['name'] ?? ''), '.').'.');
+
+                if ($type !== 'TXT')
+                {
+                    return false;
+                }
+
+                return $name === $apex || $name === '@';
+            })
+            ->map(function (array $record)
+            {
+                $text = (string) ($record['txtdata'] ?? $record['record'] ?? $record['text'] ?? '');
+
+                return [
+                    'line' => $record['line'] ?? null,
+                    'text' => trim($text, '"'),
+                ];
+            })
+            ->filter(fn (array $record) => stripos($record['text'], 'v=spf1') === 0)
+            ->values()
+            ->all();
+
+        return [
+            'success' => true,
+            'records' => $records,
+        ];
+    }
+
+    private function mergeSpfInclude(string $existing, string $fallbackRecord): string
+    {
+        if (\App\Helpers\DnsHelper::spfIncludesRevisionAlpha($existing))
+        {
+            return $existing;
+        }
+
+        $include = \App\Helpers\DnsHelper::REVISION_ALPHA_SPF_INCLUDE;
+
+        if (preg_match('/\s(~all|-all|\?all)\s*$/i', $existing, $matches, PREG_OFFSET_CAPTURE))
+        {
+            return substr($existing, 0, $matches[0][1]).' '.$include.' '.$matches[0][0];
+        }
+
+        return trim($existing).' '.$include.' -all';
     }
 
     public function changePlan(Server $server, Domain $domain, string $plan): array
@@ -590,6 +815,87 @@ class CpanelConnector implements ControlPanelConnector
      * @param  array<string, mixed>  $params
      * @return array{success: bool, error?: string, data?: array<int, mixed>}
      */
+    private function whmCpanelUapiRequest(
+        Server $server,
+        string $cpanelUsername,
+        string $module,
+        string $function,
+        array $params = [],
+        bool $expectData = true,
+    ): array {
+        try
+        {
+            $query = array_merge([
+                'cpanel_jsonapi_user' => $cpanelUsername,
+                'cpanel_jsonapi_apiversion' => 3,
+                'cpanel_jsonapi_module' => $module,
+                'cpanel_jsonapi_func' => $function,
+            ], $params);
+
+            $response = $this->whmBasicAuthRequest($server, '/json-api/cpanel', $query);
+
+            if (! $response->successful())
+            {
+                return [
+                    'success' => false,
+                    'error' => 'API request failed: '.$response->body(),
+                ];
+            }
+
+            return $this->parseWhmCpanelUapiPayload($response->json(), $expectData);
+        } catch (\Exception $e)
+        {
+            return [
+                'success' => false,
+                'error' => 'Connection error: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{success: bool, error?: string, data?: array<int, mixed>}
+     */
+    private function parseWhmCpanelUapiPayload(array $payload, bool $expectData): array
+    {
+        $result = $payload['result'] ?? $payload['cpanelresult'] ?? $payload;
+        $errors = $result['errors'] ?? null;
+
+        if (! empty($errors))
+        {
+            $message = is_array($errors) ? implode(', ', $errors) : (string) $errors;
+
+            return [
+                'success' => false,
+                'error' => $message,
+            ];
+        }
+
+        $status = $result['status'] ?? $result['event']['result'] ?? 1;
+
+        if ((int) $status !== 1 && isset($result['error']))
+        {
+            return [
+                'success' => false,
+                'error' => (string) $result['error'],
+            ];
+        }
+
+        if (! $expectData)
+        {
+            return ['success' => true];
+        }
+
+        return [
+            'success' => true,
+            'data' => $result['data'] ?? [],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array{success: bool, error?: string, data?: array<int, mixed>}
+     */
     private function uapiRequest(
         Server $server,
         Domain $domain,
@@ -600,17 +906,29 @@ class CpanelConnector implements ControlPanelConnector
     ): array {
         if ($server->usesCpanelAccountAuth())
         {
-            $result = $this->accountUapiRequest($server, $module, $function, $params, $expectData);
-
-            if (! $expectData || ! $result['success'])
+            if ($domain->username === $server->username)
             {
-                return $result;
+                $result = $this->accountUapiRequest($server, $module, $function, $params, $expectData);
+
+                if (! $expectData || ! $result['success'])
+                {
+                    return $result;
+                }
+
+                return [
+                    'success' => true,
+                    'data' => isset($result['data']) && array_is_list($result['data']) ? $result['data'] : [],
+                ];
             }
 
-            return [
-                'success' => true,
-                'data' => isset($result['data']) && array_is_list($result['data']) ? $result['data'] : [],
-            ];
+            return $this->whmCpanelUapiRequest(
+                $server,
+                $domain->username,
+                $module,
+                $function,
+                $params,
+                $expectData,
+            );
         }
 
         if (! $this->supports($server) || ! $server->hasToken())
@@ -640,39 +958,7 @@ class CpanelConnector implements ControlPanelConnector
                 ];
             }
 
-            $payload = $response->json();
-            $result = $payload['result'] ?? $payload['cpanelresult'] ?? $payload;
-            $errors = $result['errors'] ?? null;
-
-            if (! empty($errors))
-            {
-                $message = is_array($errors) ? implode(', ', $errors) : (string) $errors;
-
-                return [
-                    'success' => false,
-                    'error' => $message,
-                ];
-            }
-
-            $status = $result['status'] ?? $result['event']['result'] ?? 1;
-
-            if ((int) $status !== 1 && isset($result['error']))
-            {
-                return [
-                    'success' => false,
-                    'error' => (string) $result['error'],
-                ];
-            }
-
-            if (! $expectData)
-            {
-                return ['success' => true];
-            }
-
-            return [
-                'success' => true,
-                'data' => $result['data'] ?? [],
-            ];
+            return $this->parseWhmCpanelUapiPayload($response->json(), $expectData);
         } catch (\Exception $e)
         {
             Log::error('cPanel UAPI request failed: '.$e->getMessage(), [
@@ -692,6 +978,191 @@ class CpanelConnector implements ControlPanelConnector
     private function whmBaseUrl(Server $server): string
     {
         return 'https://'.$server->server_url.':'.self::WHM_PORT;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function isWhmJsonApiSuccessful(array $payload): bool
+    {
+        if (isset($payload['metadata']['result']))
+        {
+            return (int) $payload['metadata']['result'] === 1;
+        }
+
+        $result = $payload['result'] ?? null;
+
+        if (! is_array($result))
+        {
+            return false;
+        }
+
+        if (array_is_list($result))
+        {
+            if ($result === [])
+            {
+                return false;
+            }
+
+            foreach ($result as $item)
+            {
+                if (! is_array($item) || (int) ($item['status'] ?? 0) !== 1)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        if (isset($result['status']))
+        {
+            return (int) $result['status'] === 1;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function extractWhmErrorMessage(array $payload, ?string $fallbackBody = null): string
+    {
+        $messages = [];
+
+        $metadata = $payload['metadata'] ?? [];
+
+        if (is_array($metadata))
+        {
+            if (! empty($metadata['reason']))
+            {
+                $messages[] = (string) $metadata['reason'];
+            }
+
+            $messages = array_merge($messages, $this->normalizeWhmOutputLines($metadata['output'] ?? null));
+        }
+
+        $result = $payload['result'] ?? null;
+
+        if (is_array($result) && array_is_list($result))
+        {
+            foreach ($result as $item)
+            {
+                if (! is_array($item))
+                {
+                    continue;
+                }
+
+                if ((int) ($item['status'] ?? 0) !== 1 && ! empty($item['statusmsg']))
+                {
+                    $messages[] = (string) $item['statusmsg'];
+                }
+
+                $messages = array_merge($messages, $this->normalizeWhmOutputLines($item['rawout'] ?? null));
+            }
+        }
+
+        $messages = array_merge($messages, $this->normalizeWhmOutputLines($payload['data']['output'] ?? null));
+
+        foreach (['statusmsg', 'statusMsg', 'error'] as $key)
+        {
+            if (! empty($payload[$key]) && is_scalar($payload[$key]))
+            {
+                $messages[] = (string) $payload[$key];
+            }
+        }
+
+        $cpanelResult = $payload['cpanelresult'] ?? null;
+
+        if ($cpanelResult === null && is_array($result) && ! array_is_list($result))
+        {
+            $cpanelResult = $result;
+        }
+
+        if (is_array($cpanelResult))
+        {
+            if (! empty($cpanelResult['statusmsg']) && is_scalar($cpanelResult['statusmsg']))
+            {
+                $messages[] = (string) $cpanelResult['statusmsg'];
+            }
+
+            if (! empty($cpanelResult['error']) && is_scalar($cpanelResult['error']))
+            {
+                $messages[] = (string) $cpanelResult['error'];
+            }
+
+            if (! empty($cpanelResult['errors']))
+            {
+                $messages = array_merge(
+                    $messages,
+                    $this->normalizeWhmOutputLines($cpanelResult['errors']),
+                );
+            }
+
+            $messages = array_merge($messages, $this->normalizeWhmOutputLines($cpanelResult['data'] ?? null));
+        }
+
+        $message = trim(implode("\n", array_unique(array_filter(array_map(
+            fn (string $line) => trim(strip_tags($line)),
+            $messages,
+        )))));
+
+        if ($message !== '')
+        {
+            return $message;
+        }
+
+        if ($fallbackBody !== null && $fallbackBody !== '')
+        {
+            $decoded = json_decode($fallbackBody, true);
+
+            if (is_array($decoded))
+            {
+                return $this->extractWhmErrorMessage($decoded);
+            }
+
+            return Str::limit(trim(strip_tags($fallbackBody)), 500);
+        }
+
+        return 'WHM could not create the hosting account.';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function normalizeWhmOutputLines(mixed $output): array
+    {
+        if (is_string($output))
+        {
+            return $output !== '' ? [trim($output)] : [];
+        }
+
+        if (! is_array($output))
+        {
+            return [];
+        }
+
+        if (isset($output['raw']))
+        {
+            return $this->normalizeWhmOutputLines($output['raw']);
+        }
+
+        $lines = [];
+
+        foreach ($output as $line)
+        {
+            if (is_scalar($line))
+            {
+                $line = trim((string) $line);
+
+                if ($line !== '')
+                {
+                    $lines[] = $line;
+                }
+            }
+        }
+
+        return $lines;
     }
 
     private function cpanelBaseUrl(Server $server): string

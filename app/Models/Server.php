@@ -152,6 +152,38 @@ class Server extends Model
         return $this->usesCpanelAccountAuth() ? 'cPanel account' : 'WHM API';
     }
 
+    /**
+     * @return array<int, string>
+     */
+    public function getProvisioningNameservers(): array
+    {
+        $configured = $this->data['provisioning_nameservers'] ?? null;
+
+        if (is_array($configured) && $configured !== [])
+        {
+            return array_values(array_filter(array_map('strval', $configured)));
+        }
+
+        if (is_string($configured) && $configured !== '')
+        {
+            return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $configured) ?: [])));
+        }
+
+        return config('humano_hosting.default_nameservers', []);
+    }
+
+    public function getProvisioningSpfRecord(): string
+    {
+        $configured = $this->data['provisioning_spf'] ?? null;
+
+        if (is_string($configured) && $configured !== '')
+        {
+            return $configured;
+        }
+
+        return (string) config('humano_hosting.default_spf_record', '');
+    }
+
     // Check if server has a token configured
     public function hasToken(): bool
     {

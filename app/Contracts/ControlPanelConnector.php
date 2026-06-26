@@ -32,7 +32,24 @@ interface ControlPanelConnector
     /**
      * @return array{success: bool, error?: string}
      */
+    public function createAccount(
+        Server $server,
+        string $username,
+        string $domain,
+        string $plan,
+        string $password,
+        ?string $contactEmail = null,
+    ): array;
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
     public function changePlan(Server $server, Domain $domain, string $plan): array;
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function ensureSpfRecord(Server $server, Domain $domain, string $spfRecord): array;
 
     /**
      * @return array{success: bool, error?: string, emails?: array<int, array<string, mixed>>}

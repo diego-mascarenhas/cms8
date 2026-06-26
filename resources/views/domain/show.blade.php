@@ -19,6 +19,8 @@
     </div>
 </div>
 
+@include('hosting.partials.provisioning-notice')
+
 <!-- Status cards -->
 <div class="row mb-4">
     <div class="col-md-3">

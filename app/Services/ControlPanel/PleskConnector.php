@@ -33,6 +33,22 @@ class PleskConnector implements ControlPanelConnector
         return $this->notImplemented();
     }
 
+    public function createAccount(
+        Server $server,
+        string $username,
+        string $domain,
+        string $plan,
+        string $password,
+        ?string $contactEmail = null,
+    ): array {
+        return $this->notImplemented();
+    }
+
+    public function ensureSpfRecord(Server $server, Domain $domain, string $spfRecord): array
+    {
+        return $this->notImplemented();
+    }
+
     public function changePlan(Server $server, Domain $domain, string $plan): array
     {
         return $this->notImplemented();

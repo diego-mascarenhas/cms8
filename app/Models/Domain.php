@@ -16,6 +16,7 @@ class Domain extends Model
     protected $fillable = [
         'domain',
         'server_id',
+        'service_id',
         'username',
         'plan',
         'suspended',
@@ -37,6 +38,11 @@ class Domain extends Model
     public function server()
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
     }
 
     public function getWebIpAttribute()
