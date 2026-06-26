@@ -24,6 +24,8 @@ class PaymentController extends Controller
 
     public function index(PaymentDataTable $dataTable)
     {
+        $this->authorize('viewAny', Payment::class);
+
         $paymentSummary = $this->paymentSummaryService->forTeam(auth()->user()->currentTeam);
 
         return $dataTable->render('payments.index', compact('paymentSummary'));
@@ -79,16 +81,13 @@ class PaymentController extends Controller
 
     private function denyIfCannotLinkInvoice(): void
     {
-        $user = auth()->user();
-        if (! $user || ! $user->hasAnyRole(['admin', 'collaborator']))
-        {
-            abort(403);
-        }
+        $this->authorize('create', Payment::class);
     }
 
     public function show($id): View
     {
         $payment = Payment::with(['enterprise', 'invoice', 'account', 'type'])->findOrFail($id);
+        $this->authorize('view', $payment);
 
         return view('payments.show', compact('payment'));
     }

@@ -24,6 +24,11 @@ use Stripe\StripeClient;
 
 class SubscriptionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:access-billing-modules');
+    }
+
     /**
      * Display client subscriptions (Stripe) list.
      */

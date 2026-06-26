@@ -5,12 +5,13 @@ namespace App\Http\Controllers;
 use App\DataTables\EnterpriseDataTable;
 use App\Models\Enterprise;
 use App\Models\EnterpriseStatus;
-use Illuminate\Http\Request;
 
 class EnterpriseController extends Controller
 {
     public function index(EnterpriseDataTable $dataTable)
     {
+        $this->authorize('access-billing-modules');
+
         if (! auth()->user()->currentTeam)
         {
             return redirect()->route('error-without-team');

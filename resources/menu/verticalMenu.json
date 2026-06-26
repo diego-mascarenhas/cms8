@@ -107,63 +107,72 @@
       "name": "Subscriptions",
       "icon": "menu-icon tf-icons ti ti-repeat",
       "slug": "subscription.index",
-      "module_key": "subscriptions"
+      "module_key": "subscriptions",
+      "permission": "access-billing-modules"
     },
     {
       "url": "invoice/list",
       "name": "Invoices",
       "icon": "menu-icon tf-icons ti ti-file-invoice",
       "slug": "invoice.index",
-      "module_key": "invoices"
+      "module_key": "invoices",
+      "permission": "access-billing-modules"
     },
     {
       "url": "payments",
       "name": "Payments",
       "icon": "menu-icon tf-icons ti ti-credit-card",
       "slug": "payments",
-      "module_key": "payments"
+      "module_key": "payments",
+      "permission": "access-billing-modules"
     },
     {
       "url": "income/list",
       "name": "Incomes",
       "icon": "menu-icon tf-icons ti ti-trending-up",
       "slug": "income.index",
-      "module_key": "incomes"
+      "module_key": "incomes",
+      "permission": "access-billing-modules"
     },
     {
       "url": "expense/list",
       "name": "Expenses",
       "icon": "menu-icon tf-icons ti ti-trending-down",
       "slug": "expense.index",
-      "module_key": "expenses"
+      "module_key": "expenses",
+      "permission": "access-billing-modules"
     },
     {
       "url": "fare",
       "name": "Tarifas",
       "icon": "menu-icon tf-icons ti ti-currency-dollar",
       "slug": "fare.index",
-      "module_key": "fares"
+      "module_key": "fares",
+      "permission": "access-billing-modules"
     },
     {
       "url": "enterprise/list",
       "name": "Empresas",
       "icon": "menu-icon tf-icons ti ti-building",
       "slug": "enterprise.index",
-      "module_key": "enterprises"
+      "module_key": "enterprises",
+      "permission": "access-billing-modules"
     },
     {
       "url": "finance-dashboard",
       "name": "Finanzas",
       "icon": "menu-icon tf-icons ti ti-chart-line",
       "slug": "finance-dashboard",
-      "module_key": "financial"
+      "module_key": "financial",
+      "permission": "access-billing-modules"
     },
     {
       "url": "billing",
       "name": "Affiliates",
       "icon": "menu-icon tf-icons ti ti-affiliate",
       "slug": "billing.index",
-      "module_key": "affiliates"
+      "module_key": "affiliates",
+      "permission": "access-billing-modules"
     },
     {
       "menuHeader": "Team"

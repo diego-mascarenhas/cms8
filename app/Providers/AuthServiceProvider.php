@@ -14,6 +14,7 @@ use App\Models\LanguageVariant;
 use App\Models\Mailbox;
 use App\Models\Multimedia;
 use App\Models\Opportunity;
+use App\Models\Payment;
 use App\Models\Post;
 use App\Models\Product;
 use App\Models\Project;
@@ -24,6 +25,7 @@ use App\Models\Stylebook;
 use App\Models\TeamFile;
 use App\Models\TeamPassword;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
 use App\Policies\CalendarEventPolicy;
 use App\Policies\CategoryPolicy;
@@ -37,6 +39,7 @@ use App\Policies\LanguageVariantPolicy;
 use App\Policies\MailboxPolicy;
 use App\Policies\MultimediaPolicy;
 use App\Policies\OpportunityPolicy;
+use App\Policies\PaymentPolicy;
 use App\Policies\PostPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\ProjectPolicy;
@@ -65,6 +68,7 @@ class AuthServiceProvider extends ServiceProvider
         Project::class => ProjectPolicy::class,
         Service::class => ServicePolicy::class,
         Invoice::class => InvoicePolicy::class,
+        Payment::class => PaymentPolicy::class,
         LanguageVariant::class => LanguageVariantPolicy::class,
         Prompt::class => PromptPolicy::class,
         Multimedia::class => MultimediaPolicy::class,
@@ -91,6 +95,11 @@ class AuthServiceProvider extends ServiceProvider
         Gate::define('view-performance-insights', function ($user)
         {
             return $user->can('viewAny', UserDailyPerformanceInsight::class);
+        });
+
+        Gate::define('access-billing-modules', function (User $user): bool
+        {
+            return $user->canAccessBilling();
         });
     }
 }
