@@ -174,6 +174,44 @@ class HostingModuleTest extends TestCase
         ]);
     }
 
+    public function test_authenticated_user_can_fetch_server_hosting_plans(): void
+    {
+        Http::fake([
+            '*listpkgs*' => Http::response([
+                'package' => [
+                    ['name' => 'default'],
+                    ['name' => 'business'],
+                    ['name' => 'premium'],
+                ],
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Reseller WHM',
+            'server_url' => 'whm-reseller.test',
+            'username' => 'root',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-token',
+            'success' => true,
+            'status_id' => 1,
+        ]);
+
+        $response = $this->actingAs($user)->getJson(route('server.plans', $server->id));
+
+        $response->assertOk()
+            ->assertJson([
+                'success' => true,
+                'limited_to_account' => false,
+            ])
+            ->assertJsonPath('plans', ['default', 'business', 'premium']);
+    }
+
     public function test_domain_change_plan_updates_remote_and_local_record(): void
     {
         Http::fake([

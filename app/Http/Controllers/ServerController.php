@@ -261,6 +261,44 @@ class ServerController extends Controller
         }
     }
 
+    public function plans(Server $server): JsonResponse
+    {
+        if ($server->control_panel !== 'cpanel')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hosting plans are only available for cPanel servers',
+                'plans' => [],
+            ], 400);
+        }
+
+        if (! $server->hasToken())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Server credentials are not configured',
+                'plans' => [],
+            ], 400);
+        }
+
+        $result = $this->controlPanelManager->forServer($server)->listPlans($server);
+
+        if (! ($result['success'] ?? false))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Failed to load hosting plans',
+                'plans' => [],
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'plans' => $result['plans'] ?? [],
+            'limited_to_account' => $server->usesCpanelAccountAuth(),
+        ]);
+    }
+
     public function syncDomains(Server $server): JsonResponse
     {
         if ($server->control_panel !== 'cpanel')

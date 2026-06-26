@@ -69,16 +69,10 @@
                             @enderror
                         </div>
                         
-                        <div class="col-md-6">
-                            <label for="plan" class="form-label">Plan</label>
-                            <input type="text" class="form-control @error('plan') is-invalid @enderror" 
-                                id="plan" name="plan" 
-                                value="{{ old('plan', $hosting->plan ?? '') }}" 
-                                placeholder="Plan de hosting">
-                            @error('plan')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
+                        @include('hosting.partials.plan-select', [
+                            'selectedPlan' => old('plan', $hosting->plan ?? ''),
+                            'selectedServerId' => old('server_id', $hosting->server_id ?? ''),
+                        ])
                     </div>
                     
                     <div class="row mb-3">
@@ -154,4 +148,99 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('page-script')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const serverSelect = document.getElementById('server_id');
+    const planSelect = document.getElementById('plan');
+    const planHelp = document.getElementById('plan-help');
+    const selectedPlan = @json(old('plan', isset($hosting) ? $hosting->plan : ''));
+    const plansUrlTemplate = @json(route('server.plans', ['server' => '__SERVER__']));
+
+    if (! serverSelect || ! planSelect) {
+        return;
+    }
+
+    function setPlanHelp(message, show) {
+        if (! planHelp) {
+            return;
+        }
+
+        planHelp.textContent = message;
+        planHelp.classList.toggle('d-none', ! show);
+    }
+
+    function renderPlanOptions(plans, currentPlan) {
+        let html = '<option value="">Seleccionar plan</option>';
+
+        plans.forEach(function (planName) {
+            const selected = currentPlan === planName ? ' selected' : '';
+            html += '<option value="' + planName + '"' + selected + '>' + planName + '</option>';
+        });
+
+        if (currentPlan && ! plans.includes(currentPlan)) {
+            html += '<option value="' + currentPlan + '" selected>' + currentPlan + ' (actual)</option>';
+        }
+
+        planSelect.innerHTML = html;
+        planSelect.disabled = false;
+    }
+
+    function loadPlans(serverId, currentPlan) {
+        if (! serverId) {
+            planSelect.innerHTML = '<option value="">Seleccionar servidor primero</option>';
+            planSelect.disabled = true;
+            setPlanHelp('', false);
+
+            return;
+        }
+
+        planSelect.disabled = true;
+        planSelect.innerHTML = '<option value="">Cargando planes...</option>';
+        setPlanHelp('', false);
+
+        const url = plansUrlTemplate.replace('__SERVER__', serverId);
+
+        fetch(url, {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        })
+            .then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            })
+            .then(function ({ ok, data }) {
+                if (! ok || ! data.success) {
+                    planSelect.innerHTML = '<option value="">' + (data.message || 'No se pudieron cargar los planes') + '</option>';
+                    planSelect.disabled = true;
+
+                    return;
+                }
+
+                renderPlanOptions(data.plans || [], currentPlan);
+
+                if (data.limited_to_account) {
+                    setPlanHelp('Este servidor usa credenciales de cuenta cPanel. Para listar todos los planes del reseller, configure acceso WHM.', true);
+                }
+            })
+            .catch(function () {
+                planSelect.innerHTML = '<option value="">Error al cargar planes</option>';
+                planSelect.disabled = true;
+            });
+    }
+
+    serverSelect.addEventListener('change', function () {
+        loadPlans(this.value, '');
+    });
+
+    if (serverSelect.value) {
+        loadPlans(serverSelect.value, selectedPlan);
+    }
+});
+</script>
 @endsection 

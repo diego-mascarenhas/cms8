@@ -929,6 +929,7 @@ Route::middleware(['auth'])->group(function ()
     // Servers
     Route::resource('server', ServerController::class);
     Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
+    Route::get('/server/{server}/plans', [ServerController::class, 'plans'])->name('server.plans');
     Route::post('/server/{server}/sync-domains', [ServerController::class, 'syncDomains'])->name('server.syncDomains');
 
     // Custom Translations
