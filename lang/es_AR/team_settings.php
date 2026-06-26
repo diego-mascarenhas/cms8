@@ -8,6 +8,16 @@ return [
             'title' => 'Integración con Stripe',
             'subtitle' => 'Configura las claves API y el webhook de Stripe para este equipo.',
         ],
+        'hosting' => [
+            'title' => 'Hosting y cPanel',
+            'subtitle' => 'Conectá servidores WHM/cPanel (reseller) o cuentas cPanel y sincronizá alojamientos.',
+            'manage_servers' => 'Servidores',
+            'manage_hosting' => 'Hosting',
+            'modules_disabled' => 'Activá los módulos Servidores y Hosting en la cuenta del equipo.',
+            'enable_modules' => 'Activar módulos',
+            'ask_admin_modules' => 'Pedile a un administrador que active los módulos Servidores y Hosting.',
+            'servers_connected' => '{1} :count servidor conectado|[2,*] :count servidores conectados',
+        ],
         'fiscal' => [
             'title' => 'Exportación fiscal',
             'subtitle' => 'Elige la plataforma fiscal y el país para el enrutado automático.',

@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use GuzzleHttp\Client;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Http;
 
 class Domain extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
@@ -101,50 +103,14 @@ class Domain extends Model
     {
         try
         {
-            // Get the server from relation
             $server = $this->server;
 
-            if (! $server)
+            if (! $server || $server->control_panel !== 'cpanel' || ! $server->hasToken())
             {
                 return null;
             }
 
-            // Get the WHM servers configuration
-            $serversString = env('WHM_SERVERS');
-            if (empty($serversString))
-            {
-                \Log::error('WHM_SERVERS environment variable not configured');
-
-                return null;
-            }
-
-            // Find the matching server in the list
-            $serversList = explode(',', $serversString);
-            $serverConfig = null;
-
-            foreach ($serversList as $serverString)
-            {
-                $serverParts = explode(':', trim($serverString));
-                if (count($serverParts) >= 3 && $serverParts[0] === $server->server_url)
-                {
-                    $serverConfig = $serverParts;
-                    break;
-                }
-            }
-
-            if (! $serverConfig)
-            {
-                \Log::error("Server {$server->server_url} not found in WHM_SERVERS configuration");
-
-                return null;
-            }
-
-            $hostname = $serverConfig[0];
-            $username = $serverConfig[1];
-            $token = $serverConfig[2];
-
-            // Use the same approach as WhmService
-            $url = "https://{$hostname}:2087/json-api/php_get_vhost_versions";
+            $url = "https://{$server->server_url}:2087/json-api/php_get_vhost_versions";
             $query = http_build_query([
                 'api.filter.enable' => 1,
                 'api.filter.a.field' => 'vhost',
@@ -152,7 +118,7 @@ class Domain extends Model
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'whm '.$username.':'.$token,
+                'Authorization' => $server->getWhmAuthHeader(),
             ])->get($url.'?'.$query);
 
             if (! $response->successful())

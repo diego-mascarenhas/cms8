@@ -46,7 +46,7 @@ class TeamDemoSeeder extends Seeder
      *
      * @var list<string>
      */
-    public const DEMO_DEV_MODULES = ['today', 'performance_insights'];
+    public const DEMO_DEV_MODULES = ['today', 'performance_insights', 'servers', 'hosting'];
 
     private $teamId = 1;
 
@@ -246,6 +246,8 @@ class TeamDemoSeeder extends Seeder
         {
             $team->enableModule($moduleKey);
         }
+
+        $this->call(DemoHostingSeeder::class);
     }
 
     private function createDemoCategories(): void

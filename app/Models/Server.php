@@ -3,11 +3,26 @@
 namespace App\Models;
 
 use App\Enums\ServerStatus;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Server extends Model
 {
+    use HasFactory;
+
     protected $table = 'servers';
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
 
     protected $fillable = [
         'name',
@@ -124,6 +139,17 @@ class Server extends Model
     public function hasControlPanel(): bool
     {
         return $this->control_panel !== 'none';
+    }
+
+    public function usesCpanelAccountAuth(): bool
+    {
+        return $this->control_panel === 'cpanel'
+            && ($this->data['auth_mode'] ?? 'whm') === 'cpanel_user';
+    }
+
+    public function getAuthModeLabelAttribute(): string
+    {
+        return $this->usesCpanelAccountAuth() ? 'cPanel account' : 'WHM API';
     }
 
     // Check if server has a token configured

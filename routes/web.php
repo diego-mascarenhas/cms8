@@ -917,16 +917,19 @@ Route::middleware(['auth'])->group(function ()
 
     // Hosting
     Route::resource('hosting', HostingController::class);
-    Route::get('/hosting/data', [HostingController::class, 'data'])->name('hosting.data');
 
     // Domains
     Route::resource('domain', DomainController::class);
     Route::post('/domain/{domain}/refresh', [DomainController::class, 'refresh'])->name('domain.refresh');
     Route::post('/domain/{domain}/toggle-suspension', [DomainController::class, 'toggleSuspension'])->name('domain.toggle-suspension');
+    Route::post('/domain/{domain}/change-plan', [DomainController::class, 'changePlan'])->name('domain.change-plan');
+    Route::post('/domain/{domain}/email-password', [DomainController::class, 'updateEmailPassword'])->name('domain.email-password');
+    Route::post('/domain/{domain}/mx-records', [DomainController::class, 'updateMxRecords'])->name('domain.mx-records');
 
     // Servers
     Route::resource('server', ServerController::class);
     Route::post('/server/{server}/test-connection', [ServerController::class, 'testConnection'])->name('server.testConnection');
+    Route::post('/server/{server}/sync-domains', [ServerController::class, 'syncDomains'])->name('server.syncDomains');
 
     // Custom Translations
 

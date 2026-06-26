@@ -53,7 +53,15 @@ class DomainDataTable extends DataTable
 
     public function query(): QueryBuilder
     {
-        return Domain::with('server');
+        $query = Domain::with('server');
+
+        if (auth()->check() && auth()->user()->currentTeam)
+        {
+            $teamId = auth()->user()->currentTeam->id;
+            $query->whereHas('server', fn ($builder) => $builder->where('team_id', $teamId));
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder
