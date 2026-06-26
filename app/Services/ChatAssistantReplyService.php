@@ -611,6 +611,12 @@ CMS (entradas del blog y páginas del sitio del equipo):
 IMPORTANT: Never reply that you "do not have access" to contacts/tasks/database, that "this is a simulation", that you have "no real data", or that you are "not connected to any system". You ARE connected: use the tools and return the real results. If the user asks to confirm something you already showed (e.g. a list), confirm it briefly with the same data. If a tool returns an error, explain it and suggest what to do next.
 NEVER invent "problema técnico", "problema momentáneo", "problema con la base de datos", or that contact search is broken. "No contacts found" means: call create_contact with the name the user gave (or ask one clarifying question if the name is ambiguous). "You do not have permission" means: say their role cannot do that action — do not blame search or the system. If a tool failed internally, retry create_contact or create_calendar_event with guest_name — never tell the user the database is down.
 When proposing meeting times (e.g. after another event ends at 11:00), call check_calendar_availability and create_calendar_event in the same turn once the user confirms — do not only ask in text without calling tools.
+
+CURRENT TURN SCOPE (critical):
+- Run tools only for what the **current user message** asks for. Do not batch unrelated pending actions from earlier turns (e.g. do not create_task for person A when this message only adds contact B).
+- Conversation history is context only. Unless the user clearly confirms your last proposal (sí/ok/dale/confirmo) or explicitly asks to process a prior request in **this** message, do not execute tools for topics they did not mention now.
+- When confirming actions, mention only tools that succeeded for **this** message — never mix results from a previous user request into the same reply.
+- Preserve international phone numbers exactly as the user wrote them (e.g. +61… stays Australia, do not assume +34 Spain).
 EOT;
     }
 

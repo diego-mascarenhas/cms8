@@ -1162,11 +1162,21 @@ class AssistantToolsService
 
         $email = isset($input['email']) ? trim((string) $input['email']) : null;
         $email = $email !== '' ? $email : null;
-        $phone = isset($input['phone']) ? preg_replace('/[^0-9]/', '', (string) $input['phone']) : null;
-        $phone = is_string($phone) && $phone !== '' ? (int) $phone : null;
-        if ($phone !== null && $phone < 1)
+        $phoneRaw = isset($input['phone']) ? trim((string) $input['phone']) : null;
+        $phone = null;
+        if ($phoneRaw !== null && $phoneRaw !== '')
         {
-            $phone = null;
+            if (str_starts_with($phoneRaw, '+'))
+            {
+                $phone = preg_replace('/[^0-9]/', '', $phoneRaw);
+            } else
+            {
+                $phone = \App\Helpers\PhoneHelper::clean($phoneRaw);
+            }
+            if ($phone === null || $phone === '')
+            {
+                $phone = null;
+            }
         }
         $categoryName = isset($input['category_name']) ? trim((string) $input['category_name']) : null;
 

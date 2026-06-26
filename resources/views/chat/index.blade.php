@@ -1,8 +1,11 @@
 @extends('layouts/layoutMaster')
 
 @php
+    use App\Support\ApplicationLocales;
+
     $chatFpLocale = strtolower(substr(str_replace('_', '-', app()->getLocale()), 0, 2));
     $chatFpLocaleBundle = in_array($chatFpLocale, ['es', 'fr', 'de', 'it', 'pt'], true);
+    $chatJsLocale = ApplicationLocales::htmlLang();
     $chatScheduleMin = \Carbon\Carbon::now(config('app.timezone'))->format('Y-m-d H:i');
 @endphp
 
@@ -295,6 +298,7 @@
             if (!attachmentCount) return;
             var selected = getSelectedAttachments();
             attachmentCount.textContent = selected.length > 0 ? (selected.length + ' adjunto(s)') : '';
+            updateChatSendButtonsState();
         }
 
         function appendAttachmentsToFormData(formData) {
@@ -309,21 +313,68 @@
         }
 
         if (messageInput && formSendMessage) {
+            messageInput.addEventListener('input', updateChatSendButtonsState);
             messageInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    formSendMessage.requestSubmit();
+                    if (chatSendActionsCanSubmit()) {
+                        formSendMessage.requestSubmit();
+                    }
                 }
             });
         }
 
-        function setChatSendButtonsDisabled(disabled) {
+        var chatSendInFlight = false;
+
+        function chatSendActionsCanSubmit() {
+            var msg = messageInput && messageInput.value ? messageInput.value.trim() : '';
+            var hasAudio = typeof window.hasPendingRecordedAudio === 'function' && window.hasPendingRecordedAudio();
+            var hasAttachments = getSelectedAttachments().length > 0;
+
+            return !!(msg || hasAudio || hasAttachments);
+        }
+
+        function updateChatSendButtonsState() {
+            if (chatSendInFlight) {
+                return;
+            }
             var form = document.getElementById('chat-form');
-            if (!form) return;
+            if (!form) {
+                return;
+            }
+            var canSubmit = chatSendActionsCanSubmit();
             form.querySelectorAll('.chat-send-primary-btn, [name="send_intent"]').forEach(function (btn) {
-                btn.disabled = disabled;
+                btn.disabled = !canSubmit;
+            });
+            var dropdownToggle = form.querySelector('.chat-send-dropdown-toggle');
+            if (dropdownToggle) {
+                dropdownToggle.disabled = !canSubmit;
+                if (!canSubmit && typeof bootstrap !== 'undefined' && bootstrap.Dropdown) {
+                    var dropdownInstance = bootstrap.Dropdown.getInstance(dropdownToggle);
+                    if (dropdownInstance) {
+                        dropdownInstance.hide();
+                    }
+                }
+            }
+        }
+
+        function setChatSendButtonsDisabled(disabled) {
+            chatSendInFlight = disabled;
+            var form = document.getElementById('chat-form');
+            if (!form) {
+                return;
+            }
+            if (!disabled) {
+                updateChatSendButtonsState();
+
+                return;
+            }
+            form.querySelectorAll('.chat-send-primary-btn, [name="send_intent"], .chat-send-dropdown-toggle').forEach(function (btn) {
+                btn.disabled = true;
             });
         }
+
+        updateChatSendButtonsState();
 
         (function persistAiTogglePreference() {
             var toggleDefault = {{ json_encode($contactChatAiToggleDefault ?? $userChatAiToggleDefault ?? true) }};
@@ -598,6 +649,7 @@
                     micBtn.classList.add('btn-label-secondary');
                     if (micIcon) micIcon.className = 'ti ti-microphone ti-sm';
                 }
+                updateChatSendButtonsState();
             }
 
             function resetRecordUI() {
@@ -609,6 +661,7 @@
                     micBtn.classList.add('btn-label-secondary');
                     if (micIcon) micIcon.className = 'ti ti-microphone ti-sm';
                 }
+                updateChatSendButtonsState();
             }
 
             if (cancelBtn) {
@@ -1110,6 +1163,7 @@
         }
 
         var chatFpLocaleKey = @json($chatFpLocaleBundle ? $chatFpLocale : '');
+        var chatJsLocale = @json($chatJsLocale);
 
         function initScheduleFlatpickr() {
             if (scheduleFlatpickr) return;
@@ -1186,7 +1240,7 @@
                 .then(function (data) {
                     if (data.success) {
                         previewModal.hide();
-                        var label = new Date(data.scheduled_at).toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
+                        var label = new Date(data.scheduled_at).toLocaleString(chatJsLocale, { dateStyle: 'medium', timeStyle: 'short' });
                         messageInput.value = '';
                         currentUserMessage = '';
                         currentAiResponse = '';
@@ -1250,6 +1304,24 @@
                 return new Date(Math.ceil(now.getTime() / ms) * ms);
             }
 
+            function chatScheduleDefaultDate() {
+                var target = new Date();
+                target.setTime(target.getTime() + (2 * 60 * 60 * 1000));
+                var increment = 5;
+                var ms = increment * 60 * 1000;
+                var rounded = new Date(Math.ceil(target.getTime() / ms) * ms);
+                var min = chatScheduleMinimumDate();
+
+                return rounded.getTime() < min.getTime() ? min : rounded;
+            }
+
+            function applyChatScheduleDefaultDate() {
+                if (!chatComposeScheduleFp || scheduleModalEl.getAttribute('data-editing-id')) {
+                    return;
+                }
+                chatComposeScheduleFp.setDate(chatScheduleDefaultDate(), true);
+            }
+
             function refreshChatScheduleMinDate() {
                 if (!chatComposeScheduleFp) {
                     return;
@@ -1308,6 +1380,7 @@
             scheduleModalEl.addEventListener('shown.bs.modal', function () {
                 initChatComposeScheduleFlatpickr();
                 refreshChatScheduleMinDate();
+                applyChatScheduleDefaultDate();
             });
             scheduleModalEl.addEventListener('hidden.bs.modal', resetChatScheduleModalForCreate);
 
@@ -1349,34 +1422,39 @@
 
                 fetch(url, {
                     method: method,
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
                     body: JSON.stringify(payload)
                 })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.success) {
-                        if (!isEditing && messageInput) {
-                            messageInput.value = '';
-                        }
-                        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-                            var inst = bootstrap.Modal.getInstance(scheduleModalEl);
-                            if (inst) {
-                                inst.hide();
-                            }
-                        }
-                        if (window.refreshContactChatMessages) {
-                            window.refreshContactChatMessages();
-                        }
-                        var label = new Date(data.scheduled_at).toLocaleString('{{ app()->getLocale() }}', { dateStyle: 'medium', timeStyle: 'short' });
-                        var toastEl = document.createElement('div');
-                        toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
-                        toastEl.style.zIndex = 9999;
-                        toastEl.innerHTML = '<i class="ti ti-calendar-check me-1"></i>' + (isEditing ? @json(__('Mensaje reprogramado para')) : @json(__('Mensaje programado para'))) + ' ' + label + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
-                        document.body.appendChild(toastEl);
-                        setTimeout(function () { toastEl.remove(); }, 5000);
-                    } else {
-                        alert(data.message || '{{ __("Error al programar el mensaje.") }}');
+                .then(function (r) {
+                    return r.json().then(function (data) {
+                        return { ok: r.ok, data: data && typeof data === 'object' ? data : {} };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data.success) {
+                        alert(result.data.message || '{{ __("Error al programar el mensaje.") }}');
+                        return;
                     }
+                    var data = result.data;
+                    if (!isEditing && messageInput) {
+                        messageInput.value = '';
+                    }
+                    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                        var inst = bootstrap.Modal.getInstance(scheduleModalEl);
+                        if (inst) {
+                            inst.hide();
+                        }
+                    }
+                    if (window.refreshContactChatMessages) {
+                        window.refreshContactChatMessages();
+                    }
+                    var label = new Date(data.scheduled_at).toLocaleString(chatJsLocale, { dateStyle: 'medium', timeStyle: 'short' });
+                    var toastEl = document.createElement('div');
+                    toastEl.className = 'alert alert-success alert-dismissible position-fixed bottom-0 end-0 m-3';
+                    toastEl.style.zIndex = 9999;
+                    toastEl.innerHTML = '<i class="ti ti-calendar-check me-1"></i>' + (isEditing ? @json(__('Mensaje reprogramado para')) : @json(__('Mensaje programado para'))) + ' ' + label + '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                    document.body.appendChild(toastEl);
+                    setTimeout(function () { toastEl.remove(); }, 5000);
                 })
                 .catch(function () {
                     alert('{{ __("Error de conexión al programar.") }}');
@@ -1530,8 +1608,7 @@
                     var taFinal = document.getElementById('aiResponsePreview');
                     if (taFinal) taFinal.disabled = false;
                     if (regenIsAssistant) return;
-                    var sb = document.querySelector('#chat-form .chat-send-primary-btn');
-                    if (sb) sb.disabled = false;
+                    updateChatSendButtonsState();
                 });
             });
         }
@@ -3303,11 +3380,11 @@
 
                             <div class="message-actions d-flex align-items-center">
                                 <div class="btn-group">
-                                    <button type="submit" name="send_intent" value="send" class="btn btn-primary chat-send-primary-btn waves-effect waves-light">
+                                    <button type="submit" name="send_intent" value="send" class="btn btn-primary chat-send-primary-btn waves-effect waves-light" disabled>
                                         <i class="ti ti-send me-md-1"></i>
                                         <span class="align-middle d-md-inline-block">{{ __('Enviar') }}</span>
                                     </button>
-                                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split waves-effect waves-light" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split waves-effect waves-light chat-send-dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" disabled>
                                         <span class="visually-hidden">{{ __('app.message_save_options_dropdown') }}</span>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
