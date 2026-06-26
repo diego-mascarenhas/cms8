@@ -174,6 +174,73 @@ class HostingModuleTest extends TestCase
         ]);
     }
 
+    public function test_cpanel_reseller_account_auth_lists_creatable_plans_via_whm(): void
+    {
+        Http::fake([
+            'https://huginn.test:2087/json-api/listpkgs*' => Http::response([
+                'package' => [
+                    ['name' => 'revision_beginner'],
+                    ['name' => 'revision_enthusiast'],
+                    ['name' => 'revision_explorer'],
+                ],
+            ]),
+        ]);
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => null,
+            'name' => 'Reseller account',
+            'server_url' => 'huginn.test',
+            'username' => 'democpanel',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-password',
+            'success' => true,
+            'status_id' => 1,
+            'data' => ['auth_mode' => 'cpanel_user'],
+        ]);
+
+        $result = app(\App\Services\ControlPanel\CpanelConnector::class)->listPlans($server);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(
+            ['revision_beginner', 'revision_enthusiast', 'revision_explorer'],
+            $result['plans'],
+        );
+        $this->assertFalse($result['reseller_limited']);
+    }
+
+    public function test_cpanel_account_auth_falls_back_to_current_plan_when_whm_listpkgs_fails(): void
+    {
+        Http::fake([
+            'https://account.test:2087/json-api/listpkgs*' => Http::response('Access denied', 403),
+            'https://account.test:2083/execute/Variables/get_user_information*' => Http::response([
+                'status' => 1,
+                'data' => [
+                    'domain' => 'example.com',
+                    'user' => 'siteuser',
+                    'plan' => 'default',
+                ],
+            ]),
+        ]);
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => null,
+            'name' => 'Regular account',
+            'server_url' => 'account.test',
+            'username' => 'siteuser',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-password',
+            'success' => true,
+            'status_id' => 1,
+            'data' => ['auth_mode' => 'cpanel_user'],
+        ]);
+
+        $result = app(\App\Services\ControlPanel\CpanelConnector::class)->listPlans($server);
+
+        $this->assertTrue($result['success']);
+        $this->assertSame(['default'], $result['plans']);
+        $this->assertTrue($result['reseller_limited']);
+    }
+
     public function test_authenticated_user_can_fetch_server_hosting_plans(): void
     {
         Http::fake([

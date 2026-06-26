@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 renderPlanOptions(data.plans || [], currentPlan);
 
                 if (data.limited_to_account) {
-                    setPlanHelp('Este servidor usa credenciales de cuenta cPanel. Para listar todos los planes del reseller, configure acceso WHM.', true);
+                    setPlanHelp('Solo se pudo obtener el plan actual de la cuenta. Si es reseller, verifique que el usuario tenga acceso WHM.', true);
                 }
             })
             .catch(function () {

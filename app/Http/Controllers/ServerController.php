@@ -295,7 +295,7 @@ class ServerController extends Controller
         return response()->json([
             'success' => true,
             'plans' => $result['plans'] ?? [],
-            'limited_to_account' => $server->usesCpanelAccountAuth(),
+            'limited_to_account' => (bool) ($result['reseller_limited'] ?? false),
         ]);
     }
 

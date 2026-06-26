@@ -190,24 +190,14 @@ class CpanelConnector implements ControlPanelConnector
 
         if ($server->usesCpanelAccountAuth())
         {
-            $result = $this->accountUapiRequest($server, 'Variables', 'get_user_information');
-
-            if (! $result['success'])
-            {
-                return $result;
-            }
-
-            $plan = $result['data']['plan'] ?? null;
-
-            return [
-                'success' => true,
-                'plans' => $plan ? [$plan] : [],
-            ];
+            return $this->listPlansForCpanelAccount($server);
         }
 
         try
         {
-            $response = $this->whmRequest($server, '/json-api/listpkgs');
+            $response = $this->whmRequest($server, '/json-api/listpkgs', [
+                'want' => 'creatable',
+            ]);
 
             if (! $response->successful())
             {
@@ -217,15 +207,10 @@ class CpanelConnector implements ControlPanelConnector
                 ];
             }
 
-            $packages = collect($response->json()['package'] ?? [])
-                ->pluck('name')
-                ->filter()
-                ->values()
-                ->all();
-
             return [
                 'success' => true,
-                'plans' => $packages,
+                'plans' => $this->parseListPkgsResponse($response->json()),
+                'reseller_limited' => false,
             ];
         } catch (\Exception $e)
         {
@@ -234,6 +219,80 @@ class CpanelConnector implements ControlPanelConnector
                 'error' => 'Connection error: '.$e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * @return array{success: bool, error?: string, plans?: array<int, string>, reseller_limited?: bool}
+     */
+    private function listPlansForCpanelAccount(Server $server): array
+    {
+        try
+        {
+            $response = $this->whmBasicAuthRequest($server, '/json-api/listpkgs', [
+                'want' => 'creatable',
+            ]);
+
+            if ($response->successful())
+            {
+                $plans = $this->parseListPkgsResponse($response->json());
+
+                if ($plans !== [])
+                {
+                    return [
+                        'success' => true,
+                        'plans' => $plans,
+                        'reseller_limited' => false,
+                    ];
+                }
+            }
+        } catch (\Exception $e)
+        {
+            Log::warning('Reseller WHM listpkgs failed, falling back to account plan: '.$e->getMessage(), [
+                'server_id' => $server->id,
+            ]);
+        }
+
+        $result = $this->accountUapiRequest($server, 'Variables', 'get_user_information');
+
+        if (! $result['success'])
+        {
+            return $result;
+        }
+
+        $plan = $result['data']['plan'] ?? null;
+
+        return [
+            'success' => true,
+            'plans' => $plan ? [$plan] : [],
+            'reseller_limited' => true,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<int, string>
+     */
+    private function parseListPkgsResponse(array $payload): array
+    {
+        if (! empty($payload['package']))
+        {
+            return collect($payload['package'])
+                ->pluck('name')
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        if (! empty($payload['data']['pkg']))
+        {
+            return collect($payload['data']['pkg'])
+                ->pluck('name')
+                ->filter()
+                ->values()
+                ->all();
+        }
+
+        return [];
     }
 
     public function changePlan(Server $server, Domain $domain, string $plan): array
@@ -433,6 +492,18 @@ class CpanelConnector implements ControlPanelConnector
             'email' => $account['email'] ?? null,
             'ip' => $account['ip'] ?? null,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     */
+    private function whmBasicAuthRequest(Server $server, string $path, array $query = []): \Illuminate\Http\Client\Response
+    {
+        $url = $this->whmBaseUrl($server).$path;
+
+        return Http::withBasicAuth($server->username, (string) $server->getDecryptedToken())
+            ->timeout(30)
+            ->get($url, $query);
     }
 
     /**
