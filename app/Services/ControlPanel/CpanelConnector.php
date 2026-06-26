@@ -180,7 +180,7 @@ class CpanelConnector implements ControlPanelConnector
                     'username' => $accountData['user'],
                     'plan' => $accountData['plan'],
                     'suspended' => (bool) ($accountData['suspended'] ?? false),
-                    'data' => $accountData,
+                    'data' => array_merge($domain?->data ?? [], $accountData),
                 ],
             );
 

@@ -24,9 +24,27 @@ class HostingController extends Controller
 
     public function index(DomainDataTable $dataTable)
     {
-        $data['servers'] = Server::all();
+        $domainsQuery = Domain::query();
 
-        return $dataTable->render('hosting.index', $data);
+        if (auth()->user()?->currentTeam)
+        {
+            $teamId = auth()->user()->currentTeam->id;
+            $domainsQuery->whereHas('server', fn ($builder) => $builder->where('team_id', $teamId));
+        }
+
+        $total = (clone $domainsQuery)->count();
+        $active = (clone $domainsQuery)->where('suspended', false)->count();
+        $suspended = (clone $domainsQuery)->where('suspended', true)->count();
+        $undefinedPlan = (clone $domainsQuery)->withUndefinedPlan()->count();
+
+        return $dataTable->render('hosting.index', [
+            'domainStats' => [
+                'total' => $total,
+                'active' => $active,
+                'suspended' => $suspended,
+                'undefined_plan' => $undefinedPlan,
+            ],
+        ]);
     }
 
     public function create(Request $request)

@@ -94,7 +94,109 @@ class DomainDataTable extends DataTable
             $query->where('suspended', true);
         }
 
+        $siteTypeFilter = request()->input('site_type_filter');
+        if ($siteTypeFilter === '__none__')
+        {
+            $query->where(function (QueryBuilder $builder)
+            {
+                $builder->whereNull('site_type')
+                    ->orWhere('site_type', '');
+            });
+        } elseif ($siteTypeFilter !== null && $siteTypeFilter !== '')
+        {
+            $query->where('site_type', $siteTypeFilter);
+        }
+
+        $phpVersionFilter = request()->input('php_version_filter');
+        if ($phpVersionFilter === '__none__')
+        {
+            $query->where(function (QueryBuilder $builder)
+            {
+                $builder->whereNull('php_version')
+                    ->orWhere('php_version', '');
+            });
+        } elseif ($phpVersionFilter !== null && $phpVersionFilter !== '')
+        {
+            $query->where('php_version', $phpVersionFilter);
+        }
+
         return $query;
+    }
+
+    private function teamScopedDomainsQuery(): QueryBuilder
+    {
+        $query = Domain::query();
+
+        if (auth()->check() && auth()->user()->currentTeam)
+        {
+            $query->whereHas('server', fn (QueryBuilder $builder) => $builder->where('team_id', auth()->user()->currentTeam->id));
+        }
+
+        return $query;
+    }
+
+    private function buildSiteTypeFilterOptions(): string
+    {
+        $typesQuery = $this->teamScopedDomainsQuery()
+            ->select('site_type')
+            ->whereNotNull('site_type')
+            ->where('site_type', '!=', '')
+            ->distinct();
+
+        $types = collect(['WordPress', 'Laravel', 'Static', 'Other'])
+            ->merge($typesQuery->orderBy('site_type')->pluck('site_type'))
+            ->filter()
+            ->unique()
+            ->sort()
+            ->values();
+
+        $options = '<option value="">Todos</option>';
+
+        foreach ($types as $type)
+        {
+            $options .= '<option value="'.e($type).'">'.e($type).'</option>';
+        }
+
+        $options .= '<option value="__none__">Sin tipo</option>';
+
+        return $options;
+    }
+
+    private function buildPhpVersionFilterOptions(): string
+    {
+        $versions = $this->teamScopedDomainsQuery()
+            ->select('php_version')
+            ->whereNotNull('php_version')
+            ->where('php_version', '!=', '')
+            ->distinct()
+            ->pluck('php_version')
+            ->filter()
+            ->sort(function (string $left, string $right): int
+            {
+                return version_compare($this->normalizePhpVersionForSort($left), $this->normalizePhpVersionForSort($right));
+            })
+            ->values();
+
+        $options = '<option value="">Todos</option>';
+
+        foreach ($versions as $version)
+        {
+            $options .= '<option value="'.e($version).'">'.e($version).'</option>';
+        }
+
+        $options .= '<option value="__none__">Sin PHP</option>';
+
+        return $options;
+    }
+
+    private function normalizePhpVersionForSort(string $version): string
+    {
+        if (preg_match('/(\d+\.\d+)/', $version, $matches))
+        {
+            return $matches[1];
+        }
+
+        return $version;
     }
 
     public function html(): HtmlBuilder
@@ -112,28 +214,40 @@ class DomainDataTable extends DataTable
             $serverOptions .= '<option value="'.e((string) $server->id).'">'.e($server->name).'</option>';
         }
 
+        $siteTypeOptions = $this->buildSiteTypeFilterOptions();
+        $phpVersionOptions = $this->buildPhpVersionFilterOptions();
+
         $initComplete = "function () {
     var api = this.api();
     var f = jQuery('#domain-table_filter');
     if (! f.length) { return; }
-    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+    f.addClass('d-flex flex-nowrap align-items-center gap-2');
     if (! jQuery('#domain-filter-server').length) {
         f.prepend(
+            '<div id=\"domain-table-filters\" class=\"d-flex flex-nowrap align-items-center gap-2 flex-shrink-1\">' +
             '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
-            '<label for=\"domain-filter-server\" class=\"form-label mb-0 me-2 text-nowrap\">Servidor</label>' +
-            '<select id=\"domain-filter-server\" class=\"form-select form-select-sm\" style=\"min-width:12rem;max-width:16rem;\">{$serverOptions}</select>' +
+            '<label for=\"domain-filter-server\" class=\"form-label mb-0 me-1 text-nowrap small\">Servidor</label>' +
+            '<select id=\"domain-filter-server\" class=\"form-select form-select-sm\" style=\"width:9rem;\">{$serverOptions}</select>' +
             '</div>' +
             '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
-            '<label for=\"domain-filter-status\" class=\"form-label mb-0 me-2 text-nowrap\">Estado</label>' +
-            '<select id=\"domain-filter-status\" class=\"form-select form-select-sm\" style=\"min-width:9rem;max-width:12rem;\">' +
+            '<label for=\"domain-filter-status\" class=\"form-label mb-0 me-1 text-nowrap small\">Estado</label>' +
+            '<select id=\"domain-filter-status\" class=\"form-select form-select-sm\" style=\"width:7.5rem;\">' +
             '<option value=\"\">Todos</option>' +
             '<option value=\"active\">Activo</option>' +
             '<option value=\"suspended\">Suspendido</option>' +
-            '</select></div>'
+            '</select></div>' +
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"domain-filter-site-type\" class=\"form-label mb-0 me-1 text-nowrap small\">Tipo</label>' +
+            '<select id=\"domain-filter-site-type\" class=\"form-select form-select-sm\" style=\"width:8rem;\">{$siteTypeOptions}</select>' +
+            '</div>' +
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"domain-filter-php-version\" class=\"form-label mb-0 me-1 text-nowrap small\">PHP</label>' +
+            '<select id=\"domain-filter-php-version\" class=\"form-select form-select-sm\" style=\"width:6rem;\">{$phpVersionOptions}</select>' +
+            '</div></div>'
         );
     }
-    f.find('label').addClass('ms-auto mb-0');
-    jQuery('#domain-filter-server, #domain-filter-status').off('change.domainFilters').on('change.domainFilters', function () {
+    f.find('input[type=\"search\"]').closest('label').addClass('ms-auto mb-0 flex-shrink-0 text-nowrap');
+    jQuery('#domain-filter-server, #domain-filter-status, #domain-filter-site-type, #domain-filter-php-version').off('change.domainFilters').on('change.domainFilters', function () {
         api.ajax.reload();
     });
 }";
@@ -143,7 +257,7 @@ class DomainDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax(
                 '',
-                "data.server_filter = ($('#domain-filter-server').val() || ''); data.status_filter = ($('#domain-filter-status').val() || '');",
+                "data.server_filter = ($('#domain-filter-server').val() || ''); data.status_filter = ($('#domain-filter-status').val() || ''); data.site_type_filter = ($('#domain-filter-site-type').val() || ''); data.php_version_filter = ($('#domain-filter-php-version').val() || '');",
             )
             ->dom('frtip')
             ->orderBy(1, 'asc')
@@ -154,8 +268,8 @@ class DomainDataTable extends DataTable
                 'initComplete' => $initComplete,
                 'drawCallback' => "function () {
                     var f = jQuery('#domain-table_filter');
-                    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
-                    f.find('label').addClass('ms-auto mb-0');
+                    f.addClass('d-flex flex-nowrap align-items-center gap-2');
+                    f.find('input[type=\"search\"]').closest('label').addClass('ms-auto mb-0 flex-shrink-0 text-nowrap');
                 }",
             ])
             ->language([

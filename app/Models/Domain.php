@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use GuzzleHttp\Client;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -43,6 +44,16 @@ class Domain extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function scopeWithUndefinedPlan(Builder $query): Builder
+    {
+        return $query->where(function (Builder $builder)
+        {
+            $builder->whereNull('plan')
+                ->orWhere('plan', '')
+                ->orWhere('plan', 'undefined');
+        });
     }
 
     public function getWebIpAttribute()

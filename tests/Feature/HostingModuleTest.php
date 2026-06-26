@@ -68,6 +68,54 @@ class HostingModuleTest extends TestCase
         ]);
     }
 
+    public function test_cpanel_sync_merges_existing_domain_data(): void
+    {
+        Http::fake([
+            '*listaccts*' => Http::response([
+                'acct' => [
+                    [
+                        'domain' => 'example.com',
+                        'user' => 'example',
+                        'plan' => 'default',
+                        'suspended' => 0,
+                        'diskused' => 100,
+                    ],
+                ],
+            ]),
+        ]);
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => null,
+            'name' => 'WHM Test',
+            'server_url' => 'whm.example.com',
+            'username' => 'root',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-token',
+            'success' => false,
+            'status_id' => 1,
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'example.com',
+            'server_id' => $server->id,
+            'username' => 'example',
+            'plan' => 'legacy',
+            'data' => [
+                'ssl_status' => ['valid' => true],
+                'email_accounts' => [['email' => 'info@example.com']],
+            ],
+        ]);
+
+        app(WHMService::class)->syncDomainsFromServer($server);
+
+        $domain = Domain::query()->where('domain', 'example.com')->first();
+
+        $this->assertNotNull($domain);
+        $this->assertTrue($domain->data['ssl_status']['valid'] ?? false);
+        $this->assertSame('info@example.com', $domain->data['email_accounts'][0]['email'] ?? null);
+        $this->assertSame(100, $domain->data['disk_used'] ?? $domain->data['diskused'] ?? null);
+    }
+
     public function test_authenticated_user_can_sync_server_domains(): void
     {
         Http::fake([
@@ -980,13 +1028,30 @@ class HostingModuleTest extends TestCase
             'status_id' => 1,
         ]);
 
+        Domain::factory()->create([
+            'domain' => 'activo.test',
+            'username' => 'activo',
+            'plan' => 'revision_enthusiast',
+            'suspended' => false,
+            'server_id' => Server::withoutGlobalScopes()->first()->id,
+        ]);
+
+        Domain::factory()->create([
+            'domain' => 'suspendido.test',
+            'username' => 'suspendido',
+            'plan' => 'undefined',
+            'suspended' => true,
+            'server_id' => Server::withoutGlobalScopes()->first()->id,
+        ]);
+
         $response = $this->actingAs($user)->get(route('hosting.index'));
 
         $response->assertOk();
-        $response->assertSee('Total servidores', false);
-        $response->assertSee('Servidores en línea', false);
-        $response->assertSee('Certificados válidos', false);
-        $response->assertSee('Servidores desconectados', false);
+        $response->assertSee('Total dominios', false);
+        $response->assertSee('Dominios activos', false);
+        $response->assertSee('Plan sin definir', false);
+        $response->assertSee('Dominios suspendidos', false);
+        $response->assertSee('>2<', false);
         $response->assertSee('Dominio', false);
         $response->assertSee('Estado', false);
         $response->assertSee('Acciones', false);
@@ -1064,6 +1129,8 @@ class HostingModuleTest extends TestCase
             'server_id' => $serverA->id,
             'domain' => 'alpha.test',
             'username' => 'alpha',
+            'site_type' => 'WordPress',
+            'php_version' => '8.2',
             'suspended' => false,
         ]);
 
@@ -1071,6 +1138,8 @@ class HostingModuleTest extends TestCase
             'server_id' => $serverB->id,
             'domain' => 'beta.test',
             'username' => 'beta',
+            'site_type' => 'Laravel',
+            'php_version' => '8.3',
             'suspended' => true,
         ]);
 
@@ -1097,6 +1166,30 @@ class HostingModuleTest extends TestCase
         $statusResponse->assertOk();
         $statusResponse->assertJsonPath('recordsTotal', 1);
         $this->assertStringContainsString('beta.test', (string) collect($statusResponse->json('data'))->first()['domain']);
+
+        $typeResponse = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('hosting.index').'?'.http_build_query(array_merge(
+            $this->hostingDataTableQuery(),
+            ['site_type_filter' => 'WordPress'],
+        )));
+
+        $typeResponse->assertOk();
+        $typeResponse->assertJsonPath('recordsTotal', 1);
+        $this->assertSame('WordPress', collect($typeResponse->json('data'))->first()['site_type'] ?? null);
+
+        $phpResponse = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('hosting.index').'?'.http_build_query(array_merge(
+            $this->hostingDataTableQuery(),
+            ['php_version_filter' => '8.3'],
+        )));
+
+        $phpResponse->assertOk();
+        $phpResponse->assertJsonPath('recordsTotal', 1);
+        $this->assertSame('8.3', collect($phpResponse->json('data'))->first()['php_version'] ?? null);
     }
 
     /**
