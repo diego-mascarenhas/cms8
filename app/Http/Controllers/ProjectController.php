@@ -124,6 +124,7 @@ class ProjectController extends Controller
      */
     public function generateBudgetSpec(Request $request): \Illuminate\Http\JsonResponse
     {
+        $this->authorize('access-billing-modules');
         $this->authorize('create', Project::class);
 
         $request->validate([

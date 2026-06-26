@@ -248,11 +248,15 @@
                                        data-collaborator-id="{{ $collaborator->id }}">
                             </div>
                             <div class="text-end">
+                                @can('access-billing-modules')
                                 @if($price !== 'N/A')
                                     <strong class="text-success">{{ number_format($price, 2) }}{{ $currencySymbol }} {{ $unitName }}</strong>
                                 @else
                                     <span class="text-muted">{{ __('Por consultar') }}</span>
                                 @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endcan
                             </div>
                         </div>
                     @endif
@@ -288,7 +292,9 @@
                                                 <tr class="text-muted">
                                                     <th style="font-size: 0.75rem;">{{ __('Servicio') }}</th>
                                                     <th style="font-size: 0.75rem;">{{ __('Idiomas') }}</th>
+                                                    @can('access-billing-modules')
                                                     <th style="font-size: 0.75rem;" class="text-end">{{ __('Tarifa') }}</th>
+                                                    @endcan
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -336,6 +342,7 @@
                                                                 <span class="text-muted">{{ __('Cualquier idioma') }}</span>
                                                             @endif
                                                         </td>
+                                                        @can('access-billing-modules')
                                                         <td class="text-end">
                                                             @if($price !== 'N/A')
                                                                 <strong class="text-success">{{ number_format($price, 2) }}{{ $currencySymbol }} {{ $unitName }}</strong>
@@ -343,6 +350,7 @@
                                                                 <span class="text-muted">{{ __('Por consultar') }}</span>
                                                             @endif
                                                         </td>
+                                                        @endcan
                                                     </tr>
                                                 @endforeach
                                             </tbody>

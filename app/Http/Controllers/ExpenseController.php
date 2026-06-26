@@ -29,6 +29,8 @@ class ExpenseController extends Controller
 {
     public function index(ExpenseDataTable $dataTable)
     {
+        $this->authorize('viewAny', Payment::class);
+
         // Get accounts with balances
         $accounts = PaymentAccount::with('currency')
             ->get()
@@ -88,6 +90,8 @@ class ExpenseController extends Controller
 
     public function create(): View
     {
+        $this->authorize('create', Payment::class);
+
         $enterprises = Enterprise::query()
             ->orderBy('name')
             ->get(['id', 'name', 'type_id']);
@@ -137,6 +141,8 @@ class ExpenseController extends Controller
         DetectExpenseDocumentRequest $request,
         ExpenseDocumentDetectionService $expenseDocumentDetectionService,
     ): JsonResponse {
+        $this->authorize('create', Payment::class);
+
         $teamId = (int) $request->user()->currentTeam->id;
         $detectedData = $expenseDocumentDetectionService->detectFromUploadedFile(
             $request->file('document_file'),
@@ -151,6 +157,8 @@ class ExpenseController extends Controller
 
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
+        $this->authorize('create', Payment::class);
+
         $validated = $request->validated();
         $lineSummaries = $this->buildLineSummaries($validated['lines']);
         $teamId = (int) $request->user()->currentTeam->id;

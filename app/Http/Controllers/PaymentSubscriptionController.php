@@ -8,6 +8,11 @@ use Illuminate\Validation\Rule;
 
 class PaymentSubscriptionController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:access-billing-modules');
+    }
+
     private const PROVIDERS = ['stripe', 'paypal', 'mercadopago', 'local'];
 
     private const STATUSES = ['active', 'canceled', 'past_due', 'trialing', 'pending', 'expired'];

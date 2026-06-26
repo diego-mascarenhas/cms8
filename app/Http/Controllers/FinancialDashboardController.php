@@ -19,6 +19,8 @@ class FinancialDashboardController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Payment::class);
+
         $payments = Payment::query();
 
         $currentYear = Carbon::now()->year;

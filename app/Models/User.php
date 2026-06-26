@@ -92,6 +92,23 @@ class User extends Authenticatable
     protected static int $profilePhotoCropSize = 512;
 
     /**
+     * Whether the user may access billing & budgeting features (invoices, payments,
+     * income/expense, fares, fiscal companies, finance, subscriptions, project budgets).
+     *
+     * Collaborators are scoped to operational work (tasks, projects without pricing,
+     * hosting, agenda, contacts and clients) and are excluded from billing.
+     */
+    public function canAccessBilling(): bool
+    {
+        if ($this->hasAnyRole(['admin', 'root']))
+        {
+            return true;
+        }
+
+        return ! $this->hasRole('collaborator');
+    }
+
+    /**
      * Update the user's profile photo. Crops to a square (center) before storing
      * so the image is never deformed in the UI.
      */

@@ -25,6 +25,11 @@ class BillingController extends Controller
 {
     use ConfiguresTeamMail;
 
+    public function __construct()
+    {
+        $this->middleware('can:access-billing-modules');
+    }
+
     public function index()
     {
         $user = auth()->user();

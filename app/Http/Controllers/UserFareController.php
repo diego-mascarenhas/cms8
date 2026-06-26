@@ -12,6 +12,11 @@ use Illuminate\Support\Facades\Auth;
 
 class UserFareController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('can:access-billing-modules');
+    }
+
     /**
      * Display a listing of the resource.
      */
@@ -266,8 +271,7 @@ class UserFareController extends Controller
                 $validated,
                 $currency,
                 $sameRates
-            ): void
-            {
+            ): void {
                 // If language variants module is not active, save rates without language pairs
                 if (! $hasLanguageVariantsModule)
                 {

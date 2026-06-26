@@ -12,6 +12,8 @@ class IncomeController extends Controller
 {
     public function index(IncomeDataTable $dataTable)
     {
+        $this->authorize('viewAny', Payment::class);
+
         // Get accounts with balances
         $accounts = PaymentAccount::with('currency')
             ->get()

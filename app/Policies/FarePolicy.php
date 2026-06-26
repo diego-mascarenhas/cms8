@@ -16,7 +16,8 @@ class FarePolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin'))
+        {
             return true;
         }
 
@@ -28,7 +29,12 @@ class FarePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'collaborator', 'client']);
+        if (! $user->canAccessBilling())
+        {
+            return false;
+        }
+
+        return $user->hasAnyRole(['admin', 'client']);
     }
 
     /**
@@ -36,7 +42,12 @@ class FarePolicy
      */
     public function view(User $user, Fare $fare): bool
     {
-        return $user->hasAnyRole(['admin', 'collaborator', 'client']) &&
+        if (! $user->canAccessBilling())
+        {
+            return false;
+        }
+
+        return $user->hasAnyRole(['admin', 'client']) &&
             $user->currentTeam->id === $fare->team_id;
     }
 
@@ -45,7 +56,12 @@ class FarePolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['admin', 'collaborator']);
+        if (! $user->canAccessBilling())
+        {
+            return false;
+        }
+
+        return $user->hasAnyRole(['admin']);
     }
 
     /**
@@ -53,16 +69,13 @@ class FarePolicy
      */
     public function update(User $user, Fare $fare): bool
     {
-        // Admin can update any fare in their team
-        if ($user->hasRole('admin') && $user->currentTeam->id === $fare->team_id)
+        if (! $user->canAccessBilling())
         {
-            return true;
+            return false;
         }
 
-        // Collaborator can only update their own fares within their team
-        if ($user->hasRole('collaborator') &&
-            $user->currentTeam->id === $fare->team_id &&
-            $fare->user_id === $user->id)
+        // Admin can update any fare in their team
+        if ($user->hasRole('admin') && $user->currentTeam->id === $fare->team_id)
         {
             return true;
         }
@@ -75,7 +88,12 @@ class FarePolicy
      */
     public function delete(User $user, Fare $fare): bool
     {
-        return $user->hasAnyRole(['admin', 'collaborator']) &&
+        if (! $user->canAccessBilling())
+        {
+            return false;
+        }
+
+        return $user->hasAnyRole(['admin']) &&
             $user->currentTeam->id === $fare->team_id;
     }
 
