@@ -61,6 +61,32 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-server-2 mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('team_settings.groups.hosting.title') }}</h5>
+                            <p class="card-text">{{ __('team_settings.groups.hosting.subtitle') }}</p>
+                            @if ($hostingInfrastructureEnabled)
+                                @if ($hostingServerCount > 0)
+                                    <p class="small text-muted mb-2">{{ trans_choice('team_settings.groups.hosting.servers_connected', $hostingServerCount, ['count' => $hostingServerCount]) }}</p>
+                                @endif
+                                <div class="btn-group">
+                                    <a href="{{ route('server.index') }}" class="btn btn-primary">{{ __('team_settings.groups.hosting.manage_servers') }}</a>
+                                    <a href="{{ route('hosting.index') }}" class="btn btn-outline-primary">{{ __('team_settings.groups.hosting.manage_hosting') }}</a>
+                                </div>
+                            @else
+                                <p class="small text-warning mb-2">{{ __('team_settings.groups.hosting.modules_disabled') }}</p>
+                                @if (auth()->user()->hasRole('root'))
+                                    <a href="{{ route('account.edit', $team->id) }}" class="btn btn-label-secondary">{{ __('team_settings.groups.hosting.enable_modules') }}</a>
+                                @else
+                                    <span class="text-muted small">{{ __('team_settings.groups.hosting.ask_admin_modules') }}</span>
+                                @endif
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-file-export mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">{{ __('Exportación fiscal') }}</h5>
                             <p class="card-text">{{ __('Plataforma fiscal, país y enrutado automático de facturas locales') }}</p>

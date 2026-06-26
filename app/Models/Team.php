@@ -158,6 +158,35 @@ class Team extends JetstreamTeam
         return $this->settings()->where('key', $key)->first()?->value ?? $default;
     }
 
+    public function getHostingContactEmail(): ?string
+    {
+        $config = $this->getSetting('business_config', []);
+
+        if (is_string($config))
+        {
+            $config = json_decode($config, true) ?: [];
+        }
+
+        if (is_array($config))
+        {
+            foreach (['business_email', 'contact_email'] as $key)
+            {
+                $email = trim((string) ($config[$key] ?? ''));
+
+                if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL))
+                {
+                    return $email;
+                }
+            }
+        }
+
+        $ownerEmail = trim((string) ($this->owner?->email ?? ''));
+
+        return $ownerEmail !== '' && filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)
+            ? $ownerEmail
+            : null;
+    }
+
     public function setSetting($key, $value, $options = [])
     {
         $defaultOptions = [

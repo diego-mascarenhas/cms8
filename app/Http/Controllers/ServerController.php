@@ -5,37 +5,40 @@ namespace App\Http\Controllers;
 use App\DataTables\ServerDataTable;
 use App\Enums\ServerStatus;
 use App\Models\Server;
-use App\Services\WhmService;
+use App\Services\ControlPanel\ControlPanelManager;
+use App\Services\ControlPanel\CpanelConnector;
+use App\Services\WHMService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class ServerController extends Controller
 {
-    /**
-     * Display a listing of servers
-     */
+    public function __construct(
+        private ControlPanelManager $controlPanelManager,
+        private WHMService $whmService,
+        private CpanelConnector $cpanelConnector,
+    ) {}
+
     public function index(ServerDataTable $dataTable)
     {
         return $dataTable->render('server.index');
     }
 
-    /**
-     * Show the form for creating a new server
-     */
-    public function create()
+    public function create(): View
     {
         $statuses = ServerStatus::cases();
         $teams = \App\Models\Team::all();
+        $data = new Server;
 
-        return view('server.create', compact('statuses', 'teams'));
+        return view('server.form', compact('statuses', 'teams', 'data'));
     }
 
-    /**
-     * Store a newly created server
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string',
@@ -44,14 +47,15 @@ class ServerController extends Controller
             'username' => 'required|string',
             'operating_system' => 'nullable|string|max:255',
             'control_panel' => 'required|in:none,cpanel,plesk',
+            'auth_mode' => 'nullable|in:whm,cpanel_user',
             'encrypted_token' => 'nullable|string',
             'team_id' => 'nullable|exists:teams,id',
             'status_id' => 'required|integer',
         ]);
 
-        // Set default values
-        $validated['success'] = true;
-        $validated['data'] = [];
+        $validated['success'] = false;
+        $validated['data'] = $this->buildServerData($request, []);
+        $validated['team_id'] = $validated['team_id'] ?? auth()->user()?->currentTeam?->id;
 
         $server = Server::create($validated);
 
@@ -59,19 +63,14 @@ class ServerController extends Controller
             ->with('success', 'Server created successfully.');
     }
 
-    /**
-     * Display the specified server
-     */
-    public function show(Server $server)
+    public function show(Server $server): View
     {
         $cPanelDomains = null;
         $cPanelError = null;
 
-        // If it's a cPanel server, try to get domains from WHM API
         if ($server->control_panel === 'cpanel' && $server->hasToken())
         {
-            $whmService = new WhmService;
-            $result = $whmService->getDomainsFromServer($server);
+            $result = $this->whmService->getDomainsFromServer($server);
 
             if ($result['success'])
             {
@@ -85,21 +84,16 @@ class ServerController extends Controller
         return view('server.show', compact('server', 'cPanelDomains', 'cPanelError'));
     }
 
-    /**
-     * Show the form for editing the specified server
-     */
-    public function edit(Server $server)
+    public function edit(Server $server): View
     {
         $statuses = ServerStatus::cases();
         $teams = \App\Models\Team::all();
+        $data = $server;
 
-        return view('server.edit', compact('server', 'statuses', 'teams'));
+        return view('server.form', compact('server', 'statuses', 'teams', 'data'));
     }
 
-    /**
-     * Update the specified server
-     */
-    public function update(Request $request, Server $server)
+    public function update(Request $request, Server $server): RedirectResponse
     {
         $validated = $request->validate([
             'name' => 'required|string',
@@ -112,10 +106,18 @@ class ServerController extends Controller
             'username' => 'required|string',
             'operating_system' => 'nullable|string|max:255',
             'control_panel' => 'required|in:none,cpanel,plesk',
+            'auth_mode' => 'nullable|in:whm,cpanel_user',
             'encrypted_token' => 'nullable|string',
             'team_id' => 'nullable|exists:teams,id',
             'status_id' => 'required|integer',
         ]);
+
+        if (empty($validated['encrypted_token']))
+        {
+            unset($validated['encrypted_token']);
+        }
+
+        $validated['data'] = $this->buildServerData($request, $server->data ?? []);
 
         $server->update($validated);
 
@@ -123,12 +125,8 @@ class ServerController extends Controller
             ->with('success', 'Server updated successfully.');
     }
 
-    /**
-     * Remove the specified server
-     */
-    public function destroy(Server $server)
+    public function destroy(Server $server): RedirectResponse
     {
-        // Check if there are any domains using this server
         $domainCount = $server->domains()->count();
 
         if ($domainCount > 0)
@@ -143,30 +141,53 @@ class ServerController extends Controller
             ->with('success', 'Server deleted successfully.');
     }
 
-    /**
-     * Test server connection
-     */
-    public function testConnection(Server $server)
+    public function testConnection(Server $server): RedirectResponse
     {
         try
         {
-            // Check if server has required configuration
-            if ($server->control_panel !== 'cpanel')
+            if (! $this->controlPanelManager->supports($server))
             {
                 return redirect()->route('server.show', $server->id)
-                    ->with('warning', 'Connection test is only available for cPanel servers.');
+                    ->with('warning', 'Connection test is only available for cPanel and Plesk servers.');
+            }
+
+            if ($server->control_panel === 'plesk')
+            {
+                $result = $this->controlPanelManager->forServer($server)->testConnection($server);
+
+                return redirect()->route('server.show', $server->id)
+                    ->with($result['success'] ? 'success' : 'warning', $result['error'] ?? 'Plesk connection test completed.');
             }
 
             if (! $server->hasToken())
             {
                 return redirect()->route('server.show', $server->id)
-                    ->with('error', 'Cannot test connection: Server token is not configured.');
+                    ->with('error', 'Cannot test connection: credentials are not configured.');
             }
 
-            // Test actual API connection using WHM service
-            $whmService = new WhmService;
+            if ($server->usesCpanelAccountAuth())
+            {
+                $result = $this->cpanelConnector->testConnection($server);
 
-            // Try to get server version first (lightweight test)
+                $server->update([
+                    'success' => $result['success'],
+                    'status_id' => $result['success'] ? ServerStatus::Active->value : ServerStatus::Error->value,
+                    'data' => array_merge($server->data ?? [], [
+                        'last_connection_test' => now()->toIso8601String(),
+                        'connection_status' => $result['success'] ? 'Success' : 'Failed',
+                        'account_domain' => $result['domain'] ?? null,
+                        'account_plan' => $result['plan'] ?? null,
+                    ]),
+                ]);
+
+                $message = $result['success']
+                    ? 'cPanel account connected. Domain: '.($result['domain'] ?? 'unknown')
+                    : ($result['error'] ?? 'Connection failed');
+
+                return redirect()->route('server.show', $server->id)
+                    ->with($result['success'] ? 'success' : 'error', $message);
+            }
+
             $url = "https://{$server->server_url}:2087";
             $response = Http::withHeaders([
                 'Authorization' => $server->getWhmAuthHeader(),
@@ -178,7 +199,6 @@ class ServerController extends Controller
             {
                 $versionData = $response->json();
 
-                // Update server status to success
                 $server->update([
                     'success' => true,
                     'status_id' => ServerStatus::Active->value,
@@ -193,53 +213,31 @@ class ServerController extends Controller
                     ]),
                 ]);
 
-                $message = 'Connection successful! ';
+                $message = 'Connection successful!';
                 if (isset($versionData['version']))
                 {
-                    $message .= "WHM Version: {$versionData['version']}";
-                }
-                if (isset($versionData['hostname']))
-                {
-                    $message .= ", Hostname: {$versionData['hostname']}";
+                    $message .= " WHM Version: {$versionData['version']}";
                 }
 
                 return redirect()->route('server.show', $server->id)
                     ->with('success', $message);
-            } else
-            {
-                // API request failed
-                $errorBody = $response->body();
-                $statusCode = $response->status();
-
-                $server->update([
-                    'success' => false,
-                    'status_id' => ServerStatus::Error->value,
-                    'data' => array_merge($server->data ?? [], [
-                        'last_connection_test' => now()->toIso8601String(),
-                        'connection_status' => 'Failed',
-                        'error_code' => $statusCode,
-                        'error_response' => $errorBody,
-                    ]),
-                ]);
-
-                $errorMessage = "Connection failed (HTTP {$statusCode})";
-                if (str_contains($errorBody, 'authentication failed') || $statusCode === 401)
-                {
-                    $errorMessage .= ': Invalid credentials or token';
-                } elseif (str_contains($errorBody, 'ssl') || str_contains($errorBody, 'certificate'))
-                {
-                    $errorMessage .= ': SSL/Certificate error';
-                } elseif ($statusCode >= 500)
-                {
-                    $errorMessage .= ': Server error';
-                }
-
-                return redirect()->route('server.show', $server->id)
-                    ->with('error', $errorMessage);
             }
+
+            $server->update([
+                'success' => false,
+                'status_id' => ServerStatus::Error->value,
+                'data' => array_merge($server->data ?? [], [
+                    'last_connection_test' => now()->toIso8601String(),
+                    'connection_status' => 'Failed',
+                    'error_code' => $response->status(),
+                    'error_response' => $response->body(),
+                ]),
+            ]);
+
+            return redirect()->route('server.show', $server->id)
+                ->with('error', 'Connection failed (HTTP '.$response->status().')');
         } catch (\Illuminate\Http\Client\ConnectionException $e)
         {
-            // Network/connection errors
             $server->update([
                 'success' => false,
                 'status_id' => ServerStatus::Error->value,
@@ -250,41 +248,12 @@ class ServerController extends Controller
                 ]),
             ]);
 
-            $errorMessage = 'Connection failed: ';
-            if (str_contains($e->getMessage(), 'timeout'))
-            {
-                $errorMessage .= 'Connection timeout - server may be unreachable';
-            } elseif (str_contains($e->getMessage(), 'resolve'))
-            {
-                $errorMessage .= 'Cannot resolve hostname';
-            } else
-            {
-                $errorMessage .= 'Network error';
-            }
-
             return redirect()->route('server.show', $server->id)
-                ->with('error', $errorMessage);
+                ->with('error', 'Connection failed: Network error');
         } catch (\Exception $e)
         {
-            // Other errors
             Log::error('Error testing server connection: '.$e->getMessage(), [
                 'server_id' => $server->id,
-                'server_url' => $server->server_url,
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-
-            $server->update([
-                'success' => false,
-                'status_id' => ServerStatus::Error->value,
-                'data' => array_merge($server->data ?? [], [
-                    'last_connection_test' => now()->toIso8601String(),
-                    'connection_status' => 'Error',
-                    'error_type' => get_class($e),
-                    'error_message' => $e->getMessage(),
-                ]),
             ]);
 
             return redirect()->route('server.show', $server->id)
@@ -292,16 +261,51 @@ class ServerController extends Controller
         }
     }
 
-    /**
-     * Sync domains from cPanel server
-     */
-    public function syncDomains(Server $server)
+    public function plans(Server $server): JsonResponse
     {
         if ($server->control_panel !== 'cpanel')
         {
             return response()->json([
                 'success' => false,
-                'message' => 'Server is not configured for cPanel',
+                'message' => 'Hosting plans are only available for cPanel servers',
+                'plans' => [],
+            ], 400);
+        }
+
+        if (! $server->hasToken())
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Server credentials are not configured',
+                'plans' => [],
+            ], 400);
+        }
+
+        $result = $this->controlPanelManager->forServer($server)->listPlans($server);
+
+        if (! ($result['success'] ?? false))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Failed to load hosting plans',
+                'plans' => [],
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'plans' => $result['plans'] ?? [],
+            'limited_to_account' => (bool) ($result['reseller_limited'] ?? false),
+        ]);
+    }
+
+    public function syncDomains(Server $server): JsonResponse
+    {
+        if ($server->control_panel !== 'cpanel')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Domain sync is only available for cPanel servers',
             ], 400);
         }
 
@@ -315,8 +319,7 @@ class ServerController extends Controller
 
         try
         {
-            $whmService = new WhmService;
-            $result = $whmService->syncDomainsFromServer($server);
+            $result = $this->whmService->syncDomainsFromServer($server);
 
             if ($result['success'])
             {
@@ -326,13 +329,12 @@ class ServerController extends Controller
                     'domains_synced' => $result['domains_synced'],
                     'total_domains' => $result['total_domains'],
                 ]);
-            } else
-            {
-                return response()->json([
-                    'success' => false,
-                    'message' => $result['error'] ?? 'Failed to sync domains',
-                ], 500);
             }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['error'] ?? 'Failed to sync domains',
+            ], 500);
         } catch (\Exception $e)
         {
             Log::error('Error syncing domains: '.$e->getMessage());
@@ -342,5 +344,24 @@ class ServerController extends Controller
                 'message' => 'Internal server error',
             ], 500);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $existing
+     * @return array<string, mixed>
+     */
+    private function buildServerData(Request $request, array $existing): array
+    {
+        $data = $existing;
+
+        if ($request->input('control_panel') === 'cpanel')
+        {
+            $data['auth_mode'] = $request->input('auth_mode', $existing['auth_mode'] ?? 'whm');
+        } else
+        {
+            unset($data['auth_mode']);
+        }
+
+        return $data;
     }
 }

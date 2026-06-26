@@ -40,6 +40,14 @@ return new class extends Migration
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
         });
+
+        Schema::table('domains', function (Blueprint $table)
+        {
+            $table->foreign('service_id')
+                ->references('id')
+                ->on('services')
+                ->nullOnDelete();
+        });
     }
 
     /**
@@ -47,6 +55,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::table('domains', function (Blueprint $table)
+        {
+            $table->dropForeign(['service_id']);
+        });
+
         Schema::dropIfExists('services');
     }
 };

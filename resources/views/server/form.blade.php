@@ -24,9 +24,11 @@
 
 <div class="card mb-4">
     <h5 class="card-header">Servers</h5>
-    <form class="card-body" action="{{ route('server.store') }}" method="POST">
+    <form class="card-body" action="{{ isset($data->id) ? route('server.update', $data->id) : route('server.store') }}" method="POST">
         @csrf
-        <input type="hidden" name="id" value="{{ $data->id ?? '' }}">
+        @if(isset($data->id))
+            @method('PUT')
+        @endif
         
         <div class="row g-3">
             <div class="col-md-6">
@@ -83,14 +85,27 @@
             @endif
 
             <div class="col-md-6">
+                <label for="auth_mode" class="form-label">cPanel authentication</label>
+                <select class="form-select @error('auth_mode') is-invalid @enderror" id="auth_mode" name="auth_mode">
+                    @php($authMode = old('auth_mode', $data->data['auth_mode'] ?? 'whm'))
+                    <option value="whm" {{ $authMode === 'whm' ? 'selected' : '' }}>WHM API token (multi-account)</option>
+                    <option value="cpanel_user" {{ $authMode === 'cpanel_user' ? 'selected' : '' }}>cPanel account user + password</option>
+                </select>
+                @error('auth_mode')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="col-md-6">
                 <x-input-select id="status_id" label="Status (*)" :options="$statuses" value="{{ old('status_id', $data->status_id->value ?? '1') }}" />
             </div>
 
             <div class="col-md-12">
-                <label for="encrypted_token" class="form-label">Encrypted Token</label>
+                <label for="encrypted_token" class="form-label">WHM API token / cPanel password</label>
                 <textarea class="form-control @error('encrypted_token') is-invalid @enderror" 
                           id="encrypted_token" name="encrypted_token" rows="3"
-                          placeholder="Token encriptado para autenticación">{{ old('encrypted_token', $data->encrypted_token ?? '') }}</textarea>
+                          placeholder="{{ isset($data->id) ? 'Leave blank to keep the current secret' : 'WHM token or cPanel account password' }}">{{ old('encrypted_token', isset($data->id) ? '' : '') }}</textarea>
+                <div class="form-text">Use WHM API token for root/reseller access, or the cPanel account password when authentication mode is cPanel account.</div>
                 @error('encrypted_token')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror

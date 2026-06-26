@@ -3,15 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\DomainDataTable;
+use App\Http\Requests\StoreHostingRequest;
+use App\Http\Requests\UpdateHostingRequest;
 use App\Models\Domain;
 use App\Models\Server;
+use App\Models\Service;
+use App\Models\ServiceType;
+use App\Services\ControlPanel\ControlPanelManager;
 use App\Traits\TracksContactActions;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
 
 class HostingController extends Controller
 {
     use TracksContactActions;
+
+    public function __construct(
+        private ControlPanelManager $controlPanelManager,
+    ) {}
 
     public function index(DomainDataTable $dataTable)
     {
@@ -20,69 +29,117 @@ class HostingController extends Controller
         return $dataTable->render('hosting.index', $data);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $servers = Server::all();
+        $hostingContactEmail = auth()->user()?->currentTeam?->getHostingContactEmail();
+        $serviceId = $request->input('service_id');
+        $enterpriseId = $request->input('enterprise_id');
 
-        return view('hosting.create', compact('servers'));
+        $services = Service::query()
+            ->with(['enterprise', 'serviceType'])
+            ->when($enterpriseId, fn ($query) => $query->where('enterprise_id', $enterpriseId))
+            ->orderByDesc('id')
+            ->get();
+
+        return view('hosting.create', compact('servers', 'hostingContactEmail', 'serviceId', 'services'));
     }
 
-    public function store(Request $request)
+    public function store(StoreHostingRequest $request)
     {
-        $validated = $request->validate([
-            'domain' => 'required|string|unique:domains,domain',
-            'server_id' => 'required|integer|exists:servers,id',
-            'username' => 'required|string',
-            'plan' => 'nullable|string',
-            'site_type' => 'nullable|string',
-            'php_version' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
-        // Set default values
-        $validated['suspended'] = $request->input('suspended', false);
-        $validated['needs_update'] = $request->input('needs_update', false);
+        $server = Server::findOrFail($validated['server_id']);
+        $generatedPassword = Str::password(16, letters: true, numbers: true, symbols: true);
+        $spfConfigured = false;
+        $spfError = null;
+        $contactEmail = auth()->user()?->currentTeam?->getHostingContactEmail()
+            ?? auth()->user()?->email;
+
+        if ($server->control_panel === 'cpanel')
+        {
+            if (! $server->hasToken())
+            {
+                return back()
+                    ->withInput()
+                    ->withErrors(['provision' => 'El servidor no tiene credenciales configuradas para crear la cuenta.']);
+            }
+
+            $connector = $this->controlPanelManager->forServer($server);
+
+            $result = $connector->createAccount(
+                $server,
+                $validated['username'],
+                $validated['domain'],
+                $validated['plan'],
+                $generatedPassword,
+                $contactEmail,
+            );
+
+            if (! $result['success'])
+            {
+                return back()
+                    ->withInput()
+                    ->withErrors(['provision' => $result['error'] ?? 'No se pudo crear la cuenta en cPanel.']);
+            }
+        }
+
+        $validated['suspended'] = false;
+        $validated['needs_update'] = false;
         $validated['is_working'] = true;
         $validated['data'] = [];
+        $validated['service_id'] = $this->resolveServiceIdForHosting($validated, $server);
+        unset($validated['enterprise_id']);
 
         $domain = Domain::create($validated);
 
-        return redirect()->route('hosting.index')
-            ->with('success', 'Hosting creado exitosamente.');
+        if ($server->control_panel === 'cpanel' && $server->hasToken())
+        {
+            $spfRecord = $server->getProvisioningSpfRecord();
+
+            if ($spfRecord !== '')
+            {
+                $spfResult = $this->controlPanelManager->forServer($server)->ensureSpfRecord(
+                    $server,
+                    $domain,
+                    $spfRecord,
+                );
+
+                $spfConfigured = (bool) ($spfResult['success'] ?? false);
+                $spfError = $spfResult['error'] ?? null;
+            }
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with('success', 'Hosting creado exitosamente.')
+            ->with('hosting_provisioned', true)
+            ->with('generated_password', $generatedPassword)
+            ->with('dns_nameservers', $server->getProvisioningNameservers())
+            ->with('spf_configured', $spfConfigured)
+            ->with('spf_error', $spfError);
     }
 
     public function show(Domain $hosting)
     {
-        // Redirigir al controlador de dominio para mostrar el dominio
         return redirect()->route('domain.show', $hosting->id);
     }
 
     public function edit(Domain $hosting)
     {
         $servers = Server::all();
+        $services = Service::query()
+            ->with(['enterprise', 'serviceType'])
+            ->orderByDesc('id')
+            ->get();
 
-        return view('hosting.create', compact('hosting', 'servers'));
+        return view('hosting.create', compact('hosting', 'servers', 'services'));
     }
 
-    public function update(Request $request, Domain $hosting)
+    public function update(UpdateHostingRequest $request, Domain $hosting)
     {
-        $validated = $request->validate([
-            'domain' => [
-                'required',
-                'string',
-                Rule::unique('domains')->ignore($hosting->id),
-            ],
-            'server_id' => 'required|integer|exists:servers,id',
-            'username' => 'required|string',
-            'plan' => 'nullable|string',
-            'site_type' => 'nullable|string',
-            'php_version' => 'nullable|string',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
-        // Set boolean values
-        $validated['suspended'] = $request->input('suspended', false);
-        $validated['needs_update'] = $request->input('needs_update', false);
+        $validated['needs_update'] = $request->boolean('needs_update');
         $validated['is_working'] = true;
 
         $hosting->update($validated);
@@ -93,7 +150,71 @@ class HostingController extends Controller
 
     public function destroy(Domain $hosting)
     {
-        // Redirigir al controlador de dominio para eliminar el dominio
         return redirect()->route('domain.destroy', $hosting->id);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveServiceIdForHosting(array $validated, Server $server): ?int
+    {
+        if (! empty($validated['service_id']))
+        {
+            $service = Service::query()->findOrFail($validated['service_id']);
+            $this->syncServiceHostingData($service, $validated, $server);
+
+            return $service->id;
+        }
+
+        if (empty($validated['enterprise_id']))
+        {
+            return null;
+        }
+
+        $serviceTypeId = ServiceType::query()
+            ->where('name', 'like', '%Hosting%')
+            ->value('id') ?? ServiceType::query()->value('id');
+
+        if ($serviceTypeId === null)
+        {
+            return null;
+        }
+
+        $service = Service::create([
+            'enterprise_id' => $validated['enterprise_id'],
+            'service_type_id' => $serviceTypeId,
+            'operation' => 'sell',
+            'description' => 'Hosting '.$validated['domain'],
+            'data' => $this->buildServiceHostingData($validated, $server),
+            'responsible_id' => auth()->id(),
+            'status' => 4,
+        ]);
+
+        return $service->id;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function buildServiceHostingData(array $validated, Server $server): array
+    {
+        return [
+            'domain' => $validated['domain'],
+            'username' => $validated['username'],
+            'plan' => $validated['plan'],
+            'server_id' => $server->id,
+            'server_url' => $server->server_url,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncServiceHostingData(Service $service, array $validated, Server $server): void
+    {
+        $service->update([
+            'data' => array_merge($service->data ?? [], $this->buildServiceHostingData($validated, $server)),
+        ]);
     }
 }

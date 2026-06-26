@@ -3,17 +3,24 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\DomainDataTable;
+use App\Helpers\DnsHelper;
+use App\Http\Requests\StoreDomainEmailRequest;
+use App\Http\Requests\UpdateDomainEmailPasswordRequest;
+use App\Jobs\RefreshDomainDataJob;
 use App\Models\Domain;
 use App\Models\Server;
+use App\Services\ControlPanel\ControlPanelManager;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class DomainController extends Controller
 {
-    /**
-     * Display a listing of domains
-     */
+    public function __construct(
+        private ControlPanelManager $controlPanelManager,
+    ) {}
+
     public function index(DomainDataTable $dataTable)
     {
         $servers = Server::all();
@@ -21,20 +28,14 @@ class DomainController extends Controller
         return $dataTable->render('domain.index', compact('servers'));
     }
 
-    /**
-     * Show the form for creating a new domain
-     */
-    public function create()
+    public function create(): View
     {
         $servers = Server::all();
 
         return view('domain.create', compact('servers'));
     }
 
-    /**
-     * Store a newly created domain
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'domain' => 'required|string|unique:domains,domain',
@@ -49,10 +50,9 @@ class DomainController extends Controller
             'is_working' => 'boolean',
         ]);
 
-        // Set default values
-        $validated['suspended'] = $request->input('suspended', false);
-        $validated['needs_update'] = $request->input('needs_update', false);
-        $validated['is_working'] = $request->input('is_working', true);
+        $validated['suspended'] = $request->boolean('suspended');
+        $validated['needs_update'] = $request->boolean('needs_update');
+        $validated['is_working'] = $request->boolean('is_working', true);
         $validated['data'] = [];
 
         $domain = Domain::create($validated);
@@ -61,28 +61,85 @@ class DomainController extends Controller
             ->with('success', 'Domain created successfully.');
     }
 
-    /**
-     * Display the specified domain
-     */
-    public function show(Domain $domain)
+    public function show(Domain $domain): View
     {
-        return view('domain.show', compact('domain'));
+        $domain->load('server');
+
+        $controlPanelType = $domain->server?->control_panel;
+        $accountIsSuspended = $domain->suspended;
+        $displayInfo = $domain->getCachedDisplayInfo();
+        $publicSpfCheck = $domain->getCachedPublicSpfCheck();
+        $recommendedSpf = $domain->server?->getProvisioningSpfRecord()
+            ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT;
+        $requiredNameservers = $domain->server?->getProvisioningNameservers()
+            ?: config('humano_hosting.default_nameservers', []);
+        $currentNameservers = $displayInfo['nameservers'] ?? [];
+        $nameserversMatch = $this->nameserversMatch($currentNameservers, $requiredNameservers);
+        $webmailUrl = $domain->server?->getWebmailUrl();
+        $emailAccounts = $domain->getCachedEmailAccounts();
+        $mxRecords = $domain->getCachedMxRecords();
+        $availablePlans = $domain->getCachedAvailablePlans();
+        $accountDisk = $domain->getCachedAccountDisk();
+        $controlPanelError = $domain->getCachedControlPanelError();
+
+        if ($domain->server && $this->controlPanelManager->supports($domain->server))
+        {
+            if ($domain->server->control_panel === 'plesk')
+            {
+                $controlPanelError = $controlPanelError ?: 'Plesk account management will be available soon.';
+            } elseif ($domain->server->control_panel === 'cpanel' && ! $domain->server->hasToken())
+            {
+                $controlPanelError = $controlPanelError ?: 'Configure the server WHM token to manage this account from Humano.';
+            }
+        }
+
+        return view('domain.show', compact(
+            'domain',
+            'availablePlans',
+            'emailAccounts',
+            'mxRecords',
+            'accountDisk',
+            'controlPanelError',
+            'controlPanelType',
+            'accountIsSuspended',
+            'displayInfo',
+            'publicSpfCheck',
+            'recommendedSpf',
+            'requiredNameservers',
+            'currentNameservers',
+            'nameserversMatch',
+            'webmailUrl',
+        ));
     }
 
     /**
-     * Show the form for editing the specified domain
+     * @param  array<int, string>  $current
+     * @param  array<int, string>  $required
      */
-    public function edit(Domain $domain)
+    private function nameserversMatch(array $current, array $required): bool
+    {
+        if ($required === [] || $current === [])
+        {
+            return false;
+        }
+
+        $normalize = static fn (array $nameservers): array => collect($nameservers)
+            ->map(fn ($nameserver) => strtolower(rtrim((string) $nameserver, '.')))
+            ->sort()
+            ->values()
+            ->all();
+
+        return $normalize($current) === $normalize($required);
+    }
+
+    public function edit(Domain $domain): View
     {
         $servers = Server::all();
 
         return view('domain.edit', compact('domain', 'servers'));
     }
 
-    /**
-     * Update the specified domain
-     */
-    public function update(Request $request, Domain $domain)
+    public function update(Request $request, Domain $domain): RedirectResponse
     {
         $validated = $request->validate([
             'domain' => [
@@ -101,10 +158,9 @@ class DomainController extends Controller
             'is_working' => 'boolean',
         ]);
 
-        // Set default values with consistent handling
-        $validated['suspended'] = $request->input('suspended', false);
-        $validated['needs_update'] = $request->input('needs_update', false);
-        $validated['is_working'] = $request->input('is_working', true);
+        $validated['suspended'] = $request->boolean('suspended');
+        $validated['needs_update'] = $request->boolean('needs_update');
+        $validated['is_working'] = $request->boolean('is_working', true);
 
         $domain->update($validated);
 
@@ -112,57 +168,240 @@ class DomainController extends Controller
             ->with('success', 'Domain updated successfully.');
     }
 
-    /**
-     * Remove the specified domain
-     */
-    public function destroy(Domain $domain)
+    public function destroy(Domain $domain): RedirectResponse
     {
         $domain->delete();
 
-        return redirect()->route('domain.index')
+        return redirect()->route('hosting.index')
             ->with('success', 'Domain deleted successfully.');
     }
 
-    /**
-     * Fetch domain data from WHM/cPanel
-     */
-    public function refresh(Domain $domain)
+    public function refresh(Domain $domain): RedirectResponse
     {
-        try
-        {
-            // Logic to connect to WHM/cPanel API and refresh domain data
-            // This is a placeholder for the actual implementation
+        $domain->load('server');
 
-            // Example: Update some domain data
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('warning', 'La actualización requiere un servidor cPanel con credenciales configuradas.');
+        }
+
+        RefreshDomainDataJob::dispatch($domain->id)->afterResponse();
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with('success', 'Actualizando datos del dominio en segundo plano. Recarga la página en unos segundos.');
+    }
+
+    public function toggleSuspension(Domain $domain): RedirectResponse
+    {
+        $domain->load('server');
+        $shouldSuspend = ! $domain->suspended;
+
+        if ($domain->server && $this->controlPanelManager->supports($domain->server))
+        {
+            if ($domain->server->control_panel === 'cpanel' && ! $domain->server->hasToken())
+            {
+                return redirect()->route('domain.show', $domain->id)
+                    ->with('error', 'El servidor no tiene credenciales configuradas para suspender la cuenta.');
+            }
+
+            if ($domain->server->hasToken())
+            {
+                $result = $this->controlPanelManager
+                    ->forServer($domain->server)
+                    ->setAccountSuspended($domain->server, $domain, $shouldSuspend);
+
+                if (! ($result['success'] ?? false))
+                {
+                    return redirect()->route('domain.show', $domain->id)
+                        ->with('error', $result['error'] ?? 'No se pudo actualizar el estado de la cuenta en el servidor.');
+                }
+            }
+        }
+
+        $domain->update([
+            'suspended' => $shouldSuspend,
+        ]);
+
+        $this->queueDomainRefresh($domain);
+
+        $message = $shouldSuspend
+            ? 'Cuenta suspendida correctamente.'
+            : 'Cuenta activada correctamente.';
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with('success', $message);
+    }
+
+    public function changePlan(Request $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validate([
+            'plan' => 'required|string|max:255',
+        ]);
+
+        $domain->load('server');
+
+        if (! $domain->server || ! $this->controlPanelManager->supports($domain->server))
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'Para cambiar el plan se requiere un servidor con panel de control configurado.');
+        }
+
+        if ($validated['plan'] === $domain->plan)
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('warning', 'El dominio ya tiene asignado ese plan.');
+        }
+
+        $availablePlans = $domain->getCachedAvailablePlans();
+
+        if ($availablePlans !== [] && ! in_array($validated['plan'], $availablePlans, true))
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'El plan seleccionado no está disponible en este servidor.');
+        }
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->changePlan($domain->server, $domain, $validated['plan']);
+
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'Plan de hosting actualizado correctamente.'
+                : ($result['error'] ?? 'No se pudo actualizar el plan.'));
+    }
+
+    public function ensureSpf(Domain $domain): RedirectResponse
+    {
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'La configuración SPF requiere un servidor cPanel con credenciales.');
+        }
+
+        $spfRecord = $domain->server->getProvisioningSpfRecord()
+            ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT;
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->ensureSpfRecord($domain->server, $domain, $spfRecord);
+
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'Registro SPF configurado correctamente.'
+                : ($result['error'] ?? 'No se pudo configurar el registro SPF.'));
+    }
+
+    public function updateEmailPassword(UpdateDomainEmailPasswordRequest $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'El servidor no tiene credenciales configuradas para cambiar contraseñas de correo.');
+        }
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->changeEmailPassword($domain->server, $domain, $validated['email'], $validated['password']);
+
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'Contraseña de correo actualizada correctamente.'
+                : ($result['error'] ?? 'No se pudo actualizar la contraseña de correo.'));
+    }
+
+    public function storeEmailAccount(StoreDomainEmailRequest $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'El servidor no tiene credenciales configuradas para crear cuentas de correo.');
+        }
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->createEmailAccount(
+                $domain->server,
+                $domain,
+                $validated['email'],
+                $validated['password'],
+            );
+
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'Cuenta de correo creada correctamente.'
+                : ($result['error'] ?? 'No se pudo crear la cuenta de correo.'));
+    }
+
+    public function updateMxRecords(Request $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validate([
+            'mx_records' => 'required|array|min:1',
+            'mx_records.*.priority' => 'required|integer|min:0|max:65535',
+            'mx_records.*.target' => 'required|string|max:255',
+        ]);
+
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'MX record changes require a cPanel server with WHM token.');
+        }
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->updateMxRecords($domain->server, $domain, $validated['mx_records']);
+
+        if ($result['success'] ?? false)
+        {
             $domain->update([
                 'data' => array_merge($domain->data ?? [], [
-                    'last_refreshed' => now()->toIso8601String(),
+                    'mx_records' => $validated['mx_records'],
                 ]),
             ]);
 
-            return redirect()->route('domain.show', $domain->id)
-                ->with('success', 'Domain data refreshed successfully.');
-        } catch (\Exception $e)
-        {
-            Log::error('Error refreshing domain data: '.$e->getMessage());
-
-            return redirect()->route('domain.show', $domain->id)
-                ->with('error', 'Failed to refresh domain data: '.$e->getMessage());
+            $this->queueDomainRefresh($domain);
         }
-    }
-
-    /**
-     * Toggle domain suspension status
-     */
-    public function toggleSuspension(Domain $domain)
-    {
-        $domain->update([
-            'suspended' => ! $domain->suspended,
-        ]);
-
-        $status = $domain->suspended ? 'suspended' : 'unsuspended';
 
         return redirect()->route('domain.show', $domain->id)
-            ->with('success', "Domain {$status} successfully.");
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'MX records updated successfully.'
+                : ($result['error'] ?? 'Failed to update MX records.'));
+    }
+
+    private function queueDomainRefresh(Domain $domain): void
+    {
+        RefreshDomainDataJob::dispatch($domain->id)->afterResponse();
     }
 }

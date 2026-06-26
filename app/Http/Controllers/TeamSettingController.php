@@ -58,6 +58,11 @@ class TeamSettingController extends Controller
             ->where('status', 1)
             ->first();
 
+        $hostingInfrastructureEnabled = $team->hasModule('servers') || $team->hasModule('hosting');
+        $hostingServerCount = \App\Models\Server::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->count();
+
         return view('team-settings.index', compact(
             'team',
             'groupedSettings',
@@ -65,6 +70,8 @@ class TeamSettingController extends Controller
             'webDavExternalAccount',
             'webDavApiConfigured',
             'performanceInsightsModule',
+            'hostingInfrastructureEnabled',
+            'hostingServerCount',
         ));
     }
 

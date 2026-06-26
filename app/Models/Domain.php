@@ -3,17 +3,20 @@
 namespace App\Models;
 
 use GuzzleHttp\Client;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Http;
 
 class Domain extends Model
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $fillable = [
         'domain',
         'server_id',
+        'service_id',
         'username',
         'plan',
         'suspended',
@@ -35,6 +38,11 @@ class Domain extends Model
     public function server()
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function service()
+    {
+        return $this->belongsTo(Service::class);
     }
 
     public function getWebIpAttribute()
@@ -72,6 +80,74 @@ class Domain extends Model
         return $this->ssl_status['issuer'] ?? 'Unknown';
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCachedEmailAccounts(): array
+    {
+        return $this->data['email_accounts'] ?? [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCachedMxRecords(): array
+    {
+        return $this->data['mx_records'] ?? [];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getCachedAvailablePlans(): array
+    {
+        return $this->data['available_plans'] ?? [];
+    }
+
+    /**
+     * @return array{used_mb: float, limit_mb: float|null, unlimited: bool, usage_percent: int}|null
+     */
+    public function getCachedAccountDisk(): ?array
+    {
+        $disk = $this->data['account_disk'] ?? null;
+
+        return is_array($disk) ? $disk : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getCachedPublicSpfCheck(): array
+    {
+        return $this->data['public_spf_check'] ?? [
+            'exists' => false,
+            'has_mailbaby' => false,
+            'record' => null,
+        ];
+    }
+
+    public function getCachedControlPanelError(): ?string
+    {
+        $error = $this->data['control_panel_error'] ?? null;
+
+        return is_string($error) && $error !== '' ? $error : null;
+    }
+
+    /**
+     * @return array{web_ip: string|null, mail_ip: string|null, ssl_status: array<string, mixed>|null, nameservers: array<int, string>}
+     */
+    public function getCachedDisplayInfo(): array
+    {
+        $data = $this->data ?? [];
+
+        return [
+            'web_ip' => $this->web_ip ?? ($data['ip'] ?? null),
+            'mail_ip' => $this->mail_ip,
+            'ssl_status' => $this->ssl_status,
+            'nameservers' => $data['nameservers'] ?? $this->server?->getProvisioningNameservers() ?? [],
+        ];
+    }
+
     public function isWordPress(): bool
     {
         try
@@ -101,50 +177,14 @@ class Domain extends Model
     {
         try
         {
-            // Get the server from relation
             $server = $this->server;
 
-            if (! $server)
+            if (! $server || $server->control_panel !== 'cpanel' || ! $server->hasToken())
             {
                 return null;
             }
 
-            // Get the WHM servers configuration
-            $serversString = env('WHM_SERVERS');
-            if (empty($serversString))
-            {
-                \Log::error('WHM_SERVERS environment variable not configured');
-
-                return null;
-            }
-
-            // Find the matching server in the list
-            $serversList = explode(',', $serversString);
-            $serverConfig = null;
-
-            foreach ($serversList as $serverString)
-            {
-                $serverParts = explode(':', trim($serverString));
-                if (count($serverParts) >= 3 && $serverParts[0] === $server->server_url)
-                {
-                    $serverConfig = $serverParts;
-                    break;
-                }
-            }
-
-            if (! $serverConfig)
-            {
-                \Log::error("Server {$server->server_url} not found in WHM_SERVERS configuration");
-
-                return null;
-            }
-
-            $hostname = $serverConfig[0];
-            $username = $serverConfig[1];
-            $token = $serverConfig[2];
-
-            // Use the same approach as WhmService
-            $url = "https://{$hostname}:2087/json-api/php_get_vhost_versions";
+            $url = "https://{$server->server_url}:2087/json-api/php_get_vhost_versions";
             $query = http_build_query([
                 'api.filter.enable' => 1,
                 'api.filter.a.field' => 'vhost',
@@ -152,7 +192,7 @@ class Domain extends Model
             ]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'whm '.$username.':'.$token,
+                'Authorization' => $server->getWhmAuthHeader(),
             ])->get($url.'?'.$query);
 
             if (! $response->successful())

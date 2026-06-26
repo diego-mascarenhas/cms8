@@ -3,11 +3,26 @@
 namespace App\Models;
 
 use App\Enums\ServerStatus;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Server extends Model
 {
+    use HasFactory;
+
     protected $table = 'servers';
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('team', function (Builder $builder)
+        {
+            if (auth()->check() && auth()->user()->currentTeam)
+            {
+                $builder->where('team_id', auth()->user()->currentTeam->id);
+            }
+        });
+    }
 
     protected $fillable = [
         'name',
@@ -126,6 +141,49 @@ class Server extends Model
         return $this->control_panel !== 'none';
     }
 
+    public function usesCpanelAccountAuth(): bool
+    {
+        return $this->control_panel === 'cpanel'
+            && ($this->data['auth_mode'] ?? 'whm') === 'cpanel_user';
+    }
+
+    public function getAuthModeLabelAttribute(): string
+    {
+        return $this->usesCpanelAccountAuth() ? 'cPanel account' : 'WHM API';
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getProvisioningNameservers(): array
+    {
+        $configured = $this->data['provisioning_nameservers'] ?? null;
+
+        if (is_array($configured) && $configured !== [])
+        {
+            return array_values(array_filter(array_map('strval', $configured)));
+        }
+
+        if (is_string($configured) && $configured !== '')
+        {
+            return array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n|,/', $configured) ?: [])));
+        }
+
+        return config('humano_hosting.default_nameservers', []);
+    }
+
+    public function getProvisioningSpfRecord(): string
+    {
+        $configured = $this->data['provisioning_spf'] ?? null;
+
+        if (is_string($configured) && $configured !== '')
+        {
+            return $configured;
+        }
+
+        return (string) config('humano_hosting.default_spf_record', '');
+    }
+
     // Check if server has a token configured
     public function hasToken(): bool
     {
@@ -147,5 +205,22 @@ class Server extends Model
         }
 
         return null;
+    }
+
+    public function getWebmailUrl(?string $email = null): ?string
+    {
+        if ($this->server_url === null || $this->server_url === '')
+        {
+            return null;
+        }
+
+        $url = 'https://'.$this->server_url.':2096/';
+
+        if ($email !== null && $email !== '')
+        {
+            return $url.'login/?user='.urlencode($email);
+        }
+
+        return $url;
     }
 }

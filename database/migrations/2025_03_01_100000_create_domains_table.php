@@ -13,6 +13,7 @@ return new class extends Migration
             $table->id();
             $table->string('domain');
             $table->unsignedSmallInteger('server_id');
+            $table->unsignedBigInteger('service_id')->nullable();
             $table->string('username');
             $table->string('plan')->nullable();
             $table->boolean('suspended')->default(0);
