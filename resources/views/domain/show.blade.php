@@ -106,8 +106,8 @@
         <div class="card h-100">
             <div class="card-body">
                 <h5 class="card-title">Sitio</h5>
-                <p class="mb-0">Tipo: {{ $domain->site_type ?? 'N/D' }}</p>
-                <p class="mb-0">PHP: {{ $domain->php_version ?? 'N/D' }}</p>
+                <p class="mb-0">Tipo: {{ filled($domain->site_type) ? $domain->site_type : '' }}</p>
+                <p class="mb-0">Versión: {{ filled($domain->php_version) ? $domain->php_version : '' }}</p>
             </div>
         </div>
     </div>
@@ -410,7 +410,7 @@
                 <h5 class="card-title mb-0">Configuración DNS</h5>
             </div>
             <div class="card-body">
-                @if(!empty($requiredNameservers))
+                @if(!empty($requiredNameservers) && ! ($nameserversMatch ?? false))
                     <div class="mb-3">
                         <h6 class="mb-2">Servidores DNS requeridos</h6>
                         <p class="text-muted small mb-2">Configura estos NS en el registrador del dominio:</p>
@@ -442,21 +442,24 @@
                             @endforeach
                         </ul>
                     </div>
-                @elseif(!empty($requiredNameservers))
+                @elseif(!empty($requiredNameservers) && ! ($nameserversMatch ?? false))
                     <p class="text-muted small mb-3">Pulsa <strong>Actualizar</strong> para comprobar los DNS públicos del dominio.</p>
                 @endif
 
-                <div class="mb-3">
-                    <h6 class="mb-2">SPF recomendado</h6>
-                    <div class="bg-lighter rounded p-2">
-                        <code class="small text-break">{{ $recommendedSpf }}</code>
+                @php
+                    $spfHasWarning = ! ($publicSpfCheck['exists'] ?? false) || ! ($publicSpfCheck['has_mailbaby'] ?? false);
+                @endphp
+
+                @if($spfHasWarning)
+                    <div class="mb-3">
+                        <h6 class="mb-2">SPF recomendado</h6>
+                        <div class="bg-lighter rounded p-2">
+                            <code class="small text-break">{{ $recommendedSpf }}</code>
+                        </div>
                     </div>
-                </div>
+                @endif
 
                 <div class="mb-0">
-                    @php
-                        $spfHasWarning = ! ($publicSpfCheck['exists'] ?? false) || ! ($publicSpfCheck['has_mailbaby'] ?? false);
-                    @endphp
                     <h6 @class([
                         'mb-2 d-inline-flex align-items-center gap-1',
                         'bg-label-warning rounded px-2 py-1' => $spfHasWarning,

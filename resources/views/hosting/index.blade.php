@@ -62,21 +62,29 @@
         </script>
     @endif
 
+    @php
+        $totalDomains = $domainStats['total'] ?? 0;
+        $activeDomains = $domainStats['active'] ?? 0;
+        $suspendedDomains = $domainStats['suspended'] ?? 0;
+        $undefinedPlanDomains = $domainStats['undefined_plan'] ?? 0;
+        $percent = fn (int $count): int => $totalDomains > 0 ? (int) round(($count / $totalDomains) * 100) : 0;
+    @endphp
+
     <div class="row g-4 mb-4">
         <div class="col-sm-6 col-xl-3">
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Total servidores</span>
+                            <span>Total dominios</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $servers->count() }}</h3>
+                                <h3 class="mb-0 me-2">{{ $totalDomains }}</h3>
                             </div>
-                            <p class="mb-0">Servidores activos</p>
+                            <p class="mb-0">Dominios sincronizados</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-primary">
-                                <i class="ti ti-server ti-sm"></i>
+                                <i class="ti ti-world ti-sm"></i>
                             </span>
                         </div>
                     </div>
@@ -88,12 +96,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>En línea</span>
+                            <span>Activos</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $servers->where('success', true)->count() }}</h3>
-                                <p class="text-success mb-0">({{ $servers->count() > 0 ? round(($servers->where('success', true)->count() / $servers->count()) * 100) : 0 }}%)</p>
+                                <h3 class="mb-0 me-2">{{ $activeDomains }}</h3>
+                                <p class="text-success mb-0">({{ $percent($activeDomains) }}%)</p>
                             </div>
-                            <p class="mb-0">Servidores en línea</p>
+                            <p class="mb-0">Dominios activos</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-success">
@@ -109,16 +117,16 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>SSL válido</span>
+                            <span>Plan sin definir</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $servers->filter->hasSsl()->count() }}</h3>
-                                <p class="text-primary mb-0">({{ $servers->count() > 0 ? round(($servers->filter->hasSsl()->count() / $servers->count()) * 100) : 0 }}%)</p>
+                                <h3 class="mb-0 me-2">{{ $undefinedPlanDomains }}</h3>
+                                <p class="text-warning mb-0">({{ $percent($undefinedPlanDomains) }}%)</p>
                             </div>
-                            <p class="mb-0">Certificados válidos</p>
+                            <p class="mb-0">Sin plan en cPanel</p>
                         </div>
                         <div class="avatar">
-                            <span class="avatar-initial rounded bg-label-primary">
-                                <i class="ti ti-shield-check ti-sm"></i>
+                            <span class="avatar-initial rounded bg-label-warning">
+                                <i class="ti ti-package ti-sm"></i>
                             </span>
                         </div>
                     </div>
@@ -130,16 +138,16 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Desconectados</span>
+                            <span>Suspendidos</span>
                             <div class="d-flex align-items-center my-2">
-                                <h3 class="mb-0 me-2">{{ $servers->where('success', false)->count() }}</h3>
-                                <p class="text-danger mb-0">({{ $servers->count() > 0 ? round(($servers->where('success', false)->count() / $servers->count()) * 100) : 0 }}%)</p>
+                                <h3 class="mb-0 me-2">{{ $suspendedDomains }}</h3>
+                                <p class="text-danger mb-0">({{ $percent($suspendedDomains) }}%)</p>
                             </div>
-                            <p class="mb-0">Servidores desconectados</p>
+                            <p class="mb-0">Dominios suspendidos</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-danger">
-                                <i class="ti ti-alert-triangle ti-sm"></i>
+                                <i class="ti ti-ban ti-sm"></i>
                             </span>
                         </div>
                     </div>

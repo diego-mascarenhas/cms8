@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\ServerCpanelDomainDataTable;
 use App\DataTables\ServerDataTable;
 use App\Enums\ServerStatus;
 use App\Models\Server;
@@ -31,31 +32,32 @@ class ServerController extends Controller
 
     public function create(): View
     {
-        $statuses = ServerStatus::cases();
-        $teams = \App\Models\Team::all();
         $data = new Server;
 
-        return view('server.form', compact('statuses', 'teams', 'data'));
+        return view('server.form', compact('data'));
     }
 
     public function store(Request $request): RedirectResponse
     {
+        if ($request->filled('server_url'))
+        {
+            $request->merge(['server_url' => Server::normalizeHostname($request->input('server_url'))]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string',
             'ip' => 'nullable|string|ip',
             'server_url' => 'required|string|unique:servers,server_url',
             'username' => 'required|string',
-            'operating_system' => 'nullable|string|max:255',
             'control_panel' => 'required|in:none,cpanel,plesk',
             'auth_mode' => 'nullable|in:whm,cpanel_user',
             'encrypted_token' => 'nullable|string',
-            'team_id' => 'nullable|exists:teams,id',
-            'status_id' => 'required|integer',
         ]);
 
         $validated['success'] = false;
+        $validated['status_id'] = ServerStatus::Unknown->value;
         $validated['data'] = $this->buildServerData($request, []);
-        $validated['team_id'] = $validated['team_id'] ?? auth()->user()?->currentTeam?->id;
+        $validated['team_id'] = auth()->user()?->currentTeam?->id;
 
         $server = Server::create($validated);
 
@@ -63,38 +65,34 @@ class ServerController extends Controller
             ->with('success', 'Server created successfully.');
     }
 
-    public function show(Server $server): View
+    public function show(Server $server, ServerCpanelDomainDataTable $domainDataTable): View|JsonResponse
     {
-        $cPanelDomains = null;
-        $cPanelError = null;
+        $activeDomains = $server->domains()->where('suspended', false)->count();
+        $suspendedDomains = $server->domains()->where('suspended', true)->count();
 
-        if ($server->control_panel === 'cpanel' && $server->hasToken())
-        {
-            $result = $this->whmService->getDomainsFromServer($server);
-
-            if ($result['success'])
-            {
-                $cPanelDomains = $result['domains'];
-            } else
-            {
-                $cPanelError = $result['error'];
-            }
-        }
-
-        return view('server.show', compact('server', 'cPanelDomains', 'cPanelError'));
+        return $domainDataTable
+            ->forServer($server)
+            ->render('server.show', [
+                'server' => $server,
+                'activeDomains' => $activeDomains,
+                'suspendedDomains' => $suspendedDomains,
+            ]);
     }
 
     public function edit(Server $server): View
     {
-        $statuses = ServerStatus::cases();
-        $teams = \App\Models\Team::all();
         $data = $server;
 
-        return view('server.form', compact('server', 'statuses', 'teams', 'data'));
+        return view('server.form', compact('server', 'data'));
     }
 
     public function update(Request $request, Server $server): RedirectResponse
     {
+        if ($request->filled('server_url'))
+        {
+            $request->merge(['server_url' => Server::normalizeHostname($request->input('server_url'))]);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string',
             'ip' => 'nullable|string|ip',
@@ -104,12 +102,9 @@ class ServerController extends Controller
                 Rule::unique('servers')->ignore($server->id),
             ],
             'username' => 'required|string',
-            'operating_system' => 'nullable|string|max:255',
             'control_panel' => 'required|in:none,cpanel,plesk',
             'auth_mode' => 'nullable|in:whm,cpanel_user',
             'encrypted_token' => 'nullable|string',
-            'team_id' => 'nullable|exists:teams,id',
-            'status_id' => 'required|integer',
         ]);
 
         if (empty($validated['encrypted_token']))
@@ -188,7 +183,7 @@ class ServerController extends Controller
                     ->with($result['success'] ? 'success' : 'error', $message);
             }
 
-            $url = "https://{$server->server_url}:2087";
+            $url = "https://{$server->hostname}:2087";
             $response = Http::withHeaders([
                 'Authorization' => $server->getWhmAuthHeader(),
             ])

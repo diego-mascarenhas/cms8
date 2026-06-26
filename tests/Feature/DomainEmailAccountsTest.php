@@ -145,6 +145,33 @@ class DomainEmailAccountsTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_domain_show_hides_dns_suggestions_when_public_records_are_correct(): void
+    {
+        Http::fake();
+
+        [$user, $domain] = $this->createDomainWithServer([
+            'data' => [
+                'nameservers' => ['ns1.revisionalpha.com', 'ns2.revisionalpha.com'],
+                'public_spf_check' => [
+                    'exists' => true,
+                    'has_mailbaby' => true,
+                    'record' => 'v=spf1 include:spf.revisionalpha.com -all',
+                ],
+                'last_refreshed' => now()->toIso8601String(),
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get(route('domain.show', $domain->id));
+
+        $response->assertOk();
+        $response->assertSee('DNS actuales (públicos)');
+        $response->assertSee('ns1.revisionalpha.com');
+        $response->assertSee('SPF público (DNS)');
+        $response->assertDontSee('Servidores DNS requeridos');
+        $response->assertDontSee('SPF recomendado');
+        $response->assertDontSee('Configura estos NS en el registrador del dominio');
+    }
+
     /**
      * @param  array<string, mixed>  $domainAttributes
      * @return array{0: User, 1: Domain}

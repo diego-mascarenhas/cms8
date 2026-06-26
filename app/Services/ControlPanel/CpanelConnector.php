@@ -110,7 +110,7 @@ class CpanelConnector implements ControlPanelConnector
 
         if ($server->usesCpanelAccountAuth())
         {
-            return $this->listAccountFromCpanelUser($server);
+            return $this->listAccountsForCpanelAccount($server);
         }
 
         try
@@ -180,7 +180,7 @@ class CpanelConnector implements ControlPanelConnector
                     'username' => $accountData['user'],
                     'plan' => $accountData['plan'],
                     'suspended' => (bool) ($accountData['suspended'] ?? false),
-                    'data' => $accountData,
+                    'data' => array_merge($domain?->data ?? [], $accountData),
                 ],
             );
 
@@ -934,6 +934,46 @@ class CpanelConnector implements ControlPanelConnector
     }
 
     /**
+     * @return array{success: bool, error?: string, domains?: Collection<int, array<string, mixed>>, reseller_limited?: bool}
+     */
+    private function listAccountsForCpanelAccount(Server $server): array
+    {
+        try
+        {
+            $response = $this->whmBasicAuthRequest($server, '/json-api/listaccts');
+
+            if ($response->successful())
+            {
+                $data = $response->json();
+                $accounts = collect($data['acct'] ?? [])->map(fn (array $account) => $this->mapAccount($account));
+
+                if ($accounts->isNotEmpty())
+                {
+                    return [
+                        'success' => true,
+                        'domains' => $accounts,
+                        'reseller_limited' => false,
+                    ];
+                }
+            }
+        } catch (\Exception $e)
+        {
+            Log::warning('Reseller WHM listaccts failed, falling back to account domain: '.$e->getMessage(), [
+                'server_id' => $server->id,
+            ]);
+        }
+
+        $result = $this->listAccountFromCpanelUser($server);
+
+        if ($result['success'])
+        {
+            $result['reseller_limited'] = true;
+        }
+
+        return $result;
+    }
+
+    /**
      * @return array{success: bool, error?: string, domains?: Collection<int, array<string, mixed>>}
      */
     private function listAccountFromCpanelUser(Server $server): array
@@ -1286,7 +1326,7 @@ class CpanelConnector implements ControlPanelConnector
 
     private function whmBaseUrl(Server $server): string
     {
-        return 'https://'.$server->server_url.':'.self::WHM_PORT;
+        return 'https://'.$server->hostname.':'.self::WHM_PORT;
     }
 
     /**
@@ -1476,6 +1516,6 @@ class CpanelConnector implements ControlPanelConnector
 
     private function cpanelBaseUrl(Server $server): string
     {
-        return 'https://'.$server->server_url.':'.self::CPANEL_PORT;
+        return 'https://'.$server->hostname.':'.self::CPANEL_PORT;
     }
 }
