@@ -27,6 +27,38 @@ class AssistantInboundContactCreationServiceTest extends TestCase
         $this->seed(ContactStatusSeeder::class);
     }
 
+    public function test_parses_agregar_contacto_comma_separated_message(): void
+    {
+        $service = app(AssistantInboundContactCreationService::class);
+
+        $parsed = $service->parseContactCreationIntent(
+            'Agregar contacto Federico,federicoa@me.com,+613463072',
+        );
+
+        $this->assertNotNull($parsed);
+        $this->assertSame('Federico', $parsed['name']);
+        $this->assertSame('federicoa@me.com', $parsed['email']);
+        $this->assertSame('613463072', $parsed['phone']);
+    }
+
+    public function test_apply_contact_only_reply_replaces_mixed_llm_summary(): void
+    {
+        $service = app(AssistantInboundContactCreationService::class);
+        $message = 'Agregar contacto Federico,federicoa@me.com,+613463072';
+        $toolResults = [
+            'Task created for Leticia Silvano: Enviar acceso (id: 99).',
+            'Contact created: Federico (id: 42).',
+        ];
+        $mixed = "✅ Listo:\n1. Tarea creada para Leticia...\n2. Contacto agregado: Federico";
+
+        $reply = $service->applyContactOnlyReplyIfApplicable($message, $toolResults, $mixed);
+
+        $this->assertStringContainsString('Federico', $reply);
+        $this->assertStringContainsString('federicoa@me.com', $reply);
+        $this->assertStringContainsString('+61', $reply);
+        $this->assertStringNotContainsString('Leticia', $reply);
+    }
+
     public function test_parses_nuevo_contacto_message(): void
     {
         $service = app(AssistantInboundContactCreationService::class);

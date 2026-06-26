@@ -2,6 +2,7 @@
 
 namespace App\Services\Assistant;
 
+use App\Helpers\PhoneHelper;
 use App\Models\User;
 use App\Services\AssistantToolsService;
 use App\Support\AssistantContactCreationResult;
@@ -118,7 +119,7 @@ class AssistantInboundContactCreationService
         return [
             'tool_result' => $toolResult,
             'contact_id' => $creation['contact_id'],
-            'whatsapp_reply' => $this->formatWhatsAppReply($parsed, $toolResult, $creation),
+            'whatsapp_reply' => $this->formatContactReply($parsed, $toolResult, $creation, true),
         ];
     }
 
@@ -138,12 +139,89 @@ class AssistantInboundContactCreationService
             return $this->parseContactPayload(trim($matches[1]));
         }
 
+        if (preg_match('/^(?:agregar|crear|a[nñ]adir)\s+(?:un\s+)?contacto\b[:\s,]*/iu', $normalized))
+        {
+            $payload = preg_replace('/^(?:agregar|crear|a[nñ]adir)\s+(?:un\s+)?contacto\b[:\s,]*/iu', '', $normalized);
+
+            return $this->parseContactPayload(trim($payload));
+        }
+
         if (preg_match('/@/u', $normalized) && preg_match('/categor[ií]a\s+/iu', $normalized))
         {
             return $this->parseContactPayload($normalized);
         }
 
         return null;
+    }
+
+    /**
+     * When the user only asked to add a contact, replace a mixed LLM summary with a contact-only confirmation.
+     *
+     * @param  array<int, mixed>  $toolResults
+     */
+    public function applyContactOnlyReplyIfApplicable(string $message, array $toolResults, string $assistantText): string
+    {
+        if ($this->messageMentionsNonContactCrmAction($message))
+        {
+            return $assistantText;
+        }
+
+        $parsed = $this->parseContactCreationIntent($message);
+        if ($parsed === null)
+        {
+            return $assistantText;
+        }
+
+        $scoped = $this->buildContactOnlyReply($parsed, $toolResults);
+
+        return $scoped ?? $assistantText;
+    }
+
+    public function messageMentionsNonContactCrmAction(string $message): bool
+    {
+        $lower = mb_strtolower(trim($message));
+        if ($lower === '')
+        {
+            return false;
+        }
+
+        return preg_match(
+            '/\b(?:tarea|task|crear\s+tarea|agendar|calendario|evento|reuni[oó]n|campa[nñ]a|plantilla|ticket|oportunidad|wordpress|cms|procesar\s+lo\s+que\s+te\s+ped[ií])\b/u',
+            $lower,
+        ) === 1;
+    }
+
+    /**
+     * @param  array{name: string, email?: string, phone?: string, category_name?: string, notes?: string, birthday?: string}  $parsed
+     * @param  array<int, mixed>  $toolResults
+     */
+    public function buildContactOnlyReply(array $parsed, array $toolResults): ?string
+    {
+        $toolResult = null;
+        foreach ($toolResults as $item)
+        {
+            $text = AssistantContactCreationResult::toolResultItemToString($item);
+            if ($text === null || trim($text) === '')
+            {
+                continue;
+            }
+            if (
+                stripos($text, 'Contact created') !== false
+                || stripos($text, 'Contact already exists') !== false
+            ) {
+                $toolResult = $text;
+
+                break;
+            }
+        }
+
+        $creation = AssistantContactCreationResult::parseToolResultText($toolResult);
+        if ($creation === null)
+        {
+            return null;
+        }
+
+        return $this->formatContactReply($parsed, $toolResult ?? '', $creation);
     }
 
     /**
@@ -281,24 +359,30 @@ class AssistantInboundContactCreationService
      * @param  array{name: string, email?: string, phone?: string, category_name?: string, notes?: string, birthday?: string}  $parsed
      * @param  array{contact_id: int, created: bool, already_exists: bool}  $creation
      */
-    private function formatWhatsAppReply(array $parsed, string $toolResult, array $creation): string
+    public function formatContactReply(array $parsed, string $toolResult, array $creation, bool $forWhatsApp = false): string
     {
         $name = $parsed['name'];
         $contactId = $creation['contact_id'];
+        $nameLabel = $forWhatsApp ? "*{$name}*" : $name;
 
         if ($creation['already_exists'])
         {
-            $lines = ["✅ *{$name}* ya estaba en el sistema (id {$contactId})."];
+            $lines = $forWhatsApp
+                ? ["✅ {$nameLabel} ya estaba en el sistema (id {$contactId})."]
+                : ["✅ Contacto agregado: {$nameLabel} ya estaba en el sistema (id {$contactId})."];
         } else
         {
-            $lines = ["✅ *{$name}* creado (id {$contactId})."];
+            $lines = $forWhatsApp
+                ? ["✅ {$nameLabel} creado (id {$contactId})."]
+                : ["✅ Contacto agregado: {$nameLabel} (id {$contactId})."];
         }
 
         if (
             ! empty($parsed['category_name'])
             && (stripos($toolResult, 'Assigned to category') !== false || stripos($toolResult, 'assigned to category') !== false)
         ) {
-            $lines[] = 'Asignado a la categoría *'.$parsed['category_name'].'*.';
+            $categoryLabel = $forWhatsApp ? '*'.$parsed['category_name'].'*' : $parsed['category_name'];
+            $lines[] = 'Asignado a la categoría '.$categoryLabel.'.';
         }
 
         if (! empty($parsed['email']))
@@ -308,7 +392,8 @@ class AssistantInboundContactCreationService
 
         if (! empty($parsed['phone']))
         {
-            $lines[] = 'Teléfono: '.$parsed['phone'];
+            $displayPhone = PhoneHelper::formatForDisplayReadable($parsed['phone']) ?? '+'.$parsed['phone'];
+            $lines[] = 'Teléfono: '.$displayPhone;
         }
         if (! empty($parsed['birthday']))
         {

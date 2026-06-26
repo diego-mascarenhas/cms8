@@ -265,6 +265,13 @@ class AssistantChat extends Component
         } elseif ($serverContactApply !== null)
         {
             $assistantText = $serverContactApply['whatsapp_reply'];
+        } else
+        {
+            $assistantText = app(AssistantInboundContactCreationService::class)->applyContactOnlyReplyIfApplicable(
+                $text,
+                $toolResults,
+                $assistantText,
+            );
         }
         $assistantMessage = [
             'role' => 'assistant',

@@ -1485,6 +1485,13 @@ class ChatController extends Controller
         } elseif ($serverContactApply !== null)
         {
             $assistantText = $serverContactApply['whatsapp_reply'];
+        } else
+        {
+            $assistantText = app(AssistantInboundContactCreationService::class)->applyContactOnlyReplyIfApplicable(
+                $message,
+                $toolResults,
+                $assistantText,
+            );
         }
         if ($previewOnly)
         {

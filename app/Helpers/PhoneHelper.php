@@ -116,6 +116,7 @@ class PhoneHelper
             '39',  // Italy
             '49',  // Germany
             '44',  // UK
+            '61',  // Australia
         ];
 
         foreach ($countryCodes as $code)
@@ -131,7 +132,7 @@ class PhoneHelper
                 {
                     return true;
                 }
-                if (in_array($code, ['34', '52', '56', '33', '39', '49', '44']) && strlen($phone) >= 10)
+                if (in_array($code, ['34', '52', '56', '33', '39', '49', '44', '61']) && strlen($phone) >= 9)
                 {
                     return true;
                 }
@@ -234,6 +235,7 @@ class PhoneHelper
             '39' => 'IT',
             '49' => 'DE',
             '44' => 'UK',
+            '61' => 'AU',
         ];
 
         foreach ($countryCodes as $code => $country)

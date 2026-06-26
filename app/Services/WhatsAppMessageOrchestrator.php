@@ -1235,6 +1235,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         } elseif ($serverContactApply !== null)
                         {
                             $aiMessage = $serverContactApply['whatsapp_reply'];
+                        } else
+                        {
+                            $aiMessage = app(\App\Services\Assistant\AssistantInboundContactCreationService::class)
+                                ->applyContactOnlyReplyIfApplicable((string) $body, $toolResults, (string) $aiMessage);
                         }
 
                         if (trim((string) $aiMessage) !== '')
