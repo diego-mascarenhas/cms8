@@ -344,8 +344,47 @@ class HostingModuleTest extends TestCase
                 && $request['plan'] === 'revision_beginner'
                 && $request['username'] === 'clientedemo'
                 && $request['domain'] === 'cliente-demo.test'
+                && ($request['mxcheck'] ?? null) === 0
                 && strlen((string) ($request['password'] ?? '')) >= 8;
         });
+    }
+
+    public function test_hosting_store_works_without_enterprise_or_service(): void
+    {
+        Http::fake([
+            'https://huginn.test:2087/json-api/createacct*' => Http::response([
+                'metadata' => ['result' => 1],
+            ]),
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Reseller account',
+            'server_url' => 'huginn.test',
+            'username' => 'democpanel',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-password',
+            'success' => true,
+            'status_id' => 1,
+            'data' => ['auth_mode' => 'cpanel_user'],
+        ]);
+
+        $this->actingAs($user)->post(route('hosting.store'), [
+            'domain' => 'sin-cliente.test',
+            'server_id' => $server->id,
+            'username' => 'sincliente',
+            'plan' => 'revision_beginner',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('domains', [
+            'domain' => 'sin-cliente.test',
+            'service_id' => null,
+        ]);
     }
 
     public function test_hosting_store_saves_service_id(): void
@@ -481,7 +520,7 @@ class HostingModuleTest extends TestCase
         ]);
 
         $response->assertRedirect(route('hosting.create'));
-        $response->assertSessionHasErrors(['server_id', 'domain', 'username', 'plan', 'enterprise_id']);
+        $response->assertSessionHasErrors(['server_id', 'domain', 'username', 'plan']);
         $domainErrors = session('errors')->get('domain');
         $this->assertNotEmpty($domainErrors);
         $this->assertStringContainsString('extensión', $domainErrors[0]);
@@ -768,6 +807,50 @@ class HostingModuleTest extends TestCase
 
         $response->assertRedirect(route('domain.show', $domain->id));
         $this->assertSame('premium', $domain->fresh()->plan);
+    }
+
+    public function test_domain_change_plan_works_with_cpanel_account_auth(): void
+    {
+        Http::fake([
+            '*modifyacct*' => Http::response(['metadata' => ['result' => 1]]),
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Reseller',
+            'server_url' => 'reseller.test',
+            'username' => 'democpanel',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'reseller-password',
+            'success' => true,
+            'status_id' => 1,
+            'data' => ['auth_mode' => 'cpanel_user'],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'server_id' => $server->id,
+            'username' => 'siteuser',
+            'plan' => 'revision_beginner',
+        ]);
+
+        $response = $this->actingAs($user)->post(route('domain.change-plan', $domain->id), [
+            'plan' => 'revision_pro',
+        ]);
+
+        $response->assertRedirect(route('domain.show', $domain->id));
+        $response->assertSessionHas('success');
+        $this->assertSame('revision_pro', $domain->fresh()->plan);
+
+        Http::assertSent(function ($request)
+        {
+            return str_contains($request->url(), 'modifyacct')
+                && $request->hasHeader('Authorization', 'Basic '.base64_encode('democpanel:reseller-password'));
+        });
     }
 
     private function createHostingEnterprise(Team $team): Enterprise

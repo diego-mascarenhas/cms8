@@ -49,6 +49,11 @@ interface ControlPanelConnector
     /**
      * @return array{success: bool, error?: string}
      */
+    public function setAccountSuspended(Server $server, Domain $domain, bool $suspended): array;
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
     public function ensureSpfRecord(Server $server, Domain $domain, string $spfRecord): array;
 
     /**
@@ -60,6 +65,27 @@ interface ControlPanelConnector
      * @return array{success: bool, error?: string}
      */
     public function changeEmailPassword(Server $server, Domain $domain, string $email, string $password): array;
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
+    public function createEmailAccount(
+        Server $server,
+        Domain $domain,
+        string $localPart,
+        string $password,
+        ?int $quotaMb = null,
+    ): array;
+
+    /**
+     * @return array{success: bool, error?: string, records?: array<int, array{line: int|null, text: string}>}
+     */
+    public function getSpfRecords(Server $server, Domain $domain): array;
+
+    /**
+     * @return array{success: bool, error?: string, used_mb?: float, limit_mb?: float|null, unlimited?: bool, usage_percent?: int}
+     */
+    public function getAccountDiskUsage(Server $server, Domain $domain): array;
 
     /**
      * @return array{success: bool, error?: string, records?: array<int, array<string, mixed>>}

@@ -80,6 +80,74 @@ class Domain extends Model
         return $this->ssl_status['issuer'] ?? 'Unknown';
     }
 
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCachedEmailAccounts(): array
+    {
+        return $this->data['email_accounts'] ?? [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function getCachedMxRecords(): array
+    {
+        return $this->data['mx_records'] ?? [];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getCachedAvailablePlans(): array
+    {
+        return $this->data['available_plans'] ?? [];
+    }
+
+    /**
+     * @return array{used_mb: float, limit_mb: float|null, unlimited: bool, usage_percent: int}|null
+     */
+    public function getCachedAccountDisk(): ?array
+    {
+        $disk = $this->data['account_disk'] ?? null;
+
+        return is_array($disk) ? $disk : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getCachedPublicSpfCheck(): array
+    {
+        return $this->data['public_spf_check'] ?? [
+            'exists' => false,
+            'has_mailbaby' => false,
+            'record' => null,
+        ];
+    }
+
+    public function getCachedControlPanelError(): ?string
+    {
+        $error = $this->data['control_panel_error'] ?? null;
+
+        return is_string($error) && $error !== '' ? $error : null;
+    }
+
+    /**
+     * @return array{web_ip: string|null, mail_ip: string|null, ssl_status: array<string, mixed>|null, nameservers: array<int, string>}
+     */
+    public function getCachedDisplayInfo(): array
+    {
+        $data = $this->data ?? [];
+
+        return [
+            'web_ip' => $this->web_ip ?? ($data['ip'] ?? null),
+            'mail_ip' => $this->mail_ip,
+            'ssl_status' => $this->ssl_status,
+            'nameservers' => $data['nameservers'] ?? $this->server?->getProvisioningNameservers() ?? [],
+        ];
+    }
+
     public function isWordPress(): bool
     {
         try

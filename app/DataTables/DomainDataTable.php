@@ -27,7 +27,15 @@ class DomainDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('domain', function ($domain)
             {
-                return DataTableFormatter::showLink($domain, 'domain.show', $domain->domain, 'view', [$domain->id]);
+                return DataTableFormatter::showLink(
+                    $domain,
+                    'domain.show',
+                    $domain->domain,
+                    'view',
+                    [$domain->id],
+                    'fw-medium text-body text-truncate',
+                    'domain.show',
+                );
             })
             ->editColumn('suspended', function ($domain)
             {
@@ -38,15 +46,15 @@ class DomainDataTable extends DataTable
             })
             ->editColumn('site_type', function ($domain)
             {
-                return $domain->site_type ?? 'N/A';
+                return $domain->site_type ?? '';
             })
             ->editColumn('php_version', function ($domain)
             {
-                return $domain->php_version ?? 'N/A';
+                return $domain->php_version ?? '';
             })
             ->addColumn('server_url', function ($domain)
             {
-                return $domain->server ? $domain->server->server_url : 'N/A';
+                return $domain->server?->server_url ?? '';
             })
             ->rawColumns(['domain', 'suspended', 'action']);
     }

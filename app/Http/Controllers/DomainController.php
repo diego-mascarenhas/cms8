@@ -3,13 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\DomainDataTable;
+use App\Helpers\DnsHelper;
+use App\Http\Requests\StoreDomainEmailRequest;
+use App\Http\Requests\UpdateDomainEmailPasswordRequest;
+use App\Jobs\RefreshDomainDataJob;
 use App\Models\Domain;
 use App\Models\Server;
 use App\Services\ControlPanel\ControlPanelManager;
-use App\Services\WHMService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -17,7 +19,6 @@ class DomainController extends Controller
 {
     public function __construct(
         private ControlPanelManager $controlPanelManager,
-        private WHMService $whmService,
     ) {}
 
     public function index(DomainDataTable $dataTable)
@@ -64,42 +65,27 @@ class DomainController extends Controller
     {
         $domain->load('server');
 
-        $availablePlans = [];
-        $emailAccounts = [];
-        $mxRecords = [];
-        $controlPanelError = null;
         $controlPanelType = $domain->server?->control_panel;
+        $accountIsSuspended = $domain->suspended;
+        $displayInfo = $domain->getCachedDisplayInfo();
+        $publicSpfCheck = $domain->getCachedPublicSpfCheck();
+        $recommendedSpf = $domain->server?->getProvisioningSpfRecord()
+            ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT;
+        $webmailUrl = $domain->server?->getWebmailUrl();
+        $emailAccounts = $domain->getCachedEmailAccounts();
+        $mxRecords = $domain->getCachedMxRecords();
+        $availablePlans = $domain->getCachedAvailablePlans();
+        $accountDisk = $domain->getCachedAccountDisk();
+        $controlPanelError = $domain->getCachedControlPanelError();
 
         if ($domain->server && $this->controlPanelManager->supports($domain->server))
         {
-            $connector = $this->controlPanelManager->forServer($domain->server);
-
-            if ($domain->server->control_panel === 'cpanel' && $domain->server->hasToken())
+            if ($domain->server->control_panel === 'plesk')
             {
-                $plansResult = $connector->listPlans($domain->server);
-                $emailsResult = $connector->listEmailAccounts($domain->server, $domain);
-                $mxResult = $connector->getMxRecords($domain->server, $domain);
-
-                $availablePlans = $plansResult['plans'] ?? [];
-                $emailAccounts = $emailsResult['emails'] ?? [];
-                $mxRecords = $mxResult['records'] ?? [];
-
-                if (! ($plansResult['success'] ?? true))
-                {
-                    $controlPanelError = $plansResult['error'] ?? null;
-                } elseif (! ($emailsResult['success'] ?? true))
-                {
-                    $controlPanelError = $emailsResult['error'] ?? null;
-                } elseif (! ($mxResult['success'] ?? true))
-                {
-                    $controlPanelError = $mxResult['error'] ?? null;
-                }
-            } elseif ($domain->server->control_panel === 'plesk')
+                $controlPanelError = $controlPanelError ?: 'Plesk account management will be available soon.';
+            } elseif ($domain->server->control_panel === 'cpanel' && ! $domain->server->hasToken())
             {
-                $controlPanelError = 'Plesk account management will be available soon.';
-            } else
-            {
-                $controlPanelError = 'Configure the server WHM token to manage this account from Humano.';
+                $controlPanelError = $controlPanelError ?: 'Configure the server WHM token to manage this account from Humano.';
             }
         }
 
@@ -108,11 +94,15 @@ class DomainController extends Controller
             'availablePlans',
             'emailAccounts',
             'mxRecords',
+            'accountDisk',
             'controlPanelError',
             'controlPanelType',
-        ) + [
-            'usesAccountAuth' => (bool) $domain->server?->usesCpanelAccountAuth(),
-        ]);
+            'accountIsSuspended',
+            'displayInfo',
+            'publicSpfCheck',
+            'recommendedSpf',
+            'webmailUrl',
+        ));
     }
 
     public function edit(Domain $domain): View
@@ -161,64 +151,59 @@ class DomainController extends Controller
 
     public function refresh(Domain $domain): RedirectResponse
     {
-        try
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
         {
-            $domain->load('server');
-
-            if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
-            {
-                return redirect()->route('domain.show', $domain->id)
-                    ->with('warning', 'Refresh requires a cPanel server with WHM token configured.');
-            }
-
-            $result = $this->whmService->getDomainsFromServer($domain->server);
-
-            if (! $result['success'])
-            {
-                return redirect()->route('domain.show', $domain->id)
-                    ->with('error', $result['error'] ?? 'Failed to refresh domain data.');
-            }
-
-            $account = collect($result['domains'] ?? [])->firstWhere('domain', $domain->domain);
-
-            if (! $account)
-            {
-                return redirect()->route('domain.show', $domain->id)
-                    ->with('warning', 'Account not found on the remote server.');
-            }
-
-            $domain->update([
-                'username' => $account['user'] ?? $domain->username,
-                'plan' => $account['plan'] ?? $domain->plan,
-                'suspended' => (bool) ($account['suspended'] ?? false),
-                'data' => array_merge($domain->data ?? [], $account, [
-                    'last_refreshed' => now()->toIso8601String(),
-                ]),
-            ]);
-
-            $domain->updatePhpVersion();
-
             return redirect()->route('domain.show', $domain->id)
-                ->with('success', 'Domain data refreshed successfully.');
-        } catch (\Exception $e)
-        {
-            Log::error('Error refreshing domain data: '.$e->getMessage());
-
-            return redirect()->route('domain.show', $domain->id)
-                ->with('error', 'Failed to refresh domain data: '.$e->getMessage());
+                ->with('warning', 'La actualización requiere un servidor cPanel con credenciales configuradas.');
         }
+
+        RefreshDomainDataJob::dispatch($domain->id)->afterResponse();
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with('success', 'Actualizando datos del dominio en segundo plano. Recarga la página en unos segundos.');
     }
 
     public function toggleSuspension(Domain $domain): RedirectResponse
     {
+        $domain->load('server');
+        $shouldSuspend = ! $domain->suspended;
+
+        if ($domain->server && $this->controlPanelManager->supports($domain->server))
+        {
+            if ($domain->server->control_panel === 'cpanel' && ! $domain->server->hasToken())
+            {
+                return redirect()->route('domain.show', $domain->id)
+                    ->with('error', 'El servidor no tiene credenciales configuradas para suspender la cuenta.');
+            }
+
+            if ($domain->server->hasToken())
+            {
+                $result = $this->controlPanelManager
+                    ->forServer($domain->server)
+                    ->setAccountSuspended($domain->server, $domain, $shouldSuspend);
+
+                if (! ($result['success'] ?? false))
+                {
+                    return redirect()->route('domain.show', $domain->id)
+                        ->with('error', $result['error'] ?? 'No se pudo actualizar el estado de la cuenta en el servidor.');
+                }
+            }
+        }
+
         $domain->update([
-            'suspended' => ! $domain->suspended,
+            'suspended' => $shouldSuspend,
         ]);
 
-        $status = $domain->suspended ? 'suspended' : 'unsuspended';
+        $this->queueDomainRefresh($domain);
+
+        $message = $shouldSuspend
+            ? 'Cuenta suspendida correctamente.'
+            : 'Cuenta activada correctamente.';
 
         return redirect()->route('domain.show', $domain->id)
-            ->with('success', "Domain {$status} successfully.");
+            ->with('success', $message);
     }
 
     public function changePlan(Request $request, Domain $domain): RedirectResponse
@@ -239,35 +224,102 @@ class DomainController extends Controller
             ->forServer($domain->server)
             ->changePlan($domain->server, $domain, $validated['plan']);
 
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
         return redirect()->route('domain.show', $domain->id)
             ->with($result['success'] ? 'success' : 'error', $result['success']
-                ? 'Hosting plan updated successfully.'
-                : ($result['error'] ?? 'Failed to update plan.'));
+                ? 'Plan de hosting actualizado correctamente.'
+                : ($result['error'] ?? 'No se pudo actualizar el plan.'));
     }
 
-    public function updateEmailPassword(Request $request, Domain $domain): RedirectResponse
+    public function ensureSpf(Domain $domain): RedirectResponse
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string|min:8|max:255',
-        ]);
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'La configuración SPF requiere un servidor cPanel con credenciales.');
+        }
+
+        $spfRecord = $domain->server->getProvisioningSpfRecord()
+            ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT;
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->ensureSpfRecord($domain->server, $domain, $spfRecord);
+
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'Registro SPF configurado correctamente.'
+                : ($result['error'] ?? 'No se pudo configurar el registro SPF.'));
+    }
+
+    public function updateEmailPassword(UpdateDomainEmailPasswordRequest $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validated();
 
         $domain->load('server');
 
         if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
         {
             return redirect()->route('domain.show', $domain->id)
-                ->with('error', 'Email password changes require a cPanel server with WHM token.');
+                ->with('error', 'El servidor no tiene credenciales configuradas para cambiar contraseñas de correo.');
         }
 
         $result = $this->controlPanelManager
             ->forServer($domain->server)
             ->changeEmailPassword($domain->server, $domain, $validated['email'], $validated['password']);
 
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
         return redirect()->route('domain.show', $domain->id)
             ->with($result['success'] ? 'success' : 'error', $result['success']
-                ? 'Email password updated successfully.'
-                : ($result['error'] ?? 'Failed to update email password.'));
+                ? 'Contraseña de correo actualizada correctamente.'
+                : ($result['error'] ?? 'No se pudo actualizar la contraseña de correo.'));
+    }
+
+    public function storeEmailAccount(StoreDomainEmailRequest $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $domain->load('server');
+
+        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'El servidor no tiene credenciales configuradas para crear cuentas de correo.');
+        }
+
+        $result = $this->controlPanelManager
+            ->forServer($domain->server)
+            ->createEmailAccount(
+                $domain->server,
+                $domain,
+                $validated['email'],
+                $validated['password'],
+            );
+
+        if ($result['success'] ?? false)
+        {
+            $this->queueDomainRefresh($domain);
+        }
+
+        return redirect()->route('domain.show', $domain->id)
+            ->with($result['success'] ? 'success' : 'error', $result['success']
+                ? 'Cuenta de correo creada correctamente.'
+                : ($result['error'] ?? 'No se pudo crear la cuenta de correo.'));
     }
 
     public function updateMxRecords(Request $request, Domain $domain): RedirectResponse
@@ -290,9 +342,25 @@ class DomainController extends Controller
             ->forServer($domain->server)
             ->updateMxRecords($domain->server, $domain, $validated['mx_records']);
 
+        if ($result['success'] ?? false)
+        {
+            $domain->update([
+                'data' => array_merge($domain->data ?? [], [
+                    'mx_records' => $validated['mx_records'],
+                ]),
+            ]);
+
+            $this->queueDomainRefresh($domain);
+        }
+
         return redirect()->route('domain.show', $domain->id)
             ->with($result['success'] ? 'success' : 'error', $result['success']
                 ? 'MX records updated successfully.'
                 : ($result['error'] ?? 'Failed to update MX records.'));
+    }
+
+    private function queueDomainRefresh(Domain $domain): void
+    {
+        RefreshDomainDataJob::dispatch($domain->id)->afterResponse();
     }
 }

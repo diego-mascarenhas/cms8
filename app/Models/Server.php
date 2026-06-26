@@ -206,4 +206,21 @@ class Server extends Model
 
         return null;
     }
+
+    public function getWebmailUrl(?string $email = null): ?string
+    {
+        if ($this->server_url === null || $this->server_url === '')
+        {
+            return null;
+        }
+
+        $url = 'https://'.$this->server_url.':2096/';
+
+        if ($email !== null && $email !== '')
+        {
+            return $url.'login/?user='.urlencode($email);
+        }
+
+        return $url;
+    }
 }

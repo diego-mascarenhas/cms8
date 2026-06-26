@@ -16,6 +16,21 @@ class CpanelConnector implements ControlPanelConnector
 
     private const CPANEL_PORT = 2083;
 
+    public const SUSPENDED_ACCOUNT_MESSAGE = 'La cuenta está suspendida en cPanel. Actívala para gestionar correo, DNS y plan.';
+
+    public static function isSuspendedAccountError(?string $error): bool
+    {
+        if ($error === null || $error === '')
+        {
+            return false;
+        }
+
+        $normalized = strtolower($error);
+
+        return str_contains($normalized, 'suspended account')
+            || str_contains($normalized, 'suspended accounts');
+    }
+
     public function supports(Server $server): bool
     {
         return $server->control_panel === 'cpanel';
@@ -317,6 +332,7 @@ class CpanelConnector implements ControlPanelConnector
             'domain' => $domain,
             'plan' => $plan,
             'password' => $password,
+            'mxcheck' => 0,
         ];
 
         if ($contactEmail)
@@ -382,6 +398,80 @@ class CpanelConnector implements ControlPanelConnector
                 'domain' => $domain,
                 'username' => $username,
                 'plan' => $plan,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Connection error: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    public function setAccountSuspended(Server $server, Domain $domain, bool $suspended): array
+    {
+        if (! $this->supports($server) || ! $server->hasToken())
+        {
+            return [
+                'success' => false,
+                'error' => 'Server is not configured for cPanel or missing token',
+            ];
+        }
+
+        $path = $suspended ? '/json-api/suspendacct' : '/json-api/unsuspendacct';
+        $params = [
+            'user' => $domain->username,
+        ];
+
+        if ($suspended)
+        {
+            $params['reason'] = 'Suspended from Humano';
+        }
+
+        try
+        {
+            $response = $server->usesCpanelAccountAuth()
+                ? $this->whmBasicAuthRequest($server, $path, $params)
+                : $this->whmRequest($server, $path, $params);
+
+            if (! $response->successful())
+            {
+                $payload = $response->json();
+
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage(
+                        is_array($payload) ? $payload : [],
+                        $response->body(),
+                    ),
+                ];
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload) || ! $this->isWhmJsonApiSuccessful($payload))
+            {
+                Log::warning('cPanel account suspension rejected', [
+                    'server_id' => $server->id,
+                    'domain' => $domain->domain,
+                    'username' => $domain->username,
+                    'suspended' => $suspended,
+                    'response' => $payload,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage(is_array($payload) ? $payload : []),
+                ];
+            }
+
+            return ['success' => true];
+        } catch (\Exception $e)
+        {
+            Log::error('cPanel account suspension failed: '.$e->getMessage(), [
+                'server_id' => $server->id,
+                'domain' => $domain->domain,
+                'username' => $domain->username,
+                'suspended' => $suspended,
             ]);
 
             return [
@@ -522,14 +612,6 @@ class CpanelConnector implements ControlPanelConnector
 
     public function changePlan(Server $server, Domain $domain, string $plan): array
     {
-        if ($server->usesCpanelAccountAuth())
-        {
-            return [
-                'success' => false,
-                'error' => 'Changing hosting plans requires WHM API access (root/reseller token).',
-            ];
-        }
-
         if (! $this->supports($server) || ! $server->hasToken())
         {
             return [
@@ -540,16 +622,36 @@ class CpanelConnector implements ControlPanelConnector
 
         try
         {
-            $response = $this->whmRequest($server, '/json-api/modifyacct', [
-                'user' => $domain->username,
-                'pkg' => $plan,
-            ]);
+            $response = $server->usesCpanelAccountAuth()
+                ? $this->whmBasicAuthRequest($server, '/json-api/modifyacct', [
+                    'user' => $domain->username,
+                    'pkg' => $plan,
+                ])
+                : $this->whmRequest($server, '/json-api/modifyacct', [
+                    'user' => $domain->username,
+                    'pkg' => $plan,
+                ]);
 
             if (! $response->successful())
             {
+                $payload = $response->json();
+
                 return [
                     'success' => false,
-                    'error' => 'API request failed: '.$response->body(),
+                    'error' => $this->extractWhmErrorMessage(
+                        is_array($payload) ? $payload : [],
+                        $response->body(),
+                    ),
+                ];
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload) || ! $this->isWhmJsonApiSuccessful($payload))
+            {
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage(is_array($payload) ? $payload : []),
                 ];
             }
 
@@ -565,6 +667,82 @@ class CpanelConnector implements ControlPanelConnector
         }
     }
 
+    public function getSpfRecords(Server $server, Domain $domain): array
+    {
+        return $this->getSpfTxtRecords($server, $domain);
+    }
+
+    public function getAccountDiskUsage(Server $server, Domain $domain): array
+    {
+        $fromData = $this->diskUsageFromDomainData($domain);
+
+        if ($fromData !== null)
+        {
+            return [
+                'success' => true,
+                ...$fromData,
+            ];
+        }
+
+        $result = $this->uapiRequest($server, $domain, 'Quota', 'get_quota_info');
+
+        if (! $result['success'])
+        {
+            return $result;
+        }
+
+        $data = $result['data'] ?? [];
+        $usedMb = (float) ($data['megabytes_used'] ?? 0);
+        $underLimit = (bool) ($data['under_megabyte_limit'] ?? true);
+        $limitMb = $underLimit ? (float) ($data['megabyte_limit'] ?? 0) : null;
+        $unlimited = ! $underLimit || $limitMb <= 0;
+
+        return [
+            'success' => true,
+            'used_mb' => $usedMb,
+            'limit_mb' => $unlimited ? null : $limitMb,
+            'unlimited' => $unlimited,
+            'usage_percent' => $this->calculateUsagePercent($usedMb, $limitMb, $unlimited),
+        ];
+    }
+
+    /**
+     * @return array{used_mb: float, limit_mb: float|null, unlimited: bool, usage_percent: int}|null
+     */
+    private function diskUsageFromDomainData(Domain $domain): ?array
+    {
+        $data = $domain->data ?? [];
+        $used = $data['disk_used'] ?? $data['diskused'] ?? null;
+        $limit = $data['disk_limit'] ?? $data['disklimit'] ?? null;
+
+        if ($used === null && $limit === null)
+        {
+            return null;
+        }
+
+        $usedMb = (float) $used;
+        $limitRaw = is_string($limit) ? strtolower($limit) : $limit;
+        $unlimited = $limitRaw === 'unlimited' || $limitRaw === null || (is_numeric($limitRaw) && (float) $limitRaw <= 0);
+        $limitMb = $unlimited ? null : (float) $limitRaw;
+
+        return [
+            'used_mb' => $usedMb,
+            'limit_mb' => $limitMb,
+            'unlimited' => $unlimited,
+            'usage_percent' => $this->calculateUsagePercent($usedMb, $limitMb, $unlimited),
+        ];
+    }
+
+    private function calculateUsagePercent(float $usedMb, ?float $limitMb, bool $unlimited): int
+    {
+        if ($unlimited || $limitMb === null || $limitMb <= 0)
+        {
+            return 0;
+        }
+
+        return (int) min(100, round(($usedMb / $limitMb) * 100));
+    }
+
     public function listEmailAccounts(Server $server, Domain $domain): array
     {
         $result = $this->uapiRequest($server, $domain, 'Email', 'list_pops_with_disk');
@@ -575,11 +753,7 @@ class CpanelConnector implements ControlPanelConnector
         }
 
         $emails = collect($result['data'] ?? [])
-            ->map(fn (array $row) => [
-                'email' => $row['email'] ?? '',
-                'diskused' => $row['diskused'] ?? null,
-                'diskquota' => $row['diskquota'] ?? null,
-            ])
+            ->map(fn (array $row) => $this->formatEmailAccountRow($row))
             ->values()
             ->all();
 
@@ -598,6 +772,99 @@ class CpanelConnector implements ControlPanelConnector
             'domain' => $domain->domain,
             'password' => $password,
         ], expectData: false);
+    }
+
+    public function createEmailAccount(
+        Server $server,
+        Domain $domain,
+        string $localPart,
+        string $password,
+        ?int $quotaMb = null,
+    ): array {
+        $params = [
+            'email' => $localPart,
+            'password' => $password,
+            'domain' => $domain->domain,
+        ];
+
+        if ($quotaMb !== null)
+        {
+            $params['quota'] = $quotaMb;
+        }
+
+        return $this->uapiRequest($server, $domain, 'Email', 'add_pop', $params, expectData: false);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function formatEmailAccountRow(array $row): array
+    {
+        $usedMb = $this->parseEmailMegabytesUsed($row['diskused'] ?? null);
+        $quotaMb = $this->parseEmailMegabytesQuota($row['diskquota'] ?? null);
+        $unlimited = $quotaMb === null;
+
+        return [
+            'email' => $row['email'] ?? '',
+            'diskused' => $row['diskused'] ?? null,
+            'diskquota' => $row['diskquota'] ?? null,
+            'diskused_mb' => $usedMb,
+            'diskquota_mb' => $unlimited ? null : $quotaMb,
+            'unlimited' => $unlimited,
+            'usage_percent' => (! $unlimited && $quotaMb > 0)
+                ? min(100, (int) round(($usedMb / $quotaMb) * 100))
+                : null,
+        ];
+    }
+
+    private function parseEmailMegabytesUsed(mixed $value): float
+    {
+        $parsed = $this->parseNumericMegabytes($value);
+
+        return $parsed ?? 0.0;
+    }
+
+    private function parseEmailMegabytesQuota(mixed $value): ?float
+    {
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+
+        if (in_array($normalized, ['unlimited', '∞', 'none', '0', '0.00'], true))
+        {
+            return null;
+        }
+
+        return $this->parseNumericMegabytes($value);
+    }
+
+    private function parseNumericMegabytes(mixed $value): ?float
+    {
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        $normalized = strtolower(trim((string) $value));
+
+        if (preg_match('/^([\d.]+)\s*([kmg])?b?$/i', $normalized, $matches) === 1)
+        {
+            $amount = (float) $matches[1];
+            $unit = strtolower($matches[2] ?? '');
+
+            return match ($unit)
+            {
+                'g' => $amount * 1024,
+                'k' => $amount / 1024,
+                default => $amount,
+            };
+        }
+
+        return is_numeric($value) ? (float) $value : null;
     }
 
     public function getMxRecords(Server $server, Domain $domain): array

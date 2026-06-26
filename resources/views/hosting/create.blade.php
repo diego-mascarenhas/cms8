@@ -40,26 +40,38 @@
                             <div class="mb-0 mt-1" style="white-space: pre-wrap;">{{ $message }}</div>
                         </div>
                     @enderror
-                    
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <x-input-general
-                                id="domain"
-                                label="Nombre de Dominio (*)"
-                                value="{{ old('domain', $hosting->domain ?? '') }}"
-                            />
-                        </div>
 
-                        @if(! isset($hosting))
+                    @if(! isset($hosting))
+                    <div class="row mb-3">
                         <div class="col-md-6">
                             <x-client-select
                                 id="enterprise_id"
-                                label="Empresa (*)"
+                                label="Empresa"
                                 :selected="old('enterprise_id', $enterpriseId ?? '')"
-                                :allowNull="false"
+                                :allowNull="true"
                             />
                         </div>
-                        @else
+                        <div class="col-md-6">
+                            <label for="service_id" class="form-label">Servicio existente</label>
+                            <select class="form-select @error('service_id') is-invalid @enderror" id="service_id" name="service_id">
+                                <option value="">Crear servicio nuevo al guardar</option>
+                                @foreach ($services ?? [] as $service)
+                                    <option value="{{ $service->id }}"
+                                        data-enterprise-id="{{ $service->enterprise_id }}"
+                                        @selected((string) old('service_id', $serviceId ?? '') === (string) $service->id)>
+                                        {{ $service->enterprise?->name ?? '—' }}
+                                        — {{ $service->description ?: ($service->serviceType?->name ?? 'Servicio') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('service_id')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <div class="form-text">Opcional. Si eliges empresa sin servicio, se creará uno al guardar.</div>
+                        </div>
+                    </div>
+                    @else
+                    <div class="row mb-3">
                         <div class="col-md-6">
                             <label for="service_id" class="form-label">Servicio</label>
                             <select class="form-select @error('service_id') is-invalid @enderror" id="service_id" name="service_id">
@@ -77,33 +89,17 @@
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
-                        @endif
-                    </div>
-
-                    @if(! isset($hosting))
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="service_id" class="form-label">Servicio existente</label>
-                            <select class="form-select @error('service_id') is-invalid @enderror" id="service_id" name="service_id">
-                                <option value="">Crear servicio nuevo al guardar</option>
-                                @foreach ($services ?? [] as $service)
-                                    <option value="{{ $service->id }}"
-                                        data-enterprise-id="{{ $service->enterprise_id }}"
-                                        @selected((string) old('service_id', $serviceId ?? '') === (string) $service->id)>
-                                        {{ $service->enterprise?->name ?? '—' }}
-                                        — {{ $service->description ?: ($service->serviceType?->name ?? 'Servicio') }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('service_id')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">Opcional. Si no eliges uno, se creará un servicio de hosting para la empresa.</div>
-                        </div>
                     </div>
                     @endif
-                    
+
                     <div class="row mb-3">
+                        <div class="col-md-6">
+                            <x-input-general
+                                id="domain"
+                                label="Nombre de Dominio (*)"
+                                value="{{ old('domain', $hosting->domain ?? '') }}"
+                            />
+                        </div>
                         <div class="col-md-6">
                             <label for="server_id" class="form-label">Servidor (*)</label>
                             <select class="form-select @error('server_id') is-invalid @enderror" id="server_id" name="server_id">
@@ -124,7 +120,9 @@
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
-
+                    </div>
+                    
+                    <div class="row mb-3">
                         <div class="col-md-6">
                             <x-input-general
                                 id="username"
@@ -133,9 +131,7 @@
                                 maxlength="16"
                             />
                         </div>
-                    </div>
-                    
-                    <div class="row mb-3">
+                        
                         @include('hosting.partials.plan-select', [
                             'selectedPlan' => old('plan', isset($hosting) ? $hosting->plan : ''),
                             'selectedServerId' => old('server_id', isset($hosting) ? $hosting->server_id : ''),

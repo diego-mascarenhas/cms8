@@ -54,13 +54,38 @@ class PleskConnector implements ControlPanelConnector
         return $this->notImplemented();
     }
 
+    public function setAccountSuspended(Server $server, Domain $domain, bool $suspended): array
+    {
+        return $this->notImplemented();
+    }
+
     public function listEmailAccounts(Server $server, Domain $domain): array
+    {
+        return $this->notImplemented();
+    }
+
+    public function getSpfRecords(Server $server, Domain $domain): array
+    {
+        return $this->notImplemented();
+    }
+
+    public function getAccountDiskUsage(Server $server, Domain $domain): array
     {
         return $this->notImplemented();
     }
 
     public function changeEmailPassword(Server $server, Domain $domain, string $email, string $password): array
     {
+        return $this->notImplemented();
+    }
+
+    public function createEmailAccount(
+        Server $server,
+        Domain $domain,
+        string $localPart,
+        string $password,
+        ?int $quotaMb = null,
+    ): array {
         return $this->notImplemented();
     }
 
