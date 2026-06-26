@@ -27,22 +27,24 @@ class DomainDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('domain', function ($domain)
             {
-                return DataTableFormatter::showLink(
-                    $domain,
-                    'domain.show',
-                    $domain->domain,
-                    'view',
-                    [$domain->id],
-                    'fw-medium text-body text-truncate',
-                    'domain.show',
-                );
+                $user = auth()->user();
+
+                if ($user && ($user->can('domain.show') || $user->can('hosting.show')))
+                {
+                    return DataTableFormatter::link(
+                        route('domain.show', $domain->id),
+                        $domain->domain,
+                    );
+                }
+
+                return '<span class="fw-medium text-body text-truncate">'.e($domain->domain).'</span>';
             })
             ->editColumn('suspended', function ($domain)
             {
                 $statusClass = $domain->suspended ? 'danger' : 'success';
-                $statusText = $domain->suspended ? 'Suspended' : 'Active';
+                $statusText = $domain->suspended ? 'Suspendido' : 'Activo';
 
-                return '<span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span>';
+                return '<div class="text-center"><span class="badge bg-label-'.$statusClass.'">'.$statusText.'</span></div>';
             })
             ->editColumn('site_type', function ($domain)
             {
@@ -92,13 +94,14 @@ class DomainDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
-            Column::make('domain')->title('Domain'),
-            Column::make('username')->title('Username'),
-            Column::computed('server_url')->title('Server'),
-            Column::make('site_type')->title('Type'),
+            Column::make('domain')->title('Dominio'),
+            Column::make('username')->title('Usuario'),
+            Column::computed('server_url')->title('Servidor'),
+            Column::make('site_type')->title('Tipo'),
             Column::make('php_version')->title('PHP'),
-            Column::make('suspended')->title('Status'),
+            Column::make('suspended')->title('Estado')->addClass('text-center'),
             Column::computed('action')
+                ->title('Acciones')
                 ->exportable(false)
                 ->printable(false)
                 ->width(60)

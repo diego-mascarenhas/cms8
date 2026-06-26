@@ -240,7 +240,7 @@
             <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="card-title mb-0">Cuentas de correo</h5>
                 <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#createEmailModal">
-                    <i class="ti ti-plus me-1"></i> Crear cuenta
+                    <i class="ti ti-plus me-1"></i> Crear email
                 </button>
             </div>
             <div class="card-body">
@@ -284,7 +284,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <div class="d-flex justify-content-center align-items-center">
+                                            <div class="d-flex justify-content-center align-items-center gap-1">
                                                 @if($webmailUrl)
                                                     <a
                                                         href="{{ $domain->server->getWebmailUrl($account['email']) }}"
@@ -292,20 +292,22 @@
                                                         rel="noopener noreferrer"
                                                         class="text-body"
                                                         title="Abrir webmail"
+                                                        aria-label="Abrir webmail"
                                                     >
-                                                        <i class="ti ti-mail ti-sm me-2"></i>
+                                                        <i class="ti ti-mail ti-sm"></i>
                                                     </a>
                                                 @endif
-                                                <button
-                                                    type="button"
-                                                    class="btn btn-sm btn-icon btn-label-secondary change-email-password"
+                                                <a
+                                                    href="javascript:;"
+                                                    class="text-body change-email-password"
                                                     data-email="{{ $account['email'] }}"
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#changeEmailPasswordModal"
                                                     title="Cambiar contraseña"
+                                                    aria-label="Cambiar contraseña"
                                                 >
                                                     <i class="ti ti-key ti-sm"></i>
-                                                </button>
+                                                </a>
                                             </div>
                                         </td>
                                     </tr>
@@ -408,15 +410,40 @@
                 <h5 class="card-title mb-0">Configuración DNS</h5>
             </div>
             <div class="card-body">
-                @if(!empty($displayInfo['nameservers']))
+                @if(!empty($requiredNameservers))
                     <div class="mb-3">
-                        <h6 class="mb-2">Servidores DNS</h6>
+                        <h6 class="mb-2">Servidores DNS requeridos</h6>
+                        <p class="text-muted small mb-2">Configura estos NS en el registrador del dominio:</p>
                         <ul class="list-unstyled mb-0 small">
-                            @foreach($displayInfo['nameservers'] as $ns)
+                            @foreach($requiredNameservers as $nameserver)
+                                <li><code>{{ strtoupper($nameserver) }}</code></li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
+
+                @if(!empty($currentNameservers))
+                    @php
+                        $dnsHasWarning = ! $nameserversMatch;
+                    @endphp
+                    <div class="mb-3">
+                        <h6 @class([
+                            'mb-2 d-inline-flex align-items-center gap-1',
+                            'bg-label-warning rounded px-2 py-1' => $dnsHasWarning,
+                        ])>
+                            @if($dnsHasWarning)
+                                <i class="ti ti-alert-triangle ti-xs"></i>
+                            @endif
+                            DNS actuales (públicos)
+                        </h6>
+                        <ul class="list-unstyled mb-0 small mt-2">
+                            @foreach($currentNameservers as $ns)
                                 <li><code>{{ $ns }}</code></li>
                             @endforeach
                         </ul>
                     </div>
+                @elseif(!empty($requiredNameservers))
+                    <p class="text-muted small mb-3">Pulsa <strong>Actualizar</strong> para comprobar los DNS públicos del dominio.</p>
                 @endif
 
                 <div class="mb-3">
@@ -427,18 +454,24 @@
                 </div>
 
                 <div class="mb-0">
-                    <h6 class="mb-2">SPF público (DNS)</h6>
+                    @php
+                        $spfHasWarning = ! ($publicSpfCheck['exists'] ?? false) || ! ($publicSpfCheck['has_mailbaby'] ?? false);
+                    @endphp
+                    <h6 @class([
+                        'mb-2 d-inline-flex align-items-center gap-1',
+                        'bg-label-warning rounded px-2 py-1' => $spfHasWarning,
+                    ])>
+                        @if($spfHasWarning)
+                            <i class="ti ti-alert-triangle ti-xs"></i>
+                        @endif
+                        SPF público (DNS)
+                    </h6>
                     @if($publicSpfCheck['exists'] ?? false)
-                        <div class="bg-lighter rounded p-2 mb-2">
+                        <div class="bg-lighter rounded p-2 mt-2">
                             <code class="small text-break">{{ $publicSpfCheck['record'] }}</code>
                         </div>
-                        @if($publicSpfCheck['has_mailbaby'] ?? false)
-                            <span class="badge bg-label-success">Incluye include:spf.revisionalpha.com</span>
-                        @else
-                            <span class="badge bg-label-warning">Falta include:spf.revisionalpha.com</span>
-                        @endif
                     @else
-                        <p class="text-muted small mb-0">No se encontró registro SPF público.</p>
+                        <p class="text-muted small mb-0 mt-2">No se encontró registro SPF público.</p>
                     @endif
                 </div>
             </div>
@@ -446,9 +479,10 @@
     </div>
 </div>
 
+@push('modals')
 @if(($controlPanelType ?? null) === 'cpanel' && $domain->server?->hasToken() && !($accountIsSuspended ?? false))
 <div class="modal fade" id="createEmailModal" tabindex="-1" aria-labelledby="createEmailModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{{ route('domain.emails.store', $domain->id) }}" method="POST">
                 @csrf
@@ -491,7 +525,7 @@
 </div>
 
 <div class="modal fade" id="changeEmailPasswordModal" tabindex="-1" aria-labelledby="changeEmailPasswordModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <form action="{{ route('domain.email-password', $domain->id) }}" method="POST" id="changeEmailPasswordForm">
                 @csrf
@@ -525,6 +559,7 @@
     </div>
 </div>
 @endif
+@endpush
 
 @push('scripts')
 <script>

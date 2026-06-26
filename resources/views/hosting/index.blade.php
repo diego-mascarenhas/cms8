@@ -68,11 +68,11 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Total Servers</span>
+                            <span>Total servidores</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $servers->count() }}</h3>
                             </div>
-                            <p class="mb-0">Active Servers</p>
+                            <p class="mb-0">Servidores activos</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-primary">
@@ -88,12 +88,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Online</span>
+                            <span>En línea</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $servers->where('success', true)->count() }}</h3>
                                 <p class="text-success mb-0">({{ $servers->count() > 0 ? round(($servers->where('success', true)->count() / $servers->count()) * 100) : 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Servers Online</p>
+                            <p class="mb-0">Servidores en línea</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-success">
@@ -109,12 +109,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>SSL Valid</span>
+                            <span>SSL válido</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $servers->filter->hasSsl()->count() }}</h3>
                                 <p class="text-primary mb-0">({{ $servers->count() > 0 ? round(($servers->filter->hasSsl()->count() / $servers->count()) * 100) : 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Valid Certificates</p>
+                            <p class="mb-0">Certificados válidos</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-primary">
@@ -130,12 +130,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Offline</span>
+                            <span>Desconectados</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $servers->where('success', false)->count() }}</h3>
                                 <p class="text-danger mb-0">({{ $servers->count() > 0 ? round(($servers->where('success', false)->count() / $servers->count()) * 100) : 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Servers Offline</p>
+                            <p class="mb-0">Servidores desconectados</p>
                         </div>
                         <div class="avatar">
                             <span class="avatar-initial rounded bg-label-danger">

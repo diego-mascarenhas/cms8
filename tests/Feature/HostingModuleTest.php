@@ -16,6 +16,7 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\TeamDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 class HostingModuleTest extends TestCase
@@ -776,7 +777,7 @@ class HostingModuleTest extends TestCase
     public function test_domain_change_plan_updates_remote_and_local_record(): void
     {
         Http::fake([
-            '*modifyacct*' => Http::response(['metadata' => ['result' => 1]]),
+            '*changepackage*' => Http::response(['metadata' => ['result' => 1]]),
         ]);
 
         $user = User::factory()->create();
@@ -812,7 +813,7 @@ class HostingModuleTest extends TestCase
     public function test_domain_change_plan_works_with_cpanel_account_auth(): void
     {
         Http::fake([
-            '*modifyacct*' => Http::response(['metadata' => ['result' => 1]]),
+            '*changepackage*' => Http::response(['metadata' => ['result' => 1]]),
         ]);
 
         $user = User::factory()->create();
@@ -848,9 +849,144 @@ class HostingModuleTest extends TestCase
 
         Http::assertSent(function ($request)
         {
-            return str_contains($request->url(), 'modifyacct')
+            return str_contains($request->url(), 'changepackage')
                 && $request->hasHeader('Authorization', 'Basic '.base64_encode('democpanel:reseller-password'));
         });
+    }
+
+    public function test_domain_change_plan_falls_back_to_modifyacct_when_changepackage_fails(): void
+    {
+        Http::fake([
+            '*changepackage*' => Http::response(['metadata' => ['result' => 0, 'reason' => 'Permission Denied']]),
+            '*modifyacct*' => Http::response(['metadata' => ['result' => 1]]),
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Reseller',
+            'server_url' => 'reseller.test',
+            'username' => 'democpanel',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'reseller-password',
+            'success' => true,
+            'status_id' => 1,
+            'data' => ['auth_mode' => 'cpanel_user'],
+        ]);
+
+        $domain = Domain::factory()->create([
+            'server_id' => $server->id,
+            'username' => 'siteuser',
+            'plan' => 'revision_beginner',
+            'data' => ['available_plans' => ['revision_beginner', 'revision_pro']],
+        ]);
+
+        $response = $this->actingAs($user)->post(route('domain.change-plan', $domain->id), [
+            'plan' => 'revision_pro',
+        ]);
+
+        $response->assertRedirect(route('domain.show', $domain->id));
+        $response->assertSessionHas('success');
+        $this->assertSame('revision_pro', $domain->fresh()->plan);
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'changepackage'));
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'modifyacct'));
+    }
+
+    public function test_hosting_index_shows_spanish_summary_and_table_labels(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'WHM',
+            'server_url' => 'whm.test',
+            'username' => 'root',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-token',
+            'success' => true,
+            'status_id' => 1,
+        ]);
+
+        $response = $this->actingAs($user)->get(route('hosting.index'));
+
+        $response->assertOk();
+        $response->assertSee('Total servidores', false);
+        $response->assertSee('Servidores en línea', false);
+        $response->assertSee('Certificados válidos', false);
+        $response->assertSee('Servidores desconectados', false);
+        $response->assertSee('Dominio', false);
+        $response->assertSee('Estado', false);
+        $response->assertSee('Acciones', false);
+    }
+
+    public function test_hosting_list_domain_column_links_to_detail_with_hosting_show_permission(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        Permission::firstOrCreate(['name' => 'hosting.show', 'guard_name' => 'web']);
+        $user->givePermissionTo('hosting.show');
+
+        $server = Server::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'WHM',
+            'server_url' => 'whm.test',
+            'username' => 'root',
+            'control_panel' => 'cpanel',
+            'encrypted_token' => 'secret-token',
+            'success' => true,
+            'status_id' => 1,
+        ]);
+
+        $domain = Domain::factory()->create([
+            'server_id' => $server->id,
+            'domain' => 'pepe8.com',
+            'username' => 'pepe8',
+        ]);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('hosting.index').'?'.http_build_query($this->hostingDataTableQuery()));
+
+        $response->assertOk();
+        $domainColumn = collect($response->json('data'))->first()['domain'] ?? '';
+        $this->assertStringContainsString(route('domain.show', $domain->id), $domainColumn);
+        $this->assertStringContainsString('pepe8.com', $domainColumn);
+        $this->assertStringContainsString('<a href=', $domainColumn);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function hostingDataTableQuery(): array
+    {
+        $columnNames = ['id', 'domain', 'username', 'server_url', 'site_type', 'php_version', 'suspended', 'action'];
+
+        return [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 10,
+            'search' => ['value' => '', 'regex' => 'false'],
+            'order' => [['column' => 1, 'dir' => 'asc']],
+            'columns' => collect($columnNames)->map(fn (string $name) => [
+                'data' => $name,
+                'name' => $name,
+                'searchable' => 'true',
+                'orderable' => 'true',
+                'search' => ['value' => '', 'regex' => 'false'],
+            ])->all(),
+        ];
     }
 
     private function createHostingEnterprise(Team $team): Enterprise

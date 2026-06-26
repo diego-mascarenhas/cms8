@@ -107,6 +107,7 @@ class DomainEmailAccountsTest extends TestCase
                     'usage_percent' => 0,
                 ],
                 'last_refreshed' => now()->toIso8601String(),
+                'nameservers' => ['nsg1.namebrightdns.com', 'nsg2.namebrightdns.com'],
             ],
         ]);
 
@@ -114,6 +115,14 @@ class DomainEmailAccountsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Detalle del dominio');
+        $response->assertSee('Configuración DNS');
+        $response->assertSee('Servidores DNS requeridos');
+        $response->assertSee('NS1.REVISIONALPHA.COM');
+        $response->assertSee('NS2.REVISIONALPHA.COM');
+        $response->assertSee('DNS actuales (públicos)');
+        $response->assertSee('nsg1.namebrightdns.com');
+        $response->assertSee('ti-alert-triangle', false);
+        $response->assertDontSee('Los DNS no coinciden', false);
         $response->assertSee('Dominio');
         $response->assertSee('Capacidad');
         $response->assertSee('Servidor');
@@ -128,7 +137,7 @@ class DomainEmailAccountsTest extends TestCase
         $response->assertSee('Notas:');
         $response->assertSee('Cuentas de correo');
         $response->assertSee('info@example.test');
-        $response->assertSee('Crear cuenta');
+        $response->assertSee('Crear email');
         $response->assertSee('25.5 / 100 MB');
         $response->assertDontSee('Domain Details');
         $response->assertDontSee('Change Plan');

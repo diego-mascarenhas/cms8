@@ -71,6 +71,10 @@ class DomainController extends Controller
         $publicSpfCheck = $domain->getCachedPublicSpfCheck();
         $recommendedSpf = $domain->server?->getProvisioningSpfRecord()
             ?: DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT;
+        $requiredNameservers = $domain->server?->getProvisioningNameservers()
+            ?: config('humano_hosting.default_nameservers', []);
+        $currentNameservers = $displayInfo['nameservers'] ?? [];
+        $nameserversMatch = $this->nameserversMatch($currentNameservers, $requiredNameservers);
         $webmailUrl = $domain->server?->getWebmailUrl();
         $emailAccounts = $domain->getCachedEmailAccounts();
         $mxRecords = $domain->getCachedMxRecords();
@@ -101,8 +105,31 @@ class DomainController extends Controller
             'displayInfo',
             'publicSpfCheck',
             'recommendedSpf',
+            'requiredNameservers',
+            'currentNameservers',
+            'nameserversMatch',
             'webmailUrl',
         ));
+    }
+
+    /**
+     * @param  array<int, string>  $current
+     * @param  array<int, string>  $required
+     */
+    private function nameserversMatch(array $current, array $required): bool
+    {
+        if ($required === [] || $current === [])
+        {
+            return false;
+        }
+
+        $normalize = static fn (array $nameservers): array => collect($nameservers)
+            ->map(fn ($nameserver) => strtolower(rtrim((string) $nameserver, '.')))
+            ->sort()
+            ->values()
+            ->all();
+
+        return $normalize($current) === $normalize($required);
     }
 
     public function edit(Domain $domain): View
@@ -217,7 +244,21 @@ class DomainController extends Controller
         if (! $domain->server || ! $this->controlPanelManager->supports($domain->server))
         {
             return redirect()->route('domain.show', $domain->id)
-                ->with('error', 'Plan changes require a configured control panel server.');
+                ->with('error', 'Para cambiar el plan se requiere un servidor con panel de control configurado.');
+        }
+
+        if ($validated['plan'] === $domain->plan)
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('warning', 'El dominio ya tiene asignado ese plan.');
+        }
+
+        $availablePlans = $domain->getCachedAvailablePlans();
+
+        if ($availablePlans !== [] && ! in_array($validated['plan'], $availablePlans, true))
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', 'El plan seleccionado no está disponible en este servidor.');
         }
 
         $result = $this->controlPanelManager

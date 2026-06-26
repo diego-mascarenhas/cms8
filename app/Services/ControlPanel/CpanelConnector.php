@@ -620,38 +620,34 @@ class CpanelConnector implements ControlPanelConnector
             ];
         }
 
+        $params = [
+            'api.version' => 1,
+            'user' => $domain->username,
+            'pkg' => $plan,
+        ];
+
         try
         {
-            $response = $server->usesCpanelAccountAuth()
-                ? $this->whmBasicAuthRequest($server, '/json-api/modifyacct', [
-                    'user' => $domain->username,
-                    'pkg' => $plan,
-                ])
-                : $this->whmRequest($server, '/json-api/modifyacct', [
-                    'user' => $domain->username,
-                    'pkg' => $plan,
-                ]);
+            $result = $this->executeWhmJsonApi($server, '/json-api/changepackage', $params);
 
-            if (! $response->successful())
+            if (! ($result['success'] ?? false))
             {
-                $payload = $response->json();
-
-                return [
-                    'success' => false,
-                    'error' => $this->extractWhmErrorMessage(
-                        is_array($payload) ? $payload : [],
-                        $response->body(),
-                    ),
-                ];
+                $result = $this->executeWhmJsonApi($server, '/json-api/modifyacct', $params);
             }
 
-            $payload = $response->json();
-
-            if (! is_array($payload) || ! $this->isWhmJsonApiSuccessful($payload))
+            if (! ($result['success'] ?? false))
             {
+                Log::warning('cPanel plan change rejected', [
+                    'server_id' => $server->id,
+                    'domain' => $domain->domain,
+                    'username' => $domain->username,
+                    'plan' => $plan,
+                    'error' => $result['error'] ?? null,
+                ]);
+
                 return [
                     'success' => false,
-                    'error' => $this->extractWhmErrorMessage(is_array($payload) ? $payload : []),
+                    'error' => $this->localizePlanChangeError($result['error'] ?? 'No se pudo actualizar el plan.'),
                 ];
             }
 
@@ -989,6 +985,52 @@ class CpanelConnector implements ControlPanelConnector
     /**
      * @param  array<string, mixed>  $query
      */
+    /**
+     * @param  array<string, mixed>  $params
+     * @return array{success: bool, error?: string}
+     */
+    private function executeWhmJsonApi(Server $server, string $path, array $params): array
+    {
+        $response = $server->usesCpanelAccountAuth()
+            ? $this->whmBasicAuthRequest($server, $path, $params)
+            : $this->whmRequest($server, $path, $params);
+
+        if (! $response->successful())
+        {
+            $payload = $response->json();
+
+            return [
+                'success' => false,
+                'error' => $this->extractWhmErrorMessage(
+                    is_array($payload) ? $payload : [],
+                    $response->body(),
+                ),
+            ];
+        }
+
+        $payload = $response->json();
+
+        if (! is_array($payload) || ! $this->isWhmJsonApiSuccessful($payload))
+        {
+            return [
+                'success' => false,
+                'error' => $this->extractWhmErrorMessage(is_array($payload) ? $payload : []),
+            ];
+        }
+
+        return ['success' => true];
+    }
+
+    private function localizePlanChangeError(string $error): string
+    {
+        if (stripos($error, 'Permission Denied') !== false)
+        {
+            return 'El servidor denegó el cambio de plan. Verifica que el reseller tenga permiso para modificar paquetes en WHM (Edit Reseller Nameservers and Privileges).';
+        }
+
+        return $error;
+    }
+
     private function whmBasicAuthRequest(Server $server, string $path, array $query = []): \Illuminate\Http\Client\Response
     {
         $url = $this->whmBaseUrl($server).$path;
