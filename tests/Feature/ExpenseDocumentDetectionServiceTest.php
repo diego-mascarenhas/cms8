@@ -126,4 +126,41 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
 
         $this->assertNull($detected['document_number']);
     }
+
+    public function test_detect_from_uploaded_file_ignores_tax_breakdown_rows_for_single_item_invoice(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        $ocrText = implode("\n", [
+            'PROVEEDOR: YOIGO S.A.',
+            'Fecha factura: 2026-01-01',
+            'Servicio móvil 13,22 21% 0%',
+            'Base imponible 13,22',
+            'IVA 21% 2,78',
+            'TOTAL A PAGAR: 16,00 €',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService($ocrService, $aiOcrService);
+        $uploadedFile = UploadedFile::fake()->create('factura-iva-desglose.pdf', 64, 'application/pdf');
+
+        $detected = $service->detectFromUploadedFile($uploadedFile, $team->id);
+
+        $this->assertCount(1, $detected['lines']);
+        $this->assertSame('Servicio móvil', $detected['lines'][0]['concept']);
+        $this->assertSame(13.22, $detected['lines'][0]['base_amount']);
+        $this->assertSame(21.0, $detected['lines'][0]['vat_percent']);
+        $this->assertSame(16.0, $detected['payment_amount']);
+    }
 }
