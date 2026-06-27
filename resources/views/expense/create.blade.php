@@ -49,7 +49,7 @@
 @endif
 
 <div class="card">
-    <form class="card-body" action="{{ route('expense.store') }}" method="POST" enctype="multipart/form-data">
+    <form class="card-body" action="{{ route('expense.store') }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
         @php
             $selectedDocumentType = old('document_type', 'invoice');
@@ -77,6 +77,9 @@
                         </button>
                     @endforeach
                 </div>
+                @error('document_type')
+                    <small class="text-danger d-block mt-1">{{ $message }}</small>
+                @enderror
             </div>
         </div>
 
@@ -139,8 +142,8 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label for="date" class="form-label">Fecha factura (*)</label>
-                        <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', now()->toDateString()) }}" required>
+                        <label for="date" class="form-label">Fecha (*)</label>
+                        <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', now()->toDateString()) }}">
                         @error('date')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -155,7 +158,7 @@
                     </div>
 
                     <div class="col-12">
-                        <label for="document_number" class="form-label">N.º factura</label>
+                        <label for="document_number" class="form-label">Número de comprobante</label>
                         <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
                         @error('document_number')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -213,7 +216,6 @@
                                                 name="lines[{{ $index }}][concept]"
                                                 class="form-control line-concept @error('lines.'.$index.'.concept') is-invalid @enderror"
                                                 value="{{ data_get($line, 'concept', '') }}"
-                                                required
                                             >
                                             @error('lines.'.$index.'.concept')
                                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -229,7 +231,6 @@
                                                     name="lines[{{ $index }}][base_amount]"
                                                     class="form-control text-end line-base @error('lines.'.$index.'.base_amount') is-invalid @enderror"
                                                     value="{{ \App\Helpers\Helpers::formatDecimal((float) data_get($line, 'base_amount', 0)) }}"
-                                                    required
                                                 >
                                                 @error('lines.'.$index.'.base_amount')
                                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -238,12 +239,10 @@
                                             <div class="col-md-3">
                                                 <label class="form-label small mb-1 d-block text-end">IVA %</label>
                                                 <input
-                                                    type="number"
+                                                    type="text"
+                                                    inputmode="decimal"
                                                     name="lines[{{ $index }}][vat_percent]"
                                                     class="form-control text-end line-vat @error('lines.'.$index.'.vat_percent') is-invalid @enderror"
-                                                    min="0"
-                                                    max="100"
-                                                    step="0.01"
                                                     value="{{ data_get($line, 'vat_percent', '0') }}"
                                                 >
                                                 @error('lines.'.$index.'.vat_percent')
@@ -253,12 +252,10 @@
                                             <div class="col-md-3">
                                                 <label class="form-label small mb-1 d-block text-end text-nowrap">Retención %</label>
                                                 <input
-                                                    type="number"
+                                                    type="text"
+                                                    inputmode="decimal"
                                                     name="lines[{{ $index }}][retention_percent]"
                                                     class="form-control text-end line-retention @error('lines.'.$index.'.retention_percent') is-invalid @enderror"
-                                                    min="0"
-                                                    max="100"
-                                                    step="0.01"
                                                     value="{{ data_get($line, 'retention_percent', '0') }}"
                                                 >
                                                 @error('lines.'.$index.'.retention_percent')
@@ -268,12 +265,10 @@
                                             <div class="col-md-3">
                                                 <label class="form-label small mb-1 d-block text-end">Imputa %</label>
                                                 <input
-                                                    type="number"
+                                                    type="text"
+                                                    inputmode="decimal"
                                                     name="lines[{{ $index }}][allocation_percent]"
                                                     class="form-control text-end line-allocation @error('lines.'.$index.'.allocation_percent') is-invalid @enderror"
-                                                    min="0.01"
-                                                    max="100"
-                                                    step="0.01"
                                                     value="{{ data_get($line, 'allocation_percent', '100') }}"
                                                 >
                                                 @error('lines.'.$index.'.allocation_percent')
@@ -369,7 +364,6 @@
                                 name="payments[{{ $paymentIndex }}][payment_date]"
                                 class="form-control expense-date payment-date @error('payments.'.$paymentIndex.'.payment_date') is-invalid @enderror"
                                 value="{{ old('payments.'.$paymentIndex.'.payment_date', $payment['payment_date'] ?? now()->toDateString()) }}"
-                                required
                             >
                             @error('payments.'.$paymentIndex.'.payment_date')
                                 <div class="invalid-feedback">{{ $message }}</div>
@@ -401,7 +395,6 @@
                                 id="payment_type_id_{{ $paymentIndex }}"
                                 name="payments[{{ $paymentIndex }}][type_id]"
                                 class="form-select payment-type-select @error('payments.'.$paymentIndex.'.type_id') is-invalid @enderror"
-                                required
                             >
                                 <option value="">Selecciona forma de pago</option>
                                 @foreach ($paymentTypes as $paymentType)
@@ -420,7 +413,6 @@
                                 id="payment_account_id_{{ $paymentIndex }}"
                                 name="payments[{{ $paymentIndex }}][account_id]"
                                 class="form-select payment-account-select @error('payments.'.$paymentIndex.'.account_id') is-invalid @enderror"
-                                required
                             >
                                 <option value="">Selecciona cuenta</option>
                                 @foreach ($paymentAccounts as $account)
@@ -443,7 +435,6 @@
                                 id="payment_status_{{ $paymentIndex }}"
                                 name="payments[{{ $paymentIndex }}][status]"
                                 class="form-select payment-status-select @error('payments.'.$paymentIndex.'.status') is-invalid @enderror"
-                                required
                             >
                                 @foreach ($statusOptions as $statusId => $statusLabel)
                                     <option value="{{ $statusId }}" {{ (string) old('payments.'.$paymentIndex.'.status', $payment['status'] ?? '2') === (string) $statusId ? 'selected' : '' }}>
@@ -466,7 +457,7 @@
         </div>
 
         <div id="payments-summary" class="small text-muted mt-2"></div>
-        @error('payments.0.amount')
+        @error('payments')
             <div class="text-danger small mt-1">{{ $message }}</div>
         @enderror
 
@@ -825,7 +816,7 @@
                 '  <div class="row g-3 align-items-end">',
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_date_' + index + '">Fecha del pago (*)</label>',
-                '      <input type="text" id="payment_date_' + index + '" name="payments[' + index + '][payment_date]" class="form-control expense-date payment-date" value="' + escapeHtml(paymentDate) + '" required>',
+                '      <input type="text" id="payment_date_' + index + '" name="payments[' + index + '][payment_date]" class="form-control expense-date payment-date" value="' + escapeHtml(paymentDate) + '">',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_amount_' + index + '">Importe</label>',
@@ -833,19 +824,19 @@
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_type_id_' + index + '">Forma de pago (*)</label>',
-                '      <select id="payment_type_id_' + index + '" name="payments[' + index + '][type_id]" class="form-select payment-type-select" required>',
+                '      <select id="payment_type_id_' + index + '" name="payments[' + index + '][type_id]" class="form-select payment-type-select">',
                 buildSelectOptions(paymentTypeOptions, 'Selecciona forma de pago', typeId),
                 '      </select>',
                 '    </div>',
                 '    <div class="col-md-3 col-lg-3">',
                 '      <label class="form-label" for="payment_account_id_' + index + '">Cuenta (*)</label>',
-                '      <select id="payment_account_id_' + index + '" name="payments[' + index + '][account_id]" class="form-select payment-account-select" required>',
+                '      <select id="payment_account_id_' + index + '" name="payments[' + index + '][account_id]" class="form-select payment-account-select">',
                 buildAccountSelectOptions(accountId, currencyId),
                 '      </select>',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_status_' + index + '">Estado (*)</label>',
-                '      <select id="payment_status_' + index + '" name="payments[' + index + '][status]" class="form-select payment-status-select" required>',
+                '      <select id="payment_status_' + index + '" name="payments[' + index + '][status]" class="form-select payment-status-select">',
                 (function () {
                     var html = '';
                     paymentStatusOptions.forEach(function (option) {
@@ -1114,24 +1105,24 @@
                 '      </button>',
                 '    </div>',
                 '    <div class="mb-2">',
-                '      <input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '" required>',
+                '      <input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '">',
                 '    </div>',
                 '    <div class="row g-2">',
                 '      <div class="col-md-3">',
                 '        <label class="form-label small mb-1 d-block text-end">Base (*)</label>',
-                '        <input type="text" inputmode="decimal" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" value="' + escapeHtml(baseAmount) + '" required>',
+                '        <input type="text" inputmode="decimal" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" value="' + escapeHtml(baseAmount) + '">',
                 '      </div>',
                 '      <div class="col-md-3">',
                 '        <label class="form-label small mb-1 d-block text-end">IVA %</label>',
-                '        <input type="number" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" min="0" max="100" step="0.01" value="' + escapeHtml(vatPercent) + '">',
+                '        <input type="text" inputmode="decimal" name="lines[' + index + '][vat_percent]" class="form-control text-end line-vat" value="' + escapeHtml(vatPercent) + '">',
                 '      </div>',
                 '      <div class="col-md-3">',
                 '        <label class="form-label small mb-1 d-block text-end text-nowrap">Retención %</label>',
-                '        <input type="number" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" min="0" max="100" step="0.01" value="' + escapeHtml(retentionPercent) + '">',
+                '        <input type="text" inputmode="decimal" name="lines[' + index + '][retention_percent]" class="form-control text-end line-retention" value="' + escapeHtml(retentionPercent) + '">',
                 '      </div>',
                 '      <div class="col-md-3">',
                 '        <label class="form-label small mb-1 d-block text-end">Imputa %</label>',
-                '        <input type="number" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" min="0.01" max="100" step="0.01" value="' + escapeHtml(allocationPercent) + '">',
+                '        <input type="text" inputmode="decimal" name="lines[' + index + '][allocation_percent]" class="form-control text-end line-allocation" value="' + escapeHtml(allocationPercent) + '">',
                 '      </div>',
                 '    </div>',
                 '  </td>',
@@ -1570,15 +1561,8 @@
             updatePaymentsSummary();
         });
 
-        $('form.card-body').on('submit', function (event) {
+        $('form.card-body').on('submit', function () {
             normalizeAmountInputsForSubmit();
-
-            if (paymentsExceedTotal()) {
-                event.preventDefault();
-                initAmountInputs($('form.card-body'));
-                updatePaymentsSummary();
-                $('#payments-summary').get(0)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
         });
 
         function refreshSummary() {
@@ -1627,6 +1611,16 @@
 
         initAmountInputs($('form.card-body'));
         refreshSummary();
+
+        @if ($errors->any())
+        var $firstInvalidField = $('.is-invalid').first();
+        if ($firstInvalidField.length) {
+            $firstInvalidField.trigger('focus');
+            $('html, body').animate({
+                scrollTop: Math.max($firstInvalidField.offset().top - 120, 0),
+            }, 250);
+        }
+        @endif
     });
 </script>
 @endsection

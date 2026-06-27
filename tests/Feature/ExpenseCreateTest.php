@@ -144,6 +144,41 @@ class ExpenseCreateTest extends TestCase
         $this->assertSame('1493.82', number_format((float) $payment->amount, 2, '.', ''));
     }
 
+    public function test_store_validates_required_fields_with_laravel(): void
+    {
+        $user = $this->makeAdminUser();
+
+        $response = $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'lines' => [[
+                    'concept' => '',
+                    'base_amount' => '0,00',
+                    'vat_percent' => '0',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '',
+                    'amount' => '',
+                    'type_id' => '',
+                    'account_id' => '',
+                    'status' => '',
+                ]],
+                'submit_action' => 'save',
+            ]);
+
+        $response->assertSessionHasErrors([
+            'enterprise_id',
+            'date',
+            'lines.0.concept',
+            'lines.0.base_amount' => 'Importe obligatorio',
+            'payments.0.payment_date',
+            'payments.0.type_id',
+            'payments.0.account_id',
+        ]);
+    }
+
     public function test_store_creates_expense_payment_and_redirects(): void
     {
         $user = $this->makeAdminUser();

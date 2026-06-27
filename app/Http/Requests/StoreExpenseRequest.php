@@ -92,9 +92,9 @@ class StoreExpenseRequest extends FormRequest
             $normalizedLines[] = [
                 'concept' => $concept,
                 'base_amount' => Helpers::parseDecimalInput($baseAmount) ?? $baseAmount,
-                'vat_percent' => $line['vat_percent'] ?? 0,
-                'retention_percent' => $line['retention_percent'] ?? 0,
-                'allocation_percent' => $line['allocation_percent'] ?? 100,
+                'vat_percent' => Helpers::parseDecimalInput($line['vat_percent'] ?? 0) ?? ($line['vat_percent'] ?? 0),
+                'retention_percent' => Helpers::parseDecimalInput($line['retention_percent'] ?? 0) ?? ($line['retention_percent'] ?? 0),
+                'allocation_percent' => Helpers::parseDecimalInput($line['allocation_percent'] ?? 100) ?? ($line['allocation_percent'] ?? 100),
             ];
         }
 
@@ -191,10 +191,59 @@ class StoreExpenseRequest extends FormRequest
             {
                 $validator->errors()->add(
                     'payments.0.amount',
-                    'La suma de los importes de pago no puede superar el total del gasto ('.number_format($invoiceTotal, 2, '.', '').').',
+                    'La suma de los importes de pago no puede superar el total del gasto ('.Helpers::formatDecimal($invoiceTotal).').',
                 );
             }
         });
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'document_type' => 'tipo de documento',
+            'enterprise_id' => 'proveedor',
+            'document_file' => 'documento',
+            'date' => 'fecha',
+            'due_date' => 'fecha de vencimiento',
+            'document_number' => 'número de comprobante',
+            'expense_category_id' => 'tipo de gasto',
+            'currency_id' => 'moneda',
+            'lines' => 'líneas',
+            'lines.*.concept' => 'concepto',
+            'lines.*.base_amount' => 'importe',
+            'lines.*.vat_percent' => 'IVA',
+            'lines.*.retention_percent' => 'retención',
+            'lines.*.allocation_percent' => 'imputación',
+            'payments' => 'pagos',
+            'payments.*.payment_date' => 'fecha del pago',
+            'payments.*.amount' => 'importe del pago',
+            'payments.*.type_id' => 'forma de pago',
+            'payments.*.account_id' => 'cuenta',
+            'payments.*.status' => 'estado del pago',
+            'remarks' => 'comentario',
+            'tags' => 'etiquetas',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'lines.required' => 'Debes añadir al menos una línea al gasto.',
+            'lines.min' => 'Debes añadir al menos una línea al gasto.',
+            'payments.required' => 'Debes añadir al menos un pago.',
+            'payments.min' => 'Debes añadir al menos un pago.',
+            'enterprise_id.exists' => 'El proveedor seleccionado no es válido.',
+            'payments.*.account_id.exists' => 'La cuenta seleccionada no es válida.',
+            'lines.*.base_amount.required' => 'Importe obligatorio',
+            'lines.*.base_amount.numeric' => 'Importe obligatorio',
+            'lines.*.base_amount.min' => 'Importe obligatorio',
+        ];
     }
 
     /**
