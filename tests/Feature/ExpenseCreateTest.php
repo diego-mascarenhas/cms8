@@ -102,6 +102,13 @@ class ExpenseCreateTest extends TestCase
         $this->assertSame($supplier->id, $invoice->enterprise_id);
         $this->assertSame('121.00', number_format((float) $invoice->total_amount, 2, '.', ''));
         $this->assertSame('0.00', number_format((float) $invoice->balance, 2, '.', ''));
+
+        $invoiceItem = $invoice->items()->first();
+        $this->assertNotNull($invoiceItem);
+        $this->assertSame('Monthly SaaS', $invoiceItem->description);
+        $this->assertSame('100.00', number_format((float) $invoiceItem->unit_price, 2, '.', ''));
+        $this->assertSame('21.00', number_format((float) $invoiceItem->tax_percentage, 2, '.', ''));
+        $this->assertSame('121.00', number_format((float) $invoiceItem->total, 2, '.', ''));
     }
 
     public function test_store_validates_required_fields(): void

@@ -359,14 +359,18 @@ class ExpenseController extends Controller
     {
         foreach ($lineSummaries as $lineSummary)
         {
+            $allocationFactor = (float) ($lineSummary['allocation_percent'] ?? 100) / 100;
+            $unitPrice = round((float) ($lineSummary['base_amount'] ?? 0) * $allocationFactor, 2);
+            $vatPercent = round((float) ($lineSummary['vat_percent'] ?? 0), 2);
+
             InvoiceItem::query()->create([
                 'invoice_id' => $invoice->id,
                 'category_id' => $categoryId,
                 'description' => (string) $lineSummary['concept'],
                 'quantity' => 1,
-                'unit_price' => (float) $lineSummary['allocated_total'],
+                'unit_price' => $unitPrice,
                 'discount' => 0,
-                'tax_percentage' => 0,
+                'tax_percentage' => $vatPercent,
             ]);
         }
     }
