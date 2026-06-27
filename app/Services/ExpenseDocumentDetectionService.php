@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Currency;
-use App\Models\Enterprise;
 use App\Models\Team;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -51,6 +50,7 @@ PROMPT;
     public function __construct(
         private readonly DocumentOcrService $ocrService,
         private readonly DocumentAiOcrService $aiOcrService,
+        private readonly ExpenseSupplierService $supplierService,
     ) {}
 
     /**
@@ -70,14 +70,23 @@ PROMPT;
         $aiData = $this->extractStructuredDataWithAi($ocrResult['text'], $teamId, $ocrResult['mode']);
         $detectedData = $this->mergeDetectedData($heuristicData, $aiData);
 
-        $enterpriseId = $this->resolveEnterpriseId($detectedData['enterprise_name'] ?? null, $teamId);
+        $supplierResolution = $this->supplierService->resolveForDetectedInvoice(
+            $file,
+            $ocrResult['text'],
+            $detectedData,
+            $teamId,
+            $ocrResult['mode'],
+        );
+
         $currencyId = $this->resolveCurrencyId($detectedData['currency_code'] ?? null);
         $lines = $this->normalizeLines($detectedData['lines'] ?? [], $detectedData['total_amount'] ?? null);
         $totalAmount = $this->resolveTotalAmount($detectedData['total_amount'] ?? null, $lines);
 
         return [
-            'enterprise_id' => $enterpriseId,
-            'enterprise_name' => $detectedData['enterprise_name'] ?? null,
+            'enterprise_id' => $supplierResolution['enterprise_id'],
+            'enterprise_name' => $supplierResolution['enterprise_name'],
+            'enterprise_match' => $supplierResolution['match'],
+            'detected_supplier' => $this->formatDetectedSupplierForResponse($supplierResolution['supplier']),
             'document_number' => $detectedData['document_number'] ?? null,
             'date' => $this->normalizeDate($detectedData['invoice_date'] ?? null),
             'due_date' => $this->normalizeDate($detectedData['due_date'] ?? null)
@@ -577,59 +586,28 @@ PROMPT;
         return (float) $numeric;
     }
 
-    private function resolveEnterpriseId(?string $enterpriseName, int $teamId): ?int
+    /**
+     * @param  array<string, string|null>  $supplier
+     * @return array<string, string|null>
+     */
+    private function formatDetectedSupplierForResponse(array $supplier): array
     {
-        $normalizedTarget = $this->normalizeText($enterpriseName);
-        if ($normalizedTarget === '')
-        {
-            return null;
-        }
+        $name = $supplier['legal_name'] ?? $supplier['brand_name'] ?? null;
 
-        $enterprises = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->get(['id', 'name', 'type_id']);
-
-        $bestEnterpriseId = null;
-        $bestScore = 0.0;
-
-        foreach ($enterprises as $enterprise)
-        {
-            $normalizedName = $this->normalizeText($enterprise->name);
-            if ($normalizedName === '')
-            {
-                continue;
-            }
-
-            $score = 0.0;
-            if ($normalizedName === $normalizedTarget)
-            {
-                $score = 100.0;
-            } elseif (str_contains($normalizedName, $normalizedTarget) || str_contains($normalizedTarget, $normalizedName))
-            {
-                $score = 85.0;
-            } else
-            {
-                similar_text($normalizedName, $normalizedTarget, $score);
-            }
-
-            if ((int) $enterprise->type_id === 2)
-            {
-                $score += 5.0;
-            }
-
-            if ($score > $bestScore)
-            {
-                $bestScore = $score;
-                $bestEnterpriseId = (int) $enterprise->id;
-            }
-        }
-
-        if ($bestScore < 55.0)
-        {
-            return null;
-        }
-
-        return $bestEnterpriseId;
+        return [
+            'name' => $name,
+            'brand_name' => $supplier['brand_name'] ?? null,
+            'legal_name' => $supplier['legal_name'] ?? null,
+            'identification_number' => $supplier['identification_number'] ?? null,
+            'email' => $supplier['email'] ?? null,
+            'phone' => $supplier['phone'] ?? null,
+            'website' => $supplier['website'] ?? null,
+            'address' => $supplier['address'] ?? null,
+            'postal_code' => $supplier['postal_code'] ?? null,
+            'locality' => $supplier['locality'] ?? null,
+            'province' => $supplier['province'] ?? null,
+            'country' => $supplier['country'] ?? null,
+        ];
     }
 
     private function resolveCurrencyId(?string $currencyCode): ?int

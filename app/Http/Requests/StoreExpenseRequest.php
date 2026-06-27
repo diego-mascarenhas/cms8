@@ -2,8 +2,11 @@
 
 namespace App\Http\Requests;
 
+use App\Helpers\Helpers;
+use App\Support\ExpenseDocumentTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreExpenseRequest extends FormRequest
 {
@@ -20,15 +23,7 @@ class StoreExpenseRequest extends FormRequest
         $teamId = (int) auth()->user()->currentTeam->id;
 
         return [
-            'document_type' => ['required', Rule::in([
-                'invoice',
-                'receipt',
-                'tax',
-                'depreciation',
-                'dividend',
-                'payroll',
-                'loan',
-            ])],
+            'document_type' => ['required', Rule::in(ExpenseDocumentTypes::enabledKeys())],
             'enterprise_id' => [
                 'required',
                 'integer',
@@ -50,17 +45,18 @@ class StoreExpenseRequest extends FormRequest
             'lines.*.allocation_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
             'cash_criteria' => ['sometimes', 'boolean'],
             'is_investment' => ['sometimes', 'boolean'],
-            'payment_date' => ['required', 'date'],
-            'payment_amount' => ['nullable', 'numeric', 'min:0.01'],
-            'type_id' => ['required', 'integer', 'exists:payment_types,id'],
-            'account_id' => [
+            'payments' => ['required', 'array', 'min:1'],
+            'payments.*.payment_date' => ['required', 'date'],
+            'payments.*.amount' => ['nullable', 'numeric', 'min:0.01'],
+            'payments.*.type_id' => ['required', 'integer', 'exists:payment_types,id'],
+            'payments.*.account_id' => [
                 'required',
                 'integer',
                 Rule::exists('payment_accounts', 'id')->where(fn ($query) => $query
                     ->where('team_id', $teamId)
                     ->where('status', 1)),
             ],
-            'status' => ['required', 'integer', Rule::in([1, 2, 3, 4])],
+            'payments.*.status' => ['required', 'integer', Rule::in([1, 2, 3, 4])],
             'remarks' => ['nullable', 'string', 'max:1000'],
             'tags' => ['nullable', 'string', 'max:255'],
             'submit_action' => ['nullable', Rule::in(['draft', 'save'])],
@@ -95,7 +91,7 @@ class StoreExpenseRequest extends FormRequest
 
             $normalizedLines[] = [
                 'concept' => $concept,
-                'base_amount' => $baseAmount,
+                'base_amount' => Helpers::parseDecimalInput($baseAmount) ?? $baseAmount,
                 'vat_percent' => $line['vat_percent'] ?? 0,
                 'retention_percent' => $line['retention_percent'] ?? 0,
                 'allocation_percent' => $line['allocation_percent'] ?? 100,
@@ -106,9 +102,126 @@ class StoreExpenseRequest extends FormRequest
             'document_type' => (string) $this->input('document_type', 'invoice'),
             'due_date' => $this->input('due_date', $this->input('date')),
             'lines' => $normalizedLines,
+            'payments' => $this->normalizePayments(),
             'cash_criteria' => $this->boolean('cash_criteria'),
             'is_investment' => $this->boolean('is_investment'),
             'submit_action' => (string) $this->input('submit_action', 'save'),
         ]);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizePayments(): array
+    {
+        $payments = $this->input('payments', []);
+
+        if (! is_array($payments) || $payments === [])
+        {
+            if ($this->filled('payment_date'))
+            {
+                return [[
+                    'payment_date' => $this->input('payment_date'),
+                    'amount' => $this->input('payment_amount'),
+                    'type_id' => $this->input('type_id'),
+                    'account_id' => $this->input('account_id'),
+                    'status' => $this->input('status', 2),
+                ]];
+            }
+
+            return [];
+        }
+
+        $normalizedPayments = [];
+
+        foreach ($payments as $payment)
+        {
+            if (! is_array($payment))
+            {
+                continue;
+            }
+
+            $normalizedPayments[] = [
+                'payment_date' => $payment['payment_date'] ?? null,
+                'amount' => filled($payment['amount'] ?? null)
+                    ? (Helpers::parseDecimalInput($payment['amount']) ?? $payment['amount'])
+                    : null,
+                'type_id' => $payment['type_id'] ?? null,
+                'account_id' => $payment['account_id'] ?? null,
+                'status' => $payment['status'] ?? 2,
+            ];
+        }
+
+        return $normalizedPayments;
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void
+        {
+            if ($validator->errors()->isNotEmpty())
+            {
+                return;
+            }
+
+            $lines = $this->input('lines', []);
+            $invoiceTotal = $this->calculateInvoiceTotal(is_array($lines) ? $lines : []);
+            $payments = $this->input('payments', []);
+
+            if (! is_array($payments))
+            {
+                return;
+            }
+
+            $specifiedSum = 0.0;
+            $hasSpecifiedAmount = false;
+
+            foreach ($payments as $payment)
+            {
+                if (! is_array($payment) || ! filled($payment['amount'] ?? null))
+                {
+                    continue;
+                }
+
+                $hasSpecifiedAmount = true;
+                $specifiedSum += round((float) $payment['amount'], 2);
+            }
+
+            if ($hasSpecifiedAmount && $specifiedSum > round($invoiceTotal + 0.001, 2))
+            {
+                $validator->errors()->add(
+                    'payments.0.amount',
+                    'La suma de los importes de pago no puede superar el total del gasto ('.number_format($invoiceTotal, 2, '.', '').').',
+                );
+            }
+        });
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $lines
+     */
+    private function calculateInvoiceTotal(array $lines): float
+    {
+        $total = 0.0;
+
+        foreach ($lines as $line)
+        {
+            if (! is_array($line))
+            {
+                continue;
+            }
+
+            $baseAmount = round((float) ($line['base_amount'] ?? 0), 2);
+            $vatPercent = (float) ($line['vat_percent'] ?? 0);
+            $retentionPercent = (float) ($line['retention_percent'] ?? 0);
+            $allocationPercent = (float) ($line['allocation_percent'] ?? 100);
+
+            $vatAmount = round($baseAmount * ($vatPercent / 100), 2);
+            $retentionAmount = round($baseAmount * ($retentionPercent / 100), 2);
+            $lineTotal = round($baseAmount + $vatAmount - $retentionAmount, 2);
+            $total += round($lineTotal * ($allocationPercent / 100), 2);
+        }
+
+        return round(max($total, 0), 2);
     }
 }

@@ -77,7 +77,11 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $aiOcrService->expects($this->never())
             ->method('extractTextFromLocalFile');
 
-        $service = new ExpenseDocumentDetectionService($ocrService, $aiOcrService);
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
         $uploadedFile = UploadedFile::fake()->create('factura-proveedor.pdf', 128, 'application/pdf');
 
         $detected = $service->detectFromUploadedFile($uploadedFile, $team->id);
@@ -119,7 +123,11 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $aiOcrService->expects($this->never())
             ->method('extractTextFromLocalFile');
 
-        $service = new ExpenseDocumentDetectionService($ocrService, $aiOcrService);
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
         $uploadedFile = UploadedFile::fake()->create('factura-telefono.pdf', 64, 'application/pdf');
 
         $detected = $service->detectFromUploadedFile($uploadedFile, $team->id);
@@ -152,7 +160,11 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $aiOcrService->expects($this->never())
             ->method('extractTextFromLocalFile');
 
-        $service = new ExpenseDocumentDetectionService($ocrService, $aiOcrService);
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
         $uploadedFile = UploadedFile::fake()->create('factura-iva-desglose.pdf', 64, 'application/pdf');
 
         $detected = $service->detectFromUploadedFile($uploadedFile, $team->id);

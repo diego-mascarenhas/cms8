@@ -10,6 +10,7 @@
 @section('vendor-script')
 <script src="{{ asset('assets/vendor/libs/flatpickr/flatpickr.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/cleavejs/cleave.js') }}"></script>
 @endsection
 
 @section('content')
@@ -31,7 +32,9 @@
         <p class="text-muted">Registrar un nuevo gasto</p>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="{{ route('expense.index') }}" class="btn btn-label-secondary">Volver a gastos</a>
+        <a href="{{ route('expense.index') }}" class="btn btn-label-secondary waves-effect">
+            <i class="ti ti-arrow-left me-1"></i> Volver
+        </a>
     </div>
 </div>
 
@@ -48,16 +51,27 @@
 <div class="card">
     <form class="card-body" action="{{ route('expense.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
-        <input type="hidden" id="document_type" name="document_type" value="{{ old('document_type', 'invoice') }}">
+        @php
+            $selectedDocumentType = old('document_type', 'invoice');
+            if (in_array($selectedDocumentType, $disabledDocumentTypes, true)) {
+                $selectedDocumentType = 'invoice';
+            }
+        @endphp
+        <input type="hidden" id="document_type" name="document_type" value="{{ $selectedDocumentType }}">
 
-        <div class="row g-3 mb-1">
+        <div class="row g-3 mb-3">
             <div class="col-12">
                 <div class="d-flex flex-wrap gap-2">
                     @foreach ($documentTypes as $documentTypeKey => $documentTypeLabel)
+                        @php
+                            $isDisabledDocumentType = in_array($documentTypeKey, $disabledDocumentTypes, true);
+                            $isSelectedDocumentType = ! $isDisabledDocumentType && $selectedDocumentType === $documentTypeKey;
+                        @endphp
                         <button
                             type="button"
-                            class="btn btn-sm {{ old('document_type', 'invoice') === $documentTypeKey ? 'btn-primary' : 'btn-outline-secondary' }} document-type-btn"
+                            class="btn btn-sm {{ $isSelectedDocumentType ? 'btn-primary' : 'btn-outline-secondary' }} document-type-btn"
                             data-document-type="{{ $documentTypeKey }}"
+                            @if ($isDisabledDocumentType) disabled @endif
                         >
                             {{ $documentTypeLabel }}
                         </button>
@@ -65,8 +79,6 @@
                 </div>
             </div>
         </div>
-
-        <h5 class="mb-3">Factura de compra</h5>
 
         <div class="row g-3">
             <div class="col-lg-7">
@@ -104,22 +116,30 @@
             <div class="col-lg-5">
                 <div class="row g-3">
                     <div class="col-12">
-                        <label for="enterprise_id" class="form-label">Empresa</label>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label for="enterprise_id" class="form-label mb-0">Proveedor (*)</label>
+                            @can('create', \App\Models\Enterprise::class)
+                                <button type="button" class="btn btn-sm btn-outline-primary d-none" id="open-create-supplier-modal">
+                                    <i class="ti ti-building-store me-1"></i> Crear proveedor
+                                </button>
+                            @endcan
+                        </div>
                         <select id="enterprise_id" name="enterprise_id" class="form-select select2 @error('enterprise_id') is-invalid @enderror">
-                            <option value="">Selecciona una empresa</option>
+                            <option value="">Selecciona un proveedor</option>
                             @foreach ($enterprises as $enterprise)
                                 <option value="{{ $enterprise->id }}" {{ old('enterprise_id') == $enterprise->id ? 'selected' : '' }}>
                                     {{ $enterprise->name }}
                                 </option>
                             @endforeach
                         </select>
+                        <small id="enterprise-detection-status" class="d-block mt-1 text-muted"></small>
                         @error('enterprise_id')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
 
                     <div class="col-md-6">
-                        <label for="date" class="form-label">Fecha factura <span class="text-danger">*</span></label>
+                        <label for="date" class="form-label">Fecha factura (*)</label>
                         <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', now()->toDateString()) }}" required>
                         @error('date')
                             <div class="invalid-feedback">{{ $message }}</div>
@@ -182,7 +202,7 @@
                                 <tr class="expense-line" data-line-index="{{ $index }}">
                                     <td>
                                         <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <label class="form-label small mb-0">Concepto</label>
+                                            <label class="form-label small mb-0">Concepto (*)</label>
                                             <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">
                                                 <i class="ti ti-trash ti-xs"></i>
                                             </button>
@@ -202,14 +222,13 @@
 
                                         <div class="row g-2">
                                             <div class="col-md-3">
-                                                <label class="form-label small mb-1 d-block text-end">Base</label>
+                                                <label class="form-label small mb-1 d-block text-end">Base (*)</label>
                                                 <input
-                                                    type="number"
+                                                    type="text"
+                                                    inputmode="decimal"
                                                     name="lines[{{ $index }}][base_amount]"
                                                     class="form-control text-end line-base @error('lines.'.$index.'.base_amount') is-invalid @enderror"
-                                                    min="0.01"
-                                                    step="0.01"
-                                                    value="{{ data_get($line, 'base_amount', '0.00') }}"
+                                                    value="{{ \App\Helpers\Helpers::formatDecimal((float) data_get($line, 'base_amount', 0)) }}"
                                                     required
                                                 >
                                                 @error('lines.'.$index.'.base_amount')
@@ -283,107 +302,178 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-2">
                             <span>Base imponible</span>
-                            <strong id="summary-base">0.00</strong>
+                            <strong id="summary-base">0,00</strong>
                         </div>
                         <div id="summary-vat-lines" class="mb-2">
                             <div class="d-flex justify-content-between">
                                 <span>I.V.A. 0%</span>
-                                <strong>0.00</strong>
+                                <strong>0,00</strong>
                             </div>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span>Total retención</span>
-                            <strong id="summary-retention">0.00</strong>
+                            <strong id="summary-retention">0,00</strong>
                         </div>
                         <div class="d-flex justify-content-between mb-2">
                             <span>Total</span>
-                            <strong id="summary-total">0.00</strong>
+                            <strong id="summary-total">0,00</strong>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="row g-3 mt-3">
-            <div class="col-md-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="is_investment" name="is_investment" value="1" {{ old('is_investment') ? 'checked' : '' }}>
-                    <label class="form-check-label" for="is_investment">Es una inversión</label>
-                </div>
-            </div>
-            <div class="col-md-8">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="cash_criteria" name="cash_criteria" value="1" {{ old('cash_criteria') ? 'checked' : '' }}>
-                    <label class="form-check-label" for="cash_criteria">Gasto sujeto a criterio de caja</label>
-                </div>
-            </div>
-        </div>
-
         <hr class="my-4">
 
-        <h5 class="mb-3">Pago</h5>
-        <div class="p-3 rounded bg-label-warning">
-            <div class="row g-3">
-                <div class="col-md-2">
-                    <label for="payment_date" class="form-label">Fecha del pago <span class="text-danger">*</span></label>
-                    <input type="text" id="payment_date" name="payment_date" class="form-control expense-date @error('payment_date') is-invalid @enderror" value="{{ old('payment_date', now()->toDateString()) }}" required>
-                    @error('payment_date')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-2">
-                    <label for="payment_amount" class="form-label">Importe pagado</label>
-                    <input type="number" id="payment_amount" name="payment_amount" class="form-control text-end @error('payment_amount') is-invalid @enderror" step="0.01" min="0.01" value="{{ old('payment_amount') }}" placeholder="Automático según totales">
-                    @error('payment_amount')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-2">
-                    <label for="type_id" class="form-label">Forma de pago <span class="text-danger">*</span></label>
-                    <select id="type_id" name="type_id" class="form-select select2 @error('type_id') is-invalid @enderror" required>
-                        <option value="">Selecciona forma de pago</option>
-                        @foreach ($paymentTypes as $paymentType)
-                            <option value="{{ $paymentType->id }}" {{ old('type_id') == $paymentType->id ? 'selected' : '' }}>{{ $paymentType->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('type_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-2">
-                    <label for="account_id" class="form-label">Cuenta <span class="text-danger">*</span></label>
-                    <select id="account_id" name="account_id" class="form-select select2 @error('account_id') is-invalid @enderror" required>
-                        <option value="">Selecciona cuenta</option>
-                        @foreach ($paymentAccounts as $account)
-                            <option value="{{ $account->id }}" data-currency-id="{{ $account->currency_id }}" {{ old('account_id') == $account->id ? 'selected' : '' }}>
-                                {{ $account->name }} ({{ strtoupper((string) ($account->currency->code ?? 'USD')) }})
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('account_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-2">
-                    <label for="status" class="form-label">Estado <span class="text-danger">*</span></label>
-                    <select id="status" name="status" class="form-select @error('status') is-invalid @enderror" required>
-                        @foreach ($statusOptions as $statusId => $statusLabel)
-                            <option value="{{ $statusId }}" {{ (string) old('status', '2') === (string) $statusId ? 'selected' : '' }}>
-                                {{ $statusLabel }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('status')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
+        @php
+            $initialPayments = old('payments');
+            if (! is_array($initialPayments) || $initialPayments === []) {
+                $initialPayments = [[
+                    'payment_date' => old('payment_date', now()->toDateString()),
+                    'amount' => old('payment_amount'),
+                    'type_id' => old('type_id', $defaultPaymentTypeId),
+                    'account_id' => old('account_id', $defaultPaymentAccountId),
+                    'status' => old('status', '2'),
+                ]];
+            }
+        @endphp
+
+        @if ($paymentTypes->isEmpty())
+            <div class="alert alert-warning">
+                No hay formas de pago configuradas. Contacta con el administrador del sistema.
             </div>
+        @endif
+
+        @if ($paymentAccounts->isEmpty())
+            <div class="alert alert-warning">
+                No hay cuentas de pago activas en tu empresa. Crea una cuenta antes de registrar el gasto.
+            </div>
+        @endif
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Pagos</h5>
+            <button type="button" id="add-expense-payment" class="btn btn-sm btn-outline-primary">
+                <i class="ti ti-plus me-1"></i>Añadir pago
+            </button>
         </div>
+
+        <div id="expense-payments-container">
+            @foreach ($initialPayments as $paymentIndex => $payment)
+                <div class="expense-payment-block p-3 rounded bg-label-warning mb-2" data-payment-index="{{ $paymentIndex }}">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-2 col-lg-2">
+                            <label class="form-label" for="payment_date_{{ $paymentIndex }}">Fecha del pago (*)</label>
+                            <input
+                                type="text"
+                                id="payment_date_{{ $paymentIndex }}"
+                                name="payments[{{ $paymentIndex }}][payment_date]"
+                                class="form-control expense-date payment-date @error('payments.'.$paymentIndex.'.payment_date') is-invalid @enderror"
+                                value="{{ old('payments.'.$paymentIndex.'.payment_date', $payment['payment_date'] ?? now()->toDateString()) }}"
+                                required
+                            >
+                            @error('payments.'.$paymentIndex.'.payment_date')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-2 col-lg-2">
+                            <label class="form-label" for="payment_amount_{{ $paymentIndex }}">Importe</label>
+                            @php
+                                $paymentAmountValue = old('payments.'.$paymentIndex.'.amount', $payment['amount'] ?? '');
+                                $paymentAmountDisplay = filled($paymentAmountValue)
+                                    ? \App\Helpers\Helpers::formatDecimal((float) $paymentAmountValue)
+                                    : '';
+                            @endphp
+                            <input
+                                type="text"
+                                inputmode="decimal"
+                                id="payment_amount_{{ $paymentIndex }}"
+                                name="payments[{{ $paymentIndex }}][amount]"
+                                class="form-control text-end payment-amount @error('payments.'.$paymentIndex.'.amount') is-invalid @enderror"
+                                value="{{ $paymentAmountDisplay }}"
+                            >
+                            @error('payments.'.$paymentIndex.'.amount')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-2 col-lg-2">
+                            <label class="form-label" for="payment_type_id_{{ $paymentIndex }}">Forma de pago (*)</label>
+                            <select
+                                id="payment_type_id_{{ $paymentIndex }}"
+                                name="payments[{{ $paymentIndex }}][type_id]"
+                                class="form-select payment-type-select @error('payments.'.$paymentIndex.'.type_id') is-invalid @enderror"
+                                required
+                            >
+                                <option value="">Selecciona forma de pago</option>
+                                @foreach ($paymentTypes as $paymentType)
+                                    <option value="{{ $paymentType->id }}" {{ (string) old('payments.'.$paymentIndex.'.type_id', $payment['type_id'] ?? $defaultPaymentTypeId) === (string) $paymentType->id ? 'selected' : '' }}>
+                                        {{ $paymentType->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('payments.'.$paymentIndex.'.type_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-3 col-lg-3">
+                            <label class="form-label" for="payment_account_id_{{ $paymentIndex }}">Cuenta (*)</label>
+                            <select
+                                id="payment_account_id_{{ $paymentIndex }}"
+                                name="payments[{{ $paymentIndex }}][account_id]"
+                                class="form-select payment-account-select @error('payments.'.$paymentIndex.'.account_id') is-invalid @enderror"
+                                required
+                            >
+                                <option value="">Selecciona cuenta</option>
+                                @foreach ($paymentAccounts as $account)
+                                    <option
+                                        value="{{ $account->id }}"
+                                        data-currency-id="{{ $account->currency_id }}"
+                                        {{ (string) old('payments.'.$paymentIndex.'.account_id', $payment['account_id'] ?? $defaultPaymentAccountId) === (string) $account->id ? 'selected' : '' }}
+                                    >
+                                        {{ $account->name }} ({{ strtoupper((string) ($account->currency->code ?? 'USD')) }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('payments.'.$paymentIndex.'.account_id')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-2 col-lg-2">
+                            <label class="form-label" for="payment_status_{{ $paymentIndex }}">Estado (*)</label>
+                            <select
+                                id="payment_status_{{ $paymentIndex }}"
+                                name="payments[{{ $paymentIndex }}][status]"
+                                class="form-select payment-status-select @error('payments.'.$paymentIndex.'.status') is-invalid @enderror"
+                                required
+                            >
+                                @foreach ($statusOptions as $statusId => $statusLabel)
+                                    <option value="{{ $statusId }}" {{ (string) old('payments.'.$paymentIndex.'.status', $payment['status'] ?? '2') === (string) $statusId ? 'selected' : '' }}>
+                                        {{ $statusLabel }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('payments.'.$paymentIndex.'.status')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="col-md-1 col-lg-1 d-flex justify-content-end">
+                            <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="Eliminar pago">
+                                <i class="ti ti-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
+
+        <div id="payments-summary" class="small text-muted mt-2"></div>
+        @error('payments.0.amount')
+            <div class="text-danger small mt-1">{{ $message }}</div>
+        @enderror
 
         <div class="row g-3 mt-4">
             <div class="col-md-6">
                 <label for="remarks" class="form-label">Comentario personal del gasto</label>
-                <textarea id="remarks" name="remarks" class="form-control @error('remarks') is-invalid @enderror" rows="3">{{ old('remarks') }}</textarea>
+                <input type="text" id="remarks" name="remarks" class="form-control @error('remarks') is-invalid @enderror" maxlength="1000" value="{{ old('remarks') }}">
                 @error('remarks')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
@@ -406,12 +496,110 @@
         </div>
     </form>
 </div>
+
+@can('create', \App\Models\Enterprise::class)
+<div class="modal fade" id="createSupplierModal" tabindex="-1" aria-labelledby="createSupplierModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSupplierModalLabel">Crear proveedor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="create-supplier-form">
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Los datos fiscales se guardarán en el proveedor para futuras facturas.</p>
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label for="supplier_name" class="form-label">Nombre o razón social (*)</label>
+                            <input type="text" id="supplier_name" name="name" class="form-control" maxlength="75" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="supplier_identification_number" class="form-label">NIF/CIF</label>
+                            <input type="text" id="supplier_identification_number" name="identification_number" class="form-control" maxlength="30">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="supplier_email" class="form-label">Email</label>
+                            <input type="email" id="supplier_email" name="email" class="form-control" maxlength="255">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="supplier_phone" class="form-label">Teléfono</label>
+                            <input type="tel" id="supplier_phone" name="phone" class="form-control" maxlength="25" inputmode="tel" autocomplete="tel" placeholder="Ej. +34 600 123 456" pattern="^[+\-\d\s()]+$" title="Solo números, espacios y los símbolos + - ( )">
+                        </div>
+                        <div class="col-12">
+                            <label for="supplier_website" class="form-label">Web</label>
+                            <input type="text" id="supplier_website" name="website" class="form-control" maxlength="255">
+                        </div>
+                        <div class="col-12">
+                            <label for="supplier_address" class="form-label">Dirección fiscal</label>
+                            <input type="text" id="supplier_address" name="address" class="form-control" maxlength="255">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="supplier_postal_code" class="form-label">Código postal</label>
+                            <input type="text" id="supplier_postal_code" name="postal_code" class="form-control" maxlength="20">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="supplier_locality" class="form-label">Localidad</label>
+                            <input type="text" id="supplier_locality" name="locality" class="form-control" maxlength="50">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="supplier_province" class="form-label">Provincia</label>
+                            <input type="text" id="supplier_province" name="province" class="form-control" maxlength="50">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="supplier_country" class="form-label">País</label>
+                            <select id="supplier_country" name="country" class="form-select select2-supplier-country">
+                                <option value="">Seleccione un país</option>
+                                @foreach ($countries as $country)
+                                    <option value="{{ strtoupper($country->code) }}" data-flag="{{ strtolower($country->code) }}" @selected(strtoupper($country->code) === 'ES')>
+                                        {{ $country->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                    <div id="create-supplier-error" class="alert alert-danger mt-3 mb-0 d-none" role="alert"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="create-supplier-submit">
+                        <span class="submit-label">Guardar proveedor</span>
+                        <span class="submit-loading d-none">
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            Guardando...
+                        </span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endcan
 @endsection
 
 @section('page-script')
+@php
+    $paymentTypeOptions = $paymentTypes->map(fn ($type) => [
+        'id' => $type->id,
+        'name' => $type->name,
+    ])->values();
+    $paymentAccountOptions = $paymentAccounts->map(fn ($account) => [
+        'id' => $account->id,
+        'name' => $account->name,
+        'currency_id' => $account->currency_id,
+        'currency_code' => strtoupper((string) ($account->currency->code ?? 'USD')),
+    ])->values();
+    $paymentStatusOptions = collect($statusOptions)->map(fn ($label, $id) => [
+        'id' => $id,
+        'name' => $label,
+    ])->values();
+    $defaultPaymentTypeIdJs = $defaultPaymentTypeId ?? null;
+    $defaultPaymentAccountIdJs = $defaultPaymentAccountId ?? null;
+@endphp
 <script>
     $(function () {
-        $('.select2').each(function () {
+        var $createSupplierModal = $('#createSupplierModal');
+
+        $('.select2').not('.select2-supplier-country').not('.payment-type-select').not('.payment-account-select').each(function () {
             var $this = $(this);
             $this.wrap('<div class="position-relative"></div>');
             $this.select2({
@@ -420,6 +608,43 @@
                 allowClear: false
             });
         });
+
+        function initSupplierCountrySelect() {
+            var $country = $('#supplier_country');
+            if (! $country.length) {
+                return;
+            }
+
+            if ($country.hasClass('select2-hidden-accessible')) {
+                $country.select2('destroy');
+            }
+
+            $country.select2({
+                dropdownParent: $createSupplierModal.length ? $createSupplierModal : $('body'),
+                width: '100%',
+                allowClear: true,
+                placeholder: 'Seleccione un país',
+                templateResult: function (data) {
+                    if (!data.id) {
+                        return data.text;
+                    }
+
+                    return $('<span><span class="fi fi-' + $(data.element).data('flag') + ' me-2"></span>' + data.text + '</span>');
+                },
+                templateSelection: function (data) {
+                    if (!data.id) {
+                        return data.text;
+                    }
+
+                    return $('<span><span class="fi fi-' + $(data.element).data('flag') + ' me-2"></span>' + data.text + '</span>');
+                }
+            });
+        }
+
+        if ($createSupplierModal.length) {
+            initSupplierCountrySelect();
+            $createSupplierModal.on('shown.bs.modal', initSupplierCountrySelect);
+        }
 
         var spanishLocale = {
             firstDayOfWeek: 1,
@@ -440,7 +665,7 @@
             toggleTitle: 'Haz clic para alternar',
         };
 
-        $('.expense-date').flatpickr({
+        $('.expense-date').not('.payment-date').flatpickr({
             dateFormat: 'Y-m-d',
             altInput: true,
             altFormat: 'd/m/Y',
@@ -448,7 +673,19 @@
             allowInput: true
         });
 
+        var paymentTypeOptions = @json($paymentTypeOptions);
+        var paymentAccountOptions = @json($paymentAccountOptions);
+        var paymentStatusOptions = @json($paymentStatusOptions);
+        var defaultPaymentTypeId = @json($defaultPaymentTypeIdJs);
+        var defaultPaymentAccountId = @json($defaultPaymentAccountIdJs);
+        var $paymentsContainer = $('#expense-payments-container');
+        var nextPaymentIndex = $paymentsContainer.find('.expense-payment-block').length;
+
         $('.document-type-btn').on('click', function () {
+            if ($(this).prop('disabled')) {
+                return;
+            }
+
             var selectedType = $(this).data('document-type');
             $('#document_type').val(selectedType);
             $('.document-type-btn').removeClass('btn-primary').addClass('btn-outline-secondary');
@@ -470,7 +707,285 @@
         var $currencySelect = $('#currency_id');
         var $summaryVatLines = $('#summary-vat-lines');
         var detectDocumentUrl = @json(route('expense.detect-document'));
+        var createSupplierUrl = @json(route('expense.create-supplier'));
         var csrfToken = @json(csrf_token());
+        var $enterpriseSelect = $('#enterprise_id');
+        var $enterpriseDetectionStatus = $('#enterprise-detection-status');
+        var $openCreateSupplierModal = $('#open-create-supplier-modal');
+        var $createSupplierForm = $('#create-supplier-form');
+        var $createSupplierError = $('#create-supplier-error');
+        var detectedSupplierData = null;
+        function initPaymentDatePickers($context) {
+            ($context || $(document)).find('.payment-date').each(function () {
+                if (this._flatpickr) {
+                    return;
+                }
+
+                flatpickr(this, {
+                    dateFormat: 'Y-m-d',
+                    altInput: true,
+                    altFormat: 'd/m/Y',
+                    locale: spanishLocale,
+                    allowInput: true
+                });
+            });
+        }
+
+        function initPaymentSelects($context) {
+            ($context || $paymentsContainer).find('.payment-type-select, .payment-account-select').each(function () {
+                var $this = $(this);
+                if ($this.hasClass('select2-hidden-accessible')) {
+                    $this.select2('destroy');
+                }
+
+                var $parent = $this.closest('.expense-payment-block');
+                $this.select2({
+                    dropdownParent: $parent.length ? $parent : $('body'),
+                    width: '100%',
+                    allowClear: false,
+                    placeholder: $this.hasClass('payment-type-select') ? 'Selecciona forma de pago' : 'Selecciona cuenta',
+                });
+            });
+        }
+
+        function filteredPaymentAccounts(currencyId) {
+            if (!currencyId) {
+                return paymentAccountOptions;
+            }
+
+            return paymentAccountOptions.filter(function (option) {
+                return String(option.currency_id) === String(currencyId);
+            });
+        }
+
+        function buildAccountSelectOptions(selectedValue, currencyId) {
+            var accounts = filteredPaymentAccounts(currencyId);
+            var html = '<option value="">Selecciona cuenta</option>';
+
+            if (accounts.length === 0) {
+                return html;
+            }
+
+            accounts.forEach(function (option) {
+                var selected = String(selectedValue || '') === String(option.id) ? ' selected' : '';
+                html += '<option value="' + escapeHtml(String(option.id)) + '" data-currency-id="' + escapeHtml(String(option.currency_id || '')) + '"' + selected + '>' +
+                    escapeHtml(option.name + ' (' + option.currency_code + ')') +
+                    '</option>';
+            });
+
+            return html;
+        }
+
+        function refreshPaymentAccountSelects() {
+            var currencyId = $currencySelect.val() || '';
+            var fallbackAccountId = defaultPaymentAccountId || '';
+
+            $paymentsContainer.find('.payment-account-select').each(function () {
+                var $select = $(this);
+                var selectedValue = $select.val() || fallbackAccountId;
+                var accounts = filteredPaymentAccounts(currencyId);
+                var hasSelected = accounts.some(function (option) {
+                    return String(option.id) === String(selectedValue);
+                });
+                var nextValue = hasSelected ? selectedValue : (accounts[0] ? accounts[0].id : '');
+
+                if ($select.hasClass('select2-hidden-accessible')) {
+                    $select.select2('destroy');
+                }
+
+                $select.html(buildAccountSelectOptions(nextValue, currencyId));
+            });
+
+            initPaymentSelects($paymentsContainer);
+        }
+
+        function buildSelectOptions(options, placeholder, selectedValue) {
+            var html = '<option value="">' + escapeHtml(placeholder) + '</option>';
+            options.forEach(function (option) {
+                var selected = String(selectedValue || '') === String(option.id) ? ' selected' : '';
+                html += '<option value="' + escapeHtml(String(option.id)) + '"' + selected + '>' + escapeHtml(String(option.name)) + '</option>';
+            });
+
+            return html;
+        }
+
+        function createPaymentBlock(index, paymentData) {
+            var payment = paymentData || {};
+            var paymentDate = payment.payment_date ? String(payment.payment_date) : '{{ now()->toDateString() }}';
+            var amount = payment.amount !== undefined && payment.amount !== null && payment.amount !== ''
+                ? formatAmount(payment.amount)
+                : '';
+            var typeId = payment.type_id ? String(payment.type_id) : String(defaultPaymentTypeId || '');
+            var accountId = payment.account_id ? String(payment.account_id) : String(defaultPaymentAccountId || '');
+            var status = payment.status ? String(payment.status) : '2';
+            var currencyId = $currencySelect.val() || '';
+
+            return [
+                '<div class="expense-payment-block p-3 rounded bg-label-warning mb-2" data-payment-index="' + index + '">',
+                '  <div class="row g-3 align-items-end">',
+                '    <div class="col-md-2 col-lg-2">',
+                '      <label class="form-label" for="payment_date_' + index + '">Fecha del pago (*)</label>',
+                '      <input type="text" id="payment_date_' + index + '" name="payments[' + index + '][payment_date]" class="form-control expense-date payment-date" value="' + escapeHtml(paymentDate) + '" required>',
+                '    </div>',
+                '    <div class="col-md-2 col-lg-2">',
+                '      <label class="form-label" for="payment_amount_' + index + '">Importe</label>',
+                '      <input type="text" inputmode="decimal" id="payment_amount_' + index + '" name="payments[' + index + '][amount]" class="form-control text-end payment-amount" value="' + escapeHtml(amount) + '">',
+                '    </div>',
+                '    <div class="col-md-2 col-lg-2">',
+                '      <label class="form-label" for="payment_type_id_' + index + '">Forma de pago (*)</label>',
+                '      <select id="payment_type_id_' + index + '" name="payments[' + index + '][type_id]" class="form-select payment-type-select" required>',
+                buildSelectOptions(paymentTypeOptions, 'Selecciona forma de pago', typeId),
+                '      </select>',
+                '    </div>',
+                '    <div class="col-md-3 col-lg-3">',
+                '      <label class="form-label" for="payment_account_id_' + index + '">Cuenta (*)</label>',
+                '      <select id="payment_account_id_' + index + '" name="payments[' + index + '][account_id]" class="form-select payment-account-select" required>',
+                buildAccountSelectOptions(accountId, currencyId),
+                '      </select>',
+                '    </div>',
+                '    <div class="col-md-2 col-lg-2">',
+                '      <label class="form-label" for="payment_status_' + index + '">Estado (*)</label>',
+                '      <select id="payment_status_' + index + '" name="payments[' + index + '][status]" class="form-select payment-status-select" required>',
+                (function () {
+                    var html = '';
+                    paymentStatusOptions.forEach(function (option) {
+                        var selected = String(status) === String(option.id) ? ' selected' : '';
+                        html += '<option value="' + escapeHtml(String(option.id)) + '"' + selected + '>' + escapeHtml(String(option.name)) + '</option>';
+                    });
+                    return html;
+                })(),
+                '      </select>',
+                '    </div>',
+                '    <div class="col-md-1 col-lg-1 d-flex justify-content-end">',
+                '      <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="Eliminar pago">',
+                '        <i class="ti ti-trash"></i>',
+                '      </button>',
+                '    </div>',
+                '  </div>',
+                '</div>',
+            ].join('');
+        }
+
+        function calculateExpenseTotals() {
+            var base = 0;
+            var vatAmount = 0;
+            var retentionAmount = 0;
+            var total = 0;
+            var vatByRate = {};
+
+            $linesBody.find('.expense-line').each(function () {
+                var $line = $(this);
+                var lineBase = asNumber($line.find('.line-base').val());
+                var lineVatPercent = asNumber($line.find('.line-vat').val());
+                var lineRetentionPercent = asNumber($line.find('.line-retention').val());
+                var lineAllocationPercent = asNumber($line.find('.line-allocation').val());
+
+                var lineVatAmount = lineBase * (lineVatPercent / 100);
+                var lineRetentionAmount = lineBase * (lineRetentionPercent / 100);
+                var lineTotal = (lineBase + lineVatAmount - lineRetentionAmount) * (lineAllocationPercent / 100);
+
+                base += lineBase;
+                vatAmount += lineVatAmount;
+                retentionAmount += lineRetentionAmount;
+                total += lineTotal;
+
+                if (lineVatPercent > 0) {
+                    var rateKey = lineVatPercent.toFixed(2);
+                    vatByRate[rateKey] = (vatByRate[rateKey] || 0) + lineVatAmount;
+                }
+            });
+
+            return {
+                base: base,
+                vatAmount: vatAmount,
+                retentionAmount: retentionAmount,
+                total: total,
+                vatByRate: vatByRate
+            };
+        }
+
+        function updatePaymentRemoveButtons() {
+            var $blocks = $paymentsContainer.find('.expense-payment-block');
+            $blocks.find('.remove-payment-btn').prop('disabled', $blocks.length <= 1);
+        }
+
+        function updatePaymentsSummary() {
+            var totals = calculateExpenseTotals();
+            var paid = 0;
+
+            $paymentsContainer.find('.payment-amount').each(function () {
+                paid += asNumber($(this).val());
+            });
+
+            var pending = Math.max(totals.total - paid, 0);
+            var exceedsTotal = totals.total > 0 && paid > totals.total + 0.001;
+            var $summary = $('#payments-summary');
+
+            $summary
+                .toggleClass('text-danger', exceedsTotal)
+                .toggleClass('text-muted', ! exceedsTotal)
+                .text(
+                    'Pagado: ' + formatAmount(paid) +
+                    ' / Total: ' + formatAmount(totals.total) +
+                    ' (Pendiente: ' + formatAmount(pending) + ')' +
+                    (exceedsTotal ? ' — La suma supera el total del gasto.' : '')
+                );
+
+            $paymentsContainer.find('.payment-amount').each(function () {
+                $(this).toggleClass('is-invalid', exceedsTotal);
+            });
+        }
+
+        function capPaymentAmountInput($input) {
+            var totals = calculateExpenseTotals();
+            var maxTotal = totals.total;
+
+            if (maxTotal <= 0) {
+                return;
+            }
+
+            var sumOthers = 0;
+
+            $paymentsContainer.find('.payment-amount').not($input).each(function () {
+                sumOthers += asNumber($(this).val());
+            });
+
+            var maxAllowed = Math.max(maxTotal - sumOthers, 0);
+            var current = asNumber($input.val());
+
+            if (current > maxAllowed + 0.001) {
+                setAmountInputValue($input.get(0), maxAllowed > 0 ? maxAllowed : '');
+            }
+        }
+
+        function paymentsExceedTotal() {
+            var totals = calculateExpenseTotals();
+
+            if (totals.total <= 0) {
+                return false;
+            }
+
+            var paid = 0;
+            var hasSpecifiedAmount = false;
+
+            $paymentsContainer.find('.payment-amount').each(function () {
+                var value = $(this).val();
+                if (value === '' || value === null) {
+                    return;
+                }
+
+                hasSpecifiedAmount = true;
+                paid += asNumber(value);
+            });
+
+            return hasSpecifiedAmount && paid > totals.total + 0.001;
+        }
+
+        initPaymentDatePickers($paymentsContainer);
+        initPaymentSelects($paymentsContainer);
+        refreshPaymentAccountSelects();
+        updatePaymentRemoveButtons();
+        updatePaymentsSummary();
         var nextLineIndex = $linesBody.find('.expense-line').length;
         var documentPreviewObjectUrl = null;
 
@@ -584,7 +1099,7 @@
         function createLineRow(index, lineData) {
             var line = lineData || {};
             var concept = line.concept ? String(line.concept) : '';
-            var baseAmount = Number.isFinite(parseFloat(line.base_amount)) ? parseFloat(line.base_amount).toFixed(2) : '0.00';
+            var baseAmount = formatAmount(line.base_amount !== undefined ? line.base_amount : 0);
             var vatPercent = Number.isFinite(parseFloat(line.vat_percent)) ? parseFloat(line.vat_percent).toFixed(2) : '0';
             var retentionPercent = Number.isFinite(parseFloat(line.retention_percent)) ? parseFloat(line.retention_percent).toFixed(2) : '0';
             var allocationPercent = Number.isFinite(parseFloat(line.allocation_percent)) ? parseFloat(line.allocation_percent).toFixed(2) : '100';
@@ -593,7 +1108,7 @@
                 '<tr class="expense-line" data-line-index="' + index + '">',
                 '  <td>',
                 '    <div class="d-flex justify-content-between align-items-center mb-2">',
-                '      <label class="form-label small mb-0">Concepto</label>',
+                '      <label class="form-label small mb-0">Concepto (*)</label>',
                 '      <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">',
                 '        <i class="ti ti-trash ti-xs"></i>',
                 '      </button>',
@@ -603,8 +1118,8 @@
                 '    </div>',
                 '    <div class="row g-2">',
                 '      <div class="col-md-3">',
-                '        <label class="form-label small mb-1 d-block text-end">Base</label>',
-                '        <input type="number" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" min="0.01" step="0.01" value="' + escapeHtml(baseAmount) + '" required>',
+                '        <label class="form-label small mb-1 d-block text-end">Base (*)</label>',
+                '        <input type="text" inputmode="decimal" name="lines[' + index + '][base_amount]" class="form-control text-end line-base" value="' + escapeHtml(baseAmount) + '" required>',
                 '      </div>',
                 '      <div class="col-md-3">',
                 '        <label class="form-label small mb-1 d-block text-end">IVA %</label>',
@@ -624,16 +1139,112 @@
             ].join('');
         }
 
-        function setExpenseDate(inputSelector, dateValue) {
+        function setExpenseDate(inputTarget, dateValue) {
             if (!dateValue) {
                 return;
             }
 
-            var inputElement = $(inputSelector).get(0);
+            var $input = typeof inputTarget === 'string' ? $(inputTarget).first() : $(inputTarget).first();
+            var inputElement = $input.get(0);
             if (inputElement && inputElement._flatpickr) {
                 inputElement._flatpickr.setDate(dateValue, true, 'Y-m-d');
+            } else if ($input.length) {
+                $input.val(dateValue).trigger('change');
+            }
+        }
+
+        function ensureEnterpriseOption(enterpriseId, enterpriseName) {
+            var value = String(enterpriseId);
+            if ($enterpriseSelect.find('option[value="' + value + '"]').length === 0) {
+                $enterpriseSelect.append(
+                    $('<option>', {
+                        value: value,
+                        text: enterpriseName
+                    })
+                );
+            }
+        }
+
+        function isValidSupplierPhone(phone) {
+            phone = (phone || '').trim();
+            if (!phone) {
+                return false;
+            }
+            if (!/^[+\-\d\s()]+$/.test(phone)) {
+                return false;
+            }
+            var digits = phone.replace(/\D/g, '');
+            return digits.length >= 9 && digits.length <= 15;
+        }
+
+        function prefillSupplierModal(supplier) {
+            if (!supplier || typeof supplier !== 'object') {
+                return;
+            }
+
+            $('#supplier_name').val(supplier.name || supplier.legal_name || supplier.brand_name || '');
+            $('#supplier_identification_number').val(supplier.identification_number || '');
+            $('#supplier_email').val(supplier.email || '');
+            $('#supplier_phone').val(isValidSupplierPhone(supplier.phone) ? supplier.phone : '');
+            $('#supplier_website').val(supplier.website || '');
+            $('#supplier_address').val(supplier.address || '');
+            $('#supplier_postal_code').val(supplier.postal_code || '');
+            $('#supplier_locality').val(supplier.locality || '');
+            $('#supplier_province').val(supplier.province || '');
+            $('#supplier_country').val((supplier.country || 'ES').toUpperCase()).trigger('change');
+        }
+
+        function updateEnterpriseDetectionUi(data) {
+            detectedSupplierData = data.detected_supplier || null;
+            $enterpriseDetectionStatus
+                .removeClass('text-success text-warning text-danger text-muted')
+                .text('');
+
+            if ($openCreateSupplierModal.length) {
+                $openCreateSupplierModal.addClass('d-none');
+            }
+
+            var match = data.enterprise_match || {};
+            var enterpriseName = data.enterprise_name ? String(data.enterprise_name) : '';
+
+            if (match.status === 'matched' && data.enterprise_id) {
+                ensureEnterpriseOption(data.enterprise_id, enterpriseName);
+                $enterpriseSelect.val(String(data.enterprise_id)).trigger('change');
+
+                var sourceLabel = match.source === 'logo'
+                    ? 'logo/marca'
+                    : (match.source === 'tax_id' ? 'NIF/CIF' : 'nombre');
+
+                $enterpriseDetectionStatus
+                    .addClass('text-success')
+                    .text('Proveedor reconocido por ' + sourceLabel + ': ' + enterpriseName + '.');
+                return;
+            }
+
+            if (match.status === 'suggested' && data.enterprise_id) {
+                ensureEnterpriseOption(data.enterprise_id, enterpriseName);
+                $enterpriseSelect.val(String(data.enterprise_id)).trigger('change');
+                $enterpriseDetectionStatus
+                    .addClass('text-warning')
+                    .text('Posible proveedor detectado: ' + enterpriseName + '. Confirma o selecciona otro.');
+                if ($openCreateSupplierModal.length) {
+                    $openCreateSupplierModal.removeClass('d-none');
+                }
+                return;
+            }
+
+            if (enterpriseName !== '') {
+                $enterpriseDetectionStatus
+                    .addClass('text-warning')
+                    .text('No encontramos "' + enterpriseName + '" en tus proveedores. Selecciona uno o créalo.');
             } else {
-                $(inputSelector).val(dateValue).trigger('change');
+                $enterpriseDetectionStatus
+                    .addClass('text-muted')
+                    .text('Selecciona el proveedor de la factura o créalo si no existe.');
+            }
+
+            if ($openCreateSupplierModal.length) {
+                $openCreateSupplierModal.removeClass('d-none');
             }
         }
 
@@ -642,12 +1253,7 @@
                 return;
             }
 
-            if (data.enterprise_id) {
-                var enterpriseValue = String(data.enterprise_id);
-                if ($('#enterprise_id option[value="' + enterpriseValue + '"]').length > 0) {
-                    $('#enterprise_id').val(enterpriseValue).trigger('change');
-                }
-            }
+            updateEnterpriseDetectionUi(data);
 
             if (data.document_number) {
                 $('#document_number').val(String(data.document_number));
@@ -662,7 +1268,7 @@
             }
 
             if (data.payment_date) {
-                setExpenseDate('#payment_date', String(data.payment_date));
+                setExpenseDate($paymentsContainer.find('.payment-date').first(), String(data.payment_date));
             }
 
             if (data.currency_id) {
@@ -678,10 +1284,14 @@
                     $linesBody.append(createLineRow(index, line));
                 });
                 nextLineIndex = data.lines.length;
+                initAmountInputs($linesBody);
             }
 
-            if (data.payment_amount && (!$('#payment_amount').val() || $('#payment_amount').val() === '')) {
-                $('#payment_amount').val(formatAmount(data.payment_amount));
+            if (data.payment_amount) {
+                var $firstPaymentAmount = $paymentsContainer.find('.payment-amount').first();
+                if (! $firstPaymentAmount.val()) {
+                    setAmountInputValue($firstPaymentAmount.get(0), data.payment_amount);
+                }
             }
 
             refreshSummary();
@@ -739,8 +1349,86 @@
 
         setDropzoneUploadedState(false);
 
+        if ($openCreateSupplierModal.length) {
+            $openCreateSupplierModal.on('click', function () {
+                prefillSupplierModal(detectedSupplierData);
+                $createSupplierError.addClass('d-none').text('');
+                bootstrap.Modal.getOrCreateInstance($createSupplierModal.get(0)).show();
+            });
+        }
+
+        if ($createSupplierForm.length) {
+            $createSupplierForm.on('submit', function (event) {
+                event.preventDefault();
+
+                if (!createSupplierUrl) {
+                    return;
+                }
+
+                var phoneValue = ($('#supplier_phone').val() || '').trim();
+                if (phoneValue !== '') {
+                    if (!/^[+\-\d\s()]+$/.test(phoneValue)) {
+                        $createSupplierError.removeClass('d-none').text('El teléfono solo puede contener números, espacios y los símbolos + - ( ).');
+                        return;
+                    }
+
+                    var phoneDigits = phoneValue.replace(/\D/g, '');
+                    if (phoneDigits.length < 9 || phoneDigits.length > 15) {
+                        $createSupplierError.removeClass('d-none').text('Introduce un teléfono válido (entre 9 y 15 dígitos).');
+                        return;
+                    }
+                }
+
+                var $submit = $('#create-supplier-submit');
+                $submit.prop('disabled', true);
+                $submit.find('.submit-label').addClass('d-none');
+                $submit.find('.submit-loading').removeClass('d-none');
+                $createSupplierError.addClass('d-none').text('');
+
+                $.ajax({
+                    url: createSupplierUrl,
+                    type: 'POST',
+                    data: $createSupplierForm.serialize(),
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken
+                    },
+                    success: function (response) {
+                        if (!response || response.success !== true || !response.enterprise) {
+                            $createSupplierError.removeClass('d-none').text('No se pudo crear el proveedor.');
+                            return;
+                        }
+
+                        ensureEnterpriseOption(response.enterprise.id, response.enterprise.name);
+                        $enterpriseSelect.val(String(response.enterprise.id)).trigger('change');
+                        $enterpriseDetectionStatus
+                            .removeClass('text-warning text-danger text-muted')
+                            .addClass('text-success')
+                            .text('Proveedor creado y seleccionado: ' + response.enterprise.name + '.');
+
+                        bootstrap.Modal.getOrCreateInstance($createSupplierModal.get(0)).hide();
+                    },
+                    error: function (xhr) {
+                        var message = 'No se pudo crear el proveedor.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            message = xhr.responseJSON.message;
+                        } else if (xhr.responseJSON && xhr.responseJSON.errors) {
+                            message = Object.values(xhr.responseJSON.errors).flat().join(' ');
+                        }
+                        $createSupplierError.removeClass('d-none').text(message);
+                    },
+                    complete: function () {
+                        $submit.prop('disabled', false);
+                        $submit.find('.submit-label').removeClass('d-none');
+                        $submit.find('.submit-loading').addClass('d-none');
+                    }
+                });
+            });
+        }
+
         $('#add-expense-line').on('click', function () {
-            $linesBody.append(createLineRow(nextLineIndex));
+            var $row = $(createLineRow(nextLineIndex));
+            $linesBody.append($row);
+            initAmountInputs($row);
             nextLineIndex += 1;
             refreshSummary();
         });
@@ -755,12 +1443,88 @@
         });
 
         function asNumber(value) {
-            var parsed = parseFloat(value);
+            if (value === '' || value === null || value === undefined) {
+                return 0;
+            }
+
+            var normalized = String(value).trim();
+
+            if (normalized.includes(',')) {
+                normalized = normalized.replace(/\./g, '').replace(',', '.');
+            }
+
+            var parsed = parseFloat(normalized);
+
             return Number.isFinite(parsed) ? parsed : 0;
         }
 
         function formatAmount(value) {
-            return asNumber(value).toFixed(2);
+            return asNumber(value).toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            });
+        }
+
+        function initAmountInput(element) {
+            if (!element || typeof Cleave === 'undefined') {
+                return;
+            }
+
+            if (element._amountCleave) {
+                element._amountCleave.destroy();
+                element._amountCleave = null;
+            }
+
+            element._amountCleave = new Cleave(element, {
+                numeral: true,
+                numeralThousandsGroupStyle: 'thousand',
+                delimiter: '.',
+                numeralDecimalMark: ',',
+                numeralDecimalScale: 2,
+            });
+        }
+
+        function initAmountInputs($container) {
+            $container.find('.line-base, .payment-amount').each(function () {
+                initAmountInput(this);
+            });
+        }
+
+        function setAmountInputValue(element, value) {
+            if (!element) {
+                return;
+            }
+
+            if (!element._amountCleave) {
+                initAmountInput(element);
+            }
+
+            if (value === '' || value === null || value === undefined) {
+                element.value = '';
+                return;
+            }
+
+            element._amountCleave.setRawValue(asNumber(value).toFixed(2));
+        }
+
+        function normalizeAmountInputsForSubmit() {
+            $('.line-base, .payment-amount').each(function () {
+                var $input = $(this);
+                var rawValue = String($input.val() || '').trim();
+
+                if ($input.hasClass('payment-amount') && rawValue === '') {
+                    return;
+                }
+
+                var normalized = asNumber(rawValue).toFixed(2);
+
+                if (this._amountCleave) {
+                    this._amountCleave.destroy();
+                    this._amountCleave = null;
+                }
+
+                $input.val(normalized);
+            });
         }
 
         function formatPercent(value) {
@@ -772,40 +1536,59 @@
             return number.toFixed(2).replace(/\.?0+$/, '');
         }
 
+        $('#add-expense-payment').on('click', function () {
+            var $previousBlock = $paymentsContainer.find('.expense-payment-block').last();
+            var previousValues = {
+                payment_date: $previousBlock.find('.payment-date').val() || '{{ now()->toDateString() }}',
+                type_id: $previousBlock.find('.payment-type-select').val() || '',
+                account_id: $previousBlock.find('.payment-account-select').val() || '',
+                status: $previousBlock.find('.payment-status-select').val() || '2',
+            };
+
+            var $block = $(createPaymentBlock(nextPaymentIndex, previousValues));
+            $paymentsContainer.append($block);
+            nextPaymentIndex += 1;
+            initPaymentDatePickers($block);
+            initPaymentSelects($block);
+            initAmountInputs($block);
+            updatePaymentsSummary();
+            updatePaymentRemoveButtons();
+        });
+
+        $paymentsContainer.on('click', '.remove-payment-btn', function () {
+            if ($paymentsContainer.find('.expense-payment-block').length <= 1) {
+                return;
+            }
+
+            $(this).closest('.expense-payment-block').remove();
+            updatePaymentsSummary();
+            updatePaymentRemoveButtons();
+        });
+
+        $paymentsContainer.on('input', '.payment-amount', function () {
+            capPaymentAmountInput($(this));
+            updatePaymentsSummary();
+        });
+
+        $('form.card-body').on('submit', function (event) {
+            normalizeAmountInputsForSubmit();
+
+            if (paymentsExceedTotal()) {
+                event.preventDefault();
+                initAmountInputs($('form.card-body'));
+                updatePaymentsSummary();
+                $('#payments-summary').get(0)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        });
+
         function refreshSummary() {
-            var base = 0;
-            var vatAmount = 0;
-            var retentionAmount = 0;
-            var total = 0;
-            var vatByRate = {};
+            var totals = calculateExpenseTotals();
 
-            $linesBody.find('.expense-line').each(function () {
-                var $line = $(this);
-                var lineBase = asNumber($line.find('.line-base').val());
-                var lineVatPercent = asNumber($line.find('.line-vat').val());
-                var lineRetentionPercent = asNumber($line.find('.line-retention').val());
-                var lineAllocationPercent = asNumber($line.find('.line-allocation').val());
+            $('#summary-base').text(formatAmount(totals.base));
+            $('#summary-retention').text(formatAmount(totals.retentionAmount));
+            $('#summary-total').text(formatAmount(totals.total));
 
-                var lineVatAmount = lineBase * (lineVatPercent / 100);
-                var lineRetentionAmount = lineBase * (lineRetentionPercent / 100);
-                var lineTotal = (lineBase + lineVatAmount - lineRetentionAmount) * (lineAllocationPercent / 100);
-
-                base += lineBase;
-                vatAmount += lineVatAmount;
-                retentionAmount += lineRetentionAmount;
-                total += lineTotal;
-
-                if (lineVatPercent > 0) {
-                    var rateKey = lineVatPercent.toFixed(2);
-                    vatByRate[rateKey] = (vatByRate[rateKey] || 0) + lineVatAmount;
-                }
-            });
-
-            $('#summary-base').text(formatAmount(base));
-            $('#summary-retention').text(formatAmount(retentionAmount));
-            $('#summary-total').text(formatAmount(total));
-
-            var vatRates = Object.keys(vatByRate).sort(function (left, right) {
+            var vatRates = Object.keys(totals.vatByRate).sort(function (left, right) {
                 return asNumber(left) - asNumber(right);
             });
 
@@ -813,25 +1596,25 @@
 
             if (vatRates.length === 0) {
                 $summaryVatLines.append(
-                    '<div class="d-flex justify-content-between"><span>I.V.A. 0%</span><strong>0.00</strong></div>'
+                    '<div class="d-flex justify-content-between"><span>I.V.A. 0%</span><strong>' + formatAmount(0) + '</strong></div>'
                 );
             } else {
                 vatRates.forEach(function (rate, index) {
                     var marginClass = index < vatRates.length - 1 ? ' mb-1' : '';
                     $summaryVatLines.append(
-                        '<div class="d-flex justify-content-between' + marginClass + '"><span>I.V.A. ' + formatPercent(rate) + '%</span><strong>' + formatAmount(vatByRate[rate]) + '</strong></div>'
+                        '<div class="d-flex justify-content-between' + marginClass + '"><span>I.V.A. ' + formatPercent(rate) + '%</span><strong>' + formatAmount(totals.vatByRate[rate]) + '</strong></div>'
                     );
                 });
             }
 
-            if ($('#payment_amount').val() === '') {
-                $('#payment_amount').attr('placeholder', formatAmount(total));
-            }
+            updatePaymentsSummary();
         }
 
         $(document).on('input', '.line-base, .line-vat, .line-retention, .line-allocation', refreshSummary);
 
-        $('#account_id').on('change', function () {
+        $currencySelect.on('change', refreshPaymentAccountSelects);
+
+        $(document).on('change', '.payment-account-select', function () {
             if ($currencySelect.val()) {
                 return;
             }
@@ -842,6 +1625,7 @@
             }
         });
 
+        initAmountInputs($('form.card-body'));
         refreshSummary();
     });
 </script>
