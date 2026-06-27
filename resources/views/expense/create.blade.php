@@ -341,7 +341,12 @@
 
         @if ($paymentAccounts->isEmpty())
             <div class="alert alert-warning">
-                No hay cuentas de pago activas en tu empresa. Crea una cuenta antes de registrar el gasto.
+                No hay cuentas de pago activas en tu empresa.
+                @can('create', \App\Models\PaymentAccount::class)
+                    <a href="{{ route('payment-account.create') }}">Crea una cuenta</a> antes de registrar el gasto.
+                @else
+                    Crea una cuenta antes de registrar el gasto.
+                @endcan
             </div>
         @endif
 
@@ -354,7 +359,7 @@
 
         <div id="expense-payments-container">
             @foreach ($initialPayments as $paymentIndex => $payment)
-                <div class="expense-payment-block p-3 rounded bg-label-warning mb-2" data-payment-index="{{ $paymentIndex }}">
+                <div class="expense-payment-block border rounded p-3 mb-2" data-payment-index="{{ $paymentIndex }}">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-2 col-lg-2">
                             <label class="form-label" for="payment_date_{{ $paymentIndex }}">Fecha del pago (*)</label>
@@ -399,7 +404,7 @@
                                 <option value="">Selecciona forma de pago</option>
                                 @foreach ($paymentTypes as $paymentType)
                                     <option value="{{ $paymentType->id }}" {{ (string) old('payments.'.$paymentIndex.'.type_id', $payment['type_id'] ?? $defaultPaymentTypeId) === (string) $paymentType->id ? 'selected' : '' }}>
-                                        {{ $paymentType->name }}
+                                        {{ $paymentType->display_name }}
                                     </option>
                                 @endforeach
                             </select>
@@ -434,7 +439,7 @@
                             <select
                                 id="payment_status_{{ $paymentIndex }}"
                                 name="payments[{{ $paymentIndex }}][status]"
-                                class="form-select payment-status-select @error('payments.'.$paymentIndex.'.status') is-invalid @enderror"
+                                class="form-select select2 payment-status-select @error('payments.'.$paymentIndex.'.status') is-invalid @enderror"
                             >
                                 @foreach ($statusOptions as $statusId => $statusLabel)
                                     <option value="{{ $statusId }}" {{ (string) old('payments.'.$paymentIndex.'.status', $payment['status'] ?? '2') === (string) $statusId ? 'selected' : '' }}>
@@ -571,13 +576,7 @@
 @php
     $paymentTypeOptions = $paymentTypes->map(fn ($type) => [
         'id' => $type->id,
-        'name' => $type->name,
-    ])->values();
-    $paymentAccountOptions = $paymentAccounts->map(fn ($account) => [
-        'id' => $account->id,
-        'name' => $account->name,
-        'currency_id' => $account->currency_id,
-        'currency_code' => strtoupper((string) ($account->currency->code ?? 'USD')),
+        'name' => $type->display_name,
     ])->values();
     $paymentStatusOptions = collect($statusOptions)->map(fn ($label, $id) => [
         'id' => $id,
@@ -590,7 +589,7 @@
     $(function () {
         var $createSupplierModal = $('#createSupplierModal');
 
-        $('.select2').not('.select2-supplier-country').not('.payment-type-select').not('.payment-account-select').each(function () {
+        $('.select2').not('.select2-supplier-country').not('.payment-type-select').not('.payment-account-select').not('.payment-status-select').each(function () {
             var $this = $(this);
             $this.wrap('<div class="position-relative"></div>');
             $this.select2({
@@ -723,34 +722,80 @@
         }
 
         function initPaymentSelects($context) {
-            ($context || $paymentsContainer).find('.payment-type-select, .payment-account-select').each(function () {
+            ($context || $paymentsContainer).find('.payment-type-select, .payment-account-select, .payment-status-select').each(function () {
                 var $this = $(this);
                 if ($this.hasClass('select2-hidden-accessible')) {
                     $this.select2('destroy');
                 }
 
-                var $parent = $this.closest('.expense-payment-block');
-                $this.select2({
-                    dropdownParent: $parent.length ? $parent : $('body'),
+                if (! $this.parent().hasClass('position-relative')) {
+                    $this.wrap('<div class="position-relative"></div>');
+                }
+
+                var config = {
+                    dropdownParent: $this.parent(),
                     width: '100%',
                     allowClear: false,
-                    placeholder: $this.hasClass('payment-type-select') ? 'Selecciona forma de pago' : 'Selecciona cuenta',
+                };
+
+                if ($this.hasClass('payment-type-select')) {
+                    config.placeholder = 'Selecciona forma de pago';
+                } else if ($this.hasClass('payment-account-select')) {
+                    config.placeholder = 'Selecciona cuenta';
+                } else if ($this.hasClass('payment-status-select')) {
+                    config.minimumResultsForSearch = Infinity;
+                }
+
+                $this.select2(config);
+            });
+        }
+
+        function findPaymentAccountOption(accountId) {
+            return paymentAccountOptions.find(function (option) {
+                return String(option.id) === String(accountId);
+            }) || null;
+        }
+
+        function accountAcceptsType(accountOption, typeId) {
+            if (!accountOption || !typeId) {
+                return true;
+            }
+
+            return (accountOption.payment_type_ids || []).some(function (id) {
+                return String(id) === String(typeId);
+            });
+        }
+
+        function filteredPaymentAccounts(currencyId, typeId) {
+            return paymentAccountOptions.filter(function (option) {
+                if (currencyId && String(option.currency_id) !== String(currencyId)) {
+                    return false;
+                }
+
+                if (typeId && !accountAcceptsType(option, typeId)) {
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        function filteredPaymentTypes(accountId) {
+            var account = findPaymentAccountOption(accountId);
+
+            if (!account) {
+                return paymentTypeOptions;
+            }
+
+            return paymentTypeOptions.filter(function (option) {
+                return (account.payment_type_ids || []).some(function (id) {
+                    return String(id) === String(option.id);
                 });
             });
         }
 
-        function filteredPaymentAccounts(currencyId) {
-            if (!currencyId) {
-                return paymentAccountOptions;
-            }
-
-            return paymentAccountOptions.filter(function (option) {
-                return String(option.currency_id) === String(currencyId);
-            });
-        }
-
-        function buildAccountSelectOptions(selectedValue, currencyId) {
-            var accounts = filteredPaymentAccounts(currencyId);
+        function buildAccountSelectOptions(selectedValue, currencyId, typeId) {
+            var accounts = filteredPaymentAccounts(currencyId, typeId);
             var html = '<option value="">Selecciona cuenta</option>';
 
             if (accounts.length === 0) {
@@ -767,24 +812,67 @@
             return html;
         }
 
-        function refreshPaymentAccountSelects() {
+        function buildTypeSelectOptions(selectedValue, accountId) {
+            var types = filteredPaymentTypes(accountId);
+            var html = '<option value="">Selecciona forma de pago</option>';
+
+            types.forEach(function (option) {
+                var selected = String(selectedValue || '') === String(option.id) ? ' selected' : '';
+                html += '<option value="' + escapeHtml(String(option.id)) + '"' + selected + '>' + escapeHtml(String(option.name)) + '</option>';
+            });
+
+            return html;
+        }
+
+        function refreshPaymentBlockSelectors($block) {
             var currencyId = $currencySelect.val() || '';
-            var fallbackAccountId = defaultPaymentAccountId || '';
+            var $accountSelect = $block.find('.payment-account-select');
+            var $typeSelect = $block.find('.payment-type-select');
+            var accountId = $accountSelect.val() || '';
+            var typeId = $typeSelect.val() || '';
 
-            $paymentsContainer.find('.payment-account-select').each(function () {
-                var $select = $(this);
-                var selectedValue = $select.val() || fallbackAccountId;
-                var accounts = filteredPaymentAccounts(currencyId);
-                var hasSelected = accounts.some(function (option) {
-                    return String(option.id) === String(selectedValue);
-                });
-                var nextValue = hasSelected ? selectedValue : (accounts[0] ? accounts[0].id : '');
+            var accounts = filteredPaymentAccounts(currencyId, typeId);
+            if (accountId && !accounts.some(function (option) {
+                return String(option.id) === String(accountId);
+            })) {
+                accountId = accounts[0] ? accounts[0].id : '';
+            }
 
-                if ($select.hasClass('select2-hidden-accessible')) {
-                    $select.select2('destroy');
+            var types = filteredPaymentTypes(accountId);
+            if (typeId && !types.some(function (option) {
+                return String(option.id) === String(typeId);
+            })) {
+                typeId = types[0] ? types[0].id : '';
+            }
+
+            accounts = filteredPaymentAccounts(currencyId, typeId);
+            if (accountId && !accounts.some(function (option) {
+                return String(option.id) === String(accountId);
+            })) {
+                accountId = accounts[0] ? accounts[0].id : '';
+                types = filteredPaymentTypes(accountId);
+                if (typeId && !types.some(function (option) {
+                    return String(option.id) === String(typeId);
+                })) {
+                    typeId = types[0] ? types[0].id : '';
                 }
+            }
 
-                $select.html(buildAccountSelectOptions(nextValue, currencyId));
+            if ($accountSelect.hasClass('select2-hidden-accessible')) {
+                $accountSelect.select2('destroy');
+            }
+
+            if ($typeSelect.hasClass('select2-hidden-accessible')) {
+                $typeSelect.select2('destroy');
+            }
+
+            $accountSelect.html(buildAccountSelectOptions(accountId, currencyId, typeId));
+            $typeSelect.html(buildTypeSelectOptions(typeId, accountId));
+        }
+
+        function refreshAllPaymentBlocks() {
+            $paymentsContainer.find('.expense-payment-block').each(function () {
+                refreshPaymentBlockSelectors($(this));
             });
 
             initPaymentSelects($paymentsContainer);
@@ -812,7 +900,7 @@
             var currencyId = $currencySelect.val() || '';
 
             return [
-                '<div class="expense-payment-block p-3 rounded bg-label-warning mb-2" data-payment-index="' + index + '">',
+                '<div class="expense-payment-block border rounded p-3 mb-2" data-payment-index="' + index + '">',
                 '  <div class="row g-3 align-items-end">',
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_date_' + index + '">Fecha del pago (*)</label>',
@@ -825,18 +913,18 @@
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_type_id_' + index + '">Forma de pago (*)</label>',
                 '      <select id="payment_type_id_' + index + '" name="payments[' + index + '][type_id]" class="form-select payment-type-select">',
-                buildSelectOptions(paymentTypeOptions, 'Selecciona forma de pago', typeId),
+                buildTypeSelectOptions(typeId, accountId),
                 '      </select>',
                 '    </div>',
                 '    <div class="col-md-3 col-lg-3">',
                 '      <label class="form-label" for="payment_account_id_' + index + '">Cuenta (*)</label>',
                 '      <select id="payment_account_id_' + index + '" name="payments[' + index + '][account_id]" class="form-select payment-account-select">',
-                buildAccountSelectOptions(accountId, currencyId),
+                buildAccountSelectOptions(accountId, currencyId, typeId),
                 '      </select>',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
                 '      <label class="form-label" for="payment_status_' + index + '">Estado (*)</label>',
-                '      <select id="payment_status_' + index + '" name="payments[' + index + '][status]" class="form-select payment-status-select">',
+                '      <select id="payment_status_' + index + '" name="payments[' + index + '][status]" class="form-select select2 payment-status-select">',
                 (function () {
                     var html = '';
                     paymentStatusOptions.forEach(function (option) {
@@ -974,7 +1062,7 @@
 
         initPaymentDatePickers($paymentsContainer);
         initPaymentSelects($paymentsContainer);
-        refreshPaymentAccountSelects();
+        refreshAllPaymentBlocks();
         updatePaymentRemoveButtons();
         updatePaymentsSummary();
         var nextLineIndex = $linesBody.find('.expense-line').length;
@@ -1596,17 +1684,27 @@
 
         $(document).on('input', '.line-base, .line-vat, .line-retention, .line-allocation', refreshSummary);
 
-        $currencySelect.on('change', refreshPaymentAccountSelects);
+        $currencySelect.on('change', refreshAllPaymentBlocks);
 
         $(document).on('change', '.payment-account-select', function () {
+            refreshPaymentBlockSelectors($(this).closest('.expense-payment-block'));
+
             if ($currencySelect.val()) {
+                initPaymentSelects($(this).closest('.expense-payment-block'));
                 return;
             }
 
             var selectedCurrencyId = $(this).find(':selected').data('currency-id');
             if (selectedCurrencyId) {
                 $currencySelect.val(String(selectedCurrencyId)).trigger('change');
+            } else {
+                initPaymentSelects($(this).closest('.expense-payment-block'));
             }
+        });
+
+        $(document).on('change', '.payment-type-select', function () {
+            refreshPaymentBlockSelectors($(this).closest('.expense-payment-block'));
+            initPaymentSelects($(this).closest('.expense-payment-block'));
         });
 
         initAmountInputs($('form.card-body'));

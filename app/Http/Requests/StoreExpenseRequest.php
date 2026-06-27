@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use App\Helpers\Helpers;
+use App\Models\PaymentAccount;
+use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Support\ExpenseDocumentTypes;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -193,6 +195,39 @@ class StoreExpenseRequest extends FormRequest
                     'payments.0.amount',
                     'La suma de los importes de pago no puede superar el total del gasto ('.Helpers::formatDecimal($invoiceTotal).').',
                 );
+            }
+
+            $teamId = (int) auth()->user()->currentTeam->id;
+            $compatibilityService = app(PaymentAccountCompatibilityService::class);
+
+            foreach ($payments as $index => $payment)
+            {
+                if (! is_array($payment))
+                {
+                    continue;
+                }
+
+                $accountId = (int) ($payment['account_id'] ?? 0);
+                $typeId = (int) ($payment['type_id'] ?? 0);
+
+                if ($accountId < 1 || $typeId < 1)
+                {
+                    continue;
+                }
+
+                $account = PaymentAccount::withoutGlobalScopes()
+                    ->where('team_id', $teamId)
+                    ->where('status', 1)
+                    ->whereKey($accountId)
+                    ->first();
+
+                if (! $account instanceof PaymentAccount || ! $compatibilityService->accountAcceptsType($account, $typeId))
+                {
+                    $validator->errors()->add(
+                        'payments.'.$index.'.type_id',
+                        'La forma de pago seleccionada no está permitida para la cuenta elegida.',
+                    );
+                }
             }
         });
     }

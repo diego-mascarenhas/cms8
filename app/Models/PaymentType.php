@@ -20,13 +20,31 @@ class PaymentType extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function paymentAccounts()
+    {
+        return $this->belongsToMany(PaymentAccount::class, 'payment_account_payment_type');
+    }
+
+    public function getDisplayNameAttribute(): string
+    {
+        return self::displayNameFor((string) $this->name);
+    }
+
+    public static function displayNameFor(string $name): string
+    {
+        $key = 'payment_types.'.$name;
+        $translated = trans($key);
+
+        return is_string($translated) && $translated !== $key ? $translated : $name;
+    }
+
     public static function getOptions()
     {
         return self::all()->map(function ($data)
         {
             return [
                 'id' => $data->id,
-                'name' => $data->name,
+                'name' => self::displayNameFor((string) $data->name),
             ];
         });
     }

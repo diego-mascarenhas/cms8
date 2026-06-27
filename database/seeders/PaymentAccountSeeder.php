@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\PaymentAccount;
+use App\Services\Finance\PaymentAccountCompatibilityService;
 use Illuminate\Database\Seeder;
 
 class PaymentAccountSeeder extends Seeder
@@ -26,33 +28,77 @@ class PaymentAccountSeeder extends Seeder
                 'code' => 'EUR',
                 'name' => 'Cuenta Euro',
                 'symbol' => '€',
-                'currency_id' => 978, // EUR currency ID
+                'currency_id' => 978,
                 'status' => 1,
             ],
             [
                 'code' => 'USD',
                 'name' => 'Cuenta Dólar',
                 'symbol' => '$',
-                'currency_id' => 840, // USD currency ID
+                'currency_id' => 840,
+                'status' => 1,
+            ],
+            [
+                'code' => 'CASH',
+                'name' => 'Caja',
+                'symbol' => '€',
+                'currency_id' => 978,
                 'status' => 1,
             ],
             [
                 'code' => 'PAYPAL',
                 'name' => 'PayPal',
                 'symbol' => '$',
-                'currency_id' => 840, // USD currency ID
+                'currency_id' => 840,
                 'status' => 1,
             ],
             [
                 'code' => 'STRIPE',
                 'name' => 'Stripe',
                 'symbol' => '€',
-                'currency_id' => 978, // EUR currency ID
+                'currency_id' => 978,
+                'status' => 1,
+            ],
+            [
+                'code' => 'WISE_EUR',
+                'name' => 'Wise (EUR)',
+                'symbol' => '€',
+                'currency_id' => 978,
+                'status' => 1,
+            ],
+            [
+                'code' => 'WISE_USD',
+                'name' => 'Wise (USD)',
+                'symbol' => '$',
+                'currency_id' => 840,
+                'status' => 1,
+            ],
+            [
+                'code' => 'BIZUM',
+                'name' => 'Bizum',
+                'symbol' => '€',
+                'currency_id' => 978,
+                'status' => 1,
+            ],
+            [
+                'code' => 'MERCADOPAGO',
+                'name' => 'Mercado Pago',
+                'symbol' => '$',
+                'currency_id' => 840,
+                'status' => 1,
+            ],
+            [
+                'code' => 'CUENTICA',
+                'name' => 'Cuéntica',
+                'symbol' => '€',
+                'currency_id' => 978,
                 'status' => 1,
             ],
         ];
 
         // Create payment accounts for each team
+        $compatibilityService = app(PaymentAccountCompatibilityService::class);
+
         foreach ($teams as $team)
         {
             $this->command->info("Creating payment accounts for team: {$team->name}");
@@ -61,13 +107,15 @@ class PaymentAccountSeeder extends Seeder
             {
                 $account = array_merge($accountData, ['team_id' => $team->id]);
 
-                \App\Models\PaymentAccount::firstOrCreate(
+                $paymentAccount = PaymentAccount::firstOrCreate(
                     [
                         'team_id' => $team->id,
                         'code' => $account['code'],
                     ],
                     $account,
                 );
+
+                $compatibilityService->syncDefaultPaymentTypesForAccount($paymentAccount);
             }
         }
 

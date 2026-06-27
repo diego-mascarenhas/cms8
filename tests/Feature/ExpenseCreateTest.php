@@ -49,7 +49,7 @@ class ExpenseCreateTest extends TestCase
             ->assertOk()
             ->assertSee('Registrar un nuevo gasto', false)
             ->assertSee($account->name, false)
-            ->assertSee('Bank Transfer', false);
+            ->assertSee('Transferencia bancaria', false);
     }
 
     public function test_create_page_disables_unavailable_document_types(): void

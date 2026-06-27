@@ -19,6 +19,7 @@ class InvoicePaymentRegistrationService
 
     public function __construct(
         private readonly InvoiceCurrencyService $invoiceCurrencyService,
+        private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
     ) {}
 
     public function canRegisterPayment(User $user, Invoice $invoice): bool
@@ -71,11 +72,16 @@ class InvoicePaymentRegistrationService
     {
         $accounts = $this->accountsForInvoiceCurrency($invoice);
         $defaultAccount = $accounts->first();
+        $defaultTypeId = $defaultAccount
+            ? ($this->paymentAccountCompatibilityService->acceptedPaymentTypeIds($defaultAccount)[0] ?? 2)
+            : 2;
 
-        $paymentTypes = PaymentType::query()
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn ($type) => ['id' => $type->id, 'name' => $type->name])
+        $paymentTypes = $this->paymentAccountCompatibilityService
+            ->filterPaymentTypesForAccount(
+                PaymentType::query()->orderBy('name')->get(['id', 'name']),
+                $defaultAccount,
+            )
+            ->map(fn ($type) => ['id' => $type->id, 'name' => $type->display_name])
             ->values()
             ->all();
 
@@ -83,9 +89,13 @@ class InvoicePaymentRegistrationService
             'amount' => round((float) $invoice->balance, 2),
             'date' => now()->toDateString(),
             'account_id' => $defaultAccount?->id,
-            'type_id' => 2,
+            'type_id' => $defaultTypeId,
             'accounts' => $accounts
-                ->map(fn (PaymentAccount $account) => ['id' => $account->id, 'name' => $account->name])
+                ->map(fn (PaymentAccount $account) => [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'payment_type_ids' => $this->paymentAccountCompatibilityService->acceptedPaymentTypeIds($account),
+                ])
                 ->values()
                 ->all(),
             'payment_types' => $paymentTypes,
@@ -155,6 +165,13 @@ class InvoicePaymentRegistrationService
         {
             throw ValidationException::withMessages([
                 'account_id' => __('invoice_payment.errors.account_currency_mismatch'),
+            ]);
+        }
+
+        if (! $this->paymentAccountCompatibilityService->accountAcceptsType($account, (int) $data['type_id']))
+        {
+            throw ValidationException::withMessages([
+                'type_id' => __('invoice_payment.errors.type_not_allowed_for_account'),
             ]);
         }
 

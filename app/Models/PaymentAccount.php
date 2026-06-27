@@ -41,6 +41,11 @@ class PaymentAccount extends Model
         return $this->belongsTo(Currency::class);
     }
 
+    public function paymentTypes()
+    {
+        return $this->belongsToMany(PaymentType::class, 'payment_account_payment_type');
+    }
+
     public function payments()
     {
         return $this->hasMany(Payment::class, 'account_id');

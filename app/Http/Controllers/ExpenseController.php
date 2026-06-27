@@ -18,7 +18,9 @@ use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\Team;
+use App\Services\ExpenseDocumentDetectionService;
 use App\Services\ExpenseSupplierService;
+use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Support\ExpenseDocumentTypes;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +33,10 @@ use Illuminate\View\View;
 
 class ExpenseController extends Controller
 {
+    public function __construct(
+        private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
+    ) {}
+
     public function index(ExpenseDataTable $dataTable)
     {
         $this->authorize('viewAny', Payment::class);
@@ -103,7 +109,7 @@ class ExpenseController extends Controller
             ->get(['id', 'name', 'type_id']);
 
         $paymentAccounts = PaymentAccount::withoutGlobalScopes()
-            ->with('currency')
+            ->with(['currency', 'paymentTypes'])
             ->where('team_id', $teamId)
             ->where('status', 1)
             ->orderBy('name')
@@ -116,9 +122,15 @@ class ExpenseController extends Controller
         }
         $paymentTypes = $paymentTypesQuery->get(['id', 'name']);
 
-        $defaultPaymentTypeId = $paymentTypes->firstWhere('id', 2)?->id
+        $preferredTypeId = $paymentTypes->firstWhere('id', 2)?->id
             ?? $paymentTypes->first()?->id;
-        $defaultPaymentAccountId = $paymentAccounts->first()?->id;
+        [$defaultPaymentAccountId, $defaultPaymentTypeId] = $this->paymentAccountCompatibilityService->resolveDefaults(
+            $paymentAccounts,
+            $paymentTypes,
+            $preferredTypeId,
+        );
+
+        $paymentAccountOptions = $this->paymentAccountCompatibilityService->mapAccountsForFrontend($paymentAccounts);
 
         $currencies = Currency::query()
             ->active()
@@ -142,6 +154,7 @@ class ExpenseController extends Controller
         return view('expense.create', compact(
             'enterprises',
             'paymentAccounts',
+            'paymentAccountOptions',
             'paymentTypes',
             'defaultPaymentTypeId',
             'defaultPaymentAccountId',
