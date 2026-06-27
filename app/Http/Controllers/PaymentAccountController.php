@@ -55,7 +55,6 @@ class PaymentAccountController extends Controller
             'team_id' => (int) auth()->user()->currentTeam->id,
             'code' => strtoupper((string) $validated['code']),
             'name' => (string) $validated['name'],
-            'symbol' => $validated['symbol'] ?? null,
             'currency_id' => (int) $validated['currency_id'],
             'status' => (int) $validated['status'],
         ]);
@@ -96,7 +95,6 @@ class PaymentAccountController extends Controller
         $paymentAccount->update([
             'code' => strtoupper((string) $validated['code']),
             'name' => (string) $validated['name'],
-            'symbol' => $validated['symbol'] ?? null,
             'currency_id' => (int) $validated['currency_id'],
             'status' => (int) $validated['status'],
         ]);
@@ -119,7 +117,7 @@ class PaymentAccountController extends Controller
         return Currency::query()
             ->active()
             ->orderBy('code')
-            ->get(['id', 'code', 'name', 'symbol']);
+            ->get(['id', 'code', 'name']);
     }
 
     /**

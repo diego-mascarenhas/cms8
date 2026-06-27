@@ -27,7 +27,6 @@ class StorePaymentAccountRequest extends FormRequest
                 Rule::unique('payment_accounts', 'code')->where(fn ($query) => $query->where('team_id', $teamId)),
             ],
             'name' => ['required', 'string', 'max:100'],
-            'symbol' => ['nullable', 'string', 'max:10'],
             'currency_id' => ['required', 'integer', 'exists:currencies,id'],
             'status' => ['required', 'integer', Rule::in([0, 1])],
             'payment_type_ids' => ['required', 'array', 'min:1'],
@@ -43,7 +42,6 @@ class StorePaymentAccountRequest extends FormRequest
         return [
             'code' => 'código',
             'name' => 'nombre',
-            'symbol' => 'símbolo',
             'currency_id' => 'moneda',
             'status' => 'estado',
             'payment_type_ids' => 'formas de pago aceptadas',

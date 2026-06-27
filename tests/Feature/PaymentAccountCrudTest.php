@@ -34,7 +34,6 @@ class PaymentAccountCrudTest extends TestCase
             ->post(route('payment-account.store'), [
                 'code' => 'CAJA',
                 'name' => 'Caja efectivo',
-                'symbol' => '€',
                 'currency_id' => 978,
                 'status' => 1,
                 'payment_type_ids' => [1],
@@ -55,7 +54,6 @@ class PaymentAccountCrudTest extends TestCase
             'team_id' => (int) $user->current_team_id,
             'code' => 'PAYPAL',
             'name' => 'PayPal',
-            'symbol' => '$',
             'currency_id' => 840,
             'status' => 1,
         ]);
@@ -65,7 +63,6 @@ class PaymentAccountCrudTest extends TestCase
             ->put(route('payment-account.update', $account), [
                 'code' => 'PAYPAL',
                 'name' => 'PayPal EUR',
-                'symbol' => '€',
                 'currency_id' => 978,
                 'status' => 1,
                 'payment_type_ids' => [7, 2],
@@ -73,6 +70,37 @@ class PaymentAccountCrudTest extends TestCase
             ->assertRedirect(route('payment-account.index'));
 
         $this->assertSame([2, 7], $account->fresh()->paymentTypes()->pluck('payment_types.id')->map(fn ($id) => (int) $id)->sort()->values()->all());
+    }
+
+    public function test_admin_can_edit_inactive_payment_account(): void
+    {
+        $user = $this->makeAdminUser();
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'code' => 'OLD',
+            'name' => 'Cuenta inactiva',
+            'currency_id' => 978,
+            'status' => 0,
+        ]);
+        $account->paymentTypes()->sync([2]);
+
+        $this->actingAs($user)
+            ->get(route('payment-account.edit', $account))
+            ->assertOk()
+            ->assertSee('Cuenta inactiva', false);
+
+        $this->actingAs($user)
+            ->put(route('payment-account.update', $account), [
+                'code' => 'OLD',
+                'name' => 'Cuenta reactivada',
+                'currency_id' => 978,
+                'status' => 1,
+                'payment_type_ids' => [2],
+            ])
+            ->assertRedirect(route('payment-account.index'));
+
+        $this->assertSame(1, (int) $account->fresh()->status);
+        $this->assertSame('Cuenta reactivada', $account->fresh()->name);
     }
 
     private function makeAdminUser(): User

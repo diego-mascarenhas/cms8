@@ -13,7 +13,7 @@ class PaymentAccount extends Model
 
     protected $table = 'payment_accounts';
 
-    protected $fillable = ['team_id', 'code', 'name', 'symbol', 'currency_id', 'status'];
+    protected $fillable = ['team_id', 'code', 'name', 'currency_id', 'status'];
 
     protected static function booted()
     {
@@ -49,6 +49,31 @@ class PaymentAccount extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class, 'account_id');
+    }
+
+    /**
+     * CRUD routes must resolve inactive accounts; operational flows keep the activeStatus scope.
+     */
+    public function resolveRouteBinding($value, $field = null)
+    {
+        $field = $field ?? $this->getRouteKeyName();
+        $user = auth()->user();
+
+        if (! $user?->currentTeam)
+        {
+            abort(404);
+        }
+
+        return static::query()
+            ->withoutGlobalScope('activeStatus')
+            ->where('team_id', $user->currentTeam->id)
+            ->where($field, $value)
+            ->firstOrFail();
+    }
+
+    public function getSymbolAttribute(): ?string
+    {
+        return $this->currency?->symbol;
     }
 
     public static function getOptions()

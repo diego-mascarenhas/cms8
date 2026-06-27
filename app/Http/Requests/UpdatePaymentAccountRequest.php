@@ -32,7 +32,6 @@ class UpdatePaymentAccountRequest extends FormRequest
                     ->ignore($paymentAccount->id),
             ],
             'name' => ['required', 'string', 'max:100'],
-            'symbol' => ['nullable', 'string', 'max:10'],
             'currency_id' => ['required', 'integer', 'exists:currencies,id'],
             'status' => ['required', 'integer', Rule::in([0, 1])],
             'payment_type_ids' => ['required', 'array', 'min:1'],

@@ -9,13 +9,12 @@ use Illuminate\Database\Seeder;
 class PaymentAccountSeeder extends Seeder
 {
     /**
-     * @var list<array{code: string, name: string, symbol: string, currency_id: int, status: int, payment_type_ids: list<int>}>
+     * @var list<array{code: string, name: string, currency_id: int, status: int, payment_type_ids: list<int>}>
      */
     private const PAYMENT_ACCOUNTS_TEMPLATE = [
         [
             'code' => 'BANK_EUR',
             'name' => 'Cuenta bancaria (EUR)',
-            'symbol' => '€',
             'currency_id' => 978,
             'status' => 1,
             'payment_type_ids' => [2, 11],
@@ -23,7 +22,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'BANK_USD',
             'name' => 'Cuenta bancaria (USD)',
-            'symbol' => '$',
             'currency_id' => 840,
             'status' => 1,
             'payment_type_ids' => [2],
@@ -31,7 +29,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'CASH',
             'name' => 'Caja',
-            'symbol' => '€',
             'currency_id' => 978,
             'status' => 1,
             'payment_type_ids' => [1],
@@ -39,7 +36,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'STRIPE_EUR',
             'name' => 'Stripe (EUR)',
-            'symbol' => '€',
             'currency_id' => 978,
             'status' => 1,
             'payment_type_ids' => [6, 8],
@@ -47,7 +43,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'STRIPE_USD',
             'name' => 'Stripe (USD)',
-            'symbol' => '$',
             'currency_id' => 840,
             'status' => 1,
             'payment_type_ids' => [6, 8],
@@ -55,7 +50,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'PAYPAL_EUR',
             'name' => 'PayPal (EUR)',
-            'symbol' => '€',
             'currency_id' => 978,
             'status' => 1,
             'payment_type_ids' => [6, 7],
@@ -63,7 +57,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'PAYPAL_USD',
             'name' => 'PayPal (USD)',
-            'symbol' => '$',
             'currency_id' => 840,
             'status' => 1,
             'payment_type_ids' => [6, 7],
@@ -71,7 +64,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'WISE_EUR',
             'name' => 'Wise (EUR)',
-            'symbol' => '€',
             'currency_id' => 978,
             'status' => 1,
             'payment_type_ids' => [9],
@@ -79,7 +71,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'WISE_USD',
             'name' => 'Wise (USD)',
-            'symbol' => '$',
             'currency_id' => 840,
             'status' => 1,
             'payment_type_ids' => [9],
@@ -87,7 +78,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'MPAGO_ARS',
             'name' => 'Mercado Pago (ARS)',
-            'symbol' => '$',
             'currency_id' => 32,
             'status' => 1,
             'payment_type_ids' => [2, 12],
@@ -95,7 +85,6 @@ class PaymentAccountSeeder extends Seeder
         [
             'code' => 'CUENTICA',
             'name' => 'Cuéntica',
-            'symbol' => '€',
             'currency_id' => 978,
             'status' => 1,
             'payment_type_ids' => [13],

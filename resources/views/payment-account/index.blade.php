@@ -28,9 +28,9 @@
                 <tr>
                     <th>Nombre</th>
                     <th>Código</th>
-                    <th>Moneda</th>
+                    <th class="text-center">Moneda</th>
                     <th>Formas de pago aceptadas</th>
-                    <th>Estado</th>
+                    <th class="text-center">Estado</th>
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
@@ -39,7 +39,7 @@
                     <tr>
                         <td>{{ $account->name }}</td>
                         <td>{{ $account->code }}</td>
-                        <td>{{ strtoupper((string) ($account->currency->code ?? '')) }}</td>
+                        <td class="text-center">{{ strtoupper((string) ($account->currency->code ?? '')) }}</td>
                         <td>
                             @if ($account->paymentTypes->isEmpty())
                                 <span class="text-muted">Todas las formas activas</span>
@@ -47,7 +47,7 @@
                                 {{ $account->paymentTypes->map(fn ($type) => $type->display_name)->join(', ') }}
                             @endif
                         </td>
-                        <td>
+                        <td class="text-center">
                             @if ((int) $account->status === 1)
                                 <span class="badge bg-label-success">Activa</span>
                             @else

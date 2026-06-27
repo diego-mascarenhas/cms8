@@ -628,6 +628,12 @@ class TeamDemoSeeder extends Seeder
             'is_encrypted' => false,
         ]);
 
+        $team->setSetting('documents_ocr_mode', 'hybrid', [
+            'type' => 'string',
+            'group' => 'documents',
+            'is_encrypted' => false,
+        ]);
+
         $team->enableModule('today');
         $team->enableModule('performance_insights');
 
@@ -637,7 +643,7 @@ class TeamDemoSeeder extends Seeder
             'is_encrypted' => false,
         ]);
 
-        $this->command->info('✅ Demo presentation settings configured (Business + Hoy + insights, no shortcuts icon)');
+        $this->command->info('✅ Demo presentation settings configured (Business + Hoy + insights, hybrid OCR, no shortcuts icon)');
     }
 
     /**
@@ -1357,7 +1363,6 @@ class TeamDemoSeeder extends Seeder
                 'team_id' => $this->teamId,
                 'code' => 'BANK_USD',
                 'name' => 'Cuenta bancaria (USD)',
-                'symbol' => '$',
                 'currency_id' => 840,
                 'status' => 1,
             ]);

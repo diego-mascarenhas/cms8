@@ -39,7 +39,7 @@
         @endif
 
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <label for="name" class="form-label">Nombre (*)</label>
                 <input
                     type="text"
@@ -53,7 +53,7 @@
                 @enderror
             </div>
 
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="code" class="form-label">Código (*)</label>
                 <input
                     type="text"
@@ -68,22 +68,7 @@
                 @enderror
             </div>
 
-            <div class="col-md-4">
-                <label for="symbol" class="form-label">Símbolo</label>
-                <input
-                    type="text"
-                    id="symbol"
-                    name="symbol"
-                    class="form-control @error('symbol') is-invalid @enderror"
-                    value="{{ old('symbol', $data->symbol ?? '') }}"
-                    maxlength="10"
-                >
-                @error('symbol')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <label for="currency_id" class="form-label">Moneda (*)</label>
                 <select id="currency_id" name="currency_id" class="form-select select2 @error('currency_id') is-invalid @enderror">
                     <option value="">Selecciona moneda</option>
@@ -101,18 +86,7 @@
                 @enderror
             </div>
 
-            <div class="col-md-4">
-                <label for="status" class="form-label">Estado (*)</label>
-                <select id="status" name="status" class="form-select @error('status') is-invalid @enderror">
-                    <option value="1" {{ (string) old('status', $data->status ?? 1) === '1' ? 'selected' : '' }}>Activa</option>
-                    <option value="0" {{ (string) old('status', $data->status ?? 1) === '0' ? 'selected' : '' }}>Inactiva</option>
-                </select>
-                @error('status')
-                    <div class="invalid-feedback">{{ $message }}</div>
-                @enderror
-            </div>
-
-            <div class="col-12">
+            <div class="col-md-9">
                 <label for="payment_type_ids" class="form-label">Formas de pago aceptadas (*)</label>
                 <select
                     id="payment_type_ids"
@@ -129,12 +103,23 @@
                         </option>
                     @endforeach
                 </select>
-                <div class="form-text">Ejemplo: una caja en efectivo solo acepta Cash; PayPal solo acepta PayPal.</div>
+                <div class="form-text">Ejemplo: una caja en efectivo solo acepta efectivo; PayPal solo acepta PayPal.</div>
                 @error('payment_type_ids')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
                 @enderror
                 @error('payment_type_ids.*')
                     <div class="invalid-feedback d-block">{{ $message }}</div>
+                @enderror
+            </div>
+
+            <div class="col-md-3">
+                <label for="status" class="form-label">Estado (*)</label>
+                <select id="status" name="status" class="form-select select2 @error('status') is-invalid @enderror">
+                    <option value="1" {{ (string) old('status', $data->status ?? 1) === '1' ? 'selected' : '' }}>Activa</option>
+                    <option value="0" {{ (string) old('status', $data->status ?? 1) === '0' ? 'selected' : '' }}>Inactiva</option>
+                </select>
+                @error('status')
+                    <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
             </div>
         </div>
@@ -157,6 +142,7 @@
                 dropdownParent: $this.parent(),
                 width: '100%',
                 placeholder: $this.prop('multiple') ? 'Selecciona formas de pago' : 'Selecciona una opción',
+                minimumResultsForSearch: $this.is('#status') ? Infinity : 0,
             });
         });
     });
