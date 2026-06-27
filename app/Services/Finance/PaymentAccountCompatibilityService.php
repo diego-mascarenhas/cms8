@@ -13,15 +13,24 @@ class PaymentAccountCompatibilityService
     /** @var array<string, list<int>> */
     public const DEFAULT_TYPES_BY_ACCOUNT_CODE = [
         'CASH' => [1],
-        'PAYPAL' => [7],
-        'STRIPE' => [8],
-        'WISE' => [9],
-        'BIZUM' => [11],
-        'MERCADOPAGO' => [12],
+        'BANK_EUR' => [2, 11],
+        'BANK_USD' => [2],
+        'STRIPE_EUR' => [6, 8],
+        'STRIPE_USD' => [6, 8],
+        'PAYPAL_EUR' => [6, 7],
+        'PAYPAL_USD' => [6, 7],
+        'WISE_EUR' => [9],
+        'WISE_USD' => [9],
+        'MPAGO_ARS' => [2, 12],
         'CUENTICA' => [13],
-        'EUR' => [1, 2, 3, 4, 5, 6, 9, 11, 13],
-        'USD' => [1, 2, 3, 4, 5, 6, 9, 11, 12, 13],
-        'BANK' => [2, 3, 4, 5, 6, 9],
+        'PAYPAL' => [6, 7],
+        'STRIPE' => [6, 8],
+        'WISE' => [9],
+        'MERCADOPAGO' => [2, 12],
+        'BANK' => [2, 11],
+        'EUR' => [2, 11],
+        'USD' => [2],
+        'MAIN' => [2],
     ];
 
     /**
