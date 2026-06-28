@@ -359,7 +359,8 @@ class StartCommand extends Command
         $args = [
             '--from' => $fromOpt,
             '--skip-existing' => true,
-            '--sleep' => 0.5,
+            '--sleep' => 2,
+            '--sleep-on-error' => 15,
         ];
 
         if ($toOpt !== null && $toOpt !== '')

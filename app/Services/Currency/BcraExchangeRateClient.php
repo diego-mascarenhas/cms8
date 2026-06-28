@@ -40,7 +40,7 @@ class BcraExchangeRateClient
             {
                 $response = Http::connectTimeout($this->connectTimeoutSeconds)
                     ->timeout($this->timeoutSeconds)
-                    ->retry($this->retries, 1000, function (\Throwable $exception): bool
+                    ->retry($this->retries, 2000, function (\Throwable $exception): bool
                     {
                         return $exception instanceof ConnectionException;
                     })
