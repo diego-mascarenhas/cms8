@@ -105,6 +105,74 @@ class FrankfurterExchangeRateClient
     }
 
     /**
+     * @param  array<int, string>  $symbols
+     * @return array{success: bool, status?: int, date?: string, rates?: array<string, float>, error?: string}
+     */
+    public function fetchLatest(string $baseCurrency, array $symbols): array
+    {
+        $baseCurrency = strtoupper($baseCurrency);
+        $symbols = array_values(array_filter(array_map(
+            static fn (string $symbol): string => strtoupper(trim($symbol)),
+            $symbols,
+        )));
+
+        if ($symbols === [])
+        {
+            return ['success' => false, 'error' => 'No target currencies provided.'];
+        }
+
+        $response = Http::timeout($this->timeoutSeconds)
+            ->acceptJson()
+            ->get("{$this->baseUrl}/v1/latest", [
+                'base' => $baseCurrency,
+                'symbols' => implode(',', $symbols),
+            ]);
+
+        if (! $response->successful())
+        {
+            return [
+                'success' => false,
+                'status' => $response->status(),
+                'error' => $response->body() ?: 'HTTP '.$response->status(),
+            ];
+        }
+
+        $data = $response->json();
+
+        if (! is_array($data))
+        {
+            return ['success' => false, 'error' => 'Invalid JSON response.'];
+        }
+
+        if (isset($data['message']) && ! isset($data['rates']))
+        {
+            return ['success' => false, 'error' => (string) $data['message']];
+        }
+
+        $rates = is_array($data['rates'] ?? null) ? $data['rates'] : [];
+        $parsedRates = [];
+
+        foreach ($symbols as $symbol)
+        {
+            if (isset($rates[$symbol]) && is_numeric($rates[$symbol]))
+            {
+                $parsedRates[$symbol] = (float) $rates[$symbol];
+            }
+        }
+
+        if ($parsedRates === [])
+        {
+            return ['success' => false, 'error' => 'No rates returned.'];
+        }
+
+        return [
+            'success' => true,
+            'date' => isset($data['date']) ? (string) $data['date'] : null,
+            'rates' => $parsedRates,
+        ];
+    }
+
+    /**
      * @param  array<int, array{fecha: string, rates: array<string, float>}>  $quotes
      */
     public function resolveMonthlyRate(array $quotes, string $targetCurrency, string $strategy = 'last'): ?float

@@ -131,10 +131,52 @@ class ExchangeRate extends Model
 
         $rate = static::where('base_currency', $base)
             ->where('target_currency', $target)
-            ->where('date', $dateString)
+            ->whereDate('date', $dateString)
             ->first();
 
         return $rate ? (float) $rate->rate : null;
+    }
+
+    /**
+     * Persist a daily rate only when missing or changed (avoids duplicate writes on re-run).
+     *
+     * @return 'created'|'updated'|'skipped'
+     */
+    public static function storeDailyIfChanged(string $base, string $target, string $date, float $rate): string
+    {
+        $base = strtoupper(trim($base));
+        $target = strtoupper(trim($target));
+
+        $existing = static::query()
+            ->where('base_currency', $base)
+            ->where('target_currency', $target)
+            ->whereDate('date', $date)
+            ->first();
+
+        if ($existing !== null && abs((float) $existing->rate - $rate) < 0.000000005)
+        {
+            return 'skipped';
+        }
+
+        if ($existing !== null)
+        {
+            $existing->update([
+                'rate' => $rate,
+                'fetched_at' => now(),
+            ]);
+
+            return 'updated';
+        }
+
+        static::query()->create([
+            'base_currency' => $base,
+            'target_currency' => $target,
+            'date' => $date,
+            'rate' => $rate,
+            'fetched_at' => now(),
+        ]);
+
+        return 'created';
     }
 
     /**

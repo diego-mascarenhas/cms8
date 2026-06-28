@@ -128,6 +128,25 @@ class BcraExchangeRateClient
     }
 
     /**
+     * @param  array<int, array{fecha: string, rate: float}>  $quotes
+     * @return array{fecha: string, rate: float}|null
+     */
+    public function latestQuote(array $quotes): ?array
+    {
+        if ($quotes === [])
+        {
+            return null;
+        }
+
+        usort($quotes, static fn (array $a, array $b): int => strcmp($b['fecha'], $a['fecha']));
+
+        return [
+            'fecha' => $quotes[0]['fecha'],
+            'rate' => round((float) $quotes[0]['rate'], 8),
+        ];
+    }
+
+    /**
      * @param  array<string, mixed>  $row
      */
     private function extractUsdRate(array $row): ?float

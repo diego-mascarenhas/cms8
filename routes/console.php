@@ -160,15 +160,21 @@ Schedule::command('wordpress:sync')
     ->description('Sync WordPress content for assistant context')
     ->runInBackground();
 
-Schedule::command('exchange-rates:fetch')
-    ->dailyAt('06:00')
-    ->name('fetch-exchange-rates')
-    ->description('Fetch daily exchange rates from CurrencyFreaks')
+Schedule::command('exchange-rates:fetch-daily')
+    ->dailyAt('23:00')
+    ->timezone('America/Argentina/Buenos_Aires')
+    ->name('fetch-daily-exchange-rates')
+    ->description('Fetch daily USD/ARS (BCRA) and USD/EUR (Frankfurter) at end of AR day (after madrugada invoices, when BCRA quote is published)')
     ->onFailure(function ()
     {
-        Log::error('Exchange rates fetch command failed');
+        Log::error('Daily exchange rates fetch command failed');
     })
     ->runInBackground();
+
+// Legacy CurrencyFreaks fetch (optional; requires CURRENCYFREAKS_API_KEY).
+// Schedule::command('exchange-rates:fetch')
+//     ->dailyAt('06:00')
+//     ...
 
 Schedule::command('mailboxes:sync')
     ->everyFiveMinutes()

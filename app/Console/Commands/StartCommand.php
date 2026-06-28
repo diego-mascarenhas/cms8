@@ -16,6 +16,9 @@ class StartCommand extends Command
                             {--clone-catalog : Clone products catalog (stores, categories, products) between teams}
                             {--google-sync : Queue Google contacts + calendar sync for all Google accounts (or --account_id)}
                             {--google-inspect : Inspect Google sync status (all teams or --team_id)}
+                            {--exchange-rates-backfill : Backfill monthly exchange rates (BCRA USD/ARS + Frankfurter USD/EUR)}
+                            {--exchange-rates-from=2000-01 : Start month (YYYY-MM) for --exchange-rates-backfill}
+                            {--exchange-rates-to= : End month (YYYY-MM) for --exchange-rates-backfill; default current month}
                             {--account_id= : Account ID for --google-sync}
                             {--team_id= : Team ID filter for --google-inspect}
                             {--limit=200 : Row limit for --google-inspect}
@@ -38,6 +41,8 @@ class StartCommand extends Command
 
     private const OPT_GOOGLE_INSPECT = 'Google: inspect sync status (all teams)';
 
+    private const OPT_EXCHANGE_RATES_BACKFILL = 'Exchange rates: backfill monthly (BCRA USD/ARS + Frankfurter USD/EUR)';
+
     private const OPT_EXIT = 'Exit';
 
     public function handle(): int
@@ -48,6 +53,7 @@ class StartCommand extends Command
         $cloneCatalog = $this->option('clone-catalog');
         $googleSync = $this->option('google-sync');
         $googleInspect = $this->option('google-inspect');
+        $exchangeRatesBackfill = $this->option('exchange-rates-backfill');
 
         if ($fresh)
         {
@@ -101,6 +107,14 @@ class StartCommand extends Command
             return self::SUCCESS;
         }
 
+        if ($exchangeRatesBackfill)
+        {
+            $this->runExchangeRatesBackfill(prompt: false);
+            $this->info('Done.');
+
+            return self::SUCCESS;
+        }
+
         $this->info('Humano — Setup');
         $this->newLine();
 
@@ -116,6 +130,7 @@ class StartCommand extends Command
                     self::OPT_CLONE_CATALOG,
                     self::OPT_GOOGLE_SYNC,
                     self::OPT_GOOGLE_INSPECT,
+                    self::OPT_EXCHANGE_RATES_BACKFILL,
                     self::OPT_EXIT,
                 ],
                 self::OPT_EXIT,
@@ -152,6 +167,9 @@ class StartCommand extends Command
             } elseif ($choice === self::OPT_GOOGLE_INSPECT)
             {
                 $this->runGoogleInspect();
+            } elseif ($choice === self::OPT_EXCHANGE_RATES_BACKFILL)
+            {
+                $this->runExchangeRatesBackfill(prompt: true);
             }
 
             $this->newLine();
@@ -324,5 +342,35 @@ class StartCommand extends Command
         }
 
         $this->call('google:inspect-sync', ['--limit' => $limit]);
+    }
+
+    private function runExchangeRatesBackfill(bool $prompt = false): void
+    {
+        $fromOpt = (string) ($this->option('exchange-rates-from') ?: '2000-01');
+        $toOpt = $this->option('exchange-rates-to');
+
+        if ($prompt)
+        {
+            $fromOpt = trim((string) $this->ask('From month (YYYY-MM)', $fromOpt));
+            $toInput = trim((string) $this->ask('To month (YYYY-MM, empty = current)', ''));
+            $toOpt = $toInput !== '' ? $toInput : null;
+        }
+
+        $args = [
+            '--from' => $fromOpt,
+            '--skip-existing' => true,
+            '--sleep' => 0.5,
+        ];
+
+        if ($toOpt !== null && $toOpt !== '')
+        {
+            $args['--to'] = (string) $toOpt;
+        }
+
+        $this->info('Backfilling USD/ARS from BCRA...');
+        $this->call('exchange-rates:backfill-bcra', $args);
+
+        $this->info('Backfilling USD/EUR from Frankfurter...');
+        $this->call('exchange-rates:backfill-frankfurter', $args);
     }
 }
