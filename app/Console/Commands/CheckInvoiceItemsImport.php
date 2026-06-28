@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 class CheckInvoiceItemsImport extends Command
 {
@@ -41,12 +40,13 @@ class CheckInvoiceItemsImport extends Command
                 // Check if invoice exists
                 $invoiceExists = app('db')->table('invoices')->where('id', $invoiceId)->exists();
 
-                if (!$invoiceExists)
+                if (! $invoiceExists)
                 {
                     $noInvoice[] = [
                         'invoice_id' => $invoiceId,
                         'legacy_items' => $legacyItemCount,
                     ];
+
                     continue;
                 }
 
@@ -76,66 +76,66 @@ class CheckInvoiceItemsImport extends Command
             // Display results
             if (count($noInvoice) > 0)
             {
-                $this->warn("⚠️  ".count($noInvoice)." invoices have items in legacy but invoice doesn't exist:");
+                $this->warn('⚠️  '.count($noInvoice)." invoices have items in legacy but invoice doesn't exist:");
                 $this->table(
                     ['Invoice ID', 'Legacy Items'],
                     array_map(function ($item)
                     {
                         return [$item['invoice_id'], $item['legacy_items']];
-                    }, array_slice($noInvoice, 0, 20))
+                    }, array_slice($noInvoice, 0, 20)),
                 );
                 if (count($noInvoice) > 20)
                 {
-                    $this->info("... and ".(count($noInvoice) - 20)." more");
+                    $this->info('... and '.(count($noInvoice) - 20).' more');
                 }
                 $this->newLine();
             }
 
             if (count($missingItems) > 0)
             {
-                $this->error("❌ ".count($missingItems)." invoices have NO items imported (but have items in legacy):");
+                $this->error('❌ '.count($missingItems).' invoices have NO items imported (but have items in legacy):');
                 $this->table(
                     ['Invoice ID', 'Legacy Items', 'Current Items'],
                     array_map(function ($item)
                     {
                         return [$item['invoice_id'], $item['legacy_items'], $item['current_items']];
-                    }, array_slice($missingItems, 0, 20))
+                    }, array_slice($missingItems, 0, 20)),
                 );
                 if (count($missingItems) > 20)
                 {
-                    $this->info("... and ".(count($missingItems) - 20)." more");
+                    $this->info('... and '.(count($missingItems) - 20).' more');
                 }
                 $this->newLine();
             }
 
             if (count($hasItems) > 0)
             {
-                $this->warn("⚠️  ".count($hasItems)." invoices have PARTIAL items imported:");
+                $this->warn('⚠️  '.count($hasItems).' invoices have PARTIAL items imported:');
                 $this->table(
                     ['Invoice ID', 'Legacy Items', 'Current Items', 'Missing'],
                     array_map(function ($item)
                     {
                         return [$item['invoice_id'], $item['legacy_items'], $item['current_items'], $item['missing']];
-                    }, array_slice($hasItems, 0, 20))
+                    }, array_slice($hasItems, 0, 20)),
                 );
                 if (count($hasItems) > 20)
                 {
-                    $this->info("... and ".(count($hasItems) - 20)." more");
+                    $this->info('... and '.(count($hasItems) - 20).' more');
                 }
                 $this->newLine();
             }
 
             // Summary
             $this->info('📊 Summary:');
-            $this->line("   • Invoices with items in legacy: ".count($legacyItems));
-            $this->line("   • Invoices missing all items: ".count($missingItems));
-            $this->line("   • Invoices with partial items: ".count($hasItems));
+            $this->line('   • Invoices with items in legacy: '.count($legacyItems));
+            $this->line('   • Invoices missing all items: '.count($missingItems));
+            $this->line('   • Invoices with partial items: '.count($hasItems));
             $this->line("   • Invoices that don't exist: ".count($noInvoice));
 
             if (count($missingItems) > 0 || count($hasItems) > 0)
             {
                 $this->newLine();
-                $this->info('💡 To fix, run: php artisan import:interactive and select "10. Invoice Items"');
+                $this->info('💡 Recommended: php artisan invoices:resync-items --sync-currency --team_id=2');
             }
 
             return Command::SUCCESS;
