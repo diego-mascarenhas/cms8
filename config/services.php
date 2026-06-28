@@ -84,7 +84,9 @@ return [
     ],
 
     'bcra' => [
-        'timeout_seconds' => (int) env('BCRA_API_TIMEOUT_SECONDS', 45),
+        'timeout_seconds' => (int) env('BCRA_API_TIMEOUT_SECONDS', 60),
+        'connect_timeout_seconds' => (int) env('BCRA_API_CONNECT_TIMEOUT_SECONDS', 30),
+        'retries' => (int) env('BCRA_API_RETRIES', 3),
     ],
 
     'frankfurter' => [
