@@ -14,10 +14,14 @@
 @endsection
 
 @section('content')
+@php
+    $formatCardAmount = static fn (float $amount): string => \App\Helpers\Helpers::formatDecimal($amount, 0);
+@endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">{{ __('Income') }}</h4>
         <p class="text-muted">{{ __('Manage your income and revenue') }}</p>
+        <p class="text-muted small mb-0">{{ __('Totals in :currency (system exchange rates).', ['currency' => $reportingCurrency]) }}</p>
     </div>
     <div class="mt-3 mt-md-0">
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
@@ -35,7 +39,7 @@
                     <div class="content-left">
                         <span>{{ __('Current Month') }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ number_format($currentMonthIncome, 2) }}</h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($currentMonthIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                             @if($percentageChange != 0)
                                 <p class="mb-0 {{ $percentageChange > 0 ? 'text-success' : 'text-danger' }}">
                                     ({{ $percentageChange > 0 ? '+' : '' }}{{ number_format($percentageChange, 1) }}%)
@@ -60,7 +64,7 @@
                     <div class="content-left">
                         <span>{{ __('Year to Date') }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ number_format($ytdIncome, 2) }}</h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($ytdIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                         </div>
                         <p class="mb-0">{{ date('Y') }}</p>
                     </div>
@@ -80,7 +84,7 @@
                     <div class="content-left">
                         <span>{{ __('Total Income') }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ number_format($totalIncome, 2) }}</h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($totalIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                         </div>
                         <p class="mb-0">{{ __('All time') }}</p>
                     </div>

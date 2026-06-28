@@ -23,6 +23,7 @@ use App\Services\ExpenseDocumentDetectionService;
 use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
+use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Support\ExpenseDocumentTypes;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -37,59 +38,48 @@ class ExpenseController extends Controller
 {
     public function __construct(
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
+        private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
     ) {}
 
     public function index(ExpenseDataTable $dataTable)
     {
         $this->authorize('viewAny', Payment::class);
 
-        // Get accounts with balances
-        $accounts = PaymentAccount::with('currency')
-            ->get()
-            ->map(function ($account)
-            {
-                $balance = Payment::where('account_id', $account->id)
-                    ->where('status', 2) // Approved
-                    ->selectRaw('COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance', [TransactionType::INCOME->value])
-                    ->value('balance');
+        // Get accounts with balances (native currency per account)
+        $accounts = $this->paymentReportingCurrencyService->accountBalancesForDisplay();
 
-                return [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'balance' => $balance,
-                    'currency_code' => $account->currency->code ?? 'USD',
-                ];
-            });
+        $reportingCurrency = $this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam();
 
-        // Current month expenses
-        $currentMonthExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->month)
-            ->whereYear('date', Carbon::now()->year)
-            ->sum('amount');
+        $currentMonthExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+            fn ($query) => $query
+                ->whereMonth('payments.date', Carbon::now()->month)
+                ->whereYear('payments.date', Carbon::now()->year),
+        );
 
-        // Last month expenses
-        $lastMonthExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->subMonth()->month)
-            ->whereYear('date', Carbon::now()->subMonth()->year)
-            ->sum('amount');
+        $lastMonthExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+            fn ($query) => $query
+                ->whereMonth('payments.date', Carbon::now()->subMonth()->month)
+                ->whereYear('payments.date', Carbon::now()->subMonth()->year),
+        );
 
-        // Calculate percentage change
         $percentageChange = $lastMonthExpense > 0
             ? (($currentMonthExpense - $lastMonthExpense) / $lastMonthExpense) * 100
             : 0;
 
-        // Year to date expenses
-        $ytdExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->whereYear('date', Carbon::now()->year)
-            ->sum('amount');
+        $ytdExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+            fn ($query) => $query->whereYear('payments.date', Carbon::now()->year),
+        );
 
-        // Total approved expenses
-        $totalExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->sum('amount');
+        $totalExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+        );
 
         return $dataTable->render('expense.index', compact(
             'accounts',
@@ -97,6 +87,7 @@ class ExpenseController extends Controller
             'percentageChange',
             'ytdExpense',
             'totalExpense',
+            'reportingCurrency',
         ));
     }
 

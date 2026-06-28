@@ -17,6 +17,21 @@
     $monthlyTrend = $report['monthly_trend'];
     $incomeCategories = $report['income_categories'];
     $expenseCategories = $report['expense_categories'];
+    $reportingCurrency = $report['reporting_currency'] ?? strtoupper((string) config('verifactu.default_currency', 'EUR'));
+    $conversion = $report['conversion'] ?? ['complete' => true, 'missing_pairs' => [], 'native_totals' => ['income' => [], 'expense' => []]];
+    $formatCardAmount = static fn (float $amount): string => \App\Helpers\Helpers::formatDecimal($amount, 0);
+    $formatNativeTotals = static function (array $totalsByCurrency) use ($formatCardAmount): string {
+        if ($totalsByCurrency === []) {
+            return '—';
+        }
+
+        $parts = [];
+        foreach ($totalsByCurrency as $currency => $amount) {
+            $parts[] = $formatCardAmount((float) $amount).' '.$currency;
+        }
+
+        return implode(' · ', $parts);
+    };
     $incomeChartColors = ['#28c76f', '#55d187', '#83df9e', '#b2edc4', '#1f9d57', '#3dd68c', '#6ee7a8', '#9ef0c4'];
     $expenseChartColors = ['#ea5455', '#f08182', '#f5adaf', '#fad8d9', '#d43f3f', '#ff6b6b', '#ff9999', '#ffc9c9'];
 @endphp
@@ -28,6 +43,7 @@
             {{ __('Financial projection report') }}
         </h4>
         <p class="text-muted mb-0">{{ __('Based on invoiced line items by category (historical billing data).') }}</p>
+        <p class="text-muted small mb-0">{{ __('Totals converted to :currency using team reporting currency.', ['currency' => $reportingCurrency]) }}</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap align-items-center gap-2">
         <form method="GET" action="{{ route('finance-dashboard.projection') }}" class="d-flex align-items-center">
@@ -53,12 +69,38 @@
     </div>
 </div>
 
+@if (! $conversion['complete'])
+<div class="alert alert-warning mb-4" role="alert">
+    <div class="d-flex gap-2">
+        <i class="ti ti-alert-triangle mt-1"></i>
+        <div class="small">
+            <strong>{{ __('Exchange rates required') }}</strong>
+            <p class="mb-1 mt-1">
+                {{ __('Totals could not be converted to :currency. Missing rates:', ['currency' => $reportingCurrency]) }}
+                {{ implode(', ', $conversion['missing_pairs']) }}
+            </p>
+            <p class="mb-0">
+                {{ __('Load system exchange rates with') }}
+                <code>php artisan exchange-rates:fetch</code>
+                {{ __('or monthly history with') }}
+                <code>php artisan exchange-rates:backfill-monthly</code>.
+                {{ __('Amounts below are shown in the invoice currency.') }}
+            </p>
+        </div>
+    </div>
+</div>
+@endif
+
 <div class="row g-4 mb-4">
     <div class="col-sm-6 col-lg-3">
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Invoiced income') }} ({{ $selectedYear }})</span>
-                <h3 class="mb-0 mt-2 text-success">{{ number_format($summary['income'], 2) }}</h3>
+                @if ($conversion['complete'])
+                    <h3 class="mb-0 mt-2 text-success">{{ $formatCardAmount($summary['income']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                @else
+                    <h3 class="mb-0 mt-2 text-success">{{ $formatNativeTotals($conversion['native_totals']['income']) }}</h3>
+                @endif
                 @if($summary['prior_year_income'] > 0)
                     @php
                         $incomeDelta = (($summary['income'] - $summary['prior_year_income']) / $summary['prior_year_income']) * 100;
@@ -76,7 +118,11 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Invoiced expenses') }} ({{ $selectedYear }})</span>
-                <h3 class="mb-0 mt-2 text-danger">{{ number_format($summary['expense'], 2) }}</h3>
+                @if ($conversion['complete'])
+                    <h3 class="mb-0 mt-2 text-danger">{{ $formatCardAmount($summary['expense']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                @else
+                    <h3 class="mb-0 mt-2 text-danger">{{ $formatNativeTotals($conversion['native_totals']['expense']) }}</h3>
+                @endif
                 @if($summary['prior_year_expense'] > 0)
                     @php
                         $expenseDelta = (($summary['expense'] - $summary['prior_year_expense']) / $summary['prior_year_expense']) * 100;
@@ -94,10 +140,15 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Net profit (invoiced)') }}</span>
-                <h3 class="mb-0 mt-2 {{ $summary['profit'] >= 0 ? 'text-success' : 'text-danger' }}">
-                    {{ number_format($summary['profit'], 2) }}
-                </h3>
-                <small class="text-muted">{{ __('Margin') }}: {{ number_format($summary['margin_percent'], 1) }}%</small>
+                @if ($conversion['complete'])
+                    <h3 class="mb-0 mt-2 {{ $summary['profit'] >= 0 ? 'text-success' : 'text-danger' }}">
+                        {{ $formatCardAmount($summary['profit']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
+                    </h3>
+                    <small class="text-muted">{{ __('Margin') }}: {{ number_format($summary['margin_percent'], 1) }}%</small>
+                @else
+                    <h3 class="mb-0 mt-2 text-muted">—</h3>
+                    <small class="text-muted">{{ __('Profit requires converted totals.') }}</small>
+                @endif
             </div>
         </div>
     </div>
@@ -105,9 +156,13 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Avg. monthly profit') }}</span>
-                <h3 class="mb-0 mt-2 {{ $scenario['avg_monthly_profit'] >= 0 ? 'text-info' : 'text-danger' }}">
-                    {{ number_format($scenario['avg_monthly_profit'], 2) }}
-                </h3>
+                @if ($conversion['complete'])
+                    <h3 class="mb-0 mt-2 {{ $scenario['avg_monthly_profit'] >= 0 ? 'text-info' : 'text-danger' }}">
+                        {{ $formatCardAmount($scenario['avg_monthly_profit']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
+                    </h3>
+                @else
+                    <h3 class="mb-0 mt-2 text-muted">—</h3>
+                @endif
                 <small class="text-muted">{{ __('Months with billing activity in :year', ['year' => $selectedYear]) }}</small>
             </div>
         </div>
@@ -141,96 +196,11 @@
     </div>
 </div>
 
-<div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <h5 class="card-title m-0">{{ __('Income by category') }}</h5>
-                    <p class="text-muted small mb-0">{{ __('Top invoiced revenue lines') }}</p>
-                </div>
-            </div>
-            <div class="card-body">
-                @if(count($incomeCategories) === 0)
-                    <p class="text-muted mb-0">{{ __('No invoiced income in this period.') }}</p>
-                @else
-                    <div id="incomeCategoryChart" class="mb-3"></div>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>{{ __('Category') }}</th>
-                                    <th class="text-end">{{ __('Total') }}</th>
-                                    <th class="text-end">%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($incomeCategories as $row)
-                                    @php
-                                        $swatchColor = $incomeChartColors[$loop->index % count($incomeChartColors)];
-                                    @endphp
-                                    <tr>
-                                        <td>
-                                            <span class="d-inline-flex align-items-center gap-2">
-                                                <span class="d-inline-block rounded-circle flex-shrink-0" style="width: 0.625rem; height: 0.625rem; background-color: {{ $swatchColor }}"></span>
-                                                <span>{{ $row['name'] }}</span>
-                                            </span>
-                                        </td>
-                                        <td class="text-end">{{ number_format($row['total'], 2) }}</td>
-                                        <td class="text-end">{{ number_format($row['share_percent'], 1) }}%</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="card-title m-0">{{ __('Expenses by category') }}</h5>
-                <p class="text-muted small mb-0">{{ __('Where costs concentrate') }}</p>
-            </div>
-            <div class="card-body">
-                @if(count($expenseCategories) === 0)
-                    <p class="text-muted mb-0">{{ __('No invoiced expenses in this period.') }}</p>
-                @else
-                    <div id="expenseCategoryChart" class="mb-3"></div>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>{{ __('Category') }}</th>
-                                    <th class="text-end">{{ __('Total') }}</th>
-                                    <th class="text-end">%</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($expenseCategories as $row)
-                                    @php
-                                        $swatchColor = $expenseChartColors[$loop->index % count($expenseChartColors)];
-                                    @endphp
-                                    <tr>
-                                        <td>
-                                            <span class="d-inline-flex align-items-center gap-2">
-                                                <span class="d-inline-block rounded-circle flex-shrink-0" style="width: 0.625rem; height: 0.625rem; background-color: {{ $swatchColor }}"></span>
-                                                <span>{{ $row['name'] }}</span>
-                                            </span>
-                                        </td>
-                                        <td class="text-end">{{ number_format($row['total'], 2) }}</td>
-                                        <td class="text-end">{{ number_format($row['share_percent'], 1) }}%</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
+@include('finance-dashboard.partials.invoice-category-breakdown', [
+    'incomeCategories' => $incomeCategories,
+    'expenseCategories' => $expenseCategories,
+    'reportingCurrency' => $reportingCurrency,
+])
 
 @can('viewAny', App\Models\Invoice::class)
 <div class="row g-4 mb-4">

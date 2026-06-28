@@ -14,10 +14,14 @@
 @endsection
 
 @section('content')
+@php
+    $formatCardAmount = static fn (float $amount): string => \App\Helpers\Helpers::formatDecimal($amount, 0);
+@endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">Gastos</h4>
         <p class="text-muted">Gestiona tus gastos y costes</p>
+        <p class="text-muted small mb-0">Totales en {{ $reportingCurrency }} (tipos de cambio del sistema).</p>
     </div>
     <div class="mt-3 mt-md-0">
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary me-2">
@@ -38,7 +42,7 @@
                     <div class="content-left">
                         <span>Mes actual</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ number_format($currentMonthExpense, 2) }}</h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($currentMonthExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                             @if($percentageChange != 0)
                                 <p class="mb-0 {{ $percentageChange < 0 ? 'text-success' : 'text-danger' }}">
                                     ({{ $percentageChange > 0 ? '+' : '' }}{{ number_format($percentageChange, 1) }}%)
@@ -63,7 +67,7 @@
                     <div class="content-left">
                         <span>Año en curso</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ number_format($ytdExpense, 2) }}</h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($ytdExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                         </div>
                         <p class="mb-0">{{ date('Y') }}</p>
                     </div>
@@ -83,7 +87,7 @@
                     <div class="content-left">
                         <span>Total gastos</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ number_format($totalExpense, 2) }}</h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($totalExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                         </div>
                         <p class="mb-0">Histórico</p>
                     </div>

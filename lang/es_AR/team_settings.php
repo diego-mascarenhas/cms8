@@ -54,6 +54,10 @@ return [
             'title' => 'OCR de documentos',
             'subtitle' => 'Motor de lectura de documentos en chat, WhatsApp y subidas.',
         ],
+        'finance' => [
+            'title' => 'Informes financieros',
+            'subtitle' => 'Moneda única para totales de ingresos, gastos y panel contable.',
+        ],
         'public_shop' => [
             'title' => 'Tienda pública del asistente',
             'subtitle' => 'Activa el catálogo público y revisa la URL generada.',
@@ -160,6 +164,10 @@ return [
         'google_calendar_id' => ['label' => 'ID de calendario de Google (opcional)', 'placeholder' => 'primary o tu-calendario@group.calendar.google.com', 'help' => 'Déjalo vacío para usar "primary". Para un calendario concreto, pega su ID desde los ajustes de Google Calendar.'],
         'mailbox_spam_ai_enabled' => ['label' => 'Clasificación de spam con IA', 'help' => 'Si está activo, los mensajes entrantes se clasifican con IA y se mueven a Spam cuando corresponde.'],
         'mailbox_spam_ai_prompt' => ['label' => 'Prompt de clasificación de spam', 'help' => 'Instrucciones opcionales para detectar spam. Déjalo vacío para usar el prompt por defecto.'],
+        'finance_reporting_currency' => [
+            'label' => 'Moneda de informes',
+            'help' => 'Los paneles de ingresos, gastos y contabilidad convierten los pagos aprobados a esta moneda.',
+        ],
     ],
 
     'options' => [

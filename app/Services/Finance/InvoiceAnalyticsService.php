@@ -3,11 +3,10 @@
 namespace App\Services\Finance;
 
 use App\Models\Category;
+use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
-use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -18,11 +17,14 @@ class InvoiceAnalyticsService
     /** @var list<int> Void, credit notes, error, draft — excluded from totals. */
     public const EXCLUDED_INVOICE_STATUSES = [3, 4, 6, 7, 9];
 
-    private const LINE_AMOUNT_SQL = '(invoice_items.quantity * invoice_items.unit_price - COALESCE(invoice_items.discount, 0))';
+    public function __construct(
+        private readonly PaymentReportingCurrencyService $reportingCurrencyService,
+    ) {}
 
     /**
      * @return array{
      *     year: int,
+     *     reporting_currency: string,
      *     available_years: list<int>,
      *     summary: array{
      *         income: float,
@@ -37,10 +39,16 @@ class InvoiceAnalyticsService
      *     income_categories: list<array{id: int|null, name: string, total: float, share_percent: float}>,
      *     expense_categories: list<array{id: int|null, name: string, total: float, share_percent: float}>,
      *     scenario: array{avg_monthly_income: float, avg_monthly_expense: float, avg_monthly_profit: float},
+     *     conversion: array{
+     *         complete: bool,
+     *         missing_pairs: list<string>,
+     *         native_totals: array{income: array<string, float>, expense: array<string, float>},
+     *     },
      * }
      */
     public function buildYearReport(int $teamId, int $year): array
     {
+        $reportingCurrency = $this->reportingCurrencyService->reportingCurrencyForTeam($teamId);
         $bounds = $this->resolveYearBounds($teamId);
         $year = max($bounds['min'], min($year, $bounds['max']));
         $availableYears = range($bounds['max'], $bounds['min']);
@@ -48,7 +56,8 @@ class InvoiceAnalyticsService
         $from = Carbon::create($year, 1, 1)->startOfDay();
         $to = Carbon::create($year, 12, 31)->endOfDay();
 
-        $monthlyRows = $this->aggregateMonthlyTotals($teamId, $from, $to);
+        $currentPeriod = $this->aggregateMonthlyTotals($teamId, $from, $to, $reportingCurrency);
+        $monthlyRows = $currentPeriod['rows'];
         $monthlyTrend = $this->formatMonthlyTrend($year, $monthlyRows);
 
         $income = (float) $monthlyRows->sum('income');
@@ -57,15 +66,22 @@ class InvoiceAnalyticsService
 
         $priorFrom = Carbon::create($year - 1, 1, 1)->startOfDay();
         $priorTo = Carbon::create($year - 1, 12, 31)->endOfDay();
-        $priorMonthly = $this->aggregateMonthlyTotals($teamId, $priorFrom, $priorTo);
+        $priorPeriod = $this->aggregateMonthlyTotals($teamId, $priorFrom, $priorTo, $reportingCurrency);
+        $priorMonthly = $priorPeriod['rows'];
         $priorIncome = (float) $priorMonthly->sum('income');
         $priorExpense = (float) $priorMonthly->sum('expense');
+
+        $missingPairs = array_values(array_unique(array_merge(
+            $currentPeriod['missing_pairs'],
+            $priorPeriod['missing_pairs'],
+        )));
 
         $monthsWithData = $monthlyRows->filter(fn (object $row) => ((float) $row->income) > 0 || ((float) $row->expense) > 0)->count();
         $divisor = max(1, $monthsWithData);
 
         return [
             'year' => $year,
+            'reporting_currency' => $reportingCurrency,
             'available_years' => $availableYears,
             'summary' => [
                 'income' => $income,
@@ -77,19 +93,21 @@ class InvoiceAnalyticsService
                 'prior_year_profit' => $priorIncome - $priorExpense,
             ],
             'monthly_trend' => $monthlyTrend,
-            'income_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'sell'),
-            'expense_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'buy'),
+            'income_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'sell', $reportingCurrency),
+            'expense_categories' => $this->aggregateCategoryBreakdown($teamId, $from, $to, 'buy', $reportingCurrency),
             'scenario' => [
                 'avg_monthly_income' => $income / $divisor,
                 'avg_monthly_expense' => $expense / $divisor,
                 'avg_monthly_profit' => $profit / $divisor,
             ],
+            'conversion' => [
+                'complete' => $missingPairs === [],
+                'missing_pairs' => $missingPairs,
+                'native_totals' => $currentPeriod['native_totals'],
+            ],
         ];
     }
 
-    /**
-     * @return array{min: int, max: int}
-     */
     /**
      * @return array{
      *     year: int,
@@ -129,15 +147,17 @@ class InvoiceAnalyticsService
     public function formatYearReportForAssistant(array $report): string
     {
         $year = $report['year'];
+        $currency = $report['reporting_currency'] ?? '';
         $summary = $report['summary'];
         $scenario = $report['scenario'];
+        $suffix = $currency !== '' ? ' '.$currency : '';
         $lines = [
             "Financial projection (invoiced line items) for {$year}:",
-            'Income: '.number_format($summary['income'], 2),
-            'Expenses: '.number_format($summary['expense'], 2),
-            'Net profit: '.number_format($summary['profit'], 2).' (margin '.number_format($summary['margin_percent'], 1).'%)',
-            'Prior year profit: '.number_format($summary['prior_year_profit'], 2),
-            'Avg monthly profit: '.number_format($scenario['avg_monthly_profit'], 2),
+            'Income: '.number_format($summary['income'], 2).$suffix,
+            'Expenses: '.number_format($summary['expense'], 2).$suffix,
+            'Net profit: '.number_format($summary['profit'], 2).$suffix.' (margin '.number_format($summary['margin_percent'], 1).'%)',
+            'Prior year profit: '.number_format($summary['prior_year_profit'], 2).$suffix,
+            'Avg monthly profit: '.number_format($scenario['avg_monthly_profit'], 2).$suffix,
         ];
 
         $lines[] = 'Top income categories:';
@@ -208,25 +228,73 @@ class InvoiceAnalyticsService
     }
 
     /**
-     * @return Collection<int, object{month_num: int, income: string|float, expense: string|float}>
+     * @return array{
+     *     rows: Collection<int, object{month_num: int, income: float, expense: float}>,
+     *     missing_pairs: list<string>,
+     *     native_totals: array{income: array<string, float>, expense: array<string, float>},
+     * }
      */
-    private function aggregateMonthlyTotals(int $teamId, Carbon $from, Carbon $to): Collection
+    private function aggregateMonthlyTotals(int $teamId, Carbon $from, Carbon $to, string $reportingCurrency): array
     {
-        $lineAmount = self::LINE_AMOUNT_SQL;
-        $monthSql = SqlDateExpressions::month('invoices.date');
+        $monthly = [];
+        $missingPairs = [];
+        $nativeTotals = ['income' => [], 'expense' => []];
 
-        return $this->baseItemsQuery($teamId, $from, $to)
-            ->selectRaw("{$monthSql} as month_num")
-            ->selectRaw("COALESCE(SUM(CASE WHEN invoices.operation = 'sell' THEN {$lineAmount} ELSE 0 END), 0) as income")
-            ->selectRaw("COALESCE(SUM(CASE WHEN invoices.operation = 'buy' THEN {$lineAmount} ELSE 0 END), 0) as expense")
-            ->groupByRaw($monthSql)
-            ->orderByRaw($monthSql)
-            ->get()
-            ->keyBy(fn (object $row) => (int) $row->month_num);
+        for ($month = 1; $month <= 12; $month++)
+        {
+            $monthly[$month] = ['income' => 0.0, 'expense' => 0.0];
+        }
+
+        foreach ($this->loadItemsInRange($teamId, $from, $to) as $item)
+        {
+            $invoice = $item->invoice;
+
+            if (! $invoice || blank($invoice->date))
+            {
+                continue;
+            }
+
+            $month = (int) Carbon::parse($invoice->date)->format('n');
+
+            if ($month < 1 || $month > 12)
+            {
+                continue;
+            }
+
+            $converted = $this->convertedLineAmount($item, $reportingCurrency, $missingPairs, $nativeTotals);
+
+            if ($converted === null)
+            {
+                continue;
+            }
+
+            if ($invoice->operation === 'sell')
+            {
+                $monthly[$month]['income'] += $converted;
+            } elseif ($invoice->operation === 'buy')
+            {
+                $monthly[$month]['expense'] += $converted;
+            }
+        }
+
+        $rows = collect($monthly)->map(function (array $totals, int $month): object
+        {
+            return (object) [
+                'month_num' => $month,
+                'income' => round($totals['income'], 2),
+                'expense' => round($totals['expense'], 2),
+            ];
+        });
+
+        return [
+            'rows' => $rows,
+            'missing_pairs' => array_values(array_unique($missingPairs)),
+            'native_totals' => $nativeTotals,
+        ];
     }
 
     /**
-     * @param  Collection<int, object{month_num: int, income: string|float, expense: string|float}>  $monthlyRows
+     * @param  Collection<int, object{month_num: int, income: float, expense: float}>  $monthlyRows
      * @return list<array{label: string, month: int, income: float, expense: float, profit: float}>
      */
     private function formatMonthlyTrend(int $year, Collection $monthlyRows): array
@@ -255,26 +323,33 @@ class InvoiceAnalyticsService
     /**
      * @return list<array{id: int|null, name: string, total: float, share_percent: float}>
      */
-    private function aggregateCategoryBreakdown(int $teamId, Carbon $from, Carbon $to, string $operation): array
+    private function aggregateCategoryBreakdown(int $teamId, Carbon $from, Carbon $to, string $operation, string $reportingCurrency): array
     {
-        $lineAmount = self::LINE_AMOUNT_SQL;
+        $totalsByCategory = [];
 
-        $lines = $this->baseItemsQuery($teamId, $from, $to)
-            ->where('invoices.operation', $operation)
-            ->selectRaw('invoice_items.category_id as category_id')
-            ->selectRaw("{$lineAmount} as line_total")
-            ->get();
-
-        if ($lines->isEmpty())
+        foreach ($this->loadItemsInRange($teamId, $from, $to) as $item)
         {
-            return [];
+            $invoice = $item->invoice;
+
+            if (! $invoice || $invoice->operation !== $operation)
+            {
+                continue;
+            }
+
+            $key = $item->category_id !== null ? (int) $item->category_id : 0;
+            $converted = $this->convertedLineAmount($item, $reportingCurrency);
+
+            if ($converted === null)
+            {
+                continue;
+            }
+
+            $totalsByCategory[$key] = ($totalsByCategory[$key] ?? 0.0) + $converted;
         }
 
-        $totalsByCategory = [];
-        foreach ($lines as $line)
+        if ($totalsByCategory === [])
         {
-            $key = $line->category_id !== null ? (int) $line->category_id : 0;
-            $totalsByCategory[$key] = ($totalsByCategory[$key] ?? 0.0) + (float) $line->line_total;
+            return [];
         }
 
         arsort($totalsByCategory);
@@ -301,7 +376,7 @@ class InvoiceAnalyticsService
             $breakdown[] = [
                 'id' => $categoryId,
                 'name' => $name,
-                'total' => $total,
+                'total' => round($total, 2),
                 'share_percent' => ($total / $grandTotal) * 100,
             ];
         }
@@ -309,14 +384,80 @@ class InvoiceAnalyticsService
         return $breakdown;
     }
 
-    private function baseItemsQuery(int $teamId, Carbon $from, Carbon $to): Builder
+    /**
+     * @return Collection<int, InvoiceItem>
+     */
+    private function loadItemsInRange(int $teamId, Carbon $from, Carbon $to): Collection
     {
         return InvoiceItem::query()
-            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->where('invoices.team_id', $teamId)
-            ->whereNotIn('invoices.status', self::EXCLUDED_INVOICE_STATUSES)
-            ->whereNotNull('invoices.date')
-            ->whereDate('invoices.date', '>=', $from->toDateString())
-            ->whereDate('invoices.date', '<=', $to->toDateString());
+            ->whereHas('invoice', function ($query) use ($teamId, $from, $to): void
+            {
+                $query->withoutGlobalScopes()
+                    ->where('team_id', $teamId)
+                    ->whereNotIn('status', self::EXCLUDED_INVOICE_STATUSES)
+                    ->whereNotNull('date')
+                    ->whereDate('date', '>=', $from->toDateString())
+                    ->whereDate('date', '<=', $to->toDateString());
+            })
+            ->with(['invoice' => fn ($query) => $query->withoutGlobalScopes()->with('currency')])
+            ->get();
+    }
+
+    private function lineNetAmount(InvoiceItem $item): float
+    {
+        return round(
+            ((float) $item->quantity * (float) $item->unit_price) - (float) ($item->discount ?? 0),
+            2,
+        );
+    }
+
+    /**
+     * @param  list<string>  $missingPairs
+     * @param  array{income: array<string, float>, expense: array<string, float>}  $nativeTotals
+     */
+    private function convertedLineAmount(
+        InvoiceItem $item,
+        string $reportingCurrency,
+        array &$missingPairs = [],
+        array &$nativeTotals = ['income' => [], 'expense' => []],
+    ): ?float {
+        $invoice = $item->invoice;
+
+        if (! $invoice)
+        {
+            return null;
+        }
+
+        $amount = $this->lineNetAmount($item);
+        $fromCurrency = $invoice->currency_code;
+        $reportingCurrency = strtoupper(trim($reportingCurrency));
+
+        if ($fromCurrency === $reportingCurrency)
+        {
+            return $amount;
+        }
+
+        $conversionDate = Carbon::parse($invoice->date)->endOfMonth();
+        $converted = ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $reportingCurrency, $conversionDate);
+
+        if ($converted !== null)
+        {
+            return $converted;
+        }
+
+        $fallback = ExchangeRate::convert($amount, $fromCurrency, $reportingCurrency);
+
+        if ($fallback !== null)
+        {
+            return $fallback;
+        }
+
+        $pair = "{$fromCurrency}->{$reportingCurrency}";
+        $missingPairs[] = $pair;
+
+        $side = $invoice->operation === 'sell' ? 'income' : 'expense';
+        $nativeTotals[$side][$fromCurrency] = ($nativeTotals[$side][$fromCurrency] ?? 0.0) + $amount;
+
+        return null;
     }
 }

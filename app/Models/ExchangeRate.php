@@ -57,6 +57,16 @@ class ExchangeRate extends Model
             return (float) $rate->rate;
         }
 
+        $inverse = static::where('base_currency', $target)
+            ->where('target_currency', $base)
+            ->latest('date')
+            ->first();
+
+        if ($inverse && (float) $inverse->rate > 0)
+        {
+            return 1 / (float) $inverse->rate;
+        }
+
         // Si no existe conversión directa, calcular usando USD como intermediario
         // Fórmula: BASE → TARGET = (1 / USD_BASE) × USD_TARGET
         if ($base !== 'USD' && $target !== 'USD')
@@ -139,7 +149,42 @@ class ExchangeRate extends Model
 
         $rate = static::getLatestRate($from, $to);
 
-        return $rate ? $amount * $rate : null;
+        return $rate ? round($amount * $rate, 2) : null;
+    }
+
+    /**
+     * Convert using the monthly history rate on or before the date, falling back to latest rates.
+     *
+     * @param  string|\Carbon\Carbon  $date
+     */
+    public static function convertOnOrBeforeDate(float $amount, string $from, string $to, $date): ?float
+    {
+        $from = strtoupper(trim($from));
+        $to = strtoupper(trim($to));
+
+        if ($from === '' || $to === '')
+        {
+            return null;
+        }
+
+        if ($from === $to)
+        {
+            return round($amount, 2);
+        }
+
+        $history = ExchangeRateHistory::latestRateOnOrBefore($from, $to, $date);
+        if ($history)
+        {
+            return round($amount * (float) $history->rate, 2);
+        }
+
+        $inverseHistory = ExchangeRateHistory::latestRateOnOrBefore($to, $from, $date);
+        if ($inverseHistory && (float) $inverseHistory->rate > 0)
+        {
+            return round($amount / (float) $inverseHistory->rate, 2);
+        }
+
+        return static::convert($amount, $from, $to);
     }
 
     /**

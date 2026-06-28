@@ -56,6 +56,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             'chat.chat_ai_assistance_blocked' => 'nullable|in:0,1',
             'chat.assistant_whatsapp_blacklist_numbers' => 'nullable|string|max:5000',
             'documents.documents_ocr_mode' => 'nullable|string|in:local,ai,hybrid',
+            'finance.finance_reporting_currency' => 'nullable|string|size:3',
 
             // Twilio settings
             'twilio.twilio_sid' => 'nullable|string|max:255',

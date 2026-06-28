@@ -95,6 +95,17 @@
                     </div>
                 </div>
 
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-currency-euro mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('team_settings.groups.finance.title') }}</h5>
+                            <p class="card-text">{{ __('team_settings.groups.finance.subtitle') }}</p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'finance']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                        </div>
+                    </div>
+                </div>
+
                 @if (auth()->user()->hasRole('root') && \App\Support\AffiliateCommission::isPlatformTeam($team))
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
