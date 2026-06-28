@@ -51,8 +51,8 @@ class FinancialDashboardController extends Controller
         $availableYears = range($maxYear, $minYear);
 
         $accounts = $this->paymentReportingCurrencyService->accountBalancesForDisplay();
-        $selectedMonth = Carbon::now()->month;
         $monthlyTotals = $this->paymentReportingCurrencyService->monthlyTotalsConverted($selectedYear, $reportingCurrency);
+        $selectedMonth = Carbon::now()->month;
 
         $currentMonthIncome = (float) ($monthlyTotals[$selectedMonth]['income'] ?? 0);
         $currentMonthExpense = (float) ($monthlyTotals[$selectedMonth]['expense'] ?? 0);
@@ -78,23 +78,6 @@ class FinancialDashboardController extends Controller
 
         $profitMargin = $ytdIncome > 0 ? ($ytdProfit / $ytdIncome) * 100 : 0;
 
-        $incomeCategories = [];
-        $expenseCategories = [];
-        $invoiceReportingCurrency = $reportingCurrency;
-
-        if (auth()->user()?->can('viewAny', Invoice::class))
-        {
-            $team = auth()->user()->currentTeam;
-
-            if ($team !== null)
-            {
-                $invoiceReport = $this->invoiceAnalytics->buildYearReport((int) $team->id, $selectedYear);
-                $incomeCategories = $invoiceReport['income_categories'];
-                $expenseCategories = $invoiceReport['expense_categories'];
-                $invoiceReportingCurrency = $invoiceReport['reporting_currency'];
-            }
-        }
-
         return view('finance-dashboard.index', compact(
             'accounts',
             'selectedYear',
@@ -108,10 +91,6 @@ class FinancialDashboardController extends Controller
             'monthlyData',
             'profitMargin',
             'reportingCurrency',
-            'incomeCategories',
-            'expenseCategories',
-            'invoiceReportingCurrency',
-            'selectedMonth',
         ));
     }
 

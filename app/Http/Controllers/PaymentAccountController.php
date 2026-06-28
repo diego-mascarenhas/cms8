@@ -53,6 +53,7 @@ class PaymentAccountController extends Controller
 
         $account = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => (int) auth()->user()->currentTeam->id,
+            'enterprise_id' => null,
             'code' => strtoupper((string) $validated['code']),
             'name' => (string) $validated['name'],
             'currency_id' => (int) $validated['currency_id'],
