@@ -85,7 +85,15 @@
 
         <div class="row g-3">
             <div class="col-lg-7">
-                <label id="document-drop-zone" for="document_file" class="border rounded p-4 h-100 d-block position-relative overflow-hidden" style="border-style: dashed !important; cursor: pointer;">
+                <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                <div
+                    id="document-drop-zone"
+                    class="border rounded p-4 h-100 position-relative overflow-hidden"
+                    style="border-style: dashed !important; cursor: pointer;"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Suelta un archivo o haz clic para subir"
+                >
                     <div id="document-file-meta" class="d-none position-absolute top-0 end-0 p-2 d-flex align-items-center gap-2" style="z-index: 2; max-width: 85%;">
                         <span id="selected-document-name" class="text-primary small text-truncate"></span>
                         <button
@@ -108,9 +116,8 @@
                             <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
                             <span class="small text-muted">Analizando documento...</span>
                         </div>
-                        <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
                     </div>
-                </label>
+                </div>
                 @error('document_file')
                     <small class="text-danger d-block mt-2">{{ $message }}</small>
                 @enderror
@@ -1141,29 +1148,66 @@
             }
         }
 
-        $dropZone.on('dragover', function (event) {
+        function assignDocumentFile(file) {
+            if (!file || !$documentInput.length) {
+                return false;
+            }
+
+            try {
+                var transfer = new DataTransfer();
+                transfer.items.add(file);
+                $documentInput[0].files = transfer.files;
+            } catch (error) {
+                return false;
+            }
+
+            updateDocumentName();
+
+            return true;
+        }
+
+        function preventDocumentDropDefaults(event) {
             event.preventDefault();
+            event.stopPropagation();
+        }
+
+        $dropZone.on('click', function (event) {
+            if ($(event.target).closest('#remove-document-file').length) {
+                return;
+            }
+
+            $documentInput.trigger('click');
+        });
+
+        $dropZone.on('keydown', function (event) {
+            if (event.key !== 'Enter' && event.key !== ' ') {
+                return;
+            }
+
+            event.preventDefault();
+            $documentInput.trigger('click');
+        });
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(function (eventName) {
+            $dropZone.on(eventName, preventDocumentDropDefaults);
+        });
+
+        $dropZone.on('dragenter dragover', function () {
             $dropZone.addClass('border-primary bg-label-primary');
         });
 
-        $dropZone.on('dragleave', function () {
+        $dropZone.on('dragleave drop', function () {
             $dropZone.removeClass('border-primary bg-label-primary');
         });
 
         $dropZone.on('drop', function (event) {
-            event.preventDefault();
-            $dropZone.removeClass('border-primary bg-label-primary');
-
             var droppedFiles = event.originalEvent.dataTransfer.files;
 
             if (!droppedFiles || droppedFiles.length === 0) {
                 return;
             }
 
-            var transfer = new DataTransfer();
-            transfer.items.add(droppedFiles[0]);
-            $documentInput[0].files = transfer.files;
-            updateDocumentName();
+            assignDocumentFile(droppedFiles[0]);
         });
 
         $documentInput.on('change', updateDocumentName);
