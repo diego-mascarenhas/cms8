@@ -289,7 +289,7 @@
                                             default => $freq > 0 ? $freq.' mes(es)' : '—',
                                         };
                                         $desc = $service->description ?: ($service->service_name ?? '—');
-                                        $plan = optional($service->serviceType)->name ?? '—';
+                                        $plan = optional($service->category)->name ?? '—';
                                         $cur = $service->currency;
                                         $curCode = $cur->code ?? ($cur->symbol ?? '');
                                     @endphp

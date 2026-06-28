@@ -7,7 +7,6 @@ use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
 use App\Models\Category;
 use App\Models\Module;
-use App\Models\ServiceType;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
@@ -550,21 +549,9 @@ class TeamRevisionAlphaSeeder extends Seeder
                 'status' => 1,
                 'order' => $order++,
             ]);
-
-            ServiceType::updateOrCreate(
-                [
-                    'name' => $name,
-                    'category_id' => $subCategory->id,
-                ],
-                [
-                    'description' => "Tipo de plan: {$name}",
-                    'status' => true,
-                    'order' => $subCategory->order,
-                ],
-            );
         }
 
-        $this->getCommand()->info('✅ Created Revision Alpha service categories and service types ('.count($serviceItems).' items)');
+        $this->getCommand()->info('✅ Created Revision Alpha service categories ('.count($serviceItems).' items)');
     }
 
     /**

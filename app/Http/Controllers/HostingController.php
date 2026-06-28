@@ -5,10 +5,10 @@ namespace App\Http\Controllers;
 use App\DataTables\DomainDataTable;
 use App\Http\Requests\StoreHostingRequest;
 use App\Http\Requests\UpdateHostingRequest;
+use App\Models\Category;
 use App\Models\Domain;
 use App\Models\Server;
 use App\Models\Service;
-use App\Models\ServiceType;
 use App\Services\ControlPanel\ControlPanelManager;
 use App\Traits\TracksContactActions;
 use Illuminate\Http\Request;
@@ -55,7 +55,7 @@ class HostingController extends Controller
         $enterpriseId = $request->input('enterprise_id');
 
         $services = Service::query()
-            ->with(['enterprise', 'serviceType'])
+            ->with(['enterprise', 'category'])
             ->when($enterpriseId, fn ($query) => $query->where('enterprise_id', $enterpriseId))
             ->orderByDesc('id')
             ->get();
@@ -146,7 +146,7 @@ class HostingController extends Controller
     {
         $servers = Server::all();
         $services = Service::query()
-            ->with(['enterprise', 'serviceType'])
+            ->with(['enterprise', 'category'])
             ->orderByDesc('id')
             ->get();
 
@@ -189,18 +189,18 @@ class HostingController extends Controller
             return null;
         }
 
-        $serviceTypeId = ServiceType::query()
+        $categoryId = Category::query()
             ->where('name', 'like', '%Hosting%')
-            ->value('id') ?? ServiceType::query()->value('id');
+            ->value('id') ?? Category::query()->value('id');
 
-        if ($serviceTypeId === null)
+        if ($categoryId === null)
         {
             return null;
         }
 
         $service = Service::create([
             'enterprise_id' => $validated['enterprise_id'],
-            'service_type_id' => $serviceTypeId,
+            'category_id' => $categoryId,
             'operation' => 'sell',
             'description' => 'Hosting '.$validated['domain'],
             'data' => $this->buildServiceHostingData($validated, $server),

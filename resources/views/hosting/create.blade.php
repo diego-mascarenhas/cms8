@@ -60,7 +60,7 @@
                                         data-enterprise-id="{{ $service->enterprise_id }}"
                                         @selected((string) old('service_id', $serviceId ?? '') === (string) $service->id)>
                                         {{ $service->enterprise?->name ?? '—' }}
-                                        — {{ $service->description ?: ($service->serviceType?->name ?? 'Servicio') }}
+                                        — {{ $service->description ?: ($service->category?->name ?? 'Servicio') }}
                                     </option>
                                 @endforeach
                             </select>
@@ -81,7 +81,7 @@
                                         data-enterprise-id="{{ $service->enterprise_id }}"
                                         @selected((string) old('service_id', $hosting->service_id ?? '') === (string) $service->id)>
                                         {{ $service->enterprise?->name ?? '—' }}
-                                        — {{ $service->description ?: ($service->serviceType?->name ?? 'Servicio') }}
+                                        — {{ $service->description ?: ($service->category?->name ?? 'Servicio') }}
                                     </option>
                                 @endforeach
                             </select>

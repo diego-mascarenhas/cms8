@@ -302,6 +302,7 @@ class Category extends Model
     public function blockingDeleteUsageCount(): int
     {
         return $this->invoiceItems()->count()
+            + $this->services()->count()
             + $this->teamFiles()->count()
             + $this->messages()->count()
             + $this->messagesByContactCategory()->count()
@@ -309,8 +310,7 @@ class Category extends Model
             + $this->tasks()->count()
             + $this->projects()->count()
             + Multimedia::where('category_id', $this->id)->count()
-            + Software::where('category_id', $this->id)->count()
-            + ServiceType::where('category_id', $this->id)->count();
+            + Software::where('category_id', $this->id)->count();
     }
 
     /**

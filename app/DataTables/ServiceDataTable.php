@@ -64,17 +64,20 @@ class ServiceDataTable extends DataTable
             })
             ->editColumn('category_id', function ($data)
             {
-                return $data->serviceType?->name ?? '—';
+                return $data->category?->name ?? '—';
             })
             ->filterColumn('category_id', function ($query, $keyword)
             {
-                $query->whereHas('serviceType', function ($q) use ($keyword)  // Fix N+1: Use serviceType relation
-                {$q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                $query->whereHas('category', function ($q) use ($keyword)
+                {
+                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
                 });
             })
             ->orderColumn('category_id', function ($query, $direction)
             {
-                $query->orderBy('services.service_type_id', $direction);
+                $query->leftJoin('categories', 'services.category_id', '=', 'categories.id')
+                    ->orderBy('categories.name', $direction)
+                    ->select('services.*');
             })
             ->filterColumn('metadata_search', function ($query, $keyword)
             {
@@ -165,7 +168,7 @@ class ServiceDataTable extends DataTable
             })
             ->with([
                 'client',
-                'serviceType',  // Fix N+1: Use 'serviceType' instead of 'category' alias
+                'category',
                 'currency',
             ])
             ->whereHas('client', function ($query) use ($user)

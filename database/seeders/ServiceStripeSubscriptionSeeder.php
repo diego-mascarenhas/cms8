@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Enterprise;
 use App\Models\PaymentSubscription;
 use App\Models\Service;
-use App\Models\ServiceType;
 use App\Models\Team;
 use Illuminate\Database\Seeder;
 
@@ -33,10 +33,10 @@ class ServiceStripeSubscriptionSeeder extends Seeder
             return;
         }
 
-        $serviceType = ServiceType::first();
-        if (! $serviceType)
+        $category = Category::query()->where('team_id', $team->id)->orderBy('id')->first();
+        if (! $category)
         {
-            $this->command->warn('No service type found. Run service types seeder first.');
+            $this->command->warn('No category found. Run category seeder first.');
 
             return;
         }
@@ -71,7 +71,7 @@ class ServiceStripeSubscriptionSeeder extends Seeder
             [
                 'enterprise_id' => $enterprise->id,
                 'subscription_id' => $sub->id,
-                'service_type_id' => $serviceType->id,
+                'category_id' => $category->id,
                 'operation' => 'sell',
                 'description' => 'Servicio de prueba vinculado a suscripción de pago',
             ],

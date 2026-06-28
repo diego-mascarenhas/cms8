@@ -170,13 +170,7 @@ class ServiceController extends Controller
 
             $input = $request->all();
             $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
-            $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
-                ?? \App\Models\ServiceType::orderBy('id')->value('id');
-            if (empty($input['service_type_id']))
-            {
-                $input['service_type_id'] = null;
-            }
-            unset($input['category_id']);
+            $input['category_id'] = $request->filled('category_id') ? (int) $request->input('category_id') : null;
 
             // For debugging
             \Log::info('Service data before creation', ['data' => $input]);
@@ -248,7 +242,7 @@ class ServiceController extends Controller
      */
     public function edit(string $id)
     {
-        $data = Service::with('serviceType')->findOrFail($id);
+        $data = Service::with('category')->findOrFail($id);
         $this->authorize('update', $data);
 
         if (! $data)
@@ -293,13 +287,7 @@ class ServiceController extends Controller
 
         $input = $request->all();
         $input['subscription_id'] = $request->filled('subscription_id') ? $request->input('subscription_id') : null;
-        $input['service_type_id'] = \App\Models\ServiceType::where('category_id', $request->category_id)->orderBy('id')->value('id')
-            ?? \App\Models\ServiceType::orderBy('id')->value('id');
-        if (empty($input['service_type_id']))
-        {
-            $input['service_type_id'] = null;
-        }
-        unset($input['category_id']);
+        $input['category_id'] = $request->filled('category_id') ? (int) $request->input('category_id') : null;
 
         // Format dates
         if (! empty($input['next_billing']))
@@ -364,9 +352,10 @@ class ServiceController extends Controller
                 $frequency = $service->frequency;
             } else
             {
-                $basePrice = $service->type->price;
-                $discount = $service->type->discount ?? 0;
-                $frequency = $service->type->frequency;
+                $categoryData = is_array($service->category?->data) ? $service->category->data : [];
+                $basePrice = $categoryData['price'] ?? 0;
+                $discount = $categoryData['discount'] ?? 0;
+                $frequency = $categoryData['frequency'] ?? 1;
             }
 
             // Calcular el precio después del descuento sin dividir por la frecuencia

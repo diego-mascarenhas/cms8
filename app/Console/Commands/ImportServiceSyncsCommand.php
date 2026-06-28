@@ -2,11 +2,11 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\ServiceSync;
-use App\Models\ServiceType;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 
@@ -60,10 +60,10 @@ class ImportServiceSyncsCommand extends Command
 
         $rows = $query->limit($limit)->get();
 
-        $defaultServiceTypeId = ServiceType::query()->orderBy('id')->value('id');
-        if ($defaultServiceTypeId === null)
+        $defaultCategoryId = Category::query()->orderBy('id')->value('id');
+        if ($defaultCategoryId === null)
         {
-            $this->error('No service_types rows found. Create at least one service type first.');
+            $this->error('No categories found. Import legacy categories first.');
 
             return self::FAILURE;
         }
@@ -108,7 +108,7 @@ class ImportServiceSyncsCommand extends Command
             $payload = [
                 'enterprise_id' => $enterpriseId,
                 'subscription_id' => $row->id,
-                'service_type_id' => (int) $defaultServiceTypeId,
+                'category_id' => (int) $defaultCategoryId,
                 'operation' => 'sell',
                 'description' => $description,
                 // Keep only provider metadata payload for service detail visualization.
@@ -137,7 +137,7 @@ class ImportServiceSyncsCommand extends Command
 
         $this->info(
             "Processed: {$processed} | created: {$created} | skipped: {$skipped}".
-            ($dryRun ? ' | dry-run' : '')
+            ($dryRun ? ' | dry-run' : ''),
         );
 
         return self::SUCCESS;

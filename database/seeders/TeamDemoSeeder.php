@@ -917,7 +917,7 @@ class TeamDemoSeeder extends Seeder
 
     private function createServiceCategoriesAndTypes(): void
     {
-        $this->command->info('🏷️  Creating service categories and types...');
+        $this->command->info('🏷️  Creating service categories...');
 
         $servicesModule = Module::where('key', 'services')->first();
         if (! $servicesModule)
@@ -953,8 +953,7 @@ class TeamDemoSeeder extends Seeder
             $this->command->info("✅ Service category: {$subcat['name']}");
         }
 
-        // Create service types
-        $serviceTypes = [
+        $leafCategories = [
             ['name' => 'Desarrollo Web', 'description' => 'Desarrollo de aplicaciones web', 'category' => 'Desarrollo'],
             ['name' => 'Desarrollo Mobile', 'description' => 'Desarrollo de aplicaciones móviles', 'category' => 'Desarrollo'],
             ['name' => 'Consultoría Técnica', 'description' => 'Asesoría técnica especializada', 'category' => 'Consultoría'],
@@ -965,25 +964,25 @@ class TeamDemoSeeder extends Seeder
             ['name' => 'Branding', 'description' => 'Diseño de identidad corporativa', 'category' => 'Diseño'],
         ];
 
-        foreach ($serviceTypes as $typeData)
+        foreach ($leafCategories as $leafData)
         {
-            $category = Category::where('name', $typeData['category'])
+            $parent = Category::where('name', $leafData['category'])
                 ->where('module_id', $servicesModule->id)
                 ->where('team_id', $this->teamId)
                 ->first();
 
-            \App\Models\ServiceType::firstOrCreate(
-                ['name' => $typeData['name']],
+            Category::firstOrCreate(
+                ['name' => $leafData['name'], 'module_id' => $servicesModule->id, 'team_id' => $this->teamId],
                 [
-                    'description' => $typeData['description'],
-                    'category_id' => $category?->id,
+                    'description' => $leafData['description'],
+                    'parent_id' => $parent?->id,
                     'status' => 1,
                 ],
             );
-            $this->command->info("✅ Service type: {$typeData['name']}");
+            $this->command->info("✅ Service plan category: {$leafData['name']}");
         }
 
-        $this->command->info('✅ Service categories and types created');
+        $this->command->info('✅ Service categories created');
     }
 
     private function seedDemoEnterprises(): void
@@ -1032,26 +1031,18 @@ class TeamDemoSeeder extends Seeder
             return;
         }
 
-        // Get or create a default service type
-        $serviceType = \App\Models\ServiceType::first();
-        if (! $serviceType)
+        $categories = Category::query()
+            ->where('team_id', $this->teamId)
+            ->where('module_id', Module::where('key', 'services')->value('id'))
+            ->whereNotNull('parent_id')
+            ->get();
+
+        if ($categories->isEmpty())
         {
-            $this->command->warn('⚠️  No service types found, skipping services');
+            $this->command->warn('⚠️  No service categories found, skipping services');
 
             return;
         }
-
-        $serviceTypes = \App\Models\ServiceType::all();
-        if ($serviceTypes->isEmpty())
-        {
-            $this->command->warn('⚠️  No service types found, using default');
-            $serviceTypes = collect([$serviceType]);
-        }
-
-        $servicesModule = Module::where('key', 'services')->first();
-        $serviceCategory = Category::where('module_id', $servicesModule?->id)
-            ->where('team_id', $this->teamId)
-            ->first();
 
         $servicesCreated = 0;
 
@@ -1061,12 +1052,12 @@ class TeamDemoSeeder extends Seeder
             $numServices = rand(1, 3);
             for ($i = 0; $i < $numServices; $i++)
             {
-                $selectedType = $serviceTypes->random();
+                $selectedCategory = $categories->random();
 
                 Service::firstOrCreate(
-                    ['enterprise_id' => $enterprise->id, 'service_type_id' => $selectedType->id],
+                    ['enterprise_id' => $enterprise->id, 'category_id' => $selectedCategory->id],
                     [
-                        'description' => $selectedType->name.' para '.$enterprise->name,
+                        'description' => $selectedCategory->name.' para '.$enterprise->name,
                         'price' => rand(500, 5000),
                         'status' => 1,
                         'operation' => 'sell',

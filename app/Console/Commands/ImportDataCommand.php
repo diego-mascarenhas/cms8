@@ -13,6 +13,7 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Finance\InvoiceItemLegacySyncService;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -461,7 +462,7 @@ class ImportDataCommand extends Command
             $this->newLine();
 
             // Import in order to respect foreign key constraints
-            $this->info('📂 Step 1/13: Importing Categories & Service Types...');
+            $this->info('📂 Step 1/13: Importing Categories...');
             $this->processImport('2. Categories');
             $this->newLine();
 
@@ -1196,9 +1197,7 @@ class ImportDataCommand extends Command
     }
 
     /**
-     * Importa las categorías desde el sistema antiguo
-     * Las categorías padre van a 'categories'
-     * Las categorías hijas van a 'service_types' con category_id = padre
+     * Importa las categorías desde el sistema antiguo (padres e hijas → categories con parent_id).
      */
     protected function importCategories($id = null)
     {
@@ -1210,180 +1209,40 @@ class ImportDataCommand extends Command
 
         try
         {
-            // Get team ID - REVISION ALPHA team
             $teamId = 2;
-
-            // Buscar el módulo de servicios para asignar a las categorías
-            $serviceModule = \App\Models\Module::where('key', 'services')->first();
-
-            // Buscar el módulo de proyectos para categorías de proyectos
-            $projectModule = \App\Models\Module::where('key', 'projects')->first();
-
-            if (! $serviceModule)
-            {
-                $this->warn("El módulo 'services' no existe. Las categorías se importarán sin módulo asignado.");
-            }
-
-            if (! $projectModule)
-            {
-                $this->warn("El módulo 'projects' no existe. Las categorías de proyectos se importarán sin módulo asignado.");
-            }
-
-            // Obtener todas las categorías del sistema antiguo
-            $query = app('db')->connection('mysql_legacy')
-                ->table('categorias_generales')
-                ->where('grupo', env('CMS_GROUP', 502))
-                ->where('estado', '>', 0);
+            $service = app(InvoiceItemLegacySyncService::class);
 
             if ($id)
             {
-                $query->where('id', $id);
-            }
+                $result = $service->importMissingCategoriesFromLegacy(collect([(int) $id]), $teamId);
+                $stats['imported'] = $result['imported_parents'] + $result['imported_children'];
+                $stats['updated'] = $result['updated_parents'] + $result['updated_children'];
 
-            $allCategories = $query->get();
-
-            if ($allCategories->isEmpty())
-            {
-                $stats['message'] = 'No se encontraron categorías para importar.';
+                if ($stats['imported'] === 0 && $stats['updated'] === 0 && $result['missing_in_legacy'] > 0)
+                {
+                    $stats['message'] = 'Category not found in legacy system.';
+                }
 
                 return $stats;
             }
 
-            // Separar categorías padre e hijas
-            $parentCategories = $allCategories->filter(function ($cat)
+            $result = $service->importAllCategoriesFromLegacy($teamId);
+            $stats['imported'] = $result['imported_parents'] + $result['imported_children'];
+            $stats['updated'] = $result['updated_parents'] + $result['updated_children'];
+
+            if ($result['total_legacy'] === 0)
             {
-                return is_null($cat->padre) || $cat->padre == 0;
-            });
-
-            $childCategories = $allCategories->filter(function ($cat)
+                $stats['message'] = 'No se encontraron categorías para importar.';
+            } else
             {
-                return ! is_null($cat->padre) && $cat->padre > 0;
-            });
+                $this->info("📊 Total categorías legacy: {$result['total_legacy']} (padres: ".($result['imported_parents'] + $result['updated_parents']).', hijas: '.($result['imported_children'] + $result['updated_children'] + $result['skipped_children_missing_parent']).')');
+                $this->info("✅ Categorías importadas: {$stats['imported']}, actualizadas: {$stats['updated']}");
 
-            $this->info("📊 Total categorías: {$allCategories->count()} (Padres → categories: {$parentCategories->count()}, Hijas → service_types: {$childCategories->count()})");
-
-            // Primero importar categorías padre a la tabla 'categories'
-            if ($parentCategories->isNotEmpty())
-            {
-                $this->info("\n🔹 Importando categorías padre a tabla 'categories'...");
-                $bar = $this->output->createProgressBar($parentCategories->count());
-                $bar->start();
-
-                foreach ($parentCategories as $data)
+                if ($result['skipped_children_missing_parent'] > 0)
                 {
-                    $categoryData = [
-                        'id' => $data->id,  // Mantener ID original
-                        'name' => $data->categoria,
-                        'module_id' => $serviceModule ? $serviceModule->id : null,
-                        'team_id' => $teamId,
-                        'parent_id' => null,
-                        'description' => strip_tags($data->descripcion ?? ''),
-                        'data' => json_encode([
-                            'currency_id' => $data->id_moneda ?? null,
-                            'price' => $data->valor ?? null,
-                            'discount' => $data->descuento ?? null,
-                            'frequency' => $data->frecuencia ?? null,
-                            'type_id' => $data->id_tipo ?? null,
-                        ]),
-                        'order' => $data->orden ?? 0,
-                        'status' => $data->estado ?? 1,
-                        'created_at' => $data->fecha_alta ?? now(),
-                        'updated_at' => $data->fecha_modificacion ?? now(),
-                    ];
-
-                    $existingCategory = app('db')->table('categories')->where('id', $data->id)->first();
-
-                    if (! $existingCategory)
-                    {
-                        app('db')->table('categories')->insert($categoryData);
-                        $stats['imported']++;
-                    } else
-                    {
-                        // Preserve local values when legacy is empty
-                        $mergedData = $this->mergePreservingLocal(
-                            $categoryData,
-                            $existingCategory,
-                            ['module_key', 'status_id'], // Always update these fields
-                        );
-                        app('db')->table('categories')->where('id', $existingCategory->id)->update($mergedData);
-                        $stats['updated']++;
-                    }
-
-                    $bar->advance();
+                    $this->warn("⚠️  Hijas omitidas por padre inexistente: {$result['skipped_children_missing_parent']}");
                 }
-
-                $bar->finish();
-                $this->newLine();
             }
-
-            // Luego importar categorías hijas a la tabla 'service_types'
-            if ($childCategories->isNotEmpty())
-            {
-                $this->info("\n🔹 Importando categorías hijas a tabla 'service_types'...");
-                $bar = $this->output->createProgressBar($childCategories->count());
-                $bar->start();
-
-                $serviceTypesImported = 0;
-                $serviceTypesUpdated = 0;
-
-                foreach ($childCategories as $data)
-                {
-                    // Verificar que el padre existe en categories
-                    $parentExists = app('db')->table('categories')->where('id', $data->padre)->exists();
-
-                    if (! $parentExists)
-                    {
-                        $this->warn("\n⚠️  Padre {$data->padre} no existe para categoría {$data->id}: {$data->categoria}");
-
-                        continue;
-                    }
-
-                    $serviceTypeData = [
-                        'id' => $data->id,
-                        'name' => $data->categoria,
-                        'category_id' => $data->padre,  // El padre es el category_id
-                        'description' => strip_tags($data->descripcion ?? ''),
-                        'data' => json_encode([
-                            'characteristics' => $data->caracteristicas ?? null,
-                        ]),
-                        'currency_id' => $data->id_moneda ?? 1,
-                        'convert_to' => $data->convertir ?? null,
-                        'price' => $data->valor ?? null,
-                        'discount' => $data->descuento ?? 0.0,
-                        'frequency' => $data->frecuencia ?? 1,
-                        'order' => $data->orden ?? 0,
-                        'status' => $data->estado ?? 1,
-                        'created_at' => $data->fecha_alta ?? now(),
-                        'updated_at' => $data->fecha_modificacion ?? now(),
-                    ];
-
-                    $existingServiceType = app('db')->table('service_types')->where('id', $data->id)->first();
-
-                    if (! $existingServiceType)
-                    {
-                        app('db')->table('service_types')->insert($serviceTypeData);
-                        $serviceTypesImported++;
-                    } else
-                    {
-                        // Preserve local values when legacy is empty
-                        $mergedData = $this->mergePreservingLocal(
-                            $serviceTypeData,
-                            $existingServiceType,
-                            ['name', 'status_id'], // Always update these fields
-                        );
-                        app('db')->table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
-                        $serviceTypesUpdated++;
-                    }
-
-                    $bar->advance();
-                }
-
-                $bar->finish();
-                $this->newLine();
-                $this->info("✅ Service types importados: {$serviceTypesImported}, actualizados: {$serviceTypesUpdated}");
-            }
-
-            $this->info("✅ Categorías padre importadas: {$stats['imported']}, actualizadas: {$stats['updated']}");
         } catch (\Exception $e)
         {
             $this->newLine();
@@ -1394,95 +1253,17 @@ class ImportDataCommand extends Command
     }
 
     /**
-     * Importa los tipos de servicio desde el sistema antiguo
+     * @deprecated categorias_generales_tipo is no longer imported; use categories from categorias_generales.
      */
     protected function importServiceTypes($id = null)
     {
-        $stats = [
+        $this->warn('Service types table was removed. Import categories (categorias_generales) instead.');
+
+        return [
             'imported' => 0,
             'updated' => 0,
-            'message' => null,
+            'message' => 'Skipped: legacy categorias_generales_tipo is not imported to a separate table.',
         ];
-
-        try
-        {
-            // Obtener todos los tipos de servicio del sistema antiguo
-            $query = app('db')->connection('mysql_legacy')
-                ->table('categorias_generales_tipo');
-
-            if ($id)
-            {
-                $query->where('id', $id);
-            }
-
-            $serviceTypes = $query->get();
-
-            if ($serviceTypes->isEmpty())
-            {
-                $stats['message'] = 'No se encontraron tipos de servicio para importar.';
-
-                return $stats;
-            }
-
-            $this->info("📊 Total tipos de servicio: {$serviceTypes->count()}");
-
-            $bar = $this->output->createProgressBar($serviceTypes->count());
-            $bar->start();
-
-            foreach ($serviceTypes as $data)
-            {
-                $serviceTypeData = [
-                    'id' => $data->id,
-                    'name' => $data->tipo,
-                    'category_id' => null,  // Se puede asignar manualmente después si es necesario
-                    'description' => $data->descripcion ?? null,
-                    'data' => json_encode([
-                        'characteristics' => $data->caracteristicas ?? null,
-                        'template_alta_de_servicio' => $data->template_alta_de_servicio ?? null,
-                    ]),
-                    'currency_id' => $data->id_moneda ?? 1,
-                    'convert_to' => $data->convertir ?? null,
-                    'price' => $data->valor ?? null,
-                    'discount' => $data->descuento ?? 0.0,
-                    'frequency' => $data->frecuencia ?? 1,
-                    'order' => $data->orden ?? 0,
-                    'status' => $data->estado ?? 1,
-                    'created_at' => $data->fecha_alta ?? now(),
-                    'updated_at' => $data->fecha_modificacion ?? now(),
-                ];
-
-                $existingServiceType = app('db')->table('service_types')->where('id', $data->id)->first();
-
-                if (! $existingServiceType)
-                {
-                    app('db')->table('service_types')->insert($serviceTypeData);
-                    $stats['imported']++;
-                } else
-                {
-                    // Preserve local values when legacy is empty
-                    $mergedData = $this->mergePreservingLocal(
-                        $serviceTypeData,
-                        $existingServiceType,
-                        ['name', 'status_id'], // Always update these fields
-                    );
-                    app('db')->table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
-                    $stats['updated']++;
-                }
-
-                $bar->advance();
-            }
-
-            $bar->finish();
-            $this->newLine();
-
-            $this->info("✅ Tipos de servicio importados: {$stats['imported']}, actualizados: {$stats['updated']}");
-        } catch (\Exception $e)
-        {
-            $this->newLine();
-            throw new \Exception('Error importando tipos de servicio: '.$e->getMessage());
-        }
-
-        return $stats;
     }
 
     /**
@@ -1790,8 +1571,8 @@ class ImportDataCommand extends Command
                 try
                 {
                     // Check if invoice exists in the local database
-                    $invoiceExists = app('db')->table('invoices')->where('id', $data->id_factura)->exists();
-                    if (! $invoiceExists)
+                    $invoice = app('db')->table('invoices')->where('id', $data->id_factura)->first(['team_id']);
+                    if ($invoice === null)
                     {
                         $skippedNoInvoice++;
                         $stats['skipped_no_invoice']++;
@@ -1808,12 +1589,10 @@ class ImportDataCommand extends Command
                     $existingInvoiceItem = app('db')->table('invoice_items')->where('id', $data->id)->first();
 
                     // Check if category exists, if not set to null
-                    $categoryId = null;
-                    if ($data->id_categoria)
-                    {
-                        $categoryExists = app('db')->table('categories')->where('id', $data->id_categoria)->exists();
-                        $categoryId = $categoryExists ? $data->id_categoria : null;
-                    }
+                    $categoryId = app(InvoiceItemLegacySyncService::class)->resolveCategoryId(
+                        $data->id_categoria ? (int) $data->id_categoria : null,
+                        (int) ($invoice->team_id ?? 2),
+                    );
 
                     $invoiceItemData = [
                         'id' => $data->id,
@@ -1838,7 +1617,7 @@ class ImportDataCommand extends Command
                         $mergedData = $this->mergePreservingLocal(
                             $invoiceItemData,
                             $existingInvoiceItem,
-                            ['invoice_id', 'quantity', 'price', 'total'], // Always update these fields
+                            ['invoice_id', 'category_id', 'description', 'quantity', 'unit_price', 'discount'],
                         );
                         app('db')->table('invoice_items')->where('id', $existingInvoiceItem->id)->update($mergedData);
                         $stats['updated']++;
@@ -1938,7 +1717,7 @@ class ImportDataCommand extends Command
 
                     $serviceData = [
                         'enterprise_id' => $service->id_empresa,
-                        'service_type_id' => $service->id_categoria ?? null,
+                        'category_id' => $service->id_categoria ?? null,
                         'operation' => $operation,
                         'description' => strip_tags($service->descripcion ?? ''),
                         'price' => $service->valor ?? 0,
@@ -3044,7 +2823,7 @@ class ImportDataCommand extends Command
         $this->newLine();
 
         // Import in order to respect foreign key constraints
-        $this->info('📂 Step 1/13: Importing Categories & Service Types...');
+        $this->info('📂 Step 1/13: Importing Categories...');
         $this->processImport('2. Categories');
         $this->newLine();
 
