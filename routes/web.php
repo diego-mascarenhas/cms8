@@ -58,6 +58,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
+use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentSubscriptionController;
 use App\Http\Controllers\ProductController;
@@ -901,11 +902,20 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');
     Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
     Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
+    Route::post('/expense/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('expense.check-document-duplicate');
+    Route::post('/expense/create-supplier', [ExpenseController::class, 'createSupplier'])->name('expense.create-supplier');
     Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
+
+    Route::get('/payment-account/list', [PaymentAccountController::class, 'index'])->name('payment-account.index');
+    Route::get('/payment-account/create', [PaymentAccountController::class, 'create'])->name('payment-account.create');
+    Route::post('/payment-account', [PaymentAccountController::class, 'store'])->name('payment-account.store');
+    Route::get('/payment-account/{paymentAccount}/edit', [PaymentAccountController::class, 'edit'])->name('payment-account.edit');
+    Route::put('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'update'])->name('payment-account.update');
 
     // Financial Dashboard (Accounting)
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');
     Route::get('/finance-dashboard/projection', [FinancialDashboardController::class, 'projection'])->name('finance-dashboard.projection');
+    Route::get('/finance-dashboard/invoiced-lines', [FinancialDashboardController::class, 'invoicedLines'])->name('finance-dashboard.invoiced-lines');
 
     Route::prefix('payment')->group(function ()
     {

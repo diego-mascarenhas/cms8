@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ExpenseDataTable;
 use App\Enums\TransactionType;
+use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
 use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
+use App\Http\Requests\StoreExpenseSupplierRequest;
 use App\Models\Category;
+use App\Models\Country;
 use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\Invoice;
@@ -17,67 +20,66 @@ use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\Team;
 use App\Services\ExpenseDocumentDetectionService;
+use App\Services\ExpenseDuplicateDocumentService;
+use App\Services\ExpenseSupplierService;
+use App\Services\Finance\PaymentAccountCompatibilityService;
+use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Support\ExpenseDocumentTypes;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class ExpenseController extends Controller
 {
+    public function __construct(
+        private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
+        private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
+    ) {}
+
     public function index(ExpenseDataTable $dataTable)
     {
         $this->authorize('viewAny', Payment::class);
 
-        // Get accounts with balances
-        $accounts = PaymentAccount::with('currency')
-            ->get()
-            ->map(function ($account)
-            {
-                $balance = Payment::where('account_id', $account->id)
-                    ->where('status', 2) // Approved
-                    ->selectRaw('COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance', [TransactionType::INCOME->value])
-                    ->value('balance');
+        // Get accounts with balances (native currency per account)
+        $accounts = $this->paymentReportingCurrencyService->accountBalancesForDisplay();
 
-                return [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'balance' => $balance,
-                    'currency_code' => $account->currency->code ?? 'USD',
-                ];
-            });
+        $reportingCurrency = $this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam();
 
-        // Current month expenses
-        $currentMonthExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->month)
-            ->whereYear('date', Carbon::now()->year)
-            ->sum('amount');
+        $currentMonthExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+            fn ($query) => $query
+                ->whereMonth('payments.date', Carbon::now()->month)
+                ->whereYear('payments.date', Carbon::now()->year),
+        );
 
-        // Last month expenses
-        $lastMonthExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->subMonth()->month)
-            ->whereYear('date', Carbon::now()->subMonth()->year)
-            ->sum('amount');
+        $lastMonthExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+            fn ($query) => $query
+                ->whereMonth('payments.date', Carbon::now()->subMonth()->month)
+                ->whereYear('payments.date', Carbon::now()->subMonth()->year),
+        );
 
-        // Calculate percentage change
         $percentageChange = $lastMonthExpense > 0
             ? (($currentMonthExpense - $lastMonthExpense) / $lastMonthExpense) * 100
             : 0;
 
-        // Year to date expenses
-        $ytdExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->whereYear('date', Carbon::now()->year)
-            ->sum('amount');
+        $ytdExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+            fn ($query) => $query->whereYear('payments.date', Carbon::now()->year),
+        );
 
-        // Total approved expenses
-        $totalExpense = Payment::where('transaction_type', TransactionType::EXPENSE)
-            ->where('status', 2)
-            ->sum('amount');
+        $totalExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::EXPENSE,
+            $reportingCurrency,
+        );
 
         return $dataTable->render('expense.index', compact(
             'accounts',
@@ -85,6 +87,7 @@ class ExpenseController extends Controller
             'percentageChange',
             'ytdExpense',
             'totalExpense',
+            'reportingCurrency',
         ));
     }
 
@@ -92,33 +95,47 @@ class ExpenseController extends Controller
     {
         $this->authorize('create', Payment::class);
 
+        $teamId = (int) auth()->user()->currentTeam->id;
+
         $enterprises = Enterprise::query()
             ->orderBy('name')
             ->get(['id', 'name', 'type_id']);
 
-        $paymentAccounts = PaymentAccount::query()
-            ->with('currency')
+        $paymentAccounts = PaymentAccount::withoutGlobalScopes()
+            ->with(['currency', 'paymentTypes'])
+            ->where('team_id', $teamId)
+            ->where('status', 1)
             ->orderBy('name')
             ->get();
 
-        $paymentTypes = PaymentType::query()
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $paymentTypesQuery = PaymentType::query()->orderBy('name');
+        if (Schema::hasColumn('payment_types', 'is_active'))
+        {
+            $paymentTypesQuery->where('is_active', true);
+        }
+        $paymentTypes = $paymentTypesQuery->get(['id', 'name']);
+
+        $preferredTypeId = $paymentTypes->firstWhere('id', 2)?->id
+            ?? $paymentTypes->first()?->id;
+        [$defaultPaymentAccountId, $defaultPaymentTypeId] = $this->paymentAccountCompatibilityService->resolveDefaults(
+            $paymentAccounts,
+            $paymentTypes,
+            $preferredTypeId,
+        );
+
+        $paymentAccountOptions = $this->paymentAccountCompatibilityService->mapAccountsForFrontend($paymentAccounts);
 
         $currencies = Currency::query()
             ->active()
             ->orderBy('code')
             ->get(['id', 'code', 'name', 'symbol']);
 
-        $documentTypes = [
-            'invoice' => 'Factura',
-            'receipt' => 'Ticket/Recibo',
-            'tax' => 'Impuesto',
-            'depreciation' => 'Amortización',
-            'dividend' => 'Dividendo',
-            'payroll' => 'Nómina',
-            'loan' => 'Préstamo',
-        ];
+        $countries = Country::query()
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+
+        $documentTypes = ExpenseDocumentTypes::LABELS;
+        $disabledDocumentTypes = ExpenseDocumentTypes::DISABLED;
 
         $statusOptions = [
             1 => 'En proceso',
@@ -130,9 +147,14 @@ class ExpenseController extends Controller
         return view('expense.create', compact(
             'enterprises',
             'paymentAccounts',
+            'paymentAccountOptions',
             'paymentTypes',
+            'defaultPaymentTypeId',
+            'defaultPaymentAccountId',
             'currencies',
+            'countries',
             'documentTypes',
+            'disabledDocumentTypes',
             'statusOptions',
         ));
     }
@@ -155,6 +177,60 @@ class ExpenseController extends Controller
         ]);
     }
 
+    public function checkDocumentDuplicate(
+        CheckExpenseDocumentDuplicateRequest $request,
+        ExpenseDuplicateDocumentService $duplicateDocumentService,
+    ): JsonResponse {
+        $this->authorize('create', Payment::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $validated = $request->validated();
+        $duplicateInvoice = $duplicateDocumentService->findDuplicate(
+            $teamId,
+            (int) $validated['enterprise_id'],
+            (string) $validated['document_number'],
+        );
+
+        if (! $duplicateInvoice instanceof Invoice)
+        {
+            return response()->json([
+                'duplicate' => false,
+            ]);
+        }
+
+        return response()->json([
+            'duplicate' => true,
+            'invoice' => [
+                'id' => $duplicateInvoice->id,
+                'number' => $duplicateInvoice->number,
+                'date' => filled($duplicateInvoice->date)
+                    ? Carbon::parse($duplicateInvoice->date)->format('Y-m-d')
+                    : null,
+                'total_amount' => number_format((float) $duplicateInvoice->total_amount, 2, '.', ''),
+            ],
+            'message' => 'Este número de comprobante ya fue registrado para este proveedor.',
+        ]);
+    }
+
+    public function createSupplier(
+        StoreExpenseSupplierRequest $request,
+        ExpenseSupplierService $expenseSupplierService,
+    ): JsonResponse {
+        $this->authorize('create', Enterprise::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $enterprise = $expenseSupplierService->createSupplier($teamId, $request->validated());
+
+        return response()->json([
+            'success' => true,
+            'enterprise' => [
+                'id' => $enterprise->id,
+                'name' => $enterprise->name,
+                'type_id' => $enterprise->type_id,
+            ],
+        ]);
+    }
+
     public function store(StoreExpenseRequest $request): RedirectResponse
     {
         $this->authorize('create', Payment::class);
@@ -164,18 +240,10 @@ class ExpenseController extends Controller
         $teamId = (int) $request->user()->currentTeam->id;
         $documentFile = $request->file('document_file');
 
-        $status = ($validated['submit_action'] ?? 'save') === 'draft'
-            ? 1
-            : (int) $validated['status'];
-
-        $linesTotal = (float) collect($lineSummaries)->sum('allocated_total');
-
-        $amount = filled($validated['payment_amount'] ?? null)
-            ? round((float) $validated['payment_amount'], 2)
-            : round(max($linesTotal, 0.01), 2);
-
-        $invoiceTotal = round(max($linesTotal, 0.01), 2);
-        $invoiceBalance = round(max($invoiceTotal - $amount, 0), 2);
+        $invoiceTotal = round(max((float) collect($lineSummaries)->sum('allocated_total'), 0.01), 2);
+        $paymentEntries = $this->resolvePaymentEntries($validated['payments'] ?? [], $invoiceTotal);
+        $paymentsTotal = round((float) collect($paymentEntries)->sum('amount'), 2);
+        $invoiceBalance = round(max($invoiceTotal - $paymentsTotal, 0), 2);
         $currencyCode = $this->resolveCurrencyCode($validated);
         $currencyId = $this->resolveCurrencyId($validated);
         $invoiceTypeId = $this->resolveInvoiceTypeId();
@@ -183,6 +251,7 @@ class ExpenseController extends Controller
             ? (int) $validated['expense_category_id']
             : null;
         $expenseCategoryName = $this->resolveExpenseCategoryName($validated);
+        $isDraft = ($validated['submit_action'] ?? 'save') === 'draft';
 
         DB::transaction(function () use (
             $validated,
@@ -191,13 +260,13 @@ class ExpenseController extends Controller
             $invoiceTotal,
             $invoiceBalance,
             $currencyId,
-            $amount,
-            $status,
             $currencyCode,
             $lineSummaries,
             $expenseCategoryId,
             $expenseCategoryName,
-            $documentFile
+            $documentFile,
+            $paymentEntries,
+            $isDraft
         ): void {
             $invoice = Invoice::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
@@ -207,7 +276,7 @@ class ExpenseController extends Controller
                 'operation' => 'buy',
                 'number' => $this->composeInvoiceNumber($validated),
                 'date' => $validated['date'],
-                'due_date' => $validated['due_date'] ?? $validated['payment_date'],
+                'due_date' => $validated['due_date'] ?? collect($paymentEntries)->pluck('payment_date')->filter()->last() ?? $validated['date'],
                 'gross_amount' => $invoiceTotal,
                 'discount' => 0,
                 'total_amount' => $invoiceTotal,
@@ -225,29 +294,33 @@ class ExpenseController extends Controller
 
             $this->createInvoiceItems($invoice, $lineSummaries, $expenseCategoryId);
 
-            Payment::query()->create([
-                'team_id' => $teamId,
-                'enterprise_id' => (int) $validated['enterprise_id'],
-                'transaction_type' => TransactionType::EXPENSE,
-                'date' => $validated['date'],
-                'invoice_id' => $invoice->id,
-                'account_id' => (int) $validated['account_id'],
-                'type_id' => (int) $validated['type_id'],
-                'amount' => $amount,
-                'remarks' => $this->buildRemarks(
-                    $validated,
-                    $amount,
-                    $currencyCode,
-                    $lineSummaries,
-                    $expenseCategoryName,
-                    $storedDocumentPath,
-                ),
-                'status' => $status,
-                'source_provider' => 'manual',
-            ]);
+            foreach ($paymentEntries as $paymentEntry)
+            {
+                Payment::query()->create([
+                    'team_id' => $teamId,
+                    'enterprise_id' => (int) $validated['enterprise_id'],
+                    'transaction_type' => TransactionType::EXPENSE,
+                    'date' => $paymentEntry['payment_date'],
+                    'invoice_id' => $invoice->id,
+                    'account_id' => (int) $paymentEntry['account_id'],
+                    'type_id' => (int) $paymentEntry['type_id'],
+                    'amount' => (float) $paymentEntry['amount'],
+                    'remarks' => $this->buildRemarks(
+                        $validated,
+                        (float) $paymentEntry['amount'],
+                        $currencyCode,
+                        $lineSummaries,
+                        $expenseCategoryName,
+                        $storedDocumentPath,
+                        $paymentEntries,
+                    ),
+                    'status' => $isDraft ? 1 : (int) $paymentEntry['status'],
+                    'source_provider' => 'manual',
+                ]);
+            }
         });
 
-        $message = $status === 1
+        $message = $isDraft
             ? 'Borrador de gasto guardado correctamente.'
             : 'Gasto guardado correctamente.';
 
@@ -315,6 +388,29 @@ class ExpenseController extends Controller
     /**
      * @param  array<string, mixed>  $validated
      */
+    private function resolvePaymentAccountId(array $validated): ?int
+    {
+        $payments = $validated['payments'] ?? [];
+
+        if (! is_array($payments))
+        {
+            return null;
+        }
+
+        foreach ($payments as $payment)
+        {
+            if (is_array($payment) && filled($payment['account_id'] ?? null))
+            {
+                return (int) $payment['account_id'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
     private function resolveCurrencyId(array $validated): ?int
     {
         if (! empty($validated['currency_id']))
@@ -322,8 +418,14 @@ class ExpenseController extends Controller
             return (int) $validated['currency_id'];
         }
 
+        $accountId = $this->resolvePaymentAccountId($validated);
+        if ($accountId === null)
+        {
+            return null;
+        }
+
         $accountCurrencyId = PaymentAccount::query()
-            ->whereKey((int) $validated['account_id'])
+            ->whereKey($accountId)
             ->value('currency_id');
 
         if ($accountCurrencyId !== null)
@@ -359,14 +461,18 @@ class ExpenseController extends Controller
     {
         foreach ($lineSummaries as $lineSummary)
         {
+            $allocationFactor = (float) ($lineSummary['allocation_percent'] ?? 100) / 100;
+            $unitPrice = round((float) ($lineSummary['base_amount'] ?? 0) * $allocationFactor, 2);
+            $vatPercent = round((float) ($lineSummary['vat_percent'] ?? 0), 2);
+
             InvoiceItem::query()->create([
                 'invoice_id' => $invoice->id,
                 'category_id' => $categoryId,
                 'description' => (string) $lineSummary['concept'],
                 'quantity' => 1,
-                'unit_price' => (float) $lineSummary['allocated_total'],
+                'unit_price' => $unitPrice,
                 'discount' => 0,
-                'tax_percentage' => 0,
+                'tax_percentage' => $vatPercent,
             ]);
         }
     }
@@ -388,9 +494,15 @@ class ExpenseController extends Controller
             }
         }
 
+        $accountId = $this->resolvePaymentAccountId($validated);
+        if ($accountId === null)
+        {
+            return 'EUR';
+        }
+
         $accountCurrencyCode = PaymentAccount::query()
             ->with('currency')
-            ->whereKey((int) $validated['account_id'])
+            ->whereKey($accountId)
             ->first()
             ?->currency
             ?->code;
@@ -436,7 +548,31 @@ class ExpenseController extends Controller
     }
 
     /**
+     * @param  array<int, array<string, mixed>>  $payments
+     * @return array<int, array<string, mixed>>
+     */
+    private function resolvePaymentEntries(array $payments, float $invoiceTotal): array
+    {
+        $resolved = [];
+
+        foreach ($payments as $payment)
+        {
+            if (! filled($payment['amount'] ?? null))
+            {
+                continue;
+            }
+
+            $resolved[] = array_merge($payment, [
+                'amount' => round((float) $payment['amount'], 2),
+            ]);
+        }
+
+        return $resolved;
+    }
+
+    /**
      * @param  array<string, mixed>  $validated
+     * @param  array<int, array<string, mixed>>  $paymentEntries
      */
     private function buildRemarks(
         array $validated,
@@ -445,6 +581,7 @@ class ExpenseController extends Controller
         array $lineSummaries,
         ?string $expenseCategoryName,
         ?string $storedDocumentPath = null,
+        array $paymentEntries = [],
     ): ?string {
         $lineRemarks = collect($lineSummaries)->map(function (array $line, int $index): string
         {
@@ -475,7 +612,12 @@ class ExpenseController extends Controller
                 ? 'Documento: '.asset('storage/'.ltrim((string) $storedDocumentPath, '/'))
                 : null,
             $lineRemarks,
-            'Fecha de pago: '.(string) $validated['payment_date'],
+            $paymentEntries !== []
+                ? 'Pagos: '.collect($paymentEntries)->map(function (array $payment): string
+                {
+                    return number_format((float) $payment['amount'], 2, '.', '').' ('.(string) $payment['payment_date'].')';
+                })->implode(', ')
+                : null,
             'Moneda: '.$currencyCode,
             'Total final: '.number_format($amount, 2, '.', '').' '.$currencyCode,
             ! empty($validated['cash_criteria']) ? 'Criterio de caja: sí' : null,

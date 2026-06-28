@@ -6,6 +6,7 @@ use App\Enums\ExternalProvider;
 use App\Http\Requests\UpdateTeamEmailSenderRequest;
 use App\Http\Requests\UpdateTeamSettingsRequest;
 use App\Models\ContactValoration;
+use App\Models\Currency;
 use App\Models\CustomTranslation;
 use App\Models\Module;
 use App\Models\Prompt;
@@ -848,6 +849,23 @@ class TeamSettingController extends Controller
                     ],
                 ],
             ],
+            'finance' => [
+                'title' => __('Finance reporting'),
+                'icon' => 'ti ti-currency-euro',
+                'settings' => [
+                    'finance_reporting_currency' => [
+                        'label' => __('Reporting currency'),
+                        'type' => 'select',
+                        'options' => [],
+                        'value' => strtoupper((string) $team->getSetting(
+                            'finance_reporting_currency',
+                            config('verifactu.default_currency', 'EUR'),
+                        )),
+                        'is_encrypted' => false,
+                        'help' => __('Income, expense and finance dashboards convert approved payments to this currency using system exchange rates.'),
+                    ],
+                ],
+            ],
             'public_shop' => [
                 'title' => __('Public assistant shop'),
                 'icon' => 'ti ti-shopping-bag',
@@ -1394,6 +1412,18 @@ class TeamSettingController extends Controller
                 ],
             ],
         ];
+
+        if ($group === 'finance' && isset($config['finance']))
+        {
+            $config['finance']['settings']['finance_reporting_currency']['options'] = Currency::query()
+                ->active()
+                ->orderBy('code')
+                ->get()
+                ->mapWithKeys(fn (Currency $currency) => [
+                    strtoupper((string) $currency->code) => strtoupper((string) $currency->code).' - '.$currency->name,
+                ])
+                ->all();
+        }
 
         if (! isset($config[$group]))
         {

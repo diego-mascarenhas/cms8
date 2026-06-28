@@ -16,5 +16,6 @@ return [
         'amount_exceeds_balance' => 'The amount cannot exceed the outstanding balance.',
         'account_invalid' => 'The selected account is not valid.',
         'account_currency_mismatch' => 'The account must use the same currency as the invoice.',
+        'type_not_allowed_for_account' => 'The selected payment method is not allowed for the chosen account.',
     ],
 ];

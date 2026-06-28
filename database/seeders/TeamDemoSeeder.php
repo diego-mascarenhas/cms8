@@ -29,6 +29,7 @@ use App\Models\Template;
 use App\Models\User;
 use App\Services\DemoDataService;
 use App\Services\Finance\FinancialProjectionHistoryGenerator;
+use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\DemoTeam;
 use Illuminate\Console\Command;
@@ -627,6 +628,12 @@ class TeamDemoSeeder extends Seeder
             'is_encrypted' => false,
         ]);
 
+        $team->setSetting('documents_ocr_mode', 'hybrid', [
+            'type' => 'string',
+            'group' => 'documents',
+            'is_encrypted' => false,
+        ]);
+
         $team->enableModule('today');
         $team->enableModule('performance_insights');
 
@@ -636,7 +643,7 @@ class TeamDemoSeeder extends Seeder
             'is_encrypted' => false,
         ]);
 
-        $this->command->info('✅ Demo presentation settings configured (Business + Hoy + insights, no shortcuts icon)');
+        $this->command->info('✅ Demo presentation settings configured (Business + Hoy + insights, hybrid OCR, no shortcuts icon)');
     }
 
     /**
@@ -1354,11 +1361,12 @@ class TeamDemoSeeder extends Seeder
             $this->command->warn('⚠️  No payment account found, creating one...');
             $paymentAccount = PaymentAccount::withoutGlobalScopes()->create([
                 'team_id' => $this->teamId,
-                'code' => 'MAIN',
-                'name' => 'Cuenta Principal',
-                'currency_id' => 840,  // USD
+                'code' => 'BANK_USD',
+                'name' => 'Cuenta bancaria (USD)',
+                'currency_id' => 840,
                 'status' => 1,
             ]);
+            app(PaymentAccountCompatibilityService::class)->syncConfiguredPaymentTypes($paymentAccount, [2]);
         }
 
         $taxStatuses = EnterpriseTaxStatusType::pluck('id')->all();

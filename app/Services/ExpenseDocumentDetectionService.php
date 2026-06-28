@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Currency;
-use App\Models\Enterprise;
 use App\Models\Team;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -43,12 +42,15 @@ Rules:
 - allocation_percent must be 100 when unknown.
 - enterprise_name MUST be the issuer/supplier (not customer/recipient/buyer).
 - document_number MUST NOT be a phone number.
+- lines must be product/service rows only (taxable base before VAT).
+- Do NOT include tax breakdown rows (IVA, base imponible, subtotal, total) as separate lines.
 - Do not include markdown or explanations.
 PROMPT;
 
     public function __construct(
         private readonly DocumentOcrService $ocrService,
         private readonly DocumentAiOcrService $aiOcrService,
+        private readonly ExpenseSupplierService $supplierService,
     ) {}
 
     /**
@@ -68,14 +70,23 @@ PROMPT;
         $aiData = $this->extractStructuredDataWithAi($ocrResult['text'], $teamId, $ocrResult['mode']);
         $detectedData = $this->mergeDetectedData($heuristicData, $aiData);
 
-        $enterpriseId = $this->resolveEnterpriseId($detectedData['enterprise_name'] ?? null, $teamId);
+        $supplierResolution = $this->supplierService->resolveForDetectedInvoice(
+            $file,
+            $ocrResult['text'],
+            $detectedData,
+            $teamId,
+            $ocrResult['mode'],
+        );
+
         $currencyId = $this->resolveCurrencyId($detectedData['currency_code'] ?? null);
         $lines = $this->normalizeLines($detectedData['lines'] ?? [], $detectedData['total_amount'] ?? null);
         $totalAmount = $this->resolveTotalAmount($detectedData['total_amount'] ?? null, $lines);
 
         return [
-            'enterprise_id' => $enterpriseId,
-            'enterprise_name' => $detectedData['enterprise_name'] ?? null,
+            'enterprise_id' => $supplierResolution['enterprise_id'],
+            'enterprise_name' => $supplierResolution['enterprise_name'],
+            'enterprise_match' => $supplierResolution['match'],
+            'detected_supplier' => $this->formatDetectedSupplierForResponse($supplierResolution['supplier']),
             'document_number' => $detectedData['document_number'] ?? null,
             'date' => $this->normalizeDate($detectedData['invoice_date'] ?? null),
             'due_date' => $this->normalizeDate($detectedData['due_date'] ?? null)
@@ -575,59 +586,28 @@ PROMPT;
         return (float) $numeric;
     }
 
-    private function resolveEnterpriseId(?string $enterpriseName, int $teamId): ?int
+    /**
+     * @param  array<string, string|null>  $supplier
+     * @return array<string, string|null>
+     */
+    private function formatDetectedSupplierForResponse(array $supplier): array
     {
-        $normalizedTarget = $this->normalizeText($enterpriseName);
-        if ($normalizedTarget === '')
-        {
-            return null;
-        }
+        $name = $supplier['legal_name'] ?? $supplier['brand_name'] ?? null;
 
-        $enterprises = Enterprise::withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->get(['id', 'name', 'type_id']);
-
-        $bestEnterpriseId = null;
-        $bestScore = 0.0;
-
-        foreach ($enterprises as $enterprise)
-        {
-            $normalizedName = $this->normalizeText($enterprise->name);
-            if ($normalizedName === '')
-            {
-                continue;
-            }
-
-            $score = 0.0;
-            if ($normalizedName === $normalizedTarget)
-            {
-                $score = 100.0;
-            } elseif (str_contains($normalizedName, $normalizedTarget) || str_contains($normalizedTarget, $normalizedName))
-            {
-                $score = 85.0;
-            } else
-            {
-                similar_text($normalizedName, $normalizedTarget, $score);
-            }
-
-            if ((int) $enterprise->type_id === 2)
-            {
-                $score += 5.0;
-            }
-
-            if ($score > $bestScore)
-            {
-                $bestScore = $score;
-                $bestEnterpriseId = (int) $enterprise->id;
-            }
-        }
-
-        if ($bestScore < 55.0)
-        {
-            return null;
-        }
-
-        return $bestEnterpriseId;
+        return [
+            'name' => $name,
+            'brand_name' => $supplier['brand_name'] ?? null,
+            'legal_name' => $supplier['legal_name'] ?? null,
+            'identification_number' => $supplier['identification_number'] ?? null,
+            'email' => $supplier['email'] ?? null,
+            'phone' => $supplier['phone'] ?? null,
+            'website' => $supplier['website'] ?? null,
+            'address' => $supplier['address'] ?? null,
+            'postal_code' => $supplier['postal_code'] ?? null,
+            'locality' => $supplier['locality'] ?? null,
+            'province' => $supplier['province'] ?? null,
+            'country' => $supplier['country'] ?? null,
+        ];
     }
 
     private function resolveCurrencyId(?string $currencyCode): ?int
@@ -675,6 +655,8 @@ PROMPT;
             ->values()
             ->all();
 
+        $normalizedLines = $this->filterTaxBreakdownLines($normalizedLines, $totalAmount);
+
         if ($normalizedLines === [] && $totalAmount !== null && $totalAmount > 0)
         {
             $normalizedLines[] = [
@@ -687,6 +669,147 @@ PROMPT;
         }
 
         return $normalizedLines;
+    }
+
+    /**
+     * @param  array<int, array<string, float|string>>  $lines
+     * @return array<int, array<string, float|string>>
+     */
+    private function filterTaxBreakdownLines(array $lines, ?float $totalAmount): array
+    {
+        if ($lines === [])
+        {
+            return [];
+        }
+
+        $lines = collect($lines)
+            ->reject(fn (array $line): bool => $this->isTaxOrSummaryConcept((string) $line['concept']))
+            ->values()
+            ->all();
+
+        if ($lines === [])
+        {
+            return [];
+        }
+
+        $lines = collect($lines)
+            ->reject(function (array $line) use ($lines): bool
+            {
+                $baseAmount = (float) $line['base_amount'];
+
+                foreach ($lines as $otherLine)
+                {
+                    if ($otherLine === $line)
+                    {
+                        continue;
+                    }
+
+                    $otherBase = (float) $otherLine['base_amount'];
+                    $expectedVat = round($otherBase * ((float) $otherLine['vat_percent'] / 100), 2);
+                    $expectedRetention = round($otherBase * ((float) $otherLine['retention_percent'] / 100), 2);
+
+                    if ($this->amountsAreClose($baseAmount, $expectedVat) || $this->amountsAreClose($baseAmount, $expectedRetention))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            })
+            ->values()
+            ->all();
+
+        $lines = collect($lines)
+            ->groupBy(fn (array $line): string => number_format((float) $line['base_amount'], 2, '.', ''))
+            ->map(function ($group)
+            {
+                if ($group->count() === 1)
+                {
+                    return $group->first();
+                }
+
+                return $group
+                    ->sortByDesc(fn (array $line): int => mb_strlen((string) $line['concept']))
+                    ->first();
+            })
+            ->values()
+            ->all();
+
+        if ($totalAmount !== null && $totalAmount > 0 && count($lines) > 1)
+        {
+            $lines = collect($lines)
+                ->reject(fn (array $line): bool => $this->amountsAreClose((float) $line['base_amount'], $totalAmount))
+                ->values()
+                ->all();
+        }
+
+        return array_values($lines);
+    }
+
+    private function isTaxOrSummaryConcept(string $concept): bool
+    {
+        $normalizedConcept = $this->normalizeText($concept);
+
+        if ($normalizedConcept === '')
+        {
+            return true;
+        }
+
+        $exactMatches = [
+            'base imponible',
+            'subtotal',
+            'sub total',
+            'total',
+            'importe total',
+            'total factura',
+            'total a pagar',
+            'cuota iva',
+            'impuesto',
+            'tax',
+            'vat',
+            'iva',
+            'i v a',
+            'descuento',
+            'discount',
+        ];
+
+        if (in_array($normalizedConcept, $exactMatches, true))
+        {
+            return true;
+        }
+
+        $prefixPatterns = [
+            '/^iva\b/u',
+            '/^i v a\b/u',
+            '/^cuota\b/u',
+            '/^impuesto\b/u',
+            '/^retencion\b/u',
+            '/^retenc\b/u',
+            '/^irpf\b/u',
+            '/^withholding\b/u',
+            '/^base imponible\b/u',
+            '/^subtotal\b/u',
+        ];
+
+        foreach ($prefixPatterns as $pattern)
+        {
+            if (preg_match($pattern, $normalizedConcept) === 1)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function amountsAreClose(float $left, float $right, float $tolerance = 0.02): bool
+    {
+        if ($right <= 0)
+        {
+            return false;
+        }
+
+        return abs($left - $right) <= $tolerance;
     }
 
     /**
@@ -887,6 +1010,12 @@ PROMPT;
                 continue;
             }
 
+            $conceptFromLine = $this->cleanConceptText($line);
+            if ($conceptFromLine !== '' && $this->isTaxOrSummaryConcept($conceptFromLine))
+            {
+                continue;
+            }
+
             $amounts = $this->extractAmountsFromLine($line);
             if ($amounts === [])
             {
@@ -958,6 +1087,11 @@ PROMPT;
     private function isSummaryOrMetaLine(string $line): bool
     {
         $normalizedLine = $this->normalizeText($line);
+
+        if ($this->isTaxOrSummaryConcept($line))
+        {
+            return true;
+        }
 
         return str_contains($normalizedLine, 'total')
             || str_contains($normalizedLine, 'subtotal')

@@ -5,62 +5,52 @@ namespace App\Http\Controllers;
 use App\DataTables\IncomeDataTable;
 use App\Enums\TransactionType;
 use App\Models\Payment;
-use App\Models\PaymentAccount;
+use App\Services\Finance\PaymentReportingCurrencyService;
 use Carbon\Carbon;
 
 class IncomeController extends Controller
 {
+    public function __construct(
+        private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
+    ) {}
+
     public function index(IncomeDataTable $dataTable)
     {
         $this->authorize('viewAny', Payment::class);
 
-        // Get accounts with balances
-        $accounts = PaymentAccount::with('currency')
-            ->get()
-            ->map(function ($account)
-            {
-                $balance = Payment::where('account_id', $account->id)
-                    ->where('status', 2) // Approved
-                    ->selectRaw('COALESCE(SUM(CASE WHEN transaction_type = ? THEN amount ELSE -amount END), 0) as balance', [TransactionType::INCOME->value])
-                    ->value('balance');
+        $accounts = $this->paymentReportingCurrencyService->accountBalancesForDisplay();
+        $reportingCurrency = $this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam();
 
-                return [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'balance' => $balance,
-                    'currency_code' => $account->currency->code ?? 'USD',
-                ];
-            });
+        $currentMonthIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::INCOME,
+            $reportingCurrency,
+            fn ($query) => $query
+                ->whereMonth('payments.date', Carbon::now()->month)
+                ->whereYear('payments.date', Carbon::now()->year),
+        );
 
-        // Current month income
-        $currentMonthIncome = Payment::where('transaction_type', TransactionType::INCOME)
-            ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->month)
-            ->whereYear('date', Carbon::now()->year)
-            ->sum('amount');
+        $lastMonthIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::INCOME,
+            $reportingCurrency,
+            fn ($query) => $query
+                ->whereMonth('payments.date', Carbon::now()->subMonth()->month)
+                ->whereYear('payments.date', Carbon::now()->subMonth()->year),
+        );
 
-        // Last month income
-        $lastMonthIncome = Payment::where('transaction_type', TransactionType::INCOME)
-            ->where('status', 2)
-            ->whereMonth('date', Carbon::now()->subMonth()->month)
-            ->whereYear('date', Carbon::now()->subMonth()->year)
-            ->sum('amount');
-
-        // Calculate percentage change
         $percentageChange = $lastMonthIncome > 0
             ? (($currentMonthIncome - $lastMonthIncome) / $lastMonthIncome) * 100
             : 0;
 
-        // Year to date income
-        $ytdIncome = Payment::where('transaction_type', TransactionType::INCOME)
-            ->where('status', 2)
-            ->whereYear('date', Carbon::now()->year)
-            ->sum('amount');
+        $ytdIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::INCOME,
+            $reportingCurrency,
+            fn ($query) => $query->whereYear('payments.date', Carbon::now()->year),
+        );
 
-        // Total approved income
-        $totalIncome = Payment::where('transaction_type', TransactionType::INCOME)
-            ->where('status', 2)
-            ->sum('amount');
+        $totalIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+            TransactionType::INCOME,
+            $reportingCurrency,
+        );
 
         return $dataTable->render('income.index', compact(
             'accounts',
@@ -68,6 +58,7 @@ class IncomeController extends Controller
             'percentageChange',
             'ytdIncome',
             'totalIncome',
+            'reportingCurrency',
         ));
     }
 }

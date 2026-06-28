@@ -16,5 +16,6 @@ return [
         'amount_exceeds_balance' => 'El importe no puede superar el saldo pendiente.',
         'account_invalid' => 'La cuenta seleccionada no es válida.',
         'account_currency_mismatch' => 'La cuenta debe estar en la misma moneda que la factura.',
+        'type_not_allowed_for_account' => 'La forma de pago seleccionada no está permitida para la cuenta elegida.',
     ],
 ];

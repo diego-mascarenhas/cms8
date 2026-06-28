@@ -11,10 +11,13 @@
 @endsection
 
 @section('content')
+@php
+    $formatCardAmount = static fn (float $amount): string => \App\Helpers\Helpers::formatDecimal($amount, 0);
+@endphp
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">{{ __('Accounting Dashboard') }}</h4>
-        <p class="text-muted">{{ __('Financial overview and indicators') }}</p>
+        <p class="text-muted mb-0">{{ __('Financial overview and indicators') }}</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
         <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-center">
@@ -34,7 +37,7 @@
         </a>
         @can('viewAny', App\Models\Invoice::class)
         <a href="{{ route('finance-dashboard.projection', ['year' => $selectedYear]) }}" class="btn btn-primary">
-            <i class="ti ti-chart-dots me-1"></i> {{ __('Projection report') }}
+            <i class="ti ti-report-analytics me-1"></i> {{ __('Report') }}
         </a>
         @endcan
     </div>
@@ -43,17 +46,16 @@
 <!-- Key Metrics Row -->
 <div class="row g-4 mb-4">
     <div class="col-sm-6 col-lg-3">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
+                <div class="d-flex align-items-start justify-content-between h-100">
                     <div class="content-left">
                         <span>{{ __('Monthly Profit') }}</span>
                         <div class="d-flex align-items-center my-2">
                             <h3 class="mb-0 me-2 {{ $currentMonthProfit >= 0 ? 'text-success' : 'text-danger' }}">
-                                {{ number_format($currentMonthProfit, 2) }}
+                                {{ $formatCardAmount($currentMonthProfit) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
                             </h3>
                         </div>
-                        <p class="mb-0">{{ \Carbon\Carbon::create($selectedYear, now()->month, 1)->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded {{ $currentMonthProfit >= 0 ? 'bg-label-success' : 'bg-label-danger' }}">
@@ -65,15 +67,14 @@
         </div>
     </div>
     <div class="col-sm-6 col-lg-3">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
+                <div class="d-flex align-items-start justify-content-between h-100">
                     <div class="content-left">
                         <span>{{ __('Monthly Income') }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2 text-success">{{ number_format($currentMonthIncome, 2) }}</h3>
+                            <h3 class="mb-0 me-2 text-success">{{ $formatCardAmount($currentMonthIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                         </div>
-                        <p class="mb-0">{{ \Carbon\Carbon::create($selectedYear, now()->month, 1)->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-success">
@@ -85,15 +86,14 @@
         </div>
     </div>
     <div class="col-sm-6 col-lg-3">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
+                <div class="d-flex align-items-start justify-content-between h-100">
                     <div class="content-left">
                         <span>{{ __('Monthly Expenses') }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2 text-danger">{{ number_format($currentMonthExpense, 2) }}</h3>
+                            <h3 class="mb-0 me-2 text-danger">{{ $formatCardAmount($currentMonthExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                         </div>
-                        <p class="mb-0">{{ \Carbon\Carbon::create($selectedYear, now()->month, 1)->translatedFormat('F Y') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-danger">
@@ -105,9 +105,9 @@
         </div>
     </div>
     <div class="col-sm-6 col-lg-3">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
+                <div class="d-flex align-items-start justify-content-between h-100">
                     <div class="content-left">
                         <span>{{ __('Profit Margin') }}</span>
                         <div class="d-flex align-items-center my-2">
@@ -115,7 +115,6 @@
                                 {{ number_format($profitMargin, 1) }}%
                             </h3>
                         </div>
-                        <p class="mb-0">{{ __('YTD') }}</p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-info">
@@ -138,8 +137,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2 class="mb-0 text-success">{{ number_format($ytdIncome, 2) }}</h2>
-                        <p class="text-muted mb-0">{{ $selectedYear }}</p>
+                        <h2 class="mb-0 text-success">{{ $formatCardAmount($ytdIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h2>
                     </div>
                     <div class="avatar avatar-lg">
                         <span class="avatar-initial rounded-circle bg-label-success">
@@ -158,8 +156,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h2 class="mb-0 text-danger">{{ number_format($ytdExpense, 2) }}</h2>
-                        <p class="text-muted mb-0">{{ $selectedYear }}</p>
+                        <h2 class="mb-0 text-danger">{{ $formatCardAmount($ytdExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h2>
                     </div>
                     <div class="avatar avatar-lg">
                         <span class="avatar-initial rounded-circle bg-label-danger">
@@ -179,9 +176,8 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="mb-0 {{ $ytdProfit >= 0 ? 'text-success' : 'text-danger' }}">
-                            {{ number_format($ytdProfit, 2) }}
+                            {{ $formatCardAmount($ytdProfit) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
                         </h2>
-                        <p class="text-muted mb-0">{{ $selectedYear }}</p>
                     </div>
                     <div class="avatar avatar-lg">
                         <span class="avatar-initial rounded-circle {{ $ytdProfit >= 0 ? 'bg-label-success' : 'bg-label-danger' }}">
@@ -225,13 +221,30 @@
     </div>
 </div>
 
+@can('viewAny', App\Models\Invoice::class)
+    @include('finance-dashboard.partials.invoice-category-breakdown', [
+        'incomeCategories' => $incomeCategories,
+        'expenseCategories' => $expenseCategories,
+        'reportingCurrency' => $invoiceReportingCurrency,
+        'selectedYear' => $selectedYear,
+        'selectedMonth' => $selectedMonth,
+        'incomeChartId' => 'financeDashboardIncomeCategoryChart',
+        'expenseChartId' => 'financeDashboardExpenseCategoryChart',
+    ])
+@endcan
+
 <!-- Account Balances -->
 <div class="card">
-    <div class="card-header border-bottom">
+    <div class="card-header border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="card-title m-0">{{ __('Account Balances') }}</h5>
             <p class="text-muted small mb-0">{{ __('Balances sum all payments per account; only active accounts with movements are listed.') }}</p>
         </div>
+        @can('viewAny', \App\Models\PaymentAccount::class)
+            <a href="{{ route('payment-account.index') }}" class="btn btn-sm btn-outline-primary">
+                <i class="ti ti-wallet me-1"></i> Cuentas de pago
+            </a>
+        @endcan
     </div>
     <div class="card-widget-separator-wrapper">
         <div class="card-body card-widget-separator">
@@ -450,6 +463,45 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('load', function () {
         scheduleFinanceCharts();
     });
+
+    const incomeCategories = @json($incomeCategories ?? []);
+    const expenseCategories = @json($expenseCategories ?? []);
+    const incomeChartColors = ['#28c76f', '#55d187', '#83df9e', '#b2edc4', '#1f9d57', '#3dd68c', '#6ee7a8', '#9ef0c4'];
+    const expenseChartColors = ['#ea5455', '#f08182', '#f5adaf', '#fad8d9', '#d43f3f', '#ff6b6b', '#ff9999', '#ffc9c9'];
+
+    function expandChartColors(palette, count) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+            colors.push(palette[i % palette.length]);
+        }
+        return colors;
+    }
+
+    function renderCategoryDonut(elId, rows, palette) {
+        const el = document.querySelector(elId);
+        if (!el || !rows.length) {
+            return;
+        }
+        const top = rows.slice(0, 8);
+        const otherTotal = rows.slice(8).reduce(function (sum, row) { return sum + row.total; }, 0);
+        const labels = top.map(function (r) { return r.name; });
+        const series = top.map(function (r) { return r.total; });
+        if (otherTotal > 0) {
+            labels.push(@json(__('Other')));
+            series.push(otherTotal);
+        }
+        new ApexCharts(el, {
+            chart: { type: 'donut', height: 220 },
+            labels: labels,
+            series: series,
+            colors: expandChartColors(palette, labels.length),
+            legend: { show: false },
+            dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + '%'; } },
+        }).render();
+    }
+
+    renderCategoryDonut('#financeDashboardIncomeCategoryChart', incomeCategories, incomeChartColors);
+    renderCategoryDonut('#financeDashboardExpenseCategoryChart', expenseCategories, expenseChartColors);
 });
 </script>
 @endpush

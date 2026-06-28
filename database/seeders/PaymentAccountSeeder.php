@@ -2,16 +2,100 @@
 
 namespace Database\Seeders;
 
+use App\Models\PaymentAccount;
+use App\Services\Finance\PaymentAccountCompatibilityService;
 use Illuminate\Database\Seeder;
 
 class PaymentAccountSeeder extends Seeder
 {
     /**
+     * @var list<array{code: string, name: string, currency_id: int, status: int, payment_type_ids: list<int>}>
+     */
+    private const PAYMENT_ACCOUNTS_TEMPLATE = [
+        [
+            'code' => 'BANK_EUR',
+            'name' => 'Cuenta bancaria (EUR)',
+            'currency_id' => 978,
+            'status' => 1,
+            'payment_type_ids' => [2, 11],
+        ],
+        [
+            'code' => 'BANK_USD',
+            'name' => 'Cuenta bancaria (USD)',
+            'currency_id' => 840,
+            'status' => 1,
+            'payment_type_ids' => [2],
+        ],
+        [
+            'code' => 'CASH',
+            'name' => 'Caja',
+            'currency_id' => 978,
+            'status' => 1,
+            'payment_type_ids' => [1],
+        ],
+        [
+            'code' => 'STRIPE_EUR',
+            'name' => 'Stripe (EUR)',
+            'currency_id' => 978,
+            'status' => 1,
+            'payment_type_ids' => [6, 8],
+        ],
+        [
+            'code' => 'STRIPE_USD',
+            'name' => 'Stripe (USD)',
+            'currency_id' => 840,
+            'status' => 1,
+            'payment_type_ids' => [6, 8],
+        ],
+        [
+            'code' => 'PAYPAL_EUR',
+            'name' => 'PayPal (EUR)',
+            'currency_id' => 978,
+            'status' => 1,
+            'payment_type_ids' => [6, 7],
+        ],
+        [
+            'code' => 'PAYPAL_USD',
+            'name' => 'PayPal (USD)',
+            'currency_id' => 840,
+            'status' => 1,
+            'payment_type_ids' => [6, 7],
+        ],
+        [
+            'code' => 'WISE_EUR',
+            'name' => 'Wise (EUR)',
+            'currency_id' => 978,
+            'status' => 1,
+            'payment_type_ids' => [9],
+        ],
+        [
+            'code' => 'WISE_USD',
+            'name' => 'Wise (USD)',
+            'currency_id' => 840,
+            'status' => 1,
+            'payment_type_ids' => [9],
+        ],
+        [
+            'code' => 'MPAGO_ARS',
+            'name' => 'Mercado Pago (ARS)',
+            'currency_id' => 32,
+            'status' => 1,
+            'payment_type_ids' => [2, 12],
+        ],
+        [
+            'code' => 'CUENTICA',
+            'name' => 'Cuéntica',
+            'currency_id' => 978,
+            'status' => 1,
+            'payment_type_ids' => [13],
+        ],
+    ];
+
+    /**
      * Run the database seeds.
      */
     public function run(): void
     {
-        // Get existing teams
         $teams = \App\Models\Team::all();
 
         if ($teams->isEmpty())
@@ -21,53 +105,26 @@ class PaymentAccountSeeder extends Seeder
             return;
         }
 
-        $paymentAccountsTemplate = [
-            [
-                'code' => 'EUR',
-                'name' => 'Cuenta Euro',
-                'symbol' => '€',
-                'currency_id' => 978, // EUR currency ID
-                'status' => 1,
-            ],
-            [
-                'code' => 'USD',
-                'name' => 'Cuenta Dólar',
-                'symbol' => '$',
-                'currency_id' => 840, // USD currency ID
-                'status' => 1,
-            ],
-            [
-                'code' => 'PAYPAL',
-                'name' => 'PayPal',
-                'symbol' => '$',
-                'currency_id' => 840, // USD currency ID
-                'status' => 1,
-            ],
-            [
-                'code' => 'STRIPE',
-                'name' => 'Stripe',
-                'symbol' => '€',
-                'currency_id' => 978, // EUR currency ID
-                'status' => 1,
-            ],
-        ];
+        $compatibilityService = app(PaymentAccountCompatibilityService::class);
 
-        // Create payment accounts for each team
         foreach ($teams as $team)
         {
             $this->command->info("Creating payment accounts for team: {$team->name}");
 
-            foreach ($paymentAccountsTemplate as $accountData)
+            foreach (self::PAYMENT_ACCOUNTS_TEMPLATE as $accountData)
             {
-                $account = array_merge($accountData, ['team_id' => $team->id]);
+                $paymentTypeIds = $accountData['payment_type_ids'];
+                unset($accountData['payment_type_ids']);
 
-                \App\Models\PaymentAccount::firstOrCreate(
+                $paymentAccount = PaymentAccount::updateOrCreate(
                     [
                         'team_id' => $team->id,
-                        'code' => $account['code'],
+                        'code' => $accountData['code'],
                     ],
-                    $account,
+                    array_merge($accountData, ['team_id' => $team->id]),
                 );
+
+                $compatibilityService->syncConfiguredPaymentTypes($paymentAccount, $paymentTypeIds);
             }
         }
 

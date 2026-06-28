@@ -5,9 +5,9 @@ namespace App\Http\Controllers;
 use App\DataTables\CategoryDataTable;
 use App\Http\Requests\UpdateCategoryOrderRequest;
 use App\Models\Category;
-use App\Models\InvoiceItem;
 use App\Models\Module;
 use App\Models\Team;
+use App\Services\Finance\InvoicedLineItemsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -495,25 +495,50 @@ class CategoryController extends Controller
     /**
      * Show items in a category.
      */
-    public function showItems($id)
+    public function showItems(Request $request, InvoicedLineItemsService $invoicedLineItemsService, $id)
     {
-        // Get current team
         $team = Auth::user()->currentTeam;
 
-        $category = Category::where('team_id', $team->id)
-            ->with('invoiceItems.invoice.enterprise')
-            ->findOrFail($id);
+        $category = Category::where('team_id', $team->id)->findOrFail($id);
 
-        $totalAmount = $category->invoiceItems->sum(function ($item)
-        {
-            return $item->quantity * $item->unit_price - ($item->discount ?? 0);
-        });
+        $period = $invoicedLineItemsService->resolvePeriodFilter($request);
+        $items = $invoicedLineItemsService->queryItems(
+            teamId: (int) $team->id,
+            from: $period['from'],
+            to: $period['to'],
+            categoryId: (int) $category->id,
+        );
+
+        $display = $invoicedLineItemsService->buildDisplayPayload(
+            $items,
+            (int) $team->id,
+            showDescription: false,
+            showCategory: false,
+        );
 
         return view('category.items', [
             'category' => $category,
-            'items' => $category->invoiceItems,
-            'totalAmount' => $totalAmount,
+            'lines' => $display['lines'],
+            'totalAmount' => $display['total'],
+            'reportingCurrency' => $display['reporting_currency'],
+            'conversionComplete' => $display['conversion_complete'],
+            'availableYears' => $invoicedLineItemsService->availableYearsForTeam((int) $team->id),
+            'selectedYear' => $period['year'],
+            'selectedMonth' => $period['month'],
+            'backUrl' => $this->resolveCategoryItemsBackUrl($request),
         ]);
+    }
+
+    private function resolveCategoryItemsBackUrl(Request $request): string
+    {
+        $return = (string) $request->query('return', '');
+
+        if ($return !== '' && str_starts_with($return, (string) config('app.url')))
+        {
+            return $return;
+        }
+
+        return route('finance-dashboard.index');
     }
 
     /**

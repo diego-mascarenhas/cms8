@@ -113,8 +113,8 @@ class ExpenseDocumentNumberLinkTest extends TestCase
         return [
             ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'date', 'name' => 'date', 'searchable' => 'true', 'orderable' => 'true'],
-            ['data' => 'enterprise_id', 'name' => 'enterprise_id', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'invoice_id', 'name' => 'invoice_id', 'searchable' => 'true', 'orderable' => 'true'],
+            ['data' => 'enterprise_id', 'name' => 'enterprise_id', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'account_id', 'name' => 'account_id', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'type_id', 'name' => 'type_id', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'amount', 'name' => 'amount', 'searchable' => 'false', 'orderable' => 'true'],

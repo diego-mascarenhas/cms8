@@ -254,6 +254,37 @@ class Helpers
     }
 
     /**
+     * Parse user-entered decimal amounts (Spanish locale) into a normalized dot-decimal string.
+     */
+    public static function parseDecimalInput(mixed $value): ?string
+    {
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        if (str_contains($normalized, ','))
+        {
+            $normalized = str_replace('.', '', $normalized);
+            $normalized = str_replace(',', '.', $normalized);
+        }
+
+        if (! is_numeric($normalized))
+        {
+            return trim((string) $value);
+        }
+
+        return number_format((float) $normalized, 2, '.', '');
+    }
+
+    /**
      * Format money amount with currency
      *
      * @param  float  $amount  Amount to format
