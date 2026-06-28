@@ -20,12 +20,9 @@
         <p class="text-muted">{{ __('Manage your income and revenue') }}</p>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary me-2">
+        <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
             <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
         </a>
-        <button class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> {{ __('Add Income') }}
-        </button>
     </div>
 </div>
 

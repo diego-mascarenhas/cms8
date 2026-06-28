@@ -167,6 +167,7 @@
                     <div class="col-12">
                         <label for="document_number" class="form-label">Número de comprobante</label>
                         <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
+                        <small id="document-number-duplicate-warning" class="d-none text-warning d-block mt-1"></small>
                         @error('document_number')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -329,14 +330,8 @@
 
         @php
             $initialPayments = old('payments');
-            if (! is_array($initialPayments) || $initialPayments === []) {
-                $initialPayments = [[
-                    'payment_date' => old('payment_date', now()->toDateString()),
-                    'amount' => old('payment_amount'),
-                    'type_id' => old('type_id', $defaultPaymentTypeId),
-                    'account_id' => old('account_id', $defaultPaymentAccountId),
-                    'status' => old('status', '2'),
-                ]];
+            if (! is_array($initialPayments)) {
+                $initialPayments = [];
             }
         @endphp
 
@@ -467,6 +462,9 @@
                 </div>
             @endforeach
         </div>
+        <p id="expense-payments-empty" class="text-muted small mb-0 {{ $initialPayments !== [] ? 'd-none' : '' }}">
+            Sin pagos registrados. La factura quedará pendiente de pago. Usa «Añadir pago» si quieres registrar uno.
+        </p>
 
         <div id="payments-summary" class="small text-muted mt-2"></div>
         @error('payments')
@@ -704,14 +702,86 @@
         var $currencySelect = $('#currency_id');
         var $summaryVatLines = $('#summary-vat-lines');
         var detectDocumentUrl = @json(route('expense.detect-document'));
+        var checkDocumentDuplicateUrl = @json(route('expense.check-document-duplicate'));
         var createSupplierUrl = @json(route('expense.create-supplier'));
         var csrfToken = @json(csrf_token());
         var $enterpriseSelect = $('#enterprise_id');
         var $enterpriseDetectionStatus = $('#enterprise-detection-status');
+        var $documentNumberInput = $('#document_number');
+        var $documentNumberDuplicateWarning = $('#document-number-duplicate-warning');
+        var documentDuplicateCheckTimer = null;
+        var documentDuplicateRequest = null;
         var $openCreateSupplierModal = $('#open-create-supplier-modal');
         var $createSupplierForm = $('#create-supplier-form');
         var $createSupplierError = $('#create-supplier-error');
         var detectedSupplierData = null;
+        function clearDocumentDuplicateWarning() {
+            $documentNumberInput.removeClass('is-invalid');
+            $documentNumberDuplicateWarning.addClass('d-none').text('');
+        }
+
+        function showDocumentDuplicateWarning(message) {
+            $documentNumberInput.addClass('is-invalid');
+            $documentNumberDuplicateWarning
+                .removeClass('d-none')
+                .text(message || 'Este número de comprobante ya fue registrado para este proveedor.');
+        }
+
+        function scheduleDocumentDuplicateCheck() {
+            if (!checkDocumentDuplicateUrl) {
+                return;
+            }
+
+            clearTimeout(documentDuplicateCheckTimer);
+
+            documentDuplicateCheckTimer = setTimeout(function () {
+                checkDocumentDuplicate();
+            }, 400);
+        }
+
+        function checkDocumentDuplicate() {
+            if (!checkDocumentDuplicateUrl) {
+                return;
+            }
+
+            var enterpriseId = $enterpriseSelect.val();
+            var documentNumber = $.trim(String($documentNumberInput.val() || ''));
+
+            if (!enterpriseId || documentNumber === '') {
+                clearDocumentDuplicateWarning();
+                return;
+            }
+
+            if (documentDuplicateRequest && typeof documentDuplicateRequest.abort === 'function') {
+                documentDuplicateRequest.abort();
+            }
+
+            documentDuplicateRequest = $.ajax({
+                url: checkDocumentDuplicateUrl,
+                type: 'POST',
+                data: {
+                    enterprise_id: enterpriseId,
+                    document_number: documentNumber,
+                },
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                },
+                success: function (response) {
+                    if (!response || response.duplicate !== true) {
+                        clearDocumentDuplicateWarning();
+                        return;
+                    }
+
+                    var warningMessage = response.message || 'Este número de comprobante ya fue registrado para este proveedor.';
+                    if (response.invoice && response.invoice.date) {
+                        warningMessage += ' Registrado el ' + response.invoice.date + '.';
+                    }
+
+                    showDocumentDuplicateWarning(warningMessage);
+                },
+            });
+        }
+
         function initPaymentDatePickers($context) {
             ($context || $(document)).find('.payment-date').each(function () {
                 if (this._flatpickr) {
@@ -982,40 +1052,62 @@
             });
 
             return {
-                base: base,
-                vatAmount: vatAmount,
-                retentionAmount: retentionAmount,
-                total: total,
+                base: roundMoney(base),
+                vatAmount: roundMoney(vatAmount),
+                retentionAmount: roundMoney(retentionAmount),
+                total: roundMoney(total),
                 vatByRate: vatByRate
             };
         }
 
         function updatePaymentRemoveButtons() {
             var $blocks = $paymentsContainer.find('.expense-payment-block');
-            $blocks.find('.remove-payment-btn').prop('disabled', $blocks.length <= 1);
+            $blocks.find('.remove-payment-btn').prop('disabled', false);
+            $('#expense-payments-empty').toggleClass('d-none', $blocks.length > 0);
         }
 
         function updatePaymentsSummary() {
             var totals = calculateExpenseTotals();
             var paid = 0;
+            var $amountInputs = $paymentsContainer.find('.payment-amount');
 
-            $paymentsContainer.find('.payment-amount').each(function () {
+            $amountInputs.each(function () {
                 paid += asNumber($(this).val());
             });
 
-            var pending = Math.max(totals.total - paid, 0);
-            var exceedsTotal = totals.total > 0 && paid > totals.total + 0.001;
+            paid = roundMoney(paid);
+            var total = roundMoney(totals.total);
+            var pending = Math.max(roundMoney(total - paid), 0);
+            var exceedsTotal = total > 0 && paid > total + 0.001;
             var $summary = $('#payments-summary');
+
+            if ($amountInputs.length === 0) {
+                $summary
+                    .removeClass('text-danger')
+                    .addClass('text-muted')
+                    .text('Sin pagos registrados. Pendiente de pago: ' + formatAmount(total));
+                return;
+            }
+
+            var summaryParts = [
+                'Pagado: ' + formatAmount(paid),
+                'Total: ' + formatAmount(total),
+            ];
+
+            if (pending > 0 && ! exceedsTotal) {
+                summaryParts.push('Pendiente: ' + formatAmount(pending));
+            }
+
+            var summaryText = summaryParts.join(' · ');
+
+            if (exceedsTotal) {
+                summaryText += ' — La suma de pagos supera el total del gasto.';
+            }
 
             $summary
                 .toggleClass('text-danger', exceedsTotal)
                 .toggleClass('text-muted', ! exceedsTotal)
-                .text(
-                    'Pagado: ' + formatAmount(paid) +
-                    ' / Total: ' + formatAmount(totals.total) +
-                    ' (Pendiente: ' + formatAmount(pending) + ')' +
-                    (exceedsTotal ? ' — La suma supera el total del gasto.' : '')
-                );
+                .text(summaryText);
 
             $paymentsContainer.find('.payment-amount').each(function () {
                 $(this).toggleClass('is-invalid', exceedsTotal);
@@ -1024,7 +1116,7 @@
 
         function capPaymentAmountInput($input) {
             var totals = calculateExpenseTotals();
-            var maxTotal = totals.total;
+            var maxTotal = roundMoney(totals.total);
 
             if (maxTotal <= 0) {
                 return;
@@ -1046,8 +1138,9 @@
 
         function paymentsExceedTotal() {
             var totals = calculateExpenseTotals();
+            var total = roundMoney(totals.total);
 
-            if (totals.total <= 0) {
+            if (total <= 0) {
                 return false;
             }
 
@@ -1064,7 +1157,7 @@
                 paid += asNumber(value);
             });
 
-            return hasSpecifiedAmount && paid > totals.total + 0.001;
+            return hasSpecifiedAmount && roundMoney(paid) > total + 0.001;
         }
 
         initPaymentDatePickers($paymentsContainer);
@@ -1380,6 +1473,7 @@
 
             if (data.document_number) {
                 $('#document_number').val(String(data.document_number));
+                scheduleDocumentDuplicateCheck();
             }
 
             if (data.date) {
@@ -1408,13 +1502,6 @@
                 });
                 nextLineIndex = data.lines.length;
                 initAmountInputs($linesBody);
-            }
-
-            if (data.payment_amount) {
-                var $firstPaymentAmount = $paymentsContainer.find('.payment-amount').first();
-                if (! $firstPaymentAmount.val()) {
-                    setAmountInputValue($firstPaymentAmount.get(0), data.payment_amount);
-                }
             }
 
             refreshSummary();
@@ -1581,6 +1668,10 @@
             return Number.isFinite(parsed) ? parsed : 0;
         }
 
+        function roundMoney(value) {
+            return Math.round(asNumber(value) * 100) / 100;
+        }
+
         function formatAmount(value) {
             return asNumber(value).toLocaleString('es-ES', {
                 minimumFractionDigits: 2,
@@ -1679,10 +1770,6 @@
         });
 
         $paymentsContainer.on('click', '.remove-payment-btn', function () {
-            if ($paymentsContainer.find('.expense-payment-block').length <= 1) {
-                return;
-            }
-
             $(this).closest('.expense-payment-block').remove();
             updatePaymentsSummary();
             updatePaymentRemoveButtons();
@@ -1750,6 +1837,9 @@
             refreshPaymentBlockSelectors($(this).closest('.expense-payment-block'));
             initPaymentSelects($(this).closest('.expense-payment-block'));
         });
+
+        $enterpriseSelect.on('change', scheduleDocumentDuplicateCheck);
+        $documentNumberInput.on('input', scheduleDocumentDuplicateCheck);
 
         initAmountInputs($('form.card-body'));
         refreshSummary();

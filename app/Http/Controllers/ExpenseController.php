@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ExpenseDataTable;
 use App\Enums\TransactionType;
+use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
 use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\StoreExpenseSupplierRequest;
@@ -19,6 +20,7 @@ use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\Team;
 use App\Services\ExpenseDocumentDetectionService;
+use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Support\ExpenseDocumentTypes;
@@ -184,6 +186,41 @@ class ExpenseController extends Controller
         ]);
     }
 
+    public function checkDocumentDuplicate(
+        CheckExpenseDocumentDuplicateRequest $request,
+        ExpenseDuplicateDocumentService $duplicateDocumentService,
+    ): JsonResponse {
+        $this->authorize('create', Payment::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $validated = $request->validated();
+        $duplicateInvoice = $duplicateDocumentService->findDuplicate(
+            $teamId,
+            (int) $validated['enterprise_id'],
+            (string) $validated['document_number'],
+        );
+
+        if (! $duplicateInvoice instanceof Invoice)
+        {
+            return response()->json([
+                'duplicate' => false,
+            ]);
+        }
+
+        return response()->json([
+            'duplicate' => true,
+            'invoice' => [
+                'id' => $duplicateInvoice->id,
+                'number' => $duplicateInvoice->number,
+                'date' => filled($duplicateInvoice->date)
+                    ? Carbon::parse($duplicateInvoice->date)->format('Y-m-d')
+                    : null,
+                'total_amount' => number_format((float) $duplicateInvoice->total_amount, 2, '.', ''),
+            ],
+            'message' => 'Este número de comprobante ya fue registrado para este proveedor.',
+        ]);
+    }
+
     public function createSupplier(
         StoreExpenseSupplierRequest $request,
         ExpenseSupplierService $expenseSupplierService,
@@ -213,7 +250,7 @@ class ExpenseController extends Controller
         $documentFile = $request->file('document_file');
 
         $invoiceTotal = round(max((float) collect($lineSummaries)->sum('allocated_total'), 0.01), 2);
-        $paymentEntries = $this->resolvePaymentEntries($validated['payments'], $invoiceTotal);
+        $paymentEntries = $this->resolvePaymentEntries($validated['payments'] ?? [], $invoiceTotal);
         $paymentsTotal = round((float) collect($paymentEntries)->sum('amount'), 2);
         $invoiceBalance = round(max($invoiceTotal - $paymentsTotal, 0), 2);
         $currencyCode = $this->resolveCurrencyCode($validated);
@@ -525,58 +562,21 @@ class ExpenseController extends Controller
      */
     private function resolvePaymentEntries(array $payments, float $invoiceTotal): array
     {
-        if ($payments === [])
-        {
-            return [[
-                'payment_date' => now()->toDateString(),
-                'amount' => round(max($invoiceTotal, 0.01), 2),
-                'type_id' => null,
-                'account_id' => null,
-                'status' => 2,
-            ]];
-        }
-
         $resolved = [];
-        $specifiedTotal = 0.0;
-        $unspecifiedIndexes = [];
 
-        foreach ($payments as $index => $payment)
+        foreach ($payments as $payment)
         {
-            if (filled($payment['amount'] ?? null))
+            if (! filled($payment['amount'] ?? null))
             {
-                $amount = round((float) $payment['amount'], 2);
-                $resolved[$index] = array_merge($payment, ['amount' => $amount]);
-                $specifiedTotal += $amount;
-
                 continue;
             }
 
-            $unspecifiedIndexes[] = $index;
-        }
-
-        if ($unspecifiedIndexes === [])
-        {
-            return array_values($resolved);
-        }
-
-        $remaining = round(max($invoiceTotal - $specifiedTotal, 0.01), 2);
-        $splitCount = count($unspecifiedIndexes);
-        $equalShare = round($remaining / $splitCount, 2);
-
-        foreach ($unspecifiedIndexes as $position => $index)
-        {
-            $amount = $position === ($splitCount - 1)
-                ? round($remaining - ($equalShare * max($splitCount - 1, 0)), 2)
-                : $equalShare;
-
-            $resolved[$index] = array_merge($payments[$index], [
-                'amount' => round(max($amount, 0.01), 2),
+            $resolved[] = array_merge($payment, [
+                'amount' => round((float) $payment['amount'], 2),
             ]);
         }
 
-        ksort($resolved);
-
-        return array_values($resolved);
+        return $resolved;
     }
 
     /**

@@ -3,7 +3,9 @@
 namespace App\Http\Requests;
 
 use App\Helpers\Helpers;
+use App\Models\Invoice;
 use App\Models\PaymentAccount;
+use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Support\ExpenseDocumentTypes;
 use Illuminate\Foundation\Http\FormRequest;
@@ -47,7 +49,7 @@ class StoreExpenseRequest extends FormRequest
             'lines.*.allocation_percent' => ['nullable', 'numeric', 'min:0.01', 'max:100'],
             'cash_criteria' => ['sometimes', 'boolean'],
             'is_investment' => ['sometimes', 'boolean'],
-            'payments' => ['required', 'array', 'min:1'],
+            'payments' => ['nullable', 'array'],
             'payments.*.payment_date' => ['required', 'date'],
             'payments.*.amount' => ['nullable', 'numeric', 'min:0.01'],
             'payments.*.type_id' => ['required', 'integer', 'exists:payment_types,id'],
@@ -102,6 +104,8 @@ class StoreExpenseRequest extends FormRequest
 
         $this->merge([
             'document_type' => (string) $this->input('document_type', 'invoice'),
+            'document_number' => app(ExpenseDuplicateDocumentService::class)
+                ->normalizeDocumentNumber($this->input('document_number')),
             'due_date' => $this->input('due_date', $this->input('date')),
             'lines' => $normalizedLines,
             'payments' => $this->normalizePayments(),
@@ -120,11 +124,11 @@ class StoreExpenseRequest extends FormRequest
 
         if (! is_array($payments) || $payments === [])
         {
-            if ($this->filled('payment_date'))
+            if ($this->filled('payment_date') && filled($this->input('payment_amount')))
             {
                 return [[
                     'payment_date' => $this->input('payment_date'),
-                    'amount' => $this->input('payment_amount'),
+                    'amount' => Helpers::parseDecimalInput($this->input('payment_amount')) ?? $this->input('payment_amount'),
                     'type_id' => $this->input('type_id'),
                     'account_id' => $this->input('account_id'),
                     'status' => $this->input('status', 2),
@@ -143,11 +147,14 @@ class StoreExpenseRequest extends FormRequest
                 continue;
             }
 
+            if (! filled($payment['amount'] ?? null))
+            {
+                continue;
+            }
+
             $normalizedPayments[] = [
                 'payment_date' => $payment['payment_date'] ?? null,
-                'amount' => filled($payment['amount'] ?? null)
-                    ? (Helpers::parseDecimalInput($payment['amount']) ?? $payment['amount'])
-                    : null,
+                'amount' => Helpers::parseDecimalInput($payment['amount']) ?? $payment['amount'],
                 'type_id' => $payment['type_id'] ?? null,
                 'account_id' => $payment['account_id'] ?? null,
                 'status' => $payment['status'] ?? 2,
@@ -229,6 +236,23 @@ class StoreExpenseRequest extends FormRequest
                     );
                 }
             }
+
+            $enterpriseId = (int) $this->input('enterprise_id');
+            $documentNumber = $this->input('document_number');
+
+            if ($enterpriseId > 0 && filled($documentNumber))
+            {
+                $duplicateInvoice = app(ExpenseDuplicateDocumentService::class)
+                    ->findDuplicate($teamId, $enterpriseId, (string) $documentNumber);
+
+                if ($duplicateInvoice instanceof Invoice)
+                {
+                    $validator->errors()->add(
+                        'document_number',
+                        'Este número de comprobante ya fue registrado para este proveedor.',
+                    );
+                }
+            }
         });
     }
 
@@ -271,8 +295,6 @@ class StoreExpenseRequest extends FormRequest
         return [
             'lines.required' => 'Debes añadir al menos una línea al gasto.',
             'lines.min' => 'Debes añadir al menos una línea al gasto.',
-            'payments.required' => 'Debes añadir al menos un pago.',
-            'payments.min' => 'Debes añadir al menos un pago.',
             'enterprise_id.exists' => 'El proveedor seleccionado no es válido.',
             'payments.*.account_id.exists' => 'La cuenta seleccionada no es válida.',
             'lines.*.base_amount.required' => 'Importe obligatorio',

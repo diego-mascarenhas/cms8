@@ -173,9 +173,6 @@ class ExpenseCreateTest extends TestCase
             'date',
             'lines.0.concept',
             'lines.0.base_amount' => 'Importe obligatorio',
-            'payments.0.payment_date',
-            'payments.0.type_id',
-            'payments.0.account_id',
         ]);
     }
 
@@ -202,10 +199,9 @@ class ExpenseCreateTest extends TestCase
                         'allocation_percent' => '100',
                     ],
                 ],
-                'payment_date' => '2026-06-22',
                 'payments' => [[
                     'payment_date' => '2026-06-22',
-                    'amount' => '',
+                    'amount' => '121.00',
                     'type_id' => $paymentType->id,
                     'account_id' => $account->id,
                     'status' => 2,
@@ -241,6 +237,49 @@ class ExpenseCreateTest extends TestCase
         $this->assertSame('100.00', number_format((float) $invoiceItem->unit_price, 2, '.', ''));
         $this->assertSame('21.00', number_format((float) $invoiceItem->tax_percentage, 2, '.', ''));
         $this->assertSame('121.00', number_format((float) $invoiceItem->total, 2, '.', ''));
+    }
+
+    public function test_store_creates_invoice_without_payments_when_amount_empty(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-06-22',
+                'document_number' => 'FAC-SIN-PAGO',
+                'lines' => [
+                    [
+                        'concept' => 'Servicio mensual',
+                        'base_amount' => '100.00',
+                        'vat_percent' => '21',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
+                'payments' => [[
+                    'payment_date' => '2026-06-22',
+                    'amount' => '',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('expense.index'))
+            ->assertSessionHas('success');
+
+        $this->assertSame(0, Payment::withoutGlobalScopes()->count());
+
+        $invoice = Invoice::withoutGlobalScopes()->latest()->first();
+        $this->assertNotNull($invoice);
+        $this->assertSame('FAC-SIN-PAGO', $invoice->number);
+        $this->assertSame('121.00', number_format((float) $invoice->total_amount, 2, '.', ''));
+        $this->assertSame('121.00', number_format((float) $invoice->balance, 2, '.', ''));
     }
 
     public function test_store_creates_multiple_payments_and_pending_balance(): void
@@ -382,6 +421,157 @@ class ExpenseCreateTest extends TestCase
         $this->assertSame('71.00', number_format((float) $invoice->balance, 2, '.', ''));
     }
 
+    public function test_store_rejects_duplicate_document_number_for_same_supplier(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'FAC-001',
+            'date' => '2026-06-01',
+            'due_date' => '2026-06-01',
+            'gross_amount' => 121,
+            'discount' => 0,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-06-22',
+                'document_number' => 'fac-001',
+                'lines' => [[
+                    'concept' => 'Servicio',
+                    'base_amount' => '100.00',
+                    'vat_percent' => '21',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '2026-06-22',
+                    'amount' => '121.00',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertSessionHasErrors(['document_number']);
+
+        $this->assertSame(0, Payment::withoutGlobalScopes()->count());
+    }
+
+    public function test_store_allows_same_document_number_for_different_supplier(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $otherSupplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'type_id' => 2,
+            'status_id' => 1,
+            'name' => 'Otro proveedor',
+            'email' => 'otro@test.test',
+        ]);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'FAC-001',
+            'date' => '2026-06-01',
+            'due_date' => '2026-06-01',
+            'gross_amount' => 121,
+            'discount' => 0,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $otherSupplier->id,
+                'date' => '2026-06-22',
+                'document_number' => 'FAC-001',
+                'lines' => [[
+                    'concept' => 'Servicio',
+                    'base_amount' => '100.00',
+                    'vat_percent' => '21',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '2026-06-22',
+                    'amount' => '121.00',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('expense.index'))
+            ->assertSessionHas('success');
+    }
+
+    public function test_check_document_duplicate_endpoint_detects_existing_invoice(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'FAC-DUP-001',
+            'date' => '2026-06-10',
+            'due_date' => '2026-06-10',
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 60.5,
+            'balance' => 60.5,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('expense.check-document-duplicate'), [
+                'enterprise_id' => $supplier->id,
+                'document_number' => 'fac-dup-001',
+            ])
+            ->assertOk()
+            ->assertJsonPath('duplicate', true)
+            ->assertJsonPath('invoice.number', 'FAC-DUP-001');
+    }
+
+    public function test_check_document_duplicate_endpoint_returns_false_when_not_found(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+
+        $this->actingAs($user)
+            ->postJson(route('expense.check-document-duplicate'), [
+                'enterprise_id' => $supplier->id,
+                'document_number' => 'FAC-NUEVA',
+            ])
+            ->assertOk()
+            ->assertJsonPath('duplicate', false);
+    }
+
     public function test_store_validates_required_fields(): void
     {
         $user = $this->makeAdminUser();
@@ -392,7 +582,6 @@ class ExpenseCreateTest extends TestCase
                 'enterprise_id',
                 'date',
                 'lines',
-                'payments',
             ]);
     }
 
@@ -421,10 +610,9 @@ class ExpenseCreateTest extends TestCase
                         'allocation_percent' => '100',
                     ],
                 ],
-                'payment_date' => '2026-06-22',
                 'payments' => [[
                     'payment_date' => '2026-06-22',
-                    'amount' => '',
+                    'amount' => '121.00',
                     'type_id' => $paymentType->id,
                     'account_id' => $account->id,
                     'status' => 2,

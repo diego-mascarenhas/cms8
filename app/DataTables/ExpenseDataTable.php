@@ -162,15 +162,14 @@ class ExpenseDataTable extends DataTable
                 ->title(__('Date'))
                 ->addClass('all')
                 ->className('text-center'),
+            Column::make('invoice_id')
+                ->title(__('Invoice'))
+                ->addClass('min-tablet'),
             Column::make('enterprise_id')
                 ->title(__('Enterprise'))
                 ->addClass('all')
                 ->searchable(true)
                 ->orderable(false),
-            Column::make('invoice_id')
-                ->title(__('Invoice'))
-                ->addClass('min-tablet')
-                ->className('text-center'),
             Column::make('account_id')
                 ->title(__('Account'))
                 ->addClass('min-desktop'),
