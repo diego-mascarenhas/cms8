@@ -200,6 +200,8 @@
     'incomeCategories' => $incomeCategories,
     'expenseCategories' => $expenseCategories,
     'reportingCurrency' => $reportingCurrency,
+    'selectedYear' => $selectedYear,
+    'selectedMonth' => $selectedMonth,
 ])
 
 @can('viewAny', App\Models\Invoice::class)

@@ -226,6 +226,8 @@
         'incomeCategories' => $incomeCategories,
         'expenseCategories' => $expenseCategories,
         'reportingCurrency' => $invoiceReportingCurrency,
+        'selectedYear' => $selectedYear,
+        'selectedMonth' => $selectedMonth,
         'incomeChartId' => 'financeDashboardIncomeCategoryChart',
         'expenseChartId' => 'financeDashboardExpenseCategoryChart',
     ])

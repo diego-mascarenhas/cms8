@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\Finance\InvoiceAnalyticsService;
+use App\Services\Finance\InvoicedLineItemsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
@@ -14,6 +15,7 @@ class FinancialDashboardController extends Controller
 {
     public function __construct(
         protected InvoiceAnalyticsService $invoiceAnalytics,
+        protected InvoicedLineItemsService $invoicedLineItemsService,
         protected PaymentReportingCurrencyService $paymentReportingCurrencyService,
     ) {}
 
@@ -109,6 +111,7 @@ class FinancialDashboardController extends Controller
             'incomeCategories',
             'expenseCategories',
             'invoiceReportingCurrency',
+            'selectedMonth',
         ));
     }
 
@@ -126,11 +129,79 @@ class FinancialDashboardController extends Controller
         $selectedYear = max($bounds['min'], min($requestedYear > 0 ? $requestedYear : $currentYear, $bounds['max']));
 
         $report = $this->invoiceAnalytics->buildYearReport($teamId, $selectedYear);
+        $selectedMonth = Carbon::now()->month;
 
         return view('finance-dashboard.projection', [
             'report' => $report,
             'selectedYear' => $selectedYear,
+            'selectedMonth' => $selectedMonth,
             'availableYears' => $report['available_years'],
         ]);
+    }
+
+    public function invoicedLines(Request $request)
+    {
+        $this->authorize('viewAny', Invoice::class);
+
+        $team = auth()->user()->currentTeam;
+        abort_if($team === null, 403);
+
+        $operation = (string) $request->query('operation', 'sell');
+        if (! in_array($operation, ['sell', 'buy'], true))
+        {
+            abort(404);
+        }
+
+        $teamId = (int) $team->id;
+        $period = $this->invoicedLineItemsService->resolvePeriodFilter($request);
+        $items = $this->invoicedLineItemsService->queryItems(
+            teamId: $teamId,
+            from: $period['from'],
+            to: $period['to'],
+            operation: $operation,
+        );
+
+        $display = $this->invoicedLineItemsService->buildDisplayPayload(
+            $items,
+            $teamId,
+            showDescription: true,
+            showCategory: true,
+        );
+
+        $isIncome = $operation === 'sell';
+        $periodLabel = $period['month'] > 0
+            ? Carbon::create($period['year'], $period['month'], 1)->translatedFormat('F Y')
+            : (string) $period['year'];
+
+        return view('finance-dashboard.invoiced-lines', [
+            'lines' => $display['lines'],
+            'totalAmount' => $display['total'],
+            'reportingCurrency' => $display['reporting_currency'],
+            'conversionComplete' => $display['conversion_complete'],
+            'availableYears' => $this->invoicedLineItemsService->availableYearsForTeam($teamId),
+            'selectedYear' => $period['year'],
+            'selectedMonth' => $period['month'],
+            'amountTone' => $isIncome ? 'income' : 'expense',
+            'backUrl' => $this->resolveFinanceBackUrl($request),
+            'pageTitle' => $isIncome ? __('All invoiced income lines') : __('All invoiced expense lines'),
+            'pageSubtitle' => $isIncome
+                ? __('Invoiced revenue lines for :period', ['period' => $periodLabel])
+                : __('Invoiced expense lines for :period', ['period' => $periodLabel]),
+            'emptyMessage' => $isIncome
+                ? __('No invoiced income in this period.')
+                : __('No invoiced expenses in this period.'),
+        ]);
+    }
+
+    private function resolveFinanceBackUrl(Request $request): string
+    {
+        $return = (string) $request->query('return', '');
+
+        if ($return !== '' && str_starts_with($return, (string) config('app.url')))
+        {
+            return $return;
+        }
+
+        return route('finance-dashboard.index');
     }
 }
