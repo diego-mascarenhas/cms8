@@ -221,18 +221,6 @@
     </div>
 </div>
 
-@can('viewAny', App\Models\Invoice::class)
-    @include('finance-dashboard.partials.invoice-category-breakdown', [
-        'incomeCategories' => $incomeCategories,
-        'expenseCategories' => $expenseCategories,
-        'reportingCurrency' => $invoiceReportingCurrency,
-        'selectedYear' => $selectedYear,
-        'selectedMonth' => $selectedMonth,
-        'incomeChartId' => 'financeDashboardIncomeCategoryChart',
-        'expenseChartId' => 'financeDashboardExpenseCategoryChart',
-    ])
-@endcan
-
 <!-- Account Balances -->
 <div class="card">
     <div class="card-header border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
@@ -463,45 +451,6 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('load', function () {
         scheduleFinanceCharts();
     });
-
-    const incomeCategories = @json($incomeCategories ?? []);
-    const expenseCategories = @json($expenseCategories ?? []);
-    const incomeChartColors = ['#28c76f', '#55d187', '#83df9e', '#b2edc4', '#1f9d57', '#3dd68c', '#6ee7a8', '#9ef0c4'];
-    const expenseChartColors = ['#ea5455', '#f08182', '#f5adaf', '#fad8d9', '#d43f3f', '#ff6b6b', '#ff9999', '#ffc9c9'];
-
-    function expandChartColors(palette, count) {
-        const colors = [];
-        for (let i = 0; i < count; i++) {
-            colors.push(palette[i % palette.length]);
-        }
-        return colors;
-    }
-
-    function renderCategoryDonut(elId, rows, palette) {
-        const el = document.querySelector(elId);
-        if (!el || !rows.length) {
-            return;
-        }
-        const top = rows.slice(0, 8);
-        const otherTotal = rows.slice(8).reduce(function (sum, row) { return sum + row.total; }, 0);
-        const labels = top.map(function (r) { return r.name; });
-        const series = top.map(function (r) { return r.total; });
-        if (otherTotal > 0) {
-            labels.push(@json(__('Other')));
-            series.push(otherTotal);
-        }
-        new ApexCharts(el, {
-            chart: { type: 'donut', height: 220 },
-            labels: labels,
-            series: series,
-            colors: expandChartColors(palette, labels.length),
-            legend: { show: false },
-            dataLabels: { enabled: true, formatter: function (val) { return val.toFixed(1) + '%'; } },
-        }).render();
-    }
-
-    renderCategoryDonut('#financeDashboardIncomeCategoryChart', incomeCategories, incomeChartColors);
-    renderCategoryDonut('#financeDashboardExpenseCategoryChart', expenseCategories, expenseChartColors);
 });
 </script>
 @endpush
