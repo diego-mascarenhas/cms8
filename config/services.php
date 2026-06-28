@@ -83,6 +83,15 @@ return [
         'target_currencies' => env('CURRENCYFREAKS_TARGET_CURRENCIES', 'ARS,EUR'),
     ],
 
+    'bcra' => [
+        'timeout_seconds' => (int) env('BCRA_API_TIMEOUT_SECONDS', 45),
+    ],
+
+    'frankfurter' => [
+        'base_url' => env('FRANKFURTER_BASE_URL', 'https://api.frankfurter.dev'),
+        'timeout_seconds' => (int) env('FRANKFURTER_TIMEOUT_SECONDS', 45),
+    ],
+
     'mcp' => [
         'enabled' => env('MCP_ENABLED', false),
         'endpoint' => env('MCP_ENDPOINT', 'http://localhost:3000/mcp'),

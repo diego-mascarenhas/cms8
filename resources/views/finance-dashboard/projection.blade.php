@@ -81,9 +81,13 @@
             </p>
             <p class="mb-0">
                 {{ __('Load system exchange rates with') }}
-                <code>php artisan exchange-rates:fetch</code>
+                <code>php artisan exchange-rates:fetch-daily</code>
                 {{ __('or monthly history with') }}
-                <code>php artisan exchange-rates:backfill-monthly</code>.
+                <code>php artisan exchange-rates:backfill-monthly</code>
+                {{ __('or official USD/ARS with') }}
+                <code>php artisan exchange-rates:backfill-bcra</code>
+                {{ __('or USD/EUR with') }}
+                <code>php artisan exchange-rates:backfill-frankfurter</code>.
                 {{ __('Amounts below are shown in the invoice currency.') }}
             </p>
         </div>
