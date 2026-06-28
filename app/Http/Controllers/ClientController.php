@@ -246,7 +246,7 @@ class ClientController extends Controller
             'projects.status',
             'projects.category',
             'services.currency',
-            'services.serviceType',
+            'services.category',
             'invoices.billingAddress',
             'invoices.currency',
         ])->findOrFail($id);

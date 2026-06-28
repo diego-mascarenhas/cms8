@@ -47,7 +47,7 @@ class ResyncInvoiceItemsCommand extends Command
 
         if (! $skipCategories)
         {
-            $this->line('Importing categories from legacy categorias_generales (parent_id tree)...');
+            $this->line('Importing categories from legacy categorias_generales (same IDs as CMS7)...');
             $allCategoryStats = $service->importAllCategoriesFromLegacy($categoryTeamId, $dryRun);
             $this->table(['Legacy categories', 'Count'], [
                 ['Legacy rows', $allCategoryStats['total_legacy']],
@@ -56,7 +56,16 @@ class ResyncInvoiceItemsCommand extends Command
                 ['Child categories imported', $allCategoryStats['imported_children']],
                 ['Child categories updated', $allCategoryStats['updated_children']],
                 ['Children skipped (missing parent)', $allCategoryStats['skipped_children_missing_parent']],
+                ['Skipped (ID owned by another team)', $allCategoryStats['skipped_team_conflict']],
             ]);
+
+            if ($allCategoryStats['skipped_team_conflict'] > 0)
+            {
+                $this->warn(
+                    'Some legacy category IDs already belong to another team and were left unchanged. '
+                    .'Those invoice lines may stay uncategorized until the conflict is resolved manually.',
+                );
+            }
             $this->newLine();
         }
 

@@ -462,7 +462,7 @@ class ImportDataCommand extends Command
             $this->newLine();
 
             // Import in order to respect foreign key constraints
-            $this->info('📂 Step 1/13: Importing Categories & Service Types...');
+            $this->info('📂 Step 1/13: Importing Categories...');
             $this->processImport('2. Categories');
             $this->newLine();
 
@@ -1253,95 +1253,17 @@ class ImportDataCommand extends Command
     }
 
     /**
-     * Importa los tipos de servicio desde el sistema antiguo
+     * @deprecated categorias_generales_tipo is no longer imported; use categories from categorias_generales.
      */
     protected function importServiceTypes($id = null)
     {
-        $stats = [
+        $this->warn('Service types table was removed. Import categories (categorias_generales) instead.');
+
+        return [
             'imported' => 0,
             'updated' => 0,
-            'message' => null,
+            'message' => 'Skipped: legacy categorias_generales_tipo is not imported to a separate table.',
         ];
-
-        try
-        {
-            // Obtener todos los tipos de servicio del sistema antiguo
-            $query = app('db')->connection('mysql_legacy')
-                ->table('categorias_generales_tipo');
-
-            if ($id)
-            {
-                $query->where('id', $id);
-            }
-
-            $serviceTypes = $query->get();
-
-            if ($serviceTypes->isEmpty())
-            {
-                $stats['message'] = 'No se encontraron tipos de servicio para importar.';
-
-                return $stats;
-            }
-
-            $this->info("📊 Total tipos de servicio: {$serviceTypes->count()}");
-
-            $bar = $this->output->createProgressBar($serviceTypes->count());
-            $bar->start();
-
-            foreach ($serviceTypes as $data)
-            {
-                $serviceTypeData = [
-                    'id' => $data->id,
-                    'name' => $data->tipo,
-                    'category_id' => null,  // Se puede asignar manualmente después si es necesario
-                    'description' => $data->descripcion ?? null,
-                    'data' => json_encode([
-                        'characteristics' => $data->caracteristicas ?? null,
-                        'template_alta_de_servicio' => $data->template_alta_de_servicio ?? null,
-                    ]),
-                    'currency_id' => $data->id_moneda ?? 1,
-                    'convert_to' => $data->convertir ?? null,
-                    'price' => $data->valor ?? null,
-                    'discount' => $data->descuento ?? 0.0,
-                    'frequency' => $data->frecuencia ?? 1,
-                    'order' => $data->orden ?? 0,
-                    'status' => $data->estado ?? 1,
-                    'created_at' => $data->fecha_alta ?? now(),
-                    'updated_at' => $data->fecha_modificacion ?? now(),
-                ];
-
-                $existingServiceType = app('db')->table('service_types')->where('id', $data->id)->first();
-
-                if (! $existingServiceType)
-                {
-                    app('db')->table('service_types')->insert($serviceTypeData);
-                    $stats['imported']++;
-                } else
-                {
-                    // Preserve local values when legacy is empty
-                    $mergedData = $this->mergePreservingLocal(
-                        $serviceTypeData,
-                        $existingServiceType,
-                        ['name', 'status_id'], // Always update these fields
-                    );
-                    app('db')->table('service_types')->where('id', $existingServiceType->id)->update($mergedData);
-                    $stats['updated']++;
-                }
-
-                $bar->advance();
-            }
-
-            $bar->finish();
-            $this->newLine();
-
-            $this->info("✅ Tipos de servicio importados: {$stats['imported']}, actualizados: {$stats['updated']}");
-        } catch (\Exception $e)
-        {
-            $this->newLine();
-            throw new \Exception('Error importando tipos de servicio: '.$e->getMessage());
-        }
-
-        return $stats;
     }
 
     /**
@@ -1649,8 +1571,8 @@ class ImportDataCommand extends Command
                 try
                 {
                     // Check if invoice exists in the local database
-                    $invoiceExists = app('db')->table('invoices')->where('id', $data->id_factura)->exists();
-                    if (! $invoiceExists)
+                    $invoice = app('db')->table('invoices')->where('id', $data->id_factura)->first(['team_id']);
+                    if ($invoice === null)
                     {
                         $skippedNoInvoice++;
                         $stats['skipped_no_invoice']++;
@@ -1669,6 +1591,7 @@ class ImportDataCommand extends Command
                     // Check if category exists, if not set to null
                     $categoryId = app(InvoiceItemLegacySyncService::class)->resolveCategoryId(
                         $data->id_categoria ? (int) $data->id_categoria : null,
+                        (int) ($invoice->team_id ?? 2),
                     );
 
                     $invoiceItemData = [
@@ -1794,7 +1717,7 @@ class ImportDataCommand extends Command
 
                     $serviceData = [
                         'enterprise_id' => $service->id_empresa,
-                        'service_type_id' => $service->id_categoria ?? null,
+                        'category_id' => $service->id_categoria ?? null,
                         'operation' => $operation,
                         'description' => strip_tags($service->descripcion ?? ''),
                         'price' => $service->valor ?? 0,
@@ -2900,7 +2823,7 @@ class ImportDataCommand extends Command
         $this->newLine();
 
         // Import in order to respect foreign key constraints
-        $this->info('📂 Step 1/13: Importing Categories & Service Types...');
+        $this->info('📂 Step 1/13: Importing Categories...');
         $this->processImport('2. Categories');
         $this->newLine();
 

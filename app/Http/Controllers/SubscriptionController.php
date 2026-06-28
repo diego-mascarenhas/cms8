@@ -128,7 +128,7 @@ class SubscriptionController extends Controller
             ->get();
 
         $linkedService = Service::withoutGlobalScopes()
-            ->with(['serviceType', 'currency', 'enterprise'])
+            ->with(['category', 'currency', 'enterprise'])
             ->where('subscription_id', $stripeSubscription->id)
             ->whereNull('deleted_at')
             ->orderByDesc('id')

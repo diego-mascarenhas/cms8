@@ -44,7 +44,7 @@ class Service extends Model
     protected $fillable = [
         'enterprise_id',
         'subscription_id',
-        'service_type_id',
+        'category_id',
         'operation',
         'description',
         'data',
@@ -98,15 +98,17 @@ class Service extends Model
         return is_array($decoded) ? $decoded : [];
     }
 
-    public function serviceType()
-    {
-        return $this->belongsTo(ServiceType::class, 'service_type_id');
-    }
-
-    // Backward compatibility - alias for serviceType
     public function category()
     {
-        return $this->serviceType();
+        return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    /**
+     * @deprecated Use category() instead.
+     */
+    public function serviceType()
+    {
+        return $this->category();
     }
 
     public function client()
@@ -232,29 +234,11 @@ class Service extends Model
 
     public function getCalculatedPriceAttribute()
     {
-        $serviceType = $this->serviceType;
-
         $categoryData = [];
 
-        if ($serviceType !== null)
+        if ($this->category !== null && is_array($this->category->data))
         {
-            $dataField = $serviceType->data;
-
-            if (is_string($dataField))
-            {
-                $decodedData = json_decode($dataField, true);
-
-                if (json_last_error() === JSON_ERROR_NONE)
-                {
-                    $categoryData = $decodedData;
-                }
-            } elseif (is_array($dataField))
-            {
-                $categoryData = $dataField;
-            } elseif (is_object($dataField))
-            {
-                $categoryData = (array) $dataField;
-            }
+            $categoryData = $this->category->data;
         }
 
         if ($this->price !== null && $this->price != 0)
@@ -262,7 +246,7 @@ class Service extends Model
             $basePrice = $this->price;
             $discount = $this->discount ?? 0;
             $frequency = $this->frequency ?? 1;
-        } elseif ($serviceType !== null)
+        } elseif ($this->category !== null)
         {
             $basePrice = $categoryData['price'] ?? 0;
             $discount = $categoryData['discount'] ?? 0;
@@ -299,10 +283,7 @@ class Service extends Model
                 }
             }
         })
-            ->whereHas('category', function ($query) use ($operation)
-            {
-                $query->where('operation', $operation);
-            })
+            ->where('operation', $operation)
             ->get();
 
         $total = 0;

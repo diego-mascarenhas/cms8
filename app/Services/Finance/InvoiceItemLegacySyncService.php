@@ -34,19 +34,29 @@ class InvoiceItemLegacySyncService
     /**
      * Legacy facturas_items.id_categoria maps to categories.id (parent or child with parent_id).
      */
-    public function resolveCategoryId(?int $legacyCategoryId): ?int
+    public function resolveCategoryId(?int $legacyCategoryId, ?int $teamId = null): ?int
     {
         if ($legacyCategoryId === null || $legacyCategoryId <= 0)
         {
             return null;
         }
 
-        if (DB::table('categories')->where('id', $legacyCategoryId)->exists())
+        $query = DB::table('categories')->where('id', $legacyCategoryId);
+
+        if ($teamId !== null)
         {
-            return $legacyCategoryId;
+            $query->where(function ($builder) use ($teamId): void
+            {
+                $builder->where('team_id', $teamId)->orWhereNull('team_id');
+            });
         }
 
-        return null;
+        if (! $query->exists())
+        {
+            return null;
+        }
+
+        return $legacyCategoryId;
     }
 
     /**
@@ -59,6 +69,7 @@ class InvoiceItemLegacySyncService
      *     imported_children: int,
      *     updated_children: int,
      *     skipped_children_missing_parent: int,
+     *     skipped_team_conflict: int,
      * }
      */
     public function importAllCategoriesFromLegacy(int $teamId, bool $dryRun = false): array
@@ -70,6 +81,7 @@ class InvoiceItemLegacySyncService
             'imported_children' => 0,
             'updated_children' => 0,
             'skipped_children_missing_parent' => 0,
+            'skipped_team_conflict' => 0,
         ];
 
         if (! Schema::connection('mysql_legacy')->hasTable('categorias_generales'))
@@ -104,19 +116,22 @@ class InvoiceItemLegacySyncService
         {
             if ($dryRun)
             {
-                $exists = DB::table('categories')->where('id', (int) $row->id)->exists();
-                $stats[$exists ? 'updated_parents' : 'imported_parents']++;
+                $this->incrementCategoryUpsertStat(
+                    $stats,
+                    $this->previewCategoryUpsertResult((int) $row->id, $teamId),
+                    isParent: true,
+                );
 
                 continue;
             }
 
-            $result = $this->upsertLegacyParentCategory($row, $teamId, $serviceModuleId);
-            $stats[$result === 'imported' ? 'imported_parents' : 'updated_parents']++;
+            $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, null);
+            $this->incrementCategoryUpsertStat($stats, $result, isParent: true);
         }
 
         foreach ($childCategories as $row)
         {
-            if (! DB::table('categories')->where('id', (int) $row->padre)->exists())
+            if (! $this->legacyParentCategoryExists((int) $row->padre, $teamId))
             {
                 $stats['skipped_children_missing_parent']++;
 
@@ -125,14 +140,22 @@ class InvoiceItemLegacySyncService
 
             if ($dryRun)
             {
-                $exists = DB::table('categories')->where('id', (int) $row->id)->exists();
-                $stats[$exists ? 'updated_children' : 'imported_children']++;
+                $this->incrementCategoryUpsertStat(
+                    $stats,
+                    $this->previewCategoryUpsertResult((int) $row->id, $teamId),
+                    isParent: false,
+                );
 
                 continue;
             }
 
-            $result = $this->upsertLegacyChildAsCategory($row, $teamId, $serviceModuleId);
-            $stats[$result === 'imported' ? 'imported_children' : 'updated_children']++;
+            $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, (int) $row->padre);
+            $this->incrementCategoryUpsertStat($stats, $result, isParent: false);
+        }
+
+        if (! $dryRun && $stats['total_legacy'] > 0)
+        {
+            $this->syncTableAutoIncrement('categories');
         }
 
         return $stats;
@@ -145,6 +168,7 @@ class InvoiceItemLegacySyncService
      *     updated_parents: int,
      *     updated_children: int,
      *     missing_in_legacy: int,
+     *     skipped_team_conflict: int,
      * }
      */
     public function importMissingCategoriesFromLegacy(Collection $legacyCategoryIds, int $teamId): array
@@ -155,6 +179,7 @@ class InvoiceItemLegacySyncService
             'updated_parents' => 0,
             'updated_children' => 0,
             'missing_in_legacy' => 0,
+            'skipped_team_conflict' => 0,
         ];
 
         if ($legacyCategoryIds->isEmpty() || ! $this->legacyConnectionAvailable())
@@ -179,7 +204,7 @@ class InvoiceItemLegacySyncService
         foreach ($legacyCategoryIds->unique() as $legacyCategoryId)
         {
             $legacyCategoryId = (int) $legacyCategoryId;
-            if ($this->resolveCategoryId($legacyCategoryId) !== null)
+            if ($this->resolveCategoryId($legacyCategoryId, $teamId) !== null)
             {
                 continue;
             }
@@ -196,8 +221,8 @@ class InvoiceItemLegacySyncService
 
             if ($isParent)
             {
-                $result = $this->upsertLegacyParentCategory($row, $teamId, $serviceModuleId);
-                $stats[$result === 'imported' ? 'imported_parents' : 'updated_parents']++;
+                $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, null);
+                $this->incrementCategoryUpsertStat($stats, $result, isParent: true);
             } else
             {
                 $parentRow = $legacyRows->get((int) $row->padre)
@@ -207,19 +232,19 @@ class InvoiceItemLegacySyncService
                         ->where('id', (int) $row->padre)
                         ->first();
 
-                if ($parentRow !== null && ! DB::table('categories')->where('id', (int) $parentRow->id)->exists())
+                if ($parentRow !== null && ! $this->legacyParentCategoryExists((int) $parentRow->id, $teamId))
                 {
-                    $parentResult = $this->upsertLegacyParentCategory($parentRow, $teamId, $serviceModuleId);
-                    $stats[$parentResult === 'imported' ? 'imported_parents' : 'updated_parents']++;
+                    $parentResult = $this->upsertCategoryFromLegacyRow($parentRow, $teamId, $serviceModuleId, null);
+                    $this->incrementCategoryUpsertStat($stats, $parentResult, isParent: true);
                 }
 
-                if (! DB::table('categories')->where('id', (int) $row->padre)->exists())
+                if (! $this->legacyParentCategoryExists((int) $row->padre, $teamId))
                 {
                     continue;
                 }
 
-                $childResult = $this->upsertLegacyChildAsCategory($row, $teamId, $serviceModuleId);
-                $stats[$childResult === 'imported' ? 'imported_children' : 'updated_children']++;
+                $childResult = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, (int) $row->padre);
+                $this->incrementCategoryUpsertStat($stats, $childResult, isParent: false);
             }
         }
 
@@ -261,6 +286,7 @@ class InvoiceItemLegacySyncService
                 'updated_parents' => 0,
                 'updated_children' => 0,
                 'missing_in_legacy' => 0,
+                'skipped_team_conflict' => 0,
             ],
         ];
 
@@ -328,16 +354,19 @@ class InvoiceItemLegacySyncService
             {
                 $stats['processed']++;
 
-                $invoiceExists = DB::table('invoices')->where('id', $legacyItem->id_factura)->exists();
-                if (! $invoiceExists)
+                $invoice = DB::table('invoices')->where('id', $legacyItem->id_factura)->first(['team_id']);
+                if ($invoice === null)
                 {
                     $stats['skipped_no_invoice']++;
 
                     continue;
                 }
 
+                $invoiceTeamId = (int) ($invoice->team_id ?? $categoryTeamId);
+
                 $categoryId = $this->resolveCategoryId(
                     $legacyItem->id_categoria !== null ? (int) $legacyItem->id_categoria : null,
+                    $invoiceTeamId,
                 );
 
                 $payload = [
@@ -448,38 +477,78 @@ class InvoiceItemLegacySyncService
         return false;
     }
 
-    private function upsertLegacyParentCategory(object $data, int $teamId, ?int $serviceModuleId): string
+    /**
+     * Create or update a category using categorias_generales.id as categories.id (unchanged).
+     */
+    public function upsertCategoryFromLegacyRow(object $legacyRow, int $teamId, ?int $serviceModuleId, ?int $parentId): string
     {
-        $categoryData = $this->legacyCategoryPayload($data, $teamId, $serviceModuleId, null);
+        $categoryData = $this->legacyCategoryPayload($legacyRow, $teamId, $serviceModuleId, $parentId);
 
-        $existing = DB::table('categories')->where('id', (int) $data->id)->first();
+        return $this->upsertCategoryWithLegacyId($categoryData);
+    }
+
+    private function legacyParentCategoryExists(int $legacyParentId, int $teamId): bool
+    {
+        return $this->resolveCategoryId($legacyParentId, $teamId) !== null;
+    }
+
+    private function previewCategoryUpsertResult(int $legacyCategoryId, int $teamId): string
+    {
+        $existing = DB::table('categories')->where('id', $legacyCategoryId)->first();
+
         if ($existing === null)
         {
-            DB::table('categories')->insert($categoryData);
-
             return 'imported';
         }
 
-        DB::table('categories')->where('id', (int) $data->id)->update([
-            'name' => $categoryData['name'],
-            'module_id' => $categoryData['module_id'],
-            'team_id' => $categoryData['team_id'],
-            'parent_id' => null,
-            'description' => $categoryData['description'],
-            'data' => $categoryData['data'],
-            'order' => $categoryData['order'],
-            'status' => $categoryData['status'],
-            'updated_at' => $categoryData['updated_at'],
-        ]);
+        if ($this->hasTeamConflict($existing->team_id, $teamId))
+        {
+            return 'skipped_team_conflict';
+        }
 
         return 'updated';
     }
 
-    private function upsertLegacyChildAsCategory(object $data, int $teamId, ?int $serviceModuleId): string
+    /**
+     * @param  array<string, int>  $stats
+     */
+    private function incrementCategoryUpsertStat(array &$stats, string $result, bool $isParent): void
     {
-        $categoryData = $this->legacyCategoryPayload($data, $teamId, $serviceModuleId, (int) $data->padre);
+        if ($result === 'skipped_team_conflict')
+        {
+            $stats['skipped_team_conflict']++;
 
-        $existing = DB::table('categories')->where('id', (int) $data->id)->first();
+            return;
+        }
+
+        $group = $isParent ? 'parents' : 'children';
+
+        if ($result === 'imported')
+        {
+            $stats["imported_{$group}"]++;
+
+            return;
+        }
+
+        $stats["updated_{$group}"]++;
+    }
+
+    private function hasTeamConflict(mixed $existingTeamId, int $targetTeamId): bool
+    {
+        if ($existingTeamId === null)
+        {
+            return false;
+        }
+
+        return (int) $existingTeamId !== $targetTeamId;
+    }
+
+    private function upsertCategoryWithLegacyId(array $categoryData): string
+    {
+        $legacyId = (int) $categoryData['id'];
+        $targetTeamId = (int) $categoryData['team_id'];
+        $existing = DB::table('categories')->where('id', $legacyId)->first();
+
         if ($existing === null)
         {
             DB::table('categories')->insert($categoryData);
@@ -487,7 +556,12 @@ class InvoiceItemLegacySyncService
             return 'imported';
         }
 
-        DB::table('categories')->where('id', (int) $data->id)->update([
+        if ($this->hasTeamConflict($existing->team_id, $targetTeamId))
+        {
+            return 'skipped_team_conflict';
+        }
+
+        DB::table('categories')->where('id', $legacyId)->update([
             'name' => $categoryData['name'],
             'module_id' => $categoryData['module_id'],
             'team_id' => $categoryData['team_id'],
@@ -497,9 +571,24 @@ class InvoiceItemLegacySyncService
             'order' => $categoryData['order'],
             'status' => $categoryData['status'],
             'updated_at' => $categoryData['updated_at'],
+            'deleted_at' => null,
         ]);
 
         return 'updated';
+    }
+
+    private function syncTableAutoIncrement(string $table, string $column = 'id'): void
+    {
+        if (DB::getDriverName() !== 'mysql')
+        {
+            return;
+        }
+
+        $maxValue = (int) DB::table($table)->max($column);
+        $next = max($maxValue + 1, 1);
+        $escapedTable = str_replace('`', '``', $table);
+
+        DB::statement("ALTER TABLE `{$escapedTable}` AUTO_INCREMENT = {$next}");
     }
 
     /**

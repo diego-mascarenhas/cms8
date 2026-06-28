@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Enterprise;
+use App\Models\Module;
 use App\Models\Service;
-use App\Models\ServiceType;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -48,17 +49,11 @@ class ServiceDataTableSearchTest extends TestCase
             'status_id' => 1,
         ]);
 
-        $serviceType = ServiceType::query()->create([
-            'name' => 'Web Hosting',
-            'description' => 'Hosting plans',
-            'currency_id' => 1,
-            'frequency' => 12,
-            'status' => 1,
-        ]);
+        $category = $this->createHostingCategory($team->id);
 
         Service::withoutGlobalScopes()->create([
             'enterprise_id' => $enterprise->id,
-            'service_type_id' => $serviceType->id,
+            'category_id' => $category->id,
             'operation' => 'sell',
             'description' => 'Visible active service',
             'data' => ['domain' => 'visible.example.test'],
@@ -92,17 +87,11 @@ class ServiceDataTableSearchTest extends TestCase
             'status_id' => 1,
         ]);
 
-        $serviceType = ServiceType::query()->create([
-            'name' => 'Web Hosting',
-            'description' => 'Hosting plans',
-            'currency_id' => 1,
-            'frequency' => 12,
-            'status' => 1,
-        ]);
+        $category = $this->createHostingCategory($team->id);
 
         Service::withoutGlobalScopes()->create([
             'enterprise_id' => $enterprise->id,
-            'service_type_id' => $serviceType->id,
+            'category_id' => $category->id,
             'operation' => 'sell',
             'description' => 'Primary hosting service',
             'data' => [
@@ -143,17 +132,11 @@ class ServiceDataTableSearchTest extends TestCase
             'status_id' => 1,
         ]);
 
-        $serviceType = ServiceType::query()->create([
-            'name' => 'Web Hosting',
-            'description' => 'Hosting plans',
-            'currency_id' => 1,
-            'frequency' => 12,
-            'status' => 1,
-        ]);
+        $category = $this->createHostingCategory($team->id);
 
         $matchingService = Service::withoutGlobalScopes()->create([
             'enterprise_id' => $enterprise->id,
-            'service_type_id' => $serviceType->id,
+            'category_id' => $category->id,
             'operation' => 'sell',
             'description' => 'Servicio de correo corporativo premium',
             'data' => ['domain' => 'mail.example.test'],
@@ -168,7 +151,7 @@ class ServiceDataTableSearchTest extends TestCase
 
         Service::withoutGlobalScopes()->create([
             'enterprise_id' => $enterprise->id,
-            'service_type_id' => $serviceType->id,
+            'category_id' => $category->id,
             'operation' => 'sell',
             'description' => 'Otro servicio sin coincidencia',
             'data' => ['domain' => 'other.example.test'],
@@ -189,6 +172,26 @@ class ServiceDataTableSearchTest extends TestCase
         $response->assertOk();
         $this->assertSame(1, (int) $response->json('recordsFiltered'));
         $this->assertSame((string) $matchingService->id, (string) $response->json('data.0.DT_RowId'));
+    }
+
+    private function createHostingCategory(int $teamId): Category
+    {
+        $module = Module::query()->create([
+            'name' => 'Services',
+            'key' => 'services',
+            'icon' => 'ti-briefcase',
+            'description' => null,
+            'is_core' => false,
+            'status' => 1,
+        ]);
+
+        return Category::query()->create([
+            'name' => 'Web Hosting',
+            'module_id' => $module->id,
+            'team_id' => $teamId,
+            'description' => 'Hosting plans',
+            'status' => 1,
+        ]);
     }
 
     private function serviceDataTableUrl(string $searchValue): string

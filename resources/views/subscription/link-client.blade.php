@@ -62,7 +62,7 @@
                     </a>
                 </dd>
                 <dt class="col-sm-3">{{ __('stripe_subscription.link.service_type') }}</dt>
-                <dd class="col-sm-9">{{ $linkedService->serviceType?->name ?? '—' }}</dd>
+                <dd class="col-sm-9">{{ $linkedService->category?->name ?? '—' }}</dd>
                 <dt class="col-sm-3">{{ __('stripe_subscription.link.service_price') }}</dt>
                 <dd class="col-sm-9">
                     @if($linkedService->price !== null)

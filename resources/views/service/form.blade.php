@@ -65,7 +65,7 @@
                             id="category_id"
                             label="{{ __('Tipo de plan') }}"
                             moduleKey="services"
-                            :selected="old('category_id', isset($data) ? $data->serviceType?->category_id ?? $data->category_id : null)"
+                            :selected="old('category_id', isset($data) ? $data->category_id : null)"
                         />
                     </div>
 

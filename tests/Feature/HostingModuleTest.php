@@ -410,7 +410,7 @@ class HostingModuleTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -526,17 +526,11 @@ class HostingModuleTest extends TestCase
             'invoice_type_id' => null,
         ]));
 
-        $serviceType = \App\Models\ServiceType::query()->create([
-            'name' => 'Web Hosting',
-            'description' => 'Hosting plans',
-            'currency_id' => 1,
-            'frequency' => 12,
-            'status' => 1,
-        ]);
+        $category = $this->createHostingCategory();
 
         $service = Service::withoutGlobalScopes()->create([
             'enterprise_id' => $enterprise->id,
-            'service_type_id' => $serviceType->id,
+            'category_id' => $category->id,
             'operation' => 'sell',
             'description' => 'Hosting revision_beginner',
             'currency_id' => 1,
@@ -590,7 +584,7 @@ class HostingModuleTest extends TestCase
             'business_email' => 'negocio@empresa.test',
         ]));
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -659,7 +653,7 @@ class HostingModuleTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -708,7 +702,7 @@ class HostingModuleTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -761,7 +755,7 @@ class HostingModuleTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -810,7 +804,7 @@ class HostingModuleTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -856,7 +850,7 @@ class HostingModuleTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
 
-        $this->createHostingServiceType();
+        $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
 
         $server = Server::withoutGlobalScopes()->create([
@@ -1230,14 +1224,28 @@ class HostingModuleTest extends TestCase
         ]));
     }
 
-    private function createHostingServiceType(): \App\Models\ServiceType
+    private function createHostingCategory(): \App\Models\Category
     {
-        return \App\Models\ServiceType::query()->firstOrCreate(
-            ['name' => 'Web Hosting'],
+        $team = auth()->user()?->currentTeam;
+        $module = \App\Models\Module::query()->firstOrCreate(
+            ['key' => 'services'],
+            [
+                'name' => 'Services',
+                'icon' => 'ti-briefcase',
+                'description' => null,
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        return \App\Models\Category::query()->firstOrCreate(
+            [
+                'name' => 'Web Hosting',
+                'team_id' => $team?->id,
+                'module_id' => $module->id,
+            ],
             [
                 'description' => 'Hosting plans',
-                'currency_id' => 1,
-                'frequency' => 12,
                 'status' => 1,
             ],
         );
