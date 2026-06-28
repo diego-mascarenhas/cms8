@@ -227,11 +227,16 @@
 
 <!-- Account Balances -->
 <div class="card">
-    <div class="card-header border-bottom">
+    <div class="card-header border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="card-title m-0">{{ __('Account Balances') }}</h5>
             <p class="text-muted small mb-0">{{ __('Balances sum all payments per account; only active accounts with movements are listed.') }}</p>
         </div>
+        @can('viewAny', \App\Models\PaymentAccount::class)
+            <a href="{{ route('payment-account.index') }}" class="btn btn-sm btn-outline-primary">
+                <i class="ti ti-wallet me-1"></i> Cuentas de pago
+            </a>
+        @endcan
     </div>
     <div class="card-widget-separator-wrapper">
         <div class="card-body card-widget-separator">
