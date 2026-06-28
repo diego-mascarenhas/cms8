@@ -2,6 +2,7 @@
 
 namespace App\Services\Currency;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 class BcraExchangeRateClient
@@ -11,14 +12,18 @@ class BcraExchangeRateClient
     private const PAGE_LIMIT = 1000;
 
     public function __construct(
-        private readonly int $timeoutSeconds = 45,
+        private readonly int $timeoutSeconds = 60,
+        private readonly int $connectTimeoutSeconds = 30,
+        private readonly int $retries = 3,
     ) {}
 
     public static function fromConfig(): self
     {
-        $timeout = (int) config('services.bcra.timeout_seconds', 45);
+        $timeout = max(1, (int) config('services.bcra.timeout_seconds', 60));
+        $connectTimeout = max(1, (int) config('services.bcra.connect_timeout_seconds', 30));
+        $retries = max(0, (int) config('services.bcra.retries', 3));
 
-        return new self(max(1, $timeout));
+        return new self($timeout, $connectTimeout, $retries);
     }
 
     /**
@@ -29,75 +34,89 @@ class BcraExchangeRateClient
         $quotes = [];
         $offset = 0;
 
-        do
+        try
         {
-            $response = Http::timeout($this->timeoutSeconds)
-                ->acceptJson()
-                ->get(self::BASE_URL.'/USD', [
-                    'fechaDesde' => $fromYmd,
-                    'fechaHasta' => $toYmd,
-                    'limit' => self::PAGE_LIMIT,
-                    'offset' => $offset,
-                ]);
-
-            if (! $response->successful())
+            do
             {
-                return [
-                    'success' => false,
-                    'status' => $response->status(),
-                    'error' => $response->body() ?: 'HTTP '.$response->status(),
-                ];
-            }
+                $response = Http::connectTimeout($this->connectTimeoutSeconds)
+                    ->timeout($this->timeoutSeconds)
+                    ->retry($this->retries, 1000, function (\Throwable $exception): bool
+                    {
+                        return $exception instanceof ConnectionException;
+                    })
+                    ->acceptJson()
+                    ->get(self::BASE_URL.'/USD', [
+                        'fechaDesde' => $fromYmd,
+                        'fechaHasta' => $toYmd,
+                        'limit' => self::PAGE_LIMIT,
+                        'offset' => $offset,
+                    ]);
 
-            $data = $response->json();
-
-            if (! is_array($data))
-            {
-                return ['success' => false, 'error' => 'Invalid JSON response.'];
-            }
-
-            if ((int) ($data['status'] ?? 0) !== 200)
-            {
-                $messages = is_array($data['errorMessages'] ?? null)
-                    ? implode('; ', $data['errorMessages'])
-                    : 'BCRA API error';
-
-                return [
-                    'success' => false,
-                    'status' => (int) ($data['status'] ?? 0),
-                    'error' => $messages,
-                ];
-            }
-
-            $results = is_array($data['results'] ?? null) ? $data['results'] : [];
-            $totalCount = (int) ($data['metadata']['resultset']['count'] ?? count($results));
-
-            foreach ($results as $row)
-            {
-                if (! is_array($row))
+                if (! $response->successful())
                 {
-                    continue;
-                }
-
-                $fecha = (string) ($row['fecha'] ?? '');
-                $rate = $this->extractUsdRate($row);
-
-                if ($fecha === '' || $rate === null)
-                {
-                    continue;
-                }
-
-                if (! isset($quotes[$fecha]))
-                {
-                    $quotes[$fecha] = [
-                        'fecha' => $fecha,
-                        'rate' => $rate,
+                    return [
+                        'success' => false,
+                        'status' => $response->status(),
+                        'error' => $response->body() ?: 'HTTP '.$response->status(),
                     ];
                 }
-            }
 
-            $offset += self::PAGE_LIMIT;
-        } while ($offset < $totalCount);
+                $data = $response->json();
+
+                if (! is_array($data))
+                {
+                    return ['success' => false, 'error' => 'Invalid JSON response.'];
+                }
+
+                if ((int) ($data['status'] ?? 0) !== 200)
+                {
+                    $messages = is_array($data['errorMessages'] ?? null)
+                        ? implode('; ', $data['errorMessages'])
+                        : 'BCRA API error';
+
+                    return [
+                        'success' => false,
+                        'status' => (int) ($data['status'] ?? 0),
+                        'error' => $messages,
+                    ];
+                }
+
+                $results = is_array($data['results'] ?? null) ? $data['results'] : [];
+                $totalCount = (int) ($data['metadata']['resultset']['count'] ?? count($results));
+
+                foreach ($results as $row)
+                {
+                    if (! is_array($row))
+                    {
+                        continue;
+                    }
+
+                    $fecha = (string) ($row['fecha'] ?? '');
+                    $rate = $this->extractUsdRate($row);
+
+                    if ($fecha === '' || $rate === null)
+                    {
+                        continue;
+                    }
+
+                    if (! isset($quotes[$fecha]))
+                    {
+                        $quotes[$fecha] = [
+                            'fecha' => $fecha,
+                            'rate' => $rate,
+                        ];
+                    }
+                }
+
+                $offset += self::PAGE_LIMIT;
+            } while ($offset < $totalCount);
+        } catch (ConnectionException $exception)
+        {
+            return ['success' => false, 'error' => $exception->getMessage()];
+        } catch (\Throwable $exception)
+        {
+            return ['success' => false, 'error' => $exception->getMessage()];
+        }
 
         return [
             'success' => true,

@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services\Currency;
 
 use App\Services\Currency\BcraExchangeRateClient;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -66,6 +67,20 @@ class BcraExchangeRateClientTest extends TestCase
         ];
 
         $this->assertSame(4.01, $client->resolveMonthlyRate($quotes, 'avg'));
+    }
+
+    public function test_fetch_usd_quotes_for_range_returns_error_on_connection_failure(): void
+    {
+        Http::fake(function (): void
+        {
+            throw new ConnectionException(new \GuzzleHttp\Psr7\Request('GET', 'test'));
+        });
+
+        $client = new BcraExchangeRateClient;
+        $result = $client->fetchUsdQuotesForRange('2002-01-01', '2002-01-31');
+
+        $this->assertFalse($result['success']);
+        $this->assertNotEmpty($result['error'] ?? '');
     }
 
     public function test_fetch_usd_quotes_for_range_returns_error_on_api_failure(): void
