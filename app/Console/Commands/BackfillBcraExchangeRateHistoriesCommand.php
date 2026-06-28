@@ -14,7 +14,8 @@ class BackfillBcraExchangeRateHistoriesCommand extends Command
                             {--from=2011-01 : First month (YYYY-MM)}
                             {--to= : Last month inclusive (YYYY-MM); default: current calendar month}
                             {--strategy=last : Monthly rate from daily quotes: last or avg}
-                            {--sleep=0.5 : Seconds to sleep between API calls}
+                            {--sleep=2 : Seconds to sleep between successful API calls}
+                            {--sleep-on-error=15 : Extra seconds to sleep after a failed API call (rate limits / timeouts)}
                             {--skip-existing : Skip month if USD/ARS already stored}
                             {--dry-run : Log actions without writing}';
 
@@ -64,6 +65,7 @@ class BackfillBcraExchangeRateHistoriesCommand extends Command
         }
 
         $sleepSeconds = max(0, (float) $this->option('sleep'));
+        $sleepOnErrorSeconds = max(0, (float) $this->option('sleep-on-error'));
         $dryRun = (bool) $this->option('dry-run');
         $skipExisting = (bool) $this->option('skip-existing');
 
@@ -100,7 +102,7 @@ class BackfillBcraExchangeRateHistoriesCommand extends Command
 
                 if ($sleepSeconds > 0)
                 {
-                    usleep((int) ($sleepSeconds * 1_000_000));
+                    $this->pause($sleepSeconds);
                 }
 
                 continue;
@@ -119,12 +121,14 @@ class BackfillBcraExchangeRateHistoriesCommand extends Command
                     'status' => $result['status'] ?? null,
                 ]);
 
+                $this->pause($sleepOnErrorSeconds);
+
                 $cursor->addMonth();
                 $monthsProcessed++;
 
                 if ($sleepSeconds > 0)
                 {
-                    usleep((int) ($sleepSeconds * 1_000_000));
+                    $this->pause($sleepSeconds);
                 }
 
                 continue;
@@ -141,7 +145,7 @@ class BackfillBcraExchangeRateHistoriesCommand extends Command
 
                 if ($sleepSeconds > 0)
                 {
-                    usleep((int) ($sleepSeconds * 1_000_000));
+                    $this->pause($sleepSeconds);
                 }
 
                 continue;
@@ -174,13 +178,28 @@ class BackfillBcraExchangeRateHistoriesCommand extends Command
 
             if ($sleepSeconds > 0)
             {
-                usleep((int) ($sleepSeconds * 1_000_000));
+                $this->pause($sleepSeconds);
             }
         }
 
         $this->info("Done. Months iterated: {$monthsProcessed}, rows written: {$rowsWritten}, skipped: {$skipped}, errors: {$errors}");
 
+        if ($errors > 0)
+        {
+            $this->warn('Some months failed (often BCRA timeouts under load). Re-run the same range with --skip-existing to retry only missing months.');
+        }
+
         return self::SUCCESS;
+    }
+
+    private function pause(float $seconds): void
+    {
+        if ($seconds <= 0)
+        {
+            return;
+        }
+
+        usleep((int) ($seconds * 1_000_000));
     }
 
     private function monthStored(string $rateMonth): bool
