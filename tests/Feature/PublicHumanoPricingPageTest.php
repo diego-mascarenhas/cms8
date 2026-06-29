@@ -10,6 +10,11 @@ class PublicHumanoPricingPageTest extends TestCase
     {
         parent::setUp();
 
+        config([
+            'app.public_home_route' => 'humano',
+            'app.public_home_path' => null,
+        ]);
+
         if (empty(config('humano_pricing.plans')))
         {
             config(['humano_pricing' => require config_path('humano_pricing.php')]);
@@ -73,5 +78,26 @@ class PublicHumanoPricingPageTest extends TestCase
     public function test_front_pages_pricing_path_is_registered(): void
     {
         $this->get('/front-pages/pricing')->assertOk();
+    }
+
+    public function test_pricing_redirects_to_slash_landing_when_slash_is_public_home(): void
+    {
+        config([
+            'app.public_home_route' => 'slash',
+            'app.public_home_path' => null,
+        ]);
+
+        $this->get('/pricing')
+            ->assertRedirect(route('slash').'#precios');
+    }
+
+    public function test_pricing_is_accessible_when_humano_is_public_home(): void
+    {
+        config([
+            'app.public_home_route' => 'humano',
+            'app.public_home_path' => null,
+        ]);
+
+        $this->get('/pricing')->assertOk();
     }
 }

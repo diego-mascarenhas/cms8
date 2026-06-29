@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\front_pages;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Homes\SlashLandingController;
 use App\Services\AffiliateReferralAttributionService;
 use App\Services\HumanoPricingPlanResolver;
+use Illuminate\Contracts\View\View;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class Pricing extends Controller
@@ -14,8 +17,13 @@ class Pricing extends Controller
         private readonly AffiliateReferralAttributionService $affiliateReferralAttribution,
     ) {}
 
-    public function index(Request $request)
+    public function index(Request $request): View|RedirectResponse
     {
+        if (SlashLandingController::isConfiguredAsPublicHome())
+        {
+            return redirect()->to(route('slash').'#precios');
+        }
+
         $pageConfigs = ['myLayout' => 'front'];
 
         $referrerFromQuery = trim((string) $request->query('ref', ''));
