@@ -1553,11 +1553,30 @@
 	{
 		clearCommunicationBtn.addEventListener('click', function()
 		{
-			// Don't uncheck responsible (it's always checked and disabled)
+			// Reset recipients to default (responsible on, client off)
+			document.getElementById('recipient-responsible').checked = true;
 			document.getElementById('recipient-client').checked = false;
 			document.getElementById('communication-message').value = '';
+			updateSendCommunicationState();
 		});
 	}
+
+	// Enable "Enviar" only when at least one recipient (responsible or client) is selected
+	function updateSendCommunicationState()
+	{
+		const sendBtn = document.getElementById('send-communication');
+		if (!sendBtn) return;
+		const responsibleEl = document.getElementById('recipient-responsible');
+		const clientEl = document.getElementById('recipient-client');
+		const anyChecked = (responsibleEl && responsibleEl.checked) || (clientEl && clientEl.checked);
+		sendBtn.disabled = !anyChecked;
+	}
+	['recipient-responsible', 'recipient-client'].forEach(function (id)
+	{
+		const el = document.getElementById(id);
+		if (el) el.addEventListener('change', updateSendCommunicationState);
+	});
+	updateSendCommunicationState();
 
 	// Send communication
 	const communicationForm = document.getElementById('communication-form');
@@ -1573,9 +1592,15 @@
 			const btnTaskId = sendBtn?.getAttribute('data-task-id');
 			const taskId = btnTaskId ? parseInt(btnTaskId) : (sidebarEl ? parseInt(sidebarEl.getAttribute('data-current-task-id')) : null);
 
+			const responsibleChecked = document.getElementById('recipient-responsible').checked;
 			const clientChecked = document.getElementById('recipient-client').checked;
 			const subject = document.getElementById('communication-subject').value;
 			const message = document.getElementById('communication-message').value;
+
+			// Build recipients array from the selected checkboxes
+			const recipients = [];
+			if (responsibleChecked) recipients.push('responsible');
+			if (clientChecked) recipients.push('client');
 
 			// Validation
 			if (!taskId || !message.trim())
@@ -1583,10 +1608,11 @@
 				console.error('Validation failed:', { taskId, messageLength: message.trim().length });
 				return;
 			}
-
-			// Build recipients array (always include responsible)
-			const recipients = ['responsible'];
-			if (clientChecked) recipients.push('client');
+			if (recipients.length === 0)
+			{
+				if (typeof alert !== 'undefined') alert('Selecciona al menos un destinatario.');
+				return;
+			}
 
 			// Send the communication (reuse sendBtn from above)
 			sendBtn.disabled = true;

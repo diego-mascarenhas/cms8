@@ -406,7 +406,7 @@
                             <label class="form-label">{{ __('Destinatarios') }}</label>
                             <div class="d-flex gap-4">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="recipient-responsible" value="responsible" checked disabled>
+                                    <input class="form-check-input" type="checkbox" id="recipient-responsible" value="responsible" checked>
                                     <label class="form-check-label" for="recipient-responsible">
                                         <i class="ti ti-user me-1"></i>
                                         <span id="responsible-name">{{ __('Responsable') }}</span>

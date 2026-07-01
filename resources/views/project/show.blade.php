@@ -59,11 +59,18 @@
 					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
 				</a>
 			@endcan
+			@if ($project->enterprise_id)
+			<a href="{{ route('client.show', $project->enterprise_id) }}" class="btn btn-outline-primary waves-effect waves-light">
+				<i class="ti ti-building me-1"></i>{{ __('Enterprise') }}
+			</a>
+			@endif
+			{{-- Collaborators temporarily hidden
 			@can('update', $project)
 			<a href="{{ route('project.select-collaborators', $project->id) }}" class="btn btn-success waves-effect waves-light">
 				<i class="ti ti-users me-1"></i>{{ __('Collaborators') }}
 			</a>
 			@endcan
+			--}}
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
 				<i class="ti ti-layout-kanban me-1"></i>{{ __('Board') }}
 			</a>
