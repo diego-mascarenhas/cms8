@@ -47,7 +47,7 @@ class TeamDemoSeeder extends Seeder
      *
      * @var list<string>
      */
-    public const DEMO_DEV_MODULES = ['today', 'performance_insights', 'servers', 'hosting'];
+    public const DEMO_DEV_MODULES = ['today', 'performance_insights', 'servers', 'hosting', 'enterprises', 'projects', 'tasks', 'times'];
 
     private $teamId = 1;
 
@@ -154,6 +154,7 @@ class TeamDemoSeeder extends Seeder
 
         $this->call(DemoDashboardRichDataSeeder::class);
         $this->call(DemoKanbanTasksSeeder::class);
+        $this->call(DemoTaskCommunicationsSeeder::class);
     }
 
     private function ensureDemoTeamExists(): Team

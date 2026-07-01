@@ -110,11 +110,6 @@ class SendMessageCampaignJob implements ShouldQueue
 
         if (! $this->messageDelivery->message->status_id)
         {
-            Log::info('Message delivery skipped: message is paused or inactive', [
-                'delivery_id' => $this->messageDelivery->id,
-                'message_id' => $this->messageDelivery->message->id,
-            ]);
-
             return false;
         }
 

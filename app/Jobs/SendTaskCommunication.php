@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Helpers\Helpers;
 use App\Models\TaskCommunication;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -58,6 +59,9 @@ class SendTaskCommunication implements ShouldQueue
             $recipients = $this->communication->recipients;
             $this->communication->load('user');
 
+            $logoUrl = url(Helpers::logoAsset('dark'));
+            $appName = config('app.name');
+
             // Send email to responsible when selected
             if (in_array('responsible', $recipients) && $task->responsible && $task->responsible->email)
             {
@@ -72,6 +76,8 @@ class SendTaskCommunication implements ShouldQueue
                     'body' => $this->communication->message,
                     'taskUrl' => $taskUrl,
                     'senderName' => $senderName,
+                    'logoUrl' => $logoUrl,
+                    'appName' => $appName,
                 ], function ($mail) use ($task)
                 {
                     $mail
@@ -98,6 +104,8 @@ class SendTaskCommunication implements ShouldQueue
                         'body' => $this->communication->message,
                         'responseUrl' => $responseUrl,
                         'enterprise' => $task->project->enterprise,
+                        'logoUrl' => $logoUrl,
+                        'appName' => $appName,
                     ], function ($mail) use ($task)
                     {
                         $mail
