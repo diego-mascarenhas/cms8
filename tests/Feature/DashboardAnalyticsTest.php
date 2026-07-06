@@ -114,6 +114,44 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertDontSee('Notas de crédito', false);
     }
 
+    public function test_dashboard_shows_invoice_summary_cards_in_english_locale(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+            CurrencySeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Module::query()->firstOrCreate(
+            ['key' => 'invoices'],
+            [
+                'name' => 'Invoices',
+                'icon' => 'file-invoice',
+                'description' => 'Team invoices',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('invoices');
+
+        app()->setLocale('en');
+        session()->put('locale', 'en');
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee(__('app.invoice_summary_unpaid_title'), false);
+        $response->assertSee(__('app.invoice_summary_overdue_title'), false);
+    }
+
     public function test_dashboard_hides_invoice_summary_cards_when_invoices_module_disabled(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
