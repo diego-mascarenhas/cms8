@@ -168,6 +168,11 @@
                                             <td><code>POST /api/team/assistant/chat</code></td>
                                             <td>{{ __('Chat with the full assistant (router + flows). Body: message, optional prompt_key. Team token auth.') }}</td>
                                         </tr>
+                                        <tr>
+                                            <td><strong>{{ __('WhatsApp') }}</strong></td>
+                                            <td><code>POST /api/team/whatsapp/send</code></td>
+                                            <td>{{ __('Send outbound WhatsApp text messages (team token auth)') }}</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -213,6 +218,10 @@
                                 <a href="{{ route('help.api.posts') }}" class="btn btn-info">
                                     <i class="ti ti-file-text me-2"></i>
                                     {{ __('Posts API') }}
+                                </a>
+                                <a href="{{ route('help.api.whatsapp') }}" class="btn btn-success">
+                                    <i class="ti ti-brand-whatsapp me-2"></i>
+                                    {{ __('WhatsApp API') }}
                                 </a>
                                 <a href="{{ route('help.api.enterprises') }}" class="btn btn-secondary">
                                     <i class="ti ti-building me-2"></i>

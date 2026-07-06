@@ -197,6 +197,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
             <div>{{ __('Prompts') }}</div>
           </a>
         </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.whatsapp') ? 'active' : '' }}">
+          <a href="{{ route('help.api.whatsapp') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-brand-whatsapp"></i>
+            <div>{{ __('WhatsApp') }}</div>
+          </a>
+        </li>
       </ul>
     </aside>
 

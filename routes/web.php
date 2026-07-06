@@ -1412,6 +1412,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/api/orders', [HelpController::class, 'apiOrders'])->name('api.orders');
     Route::get('/api/tasks', [HelpController::class, 'apiTasks'])->name('api.tasks');
     Route::get('/api/prompts', [HelpController::class, 'apiPrompts'])->name('api.prompts');
+    Route::get('/api/whatsapp', [HelpController::class, 'apiWhatsApp'])->name('api.whatsapp');
 
     Route::get('/environment-variables', [HelpController::class, 'environmentVariables'])->name('environment-variables');
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
