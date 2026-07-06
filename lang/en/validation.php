@@ -1,18 +1,6 @@
 <?php
 
 return [
-
-    /*
-    |--------------------------------------------------------------------------
-    | Validation Language Lines
-    |--------------------------------------------------------------------------
-    |
-    | The following language lines contain the default error messages used by
-    | the validator class. Some of these rules have multiple versions such
-    | as the size rules. Feel free to tweak each of these messages here.
-    |
-    */
-
     'accepted' => 'The :attribute field must be accepted.',
     'accepted_if' => 'The :attribute field must be accepted when :other is :value.',
     'active_url' => 'The :attribute field must be a valid URL.',
@@ -151,35 +139,143 @@ return [
     'url' => 'The :attribute field must be a valid URL.',
     'ulid' => 'The :attribute field must be a valid ULID.',
     'uuid' => 'The :attribute field must be a valid UUID.',
-
-    /*
-    |--------------------------------------------------------------------------
-    | Custom Validation Language Lines
-    |--------------------------------------------------------------------------
-    |
-    | Here you may specify custom validation messages for attributes using the
-    | convention "attribute.rule" to name the lines. This makes it quick to
-    | specify a specific custom language line for a given attribute rule.
-    |
-    */
-
     'custom' => [
         'attribute-name' => [
             'rule-name' => 'custom-message',
         ],
     ],
-
-    /*
-    |--------------------------------------------------------------------------
-    | Custom Validation Attributes
-    |--------------------------------------------------------------------------
-    |
-    | The following language lines are used to swap our attribute placeholder
-    | with something more reader friendly such as "E-Mail Address" instead
-    | of "email". This simply helps us make our message more expressive.
-    |
-    */
-
-    'attributes' => [],
-
+    'attributes' => [
+        'address' => 'dirección',
+        'affiliate_url' => 'URL de afiliado',
+        'age' => 'edad',
+        'amount' => 'cantidad',
+        'announcement' => 'anuncio',
+        'area' => 'área',
+        'audience_prize' => 'premio del público',
+        'audience_winner' => 'ganador del público',
+        'available' => 'disponible',
+        'birthday' => 'cumpleaños',
+        'body' => 'contenido',
+        'city' => 'ciudad',
+        'company' => 'compañía',
+        'compilation' => 'compilación',
+        'concept' => 'concepto',
+        'conditions' => 'condiciones',
+        'content' => 'contenido',
+        'contest' => 'concurso',
+        'country' => 'país',
+        'cover' => 'portada',
+        'created_at' => 'creado el',
+        'creator' => 'creador',
+        'currency' => 'moneda',
+        'current_password' => 'contraseña actual',
+        'customer' => 'cliente',
+        'date' => 'fecha',
+        'date_of_birth' => 'fecha de nacimiento',
+        'dates' => 'fechas',
+        'day' => 'día',
+        'deleted_at' => 'eliminado el',
+        'description' => 'descripción',
+        'display_type' => 'tipo de visualización',
+        'district' => 'distrito',
+        'duration' => 'duración',
+        'email' => 'correo electrónico',
+        'excerpt' => 'extracto',
+        'filter' => 'filtro',
+        'finished_at' => 'terminado el',
+        'first_name' => 'nombre',
+        'gender' => 'género',
+        'grand_prize' => 'gran Premio',
+        'group' => 'grupo',
+        'hour' => 'hora',
+        'image' => 'imagen',
+        'image_desktop' => 'imagen de escritorio',
+        'image_main' => 'imagen principal',
+        'image_mobile' => 'imagen móvil',
+        'images' => 'imágenes',
+        'is_audience_winner' => 'es ganador de audiencia',
+        'is_hidden' => 'está oculto',
+        'is_subscribed' => 'está suscrito',
+        'is_visible' => 'es visible',
+        'is_winner' => 'es ganador',
+        'items' => 'elementos',
+        'key' => 'clave',
+        'last_name' => 'apellidos',
+        'lesson' => 'lección',
+        'line_address_1' => 'línea de dirección 1',
+        'line_address_2' => 'línea de dirección 2',
+        'login' => 'acceso',
+        'message' => 'mensaje',
+        'middle_name' => 'segundo nombre',
+        'minute' => 'minuto',
+        'mobile' => 'móvil',
+        'month' => 'mes',
+        'name' => 'nombre',
+        'national_code' => 'código nacional',
+        'number' => 'número',
+        'password' => 'contraseña',
+        'password_confirmation' => 'confirmación de la contraseña',
+        'phone' => 'teléfono',
+        'photo' => 'foto',
+        'portfolio' => 'portafolio',
+        'postal_code' => 'código postal',
+        'preview' => 'vista preliminar',
+        'price' => 'precio',
+        'product_id' => 'ID del producto',
+        'product_uid' => 'UID del producto',
+        'product_uuid' => 'UUID del producto',
+        'promo_code' => 'código promocional',
+        'province' => 'provincia',
+        'quantity' => 'cantidad',
+        'reason' => 'razón',
+        'recaptcha_response_field' => 'respuesta del recaptcha',
+        'referee' => 'árbitro',
+        'referees' => 'árbitros',
+        'reject_reason' => 'motivo de rechazo',
+        'remember' => 'recordar',
+        'restored_at' => 'restaurado el',
+        'result_text_under_image' => 'texto bajo la imagen',
+        'role' => 'rol',
+        'rule' => 'regla',
+        'rules' => 'reglas',
+        'second' => 'segundo',
+        'sex' => 'sexo',
+        'shipment' => 'envío',
+        'short_text' => 'texto corto',
+        'size' => 'tamaño',
+        'skills' => 'habilidades',
+        'slug' => 'slug',
+        'specialization' => 'especialización',
+        'started_at' => 'comenzado el',
+        'state' => 'estado',
+        'status' => 'estado',
+        'street' => 'calle',
+        'student' => 'estudiante',
+        'subject' => 'asunto',
+        'tag' => 'etiqueta',
+        'tags' => 'etiquetas',
+        'teacher' => 'profesor',
+        'terms' => 'términos',
+        'test_description' => 'descripción de prueba',
+        'test_locale' => 'idioma de prueba',
+        'test_name' => 'nombre de prueba',
+        'text' => 'texto',
+        'time' => 'hora',
+        'title' => 'título',
+        'type' => 'tipo',
+        'updated_at' => 'actualizado el',
+        'user' => 'usuario',
+        'username' => 'usuario',
+        'value' => 'valor',
+        'winner' => 'ganador',
+        'work' => 'trabajo',
+        'year' => 'año',
+    ],
+    'can' => 'El campo :attribute contiene un valor no autorizado.',
+    'extensions' => 'El campo :attribute debe tener una de las siguientes extensiones: :values.',
+    'hex_color' => 'El campo :attribute debe tener un color hexadecimal válido.',
+    'present_if' => 'El campo :attribute debe estar presente cuando :other es :value.',
+    'present_unless' => 'El campo :attribute debe estar presente a menos que :other sea :value.',
+    'present_with' => 'El campo :attribute debe estar presente cuando :values esté presente.',
+    'present_with_all' => 'El campo :attribute debe estar presente cuando :values estén presentes.',
 ];

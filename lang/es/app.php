@@ -448,10 +448,6 @@ return [
     'languages' => [
         'english' => 'Inglés',
         'spanish' => 'Español',
-        'french' => 'Francés',
-        'german' => 'Alemán',
-        'italian' => 'Italiano',
-        'portuguese' => 'Portugués',
     ],
     'theme' => [
         'light' => 'Claro',

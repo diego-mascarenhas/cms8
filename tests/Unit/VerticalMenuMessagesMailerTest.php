@@ -2,10 +2,24 @@
 
 namespace Tests\Unit;
 
+use App\Helpers\MenuHelper;
 use Tests\TestCase;
 
 class VerticalMenuMessagesMailerTest extends TestCase
 {
+    public function test_messages_menu_label_is_string_for_partial_locales(): void
+    {
+        foreach (['fr', 'de', 'it', 'pt', 'en', 'es_ES'] as $locale)
+        {
+            app()->setLocale($locale);
+
+            $label = MenuHelper::menuLabel('Messages');
+
+            $this->assertIsString($label);
+            $this->assertNotSame('', $label);
+        }
+    }
+
     public function test_messages_menu_item_targets_mailer_message_list(): void
     {
         $path = resource_path('menu/verticalMenu.json');

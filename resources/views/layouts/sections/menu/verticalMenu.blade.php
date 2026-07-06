@@ -34,7 +34,7 @@ $configData = Helper::appClasses();
     {{-- menu headers --}}
     @if (isset($menu->menuHeader))
     <li class="menu-header small text-uppercase">
-      <span class="menu-header-text">{{ __($menu->menuHeader) }}</span>
+      <span class="menu-header-text">{{ MenuHelper::menuLabel($menu->menuHeader) }}</span>
     </li>
 
     @else
@@ -85,7 +85,7 @@ $configData = Helper::appClasses();
         @isset($menu->icon)
         <i class="{{ $menu->icon }}"></i>
         @endisset
-        <div>{{ isset($menu->name) ? __($menu->name) : '' }}</div>
+        <div>{{ MenuHelper::menuLabel($menu->name ?? null) }}</div>
         @isset($menu->badge)
         <div class="badge bg-{{ $menu->badge[0] }} rounded-pill ms-auto">{{ $menu->badge[1] }}</div>
 

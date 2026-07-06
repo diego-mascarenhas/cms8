@@ -9,6 +9,32 @@ final class ApplicationLocales
     public const ARGENTINA = 'es_AR';
 
     /**
+     * Locales offered in the navbar language selector.
+     *
+     * @return list<array{route: string, locale: string, label_key: string}>
+     */
+    public static function navbarSelectorOptions(): array
+    {
+        return [
+            ['route' => 'en', 'locale' => 'en', 'label_key' => 'app.languages.english'],
+            ['route' => 'es', 'locale' => self::DEFAULT, 'label_key' => 'app.languages.spanish'],
+        ];
+    }
+
+    public static function isNavbarSelectorActive(string $optionLocale): bool
+    {
+        $current = self::normalize(app()->getLocale());
+        $optionLocale = self::normalize($optionLocale);
+
+        if (in_array($optionLocale, [self::DEFAULT, self::ARGENTINA], true))
+        {
+            return in_array($current, [self::DEFAULT, self::ARGENTINA], true);
+        }
+
+        return $current === $optionLocale;
+    }
+
+    /**
      * @return list<string>
      */
     public static function supported(): array

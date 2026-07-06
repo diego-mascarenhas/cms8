@@ -67,4 +67,21 @@ class ApplicationLocalesTest extends TestCase
         $this->assertSame('en', ApplicationLocales::htmlLang('en'));
         $this->assertSame('es-ES', ApplicationLocales::htmlLang('es'));
     }
+
+    public function test_navbar_selector_only_offers_english_and_spanish(): void
+    {
+        $options = ApplicationLocales::navbarSelectorOptions();
+
+        $this->assertCount(2, $options);
+        $this->assertSame('en', $options[0]['route']);
+        $this->assertSame('es', $options[1]['route']);
+
+        app()->setLocale('es_ES');
+        $this->assertTrue(ApplicationLocales::isNavbarSelectorActive('es_ES'));
+        $this->assertFalse(ApplicationLocales::isNavbarSelectorActive('en'));
+
+        app()->setLocale('en');
+        $this->assertTrue(ApplicationLocales::isNavbarSelectorActive('en'));
+        $this->assertFalse(ApplicationLocales::isNavbarSelectorActive('es_ES'));
+    }
 }
