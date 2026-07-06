@@ -4,6 +4,18 @@ namespace App\Helpers;
 
 class MenuHelper
 {
+    public static function menuLabel(?string $key): string
+    {
+        if ($key === null || $key === '')
+        {
+            return '';
+        }
+
+        $translated = __($key);
+
+        return is_string($translated) ? $translated : $key;
+    }
+
     public static function getMenuConfig()
     {
         $menuType = env('APP_MENU_TYPE', 'vertical');

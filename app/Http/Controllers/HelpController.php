@@ -276,6 +276,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display WhatsApp send API documentation
+     */
+    public function apiWhatsApp()
+    {
+        return view('help.api-whatsapp', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Stripe webhook URL and events (Cashier + Humano handlers).
      */
     public function stripeWebhook()

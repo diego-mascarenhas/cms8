@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\TeamPostController;
 use App\Http\Controllers\Api\TeamProductController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TeamPromptController;
+use App\Http\Controllers\Api\TeamWhatsAppController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\TodayController;
@@ -591,6 +592,7 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     Route::post('prompt', TeamPromptController::class)->name('api.team.prompt');
     // Assistant chat (router + flows); body: message required, optional prompt_key
     Route::post('assistant/chat', [TeamAssistantController::class, 'chat'])->name('api.team.assistant.chat');
+    Route::post('whatsapp/send', [TeamWhatsAppController::class, 'send'])->name('api.team.whatsapp.send');
     Route::get('/settings', [TeamController::class, 'settings']);
 
     // Team contacts

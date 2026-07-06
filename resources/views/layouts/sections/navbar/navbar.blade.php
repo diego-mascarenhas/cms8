@@ -221,48 +221,22 @@
             @endif
         @endauth
         <!-- Language -->
-        @if ($configData['showLanguageSelector'] && Auth::check() && Auth::user()->hasRole('developer'))
+        @if ($configData['showLanguageSelector'] && Auth::check())
         <li class="nav-item dropdown-language dropdown me-2 me-xl-0">
             <a class="nav-link dropdown-toggle hide-arrow" href="javascript:void(0);" data-bs-toggle="dropdown">
                 <i class='ti ti-language rounded-circle ti-md'></i>
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
+                @foreach (\App\Support\ApplicationLocales::navbarSelectorOptions() as $languageOption)
                 <li>
-                    <a class="dropdown-item {{ app()->getLocale() === 'en' ? 'active' : '' }}"
-                        href="{{ url('lang/en') }}" data-language="en" data-text-direction="ltr">
-                        <span class="align-middle">{{ __('app.languages.english') }}</span>
+                    <a class="dropdown-item {{ \App\Support\ApplicationLocales::isNavbarSelectorActive($languageOption['locale']) ? 'active' : '' }}"
+                        href="{{ url('lang/'.$languageOption['route']) }}"
+                        data-language="{{ $languageOption['route'] }}"
+                        data-text-direction="ltr">
+                        <span class="align-middle">{{ __($languageOption['label_key']) }}</span>
                     </a>
                 </li>
-                <li>
-                    <a class="dropdown-item {{ app()->getLocale() === 'es' ? 'active' : '' }}"
-                        href="{{ url('lang/es') }}" data-language="es" data-text-direction="ltr">
-                        <span class="align-middle">{{ __('app.languages.spanish') }}</span>
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item {{ app()->getLocale() === 'fr' ? 'active' : '' }}"
-                        href="{{ url('lang/fr') }}" data-language="fr" data-text-direction="ltr">
-                        <span class="align-middle">{{ __('app.languages.french') }}</span>
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item {{ app()->getLocale() === 'de' ? 'active' : '' }}"
-                        href="{{ url('lang/de') }}" data-language="de" data-text-direction="ltr">
-                        <span class="align-middle">{{ __('app.languages.german') }}</span>
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item {{ app()->getLocale() === 'it' ? 'active' : '' }}"
-                        href="{{ url('lang/it') }}" data-language="it" data-text-direction="ltr">
-                        <span class="align-middle">{{ __('app.languages.italian') }}</span>
-                    </a>
-                </li>
-                <li>
-                    <a class="dropdown-item {{ app()->getLocale() === 'pt' ? 'active' : '' }}"
-                        href="{{ url('lang/pt') }}" data-language="pt" data-text-direction="ltr">
-                        <span class="align-middle">{{ __('app.languages.portuguese') }}</span>
-                    </a>
-                </li>
+                @endforeach
             </ul>
         </li>
         @endif

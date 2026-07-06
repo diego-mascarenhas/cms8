@@ -4,7 +4,6 @@ return [
     'meta_description' => 'La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp.',
     'page_title' => 'HumanoApp',
     'og_title' => 'HumanoApp',
-
     'nav' => [
         'login' => 'Iniciar sesión',
         'open_menu' => 'Abrir menú',
@@ -19,8 +18,8 @@ return [
         'product' => 'Producto',
         'resources' => 'Recursos',
         'account' => 'Cuenta',
+        'youtube_tutorials' => 'Humano • Onboarding',
     ],
-
     'hero' => [
         'title' => 'La nueva forma de gestionar tu negocio.',
         'lead' => 'Fácil, sencillo y sin complicaciones',
@@ -40,78 +39,72 @@ return [
         'note' => 'Checkout seguro con Stripe. Cancelá cuando quieras.',
         'image_alt' => 'Panel Humano',
     ],
-
     'statband' => [
         'strong' => 'Miles de tareas gestionadas',
         'span' => 'por equipos que eligieron dejar el mega excel',
     ],
-
     'trust' => [
         'eyebrow' => 'Confianza',
         'title' => 'Elegido por equipos que quieren moverse más rápido',
         'lead' => 'Desde freelancers hasta pymes, equipos eligen Humano para operar con menos fricción.',
     ],
-
     'stories' => [
         'title' => 'Conocé cada plan en acción',
         'lead' => 'Un video por plan. Misma información que en :link, en formato visual.',
         'lead_link' => 'precios',
+        'eyebrow' => 'En acción',
     ],
-
     'capabilities' => [
         'eyebrow' => 'Capacidades modernas',
         'title' => 'Amplificado con herramientas actuales',
         'lead' => 'WhatsApp, IA, permisos granulares y espacios de trabajo para escalar sin perder control.',
     ],
-
     'benefits' => [
         'eyebrow' => 'Beneficios clave',
         'title' => 'Todo lo que necesitás para gestionar tu negocio',
         'lead' => 'Menos gestión administrativa y más tiempo con tus clientes.',
     ],
-
     'metrics' => [
         'eyebrow' => 'Escala y rendimiento',
         'title' => 'Métricas que importan',
     ],
-
     'tools' => [
         'eyebrow' => 'Herramientas inteligentes',
         'title' => 'Completá cualquier tarea en pocos clics',
         'lead' => 'Módulos pensados para el día a día de tu equipo.',
     ],
-
     'security' => [
         'eyebrow' => 'Seguridad',
         'title' => 'Seguro por diseño',
         'lead' => 'Infraestructura europea, permisos granulares y control total de tus datos.',
     ],
-
     'guides' => [
         'eyebrow' => 'Guías',
         'title' => 'Aprendé a usar Humano',
         'lead' => 'Presentaciones paso a paso por módulo. Empezamos por cómo funciona la plataforma.',
         'cta' => 'Ver presentación',
         'prospecting_description' => 'Buscá perfiles por cargo y ubicación e importalos a tu agenda con créditos de prospectos.',
+        'youtube_card' => [
+            'subtitle' => 'YouTube',
+            'title' => 'Humano • Onboarding',
+            'description' => 'Serie de vídeos paso a paso para configurar tu negocio y empezar a usar Humano.',
+            'cta' => 'Ver la playlist',
+        ],
     ],
-
     'pricing' => [
         'eyebrow' => 'Precios',
     ],
-
     'faq' => [
         'eyebrow' => 'FAQ',
         'title' => 'Preguntas frecuentes',
         'lead' => '¿No encontrás la respuesta? :link.',
         'lead_link' => 'Escribinos',
     ],
-
     'cta' => [
         'title' => 'Empezá en menos de 10 minutos',
         'lead' => 'Unite a los equipos que ya operan su negocio con Humano.app.',
         'button' => 'Empezar gratis',
     ],
-
     'lead' => [
         'success_badge' => 'Solo por dejar tu email',
         'success_kicker' => 'Empezá hoy, no la semana que viene',
@@ -158,7 +151,6 @@ return [
             'cta' => 'CTA (abajo)',
         ],
     ],
-
     'contact' => [
         'eyebrow' => 'Contacto',
         'title' => 'Hablemos de tu negocio',
@@ -166,7 +158,6 @@ return [
         'email' => 'Email',
         'phone' => 'Teléfono',
     ],
-
     'footer' => [
         'tagline' => 'El sistema operativo de tu negocio digital. Contactos, WhatsApp, IA y procesos sin depender del mega excel.',
         'copyright' => 'Todos los derechos reservados.',
@@ -178,80 +169,209 @@ return [
         'idoneo_tooltip' => 'IDONEO',
         'idoneo_logo_alt' => 'Idoneo',
     ],
-
     'features' => [
-        ['icon' => 'laptop.png', 'title' => 'Sin el mega excel', 'text' => 'Dejá macros opacos y permisos confusos. Toda la empresa ve la misma información con roles claros.'],
-        ['icon' => 'check.png', 'title' => 'Los datos son tuyos', 'text' => 'Servidores en Europa. Exportá y llevate tus datos cuando quieras, sin límites.'],
-        ['icon' => 'rocket.png', 'title' => 'Menos gestión, más vida', 'text' => 'Procesos probados sin inventarlos vos. Humano.app acelera la operativa desde el primer día.'],
-        ['icon' => 'cloud.svg', 'title' => 'Sistema en la nube', 'text' => 'Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.'],
-        ['icon' => 'user.png', 'title' => 'Control por WhatsApp', 'text' => 'Gestioná tu negocio desde WhatsApp. Vos das las órdenes, Humano.app responde.'],
-        ['icon' => 'keyboard.png', 'title' => 'Consultor IA personalizado', 'text' => 'Respuestas útiles para tu negocio y tu equipo, con tu tono de marca.'],
+        [
+            'icon' => 'laptop.png',
+            'title' => 'Sin el mega excel',
+            'text' => 'Dejá macros opacos y permisos confusos. Toda la empresa ve la misma información con roles claros.',
+        ],
+        [
+            'icon' => 'check.png',
+            'title' => 'Los datos son tuyos',
+            'text' => 'Servidores en Europa. Exportá y llevate tus datos cuando quieras, sin límites.',
+        ],
+        [
+            'icon' => 'rocket.png',
+            'title' => 'Menos gestión, más vida',
+            'text' => 'Procesos probados sin inventarlos vos. Humano.app acelera la operativa desde el primer día.',
+        ],
+        [
+            'icon' => 'cloud.svg',
+            'title' => 'Sistema en la nube',
+            'text' => 'Accedé desde móvil, tablet u ordenador desde cualquier parte del mundo.',
+        ],
+        [
+            'icon' => 'user.png',
+            'title' => 'Control por WhatsApp',
+            'text' => 'Gestioná tu negocio desde WhatsApp. Vos das las órdenes, Humano.app responde.',
+        ],
+        [
+            'icon' => 'keyboard.png',
+            'title' => 'Consultor IA personalizado',
+            'text' => 'Respuestas útiles para tu negocio y tu equipo, con tu tono de marca.',
+        ],
     ],
-
     'capability_items' => [
-        ['title' => 'WhatsApp integrado', 'text' => 'Conectá tu línea, respondé desde el panel y automatizá lo repetitivo sin salir de Humano.'],
-        ['title' => 'Roles y permisos', 'text' => 'Definí quién ve qué: ventas, operaciones, finanzas. Sin macros ni hojas compartidas a ciegas.'],
-        ['title' => 'Multi-equipo', 'text' => 'Cambiá entre espacios de trabajo como entre servidores: cada negocio con su marca, datos y flujos.'],
+        [
+            'title' => 'WhatsApp integrado',
+            'text' => 'Conectá tu línea, respondé desde el panel y automatizá lo repetitivo sin salir de Humano.',
+        ],
+        [
+            'title' => 'Roles y permisos',
+            'text' => 'Definí quién ve qué: ventas, operaciones, finanzas. Sin macros ni hojas compartidas a ciegas.',
+        ],
+        [
+            'title' => 'Multi-equipo',
+            'text' => 'Cambiá entre espacios de trabajo como entre servidores: cada negocio con su marca, datos y flujos.',
+        ],
     ],
-
     'tool_items' => [
-        ['title' => 'Panel Hoy', 'text' => 'Vista diaria de pendientes, citas y conversaciones activas.'],
-        ['title' => 'Prospección', 'text' => 'Buscá perfiles por cargo y ubicación e importalos a tu agenda.'],
-        ['title' => 'Tareas y tablero', 'text' => 'Lista y kanban por estado, responsables y fechas.'],
-        ['title' => 'Landings', 'text' => 'Convertí visitas en contactos con páginas enlazadas al CRM.'],
-        ['title' => 'Facturación', 'text' => 'Emití y seguí cobros sin cambiar de herramienta.'],
-        ['title' => 'Exportación', 'text' => 'Tus datos son tuyos: exportá cuando quieras, sin límites.'],
+        [
+            'title' => 'Panel Hoy',
+            'text' => 'Vista diaria de pendientes, citas y conversaciones activas.',
+        ],
+        [
+            'title' => 'Prospección',
+            'text' => 'Buscá perfiles por cargo y ubicación e importalos a tu agenda.',
+        ],
+        [
+            'title' => 'Tareas y tablero',
+            'text' => 'Lista y kanban por estado, responsables y fechas.',
+        ],
+        [
+            'title' => 'Landings',
+            'text' => 'Convertí visitas en contactos con páginas enlazadas al CRM.',
+        ],
+        [
+            'title' => 'Facturación',
+            'text' => 'Emití y seguí cobros sin cambiar de herramienta.',
+        ],
+        [
+            'title' => 'Exportación',
+            'text' => 'Tus datos son tuyos: exportá cuando quieras, sin límites.',
+        ],
     ],
-
     'trust_cards' => [
         [
             'quote' => 'Dejamos el Excel compartido y por fin todo el equipo ve lo mismo. La configuración inicial nos llevó una tarde.',
             'name' => 'María G.',
             'role' => 'Directora, estudio creativo',
             'initials' => 'MG',
-            'stats' => [['value' => '24/7', 'label' => 'acceso en la nube'], ['value' => '−40%', 'label' => 'tiempo admin']],
+            'stats' => [
+                [
+                    'value' => '24/7',
+                    'label' => 'acceso en la nube',
+                ],
+                [
+                    'value' => '−40%',
+                    'label' => 'tiempo admin',
+                ],
+            ],
         ],
         [
             'quote' => 'WhatsApp conectado al panel cambió cómo respondemos. La IA mantiene nuestro tono sin sonar genérica.',
             'name' => 'Carlos R.',
             'role' => 'Fundador, agencia digital',
             'initials' => 'CR',
-            'stats' => [['value' => '1', 'label' => 'plataforma unificada'], ['value' => '0', 'label' => 'macros confusos']],
+            'stats' => [
+                [
+                    'value' => '1',
+                    'label' => 'plataforma unificada',
+                ],
+                [
+                    'value' => '0',
+                    'label' => 'macros confusos',
+                ],
+            ],
         ],
         [
             'quote' => 'Facturas, contactos y campañas en un solo lugar. Dejamos de saltar entre cinco herramientas cada mañana.',
             'name' => 'Laura P.',
             'role' => 'COO, consultora B2B',
             'initials' => 'LP',
-            'stats' => [['value' => 'EU', 'label' => 'datos en Europa'], ['value' => '100%', 'label' => 'exportables']],
+            'stats' => [
+                [
+                    'value' => 'EU',
+                    'label' => 'datos en Europa',
+                ],
+                [
+                    'value' => '100%',
+                    'label' => 'exportables',
+                ],
+            ],
         ],
     ],
-
     'testimonials' => [
-        ['text' => 'Las necesidades de un negocio moderno cambian rápido, y plataformas como Humano son las que pueden responder a eso.', 'author' => 'Equipo fundador', 'company' => 'Humano.app'],
-        ['text' => 'Siguen lanzando mejoras que realmente uso cada día: chat, tareas y contactos en el mismo flujo.', 'author' => 'Usuario Business', 'company' => 'Plan Business'],
-        ['text' => 'Con Humano veo todo lo que pasa en el negocio. Hace que mirar los números y el equipo sea mucho más claro.', 'author' => 'Usuario Mentor', 'company' => 'Plan Mentor'],
+        [
+            'text' => 'Las necesidades de un negocio moderno cambian rápido, y plataformas como Humano son las que pueden responder a eso.',
+            'author' => 'Equipo fundador',
+            'company' => 'Humano.app',
+        ],
+        [
+            'text' => 'Siguen lanzando mejoras que realmente uso cada día: chat, tareas y contactos en el mismo flujo.',
+            'author' => 'Usuario Business',
+            'company' => 'Plan Business',
+        ],
+        [
+            'text' => 'Con Humano veo todo lo que pasa en el negocio. Hace que mirar los números y el equipo sea mucho más claro.',
+            'author' => 'Usuario Mentor',
+            'company' => 'Plan Mentor',
+        ],
     ],
-
     'security_items' => [
-        ['title' => 'Infraestructura europea', 'text' => 'La plataforma se aloja en servidores en Europa, con controles de acceso y respaldo operativo.'],
-        ['title' => 'Autenticación segura', 'text' => 'Cuentas y acciones sensibles protegidas con inicio de sesión y permisos granulares por rol.'],
-        ['title' => 'Tus datos, tu propiedad', 'text' => 'Exportá tu información cuando quieras. Sin bloqueos ni dependencia de formatos propietarios.'],
-        ['title' => 'Permisos por equipo', 'text' => 'Definí quién edita, quién ve y quién opera en cada módulo según la gobernanza de tu empresa.'],
+        [
+            'title' => 'Infraestructura europea',
+            'text' => 'La plataforma se aloja en servidores en Europa, con controles de acceso y respaldo operativo.',
+        ],
+        [
+            'title' => 'Autenticación segura',
+            'text' => 'Cuentas y acciones sensibles protegidas con inicio de sesión y permisos granulares por rol.',
+        ],
+        [
+            'title' => 'Tus datos, tu propiedad',
+            'text' => 'Exportá tu información cuando quieras. Sin bloqueos ni dependencia de formatos propietarios.',
+        ],
+        [
+            'title' => 'Permisos por equipo',
+            'text' => 'Definí quién edita, quién ve y quién opera en cada módulo según la gobernanza de tu empresa.',
+        ],
     ],
-
     'faqs' => [
-        ['q' => '¿Qué es Humano.app?', 'a' => 'Es el sistema operativo de tu negocio digital: contactos, agenda, tareas, WhatsApp, facturación y automatización con IA, en una sola plataforma en la nube.'],
-        ['q' => '¿Puedo probar antes de pagar?', 'a' => 'Sí. Podés suscribirte desde la página de precios con checkout seguro en Stripe.'],
-        ['q' => '¿Los datos son míos?', 'a' => 'Sí. Podés exportar tu información cuando quieras. La plataforma se aloja en infraestructura europea robusta.'],
-        ['q' => '¿Por qué usar Humano en lugar de Excel?', 'a' => 'Porque centraliza contactos, comunicación, tareas y cobros con roles claros. Menos errores, menos tiempo administrativo y más foco en clientes.'],
-        ['q' => '¿Es seguro para mi negocio?', 'a' => 'Sí. Usamos autenticación estándar, permisos por rol e infraestructura en Europa. Tus datos permanecen bajo tu control y son exportables.'],
+        [
+            'q' => '¿Qué es Humano.app?',
+            'a' => 'Es el sistema operativo de tu negocio digital: contactos, agenda, tareas, WhatsApp, facturación y automatización con IA, en una sola plataforma en la nube.',
+        ],
+        [
+            'q' => '¿Puedo probar antes de pagar?',
+            'a' => 'Sí. Podés suscribirte desde la página de precios con checkout seguro en Stripe.',
+        ],
+        [
+            'q' => '¿Los datos son míos?',
+            'a' => 'Sí. Podés exportar tu información cuando quieras. La plataforma se aloja en infraestructura europea robusta.',
+        ],
+        [
+            'q' => '¿Por qué usar Humano en lugar de Excel?',
+            'a' => 'Porque centraliza contactos, comunicación, tareas y cobros con roles claros. Menos errores, menos tiempo administrativo y más foco en clientes.',
+        ],
+        [
+            'q' => '¿Es seguro para mi negocio?',
+            'a' => 'Sí. Usamos autenticación estándar, permisos por rol e infraestructura en Europa. Tus datos permanecen bajo tu control y son exportables.',
+        ],
     ],
-
     'metric_items' => [
-        ['value' => '24/7', 'label' => 'Plataforma en la nube', 'count' => null, 'suffix' => ''],
-        ['value' => '6', 'label' => 'Pasos para configurar', 'count' => 6, 'suffix' => ''],
-        ['value' => '4', 'label' => 'Planes escalables', 'count' => 4, 'suffix' => ''],
-        ['value' => '100%', 'label' => 'Datos exportables', 'count' => 100, 'suffix' => '%'],
+        [
+            'value' => '24/7',
+            'label' => 'Plataforma en la nube',
+            'count' => null,
+            'suffix' => '',
+        ],
+        [
+            'value' => '6',
+            'label' => 'Pasos para configurar',
+            'count' => 6,
+            'suffix' => '',
+        ],
+        [
+            'value' => '4',
+            'label' => 'Planes escalables',
+            'count' => 4,
+            'suffix' => '',
+        ],
+        [
+            'value' => '100%',
+            'label' => 'Datos exportables',
+            'count' => 100,
+            'suffix' => '%',
+        ],
     ],
 ];

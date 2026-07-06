@@ -87,7 +87,7 @@
                                 <h3 class="mb-0 me-2">{{ $totalLeads ?? 0 }}</h3>
                                 <p class="text-success mb-0">({{ $leadsPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total de leads</p>
+                            <p class="mb-0">{{ __('app.contact_stats_leads_total') }}</p>
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-success filter-status" data-status="1">
@@ -103,12 +103,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>En seguimiento</span>
+                            <span>{{ __('app.contact_stats_follow_up') }}</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $totalFollowUp ?? 0 }}</h3>
                                 <p class="text-warning mb-0">({{ $followUpPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total en seguimiento</p>
+                            <p class="mb-0">{{ __('app.contact_stats_follow_up_total') }}</p>
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-status="2">
@@ -124,12 +124,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Clientes</span>
+                            <span>{{ __('app.clients') }}</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $totalClients ?? 0 }}</h3>
                                 <p class="text-primary mb-0">({{ $clientsPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total de clientes</p>
+                            <p class="mb-0">{{ __('app.contact_stats_clients_total') }}</p>
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="5">
@@ -145,12 +145,12 @@
                 <div class="card-body">
                     <div class="d-flex align-items-start justify-content-between">
                         <div class="content-left">
-                            <span>Finalizados</span>
+                            <span>{{ __('app.contact_stats_finished') }}</span>
                             <div class="d-flex align-items-center my-2">
                                 <h3 class="mb-0 me-2">{{ $totalFinished ?? 0 }}</h3>
                                 <p class="text-dark mb-0">({{ $finishedPercentage ?? 0 }}%)</p>
                             </div>
-                            <p class="mb-0">Total finalizados</p>
+                            <p class="mb-0">{{ __('app.contact_stats_finished_total') }}</p>
                         </div>
                         <div class="avatar">
                             <a href="#" class="avatar-initial rounded bg-label-dark filter-status" data-status="6">
@@ -168,17 +168,17 @@
             <div class="contact-list-toolbar">
                 <a href="{{ route('contact.create') }}" class="btn btn-primary btn-sm waves-effect waves-light">
                     <i class="ti ti-plus me-sm-1"></i>
-                    <span class="d-none d-sm-inline-block">Añadir contacto</span>
+                    <span class="d-none d-sm-inline-block">{{ __('app.contact_add') }}</span>
                 </a>
                 <a href="{{ route('contact.import-mapping') }}" class="btn btn-outline-secondary btn-sm waves-effect">
                     <i class="ti ti-file-import me-sm-1"></i>
-                    <span class="d-none d-sm-inline-block">Importar</span>
+                    <span class="d-none d-sm-inline-block">{{ __('app.contact_import') }}</span>
                 </a>
                 @can('create', \App\Models\Contact::class)
                     @if (auth()->user()->currentTeam?->hasModule('prospecting'))
                         <a href="{{ route('prospect.search') }}" class="btn btn-outline-secondary btn-sm waves-effect">
                             <i class="ti ti-target me-sm-1"></i>
-                            <span class="d-none d-sm-inline-block">Buscar clientes</span>
+                            <span class="d-none d-sm-inline-block">{{ __('app.contact_prospect_search') }}</span>
                         </a>
                     @endif
                 @endcan

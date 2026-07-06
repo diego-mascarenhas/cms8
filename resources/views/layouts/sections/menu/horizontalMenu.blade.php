@@ -38,7 +38,7 @@ $configData = Helper::appClasses();
           @isset($menu->icon)
           <i class="{{ $menu->icon }}"></i>
           @endisset
-          <div>{{ isset($menu->name) ? __($menu->name) : '' }}</div>
+          <div>{{ MenuHelper::menuLabel($menu->name ?? null) }}</div>
         </a>
 
         {{-- submenu --}}

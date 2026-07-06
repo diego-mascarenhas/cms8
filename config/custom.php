@@ -38,7 +38,7 @@ return [
         'authMinimalLayout' => env('AUTH_MINIMAL_LAYOUT', false), // true = auth pages without left illustration panel
         'showSearch' => true, // options[Boolean]: true(default), false // To enable or disable the search bar
         'showQuickAccess' => false, // options[Boolean]: true(default), false // Navbar shortcuts grid (calendar, prospección, etc.)
-        // 'showLanguageSelector' => false, // options[Boolean]: true(default), false // To enable or disable the language selector
+        'showLanguageSelector' => true, // options[Boolean]: true(default), false // To enable or disable the language selector
         // 'showNotifications' => true, // options[Boolean]: true(default), false // To enable or disable notifications
     ],
 
