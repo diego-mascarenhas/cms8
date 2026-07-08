@@ -30,7 +30,7 @@ enum AdPlatform: string
             self::Meta => 'ti ti-brand-meta',
             self::LinkedIn => 'ti ti-brand-linkedin',
             self::TikTok => 'ti ti-brand-tiktok',
-            self::X => 'ti ti-brand-x',
+            self::X => 'ti ti-brand-twitter',
         };
     }
 

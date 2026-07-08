@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\WhatsAppGateway;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
@@ -14,6 +15,36 @@ use Tests\TestCase;
 class WhatsAppLocalTeamScopedSendTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_default_gateway_binding_includes_current_team_id(): void
+    {
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://baileys.test']);
+        config(['whatsapp.local.webhook_secret' => '']);
+
+        Http::fake([
+            'http://baileys.test/*' => Http::response(['id' => 'msg-3', 'success' => true], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+
+        $this->actingAs($user->refresh());
+
+        app(WhatsAppGateway::class)->sendMessage('5491199988877', 'Hola');
+
+        Http::assertSent(function ($request) use ($team): bool
+        {
+            if (! str_contains($request->url(), '/send-message'))
+            {
+                return false;
+            }
+
+            return (int) ($request->data()['team_id'] ?? 0) === $team->id;
+        });
+    }
 
     public function test_local_send_whatsapp_includes_team_id_for_team_bounded_service(): void
     {

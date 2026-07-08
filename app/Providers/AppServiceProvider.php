@@ -69,6 +69,7 @@ class AppServiceProvider extends ServiceProvider
                 return new LocalWhatsAppGateway(
                     config('whatsapp.local.base_url', ''),
                     config('whatsapp.local.webhook_secret'),
+                    auth()->user()?->currentTeam?->id,
                 );
             }
 

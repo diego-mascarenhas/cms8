@@ -297,7 +297,21 @@ PROMPT;
             ];
         } catch (\Throwable $e)
         {
-            Log::error('UserDailyPerformanceInsight: LLM failed', ['error' => $e->getMessage()]);
+            // Transient provider issues (overloaded / rate limited) are expected and self-recover;
+            // log them as warnings so they don't pollute the error log.
+            $message = $e->getMessage();
+            $isTransient = stripos($message, 'overloaded') !== false
+                || stripos($message, 'rate limit') !== false
+                || stripos($message, 'timed out') !== false
+                || stripos($message, 'timeout') !== false;
+
+            if ($isTransient)
+            {
+                Log::warning('UserDailyPerformanceInsight: LLM temporarily unavailable', ['error' => $message]);
+            } else
+            {
+                Log::error('UserDailyPerformanceInsight: LLM failed', ['error' => $message]);
+            }
 
             return null;
         }

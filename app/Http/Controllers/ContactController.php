@@ -445,7 +445,12 @@ class ContactController extends Controller
                     ];
                 }
 
-                $contactCountryCode = $data->country?->code ? strtolower((string) $data->country->code) : null;
+                // `country` is both a DB column (Country id) and a relation, so `$data->country`
+                // returns the raw int. Resolve the related Country model explicitly.
+                $contactCountry = $data->relationLoaded('country')
+                    ? $data->getRelation('country')
+                    : $data->country()->first();
+                $contactCountryCode = $contactCountry?->code ? strtolower((string) $contactCountry->code) : null;
                 $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
                     $paidInvoices->data,
                     $openInvoices->data,
