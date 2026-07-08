@@ -14,6 +14,8 @@ use App\Models\LanguageVariant;
 use App\Models\Mailbox;
 use App\Models\Multimedia;
 use App\Models\Opportunity;
+use App\Models\PaidAdAudience;
+use App\Models\PaidAdCampaign;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\Post;
@@ -40,6 +42,8 @@ use App\Policies\LanguageVariantPolicy;
 use App\Policies\MailboxPolicy;
 use App\Policies\MultimediaPolicy;
 use App\Policies\OpportunityPolicy;
+use App\Policies\PaidAdAudiencePolicy;
+use App\Policies\PaidAdCampaignPolicy;
 use App\Policies\PaymentAccountPolicy;
 use App\Policies\PaymentPolicy;
 use App\Policies\PostPolicy;
@@ -76,6 +80,8 @@ class AuthServiceProvider extends ServiceProvider
         Prompt::class => PromptPolicy::class,
         Multimedia::class => MultimediaPolicy::class,
         Opportunity::class => OpportunityPolicy::class,
+        PaidAdCampaign::class => PaidAdCampaignPolicy::class,
+        PaidAdAudience::class => PaidAdAudiencePolicy::class,
         Software::class => SoftwarePolicy::class,
         Stylebook::class => StyleBookPolicy::class,
         Post::class => PostPolicy::class,

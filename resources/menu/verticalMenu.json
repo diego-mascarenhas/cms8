@@ -202,6 +202,13 @@
       "module_key": "campaigns"
     },
     {
+      "url": "paid-ads/list",
+      "name": "Advertising",
+      "icon": "menu-icon tf-icons ti ti-target-arrow",
+      "slug": "paid-ads.index",
+      "module_key": "paid_ads"
+    },
+    {
       "url": "message/list",
       "name": "Messages",
       "icon": "menu-icon tf-icons ti ti-send",

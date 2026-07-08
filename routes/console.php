@@ -160,6 +160,18 @@ Schedule::command('wordpress:sync')
     ->description('Sync WordPress content for assistant context')
     ->runInBackground();
 
+Schedule::job(new \App\Jobs\SyncPaidAdMetricsJob)
+    ->hourly()
+    ->name('paid-ads-sync-metrics')
+    ->description('Pull daily paid ad metrics from connected ad platforms')
+    ->withoutOverlapping();
+
+Schedule::job(new \App\Jobs\RefreshAdPlatformTokenJob)
+    ->hourly()
+    ->name('paid-ads-refresh-tokens')
+    ->description('Refresh ad platform OAuth tokens before they expire')
+    ->withoutOverlapping();
+
 Schedule::command('exchange-rates:fetch-daily')
     ->dailyAt('23:00')
     ->timezone('America/Argentina/Buenos_Aires')

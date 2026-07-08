@@ -221,6 +221,13 @@ class ModuleSeeder extends Seeder
             'group' => 'campaigns',
             'order' => 2,
         ],
+        'paid_ads' => [
+            'name' => 'Paid Ads',
+            'icon' => 'target-arrow',
+            'description' => 'Paid advertising campaigns across Google, Meta, LinkedIn, TikTok and X',
+            'group' => 'campaigns',
+            'order' => 3,
+        ],
         // AUTOMATION GROUP
         'funnel' => [
             'name' => 'Funnel',

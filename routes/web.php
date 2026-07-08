@@ -1,13 +1,14 @@
 <?php
 
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AdPlatformConnectionController;
 use App\Http\Controllers\ApolloController;
 use App\Http\Controllers\apps\Calendar;
 use App\Http\Controllers\apps\InvoiceList;
 use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
-use App\Http\Controllers\AuthController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampaignsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
@@ -58,6 +59,9 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\pages\AccountSettingsAccount;
+use App\Http\Controllers\PaidAdAudienceController;
+use App\Http\Controllers\PaidAdCampaignController;
+use App\Http\Controllers\PaidAdDashboardController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PaymentSubscriptionController;
@@ -351,6 +355,11 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/integrations/google/sync-contacts', [GoogleSyncedPreviewController::class, 'queueContactsSync'])->name('integrations.google.sync-contacts');
     Route::get('/integrations/google/synced-calendar', [GoogleSyncedPreviewController::class, 'calendar'])->name('integrations.google.synced-calendar');
     Route::post('/integrations/google/sync-calendar', [GoogleSyncedPreviewController::class, 'queueCalendarSync'])->name('integrations.google.sync-calendar');
+
+    Route::get('/integrations/ad-platforms/{platform}/connect', [AdPlatformConnectionController::class, 'connect'])->name('integrations.ad-platforms.connect');
+    Route::get('/integrations/ad-platforms/{platform}/callback', [AdPlatformConnectionController::class, 'callback'])->name('integrations.ad-platforms.callback');
+    Route::post('/integrations/ad-platforms/{connection}/select-account', [AdPlatformConnectionController::class, 'selectAccount'])->name('integrations.ad-platforms.select-account');
+    Route::delete('/integrations/ad-platforms/{connection}/disconnect', [AdPlatformConnectionController::class, 'disconnect'])->name('integrations.ad-platforms.disconnect');
 
     Route::get('/integrations/webdav/create', [WebDavIntegrationController::class, 'createForm'])->name('integrations.webdav.create-form');
     Route::post('/integrations/webdav/create', [WebDavIntegrationController::class, 'create'])->name('integrations.webdav.create');
@@ -673,6 +682,27 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/opportunity/{id}/edit', [OpportunityController::class, 'edit'])->name('opportunity.edit');
     Route::put('/opportunity/{id}', [OpportunityController::class, 'update'])->name('opportunity.update');
     Route::delete('/opportunity/{id}', [OpportunityController::class, 'destroy'])->name('opportunity.destroy');
+
+    // Paid Ads (marketing — paid advertising across platforms)
+    Route::get('/paid-ads/dashboard', [PaidAdDashboardController::class, 'index'])->name('paid-ads.dashboard');
+    Route::get('/paid-ads/connections', [AdPlatformConnectionController::class, 'index'])->name('paid-ads.connections');
+    Route::get('/paid-ads/audiences', [PaidAdAudienceController::class, 'index'])->name('paid-ads.audiences.index');
+    Route::get('/paid-ads/audiences/create', [PaidAdAudienceController::class, 'create'])->name('paid-ads.audiences.create');
+    Route::post('/paid-ads/audiences', [PaidAdAudienceController::class, 'store'])->name('paid-ads.audiences.store');
+    Route::get('/paid-ads/audiences/{id}/edit', [PaidAdAudienceController::class, 'edit'])->name('paid-ads.audiences.edit');
+    Route::put('/paid-ads/audiences/{id}', [PaidAdAudienceController::class, 'update'])->name('paid-ads.audiences.update');
+    Route::delete('/paid-ads/audiences/{id}', [PaidAdAudienceController::class, 'destroy'])->name('paid-ads.audiences.destroy');
+    Route::get('/paid-ads/list', [PaidAdCampaignController::class, 'index'])->name('paid-ads.index');
+    Route::get('/paid-ads/create', [PaidAdCampaignController::class, 'create'])->name('paid-ads.create');
+    Route::post('/paid-ads', [PaidAdCampaignController::class, 'store'])->name('paid-ads.store');
+    Route::get('/paid-ads/{id}', [PaidAdCampaignController::class, 'show'])->whereNumber('id')->name('paid-ads.show');
+    Route::get('/paid-ads/{id}/edit', [PaidAdCampaignController::class, 'edit'])->whereNumber('id')->name('paid-ads.edit');
+    Route::put('/paid-ads/{id}', [PaidAdCampaignController::class, 'update'])->whereNumber('id')->name('paid-ads.update');
+    Route::delete('/paid-ads/{id}', [PaidAdCampaignController::class, 'destroy'])->whereNumber('id')->name('paid-ads.destroy');
+    Route::post('/paid-ads/{id}/publish', [PaidAdCampaignController::class, 'publish'])->whereNumber('id')->name('paid-ads.publish');
+    Route::post('/paid-ads/{id}/pause', [PaidAdCampaignController::class, 'pause'])->whereNumber('id')->name('paid-ads.pause');
+    Route::post('/paid-ads/{id}/resume', [PaidAdCampaignController::class, 'resume'])->whereNumber('id')->name('paid-ads.resume');
+    Route::post('/paid-ads/{id}/sync-metrics', [PaidAdCampaignController::class, 'syncMetrics'])->whereNumber('id')->name('paid-ads.sync-metrics');
 
     Route::get('/project/{id}/select-collaborators', [ProjectController::class, 'selectCollaborators'])->name('project.select-collaborators');
     Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
@@ -1418,6 +1448,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/environment-variables/google-analytics', [HelpController::class, 'environmentVariablesGoogleAnalytics'])->name('environment-variables.google-analytics');
     Route::get('/environment-variables/google-people-calendar', [HelpController::class, 'googlePeopleCalendarSync'])->name('environment-variables.google-people-calendar');
     Route::get('/team-social-networks', [HelpController::class, 'teamSocialNetworks'])->name('team-social-networks');
+    Route::get('/paid-ads-setup', [HelpController::class, 'paidAdsSetup'])->name('paid-ads-setup');
     Route::get('/woocommerce-configuration', [HelpController::class, 'woocommerceConfiguration'])->name('woocommerce-configuration');
     Route::get('/wordpress-mcp-cursor', [HelpController::class, 'wordpressMcpCursor'])->name('wordpress-mcp-cursor');
     Route::get('/plugins', [HelpController::class, 'plugins'])->name('plugins');
