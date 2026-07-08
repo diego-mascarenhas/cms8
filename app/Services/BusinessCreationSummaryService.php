@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\BusinessCreationAiLog;
 use App\Models\BusinessCreationSession;
 use App\Models\Prompt;
+use App\Support\AiTasks;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -68,7 +68,7 @@ class BusinessCreationSummaryService
             {
                 $defaultInstruction = 'Eres un consultor de negocio. Con el contexto que te proporcionan (datos del negocio, problemática actual y arquetipo humano por fecha de nacimiento), genera un resumen muy conciso (máximo 1 párrafo corto o 3-5 puntos) de lo que esta empresa necesita para mejorar. Sé directo y práctico.';
                 $agent = agent(instructions: $defaultInstruction, messages: [], tools: []);
-                $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
                 $summary = $response->text ?? '';
 
                 TokenUsageLogService::logFromAiResponse(

@@ -8,10 +8,10 @@ use App\Models\Team;
 use App\Services\AssistantChatService;
 use App\Services\AstralChartService;
 use App\Services\BusinessCreationInsightsService;
+use App\Support\AiTasks;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -418,7 +418,7 @@ class BusinessConfigWizard extends Component
                     messages: [],
                     tools: [],
                 );
-                $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
                 $this->summary = $response->text ?? '';
             }
         } catch (\Throwable $e)
@@ -436,4 +436,3 @@ class BusinessConfigWizard extends Component
         return view('livewire.settings.business-config-wizard');
     }
 }
-

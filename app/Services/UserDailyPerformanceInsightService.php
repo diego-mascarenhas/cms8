@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
+use App\Support\AiTasks;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -251,7 +251,8 @@ PROMPT;
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userPrompt, [], Lab::Anthropic);
+
+            $response = $agent->prompt($userPrompt, [], AiTasks::provider('insight'));
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: (int) $team->id,

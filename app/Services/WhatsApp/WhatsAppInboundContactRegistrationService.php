@@ -8,8 +8,8 @@ use App\Models\Conversation;
 use App\Models\Team;
 use App\Services\TokenUsageLogService;
 use App\Services\UserResolverService;
+use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -207,7 +207,7 @@ PROMPT;
                 instructions: self::FULL_NAME_INSTRUCTIONS,
                 messages: [],
                 tools: [],
-            )->prompt($name, [], Lab::Anthropic);
+            )->prompt($name, [], AiTasks::provider('registration'));
 
             if ($teamId !== null)
             {

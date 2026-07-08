@@ -4,9 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Services\AssistantSystemPrompt;
 use App\Services\TokenUsageLogService;
+use App\Support\AiTasks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -204,7 +204,7 @@ class ClaudePromptController extends Controller
         {
             $instructions = $promptContent ?? AssistantSystemPrompt::get();
             $agent = agent(instructions: $instructions, messages: [], tools: []);
-            $response = $agent->prompt($testMessage, [], Lab::Anthropic);
+            $response = $agent->prompt($testMessage, [], AiTasks::provider('assistant'));
             $text = $response->text ?? '';
 
             if (auth()->check() && auth()->user()->currentTeam)

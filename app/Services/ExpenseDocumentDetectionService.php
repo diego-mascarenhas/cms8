@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Currency;
 use App\Models\Team;
+use App\Support\AiTasks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -269,7 +270,7 @@ PROMPT;
                 instructions: self::AI_EXTRACTION_INSTRUCTIONS,
                 messages: [],
                 tools: [],
-            )->prompt($text, [], provider: 'anthropic');
+            )->prompt($text, [], provider: AiTasks::provider('ocr'));
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: $teamId,

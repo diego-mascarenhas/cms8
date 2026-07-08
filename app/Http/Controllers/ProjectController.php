@@ -18,11 +18,11 @@ use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Models\TokenUsageLog;
+use App\Support\AiTasks;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -151,7 +151,7 @@ class ProjectController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+            $response = $agent->prompt($userMessage, [], AiTasks::provider('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {

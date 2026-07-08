@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Enterprise;
 use App\Models\EnterpriseBillingAddress;
 use App\Models\Team;
+use App\Support\AiTasks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
@@ -197,7 +198,7 @@ PROMPT;
             )->prompt(
                 'Identify the supplier on this purchase invoice. Prioritize logo and branding.',
                 [$uploadedFile],
-                provider: 'anthropic',
+                provider: AiTasks::provider('vision'),
             );
 
             TokenUsageLogService::logFromAiResponse(

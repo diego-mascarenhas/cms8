@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Prompt;
 use App\Models\TokenUsageLog;
+use App\Support\AiTasks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
@@ -117,7 +118,7 @@ class AssistantChatService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userContent, $attachments, Lab::Anthropic);
+            $response = $agent->prompt($userContent, $attachments, AiTasks::provider('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
@@ -234,7 +235,7 @@ class AssistantChatService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($routerMessage, [], Lab::Anthropic);
+            $response = $agent->prompt($routerMessage, [], AiTasks::provider('assistant'));
             $text = trim($response->text ?: '');
         } catch (\Throwable $e)
         {

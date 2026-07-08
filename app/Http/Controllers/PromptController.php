@@ -6,6 +6,7 @@ use App\DataTables\PromptDataTable;
 use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\TokenUsageLog;
+use App\Support\AiTasks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
@@ -198,7 +199,7 @@ class PromptController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, $attachments, Lab::Anthropic);
+            $response = $agent->prompt($userMessage, $attachments, AiTasks::provider('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
@@ -280,7 +281,7 @@ class PromptController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($routerMessage, [], Lab::Anthropic);
+            $response = $agent->prompt($routerMessage, [], AiTasks::provider('assistant'));
             $text = trim($response->text ?: '');
         } catch (\Throwable $e)
         {

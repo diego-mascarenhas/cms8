@@ -19,6 +19,7 @@ use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
 use App\Support\AffiliateCommission;
+use App\Support\AiTasks;
 use App\Support\TeamDefaultShortcuts;
 use App\Support\TeamSettingsLabels;
 use Carbon\Carbon;
@@ -26,7 +27,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -166,7 +166,7 @@ class TeamSettingController extends Controller
                     messages: [],
                     tools: [],
                 );
-                $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
                 $summary = $response->text ?: '';
 
                 TokenUsageLogService::logFromAiResponse(

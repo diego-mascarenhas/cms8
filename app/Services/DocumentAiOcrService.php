@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Module;
 use App\Models\TokenUsageLog;
+use App\Support\AiTasks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
@@ -34,7 +35,7 @@ class DocumentAiOcrService
                 messages: [],
                 tools: [],
             );
-            $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], provider: 'anthropic');
+            $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], provider: AiTasks::provider('ocr'));
             $text = trim((string) ($response->text ?? ''));
             $this->logTokenUsage($response, $teamId, $ocrPrompt, $text);
 
