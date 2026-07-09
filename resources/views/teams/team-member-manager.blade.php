@@ -128,10 +128,10 @@
   @endif
 
   @php
-    $teamMembers = $team->users()->orderBy('users.name')->get();
+    $teamMembers = $this->filteredMembers;
   @endphp
 
-  @if ($teamMembers->isNotEmpty())
+  @if ($this->totalMembersCount > 0)
 
     <div class="mt-4">
       <!-- Manage Team Members -->
@@ -146,7 +146,42 @@
 
       <!-- Team Member List -->
       <x-slot name="content">
-        @foreach ($teamMembers as $user)
+        <!-- Search & Role Filter -->
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+          <div class="d-flex align-items-center gap-2 flex-grow-1" style="max-width: 320px;">
+            <div class="position-relative w-100">
+              <input type="text" id="member-search" class="form-control form-control-sm" style="padding-right: 2rem;"
+                placeholder="{{ __('Search') }}..." wire:model.live.debounce.300ms="search">
+              <i class="ti ti-search position-absolute" style="right: .6rem; top: 50%; transform: translateY(-50%);"></i>
+            </div>
+            <div wire:loading wire:target="search" class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">{{ __('Loading...') }}</span>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <label for="member-role-filter" class="form-label mb-0 text-muted small">{{ __('Filter by role') }}</label>
+            <select id="member-role-filter" class="form-select form-select-sm" style="width: auto;"
+              wire:model.live="roleFilter">
+              <option value="all">{{ __('All roles') }}</option>
+              @foreach ($this->roleFilterOptions as $roleOption)
+                <option value="{{ $roleOption->key }}">{{ $roleOption->name }}</option>
+              @endforeach
+            </select>
+            <div wire:loading wire:target="roleFilter" class="spinner-border spinner-border-sm text-primary" role="status">
+              <span class="visually-hidden">{{ __('Loading...') }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div wire:loading.remove wire:target="roleFilter, search">
+          @if ($teamMembers->isEmpty())
+            <div class="text-muted text-center py-3">
+              {{ __('No members found.') }}
+            </div>
+          @endif
+
+          @foreach ($teamMembers as $user)
           <div class="d-flex justify-content-between mt-2 mb-2" wire:key="member-{{ $user->id }}-{{ optional($user->membership)->role }}">
             <div class="d-flex align-items-center">
               <div class="pe-2">
@@ -194,7 +229,8 @@
               @endif
             </div>
           </div>
-        @endforeach
+          @endforeach
+        </div>
       </x-slot>
     </x-action-section>
     </div>
