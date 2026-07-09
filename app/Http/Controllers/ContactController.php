@@ -21,7 +21,6 @@ use App\Models\Source;
 use App\Models\User;
 use App\Services\AstralChartService;
 use App\Services\MessageDeliveryDispatcher;
-use App\Support\CollectionMessagingGuide;
 use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\SearchNormalizer;
 use App\Support\StripeInvoiceMetrics;
@@ -529,15 +528,6 @@ class ContactController extends Controller
                 $stripeData['metrics']['ltv'] = number_format($ltv, 2);
                 $stripeData['metrics']['cac'] = number_format($cac, 2);
                 $stripeData['metrics']['lifetime_months'] = $lifetimeMonths;
-
-                if (! empty($stripeData['unpaid_invoices']))
-                {
-                    $stripeData['collection_guide'] = CollectionMessagingGuide::build(
-                        $data,
-                        $stripeData,
-                        auth()->user()->currentTeam?->id,
-                    );
-                }
             } catch (\Exception $e)
             {
                 \Log::error('Error fetching Stripe data: '.$e->getMessage());
