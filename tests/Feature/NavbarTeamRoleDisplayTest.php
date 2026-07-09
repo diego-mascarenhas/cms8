@@ -30,7 +30,7 @@ class NavbarTeamRoleDisplayTest extends TestCase
             ->assertSee('Collaborator');
     }
 
-    public function test_owner_navbar_shows_owner_role_regardless_of_global_role(): void
+    public function test_owner_navbar_shows_admin_role_regardless_of_global_role(): void
     {
         Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
 
@@ -41,6 +41,6 @@ class NavbarTeamRoleDisplayTest extends TestCase
         $this->actingAs($user)
             ->get(route('profile.show'))
             ->assertOk()
-            ->assertSee(__('Owner'));
+            ->assertSee(__('Administrator'));
     }
 }

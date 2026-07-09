@@ -479,7 +479,7 @@
 
                                         if ($navCurrentTeam) {
                                             if (Auth::user()->ownsTeam($navCurrentTeam)) {
-                                                $navTeamRole = __('Owner');
+                                                $navTeamRole = __('Administrator');
                                             } else {
                                                 $navMembershipRole = optional(
                                                     Auth::user()->teams->firstWhere('id', $navCurrentTeam->id)
