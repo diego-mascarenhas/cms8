@@ -122,6 +122,40 @@ return [
         'api_token' => env('WEBDAV_API_TOKEN'),
     ],
 
+    'google_ads' => [
+        'client_id' => env('GOOGLE_ADS_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_ADS_CLIENT_SECRET'),
+        'developer_token' => env('GOOGLE_ADS_DEVELOPER_TOKEN'),
+        'login_customer_id' => env('GOOGLE_ADS_LOGIN_CUSTOMER_ID'),
+        'redirect' => env('GOOGLE_ADS_REDIRECT_URI', rtrim((string) config('app.url'), '/').'/integrations/ad-platforms/google_ads/callback'),
+    ],
+
+    'meta_ads' => [
+        'app_id' => env('META_APP_ID'),
+        'app_secret' => env('META_APP_SECRET'),
+        'api_version' => env('META_ADS_API_VERSION', 'v21.0'),
+        'redirect' => env('META_ADS_REDIRECT_URI', rtrim((string) config('app.url'), '/').'/integrations/ad-platforms/meta/callback'),
+    ],
+
+    'linkedin_ads' => [
+        'client_id' => env('LINKEDIN_CLIENT_ID'),
+        'client_secret' => env('LINKEDIN_CLIENT_SECRET'),
+        'redirect' => env('LINKEDIN_ADS_REDIRECT_URI', rtrim((string) config('app.url'), '/').'/integrations/ad-platforms/linkedin/callback'),
+    ],
+
+    'tiktok_ads' => [
+        'app_id' => env('TIKTOK_APP_ID'),
+        'app_secret' => env('TIKTOK_APP_SECRET'),
+        'redirect' => env('TIKTOK_ADS_REDIRECT_URI', rtrim((string) config('app.url'), '/').'/integrations/ad-platforms/tiktok/callback'),
+    ],
+
+    'x_ads' => [
+        'enabled' => env('X_ADS_ENABLED', false),
+        'client_id' => env('X_ADS_CLIENT_ID'),
+        'client_secret' => env('X_ADS_CLIENT_SECRET'),
+        'redirect' => env('X_ADS_REDIRECT_URI', rtrim((string) config('app.url'), '/').'/integrations/ad-platforms/x/callback'),
+    ],
+
     'apollo' => [
         'api_key' => env('APOLLO_API_KEY', ''),
     ],

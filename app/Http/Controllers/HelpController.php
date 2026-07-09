@@ -306,6 +306,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Paid Ads platform setup: developer portals, OAuth apps and redirect URIs.
+     */
+    public function paidAdsSetup()
+    {
+        return view('help.paid-ads-setup', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Catalog of downloadable IDONEO WordPress plugins.
      *
      * @return array<string, array<string, string>>

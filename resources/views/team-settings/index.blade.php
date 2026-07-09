@@ -243,6 +243,22 @@
                     </div>
                 </div>
 
+                @if ($team->hasModule('paid_ads'))
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="ti ti-target-arrow mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Paid Ads platforms') }}</h5>
+                            <p class="card-text">{{ __('Configure Google, Meta, LinkedIn, TikTok and X API credentials for paid advertising.') }}</p>
+                            <div class="btn-group">
+                                <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'paid_ads']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                                <a href="{{ route('paid-ads.connections') }}" class="btn btn-outline-primary">{{ __('Connections') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">

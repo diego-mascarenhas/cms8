@@ -117,6 +117,20 @@ class UpdateTeamSettingsRequest extends FormRequest
             // Public assistant shop
             'public_shop.public_catalog_enabled' => 'nullable|in:0,1',
 
+            // Paid Ads platform credentials (per team)
+            'paid_ads.paid_ads_google_client_id' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_google_client_secret' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_google_developer_token' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_google_login_customer_id' => 'nullable|string|max:32',
+            'paid_ads.paid_ads_meta_app_id' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_meta_app_secret' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_linkedin_client_id' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_linkedin_client_secret' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_tiktok_app_id' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_tiktok_app_secret' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_x_client_id' => 'nullable|string|max:255',
+            'paid_ads.paid_ads_x_client_secret' => 'nullable|string|max:255',
+
         ];
     }
 

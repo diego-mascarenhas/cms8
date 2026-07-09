@@ -61,6 +61,7 @@ return [
         // Additional modules (campaigns)
         'campaigns' => true,
         'mailer' => true,
+        'paid_ads' => false,
         // Additional modules (automation)
         'prompts' => true,
         'funnel' => false,

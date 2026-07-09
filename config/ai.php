@@ -22,6 +22,38 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Task-based provider routing (with failover)
+    |--------------------------------------------------------------------------
+    |
+    | Instead of hardcoding a provider (e.g. Lab::Anthropic) at every call site,
+    | services declare the *task* they perform (see App\Support\AiTasks) and the
+    | provider + failover chain is resolved from here. When the primary provider
+    | is overloaded or rate limited, laravel/ai fails over to the next provider.
+    |
+    | - default_task_provider: primary provider used when a task omits its own.
+    | - tasks_failover: comma-separated providers tried after the primary.
+    | - tasks: optional per-task overrides ('provider' and/or 'failover').
+    |
+    */
+    'default_task_provider' => env('AI_DEFAULT_TASK_PROVIDER', 'anthropic'),
+
+    'tasks_failover' => env('AI_TASKS_FAILOVER') !== null
+        ? array_values(array_filter(array_map('trim', explode(',', (string) env('AI_TASKS_FAILOVER')))))
+        : ['openai'],
+
+    'tasks' => [
+        'assistant' => [],
+        'insight' => [],
+        'sentiment' => [],
+        'summary' => [],
+        'template' => [],
+        'vision' => [],
+        'ocr' => [],
+        'registration' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Assistant Model Selection
     |--------------------------------------------------------------------------
     |

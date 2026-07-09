@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Team;
-use Laravel\Ai\Enums\Lab;
+use App\Support\AiTasks;
 
 use function Laravel\Ai\agent;
 
@@ -85,7 +85,7 @@ TEXT;
                 tools: [],
             );
 
-            $response = $agent->prompt($userPrompt, [], Lab::Anthropic);
+            $response = $agent->prompt($userPrompt, [], AiTasks::provider('template'));
 
             if ($team !== null)
             {

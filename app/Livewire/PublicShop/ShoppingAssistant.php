@@ -6,10 +6,10 @@ use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
 use App\Models\Team;
 use App\Services\BusinessAssistantContextService;
+use App\Support\AiTasks;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -239,7 +239,7 @@ TXT;
                 messages: [],
                 tools: [],
             );
-            $res = $ag->prompt($instructions, [], Lab::Anthropic);
+            $res = $ag->prompt($instructions, [], AiTasks::provider('assistant'));
             $full = trim((string) ($res->text ?? ''));
         } catch (\Throwable $e)
         {

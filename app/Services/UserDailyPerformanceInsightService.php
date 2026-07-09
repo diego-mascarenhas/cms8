@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
+use App\Support\AiTasks;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -251,7 +251,8 @@ PROMPT;
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userPrompt, [], Lab::Anthropic);
+
+            $response = $agent->prompt($userPrompt, [], AiTasks::provider('insight'));
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: (int) $team->id,
@@ -297,7 +298,21 @@ PROMPT;
             ];
         } catch (\Throwable $e)
         {
-            Log::error('UserDailyPerformanceInsight: LLM failed', ['error' => $e->getMessage()]);
+            // Transient provider issues (overloaded / rate limited) are expected and self-recover;
+            // log them as warnings so they don't pollute the error log.
+            $message = $e->getMessage();
+            $isTransient = stripos($message, 'overloaded') !== false
+                || stripos($message, 'rate limit') !== false
+                || stripos($message, 'timed out') !== false
+                || stripos($message, 'timeout') !== false;
+
+            if ($isTransient)
+            {
+                Log::warning('UserDailyPerformanceInsight: LLM temporarily unavailable', ['error' => $message]);
+            } else
+            {
+                Log::error('UserDailyPerformanceInsight: LLM failed', ['error' => $message]);
+            }
 
             return null;
         }

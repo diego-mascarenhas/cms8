@@ -19,6 +19,7 @@ use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
 use App\Support\AffiliateCommission;
+use App\Support\AiTasks;
 use App\Support\TeamDefaultShortcuts;
 use App\Support\TeamSettingsLabels;
 use Carbon\Carbon;
@@ -26,7 +27,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -166,7 +166,7 @@ class TeamSettingController extends Controller
                     messages: [],
                     tools: [],
                 );
-                $response = $agent->prompt($userMessage, [], Lab::Anthropic);
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
                 $summary = $response->text ?: '';
 
                 TokenUsageLogService::logFromAiResponse(
@@ -248,7 +248,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $storedValue, [
                         'group' => $group,
                         'type' => $type,
-                        'is_encrypted' => in_array($key, ['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json']),
+                        'is_encrypted' => in_array($key, array_merge(['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json'], \App\Support\AdPlatformCredentials::ENCRYPTED_KEYS)),
                     ]);
                 }
             }
@@ -1408,6 +1408,113 @@ class TeamSettingController extends Controller
                         'is_encrypted' => false,
                         'placeholder' => 'primary or your-calendar@group.calendar.google.com',
                         'help' => 'Leave empty to use "primary". To sync a specific calendar, paste its Calendar ID from Google Calendar settings.',
+                    ],
+                ],
+            ],
+            'paid_ads' => [
+                'title' => __('Paid Ads platforms'),
+                'icon' => 'ti ti-target-arrow',
+                'settings' => [
+                    'paid_ads_google_client_id' => [
+                        'label' => 'Google Ads · Client ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('paid_ads_google_client_id'),
+                        'is_encrypted' => false,
+                        'help' => 'OAuth 2.0 Client ID from Google Cloud Console.',
+                        'section' => 'google',
+                        'row' => 1,
+                    ],
+                    'paid_ads_google_client_secret' => [
+                        'label' => 'Google Ads · Client Secret',
+                        'type' => 'password',
+                        'value' => $team->getSetting('paid_ads_google_client_secret'),
+                        'is_encrypted' => true,
+                        'section' => 'google',
+                        'row' => 1,
+                    ],
+                    'paid_ads_google_developer_token' => [
+                        'label' => 'Google Ads · Developer Token',
+                        'type' => 'password',
+                        'value' => $team->getSetting('paid_ads_google_developer_token'),
+                        'is_encrypted' => true,
+                        'section' => 'google',
+                        'row' => 2,
+                    ],
+                    'paid_ads_google_login_customer_id' => [
+                        'label' => 'Google Ads · Manager (MCC) Customer ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('paid_ads_google_login_customer_id'),
+                        'is_encrypted' => false,
+                        'placeholder' => '1234567890',
+                        'help' => 'Digits only. Optional if not using a manager account.',
+                        'section' => 'google',
+                        'row' => 2,
+                    ],
+                    'paid_ads_meta_app_id' => [
+                        'label' => 'Meta · App ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('paid_ads_meta_app_id'),
+                        'is_encrypted' => false,
+                        'help' => 'Facebook/Instagram share the same Meta app. Requires ads_management permission.',
+                        'section' => 'meta',
+                        'row' => 3,
+                    ],
+                    'paid_ads_meta_app_secret' => [
+                        'label' => 'Meta · App Secret',
+                        'type' => 'password',
+                        'value' => $team->getSetting('paid_ads_meta_app_secret'),
+                        'is_encrypted' => true,
+                        'section' => 'meta',
+                        'row' => 3,
+                    ],
+                    'paid_ads_linkedin_client_id' => [
+                        'label' => 'LinkedIn · Client ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('paid_ads_linkedin_client_id'),
+                        'is_encrypted' => false,
+                        'section' => 'linkedin',
+                        'row' => 4,
+                    ],
+                    'paid_ads_linkedin_client_secret' => [
+                        'label' => 'LinkedIn · Client Secret',
+                        'type' => 'password',
+                        'value' => $team->getSetting('paid_ads_linkedin_client_secret'),
+                        'is_encrypted' => true,
+                        'section' => 'linkedin',
+                        'row' => 4,
+                    ],
+                    'paid_ads_tiktok_app_id' => [
+                        'label' => 'TikTok · App ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('paid_ads_tiktok_app_id'),
+                        'is_encrypted' => false,
+                        'section' => 'tiktok',
+                        'row' => 5,
+                    ],
+                    'paid_ads_tiktok_app_secret' => [
+                        'label' => 'TikTok · App Secret',
+                        'type' => 'password',
+                        'value' => $team->getSetting('paid_ads_tiktok_app_secret'),
+                        'is_encrypted' => true,
+                        'section' => 'tiktok',
+                        'row' => 5,
+                    ],
+                    'paid_ads_x_client_id' => [
+                        'label' => 'X (Twitter) · Client ID',
+                        'type' => 'text',
+                        'value' => $team->getSetting('paid_ads_x_client_id'),
+                        'is_encrypted' => false,
+                        'help' => 'X Ads API access is restricted and must be approved and enabled globally (X_ADS_ENABLED).',
+                        'section' => 'x',
+                        'row' => 6,
+                    ],
+                    'paid_ads_x_client_secret' => [
+                        'label' => 'X (Twitter) · Client Secret',
+                        'type' => 'password',
+                        'value' => $team->getSetting('paid_ads_x_client_secret'),
+                        'is_encrypted' => true,
+                        'section' => 'x',
+                        'row' => 6,
                     ],
                 ],
             ],

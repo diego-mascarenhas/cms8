@@ -473,7 +473,24 @@
                                     @endif
                                 </span>
                                 <small class="text-muted">
-                                    @if (Auth::check() && Auth::user()->roles()->exists())
+                                    @php
+                                        $navCurrentTeam = Auth::check() ? Auth::user()->currentTeam : null;
+                                        $navTeamRole = null;
+
+                                        if ($navCurrentTeam) {
+                                            if (Auth::user()->ownsTeam($navCurrentTeam)) {
+                                                $navTeamRole = __('Administrator');
+                                            } else {
+                                                $navMembershipRole = optional(
+                                                    Auth::user()->teams->firstWhere('id', $navCurrentTeam->id)
+                                                )->pivot?->role;
+                                                $navTeamRole = $navMembershipRole ? ucfirst($navMembershipRole) : null;
+                                            }
+                                        }
+                                    @endphp
+                                    @if ($navTeamRole)
+                                        {{ $navTeamRole }}
+                                    @elseif (Auth::check() && Auth::user()->roles()->exists())
                                         @foreach (Auth::user()->roles as $role)
                                             {{ ucfirst($role->name) }}
                                             @if (!$loop->last)
@@ -600,7 +617,18 @@
                   </span></a>
               </li>
               -->
-                @if ((Auth::User() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager')) || (Auth::check() && Auth::user()->hasRole('admin')))
+                @php
+                    $userCanManageTeams =
+                        (Auth::check() && Laravel\Jetstream\Jetstream::hasTeamFeatures() && config('custom.TeamManager'))
+                        || (Auth::check() && Auth::user()->hasRole('admin'));
+
+                    $userCanSwitchTeams =
+                        Auth::check()
+                        && Laravel\Jetstream\Jetstream::hasTeamFeatures()
+                        && ! Auth::user()->hasRole('client')
+                        && Auth::user()->allTeams()->count() > 1;
+                @endphp
+                @if ($userCanManageTeams)
                     <li>
                         <div class="dropdown-divider"></div>
                     </li>
@@ -626,7 +654,9 @@
                             </a>
                         </li>
                     @endcan
-                    @if (Auth::check() && Auth::user()->allTeams()->count() > 1)
+                @endif
+                @if ($userCanManageTeams || $userCanSwitchTeams)
+                    @if (Auth::user() && Auth::user()->allTeams()->count() > 1)
                         <li>
                             <div class="dropdown-divider"></div>
                         </li>
@@ -636,8 +666,6 @@
                         <li>
                             <div class="dropdown-divider"></div>
                         </li>
-                    @endif
-                    @if (Auth::user())
                         @foreach (Auth::user()->allTeams() as $team)
                             {{-- Below commented code read by artisan command while installing jetstream. !! Do not remove if you want to use jetstream. --}}
 

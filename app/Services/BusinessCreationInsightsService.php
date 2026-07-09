@@ -5,11 +5,11 @@ namespace App\Services;
 use App\Models\BusinessCreationAiLog;
 use App\Models\BusinessCreationSession;
 use App\Models\Team;
+use App\Support\AiTasks;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -522,7 +522,7 @@ PROMPT;
         {
             $aiStartedAt = now();
             $agent = agent(instructions: $instruction, messages: [], tools: []);
-            $response = $agent->prompt($fullContext, [], Lab::Anthropic);
+            $response = $agent->prompt($fullContext, [], AiTasks::provider('insight'));
             $aiFinishedAt = now();
 
             $teamId = $teamId ?? $session?->team_id;

@@ -89,6 +89,10 @@ return [
             'title' => 'Sincronización WebDAV',
             'subtitle' => 'Importación y exportación de contactos, calendario y tareas.',
         ],
+        'paid_ads' => [
+            'title' => 'Paid-Ads-Plattformen',
+            'subtitle' => 'Konfiguriere die API-Zugangsdaten für Google, Meta, LinkedIn, TikTok und X.',
+        ],
         'calendar' => [
             'title' => 'Calendario',
             'subtitle' => 'ID de calendario de Google para sincronización.',

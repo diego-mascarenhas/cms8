@@ -5,8 +5,8 @@ namespace App\Services;
 use App\Models\Contact;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
+use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
-use Laravel\Ai\Enums\Lab;
 
 use function Laravel\Ai\agent;
 
@@ -66,7 +66,7 @@ PROMPT;
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($text, [], Lab::Anthropic);
+            $response = $agent->prompt($text, [], AiTasks::provider('sentiment'));
 
             if ($teamId !== null)
             {
