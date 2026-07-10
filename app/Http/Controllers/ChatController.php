@@ -100,13 +100,53 @@ class ChatController extends Controller
     }
 
     /**
-     * For non-admin users, return list of external phone numbers they are allowed to see (their own + contacts they are responsible for). Null means no restriction (admin).
+     * Whether the user may see every WhatsApp thread for the current team (null restriction in {@see allowedExternalPhonesForChat()}).
+     */
+    private function canViewAllTeamWhatsAppChats(): bool
+    {
+        if (! auth()->check())
+        {
+            return true;
+        }
+
+        $user = auth()->user();
+
+        if ($user->hasAnyRole(['admin', 'root']))
+        {
+            return true;
+        }
+
+        $team = $user->currentTeam;
+        if ($team && $user->ownsTeam($team))
+        {
+            return true;
+        }
+
+        if ($user->hasAnyRole(['collaborator', 'developer', 'editor', 'technical', 'employee']))
+        {
+            return true;
+        }
+
+        if ($team)
+        {
+            $membershipRole = optional($user->teams->firstWhere('id', $team->id))->pivot?->role;
+            if (in_array($membershipRole, ['admin', 'root'], true))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * For restricted users, return external phone numbers they may see (own phone + contacts they are responsible for). Null means no restriction.
      *
      * @return array<int, string>|null
      */
     private function allowedExternalPhonesForChat(): ?array
     {
-        if (! auth()->check() || auth()->user()->hasRole('admin'))
+        if ($this->canViewAllTeamWhatsAppChats())
         {
             return null;
         }
