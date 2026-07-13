@@ -1558,6 +1558,8 @@
     "This project has no linked services yet": "Este proyecto aún no tiene servicios vinculados",
     "This time is billable": "Este tiempo es facturable",
     "This user already belongs to the team.": "Este usuario ya pertenece al equipo.",
+    "This user is linked to a client contact and must use the Client role.": "Este usuario está vinculado a un contacto cliente y debe tener el rol Cliente.",
+    "This user is linked to a client contact and must keep the Client role.": "Este usuario está vinculado a un contacto cliente y debe conservar el rol Cliente.",
     "This user has already been invited to the team.": "Este usuario ya ha sido invitado al equipo.",
     "Thursday_short": "Jue",
     "Tickets": "Tickets",

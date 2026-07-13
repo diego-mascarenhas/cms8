@@ -81,7 +81,7 @@ class ContactController extends Controller
                     'email' => $user->email,
                     'role' => $user->roles->first()->name ?? 'user',
                 ],
-                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
+                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'team' : 'permission_based'),
             ]);
         } catch (\Exception $e)
         {
@@ -184,7 +184,7 @@ class ContactController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => $data,
-                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
+                'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'team' : 'permission_based'),
             ]);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)
         {

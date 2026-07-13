@@ -138,13 +138,6 @@ class ContactDataTable extends DataTable
                 'user.currentTeam.settings',
             ]);
 
-        // Collaborators only see their assigned contacts
-        $user = Auth::user();
-        if ($user && $user->hasRole('collaborator'))
-        {
-            $query->where('responsible_id', $user->id);
-        }
-
         return $query;
     }
 

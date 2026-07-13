@@ -4,6 +4,7 @@ namespace App\Actions\Jetstream;
 
 use App\Models\Team;
 use App\Models\User;
+use App\Support\JetstreamTeamRoleSynchronizer;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
@@ -12,6 +13,8 @@ use Laravel\Jetstream\Events\TeamMemberRemoved;
 
 class RemoveTeamMember implements RemovesTeamMembers
 {
+    public function __construct(private JetstreamTeamRoleSynchronizer $roleSynchronizer) {}
+
     /**
      * Remove the team member from the given team.
      */
@@ -22,6 +25,8 @@ class RemoveTeamMember implements RemovesTeamMembers
         $this->ensureUserDoesNotOwnTeam($teamMember, $team);
 
         $team->removeUser($teamMember);
+
+        $this->roleSynchronizer->syncFromRemainingMemberships($teamMember->fresh(), $team);
 
         TeamMemberRemoved::dispatch($team, $teamMember);
     }

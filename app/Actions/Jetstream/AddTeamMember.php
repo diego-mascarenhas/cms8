@@ -2,6 +2,7 @@
 
 namespace App\Actions\Jetstream;
 
+use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\JetstreamTeamRoleSynchronizer;
@@ -51,9 +52,11 @@ class AddTeamMember implements AddsTeamMembers
             'role' => $role,
         ], $this->rules(), [
             'email.exists' => __('We were unable to find a registered user with this email address.'),
-        ])->after(
-            $this->ensureUserIsNotAlreadyOnTeam($team, $email),
-        )->validateWithBag('addTeamMember');
+        ])->after(function ($validator) use ($team, $email, $role): void
+        {
+            $this->ensureUserIsNotAlreadyOnTeam($team, $email)($validator);
+            $this->ensureLinkedContactKeepsClientRole($email, $role)($validator);
+        })->validateWithBag('addTeamMember');
     }
 
     /**
@@ -69,6 +72,41 @@ class AddTeamMember implements AddsTeamMembers
                             ? ['required', 'string', new Role]
                             : null,
         ]);
+    }
+
+    /**
+     * Client portal users linked to a contact must keep the Client team role.
+     */
+    protected function ensureLinkedContactKeepsClientRole(string $email, ?string $role): Closure
+    {
+        return function ($validator) use ($email, $role)
+        {
+            if ($role === null || $role === '' || $role === 'client')
+            {
+                return;
+            }
+
+            $member = User::query()->where('email', $email)->first();
+
+            if ($member === null)
+            {
+                return;
+            }
+
+            $linkedContact = Contact::withoutGlobalScopes()
+                ->where('user_id', $member->id)
+                ->first();
+
+            if ($linkedContact === null)
+            {
+                return;
+            }
+
+            $validator->errors()->add(
+                'email',
+                __('This user is linked to a client contact and must use the Client role.'),
+            );
+        };
     }
 
     /**

@@ -57,16 +57,18 @@ class Contact extends Model implements HasMedia
             }
         });
 
-        // Visibility: non-admin users only see contacts assigned to them
+        // Visibility: only narrow list for roles that are not team-wide CRM viewers
         static::addGlobalScope('ownership', function (Builder $builder)
         {
             if (auth()->check())
             {
                 $user = auth()->user();
-                if (! $user->hasRole('admin'))
+                if ($user->hasRole(['admin', 'root', 'collaborator']))
                 {
-                    $builder->where('responsible_id', $user->id);
+                    return;
                 }
+
+                $builder->where('responsible_id', $user->id);
             }
         });
     }
