@@ -142,7 +142,9 @@ class ContactController extends Controller
 
         $contactData['team_id'] = auth()->user()->currentTeam->id;
         $contactData['creator_id'] = auth()->user()->id;
-        $contactData['responsible_id'] = $request->responsible_id;
+        $contactData['responsible_id'] = auth()->user()->hasAnyRole(['admin', 'root'])
+            ? $request->responsible_id
+            : auth()->id();
         $contactData['email'] = $request->email;
         $contactData['phone'] = $request->phone ?: null;
 
@@ -214,13 +216,6 @@ class ContactController extends Controller
         ])->findOrFail($id);
 
         $this->authorize('view', $data);
-
-        // Collaborators can only view their own assigned contacts
-        $currentUser = auth()->user();
-        if ($currentUser && $currentUser->hasRole('collaborator') && $data->responsible_id !== $currentUser->id)
-        {
-            abort(403);
-        }
 
         // Verify current_enterprise_id belongs to this contact's enterprises
         if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
@@ -634,8 +629,10 @@ class ContactController extends Controller
         $data = $request->validated();
         $contactData = $data['contact'];
 
-        // Add responsible_id to the update data
-        $contactData['responsible_id'] = $request->responsible_id;
+        if (auth()->user()->can('assignAdvisor', $contact))
+        {
+            $contactData['responsible_id'] = $request->responsible_id;
+        }
         $contactData['email'] = $request->email;
         $contactData['phone'] = $request->phone ?: null;
 

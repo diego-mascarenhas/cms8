@@ -214,12 +214,16 @@ $(document).ready(function() {
 
                         <!-- Advisor Selection -->
                         <div class="col-md-6 mb-3">
-                            <x-team-users-select
-                                id="responsible_id"
-                                label="Asesor"
-                                :selected="old('responsible_id', auth()->id())"
-                                :showNull="false"
-                            />
+                            @role('admin|root')
+                                <x-team-users-select
+                                    id="responsible_id"
+                                    label="Asesor"
+                                    :selected="old('responsible_id', auth()->id())"
+                                    :showNull="false"
+                                />
+                            @else
+                                <input type="hidden" name="responsible_id" value="{{ auth()->id() }}">
+                            @endrole
                             <div class="form-text">Asesor asignado a todos los contactos importados</div>
                         </div>
                     </div>

@@ -16,7 +16,7 @@ class UpdateContactRequest extends FormRequest
 
     public function rules()
     {
-        return [
+        $rules = [
             'name' => 'required|string|max:255',
             'surname' => 'nullable|string|max:255',
             'email' => 'nullable|email:rfc|max:255',
@@ -54,13 +54,19 @@ class UpdateContactRequest extends FormRequest
             'source_id.*' => 'required|exists:sources,id',
             'source_value' => 'array',
             'source_value.*' => 'required|string|max:255',
-            'responsible_id' => 'required|exists:users,id',
             'categories' => 'array',
             'categories.*' => 'exists:categories,id',
             'software_ids' => 'array',
             'software_ids.*' => 'exists:software,id',
             'chat_assistant_ai_enabled' => 'nullable|boolean',
         ];
+
+        if (auth()->user()?->hasAnyRole(['admin', 'root']))
+        {
+            $rules['responsible_id'] = 'required|exists:users,id';
+        }
+
+        return $rules;
     }
 
     public function validated($key = null, $default = null)

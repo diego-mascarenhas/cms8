@@ -49,5 +49,7 @@ class DemoSeeder extends Seeder
         $this->call(DemoKanbanTasksSeeder::class);
 
         $this->call(DemoMailInboxGroupsSeeder::class);
+
+        $this->call(DemoTeamRoleScenariosSeeder::class);
     }
 }

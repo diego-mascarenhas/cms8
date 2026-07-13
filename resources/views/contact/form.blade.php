@@ -175,12 +175,18 @@
                                         value="{{ old('phone', $data->phone ?? '') }}" />
                                 </div>
                                 <div class="col-sm-4">
-                                    <x-team-users-select
-                                        id="responsible_id"
-                                        label="Asesor"
-                                        :selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
-                                        show-null="false"
-                                    />
+                                    @role('admin|root')
+                                        <x-team-users-select
+                                            id="responsible_id"
+                                            label="Asesor"
+                                            :selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
+                                            show-null="false"
+                                        />
+                                    @else
+                                        <label class="form-label">{{ __('Advisor') }}</label>
+                                        <p class="form-control-plaintext mb-0">{{ optional($data->responsible)->name ?? auth()->user()->name }}</p>
+                                        <input type="hidden" name="responsible_id" value="{{ old('responsible_id', $data->responsible_id ?? auth()->id()) }}">
+                                    @endrole
                                 </div>
                                 <div class="col-sm-4">
                                     <label for="status_id" class="form-label">Tipo de contacto</label>

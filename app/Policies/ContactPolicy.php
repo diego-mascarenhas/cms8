@@ -35,7 +35,7 @@ class ContactPolicy
             return true;
         }
 
-        // Collaborators can see contacts (but filtered to their own)
+        // Collaborators can see all team contacts
         if ($user->hasRole('collaborator'))
         {
             return true;
@@ -67,10 +67,10 @@ class ContactPolicy
             return $contact->team_id === $user->currentTeam->id;
         }
 
-        // Collaborators can only see their own contact
+        // Collaborators can see all contacts in their team
         if ($user->hasRole('collaborator'))
         {
-            return $contact->user_id === $user->id && $contact->team_id === $user->currentTeam->id;
+            return $contact->team_id === $user->currentTeam->id;
         }
 
         // Clients can see their own contact or contacts from their enterprises
@@ -135,10 +135,10 @@ class ContactPolicy
             return $contact->team_id === $user->currentTeam->id;
         }
 
-        // Collaborators can only update their own contact
+        // Collaborators can update any contact in their team (advisor change is admin-only in controller)
         if ($user->hasRole('collaborator'))
         {
-            return $contact->user_id === $user->id && $contact->team_id === $user->currentTeam->id;
+            return $contact->team_id === $user->currentTeam->id;
         }
 
         // Developers and technical users can update contacts in their team
@@ -174,7 +174,7 @@ class ContactPolicy
             return true;
         }
 
-        if ($user->hasRole('collaborator') && $contact->responsible_id === $user->id)
+        if ($user->hasRole('collaborator'))
         {
             return true;
         }
@@ -185,6 +185,15 @@ class ContactPolicy
         }
 
         return false;
+    }
+
+    /**
+     * Determine whether the user can change the contact advisor (responsible_id).
+     */
+    public function assignAdvisor(User $user, Contact $contact): bool
+    {
+        return ($user->hasRole('admin') || $user->hasRole('root'))
+            && $contact->team_id === $user->currentTeam->id;
     }
 
     /**
@@ -200,11 +209,10 @@ class ContactPolicy
                 return $query->where('team_id', $user->currentTeam->id);
             }
 
-            // Collaborators can only see their own contact
+            // Collaborators can see all contacts in their team
             if ($user->hasRole('collaborator'))
             {
-                return $query->where('team_id', $user->currentTeam->id)
-                    ->where('user_id', $user->id);
+                return $query->where('team_id', $user->currentTeam->id);
             }
 
             // Clients can see their own contact and contacts from their enterprises

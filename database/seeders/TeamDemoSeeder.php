@@ -155,6 +155,7 @@ class TeamDemoSeeder extends Seeder
         $this->call(DemoDashboardRichDataSeeder::class);
         $this->call(DemoKanbanTasksSeeder::class);
         $this->call(DemoTaskCommunicationsSeeder::class);
+        $this->call(DemoTeamRoleScenariosSeeder::class);
     }
 
     private function ensureDemoTeamExists(): Team

@@ -78,16 +78,10 @@ class DashboardController extends Controller
 
         $sentimentData = $this->contactDailySentimentService->chartDataForTeam($activeTeam);
 
-        $authUser = auth()->user();
-
         $recentLeadsQuery = Contact::query()
             ->where('team_id', $activeTeam->id)
             ->where('status_id', 1)
             ->where('created_at', '>=', now()->subDays(7));
-        if ($authUser->hasRole('collaborator'))
-        {
-            $recentLeadsQuery->where('responsible_id', $authUser->id);
-        }
         $recentLeadsCount = $recentLeadsQuery->count();
         $totalContactsCount = Contact::query()
             ->where('team_id', $activeTeam->id)
@@ -99,57 +93,45 @@ class DashboardController extends Controller
         $latestContactsThisMonthQuery = Contact::query()
             ->where('team_id', $activeTeam->id)
             ->where('created_at', '>=', $currentMonthStart);
-        if ($authUser->hasRole('collaborator'))
-        {
-            $latestContactsThisMonthQuery->where('responsible_id', $authUser->id);
-        }
         $latestContactsThisMonthCount = $latestContactsThisMonthQuery->count();
 
         $previousMonthStart = $currentMonthStart->copy()->subMonth();
         $nextMonthStart = $currentMonthStart->copy()->addMonth();
-        $responsibleIdForContacts = $authUser->hasRole('collaborator') ? $authUser->id : null;
 
         $interactionChartService = app(ContactInteractionChartDataService::class);
         $teamInteractionsLast30DaysCount = $interactionChartService->countForTeam(
             $activeTeam->id,
             30,
-            $responsibleIdForContacts,
         );
         $dashboardContactInteractionsTrend = $interactionChartService->buildDailyTrendByType(
             $activeTeam->id,
-            responsibleId: $responsibleIdForContacts,
         );
         $interactionsPreviousMonthCount = $interactionChartService->countForTeamBetween(
             $activeTeam->id,
             $previousMonthStart,
             $currentMonthStart,
-            $responsibleIdForContacts,
         );
         $interactionsThisMonthCount = $interactionChartService->countForTeamBetween(
             $activeTeam->id,
             $currentMonthStart,
             $nextMonthStart,
-            $responsibleIdForContacts,
         );
         $contactsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
             $activeTeam->id,
             $previousMonthStart,
             $currentMonthStart,
-            responsibleId: $responsibleIdForContacts,
         );
         $leadsCreatedThisMonthCount = $this->countTeamContactsCreatedBetween(
             $activeTeam->id,
             $currentMonthStart,
             $nextMonthStart,
             statusId: 1,
-            responsibleId: $responsibleIdForContacts,
         );
         $leadsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
             $activeTeam->id,
             $previousMonthStart,
             $currentMonthStart,
             statusId: 1,
-            responsibleId: $responsibleIdForContacts,
         );
         $dashboardPanelMonthComparisons = [
             'contacts-trend' => $this->buildMonthComparison(
@@ -174,7 +156,6 @@ class DashboardController extends Controller
             $activeTeam->id,
             30,
             statusId: 1,
-            responsibleId: $authUser->hasRole('collaborator') ? $authUser->id : null,
         );
 
         $dashboardContactStatusBreakdown = [
