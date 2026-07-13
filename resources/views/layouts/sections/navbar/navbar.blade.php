@@ -567,7 +567,7 @@
                 </li>
 
                 @if (
-                    (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
+                    (Auth::check() && auth()->user()->currentTeam && Gate::check('update', auth()->user()->currentTeam))
                     || (Auth::check() && Auth::user()->hasRole('root'))
                 )
                     <li>
@@ -578,7 +578,7 @@
                     </li>
                 @endif
 
-                @if (Auth::check() && auth()->user()->currentTeam && (auth()->user()->ownsTeam(auth()->user()->currentTeam) || auth()->user()->hasRole('root')))
+                @can('update', auth()->user()->currentTeam)
                     {{-- Configuration variables (Team Settings module) --}}
                     <li>
                         <a class="dropdown-item" href="{{ route('team-settings.index', auth()->user()->currentTeam) }}">
@@ -586,7 +586,7 @@
                             <span class="align-middle">{{ __('app.profile.team.variables') }}</span>
                         </a>
                     </li>
-                @endif
+                @endcan
 
             {{-- Root-only: Account Management --}}
             @if (Auth::check() && Auth::user()->hasRole('root'))
