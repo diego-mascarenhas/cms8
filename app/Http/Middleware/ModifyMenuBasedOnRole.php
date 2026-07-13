@@ -88,7 +88,8 @@ class ModifyMenuBasedOnRole
                     ->implode(',')
                 : '';
             $modulesFingerprint = md5($enabledModuleKeys);
-            $cacheKey = "menu_user_{$user->id}_team_{$teamKey}_mods_{$modulesFingerprint}_v{$menuVersion}";
+            $rolesFingerprint = md5($user->roles->pluck('name')->sort()->values()->implode(','));
+            $cacheKey = "menu_user_{$user->id}_team_{$teamKey}_roles_{$rolesFingerprint}_mods_{$modulesFingerprint}_v{$menuVersion}_restricted_v3";
             $menuData = Cache::remember($cacheKey, 3600, function () use ($user, $team)
             {
                 $menuConfig = MenuHelper::getMenuConfig();

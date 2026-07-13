@@ -29,12 +29,7 @@ class FarePolicy
      */
     public function viewAny(User $user): bool
     {
-        if (! $user->canAccessBilling())
-        {
-            return false;
-        }
-
-        return $user->hasAnyRole(['admin', 'client']);
+        return $user->canAccessBilling();
     }
 
     /**
@@ -42,13 +37,8 @@ class FarePolicy
      */
     public function view(User $user, Fare $fare): bool
     {
-        if (! $user->canAccessBilling())
-        {
-            return false;
-        }
-
-        return $user->hasAnyRole(['admin', 'client']) &&
-            $user->currentTeam->id === $fare->team_id;
+        return $user->canAccessBilling()
+            && $user->currentTeam->id === $fare->team_id;
     }
 
     /**

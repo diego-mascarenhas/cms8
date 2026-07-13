@@ -92,7 +92,9 @@
                             </select>
                             <small class="text-muted">
                                 {{ __('Suscripciones de clientes en Stripe.') }}
+                                @can('access-billing-modules')
                                 <a href="{{ route('subscription.index') }}" target="_blank" rel="noopener">{{ __('Ver todas') }}</a>
+                                @endcan
                             </small>
                         </div>
                     </div>

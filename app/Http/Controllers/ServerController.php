@@ -23,7 +23,9 @@ class ServerController extends Controller
         private ControlPanelManager $controlPanelManager,
         private WHMService $whmService,
         private CpanelConnector $cpanelConnector,
-    ) {}
+    ) {
+        $this->middleware('can:access-infrastructure-modules');
+    }
 
     public function index(ServerDataTable $dataTable)
     {

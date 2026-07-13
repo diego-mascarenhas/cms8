@@ -27,17 +27,7 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
-        if (! $user->canAccessBilling())
-        {
-            return false;
-        }
-
-        if ($user->hasRole(['admin', 'client']))
-        {
-            return true;
-        }
-
-        return false;
+        return $user->canAccessBilling();
     }
 
     /**
@@ -45,34 +35,8 @@ class InvoicePolicy
      */
     public function view(User $user, Invoice $invoice): bool
     {
-        if (! $user->canAccessBilling())
-        {
-            return false;
-        }
-
-        // Admin can see all invoices in their team
-        if ($user->hasRole('admin'))
-        {
-            return $invoice->team_id === $user->currentTeam->id;
-        }
-
-        // Client can see invoices of their enterprises
-        if ($user->hasRole('client'))
-        {
-            // Get user's contact
-            $contact = $user->contact;
-            if (! $contact)
-            {
-                return false;
-            }
-
-            // Check if invoice belongs to any of the contact's enterprises
-            $enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
-
-            return in_array($invoice->enterprise_id, $enterpriseIds) && $invoice->team_id === $user->currentTeam->id;
-        }
-
-        return false;
+        return $user->canAccessBilling()
+            && $invoice->team_id === $user->currentTeam->id;
     }
 
     /**
@@ -123,30 +87,11 @@ class InvoicePolicy
     {
         return function (Builder $query) use ($user)
         {
-            // Admin can see all invoices in their team
-            if ($user->hasRole('admin'))
+            if ($user->canAccessBilling())
             {
                 return $query->where('team_id', $user->currentTeam->id);
             }
 
-            // Client can see invoices of their enterprises
-            if ($user->hasRole('client'))
-            {
-                // Get user's contact
-                $contact = $user->contact;
-                if (! $contact)
-                {
-                    return $query->whereRaw('1 = 0'); // Return no results
-                }
-
-                // Check if invoice belongs to any of the contact's enterprises
-                $enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
-
-                return $query->where('team_id', $user->currentTeam->id)
-                    ->whereIn('enterprise_id', $enterpriseIds);
-            }
-
-            // Other roles have no access
             return $query->whereRaw('1 = 0');
         };
     }

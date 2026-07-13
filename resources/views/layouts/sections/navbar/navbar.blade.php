@@ -552,12 +552,14 @@
                     </a>
                 </li>
 
+                @can('access-billing-modules')
                 <li>
                     <a class="dropdown-item" href="{{ route('billing.index') }}">
                         <i class="ti ti-credit-card me-2 ti-sm"></i>
                         <span class="align-middle">Facturación y Planes</span>
                     </a>
                 </li>
+                @endcan
 
                 <li>
                     <a class="dropdown-item" href="{{ route('help.index') }}" target="_blank">

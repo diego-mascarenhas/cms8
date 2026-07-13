@@ -110,5 +110,10 @@ class AuthServiceProvider extends ServiceProvider
         {
             return $user->canAccessBilling();
         });
+
+        Gate::define('access-infrastructure-modules', function (User $user): bool
+        {
+            return $user->canAccessInfrastructure();
+        });
     }
 }

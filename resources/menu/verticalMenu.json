@@ -313,14 +313,16 @@
       "name": "Servers",
       "icon": "menu-icon tf-icons ti ti-server-2",
       "slug": "server.index",
-      "module_key": "servers"
+      "module_key": "servers",
+      "permission": "access-infrastructure-modules"
     },
     {
       "url": "hosting",
       "name": "Hosting",
       "icon": "menu-icon tf-icons ti ti-server",
       "slug": "hosting.index",
-      "module_key": "hosting"
+      "module_key": "hosting",
+      "permission": "access-infrastructure-modules"
     }
   ]
 }

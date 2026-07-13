@@ -30,12 +30,37 @@ class CollaboratorBillingAccessTest extends TestCase
         $this->actingAs($user)->get(route('expense.index'))->assertForbidden();
     }
 
+    public function test_collaborator_cannot_access_subscription_or_finance_dashboard(): void
+    {
+        $user = $this->makeCollaboratorUser();
+
+        $this->actingAs($user)->get(route('subscription.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('finance-dashboard.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('billing.index'))->assertForbidden();
+    }
+
     public function test_collaborator_cannot_access_fare_or_enterprise_lists(): void
     {
         $user = $this->makeCollaboratorUser();
 
         $this->actingAs($user)->get(route('fare.index'))->assertForbidden();
         $this->actingAs($user)->get(route('enterprise.index'))->assertForbidden();
+    }
+
+    public function test_collaborator_cannot_access_server_or_hosting(): void
+    {
+        $user = $this->makeCollaboratorUser();
+
+        $this->actingAs($user)->get(route('server.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('hosting.index'))->assertForbidden();
+    }
+
+    public function test_collaborator_cannot_access_infrastructure_gate(): void
+    {
+        $user = $this->makeCollaboratorUser();
+
+        $this->assertFalse($user->canAccessInfrastructure());
+        $this->assertFalse(Gate::forUser($user)->allows('access-infrastructure-modules'));
     }
 
     public function test_collaborator_cannot_generate_project_budget_spec(): void
@@ -60,6 +85,23 @@ class CollaboratorBillingAccessTest extends TestCase
         $this->actingAs($user)
             ->get(route('invoice.index'))
             ->assertOk();
+    }
+
+    public function test_client_cannot_access_invoice_list(): void
+    {
+        $user = $this->makeClientUser();
+
+        $this->actingAs($user)
+            ->get(route('invoice.index'))
+            ->assertForbidden();
+    }
+
+    public function test_client_cannot_access_billing_per_model_and_gate(): void
+    {
+        $user = $this->makeClientUser();
+
+        $this->assertFalse($user->canAccessBilling());
+        $this->assertFalse(Gate::forUser($user)->allows('access-billing-modules'));
     }
 
     public function test_collaborator_cannot_access_billing_per_model_and_gate(): void
@@ -87,6 +129,17 @@ class CollaboratorBillingAccessTest extends TestCase
 
         $user = User::factory()->withPersonalTeam()->create();
         $user->assignRole('collaborator');
+        $user->switchTeam($user->currentTeam);
+
+        return $user;
+    }
+
+    private function makeClientUser(): User
+    {
+        Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('client');
         $user->switchTeam($user->currentTeam);
 
         return $user;
