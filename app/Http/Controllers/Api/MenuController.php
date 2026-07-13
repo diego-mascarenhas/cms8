@@ -34,7 +34,8 @@ class MenuController extends Controller
         }
 
         $teamKey = $team?->id ?? 'none';
-        $cacheKey = "api_menu_user_{$user->id}_team_{$teamKey}_".app()->getLocale();
+        $rolesFingerprint = md5($user->roles->pluck('name')->sort()->values()->implode(','));
+        $cacheKey = "api_menu_user_{$user->id}_team_{$teamKey}_roles_{$rolesFingerprint}_".app()->getLocale().'_restricted_v3';
 
         $menu = Cache::remember($cacheKey, 3600, function () use ($user, $team)
         {

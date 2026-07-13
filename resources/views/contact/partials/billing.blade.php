@@ -1,4 +1,5 @@
 <!-- Current Plan -->
+@role('admin')
 <div class="card mb-4">
     <h5 class="card-header">Servicios</h5>
     <div class="card-body">
@@ -80,6 +81,7 @@
         @endif
     </div>
 </div>
+@endrole
 <!-- /Current Plan -->
 
 <!-- Payment Methods -->
@@ -132,6 +134,7 @@
 </div>
 <!--/ Payment Methods -->
 
+@role('admin')
 <!-- Billing Address -->
 <div class="card card-action mb-4">
     <div class="card-header align-items-center">
@@ -175,4 +178,5 @@
         @endif
     </div>
 </div>
+@endrole
 <!--/ Billing Address -->

@@ -96,16 +96,19 @@ class User extends Authenticatable
      * income/expense, fares, fiscal companies, finance, subscriptions, project budgets).
      *
      * Collaborators are scoped to operational work (tasks, projects without pricing,
-     * hosting, agenda, contacts and clients) and are excluded from billing.
+     * contacts and clients) and are excluded from billing and infrastructure.
      */
     public function canAccessBilling(): bool
     {
-        if ($this->hasAnyRole(['admin', 'root']))
-        {
-            return true;
-        }
+        return $this->hasAnyRole(['admin', 'root']);
+    }
 
-        return ! $this->hasRole('collaborator');
+    /**
+     * Whether the user may access infrastructure modules (servers, hosting, domains).
+     */
+    public function canAccessInfrastructure(): bool
+    {
+        return $this->hasAnyRole(['admin', 'root']);
     }
 
     /**

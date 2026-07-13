@@ -19,7 +19,9 @@ class DomainController extends Controller
 {
     public function __construct(
         private ControlPanelManager $controlPanelManager,
-    ) {}
+    ) {
+        $this->middleware('can:access-infrastructure-modules');
+    }
 
     public function index(DomainDataTable $dataTable)
     {

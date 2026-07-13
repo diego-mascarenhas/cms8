@@ -348,13 +348,15 @@
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
                     </a>
                 </li>
-                @role('admin|collaborator')
+                @role('admin')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="balance-tab" data-bs-toggle="tab" href="#balance" role="tab"
                         aria-controls="balance" aria-selected="false">
                         <i class="ti ti-wallet ti-xs me-1"></i>Saldo
                     </a>
                 </li>
+                @endrole
+                @role('admin|collaborator')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="billing-tab" data-bs-toggle="tab" href="#billing" role="tab"
                         aria-controls="billing" aria-selected="false">
@@ -377,12 +379,16 @@
                     aria-labelledby="emotional-balance-tab">
                     @include('contact.partials.emotional')
                 </div>
+                @role('admin')
                 <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
                     @include('contact.partials.balance')
                 </div>
+                @endrole
+                @role('admin|collaborator')
                 <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
                     @include('contact.partials.billing')
                 </div>
+                @endrole
             </div>
 
 

@@ -69,8 +69,10 @@
                                     <p class="small text-muted mb-2">{{ trans_choice('team_settings.groups.hosting.servers_connected', $hostingServerCount, ['count' => $hostingServerCount]) }}</p>
                                 @endif
                                 <div class="btn-group">
+                                    @can('access-infrastructure-modules')
                                     <a href="{{ route('server.index') }}" class="btn btn-primary">{{ __('team_settings.groups.hosting.manage_servers') }}</a>
                                     <a href="{{ route('hosting.index') }}" class="btn btn-outline-primary">{{ __('team_settings.groups.hosting.manage_hosting') }}</a>
+                                    @endcan
                                 </div>
                             @else
                                 <p class="small text-warning mb-2">{{ __('team_settings.groups.hosting.modules_disabled') }}</p>

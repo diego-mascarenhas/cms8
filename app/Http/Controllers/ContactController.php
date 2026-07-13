@@ -246,6 +246,7 @@ class ContactController extends Controller
         }
 
         $team = auth()->user()->currentTeam->load('settings');
+        $canViewContactBalance = auth()->user()->canAccessBilling();
 
         $stripeData = [
             'subscription' => null,
@@ -307,33 +308,42 @@ class ContactController extends Controller
                     ],
                 ]);
 
-                // Get invoices by status
-                $paidInvoices = Invoice::all([
-                    'customer' => $customer->id,
-                    'limit' => 20,
-                    'status' => 'paid',
-                ]);
-                $openInvoices = Invoice::all([
-                    'customer' => $customer->id,
-                    'limit' => 20,
-                    'status' => 'open',
-                ]);
-                $uncollectibleInvoices = Invoice::all([
-                    'customer' => $customer->id,
-                    'limit' => 20,
-                    'status' => 'uncollectible',
-                ]);
-                $voidInvoices = Invoice::all([
-                    'customer' => $customer->id,
-                    'limit' => 20,
-                    'status' => 'void',
-                ]);
+                // Get invoices by status (admin only — balance tab)
+                $paidInvoices = null;
+                $openInvoices = null;
+                $uncollectibleInvoices = null;
+                $voidInvoices = null;
+                $creditNotes = null;
 
-                // Credit notes (issued and/or void)
-                $creditNotes = CreditNote::all([
-                    'customer' => $customer->id,
-                    'limit' => 20,
-                ]);
+                if ($canViewContactBalance)
+                {
+                    $paidInvoices = Invoice::all([
+                        'customer' => $customer->id,
+                        'limit' => 20,
+                        'status' => 'paid',
+                    ]);
+                    $openInvoices = Invoice::all([
+                        'customer' => $customer->id,
+                        'limit' => 20,
+                        'status' => 'open',
+                    ]);
+                    $uncollectibleInvoices = Invoice::all([
+                        'customer' => $customer->id,
+                        'limit' => 20,
+                        'status' => 'uncollectible',
+                    ]);
+                    $voidInvoices = Invoice::all([
+                        'customer' => $customer->id,
+                        'limit' => 20,
+                        'status' => 'void',
+                    ]);
+
+                    // Credit notes (issued and/or void)
+                    $creditNotes = CreditNote::all([
+                        'customer' => $customer->id,
+                        'limit' => 20,
+                    ]);
+                }
 
                 // Get payment methods
                 $paymentMethods = PaymentMethod::all([
@@ -360,8 +370,8 @@ class ContactController extends Controller
                     'invoices' => [],
                 ];
 
-                // Process subscriptions
-                if ($customer->subscriptions && ! empty($customer->subscriptions->data))
+                // Process subscriptions (admin only)
+                if ($canViewContactBalance && $customer->subscriptions && ! empty($customer->subscriptions->data))
                 {
                     $stripeData['subscriptions'] = [];
 
@@ -412,122 +422,125 @@ class ContactController extends Controller
                     ];
                 }
 
-                // Process invoices (paid)
-                foreach ($paidInvoices->data as $invoice)
+                // Process invoices (paid) — admin only
+                if ($canViewContactBalance && $paidInvoices)
                 {
-                    $stripeData['invoices'][] = [
-                        'id' => $invoice->id,
-                        'number' => $invoice->number,
-                        'amount' => StripeInvoiceMetrics::stripePaidInvoiceAmount($invoice),
-                        'currency' => strtoupper($invoice->currency),
-                        'status' => $invoice->status,
-                        'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
-                        'pdf' => $invoice->invoice_pdf,
-                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
-                        'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
-                    ];
-                }
-                // Process invoices (unpaid: open + uncollectible)
-                $stripeData['unpaid_invoices'] = [];
-                foreach (array_merge($openInvoices->data, $uncollectibleInvoices->data) as $invoice)
-                {
-                    $stripeData['unpaid_invoices'][] = [
-                        'id' => $invoice->id,
-                        'number' => $invoice->number,
-                        'amount' => StripeInvoiceMetrics::stripeUnpaidInvoiceAmount($invoice),
-                        'currency' => strtoupper($invoice->currency),
-                        'status' => $invoice->status,  // 'open' or 'uncollectible'
-                        'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
-                        'pdf' => $invoice->invoice_pdf,
-                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
-                        'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
-                    ];
-                }
-
-                // `country` is both a DB column (Country id) and a relation, so `$data->country`
-                // returns the raw int. Resolve the related Country model explicitly.
-                $contactCountry = $data->relationLoaded('country')
-                    ? $data->getRelation('country')
-                    : $data->country()->first();
-                $contactCountryCode = $contactCountry?->code ? strtolower((string) $contactCountry->code) : null;
-                $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
-                    $paidInvoices->data,
-                    $openInvoices->data,
-                    $uncollectibleInvoices->data,
-                    'EUR',
-                    $contactCountryCode,
-                );
-
-                $balanceMetrics = StripeInvoiceMetrics::contactBalanceMetrics(
-                    $stripeData['invoices'],
-                    $stripeData['unpaid_invoices'],
-                );
-
-                $stripeData['metrics'] = [
-                    'total_paid' => $balanceMetrics['total_paid'],
-                    'unpaid' => $balanceMetrics['unpaid'],
-                    'paid_by_currency' => $balanceMetrics['paid_by_currency'],
-                    'unpaid_by_currency' => $balanceMetrics['unpaid_by_currency'],
-                    'currency' => $metricsCurrency,
-                ];
-
-                // Process void invoices (canceled)
-                foreach ($voidInvoices->data as $invoice)
-                {
-                    $stripeData['void_invoices'][] = [
-                        'id' => $invoice->id,
-                        'number' => $invoice->number,
-                        'amount' => ($invoice->amount_due ?? 0) / 100,
-                        'currency' => strtoupper($invoice->currency),
-                        'status' => $invoice->status,  // 'void'
-                        'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
-                        'pdf' => $invoice->invoice_pdf,
-                        'hosted_invoice_url' => $invoice->hosted_invoice_url,
-                        'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
-                    ];
-                }
-
-                // Process credit notes
-                foreach ($creditNotes->data as $note)
-                {
-                    $stripeData['credit_notes'][] = [
-                        'number' => $note->number,
-                        'amount' => ($note->amount ?? 0) / 100,
-                        'currency' => strtoupper($note->currency),
-                        'status' => $note->status,  // 'issued' or 'void'
-                        'date' => Carbon::createFromTimestamp($note->created)->format('d/m/Y'),
-                        'pdf' => $note->pdf ?? null,
-                    ];
-                }
-
-                // Calculate metrics — sum the same amounts shown in the tables (avoids StripeObject field quirks vs UI)
-                $allInvoicesForMetrics = array_merge($paidInvoices->data, $openInvoices->data, $uncollectibleInvoices->data);
-
-                $totalPaid = $balanceMetrics['total_paid_raw'];
-                $totalUnpaid = $balanceMetrics['unpaid_raw'];
-
-                $firstInvoiceDate = null;
-                foreach ($allInvoicesForMetrics as $invoice)
-                {
-                    if (! $firstInvoiceDate || $invoice->created < $firstInvoiceDate)
+                    foreach ($paidInvoices->data as $invoice)
                     {
-                        $firstInvoiceDate = $invoice->created;
+                        $stripeData['invoices'][] = [
+                            'id' => $invoice->id,
+                            'number' => $invoice->number,
+                            'amount' => StripeInvoiceMetrics::stripePaidInvoiceAmount($invoice),
+                            'currency' => strtoupper($invoice->currency),
+                            'status' => $invoice->status,
+                            'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                            'pdf' => $invoice->invoice_pdf,
+                            'hosted_invoice_url' => $invoice->hosted_invoice_url,
+                            'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+                        ];
                     }
+                    // Process invoices (unpaid: open + uncollectible)
+                    $stripeData['unpaid_invoices'] = [];
+                    foreach (array_merge($openInvoices->data, $uncollectibleInvoices->data) as $invoice)
+                    {
+                        $stripeData['unpaid_invoices'][] = [
+                            'id' => $invoice->id,
+                            'number' => $invoice->number,
+                            'amount' => StripeInvoiceMetrics::stripeUnpaidInvoiceAmount($invoice),
+                            'currency' => strtoupper($invoice->currency),
+                            'status' => $invoice->status,  // 'open' or 'uncollectible'
+                            'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                            'pdf' => $invoice->invoice_pdf,
+                            'hosted_invoice_url' => $invoice->hosted_invoice_url,
+                            'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+                        ];
+                    }
+
+                    // `country` is both a DB column (Country id) and a relation, so `$data->country`
+                    // returns the raw int. Resolve the related Country model explicitly.
+                    $contactCountry = $data->relationLoaded('country')
+                        ? $data->getRelation('country')
+                        : $data->country()->first();
+                    $contactCountryCode = $contactCountry?->code ? strtolower((string) $contactCountry->code) : null;
+                    $metricsCurrency = StripeInvoiceMetrics::displayCurrencyForStripeInvoiceGroups(
+                        $paidInvoices->data,
+                        $openInvoices->data,
+                        $uncollectibleInvoices->data,
+                        'EUR',
+                        $contactCountryCode,
+                    );
+
+                    $balanceMetrics = StripeInvoiceMetrics::contactBalanceMetrics(
+                        $stripeData['invoices'],
+                        $stripeData['unpaid_invoices'],
+                    );
+
+                    $stripeData['metrics'] = [
+                        'total_paid' => $balanceMetrics['total_paid'],
+                        'unpaid' => $balanceMetrics['unpaid'],
+                        'paid_by_currency' => $balanceMetrics['paid_by_currency'],
+                        'unpaid_by_currency' => $balanceMetrics['unpaid_by_currency'],
+                        'currency' => $metricsCurrency,
+                    ];
+
+                    // Process void invoices (canceled)
+                    foreach ($voidInvoices->data as $invoice)
+                    {
+                        $stripeData['void_invoices'][] = [
+                            'id' => $invoice->id,
+                            'number' => $invoice->number,
+                            'amount' => ($invoice->amount_due ?? 0) / 100,
+                            'currency' => strtoupper($invoice->currency),
+                            'status' => $invoice->status,  // 'void'
+                            'date' => Carbon::createFromTimestamp($invoice->created)->format('d/m/Y'),
+                            'pdf' => $invoice->invoice_pdf,
+                            'hosted_invoice_url' => $invoice->hosted_invoice_url,
+                            'dashboard_url' => 'https://dashboard.stripe.com/invoices/'.$invoice->id,
+                        ];
+                    }
+
+                    // Process credit notes
+                    foreach ($creditNotes->data as $note)
+                    {
+                        $stripeData['credit_notes'][] = [
+                            'number' => $note->number,
+                            'amount' => ($note->amount ?? 0) / 100,
+                            'currency' => strtoupper($note->currency),
+                            'status' => $note->status,  // 'issued' or 'void'
+                            'date' => Carbon::createFromTimestamp($note->created)->format('d/m/Y'),
+                            'pdf' => $note->pdf ?? null,
+                        ];
+                    }
+
+                    // Calculate metrics — sum the same amounts shown in the tables (avoids StripeObject field quirks vs UI)
+                    $allInvoicesForMetrics = array_merge($paidInvoices->data, $openInvoices->data, $uncollectibleInvoices->data);
+
+                    $totalPaid = $balanceMetrics['total_paid_raw'];
+                    $totalUnpaid = $balanceMetrics['unpaid_raw'];
+
+                    $firstInvoiceDate = null;
+                    foreach ($allInvoicesForMetrics as $invoice)
+                    {
+                        if (! $firstInvoiceDate || $invoice->created < $firstInvoiceDate)
+                        {
+                            $firstInvoiceDate = $invoice->created;
+                        }
+                    }
+
+                    $lifetimeMonths = $firstInvoiceDate
+                        ? Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1
+                        : 0;
+
+                    $ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
+
+                    $baseAcquisitionCost = 50;
+                    $monthlyMarketingSpend = 10;
+                    $cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
+
+                    $stripeData['metrics']['ltv'] = number_format($ltv, 2);
+                    $stripeData['metrics']['cac'] = number_format($cac, 2);
+                    $stripeData['metrics']['lifetime_months'] = $lifetimeMonths;
                 }
-
-                $lifetimeMonths = $firstInvoiceDate
-                    ? Carbon::createFromTimestamp($firstInvoiceDate)->diffInMonths(Carbon::now()) + 1
-                    : 0;
-
-                $ltv = $lifetimeMonths > 0 ? $totalPaid / $lifetimeMonths : $totalPaid;
-
-                $baseAcquisitionCost = 50;
-                $monthlyMarketingSpend = 10;
-                $cac = $baseAcquisitionCost + ($monthlyMarketingSpend * $lifetimeMonths);
-
-                $stripeData['metrics']['ltv'] = number_format($ltv, 2);
-                $stripeData['metrics']['cac'] = number_format($cac, 2);
-                $stripeData['metrics']['lifetime_months'] = $lifetimeMonths;
             } catch (\Exception $e)
             {
                 \Log::error('Error fetching Stripe data: '.$e->getMessage());
