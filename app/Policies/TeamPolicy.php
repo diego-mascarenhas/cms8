@@ -8,95 +8,106 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 
 class TeamPolicy
 {
-	use HandlesAuthorization;
+    use HandlesAuthorization;
 
-	/**
-	 * Determine whether the user can view any models.
-	 */
-	public function viewAny(User $user): bool
-	{
-		return true;
-	}
+    /**
+     * Determine whether the user can view any models.
+     */
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
 
-	/**
-	 * Determine whether the user can view the model.
-	 */
-	public function view(User $user, Team $team): bool
-	{
-		// Root users can view any team
-		if ($user->hasRole('root')) {
-			return true;
-		}
+    /**
+     * Determine whether the user can view the model.
+     */
+    public function view(User $user, Team $team): bool
+    {
+        // Root users can view any team
+        if ($user->hasRole('root'))
+        {
+            return true;
+        }
 
-		return $user->belongsToTeam($team);
-	}
+        return $user->belongsToTeam($team);
+    }
 
-	/**
-	 * Determine whether the user can create models.
-	 */
-	public function create(User $user): bool
-	{
-		return true;
-	}
+    /**
+     * Determine whether the user can create models.
+     */
+    public function create(User $user): bool
+    {
+        return true;
+    }
 
-	/**
-	 * Determine whether the user can update the model.
-	 */
-	public function update(User $user, Team $team): bool
-	{
-		// Root users can update any team
-		if ($user->hasRole('root')) {
-			return true;
-		}
+    /**
+     * Determine whether the user can update the model.
+     */
+    public function update(User $user, Team $team): bool
+    {
+        // Root users can update any team
+        if ($user->hasRole('root'))
+        {
+            return true;
+        }
 
-		return $user->ownsTeam($team);
-	}
+        if ($user->ownsTeam($team))
+        {
+            return true;
+        }
 
-	/**
-	 * Determine whether the user can add team members.
-	 */
-	public function addTeamMember(User $user, Team $team): bool
-	{
-		if ($user->hasRole('root')) {
-			return true;
-		}
+        return $user->belongsToTeam($team) && $user->hasTeamRole($team, 'admin');
+    }
 
-		return $user->ownsTeam($team);
-	}
+    /**
+     * Determine whether the user can add team members.
+     */
+    public function addTeamMember(User $user, Team $team): bool
+    {
+        if ($user->hasRole('root'))
+        {
+            return true;
+        }
 
-	/**
-	 * Determine whether the user can update team member permissions.
-	 */
-	public function updateTeamMember(User $user, Team $team): bool
-	{
-		if ($user->hasRole('root')) {
-			return true;
-		}
+        return $user->ownsTeam($team);
+    }
 
-		return $user->ownsTeam($team);
-	}
+    /**
+     * Determine whether the user can update team member permissions.
+     */
+    public function updateTeamMember(User $user, Team $team): bool
+    {
+        if ($user->hasRole('root'))
+        {
+            return true;
+        }
 
-	/**
-	 * Determine whether the user can remove team members.
-	 */
-	public function removeTeamMember(User $user, Team $team): bool
-	{
-		if ($user->hasRole('root')) {
-			return true;
-		}
+        return $user->ownsTeam($team);
+    }
 
-		return $user->ownsTeam($team);
-	}
+    /**
+     * Determine whether the user can remove team members.
+     */
+    public function removeTeamMember(User $user, Team $team): bool
+    {
+        if ($user->hasRole('root'))
+        {
+            return true;
+        }
 
-	/**
-	 * Determine whether the user can delete the model.
-	 */
-	public function delete(User $user, Team $team): bool
-	{
-		if ($user->hasRole('root')) {
-			return true;
-		}
+        return $user->ownsTeam($team);
+    }
 
-		return $user->ownsTeam($team);
-	}
+    /**
+     * Determine whether the user can delete the model.
+     */
+    public function delete(User $user, Team $team): bool
+    {
+        if ($user->hasRole('root'))
+        {
+            return true;
+        }
+
+        return $user->ownsTeam($team);
+    }
 }
