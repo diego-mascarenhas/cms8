@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\Automation;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Certification;
@@ -30,6 +31,7 @@ use App\Models\TeamPassword;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\UserDailyPerformanceInsight;
+use App\Policies\AutomationPolicy;
 use App\Policies\CalendarEventPolicy;
 use App\Policies\CategoryPolicy;
 use App\Policies\CertificationPolicy;
@@ -77,6 +79,7 @@ class AuthServiceProvider extends ServiceProvider
         Payment::class => PaymentPolicy::class,
         PaymentAccount::class => PaymentAccountPolicy::class,
         LanguageVariant::class => LanguageVariantPolicy::class,
+        Automation::class => AutomationPolicy::class,
         Prompt::class => PromptPolicy::class,
         Multimedia::class => MultimediaPolicy::class,
         Opportunity::class => OpportunityPolicy::class,

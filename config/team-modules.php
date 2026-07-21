@@ -64,6 +64,7 @@ return [
         'paid_ads' => false,
         // Additional modules (automation)
         'prompts' => true,
+        'automations' => true,
         'funnel' => false,
         'integrations' => false,
         // Additional modules (content)

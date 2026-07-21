@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
+use App\Models\Automation;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
@@ -81,6 +82,9 @@ class TeamDemoSeeder extends Seeder
 
         // 6.1. Demo WhatsApp threads (chat list / mobile API) — fictitious line, see DemoWhatsAppConversationsSeeder
         $this->call(DemoWhatsAppConversationsSeeder::class);
+
+        // 6.2. Omnichannel assistant automations (prompts packaged for API / chat / WhatsApp)
+        $this->createDemoAutomations($team);
 
         // 7. Create demo message
         $this->createDemoMessage();
@@ -292,6 +296,101 @@ class TeamDemoSeeder extends Seeder
         ]);
 
         $this->command->info('✅ Created Demo categories');
+    }
+
+    /**
+     * Sample omnichannel automations for the Demo team (idempotent).
+     */
+    private function createDemoAutomations(Team $team): void
+    {
+        $this->command?->info('🤖 Creating Demo automations...');
+
+        Module::firstOrCreate(
+            ['key' => 'automations'],
+            [
+                'name' => 'Automations',
+                'icon' => 'robot',
+                'description' => 'Omnichannel assistant flows',
+                'is_core' => false,
+                'group' => 'automation',
+                'order' => 4,
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('automations');
+
+        $definitions = [
+            [
+                'name' => 'Soporte web (embed)',
+                'slug' => 'soporte-web',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => false,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => true,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Hola — soy el asistente demo. ¿En qué te ayudo?',
+                ],
+            ],
+            [
+                'name' => 'Citas por WhatsApp',
+                'slug' => 'citas-whatsapp',
+                'entry_prompt_key' => 'calendar:assistant_citas',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => null,
+                ],
+            ],
+            [
+                'name' => 'Contactos CRM',
+                'slug' => 'contactos-crm',
+                'entry_prompt_key' => 'contacts:assistant_contactos',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => true,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Puedo ayudarte con contactos y categorías del CRM.',
+                ],
+            ],
+        ];
+
+        foreach ($definitions as $def)
+        {
+            $existing = Automation::withoutGlobalScope('team')
+                ->where('team_id', $team->id)
+                ->where('slug', $def['slug'])
+                ->first();
+
+            Automation::withoutGlobalScope('team')->updateOrCreate(
+                [
+                    'team_id' => $team->id,
+                    'slug' => $def['slug'],
+                ],
+                [
+                    'name' => $def['name'],
+                    'entry_prompt_key' => $def['entry_prompt_key'],
+                    'is_active' => true,
+                    'channels' => Automation::normalizeChannels($def['channels']),
+                    'settings' => $def['settings'],
+                    'public_token' => $existing?->public_token ?: bin2hex(random_bytes(32)),
+                ],
+            );
+        }
+
+        $this->command?->info('✅ Created Demo automations (soporte-web, citas-whatsapp, contactos-crm)');
     }
 
     private function createDemoTaskCategories(): void

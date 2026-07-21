@@ -1,6 +1,7 @@
 /**
  * Minimal embed loader for static landings: mounts widgets into [data-humano-widget] nodes.
- * Set window.HUMANO_WIDGETS_API_BASE to your app origin + /api/embed/demo (no trailing slash).
+ * Set window.HUMANO_WIDGETS_API_BASE to your app origin + /api/embed/automation/{public_token}
+ * (or /api/embed/demo for the echo demo). No trailing slash.
  */
 (function ()
 {
@@ -112,13 +113,39 @@
             return;
         }
 
-        var title = el('h3', { class: 'humano-widget-title' }, 'Assistant (demo)');
+        var title = el('h3', { class: 'humano-widget-title' }, 'Assistant');
         var log = el('div', { class: 'humano-widget-chat-log' });
         var row = el('div', { class: 'humano-widget-chat-row' });
         var input = el('input', { type: 'text', class: 'humano-widget-input', placeholder: 'Type a message…', maxlength: '2000' });
         var send = el('button', { type: 'button', class: 'humano-widget-send' }, 'Send');
 
-        log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, 'Hi — this is a demo assistant. Say anything.'));
+        log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, 'Loading…'));
+
+        fetch(base + '/', { credentials: 'omit', headers: { Accept: 'application/json' } })
+            .then(function (r)
+            {
+                if (! r.ok)
+                {
+                    return null;
+                }
+
+                return r.json();
+            })
+            .then(function (meta)
+            {
+                log.innerHTML = '';
+                if (meta && meta.name)
+                {
+                    title.textContent = meta.name;
+                }
+                var welcome = (meta && meta.welcome_message) ? meta.welcome_message : 'Hi — how can I help you?';
+                log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, welcome));
+            })
+            .catch(function ()
+            {
+                log.innerHTML = '';
+                log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, 'Hi — how can I help you?'));
+            });
 
         send.addEventListener('click', function ()
         {
@@ -150,7 +177,8 @@
                 })
                 .then(function (data)
                 {
-                    log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, data.reply || ''));
+                    var reply = data.reply || data.response || '';
+                    log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, reply));
                     log.scrollTop = log.scrollHeight;
                 })
                 .catch(function (err)

@@ -1461,6 +1461,16 @@ class ChatController extends Controller
             $customerPhone = $fromUser !== '' ? $fromUser : null;
         }
         $forcedFlowRoutingKey = $request->filled('flow_routing_key') ? trim((string) $request->input('flow_routing_key')) : '';
+        if ($teamId !== null)
+        {
+            $forcedFlowRoutingKey = (string) (app(\App\Services\AssistantAutomationRunner::class)->resolveChannelPromptKey(
+                (int) $teamId,
+                \App\Models\Automation::CHANNEL_CHAT,
+                $request->filled('automation_slug') ? trim((string) $request->input('automation_slug')) : null,
+                $request->filled('automation_id') ? (int) $request->input('automation_id') : null,
+                $forcedFlowRoutingKey !== '' ? $forcedFlowRoutingKey : null,
+            ) ?? '');
+        }
         $replyResponse = $replyService->getReply(
             $message,
             $history,

@@ -72,6 +72,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertFalse($team->hasModule('clients'));
         $this->assertTrue($team->hasModule('today'));
         $this->assertTrue($team->hasModule('prompts'));
+        $this->assertTrue($team->hasModule('automations'));
         $this->assertFalse($team->hasModule('mailer'));
         $this->assertFalse($team->hasModule('landings'));
         $this->assertTrue($team->hasModule('chat'));

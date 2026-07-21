@@ -9,6 +9,7 @@ use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AutomationController;
 use App\Http\Controllers\CampaignsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
@@ -1061,6 +1062,14 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/prompt/{prompt}/preview', [PromptController::class, 'preview'])->name('prompt.preview');
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
+
+    Route::get('/automation/list', [AutomationController::class, 'index'])->name('automation-list');
+    Route::get('/automation/create', [AutomationController::class, 'create'])->name('automation.create');
+    Route::post('/automation', [AutomationController::class, 'store'])->name('automation.store');
+    Route::get('/automation/{automation}/edit', [AutomationController::class, 'edit'])->name('automation.edit');
+    Route::get('/automation/{automation}', [AutomationController::class, 'show'])->name('automation.show');
+    Route::put('/automation/{automation}', [AutomationController::class, 'update'])->name('automation.update');
+    Route::delete('/automation/{automation}', [AutomationController::class, 'destroy'])->name('automation.destroy');
 
     // Software Management
     Route::get('/software', [SoftwareController::class, 'index'])->name('software.index');

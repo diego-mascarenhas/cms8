@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationInboxController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
@@ -69,6 +70,14 @@ Route::prefix('embed/demo')->middleware('throttle:60,1')->group(function ()
 {
     Route::get('calendar', [LandingEmbedDemoController::class, 'calendar']);
     Route::post('assistant', [LandingEmbedDemoController::class, 'assistant']);
+});
+
+Route::prefix('embed/automation/{token}')->middleware('throttle:60,1')->group(function ()
+{
+    Route::get('/', [PublicAutomationEmbedController::class, 'meta'])->name('api.embed.automation.meta');
+    Route::post('chat', [PublicAutomationEmbedController::class, 'chat'])->name('api.embed.automation.chat');
+    // Alias matching humano-widgets.js fetch(base + '/assistant')
+    Route::post('assistant', [PublicAutomationEmbedController::class, 'chat'])->name('api.embed.automation.assistant');
 });
 
 // Public CMS read API (anonymous, resolved by team slug; opt-in via cms_public_enabled)

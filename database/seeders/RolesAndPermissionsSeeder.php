@@ -206,14 +206,14 @@ class RolesAndPermissionsSeeder extends Seeder
         // Permission::firstOrCreate(['name' => 'funnel.update']);
         // Permission::firstOrCreate(['name' => 'funnel.destroy']);
 
-        // Permission::firstOrCreate(['name' => 'automation.index']);
-        // Permission::firstOrCreate(['name' => 'automation.list']);
-        // Permission::firstOrCreate(['name' => 'automation.create']);
-        // Permission::firstOrCreate(['name' => 'automation.show']);
-        // Permission::firstOrCreate(['name' => 'automation.edit']);
-        // Permission::firstOrCreate(['name' => 'automation.store']);
-        // Permission::firstOrCreate(['name' => 'automation.update']);
-        // Permission::firstOrCreate(['name' => 'automation.destroy']);
+        Permission::firstOrCreate(['name' => 'automation.index']);
+        Permission::firstOrCreate(['name' => 'automation.list']);
+        Permission::firstOrCreate(['name' => 'automation.create']);
+        Permission::firstOrCreate(['name' => 'automation.show']);
+        Permission::firstOrCreate(['name' => 'automation.edit']);
+        Permission::firstOrCreate(['name' => 'automation.store']);
+        Permission::firstOrCreate(['name' => 'automation.update']);
+        Permission::firstOrCreate(['name' => 'automation.destroy']);
 
         // Permission::firstOrCreate(['name' => 'integration.index']);
         // Permission::firstOrCreate(['name' => 'integration.list']);
