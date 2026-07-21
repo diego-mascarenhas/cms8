@@ -9,6 +9,14 @@
 
 @section('title', isset($automation) ? __('Editar') : ($isFunnel ? __('Crear embudo') : __('Crear automatización')))
 
+@section('vendor-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+@endsection
+
+@section('vendor-script')
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+@endsection
+
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
@@ -37,10 +45,10 @@
         @endcan
         @endif
         @can('delete', $automation)
-        <form action="{{ route($kind->destroyRouteName(), $automation) }}" method="POST" class="d-inline" onsubmit="return confirm(@json(__('¿Eliminar?')));">
+        <form action="{{ route($kind->destroyRouteName(), $automation) }}" method="POST" class="d-inline btn-delete-form">
             @csrf
             @method('DELETE')
-            <button type="submit" class="btn btn-danger waves-effect waves-light">
+            <button type="submit" class="btn btn-danger waves-effect waves-light btn-delete">
                 <i class="ti ti-trash me-1"></i>{{ __('Eliminar') }}
             </button>
         </form>
@@ -151,3 +159,37 @@
     </form>
 </div>
 @endsection
+
+@if(isset($automation))
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.btn-delete').forEach(function (button) {
+            button.addEventListener('click', function (e) {
+                e.preventDefault();
+                var form = button.closest('form');
+                Swal.fire({
+                    title: @json(__('¿Estás seguro?')),
+                    text: @json($isFunnel
+                        ? __('Se eliminará este embudo y su flujo. Esta acción no se puede deshacer.')
+                        : __('Se eliminará esta automatización. Esta acción no se puede deshacer.')),
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: @json(__('Sí, eliminar')),
+                    cancelButtonText: @json(__('Cancelar')),
+                    customClass: {
+                        confirmButton: 'btn btn-primary me-3',
+                        cancelButton: 'btn btn-label-secondary'
+                    },
+                    buttonsStyling: false
+                }).then(function (result) {
+                    if (result.isConfirmed || result.value) {
+                        form.submit();
+                    }
+                });
+            });
+        });
+    });
+</script>
+@endpush
+@endif

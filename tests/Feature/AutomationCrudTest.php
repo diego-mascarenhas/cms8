@@ -177,6 +177,23 @@ class AutomationCrudTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_funnel_list_actions_do_not_include_delete(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+        $funnel = Automation::factory()->funnel()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Sin eliminar en lista',
+        ]);
+
+        $this->actingAs($user);
+        $html = view('automation.action', ['automation' => $funnel])->render();
+
+        $this->assertStringContainsString(route('funnel.show', $funnel), $html);
+        $this->assertStringContainsString(route('funnel.flow', $funnel), $html);
+        $this->assertStringNotContainsString('ti-trash', $html);
+        $this->assertStringNotContainsString(__('Eliminar'), $html);
+    }
+
     private function createAdminWithAutomationsModule(): User
     {
         $user = $this->createUserWithTeamAndRole('admin');

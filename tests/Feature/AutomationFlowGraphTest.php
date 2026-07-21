@@ -74,6 +74,40 @@ class AutomationFlowGraphTest extends TestCase
         $this->assertNotEmpty($exported['edges']);
     }
 
+    public function test_flow_page_uses_show_header_and_includes_delete(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+        $automation = Automation::factory()->funnel()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Embudo de soporte',
+            'channels' => Automation::normalizeChannels(['api' => true, 'chat' => true]),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('funnel.flow', $automation))
+            ->assertOk()
+            ->assertSee(__('Embudos'), false)
+            ->assertSee('Embudo de soporte')
+            ->assertSee(__('Arrastrá pasos, conectá salidas según el tipo de respuesta esperada del usuario.'))
+            ->assertDontSee(__('Embudo conversacional'))
+            ->assertSee(route('funnel.destroy', $automation), false)
+            ->assertSee(__('Eliminar'));
+    }
+
+    public function test_admin_can_destroy_funnel_from_flow_route(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+        $automation = Automation::factory()->funnel()->create([
+            'team_id' => $user->current_team_id,
+        ]);
+
+        $this->actingAs($user)
+            ->delete(route('funnel.destroy', $automation))
+            ->assertRedirect(route('funnel-list'));
+
+        $this->assertDatabaseMissing('automations', ['id' => $automation->id]);
+    }
+
     private function createAdminWithAutomationsModule(): User
     {
         $role = Role::firstOrCreate(['name' => 'admin'], ['guard_name' => 'web']);

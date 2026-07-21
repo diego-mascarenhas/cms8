@@ -4,6 +4,7 @@
 
 @section('vendor-style')
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow@0.0.59/dist/drawflow.min.css">
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
 <style>
   #automation-drawflow {
     width: 100%;
@@ -53,20 +54,27 @@
 
 @section('vendor-script')
 <script src="https://cdn.jsdelivr.net/gh/jerosoler/Drawflow@0.0.59/dist/drawflow.min.js"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">
-            <span class="text-muted fw-light">{{ __('Automations') }}/{{ $automation->name }}/</span>
-            {{ __('Embudo conversacional') }}
-        </h4>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Embudos') }}/</span> {{ $automation->name }}</h4>
         <p class="text-muted">{{ __('Arrastrá pasos, conectá salidas según el tipo de respuesta esperada del usuario.') }}</p>
     </div>
-    <div class="d-flex align-content-center flex-wrap gap-2">
-        <a href="{{ route('funnel.show', $automation) }}" class="btn btn-label-secondary">{{ __('Volver') }}</a>
-        <button type="button" class="btn btn-primary" id="btn-save-flow">
+    <div class="d-flex align-content-center flex-wrap gap-3">
+        <a href="{{ route('funnel.show', $automation) }}" class="btn btn-label-secondary waves-effect waves-light">{{ __('Volver') }}</a>
+        @can('delete', $automation)
+        <form action="{{ route('funnel.destroy', $automation) }}" method="POST" class="d-inline btn-delete-form">
+            @csrf
+            @method('DELETE')
+            <button type="submit" class="btn btn-danger waves-effect waves-light btn-delete">
+                <i class="ti ti-trash me-1"></i>{{ __('Eliminar') }}
+            </button>
+        </form>
+        @endcan
+        <button type="button" class="btn btn-primary waves-effect waves-light" id="btn-save-flow">
             <i class="ti ti-device-floppy me-1"></i>{{ __('Guardar embudo') }}
         </button>
     </div>
@@ -186,6 +194,30 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.btn-delete').forEach(function (button) {
+    button.addEventListener('click', function (e) {
+      e.preventDefault();
+      var form = button.closest('form');
+      Swal.fire({
+        title: @json(__('¿Estás seguro?')),
+        text: @json(__('Se eliminará este embudo y su flujo. Esta acción no se puede deshacer.')),
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: @json(__('Sí, eliminar')),
+        cancelButtonText: @json(__('Cancelar')),
+        customClass: {
+          confirmButton: 'btn btn-primary me-3',
+          cancelButton: 'btn btn-label-secondary'
+        },
+        buttonsStyling: false
+      }).then(function (result) {
+        if (result.isConfirmed || result.value) {
+          form.submit();
+        }
+      });
+    });
+  });
+
   const saveUrl = @json(route('funnel.flow.save', $automation));
   const csrf = @json(csrf_token());
   const initialGraph = @json($graph);
