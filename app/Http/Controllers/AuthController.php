@@ -6,6 +6,7 @@ use App\Actions\Fortify\PasswordValidationRules;
 use App\Helpers\TokenHelper;
 use App\Models\Team;
 use App\Models\User;
+use App\Support\AuthIntendedUrlGuard;
 use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -252,8 +253,7 @@ class AuthController extends Controller
             auth()->login($user, true);
 
             // Ensure a current team is bound before the dashboard request.
-            // Users with null current_team_id otherwise hit 500 on dashboard.collaborator
-            // until a later request reloads the user from the database.
+            // Users with null current_team_id otherwise hit 500 until a later request.
             if (! $user->currentTeam)
             {
                 $team = $user->allTeams()->first();
@@ -268,20 +268,12 @@ class AuthController extends Controller
                 return redirect()->route('error-without-team');
             }
 
-            // Redirect to the appropriate dashboard based on user role
-            if ($user->hasRole('admin'))
-            {
-                return redirect()->route('dashboard');
-            } elseif ($user->hasRole('collaborator'))
-            {
-                return redirect()->route('dashboard.collaborator');
-            } elseif ($user->hasRole('client'))
-            {
-                return redirect()->route('dashboard.client');
-            }
+            // Honor url.intended when present; otherwise analytics (no role-based redirect).
+            $default = route('dashboard');
+            $intended = session()->pull('url.intended', $default);
+            $target = AuthIntendedUrlGuard::sanitizeIntendedUrl($intended, $default);
 
-            // Default fallback
-            return redirect()->route('dashboard');
+            return redirect()->to($target);
         } catch (\Exception $e)
         {
             \Log::error('Error in token login: '.$e->getMessage());
