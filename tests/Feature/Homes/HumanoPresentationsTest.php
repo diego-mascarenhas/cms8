@@ -90,6 +90,15 @@ class HumanoPresentationsTest extends TestCase
         $this->assertStringContainsString('No es lo mismo un', $html);
         $this->assertStringContainsString('Automatización', $html);
         $this->assertStringContainsString('Editor visual', $html);
+        $this->assertStringContainsString('WhatsApp', $html);
+        $this->assertStringContainsString('Humano • Chat', $html);
+        $this->assertStringContainsString('quisiera una cita', $html);
+        $this->assertStringContainsString('Nela Adela Cabrera', $html);
+        $this->assertStringContainsString('Lead', $html);
+        $this->assertStringContainsString('Conversión', $html);
+        $this->assertStringContainsString('Gracias, Nela. ¿Qué día y hora te viene bien?', $html);
+        $this->assertStringNotContainsString('registré como Lead', $html);
+        $this->assertStringContainsString('pres-demo-phone', $html);
         $this->assertStringContainsString('yes_no', $html);
         $this->assertStringContainsString('/funnel/list', $html);
         $this->assertStringContainsString('insight-diario.html', $html);
