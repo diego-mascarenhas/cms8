@@ -47,6 +47,8 @@ class HumanoLandingTest extends TestCase
             ->assertSee(__('Afiliados'), false)
             ->assertSee(GuidePresentation::url('cms-wordpress'), false)
             ->assertSee(__('CMS y WordPress'), false)
+            ->assertSee(GuidePresentation::url('embudos'), false)
+            ->assertSee(__('Embudos'), false)
             ->assertSee(\App\Support\HumanoHomeAsset::url('css/landing.css'), false)
             ->assertSee('Ver presentación', false)
             ->assertSee('https://www.youtube.com/playlist?list=PLebHHjcT7KEc', false)

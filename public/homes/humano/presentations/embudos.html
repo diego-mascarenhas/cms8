@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Humano · Embudos</title>
+<link rel="stylesheet" href="/assets/vendor/fonts/tabler-icons.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="presentation-base.css">
+<style>
+.pres-split{position:absolute;left:84px;right:84px;top:236px;bottom:78px;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.pres-split-card{border-radius:18px;padding:18px 20px 16px;display:flex;flex-direction:column;min-height:0;overflow:hidden;
+ background:linear-gradient(165deg,rgba(90,88,150,.28),rgba(24,22,48,.55));border:1px solid rgba(150,148,220,.18);font-family:var(--font)}
+.pres-split-card.funnel{box-shadow:inset 4px 0 0 #28c76f}
+.pres-split-card.action{box-shadow:inset 4px 0 0 #696cff}
+.pres-split-head{display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-shrink:0}
+.pres-split-head .bi{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.pres-split-head .bi.green{background:linear-gradient(150deg,#71dd37,#28c76f);color:#0a0818}
+.pres-split-head .bi.blue{background:linear-gradient(150deg,#b4b6ff,#696cff);color:#0a0818}
+.pres-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;width:fit-content;margin-bottom:4px}
+.pres-badge.green{background:rgba(40,199,111,.16);color:#71dd37;border:1px solid rgba(40,199,111,.28)}
+.pres-badge.blue{background:rgba(105,108,255,.16);color:#b4b6ff;border:1px solid rgba(105,108,255,.28)}
+.pres-split-card h4{margin:0;font-size:18px;font-weight:800;color:#fff;letter-spacing:-.3px}
+.pres-split-card>p{margin:0 0 10px;font-size:12px;line-height:1.45;color:#a8aac8;flex-shrink:0}
+.pres-split-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;flex:1 1 auto;min-height:0}
+.pres-split-list li{display:flex;gap:10px;align-items:flex-start;font-size:11px;color:#d4d6ff;line-height:1.35;
+ padding:7px 10px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(150,148,220,.1)}
+.pres-split-list li i{font-size:15px;color:var(--accent);margin-top:1px;flex-shrink:0}
+.pres-split-list li b{display:block;color:#fff;font-size:11.5px;margin-bottom:1px}
+.pres-split-list li span{color:#9496b8;font-size:10.5px}
+.pres-split-foot{margin-top:auto;padding-top:10px;border-top:1px solid rgba(150,148,220,.14);display:flex;flex-wrap:wrap;gap:6px;flex-shrink:0}
+.pres-chip{font-size:9.5px;font-weight:700;letter-spacing:.02em;padding:4px 8px;border-radius:7px;white-space:nowrap;
+ background:rgba(105,108,255,.14);border:1px solid rgba(150,148,220,.2);color:#d4d6ff}
+.pres-chip.soft{background:rgba(40,199,111,.12);border-color:rgba(40,199,111,.25);color:#9eecc4}
+.pres-flow{position:absolute;left:84px;right:84px;top:248px;bottom:84px;border-radius:18px;overflow:hidden;
+ background:#f5f5f9;box-shadow:0 28px 60px -24px rgba(0,0,0,.55);font-family:var(--font);color:#566a7f;
+ background-image:
+  linear-gradient(90deg, rgba(67,89,113,.06) 1px, transparent 1px) 0 0 / 24px 24px,
+  linear-gradient(rgba(67,89,113,.06) 1px, transparent 1px) 0 0 / 24px 24px;
+ display:flex;align-items:center;justify-content:center;gap:28px;padding:24px}
+.pres-node{background:#fff;border:1px solid #d9dee3;border-radius:12px;min-width:180px;max-width:200px;box-shadow:0 8px 24px rgba(67,89,113,.12)}
+.pres-node-title{background:#696cff;color:#fff;padding:10px 14px;font-size:12px;font-weight:700;border-radius:11px 11px 0 0}
+.pres-node.entry .pres-node-title{background:#28c76f}
+.pres-node-body{padding:12px 14px;font-size:10px;line-height:1.45}
+.pres-node-body strong{display:block;color:#233446;margin-bottom:4px;font-size:11px}
+.pres-outs{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+.pres-out{font-size:9px;padding:3px 8px;border-radius:6px;background:#f5f5f9;border:1px solid #e4e6ef;color:#8592a3}
+.pres-arrow{color:#696cff;font-size:22px;font-weight:800;opacity:.7}
+.pres-types{position:absolute;left:84px;right:84px;top:236px;bottom:78px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.pres-type{border-radius:16px;padding:16px 16px 14px;font-family:var(--font);display:flex;flex-direction:column;min-height:0;
+ background:linear-gradient(165deg,rgba(90,88,150,.28),rgba(24,22,48,.55));border:1px solid rgba(150,148,220,.16)}
+.pres-type-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pres-type-top .bi{width:36px;height:36px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex:none;
+ background:linear-gradient(150deg,#b4b6ff,#696cff);color:#0a0818;font-size:18px}
+.pres-type-top strong{font-size:14px;font-weight:800;color:#fff;letter-spacing:-.2px;line-height:1.2}
+.pres-type-top em{display:block;font-style:normal;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-top:2px}
+.pres-type>p{margin:0 0 10px;font-size:11.5px;color:#a8aac8;line-height:1.45;flex:1}
+.pres-type-ex{margin-top:auto;padding-top:10px;border-top:1px solid rgba(150,148,220,.12)}
+.pres-type-ex label{display:block;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6e70a0;margin-bottom:6px}
+.pres-type-ex .row{display:flex;flex-wrap:wrap;gap:5px}
+.pres-type-ex .bubble{font-size:10px;padding:4px 8px;border-radius:8px;background:rgba(255,255,255,.05);
+ border:1px solid rgba(150,148,220,.16);color:#d4d6ff;line-height:1.3}
+.pres-type-ex .bubble.user{background:rgba(105,108,255,.14);border-color:rgba(105,108,255,.28);color:#e0e2ff}
+.pres-type-ex .bubble.path{background:rgba(40,199,111,.1);border-color:rgba(40,199,111,.22);color:#9eecc4}
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover active">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:420px;height:420px;right:60px;top:-120px"></div>
+ <div class="blob b-violet" style="width:360px;height:360px;right:240px;bottom:-160px"></div>
+ <div class="wmk u" style="--d:.5s">HUMANO</div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="eyebrow">MÓDULO · AUTOMATIZACIONES</span></div>
+  <h1 class="ttl u" style="--d:.13s;margin-top:24px;font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1.05;color:#fff;max-width:900px">Embudos · <span class="g" style="background:linear-gradient(100deg,#b4b6ff,#8592ff 55%,#fff);-webkit-background-clip:text;background-clip:text;color:transparent">flujos conversacionales</span></h1>
+  <p class="u" style="--d:.24s;margin-top:22px;font-size:16px;color:var(--muted);max-width:560px;line-height:1.6">Diseñá pasos, conectá salidas según la respuesta del usuario y dispará acciones reutilizables (cita, contacto, tarea…).</p>
+  <div class="pres-nav-row u" style="--d:.36s"><a href="insight-diario.html">← Insight diario</a></div>
+ </div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMBUDOS · DOS PIEZAS</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>No es lo mismo un <em style="font-style:normal;color:var(--accent)">embudo</em> que una <em style="font-style:normal;color:var(--accent)">automatización</em></h2>
+  <p class="sub">El embudo conversa. La automatización ejecuta. Juntos cierran el ciclo sin perder el hilo.</p>
+ </div>
+ <div class="pres-split u sc" style="--d:.22s">
+  <div class="pres-split-card funnel">
+   <div class="pres-split-head">
+    <div class="bi green"><i class="ti ti-filter" style="font-size:20px"></i></div>
+    <div>
+     <span class="pres-badge green">Embudo</span>
+     <h4>Flujo conversacional</h4>
+    </div>
+   </div>
+   <p>Grafo de pasos con salidas tipadas. El usuario responde y el embudo decide el siguiente camino sin que intervengas.</p>
+   <ul class="pres-split-list">
+    <li><i class="ti ti-sitemap"></i><div><b>Editor visual</b><span>Arrastrá pasos, conectá salidas y marcá el de entrada.</span></div></li>
+    <li><i class="ti ti-message-2"></i><div><b>Respuestas tipadas</b><span>Sí/No, opción, email, fecha, texto libre o fallback.</span></div></li>
+    <li><i class="ti ti-brand-whatsapp"></i><div><b>Varios canales</b><span>Corre en chat del panel, WhatsApp o API pública.</span></div></li>
+    <li><i class="ti ti-git-branch"></i><div><b>Ramifica el diálogo</b><span>Cada salida puede ir a otro paso o cerrar el flujo.</span></div></li>
+   </ul>
+   <div class="pres-split-foot">
+    <span class="pres-chip soft">/funnel/list</span>
+    <span class="pres-chip soft">Editor /flow</span>
+    <span class="pres-chip soft">Paso de entrada</span>
+   </div>
+  </div>
+  <div class="pres-split-card action">
+   <div class="pres-split-head">
+    <div class="bi blue"><i class="ti ti-bolt" style="font-size:20px"></i></div>
+    <div>
+     <span class="pres-badge blue">Automatización</span>
+     <h4>Acción reutilizable</h4>
+    </div>
+   </div>
+   <p>Bloque listo para disparar al salir de un paso: crear cita, contacto, tarea u otra acción del equipo.</p>
+   <ul class="pres-split-list">
+    <li><i class="ti ti-recycle"></i><div><b>Se configura una vez</b><span>La misma acción sirve en varios embudos o salidas.</span></div></li>
+    <li><i class="ti ti-arrow-fork"></i><div><b>Enganche en la salida</b><span>En el editor elegís qué automatización dispara cada rama.</span></div></li>
+    <li><i class="ti ti-calendar-event"></i><div><b>Acciones reales</b><span>Cita en calendario, alta de contacto, tarea al responsable…</span></div></li>
+    <li><i class="ti ti-list"></i><div><b>Lista propia</b><span>Vive en Automatizaciones, separada del embudo.</span></div></li>
+   </ul>
+   <div class="pres-split-foot">
+    <span class="pres-chip">/automation/list</span>
+    <span class="pres-chip">Crear cita</span>
+    <span class="pres-chip">Crear contacto</span>
+    <span class="pres-chip">Crear tarea</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Embudos</span><span class="r">Concepto</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMBUDOS · EDITOR</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Arrastrá pasos y <em style="font-style:normal;color:var(--accent)">conectá salidas</em></h2>
+  <p class="sub">Marcá el paso de entrada, añadí salidas según la respuesta esperada y uní cada salida al siguiente paso o a una automatización.</p>
+ </div>
+ <div class="pres-flow u sc" style="--d:.22s">
+  <div class="pres-node entry">
+   <div class="pres-node-title">Inicio</div>
+   <div class="pres-node-body">
+    <strong>¿Qué necesitás?</strong>
+    Saludá y preguntá si quiere cita o dejar datos.
+    <div class="pres-outs">
+     <span class="pres-out">Cita · opción</span>
+     <span class="pres-out">Contacto · opción</span>
+     <span class="pres-out">Otra · fallback</span>
+    </div>
+   </div>
+  </div>
+  <div class="pres-arrow">→</div>
+  <div class="pres-node">
+   <div class="pres-node-title">Agendar cita</div>
+   <div class="pres-node-body">
+    <strong>Pedí día y hora</strong>
+    Al confirmar, dispará la automatización de calendario.
+    <div class="pres-outs">
+     <span class="pres-out">Confirmado → Automatización</span>
+    </div>
+   </div>
+  </div>
+  <div class="pres-arrow">→</div>
+  <div class="pres-node">
+   <div class="pres-node-title">Cierre</div>
+   <div class="pres-node-body">
+    <strong>Despedí</strong>
+    Confirmá al usuario que quedó registrado.
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Embudos</span><span class="r">Editor</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMBUDOS · RESPUESTAS</div></div>
+ <div class="shead u" style="--d:.1s">
+  <h2>Cada salida espera un <em style="font-style:normal;color:var(--accent)">tipo de respuesta</em></h2>
+  <p class="sub">Así el embudo entiende qué dijo el usuario y elige el camino correcto.</p>
+ </div>
+ <div class="pres-types u sc" style="--d:.22s">
+  <div class="pres-type">
+   <div class="pres-type-top"><div class="bi"><i class="ti ti-toggle-left"></i></div><div><strong>Sí / No</strong><em>yes_no</em></div></div>
+   <p>Confirmaciones rápidas: aceptar, cancelar o continuar sin ambigüedad.</p>
+   <div class="pres-type-ex"><label>Ejemplo</label><div class="row"><span class="bubble user">sí</span><span class="bubble user">no, gracias</span><span class="bubble path">→ Confirmar / Cancelar</span></div></div>
+  </div>
+  <div class="pres-type">
+   <div class="pres-type-top"><div class="bi"><i class="ti ti-list-check"></i></div><div><strong>Opción</strong><em>choice</em></div></div>
+   <p>Coincide por palabra clave cuando el usuario elige un camino concreto.</p>
+   <div class="pres-type-ex"><label>Match</label><div class="row"><span class="bubble user">cita</span><span class="bubble user">contacto</span><span class="bubble user">soporte</span><span class="bubble path">→ Rama</span></div></div>
+  </div>
+  <div class="pres-type">
+   <div class="pres-type-top"><div class="bi"><i class="ti ti-message"></i></div><div><strong>Texto libre</strong><em>free_text</em></div></div>
+   <p>Captura el mensaje completo cuando necesitás el contenido, no solo una opción.</p>
+   <div class="pres-type-ex"><label>Ejemplo</label><div class="row"><span class="bubble user">Necesito factura del mes pasado</span><span class="bubble path">→ Guardar texto</span></div></div>
+  </div>
+  <div class="pres-type">
+   <div class="pres-type-top"><div class="bi"><i class="ti ti-mail"></i></div><div><strong>Email / Teléfono</strong><em>email · phone</em></div></div>
+   <p>Valida el dato de contacto antes de seguir o disparar una automatización.</p>
+   <div class="pres-type-ex"><label>Ejemplo</label><div class="row"><span class="bubble user">ana@acme.com</span><span class="bubble user">+34 600…</span><span class="bubble path">→ Alta contacto</span></div></div>
+  </div>
+  <div class="pres-type">
+   <div class="pres-type-top"><div class="bi"><i class="ti ti-calendar"></i></div><div><strong>Fecha</strong><em>date</em></div></div>
+   <p>Ideal para agendar, pedir plazos o confirmar un día y hora.</p>
+   <div class="pres-type-ex"><label>Ejemplo</label><div class="row"><span class="bubble user">mañana 10:00</span><span class="bubble user">viernes</span><span class="bubble path">→ Crear cita</span></div></div>
+  </div>
+  <div class="pres-type">
+   <div class="pres-type-top"><div class="bi"><i class="ti ti-arrows-shuffle"></i></div><div><strong>Cualquier otra</strong><em>fallback</em></div></div>
+   <p>Red de seguridad: si no coincide ninguna salida tipada, el embudo no se queda trabado.</p>
+   <div class="pres-type-ex"><label>Ejemplo</label><div class="row"><span class="bubble user">mmm no sé</span><span class="bubble path">→ Repreguntar / Cierre</span></div></div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Embudos</span><span class="r">Tipos</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMBUDOS · CÓMO EMPEZAR</div></div>
+ <div class="cgrid" style="top:248px">
+  <div class="ccard u" style="--d:.2s"><div class="top"><div class="bi badge-ic"><i class="ti ti-bolt" style="font-size:20px;color:#fff"></i></div><div class="cn">01</div></div>
+   <h4>Creá una automatización</h4><p>Acción reutilizable: cita, contacto, tarea u otra del equipo.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.27s"><div class="top"><div class="bi badge-ic"><i class="ti ti-filter" style="font-size:20px;color:#fff"></i></div><div class="cn">02</div></div>
+   <h4>Creá el embudo</h4><p>Nombre, canales (chat, WhatsApp, API) y mensaje de bienvenida.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.34s"><div class="top"><div class="bi badge-ic"><i class="ti ti-sitemap" style="font-size:20px;color:#fff"></i></div><div class="cn">03</div></div>
+   <h4>Diseñá el flujo</h4><p>Añadí pasos, salidas y conexiones en el editor visual.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.41s"><div class="top"><div class="bi badge-ic"><i class="ti ti-arrow-fork" style="font-size:20px;color:#fff"></i></div><div class="cn">04</div></div>
+   <h4>Conectá a una acción</h4><p>En una salida elegí la automatización que debe dispararse.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.48s"><div class="top"><div class="bi badge-ic"><i class="ti ti-device-floppy" style="font-size:20px;color:#fff"></i></div><div class="cn">05</div></div>
+   <h4>Guardá y activá</h4><p>Guardá el embudo y dejalo activo para que el asistente lo use.</p><div class="uline"></div></div>
+  <div class="ccard u" style="--d:.55s"><div class="top"><div class="bi badge-ic"><i class="ti ti-eye" style="font-size:20px;color:#fff"></i></div><div class="cn">06</div></div>
+   <h4>Revisá el resumen</h4><p>Vista de solo lectura: pasos, respuestas esperadas y salidas.</p><div class="uline"></div></div>
+ </div>
+ <div class="ftr"><span>Humano · Embudos</span><span class="r">Pasos</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">EMBUDOS · DÓNDE</div></div>
+ <div class="dv">
+  <div class="num u" style="--d:.1s">06</div>
+  <div class="dv-r">
+   <div class="u" style="--d:.18s"><span class="kicker">MENÚ DEL PANEL</span></div>
+   <h2 class="u" style="--d:.26s">Embudos y Automatizaciones, <em>listas separadas</em></h2>
+   <p class="u" style="--d:.36s">En el menú lateral vas a Embudos para el flujo conversacional y a Automatizaciones para las acciones. El módulo Automations debe estar activo en el equipo.</p>
+   <div class="dv-chips u" style="--d:.46s">
+    <span class="dv-chip">/funnel/list</span>
+    <span class="dv-chip">/automation/list</span>
+    <span class="dv-chip">Editor /funnel/{id}/flow</span>
+   </div>
+  </div>
+ </div>
+ <div class="ftr"><span>Humano · Embudos</span><span class="r">Ubicación</span></div>
+</section>
+
+<section class="slide">
+ <div class="grid-tex"></div>
+ <div class="blob b-primary" style="width:400px;height:400px;right:-80px;top:-120px"></div>
+ <div class="hdr"><a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>
+  <div class="hdr-r">SIGUIENTE</div></div>
+ <div class="cl">
+  <div class="u" style="--d:.05s"><span class="kicker">GUÍAS HUMANO</span></div>
+  <h2 class="u" style="--d:.14s">¿Querés el día a día del <em>chat y contactos</em>?</h2>
+  <p class="u" style="--d:.24s">El embudo vive en la conversación. La guía de chat, contactos y módulos explica el panel donde corre.</p>
+  <a class="cta-link u" style="--d:.36s" href="chat-contactos-modulos.html">Ver Chat, contactos y módulos →</a>
+  <div class="pres-nav-row u" style="--d:.44s"><a href="insight-diario.html">← Insight diario</a></div>
+ </div>
+</section>
+
+</div>
+<div id="hud"><div id="bar"><i></i></div></div>
+<div id="nav">
+ <button type="button" onclick="prev()" aria-label="Anterior"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 6l-6 6 6 6"/></svg></button>
+ <span id="count"></span>
+ <button type="button" onclick="next()" aria-label="Siguiente"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></button>
+</div>
+<script src="presentation-nav.js"></script>
+</body>
+</html>

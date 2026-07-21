@@ -18,6 +18,7 @@ class GuidePresentation
         'afiliados',
         'cms-wordpress',
         'insight-diario',
+        'embudos',
     ];
 
     public static function isValid(string $slug): bool

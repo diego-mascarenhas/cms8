@@ -61,6 +61,16 @@ class GuidePresentationTest extends TestCase
             ->assertSee('Sin contactar', false);
     }
 
+    public function test_embudos_presentation_injects_base_tag_for_assets(): void
+    {
+        $this->get('/presentacion/embudos')
+            ->assertOk()
+            ->assertSee('<base href="/homes/humano/presentations/">', false)
+            ->assertSee('flujos conversacionales', false)
+            ->assertSee('Acción reutilizable', false)
+            ->assertSee('/funnel/list', false);
+    }
+
     public function test_legacy_static_html_paths_redirect_to_presentacion_routes(): void
     {
         $this->get('/homes/humano/presentations/facturacion.html')

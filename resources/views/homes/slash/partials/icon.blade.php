@@ -10,6 +10,8 @@
     'list-check' => '<path d="M3.5 5.5L5 7l2.5-2.5"/><path d="M3.5 12.5L5 14l2.5-2.5"/><path d="M3.5 19.5L5 21l2.5-2.5"/><path d="M11 6h10"/><path d="M11 12h10"/><path d="M11 18h10"/>',
     'receipt' => '<path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2Z"/><path d="M8 10h8"/><path d="M8 14h8"/>',
     'brand-wordpress' => '<circle cx="12" cy="12" r="9"/><path d="M8.5 8.5c.5 2.5 1.5 5 3.5 7.5"/><path d="M12 6v12"/><path d="M15.5 9c-.5 2-1.5 4.5-3.5 6.5"/>',
+    'filter' => '<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>',
+    'chart-line' => '<path d="M3 3v18h18"/><path d="M7 14l4-4 4 3 5-6"/>',
     'check' => '<polyline points="20 6 9 17 4 12"/>',
     'plus' => '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
     'arrow-right' => '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>',

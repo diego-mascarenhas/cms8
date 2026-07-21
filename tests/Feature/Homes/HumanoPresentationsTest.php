@@ -76,4 +76,26 @@ class HumanoPresentationsTest extends TestCase
         $this->assertStringContainsString('facturacion.html', $html);
         $this->assertStringContainsString('prospeccion.html', $html);
     }
+
+    public function test_embudos_presentation_exists_and_has_expected_content(): void
+    {
+        $path = public_path('homes/humano/presentations/embudos.html');
+
+        $this->assertFileExists($path);
+
+        $html = file_get_contents($path);
+
+        $this->assertIsString($html);
+        $this->assertStringContainsString('flujos conversacionales', $html);
+        $this->assertStringContainsString('No es lo mismo un', $html);
+        $this->assertStringContainsString('Automatización', $html);
+        $this->assertStringContainsString('Editor visual', $html);
+        $this->assertStringContainsString('yes_no', $html);
+        $this->assertStringContainsString('/funnel/list', $html);
+        $this->assertStringContainsString('insight-diario.html', $html);
+        $this->assertStringContainsString(
+            '<a href="/" class="brand" aria-label="Volver a la landing"><img class="brand-logo" src="/assets/logo-light.svg" alt="Humano"></a>',
+            $html,
+        );
+    }
 }
