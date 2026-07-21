@@ -27,6 +27,11 @@ class AutomationDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->editColumn('name', function (Automation $automation)
             {
+                if ($automation->isFunnel())
+                {
+                    return DataTableFormatter::showLink($automation, 'funnel.show', $automation->name, 'view', [$automation]);
+                }
+
                 return DataTableFormatter::showLink($automation, 'automation.show', $automation->name, 'view', [$automation]);
             })
             ->editColumn('is_active', function (Automation $automation)

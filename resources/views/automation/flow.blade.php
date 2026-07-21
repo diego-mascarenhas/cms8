@@ -65,7 +65,7 @@
         <p class="text-muted">{{ __('Arrastrá pasos, conectá salidas según el tipo de respuesta esperada del usuario.') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-2">
-        <a href="{{ route('automation.show', $automation) }}" class="btn btn-label-secondary">{{ __('Volver') }}</a>
+        <a href="{{ route('funnel.show', $automation) }}" class="btn btn-label-secondary">{{ __('Volver') }}</a>
         <button type="button" class="btn btn-primary" id="btn-save-flow">
             <i class="ti ti-device-floppy me-1"></i>{{ __('Guardar embudo') }}
         </button>
@@ -186,7 +186,7 @@
 @section('page-script')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  const saveUrl = @json(route('automation.flow.save', $automation));
+  const saveUrl = @json(route('funnel.flow.save', $automation));
   const csrf = @json(csrf_token());
   const initialGraph = @json($graph);
   const replyTypes = @json($replyTypes);

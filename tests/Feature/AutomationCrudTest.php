@@ -72,7 +72,7 @@ class AutomationCrudTest extends TestCase
         $funnel = Automation::withoutGlobalScope('team')->where('slug', 'embudo-demo')->first();
         $this->assertNotNull($funnel);
         $this->assertTrue($funnel->isFunnel());
-        $response->assertRedirect(route('automation.flow', $funnel));
+        $response->assertRedirect(route('funnel.flow', $funnel));
     }
 
     public function test_non_admin_cannot_create_automation(): void
@@ -110,6 +110,71 @@ class AutomationCrudTest extends TestCase
         $automation->refresh();
         $this->assertSame('Updated', $automation->name);
         $this->assertNotSame($oldToken, $automation->public_token);
+    }
+
+    public function test_admin_can_view_funnel_overview_read_only(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+        $funnel = Automation::factory()->funnel()->create([
+            'team_id' => $user->current_team_id,
+            'name' => 'Embudo lectura',
+            'channels' => Automation::normalizeChannels(['chat' => true]),
+        ]);
+
+        app(\App\Services\AutomationFlowGraphSyncer::class)->sync($funnel, [
+            'nodes' => [
+                [
+                    'client_id' => '1',
+                    'label' => 'Inicio',
+                    'instruction' => 'Preguntá qué necesita',
+                    'is_entry' => true,
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'outputs' => [
+                        ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'cita', 'label' => 'Cita'],
+                        ['id' => 'output_2', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra'],
+                    ],
+                ],
+                [
+                    'client_id' => '2',
+                    'label' => 'Cierre',
+                    'instruction' => 'Despedí',
+                    'is_entry' => false,
+                    'position_x' => 200,
+                    'position_y' => 0,
+                    'outputs' => [],
+                ],
+            ],
+            'edges' => [
+                ['from_client_id' => '1', 'from_output' => 'output_1', 'to_client_id' => '2'],
+                ['from_client_id' => '1', 'from_output' => 'output_2', 'to_client_id' => '2'],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('funnel.show', $funnel))
+            ->assertOk()
+            ->assertSee('Embudo lectura')
+            ->assertSee('Preguntá qué necesita')
+            ->assertSee('Cita')
+            ->assertSee(__('Si el usuario responde…'))
+            ->assertDontSee('id="automation-drawflow"', false);
+
+        $this->actingAs($user)
+            ->get(route('automation.show', $funnel))
+            ->assertNotFound();
+    }
+
+    public function test_funnel_show_rejects_action_automations(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+        $action = Automation::factory()->action()->create([
+            'team_id' => $user->current_team_id,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('funnel.show', $action))
+            ->assertNotFound();
     }
 
     private function createAdminWithAutomationsModule(): User

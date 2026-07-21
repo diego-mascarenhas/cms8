@@ -25,19 +25,19 @@
     @if(isset($automation))
     <div class="d-flex align-content-center flex-wrap gap-3">
         @can('view', $automation)
-        <a href="{{ route('automation.show', $automation) }}" class="btn btn-label-secondary waves-effect waves-light">
+        <a href="{{ route($kind->showRouteName(), $automation) }}" class="btn btn-label-secondary waves-effect waves-light">
             <i class="ti ti-eye me-1"></i>{{ __('Ver') }}
         </a>
         @endcan
         @if($automation->isFunnel())
         @can('update', $automation)
-        <a href="{{ route('automation.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
+        <a href="{{ route('funnel.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
             <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}
         </a>
         @endcan
         @endif
         @can('delete', $automation)
-        <form action="{{ route('automation.destroy', $automation) }}" method="POST" class="d-inline" onsubmit="return confirm(@json(__('¿Eliminar?')));">
+        <form action="{{ route($kind->destroyRouteName(), $automation) }}" method="POST" class="d-inline" onsubmit="return confirm(@json(__('¿Eliminar?')));">
             @csrf
             @method('DELETE')
             <button type="submit" class="btn btn-danger waves-effect waves-light">
@@ -51,7 +51,7 @@
 
 <div class="card mb-4">
     <h5 class="card-header">{{ isset($automation) ? __('Editar') : ($isFunnel ? __('Nuevo embudo') : __('Nueva automatización')) }}</h5>
-    <form class="card-body" action="{{ isset($automation) ? route('automation.update', $automation) : route('automation.store') }}" method="POST">
+    <form class="card-body" action="{{ isset($automation) ? route($kind->updateRouteName(), $automation) : route('automation.store') }}" method="POST">
         @csrf
         @if(isset($automation))
             @method('PUT')

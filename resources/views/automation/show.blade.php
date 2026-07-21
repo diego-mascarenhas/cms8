@@ -6,22 +6,17 @@
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
-            <span class="text-muted fw-light">{{ __('Automations') }}/</span> {{ $automation->name }}
+            <span class="text-muted fw-light">{{ __('Automatizaciones') }}/</span> {{ $automation->name }}
         </h4>
-        <p class="text-muted">{{ __('Detalle del flujo omnichannel') }}</p>
+        <p class="text-muted">{{ __('Detalle de la automatización') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         @can('update', $automation)
-        @if($automation->isFunnel())
-        <a href="{{ route('automation.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
-            <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}
-        </a>
-        @endif
         <a href="{{ route('automation.edit', $automation) }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-edit me-1"></i>{{ __('Editar') }}
         </a>
         @endcan
-        <a href="{{ route(($automation->kind ?? \App\Enums\AutomationKind::Action)->listRouteName()) }}" class="btn btn-label-secondary waves-effect waves-light">
+        <a href="{{ route('automation-list') }}" class="btn btn-label-secondary waves-effect waves-light">
             {{ __('Volver') }}
         </a>
     </div>
@@ -49,16 +44,6 @@
                             <code>{{ $automation->resolvedEntryPromptKey() }}</code>
                         @else
                             <span class="text-muted">{{ __('Router automático (general)') }}</span>
-                        @endif
-                    </dd>
-
-                    <dt class="col-sm-4">{{ __('Embudo') }}</dt>
-                    <dd class="col-sm-8">
-                        @if($automation->steps->isNotEmpty())
-                            <span class="badge bg-label-success">{{ $automation->steps->count() }} {{ __('pasos') }}</span>
-                            <span class="badge bg-label-info">{{ $automation->steps->sum(fn ($s) => $s->transitions->count()) }} {{ __('enlaces') }}</span>
-                        @else
-                            <span class="text-muted">{{ __('Sin embudo — usá el editor gráfico') }}</span>
                         @endif
                     </dd>
 

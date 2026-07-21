@@ -58,7 +58,7 @@ class AutomationFlowGraphTest extends TestCase
         ];
 
         $this->actingAs($user)
-            ->postJson(route('automation.flow.save', $automation), $payload)
+            ->postJson(route('funnel.flow.save', $automation), $payload)
             ->assertOk()
             ->assertJson(['success' => true]);
 

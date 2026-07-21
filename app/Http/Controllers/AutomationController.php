@@ -27,7 +27,7 @@ class AutomationController extends Controller
             return $next($request);
         });
         $this->authorizeResource(Automation::class, 'automation', [
-            'except' => ['flow', 'saveFlow', 'indexFunnels', 'indexActions', 'createFunnel', 'createAction'],
+            'except' => ['flow', 'saveFlow', 'showFunnel', 'indexFunnels', 'indexActions', 'createFunnel', 'createAction'],
         ]);
     }
 
@@ -112,7 +112,7 @@ class AutomationController extends Controller
         if ($kind === AutomationKind::Funnel)
         {
             return redirect()
-                ->route('automation.flow', $automation)
+                ->route('funnel.flow', $automation)
                 ->with('success', __('Embudo creado. Diseñá el flujo conversacional.'));
         }
 
@@ -123,13 +123,34 @@ class AutomationController extends Controller
 
     public function show(Automation $automation): View
     {
+        abort_if($automation->isFunnel(), 404);
+
         $automation->load(['steps.transitions.toAutomation']);
 
         return view('automation.show', compact('automation'));
     }
 
+    /**
+     * Read-only overview of a funnel: steps and each reply selection / exit.
+     */
+    public function showFunnel(Automation $automation): View
+    {
+        $this->authorize('view', $automation);
+        abort_unless($automation->isFunnel(), 404);
+
+        $automation->load([
+            'steps' => fn ($q) => $q->orderByDesc('is_entry')->orderBy('position_y')->orderBy('position_x'),
+            'steps.transitions.toStep',
+            'steps.transitions.toAutomation',
+        ]);
+
+        return view('automation.funnel-show', compact('automation'));
+    }
+
     public function edit(Automation $automation): View
     {
+        $this->assertRouteMatchesKind($automation);
+
         $promptOptions = $this->promptOptions();
         $channelDefaults = Automation::normalizeChannels($automation->channels ?? []);
 
@@ -158,10 +179,10 @@ class AutomationController extends Controller
             ->active()
             ->orderBy('name')
             ->get(['id', 'name', 'slug', 'entry_prompt_key'])
-            ->map(fn (Automation $automation) => [
-                'id' => $automation->id,
-                'name' => $automation->name,
-                'slug' => $automation->slug,
+            ->map(fn (Automation $item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'slug' => $item->slug,
             ])
             ->values()
             ->all();
@@ -211,6 +232,8 @@ class AutomationController extends Controller
 
     public function update(UpdateAutomationRequest $request, Automation $automation): RedirectResponse
     {
+        $this->assertRouteMatchesKind($automation);
+
         $validated = $request->validated();
 
         $slug = isset($validated['slug']) && trim((string) $validated['slug']) !== ''
@@ -236,19 +259,43 @@ class AutomationController extends Controller
 
         $automation->save();
 
+        $kind = $automation->kind ?? AutomationKind::Action;
+
         return redirect()
-            ->route('automation.show', $automation)
+            ->route($kind->showRouteName(), $automation)
             ->with('success', __('Actualizado correctamente.'));
     }
 
     public function destroy(Automation $automation): RedirectResponse
     {
+        $this->assertRouteMatchesKind($automation);
+
         $listRoute = ($automation->kind ?? AutomationKind::Action)->listRouteName();
         $automation->delete();
 
         return redirect()
             ->route($listRoute)
             ->with('success', __('Eliminado correctamente.'));
+    }
+
+    /**
+     * Keep funnel.* and automation.* URLs aligned with the model kind.
+     */
+    protected function assertRouteMatchesKind(Automation $automation): void
+    {
+        $routeName = (string) request()->route()?->getName();
+        $isFunnelRoute = str_starts_with($routeName, 'funnel.');
+        $isAutomationRoute = str_starts_with($routeName, 'automation.');
+
+        if ($isFunnelRoute)
+        {
+            abort_unless($automation->isFunnel(), 404);
+        }
+
+        if ($isAutomationRoute)
+        {
+            abort_unless($automation->isAction(), 404);
+        }
     }
 
     /**
