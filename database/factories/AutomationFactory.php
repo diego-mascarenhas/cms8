@@ -25,12 +25,23 @@ class AutomationFactory extends Factory
             'team_id' => Team::factory(),
             'name' => ucfirst($name),
             'slug' => Str::slug($name),
+            'kind' => \App\Enums\AutomationKind::Action,
             'is_active' => true,
             'entry_prompt_key' => null,
             'channels' => Automation::defaultChannels(),
             'public_token' => bin2hex(random_bytes(32)),
             'settings' => [],
         ];
+    }
+
+    public function funnel(): static
+    {
+        return $this->state(fn () => ['kind' => \App\Enums\AutomationKind::Funnel]);
+    }
+
+    public function action(): static
+    {
+        return $this->state(fn () => ['kind' => \App\Enums\AutomationKind::Action]);
     }
 
     public function inactive(): static

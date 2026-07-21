@@ -21,6 +21,7 @@ class StoreAutomationRequest extends FormRequest
         $teamId = $this->user()?->currentTeam?->id;
 
         return [
+            'kind' => ['sometimes', 'in:funnel,action'],
             'name' => ['required', 'string', 'max:255'],
             'slug' => [
                 'nullable',

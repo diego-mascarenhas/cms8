@@ -1,15 +1,26 @@
 @extends('layouts/layoutMaster')
 
-@section('title', isset($automation) ? __('Editar automatización') : __('Crear automatización'))
+@php
+    $kind = $kind ?? ($automation->kind ?? \App\Enums\AutomationKind::Action);
+    $isFunnel = $kind === \App\Enums\AutomationKind::Funnel;
+    $listRoute = $kind->listRouteName();
+    $listLabel = $isFunnel ? __('Embudos') : __('Automatizaciones');
+@endphp
+
+@section('title', isset($automation) ? __('Editar') : ($isFunnel ? __('Crear embudo') : __('Crear automatización')))
 
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">
-            <span class="text-muted fw-light">{{ __('Automations') }}/</span>
+            <span class="text-muted fw-light">{{ $listLabel }}/</span>
             {{ isset($automation) ? __('Editar') : __('Crear') }}
         </h4>
-        <p class="text-muted">{{ __('Empaqueta un prompt del asistente para ejecutarlo en varios canales') }}</p>
+        <p class="text-muted">
+            {{ $isFunnel
+                ? __('Flujo conversacional con salidas a automatizaciones')
+                : __('Acción reutilizable (p. ej. crear cita, contacto o tarea)') }}
+        </p>
     </div>
     @if(isset($automation))
     <div class="d-flex align-content-center flex-wrap gap-3">
@@ -18,8 +29,15 @@
             <i class="ti ti-eye me-1"></i>{{ __('Ver') }}
         </a>
         @endcan
+        @if($automation->isFunnel())
+        @can('update', $automation)
+        <a href="{{ route('automation.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
+            <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}
+        </a>
+        @endcan
+        @endif
         @can('delete', $automation)
-        <form action="{{ route('automation.destroy', $automation) }}" method="POST" class="d-inline" onsubmit="return confirm(@json(__('¿Eliminar esta automatización?')));">
+        <form action="{{ route('automation.destroy', $automation) }}" method="POST" class="d-inline" onsubmit="return confirm(@json(__('¿Eliminar?')));">
             @csrf
             @method('DELETE')
             <button type="submit" class="btn btn-danger waves-effect waves-light">
@@ -32,11 +50,13 @@
 </div>
 
 <div class="card mb-4">
-    <h5 class="card-header">{{ isset($automation) ? __('Editar automatización') : __('Nueva automatización') }}</h5>
+    <h5 class="card-header">{{ isset($automation) ? __('Editar') : ($isFunnel ? __('Nuevo embudo') : __('Nueva automatización')) }}</h5>
     <form class="card-body" action="{{ isset($automation) ? route('automation.update', $automation) : route('automation.store') }}" method="POST">
         @csrf
         @if(isset($automation))
             @method('PUT')
+        @else
+            <input type="hidden" name="kind" value="{{ $kind->value }}">
         @endif
 
         <div class="row g-3">
@@ -115,6 +135,9 @@
                     <input class="form-check-input" type="checkbox" id="regenerate_token" name="regenerate_token" value="1">
                     <label class="form-check-label" for="regenerate_token">{{ __('Regenerar token público de embed') }}</label>
                 </div>
+                <div class="form-text">
+                    {{ __('El token público permite incrustar el chat de esta automatización en una web sin login. Si lo regenerás, el token anterior deja de funcionar y habrá que actualizar el widget o la URL de embed.') }}
+                </div>
             </div>
             @endif
         </div>
@@ -122,7 +145,7 @@
         <div class="pt-4">
             <div class="col-12 d-flex">
                 <button type="submit" class="btn btn-primary me-sm-3 me-1">{{ __('Guardar') }}</button>
-                <a href="{{ route('automation-list') }}" class="btn btn-label-secondary">{{ __('Cancelar') }}</a>
+                <a href="{{ route($listRoute) }}" class="btn btn-label-secondary">{{ __('Cancelar') }}</a>
             </div>
         </div>
     </form>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\AutomationDataTable;
+use App\Enums\AutomationKind;
 use App\Enums\AutomationReplyType;
 use App\Http\Requests\StoreAutomationRequest;
 use App\Http\Requests\UpdateAutomationRequest;
@@ -26,23 +27,62 @@ class AutomationController extends Controller
             return $next($request);
         });
         $this->authorizeResource(Automation::class, 'automation', [
-            'except' => ['flow', 'saveFlow'],
+            'except' => ['flow', 'saveFlow', 'indexFunnels', 'indexActions', 'createFunnel', 'createAction'],
         ]);
     }
 
-    public function index(AutomationDataTable $dataTable)
+    public function indexFunnels(AutomationDataTable $dataTable)
     {
-        return $dataTable->render('automation.index');
+        $this->authorize('viewAny', Automation::class);
+
+        return $dataTable->forKind(AutomationKind::Funnel)
+            ->render('automation.index', [
+                'kind' => AutomationKind::Funnel,
+            ]);
+    }
+
+    public function indexActions(AutomationDataTable $dataTable)
+    {
+        $this->authorize('viewAny', Automation::class);
+
+        return $dataTable->forKind(AutomationKind::Action)
+            ->render('automation.index', [
+                'kind' => AutomationKind::Action,
+            ]);
+    }
+
+    public function createFunnel(): View
+    {
+        $this->authorize('create', Automation::class);
+
+        return $this->createForm(AutomationKind::Funnel);
+    }
+
+    public function createAction(): View
+    {
+        $this->authorize('create', Automation::class);
+
+        return $this->createForm(AutomationKind::Action);
     }
 
     public function create(): View
     {
-        $promptOptions = $this->promptOptions();
+        return $this->createAction();
+    }
 
+    public function index(AutomationDataTable $dataTable)
+    {
+        return $this->indexActions($dataTable);
+    }
+
+    protected function createForm(AutomationKind $kind): View
+    {
         return view('automation.form', [
             'automation' => null,
-            'promptOptions' => $promptOptions,
+            'kind' => $kind,
+            'promptOptions' => $this->promptOptions(),
             'channelDefaults' => Automation::defaultChannels(),
+            'actionAutomations' => collect(),
         ]);
     }
 
@@ -50,6 +90,7 @@ class AutomationController extends Controller
     {
         $validated = $request->validated();
         $teamId = (int) auth()->user()->currentTeam->id;
+        $kind = AutomationKind::tryFrom((string) ($validated['kind'] ?? '')) ?? AutomationKind::Action;
 
         $slug = isset($validated['slug']) && trim((string) $validated['slug']) !== ''
             ? Str::slug((string) $validated['slug'])
@@ -59,6 +100,7 @@ class AutomationController extends Controller
             'team_id' => $teamId,
             'name' => $validated['name'],
             'slug' => $slug,
+            'kind' => $kind,
             'entry_prompt_key' => $validated['entry_prompt_key'] ?? null,
             'is_active' => $request->boolean('is_active', true),
             'channels' => Automation::normalizeChannels($validated['channels'] ?? []),
@@ -67,14 +109,21 @@ class AutomationController extends Controller
             ],
         ]);
 
+        if ($kind === AutomationKind::Funnel)
+        {
+            return redirect()
+                ->route('automation.flow', $automation)
+                ->with('success', __('Embudo creado. Diseñá el flujo conversacional.'));
+        }
+
         return redirect()
-            ->route('automation.flow', $automation)
-            ->with('success', __('Automatización creada. Diseñá el embudo conversacional.'));
+            ->route('automation.show', $automation)
+            ->with('success', __('Automatización creada correctamente.'));
     }
 
     public function show(Automation $automation): View
     {
-        $automation->load(['steps.transitions']);
+        $automation->load(['steps.transitions.toAutomation']);
 
         return view('automation.show', compact('automation'));
     }
@@ -84,12 +133,19 @@ class AutomationController extends Controller
         $promptOptions = $this->promptOptions();
         $channelDefaults = Automation::normalizeChannels($automation->channels ?? []);
 
-        return view('automation.form', compact('automation', 'promptOptions', 'channelDefaults'));
+        return view('automation.form', [
+            'automation' => $automation,
+            'kind' => $automation->kind ?? AutomationKind::Action,
+            'promptOptions' => $promptOptions,
+            'channelDefaults' => $channelDefaults,
+            'actionAutomations' => collect(),
+        ]);
     }
 
     public function flow(Automation $automation, AutomationFlowGraphSyncer $syncer): View
     {
         $this->authorize('update', $automation);
+        abort_unless($automation->isFunnel(), 404);
 
         $graph = $syncer->export($automation);
         $promptOptions = $this->promptOptions();
@@ -97,13 +153,26 @@ class AutomationController extends Controller
             'value' => $type->value,
             'label' => $type->label(),
         ])->values();
+        $actionAutomations = Automation::query()
+            ->actions()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug', 'entry_prompt_key'])
+            ->map(fn (Automation $automation) => [
+                'id' => $automation->id,
+                'name' => $automation->name,
+                'slug' => $automation->slug,
+            ])
+            ->values()
+            ->all();
 
-        return view('automation.flow', compact('automation', 'graph', 'promptOptions', 'replyTypes'));
+        return view('automation.flow', compact('automation', 'graph', 'promptOptions', 'replyTypes', 'actionAutomations'));
     }
 
     public function saveFlow(Request $request, Automation $automation, AutomationFlowGraphSyncer $syncer): JsonResponse
     {
         $this->authorize('update', $automation);
+        abort_unless($automation->isFunnel(), 404);
 
         $validated = $request->validate([
             'nodes' => ['required', 'array'],
@@ -120,10 +189,12 @@ class AutomationController extends Controller
             'nodes.*.outputs.*.reply_type' => ['required_with:nodes.*.outputs', 'string', 'in:'.implode(',', AutomationReplyType::values())],
             'nodes.*.outputs.*.match_value' => ['nullable', 'string', 'max:255'],
             'nodes.*.outputs.*.label' => ['nullable', 'string', 'max:255'],
+            'nodes.*.outputs.*.to_automation_id' => ['nullable', 'integer'],
             'edges' => ['nullable', 'array'],
             'edges.*.from_client_id' => ['required_with:edges', 'string', 'max:64'],
             'edges.*.from_output' => ['required_with:edges', 'string', 'max:64'],
             'edges.*.to_client_id' => ['nullable', 'string', 'max:64'],
+            'edges.*.to_automation_id' => ['nullable', 'integer'],
             'edges.*.reply_type' => ['nullable', 'string', 'in:'.implode(',', AutomationReplyType::values())],
             'edges.*.match_value' => ['nullable', 'string', 'max:255'],
             'edges.*.label' => ['nullable', 'string', 'max:255'],
@@ -167,16 +238,17 @@ class AutomationController extends Controller
 
         return redirect()
             ->route('automation.show', $automation)
-            ->with('success', __('Automatización actualizada correctamente.'));
+            ->with('success', __('Actualizado correctamente.'));
     }
 
     public function destroy(Automation $automation): RedirectResponse
     {
+        $listRoute = ($automation->kind ?? AutomationKind::Action)->listRouteName();
         $automation->delete();
 
         return redirect()
-            ->route('automation-list')
-            ->with('success', __('Automatización eliminada correctamente.'));
+            ->route($listRoute)
+            ->with('success', __('Eliminado correctamente.'));
     }
 
     /**

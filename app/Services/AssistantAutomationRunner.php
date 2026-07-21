@@ -87,7 +87,15 @@ class AssistantAutomationRunner
     /**
      * Resolve funnel step + prompt key + appendix for tools-based channels (chat / WhatsApp).
      *
-     * @return array{prompt_key: string|null, appendix: string|null, step: AutomationStep|null, completed: bool, automation: Automation|null}
+     * @return array{
+     *     prompt_key: string|null,
+     *     appendix: string|null,
+     *     step: AutomationStep|null,
+     *     completed: bool,
+     *     automation: Automation|null,
+     *     exit_automation?: Automation|null,
+     *     session?: mixed
+     * }
      */
     public function resolveFlowContext(
         int $teamId,
@@ -138,6 +146,33 @@ class AssistantAutomationRunner
 
         $session = $this->flowEngine->sessionFor($automation, $channel, $externalKey);
         $resolved = $this->flowEngine->resolveStepForMessage($session, $message);
+
+        if (($resolved['exit_automation_id'] ?? null) !== null)
+        {
+            $exit = $this->findById((int) $resolved['exit_automation_id'], $teamId);
+            $this->flowEngine->resetSession($session);
+
+            if ($exit && $exit->is_active && $exit->allowsChannel($channel))
+            {
+                return [
+                    'prompt_key' => $exit->resolvedEntryPromptKey(),
+                    'appendix' => null,
+                    'step' => null,
+                    'completed' => false,
+                    'automation' => $exit,
+                    'exit_automation' => $exit,
+                ];
+            }
+
+            return [
+                'prompt_key' => null,
+                'appendix' => null,
+                'step' => null,
+                'completed' => true,
+                'automation' => $automation,
+                'exit_automation' => $exit,
+            ];
+        }
 
         if ($resolved['completed'])
         {
@@ -202,6 +237,32 @@ class AssistantAutomationRunner
                 $sessionKey ?: 'default',
             );
             $resolved = $this->flowEngine->resolveStepForMessage($session, $message);
+
+            if (($resolved['exit_automation_id'] ?? null) !== null)
+            {
+                $exit = $this->findById((int) $resolved['exit_automation_id'], (int) $automation->team_id);
+                $this->flowEngine->resetSession($session);
+
+                if ($exit && $exit->is_active && $exit->allowsChannel($channel))
+                {
+                    $handed = $this->run($exit, $channel, $message, $image, $audio, $respondWithVoice, $sessionKey);
+
+                    return array_merge($handed, [
+                        'from_automation_id' => $automation->id,
+                        'from_automation_slug' => $automation->slug,
+                        'flow_exited' => true,
+                    ]);
+                }
+
+                return [
+                    'response' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    'routed_to' => null,
+                    'automation_id' => $automation->id,
+                    'automation_slug' => $automation->slug,
+                    'step_key' => null,
+                    'flow_completed' => true,
+                ];
+            }
 
             if ($resolved['completed'])
             {

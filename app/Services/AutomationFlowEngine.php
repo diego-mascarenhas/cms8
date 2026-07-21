@@ -61,7 +61,13 @@ class AutomationFlowEngine
     /**
      * Resolve which step should handle this user message (may advance the funnel).
      *
-     * @return array{step: AutomationStep|null, matched_transition: AutomationTransition|null, completed: bool, session: AutomationFlowSession}
+     * @return array{
+     *     step: AutomationStep|null,
+     *     matched_transition: AutomationTransition|null,
+     *     completed: bool,
+     *     exit_automation_id: int|null,
+     *     session: AutomationFlowSession
+     * }
      */
     public function resolveStepForMessage(AutomationFlowSession $session, string $userMessage): array
     {
@@ -74,6 +80,7 @@ class AutomationFlowEngine
                 'step' => null,
                 'matched_transition' => null,
                 'completed' => false,
+                'exit_automation_id' => null,
                 'session' => $session,
             ];
         }
@@ -90,6 +97,7 @@ class AutomationFlowEngine
                 'step' => $current,
                 'matched_transition' => null,
                 'completed' => false,
+                'exit_automation_id' => null,
                 'session' => $session->fresh(['currentStep']),
             ];
         }
@@ -104,6 +112,7 @@ class AutomationFlowEngine
                 'step' => $current,
                 'matched_transition' => null,
                 'completed' => false,
+                'exit_automation_id' => null,
                 'session' => $session,
             ];
         }
@@ -115,13 +124,17 @@ class AutomationFlowEngine
                 'step' => $current,
                 'matched_transition' => null,
                 'completed' => false,
+                'exit_automation_id' => null,
                 'session' => $session,
             ];
         }
 
-        $next = $transition->to_step_id
-            ? AutomationStep::query()->find($transition->to_step_id)
-            : null;
+        $exitAutomationId = $transition->to_automation_id ? (int) $transition->to_automation_id : null;
+        $next = null;
+        if ($exitAutomationId === null && $transition->to_step_id)
+        {
+            $next = AutomationStep::query()->find($transition->to_step_id);
+        }
 
         $session->current_step_id = $next?->id;
         $session->last_message_at = now();
@@ -129,13 +142,18 @@ class AutomationFlowEngine
         $meta['awaiting_reply'] = false;
         $meta['last_reply_type'] = $transition->reply_type->value;
         $meta['last_match'] = $transition->match_value;
+        if ($exitAutomationId !== null)
+        {
+            $meta['last_exit_automation_id'] = $exitAutomationId;
+        }
         $session->meta = $meta;
         $session->save();
 
         return [
             'step' => $next,
             'matched_transition' => $transition,
-            'completed' => $next === null,
+            'completed' => $next === null && $exitAutomationId === null,
+            'exit_automation_id' => $exitAutomationId,
             'session' => $session->fresh(['currentStep']),
         ];
     }
@@ -270,7 +288,10 @@ class AutomationFlowEngine
             {
                 $label = $t->label ?: $t->reply_type->label();
                 $extra = $t->match_value ? ' (match: '.$t->match_value.')' : '';
-                $lines[] = '- '.$label.': tipo `'.$t->reply_type->value.'`'.$extra;
+                $exit = $t->to_automation_id
+                    ? ' → automatización #'.$t->to_automation_id
+                    : '';
+                $lines[] = '- '.$label.': tipo `'.$t->reply_type->value.'`'.$extra.$exit;
             }
             $lines[] = 'Guiá la conversación para obtener una de esas respuestas. Si responde otra cosa, pedí aclaración o usá la rama fallback si existe.';
         }

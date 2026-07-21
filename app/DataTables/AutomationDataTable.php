@@ -2,6 +2,7 @@
 
 namespace App\DataTables;
 
+use App\Enums\AutomationKind;
 use App\Models\Automation;
 use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
@@ -12,6 +13,15 @@ use Yajra\DataTables\Services\DataTable;
 
 class AutomationDataTable extends DataTable
 {
+    protected AutomationKind $kind = AutomationKind::Action;
+
+    public function forKind(AutomationKind $kind): static
+    {
+        $this->kind = $kind;
+
+        return $this;
+    }
+
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
@@ -51,13 +61,15 @@ class AutomationDataTable extends DataTable
 
     public function query(Automation $model): QueryBuilder
     {
-        return $model->newQuery();
+        return $model->newQuery()->ofKind($this->kind);
     }
 
     public function html(): HtmlBuilder
     {
+        $tableId = $this->kind === AutomationKind::Funnel ? 'funnel-table' : 'automation-table';
+
         return $this->builder()
-            ->setTableId('automation-table')
+            ->setTableId($tableId)
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
@@ -94,6 +106,6 @@ class AutomationDataTable extends DataTable
 
     protected function filename(): string
     {
-        return 'Automations_'.date('YmdHis');
+        return 'Automations_'.$this->kind->value.'_'.date('YmdHis');
     }
 }

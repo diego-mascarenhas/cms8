@@ -14,6 +14,7 @@ return new class extends Migration
             $table->unsignedBigInteger('automation_id');
             $table->unsignedBigInteger('from_step_id');
             $table->unsignedBigInteger('to_step_id')->nullable();
+            $table->unsignedBigInteger('to_automation_id')->nullable();
             $table->string('reply_type');
             $table->string('match_value')->nullable();
             $table->string('label')->nullable();
@@ -24,6 +25,7 @@ return new class extends Migration
             $table->foreign('automation_id')->references('id')->on('automations')->onDelete('cascade');
             $table->foreign('from_step_id')->references('id')->on('automation_steps')->onDelete('cascade');
             $table->foreign('to_step_id')->references('id')->on('automation_steps')->onDelete('set null');
+            $table->foreign('to_automation_id')->references('id')->on('automations')->onDelete('set null');
             $table->index(['from_step_id', 'sort_order']);
         });
     }

@@ -132,16 +132,82 @@ class AutomationFlowGraphSyncer
                 $replyType = AutomationReplyType::tryFrom((string) ($outputMeta['reply_type'] ?? $edge['reply_type'] ?? 'fallback'))
                     ?? AutomationReplyType::Fallback;
 
+                $toAutomationId = $this->resolveExitAutomationId(
+                    $automation,
+                    $outputMeta['to_automation_id'] ?? ($edge['to_automation_id'] ?? null),
+                );
+
+                // Exit to an action automation replaces the next conversational step.
+                if ($toAutomationId !== null)
+                {
+                    $toStep = null;
+                }
+
                 AutomationTransition::query()->create([
                     'automation_id' => $automation->id,
                     'from_step_id' => $fromStep->id,
                     'to_step_id' => $toStep?->id,
+                    'to_automation_id' => $toAutomationId,
                     'reply_type' => $replyType,
                     'match_value' => $outputMeta['match_value'] ?? ($edge['match_value'] ?? null),
                     'label' => $outputMeta['label'] ?? ($edge['label'] ?? null),
                     'sort_order' => $sort++,
                     'drawflow_output' => $fromOutput,
                 ]);
+            }
+
+            // Outputs with an exit automation but no Drawflow edge still become transitions.
+            foreach ($byClientId as $fromStep)
+            {
+                $outputs = data_get($fromStep->settings, 'outputs', []);
+                if (! is_array($outputs))
+                {
+                    continue;
+                }
+
+                $existingOutputs = AutomationTransition::query()
+                    ->where('from_step_id', $fromStep->id)
+                    ->pluck('drawflow_output')
+                    ->filter()
+                    ->all();
+
+                foreach ($outputs as $output)
+                {
+                    if (! is_array($output))
+                    {
+                        continue;
+                    }
+
+                    $outId = (string) ($output['id'] ?? '');
+                    if ($outId === '' || in_array($outId, $existingOutputs, true))
+                    {
+                        continue;
+                    }
+
+                    $toAutomationId = $this->resolveExitAutomationId(
+                        $automation,
+                        $output['to_automation_id'] ?? null,
+                    );
+                    if ($toAutomationId === null)
+                    {
+                        continue;
+                    }
+
+                    $replyType = AutomationReplyType::tryFrom((string) ($output['reply_type'] ?? 'fallback'))
+                        ?? AutomationReplyType::Fallback;
+
+                    AutomationTransition::query()->create([
+                        'automation_id' => $automation->id,
+                        'from_step_id' => $fromStep->id,
+                        'to_step_id' => null,
+                        'to_automation_id' => $toAutomationId,
+                        'reply_type' => $replyType,
+                        'match_value' => $output['match_value'] ?? null,
+                        'label' => $output['label'] ?? null,
+                        'sort_order' => $sort++,
+                        'drawflow_output' => $outId,
+                    ]);
+                }
             }
         });
 
@@ -176,6 +242,7 @@ class AutomationFlowGraphSyncer
                         'reply_type' => $transition->reply_type->value,
                         'match_value' => $transition->match_value,
                         'label' => $transition->label ?: $transition->reply_type->label(),
+                        'to_automation_id' => $transition->to_automation_id,
                     ];
                 }
                 if ($outputs === [])
@@ -185,6 +252,7 @@ class AutomationFlowGraphSyncer
                         'reply_type' => AutomationReplyType::Fallback->value,
                         'match_value' => null,
                         'label' => AutomationReplyType::Fallback->label(),
+                        'to_automation_id' => null,
                     ];
                 }
             }
@@ -215,6 +283,7 @@ class AutomationFlowGraphSyncer
                     'from_client_id' => $fromClient,
                     'from_output' => $transition->drawflow_output ?: 'output_1',
                     'to_client_id' => $toClient,
+                    'to_automation_id' => $transition->to_automation_id,
                     'reply_type' => $transition->reply_type->value,
                     'match_value' => $transition->match_value,
                     'label' => $transition->label,
@@ -230,7 +299,7 @@ class AutomationFlowGraphSyncer
 
     /**
      * @param  array<string, mixed>  $edge
-     * @return array{reply_type?: string, match_value?: string|null, label?: string|null}
+     * @return array{reply_type?: string, match_value?: string|null, label?: string|null, to_automation_id?: int|null}
      */
     protected function findOutputMeta(AutomationStep $fromStep, string $fromOutput, array $edge): array
     {
@@ -250,6 +319,30 @@ class AutomationFlowGraphSyncer
             'reply_type' => $edge['reply_type'] ?? AutomationReplyType::Fallback->value,
             'match_value' => $edge['match_value'] ?? null,
             'label' => $edge['label'] ?? null,
+            'to_automation_id' => $edge['to_automation_id'] ?? null,
         ];
+    }
+
+    protected function resolveExitAutomationId(Automation $funnel, mixed $rawId): ?int
+    {
+        if ($rawId === null || $rawId === '' || $rawId === false)
+        {
+            return null;
+        }
+
+        $id = (int) $rawId;
+        if ($id <= 0 || $id === (int) $funnel->id)
+        {
+            return null;
+        }
+
+        $exists = Automation::query()
+            ->withoutGlobalScope('team')
+            ->where('team_id', $funnel->team_id)
+            ->actions()
+            ->whereKey($id)
+            ->exists();
+
+        return $exists ? $id : null;
     }
 }

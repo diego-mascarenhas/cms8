@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AutomationKind;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,7 @@ class Automation extends Model
         'team_id',
         'name',
         'slug',
+        'kind',
         'is_active',
         'entry_prompt_key',
         'channels',
@@ -45,6 +47,7 @@ class Automation extends Model
     ];
 
     protected $casts = [
+        'kind' => AutomationKind::class,
         'is_active' => 'boolean',
         'channels' => 'array',
         'settings' => 'array',
@@ -65,6 +68,11 @@ class Automation extends Model
             if ($automation->slug === null || $automation->slug === '')
             {
                 $automation->slug = Str::slug($automation->name);
+            }
+
+            if ($automation->kind === null)
+            {
+                $automation->kind = AutomationKind::Funnel;
             }
 
             if ($automation->public_token === null || $automation->public_token === '')
@@ -108,6 +116,16 @@ class Automation extends Model
         return $this->hasMany(AutomationTransition::class);
     }
 
+    public function isFunnel(): bool
+    {
+        return $this->kind === AutomationKind::Funnel;
+    }
+
+    public function isAction(): bool
+    {
+        return $this->kind === AutomationKind::Action;
+    }
+
     public function entryStep(): ?AutomationStep
     {
         return $this->steps()->where('is_entry', true)->first()
@@ -129,6 +147,23 @@ class Automation extends Model
         return $query->where('is_active', true);
     }
 
+    public function scopeOfKind(Builder $query, AutomationKind|string $kind): Builder
+    {
+        $value = $kind instanceof AutomationKind ? $kind->value : $kind;
+
+        return $query->where('kind', $value);
+    }
+
+    public function scopeFunnels(Builder $query): Builder
+    {
+        return $query->ofKind(AutomationKind::Funnel);
+    }
+
+    public function scopeActions(Builder $query): Builder
+    {
+        return $query->ofKind(AutomationKind::Action);
+    }
+
     public function allowsChannel(string $channel): bool
     {
         $channels = is_array($this->channels) ? $this->channels : [];
@@ -136,9 +171,6 @@ class Automation extends Model
         return (bool) ($channels[$channel] ?? false);
     }
 
-    /**
-     * Entry prompt routing key, or null to use the general router.
-     */
     public function resolvedEntryPromptKey(): ?string
     {
         $key = is_string($this->entry_prompt_key) ? trim($this->entry_prompt_key) : '';

@@ -28,6 +28,7 @@ class AutomationCrudTest extends TestCase
         $user = $this->createAdminWithAutomationsModule();
 
         $response = $this->actingAs($user)->post(route('automation.store'), [
+            'kind' => 'action',
             'name' => 'Soporte web',
             'slug' => 'soporte-web',
             'entry_prompt_key' => 'contacts:landing',
@@ -44,11 +45,34 @@ class AutomationCrudTest extends TestCase
         $automation = Automation::withoutGlobalScope('team')->where('slug', 'soporte-web')->first();
         $this->assertNotNull($automation);
         $response->assertRedirect(route('automation.show', $automation));
+        $this->assertTrue($automation->isAction());
         $this->assertTrue($automation->allowsChannel(Automation::CHANNEL_API));
         $this->assertTrue($automation->allowsChannel(Automation::CHANNEL_CHAT));
         $this->assertFalse($automation->allowsChannel(Automation::CHANNEL_WHATSAPP));
         $this->assertSame('contacts:landing', $automation->entry_prompt_key);
         $this->assertNotEmpty($automation->public_token);
+    }
+
+    public function test_admin_can_view_funnel_list_and_create_funnel(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+
+        $this->actingAs($user)
+            ->get(route('funnel-list'))
+            ->assertOk();
+
+        $response = $this->actingAs($user)->post(route('automation.store'), [
+            'kind' => 'funnel',
+            'name' => 'Embudo demo',
+            'slug' => 'embudo-demo',
+            'is_active' => '1',
+            'channels' => ['chat' => '1', 'api' => '1'],
+        ]);
+
+        $funnel = Automation::withoutGlobalScope('team')->where('slug', 'embudo-demo')->first();
+        $this->assertNotNull($funnel);
+        $this->assertTrue($funnel->isFunnel());
+        $response->assertRedirect(route('automation.flow', $funnel));
     }
 
     public function test_non_admin_cannot_create_automation(): void
@@ -58,6 +82,7 @@ class AutomationCrudTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('automation.store'), [
+                'kind' => 'action',
                 'name' => 'Blocked',
                 'slug' => 'blocked',
             ])

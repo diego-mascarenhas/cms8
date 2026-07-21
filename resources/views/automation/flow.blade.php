@@ -158,10 +158,20 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="mb-0">
+                <div class="mb-3">
                     <label class="form-label" for="out-match">{{ __('Valor a coincidir (opcional)') }}</label>
                     <input type="text" class="form-control" id="out-match" placeholder="yes / cita / …">
                     <div class="form-text">{{ __('Para Sí/No usá yes o no. Para opciones, la palabra clave.') }}</div>
+                </div>
+                <div class="mb-0">
+                    <label class="form-label" for="out-exit">{{ __('Salida a automatización (opcional)') }}</label>
+                    <select class="form-select" id="out-exit">
+                        <option value="">{{ __('— Continuar en el embudo —') }}</option>
+                        @foreach($actionAutomations as $action)
+                            <option value="{{ $action['id'] }}">{{ $action['name'] }} ({{ $action['slug'] }})</option>
+                        @endforeach
+                    </select>
+                    <div class="form-text">{{ __('Si elegís una automatización, al coincidir esta respuesta se dispara esa acción en lugar de otro paso del embudo.') }}</div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -180,6 +190,13 @@ document.addEventListener('DOMContentLoaded', function () {
   const csrf = @json(csrf_token());
   const initialGraph = @json($graph);
   const replyTypes = @json($replyTypes);
+  const actionAutomations = @json($actionAutomations);
+
+  function actionName(id) {
+    if (!id) return null;
+    const found = actionAutomations.find((a) => String(a.id) === String(id));
+    return found ? found.name : ('#' + id);
+  }
 
   const editor = new Drawflow(document.getElementById('automation-drawflow'));
   editor.reroute = true;
@@ -197,7 +214,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function htmlForNode(data) {
     const entry = data.is_entry ? 'is-entry' : '';
-    const outs = (data.outputs || []).map((o) => escapeHtml(o.label || o.reply_type)).join(', ') || '—';
+    const outs = (data.outputs || []).map((o) => {
+      const exit = o.to_automation_id ? ' → ' + escapeHtml(actionName(o.to_automation_id) || '') : '';
+      return escapeHtml(o.label || o.reply_type) + exit;
+    }).join(', ') || '—';
     return `
       <div class="${entry}">
         <div class="title-box">${escapeHtml(data.label || 'Paso')}</div>
@@ -289,7 +309,8 @@ document.addEventListener('DOMContentLoaded', function () {
           id: outKey,
           reply_type: 'fallback',
           match_value: null,
-          label: outKey
+          label: outKey,
+          to_automation_id: null
         };
         outs.push(meta);
         (n.outputs[outKey].connections || []).forEach((c) => {
@@ -299,11 +320,17 @@ document.addEventListener('DOMContentLoaded', function () {
             from_client_id: data.client_id,
             from_output: outKey,
             to_client_id: String(toClient),
+            to_automation_id: meta.to_automation_id || null,
             reply_type: meta.reply_type,
             match_value: meta.match_value,
             label: meta.label
           });
         });
+        // Exit-only outputs (no Drawflow connection) still need an edge payload via outputs[].to_automation_id
+      });
+      // Ensure outputs without connections remain in nodes[].outputs
+      (data.outputs || []).forEach((o) => {
+        if (!outs.find((x) => x.id === o.id)) outs.push(o);
       });
       data.outputs = outs;
       nodes.push({
@@ -331,9 +358,12 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('step-instruction').value = data.instruction || '';
     document.getElementById('step-is-entry').checked = !!data.is_entry;
     const list = document.getElementById('step-outputs-list');
-    list.innerHTML = (data.outputs || []).map((o) =>
-      `<div class="border rounded p-1 mb-1">${escapeHtml(o.label || o.id)} · <code>${escapeHtml(o.reply_type)}</code>${o.match_value ? ' · ' + escapeHtml(o.match_value) : ''}</div>`
-    ).join('') || '<em>Sin salidas</em>';
+    list.innerHTML = (data.outputs || []).map((o) => {
+      const exit = o.to_automation_id
+        ? ` · <span class="text-primary">${escapeHtml(actionName(o.to_automation_id) || '')}</span>`
+        : '';
+      return `<div class="border rounded p-1 mb-1">${escapeHtml(o.label || o.id)} · <code>${escapeHtml(o.reply_type)}</code>${o.match_value ? ' · ' + escapeHtml(o.match_value) : ''}${exit}</div>`;
+    }).join('') || '<em>Sin salidas</em>';
   }
 
   editor.on('nodeSelected', (id) => selectNode(id));
@@ -399,6 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('out-label').value = '';
     document.getElementById('out-match').value = '';
     document.getElementById('out-type').value = 'yes_no';
+    document.getElementById('out-exit').value = '';
     outputModal.show();
   });
 
@@ -408,11 +439,13 @@ document.addEventListener('DOMContentLoaded', function () {
     data.outputs = data.outputs || [];
     const nextIndex = data.outputs.length + 1;
     const outId = 'output_' + nextIndex;
+    const exitVal = document.getElementById('out-exit').value;
     data.outputs.push({
       id: outId,
       reply_type: document.getElementById('out-type').value,
       match_value: document.getElementById('out-match').value.trim() || null,
-      label: document.getElementById('out-label').value.trim() || document.getElementById('out-type').selectedOptions[0].text
+      label: document.getElementById('out-label').value.trim() || document.getElementById('out-type').selectedOptions[0].text,
+      to_automation_id: exitVal ? parseInt(exitVal, 10) : null
     });
     nodeData[selectedNodeId] = data;
     editor.updateNodeDataFromId(selectedNodeId, data);
@@ -464,9 +497,9 @@ document.addEventListener('DOMContentLoaded', function () {
       is_entry: true,
       prompt_key: null,
       outputs: [
-        { id: 'output_1', reply_type: 'choice', match_value: 'cita', label: 'Cita' },
-        { id: 'output_2', reply_type: 'choice', match_value: 'contacto', label: 'Contacto' },
-        { id: 'output_3', reply_type: 'fallback', match_value: null, label: 'Otra respuesta' }
+        { id: 'output_1', reply_type: 'choice', match_value: 'cita', label: 'Cita', to_automation_id: actionAutomations[0] ? actionAutomations[0].id : null },
+        { id: 'output_2', reply_type: 'choice', match_value: 'contacto', label: 'Contacto', to_automation_id: actionAutomations[1] ? actionAutomations[1].id : null },
+        { id: 'output_3', reply_type: 'fallback', match_value: null, label: 'Otra respuesta', to_automation_id: null }
       ]
     }, 120, 120);
   }

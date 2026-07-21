@@ -12,6 +12,7 @@ class AutomationTransition extends Model
         'automation_id',
         'from_step_id',
         'to_step_id',
+        'to_automation_id',
         'reply_type',
         'match_value',
         'label',
@@ -37,5 +38,15 @@ class AutomationTransition extends Model
     public function toStep(): BelongsTo
     {
         return $this->belongsTo(AutomationStep::class, 'to_step_id');
+    }
+
+    public function toAutomation(): BelongsTo
+    {
+        return $this->belongsTo(Automation::class, 'to_automation_id');
+    }
+
+    public function exitsToAutomation(): bool
+    {
+        return $this->to_automation_id !== null;
     }
 }

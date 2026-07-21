@@ -19,7 +19,7 @@ class AutomationFlowGraphTest extends TestCase
     public function test_admin_can_save_and_reload_flow_graph(): void
     {
         $user = $this->createAdminWithAutomationsModule();
-        $automation = Automation::factory()->create([
+        $automation = Automation::factory()->funnel()->create([
             'team_id' => $user->current_team_id,
             'channels' => Automation::normalizeChannels(['api' => true, 'chat' => true]),
         ]);

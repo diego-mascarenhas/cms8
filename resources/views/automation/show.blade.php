@@ -12,14 +12,16 @@
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         @can('update', $automation)
+        @if($automation->isFunnel())
         <a href="{{ route('automation.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
             <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}
         </a>
+        @endif
         <a href="{{ route('automation.edit', $automation) }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-edit me-1"></i>{{ __('Editar') }}
         </a>
         @endcan
-        <a href="{{ route('automation-list') }}" class="btn btn-label-secondary waves-effect waves-light">
+        <a href="{{ route(($automation->kind ?? \App\Enums\AutomationKind::Action)->listRouteName()) }}" class="btn btn-label-secondary waves-effect waves-light">
             {{ __('Volver') }}
         </a>
     </div>
