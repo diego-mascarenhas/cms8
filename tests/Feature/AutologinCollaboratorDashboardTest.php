@@ -35,7 +35,7 @@ class AutologinCollaboratorDashboardTest extends TestCase
 
         $response = $this->get(route('login.token', ['token' => $token]));
 
-        $response->assertRedirect(route('dashboard.collaborator'));
+        $response->assertRedirect(route('dashboard'));
         $this->assertAuthenticatedAs($user);
         $this->assertEquals($team->id, $user->fresh()->current_team_id);
         $this->assertNotNull(Auth::user()->currentTeam);
@@ -62,7 +62,7 @@ class AutologinCollaboratorDashboardTest extends TestCase
         $this->assertNull($authenticatedUser->currentTeam);
 
         $middleware = app(ModifyMenuBasedOnRole::class);
-        $request = Request::create('/dashboard/collaborator', 'GET');
+        $request = Request::create('/dashboard/analytics', 'GET');
         $request->setUserResolver(fn () => Auth::user());
 
         $response = $middleware->handle($request, function () use ($team)
@@ -104,12 +104,12 @@ class AutologinCollaboratorDashboardTest extends TestCase
         $this->actingAs($user->fresh());
 
         $middleware = app(ModifyMenuBasedOnRole::class);
-        $request = Request::create('/dashboard/collaborator', 'GET');
+        $request = Request::create('/dashboard/analytics', 'GET');
         $request->setUserResolver(fn () => Auth::user());
         $request->setRouteResolver(function () use ($request)
         {
-            $route = new \Illuminate\Routing\Route(['GET'], '/dashboard/collaborator', []);
-            $route->name('dashboard.collaborator');
+            $route = new \Illuminate\Routing\Route(['GET'], '/dashboard/analytics', []);
+            $route->name('dashboard');
             $route->bind($request);
 
             return $route;
@@ -122,5 +122,45 @@ class AutologinCollaboratorDashboardTest extends TestCase
 
         $this->assertTrue($response->isRedirect());
         $this->assertSame(route('error-without-team'), $response->headers->get('Location'));
+    }
+
+    public function test_autologin_uses_intended_url_when_present(): void
+    {
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $user = User::factory()->create(['current_team_id' => null]);
+        $team = Team::factory()->create([
+            'user_id' => $user->id,
+            'personal_team' => false,
+        ]);
+        $user->teams()->attach($team->id, ['role' => 'editor']);
+        $user->assignRole('collaborator');
+
+        $token = TokenHelper::generateSignedToken($user->fresh(), 'account_owner_autologin', 1);
+        $intended = route('dashboard.collaborator');
+
+        $response = $this->withSession(['url.intended' => $intended])
+            ->get(route('login.token', ['token' => $token]));
+
+        $response->assertRedirect($intended);
+    }
+
+    public function test_autologin_falls_back_to_analytics_without_intended_url(): void
+    {
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $user = User::factory()->create(['current_team_id' => null]);
+        $team = Team::factory()->create([
+            'user_id' => $user->id,
+            'personal_team' => false,
+        ]);
+        $user->teams()->attach($team->id, ['role' => 'editor']);
+        $user->assignRole('collaborator');
+
+        $token = TokenHelper::generateSignedToken($user->fresh(), 'account_owner_autologin', 1);
+
+        $response = $this->get(route('login.token', ['token' => $token]));
+
+        $response->assertRedirect(route('dashboard'));
     }
 }

@@ -223,16 +223,24 @@ fi
 stop_pm2
 terminate_db_connections
 
-info "Importing ${BACKUP_FILE} into PostgreSQL (via database: postgres)..."
-info "Target database name from .env: ${DB_DATABASE}"
+info "Recreating database ${DB_DATABASE}..."
+run_psql postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS \"${DB_DATABASE}\" WITH (FORCE);"
+run_psql postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE \"${DB_DATABASE}\" OWNER \"${DB_USERNAME}\";"
+ok "Database ${DB_DATABASE} recreated"
+
+info "Importing ${BACKUP_FILE} into ${DB_DATABASE}..."
 
 if [[ "${BACKUP_FILE}" == *.gz ]]; then
-    gunzip -c "${BACKUP_FILE}" | run_psql postgres -v ON_ERROR_STOP=1
+    gunzip -c "${BACKUP_FILE}" | run_psql "${DB_DATABASE}" -v ON_ERROR_STOP=1
 else
-    run_psql postgres -v ON_ERROR_STOP=1 -f "${BACKUP_FILE}"
+    run_psql "${DB_DATABASE}" -v ON_ERROR_STOP=1 -f "${BACKUP_FILE}"
 fi
 
 ok "Import finished successfully"
+
+users_count="$(run_psql "${DB_DATABASE}" -Atqc "SELECT COUNT(*) FROM users;" 2>/dev/null || echo "?")"
+ok "Users in ${DB_DATABASE}: ${users_count}"
+
 start_pm2
 
 echo ""

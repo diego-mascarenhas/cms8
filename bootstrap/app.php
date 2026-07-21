@@ -47,8 +47,6 @@ return Application::configure(basePath: dirname(__DIR__))
             EnsureRegistrationBillingComplete::class,
             ApplyProdReadDatabaseWhenEnabled::class,
             PrepareDemoPresentation::class,
-            // TEMPORARILY DISABLED FOR TESTING
-            // \App\Http\Middleware\DashboardRedirect::class,
         ]);
 
         // API middleware group
