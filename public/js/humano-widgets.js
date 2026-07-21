@@ -164,7 +164,10 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
                 credentials: 'omit',
-                body: JSON.stringify({ message: text }),
+                body: JSON.stringify({
+                    message: text,
+                    session_key: window.HUMANO_WIDGET_SESSION_KEY || null,
+                }),
             })
                 .then(function (r)
                 {
@@ -177,6 +180,10 @@
                 })
                 .then(function (data)
                 {
+                    if (data.session_key)
+                    {
+                        window.HUMANO_WIDGET_SESSION_KEY = data.session_key;
+                    }
                     var reply = data.reply || data.response || '';
                     log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, reply));
                     log.scrollTop = log.scrollHeight;

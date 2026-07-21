@@ -7,6 +7,7 @@ use App\Models\Automation;
 use App\Services\AssistantAutomationRunner;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -19,6 +20,7 @@ class PublicAutomationEmbedController extends Controller
     {
         $validated = $request->validate([
             'message' => 'required|string|max:2000',
+            'session_key' => 'nullable|string|max:191',
         ]);
 
         $automation = $runner->findByPublicToken($token);
@@ -30,12 +32,20 @@ class PublicAutomationEmbedController extends Controller
             ], 404);
         }
 
+        $sessionKey = isset($validated['session_key']) && trim($validated['session_key']) !== ''
+            ? trim($validated['session_key'])
+            : (string) Str::uuid();
+
         try
         {
             $result = $runner->run(
                 $automation,
                 Automation::CHANNEL_API,
                 $validated['message'],
+                null,
+                null,
+                false,
+                $sessionKey,
             );
         } catch (NotFoundHttpException $e)
         {
@@ -51,6 +61,9 @@ class PublicAutomationEmbedController extends Controller
             'response' => $result['response'],
             'routed_to' => $result['routed_to'] ?? null,
             'automation_slug' => $automation->slug,
+            'step_key' => $result['step_key'] ?? null,
+            'flow_completed' => (bool) ($result['flow_completed'] ?? false),
+            'session_key' => $sessionKey,
             'demo' => false,
         ]);
     }
@@ -83,6 +96,7 @@ class PublicAutomationEmbedController extends Controller
             'name' => $automation->name,
             'slug' => $automation->slug,
             'welcome_message' => $welcome,
+            'has_flow' => $automation->hasFlowGraph(),
         ]);
     }
 }

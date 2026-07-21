@@ -28,6 +28,7 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
+use App\Services\AutomationFlowGraphSyncer;
 use App\Services\DemoDataService;
 use App\Services\Finance\FinancialProjectionHistoryGenerator;
 use App\Services\Finance\PaymentAccountCompatibilityService;
@@ -391,6 +392,81 @@ class TeamDemoSeeder extends Seeder
         }
 
         $this->command?->info('✅ Created Demo automations (soporte-web, citas-whatsapp, contactos-crm)');
+
+        $webSupport = Automation::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('slug', 'soporte-web')
+            ->first();
+
+        if ($webSupport)
+        {
+            app(AutomationFlowGraphSyncer::class)->sync($webSupport, [
+                'nodes' => [
+                    [
+                        'client_id' => '1',
+                        'key' => 'inicio',
+                        'label' => 'Inicio',
+                        'prompt_key' => null,
+                        'instruction' => 'Saludá y preguntá si necesita una cita o ayuda con un contacto.',
+                        'is_entry' => true,
+                        'position_x' => 80,
+                        'position_y' => 120,
+                        'outputs' => [
+                            ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'cita', 'label' => 'Cita'],
+                            ['id' => 'output_2', 'reply_type' => 'choice', 'match_value' => 'contacto', 'label' => 'Contacto'],
+                            ['id' => 'output_3', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra'],
+                        ],
+                    ],
+                    [
+                        'client_id' => '2',
+                        'key' => 'citas',
+                        'label' => 'Citas',
+                        'prompt_key' => 'calendar:assistant_citas',
+                        'instruction' => 'Ayudá a agendar una cita con el calendario del equipo.',
+                        'is_entry' => false,
+                        'position_x' => 420,
+                        'position_y' => 40,
+                        'outputs' => [
+                            ['id' => 'output_1', 'reply_type' => 'yes_no', 'match_value' => 'yes', 'label' => 'Confirmó'],
+                            ['id' => 'output_2', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra'],
+                        ],
+                    ],
+                    [
+                        'client_id' => '3',
+                        'key' => 'contactos',
+                        'label' => 'Contactos',
+                        'prompt_key' => 'contacts:assistant_contactos',
+                        'instruction' => 'Ayudá con contactos y categorías del CRM.',
+                        'is_entry' => false,
+                        'position_x' => 420,
+                        'position_y' => 220,
+                        'outputs' => [
+                            ['id' => 'output_1', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Continuar'],
+                        ],
+                    ],
+                    [
+                        'client_id' => '4',
+                        'key' => 'cierre',
+                        'label' => 'Cierre',
+                        'prompt_key' => null,
+                        'instruction' => 'Agradecé y cerrá el flujo de forma breve.',
+                        'is_entry' => false,
+                        'position_x' => 760,
+                        'position_y' => 120,
+                        'outputs' => [],
+                    ],
+                ],
+                'edges' => [
+                    ['from_client_id' => '1', 'from_output' => 'output_1', 'to_client_id' => '2'],
+                    ['from_client_id' => '1', 'from_output' => 'output_2', 'to_client_id' => '3'],
+                    ['from_client_id' => '1', 'from_output' => 'output_3', 'to_client_id' => '4'],
+                    ['from_client_id' => '2', 'from_output' => 'output_1', 'to_client_id' => '4'],
+                    ['from_client_id' => '2', 'from_output' => 'output_2', 'to_client_id' => '1'],
+                    ['from_client_id' => '3', 'from_output' => 'output_1', 'to_client_id' => '4'],
+                ],
+            ]);
+            $this->command?->info('✅ Demo funnel graph seeded on soporte-web');
+        }
     }
 
     private function createDemoTaskCategories(): void

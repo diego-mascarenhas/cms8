@@ -1063,10 +1063,14 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
 
+    Route::redirect('/funnel/list', '/automation/list')->name('funnel-list');
+
     Route::get('/automation/list', [AutomationController::class, 'index'])->name('automation-list');
     Route::get('/automation/create', [AutomationController::class, 'create'])->name('automation.create');
     Route::post('/automation', [AutomationController::class, 'store'])->name('automation.store');
     Route::get('/automation/{automation}/edit', [AutomationController::class, 'edit'])->name('automation.edit');
+    Route::get('/automation/{automation}/flow', [AutomationController::class, 'flow'])->name('automation.flow');
+    Route::post('/automation/{automation}/flow', [AutomationController::class, 'saveFlow'])->name('automation.flow.save');
     Route::get('/automation/{automation}', [AutomationController::class, 'show'])->name('automation.show');
     Route::put('/automation/{automation}', [AutomationController::class, 'update'])->name('automation.update');
     Route::delete('/automation/{automation}', [AutomationController::class, 'destroy'])->name('automation.destroy');

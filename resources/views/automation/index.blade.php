@@ -1,6 +1,6 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Automations'))
+@section('title', __('Embudos'))
 
 @section('vendor-style')
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
@@ -16,13 +16,13 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3">{{ __('Automations') }}</h4>
-        <p class="text-muted">{{ __('Flujos del asistente ejecutables desde WhatsApp, chat, API y embed web') }}</p>
+        <h4 class="mb-1 mt-3">{{ __('Embudos') }}</h4>
+        <p class="text-muted">{{ __('Flujos conversacionales del asistente (chat, WhatsApp y embed)') }}</p>
     </div>
     @can('create', \App\Models\Automation::class)
     <div class="mt-3 mt-md-0">
         <a href="{{ route('automation.create') }}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i>{{ __('Crear automatización') }}
+            <i class="ti ti-plus me-1"></i>{{ __('Crear embudo') }}
         </a>
     </div>
     @endcan

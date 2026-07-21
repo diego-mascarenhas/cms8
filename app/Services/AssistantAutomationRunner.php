@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Automation;
+use App\Models\AutomationStep;
 use Illuminate\Http\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -11,6 +12,7 @@ class AssistantAutomationRunner
 {
     public function __construct(
         protected AssistantChatService $assistantChat,
+        protected AutomationFlowEngine $flowEngine,
     ) {}
 
     public function findById(int $id, ?int $teamId = null): ?Automation
@@ -45,9 +47,6 @@ class AssistantAutomationRunner
             ->first();
     }
 
-    /**
-     * First active automation for a team that allows the given channel.
-     */
     public function findDefaultForChannel(int $teamId, string $channel): ?Automation
     {
         return Automation::forTeam($teamId)
@@ -78,10 +77,6 @@ class AssistantAutomationRunner
         return $automation;
     }
 
-    /**
-     * Resolve entry prompt key for tools-based channels (WhatsApp, chat UI).
-     * Returns null when the automation uses the general router.
-     */
     public function resolveForcedPromptKey(Automation $automation, string $channel): ?string
     {
         $this->requireActive($automation, $channel);
@@ -90,9 +85,98 @@ class AssistantAutomationRunner
     }
 
     /**
+     * Resolve funnel step + prompt key + appendix for tools-based channels (chat / WhatsApp).
+     *
+     * @return array{prompt_key: string|null, appendix: string|null, step: AutomationStep|null, completed: bool, automation: Automation|null}
+     */
+    public function resolveFlowContext(
+        int $teamId,
+        string $channel,
+        string $message,
+        string $externalKey,
+        ?string $automationSlug = null,
+        ?int $automationId = null,
+        ?string $existingForcedKey = null,
+    ): array {
+        $automation = null;
+        if ($automationId !== null)
+        {
+            $automation = $this->findById($automationId, $teamId);
+        } elseif ($automationSlug !== null && trim($automationSlug) !== '')
+        {
+            $automation = $this->findBySlug(trim($automationSlug), $teamId);
+        } else
+        {
+            $automation = $this->findDefaultForChannel($teamId, $channel);
+        }
+
+        if ($automation === null || ! $automation->allowsChannel($channel) || ! $automation->is_active)
+        {
+            return [
+                'prompt_key' => ($existingForcedKey !== null && trim($existingForcedKey) !== '') ? trim($existingForcedKey) : null,
+                'appendix' => null,
+                'step' => null,
+                'completed' => false,
+                'automation' => null,
+            ];
+        }
+
+        if (! $automation->hasFlowGraph())
+        {
+            $key = ($existingForcedKey !== null && trim($existingForcedKey) !== '')
+                ? trim($existingForcedKey)
+                : $automation->resolvedEntryPromptKey();
+
+            return [
+                'prompt_key' => $key,
+                'appendix' => null,
+                'step' => null,
+                'completed' => false,
+                'automation' => $automation,
+            ];
+        }
+
+        $session = $this->flowEngine->sessionFor($automation, $channel, $externalKey);
+        $resolved = $this->flowEngine->resolveStepForMessage($session, $message);
+
+        if ($resolved['completed'])
+        {
+            return [
+                'prompt_key' => null,
+                'appendix' => null,
+                'step' => null,
+                'completed' => true,
+                'automation' => $automation,
+            ];
+        }
+
+        $step = $resolved['step'];
+        $promptKey = $step?->resolvedPromptKey()
+            ?? (($existingForcedKey !== null && trim($existingForcedKey) !== '') ? trim($existingForcedKey) : $automation->resolvedEntryPromptKey());
+        $appendix = $step ? $this->flowEngine->stepSystemAppendix($step) : null;
+
+        return [
+            'prompt_key' => $promptKey,
+            'appendix' => $appendix !== '' ? $appendix : null,
+            'step' => $step,
+            'completed' => false,
+            'automation' => $automation,
+            'session' => $session,
+        ];
+    }
+
+    public function markFlowAwaitingReply(mixed $session): void
+    {
+        if ($session)
+        {
+            $this->flowEngine->markAwaitingReply($session);
+        }
+    }
+
+    /**
      * Run via AssistantChatService (API / embed / simple assistant path).
      *
-     * @return array{response: string, routed_to: string|null, automation_id: int, automation_slug: string, audio_base64?: string, audio_mime?: string}
+     * @return array{response: string, routed_to: string|null, automation_id: int, automation_slug: string, step_key?: string|null, flow_completed?: bool, audio_base64?: string, audio_mime?: string}
      */
     public function run(
         Automation $automation,
@@ -101,28 +185,75 @@ class AssistantAutomationRunner
         ?UploadedFile $image = null,
         ?UploadedFile $audio = null,
         bool $respondWithVoice = false,
+        ?string $sessionKey = null,
     ): array {
         $this->requireActive($automation, $channel);
 
+        $promptKey = $automation->resolvedEntryPromptKey();
+        $runMessage = $message;
+        $stepKey = null;
+        $session = null;
+
+        if ($automation->hasFlowGraph())
+        {
+            $session = $this->flowEngine->sessionFor(
+                $automation,
+                $channel,
+                $sessionKey ?: 'default',
+            );
+            $resolved = $this->flowEngine->resolveStepForMessage($session, $message);
+
+            if ($resolved['completed'])
+            {
+                $this->flowEngine->resetSession($session);
+
+                return [
+                    'response' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    'routed_to' => null,
+                    'automation_id' => $automation->id,
+                    'automation_slug' => $automation->slug,
+                    'step_key' => null,
+                    'flow_completed' => true,
+                ];
+            }
+
+            $step = $resolved['step'];
+            if ($step instanceof AutomationStep)
+            {
+                $stepKey = $step->key;
+                $promptKey = $step->resolvedPromptKey() ?? $promptKey;
+                $appendix = $this->flowEngine->stepSystemAppendix($step);
+                if ($appendix !== '')
+                {
+                    $runMessage = $appendix."\n\n---\n".__('Mensaje del usuario').":\n".$message;
+                }
+            }
+        }
+
         $result = $this->assistantChat->run(
-            $message,
+            $runMessage,
             (int) $automation->team_id,
             $image,
             $audio,
             $respondWithVoice,
-            $automation->resolvedEntryPromptKey(),
+            $promptKey,
         );
+
+        if ($session !== null)
+        {
+            $this->flowEngine->markAwaitingReply($session);
+        }
 
         return array_merge($result, [
             'automation_id' => $automation->id,
             'automation_slug' => $automation->slug,
+            'step_key' => $stepKey,
+            'flow_completed' => false,
         ]);
     }
 
     /**
-     * Resolve automation from optional id/slug within a team, then run.
-     *
-     * @return array{response: string, routed_to: string|null, automation_id: int|null, automation_slug: string|null, audio_base64?: string, audio_mime?: string}
+     * @return array{response: string, routed_to: string|null, automation_id: int|null, automation_slug: string|null, step_key?: string|null, flow_completed?: bool, audio_base64?: string, audio_mime?: string}
      *
      * @throws NotFoundHttpException
      * @throws AccessDeniedHttpException
@@ -134,6 +265,7 @@ class AssistantAutomationRunner
         ?string $automationSlug = null,
         ?int $automationId = null,
         ?string $promptKeyOverride = null,
+        ?string $sessionKey = null,
     ): array {
         $automation = null;
         $requestedExplicitly = false;
@@ -155,7 +287,7 @@ class AssistantAutomationRunner
 
         if ($automation !== null)
         {
-            return $this->run($automation, $channel, $message);
+            return $this->run($automation, $channel, $message, null, null, false, $sessionKey);
         }
 
         $result = $this->assistantChat->run(
@@ -173,9 +305,6 @@ class AssistantAutomationRunner
         ]);
     }
 
-    /**
-     * Resolve forced prompt key for chat/WhatsApp when an automation is requested or a default exists.
-     */
     public function resolveChannelPromptKey(
         int $teamId,
         string $channel,

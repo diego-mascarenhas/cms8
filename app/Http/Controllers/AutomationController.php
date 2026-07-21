@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\AutomationDataTable;
+use App\Enums\AutomationReplyType;
 use App\Http\Requests\StoreAutomationRequest;
 use App\Http\Requests\UpdateAutomationRequest;
 use App\Models\Automation;
 use App\Models\Prompt;
+use App\Services\AutomationFlowGraphSyncer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -21,7 +25,9 @@ class AutomationController extends Controller
 
             return $next($request);
         });
-        $this->authorizeResource(Automation::class, 'automation');
+        $this->authorizeResource(Automation::class, 'automation', [
+            'except' => ['flow', 'saveFlow'],
+        ]);
     }
 
     public function index(AutomationDataTable $dataTable)
@@ -62,12 +68,14 @@ class AutomationController extends Controller
         ]);
 
         return redirect()
-            ->route('automation.show', $automation)
-            ->with('success', __('Automatización creada correctamente.'));
+            ->route('automation.flow', $automation)
+            ->with('success', __('Automatización creada. Diseñá el embudo conversacional.'));
     }
 
     public function show(Automation $automation): View
     {
+        $automation->load(['steps.transitions']);
+
         return view('automation.show', compact('automation'));
     }
 
@@ -77,6 +85,57 @@ class AutomationController extends Controller
         $channelDefaults = Automation::normalizeChannels($automation->channels ?? []);
 
         return view('automation.form', compact('automation', 'promptOptions', 'channelDefaults'));
+    }
+
+    public function flow(Automation $automation, AutomationFlowGraphSyncer $syncer): View
+    {
+        $this->authorize('update', $automation);
+
+        $graph = $syncer->export($automation);
+        $promptOptions = $this->promptOptions();
+        $replyTypes = collect(AutomationReplyType::cases())->map(fn (AutomationReplyType $type) => [
+            'value' => $type->value,
+            'label' => $type->label(),
+        ])->values();
+
+        return view('automation.flow', compact('automation', 'graph', 'promptOptions', 'replyTypes'));
+    }
+
+    public function saveFlow(Request $request, Automation $automation, AutomationFlowGraphSyncer $syncer): JsonResponse
+    {
+        $this->authorize('update', $automation);
+
+        $validated = $request->validate([
+            'nodes' => ['required', 'array'],
+            'nodes.*.client_id' => ['required', 'string', 'max:64'],
+            'nodes.*.label' => ['required', 'string', 'max:255'],
+            'nodes.*.key' => ['nullable', 'string', 'max:255'],
+            'nodes.*.prompt_key' => ['nullable', 'string', 'max:255'],
+            'nodes.*.instruction' => ['nullable', 'string', 'max:20000'],
+            'nodes.*.is_entry' => ['sometimes', 'boolean'],
+            'nodes.*.position_x' => ['nullable', 'integer'],
+            'nodes.*.position_y' => ['nullable', 'integer'],
+            'nodes.*.outputs' => ['nullable', 'array'],
+            'nodes.*.outputs.*.id' => ['required_with:nodes.*.outputs', 'string', 'max:64'],
+            'nodes.*.outputs.*.reply_type' => ['required_with:nodes.*.outputs', 'string', 'in:'.implode(',', AutomationReplyType::values())],
+            'nodes.*.outputs.*.match_value' => ['nullable', 'string', 'max:255'],
+            'nodes.*.outputs.*.label' => ['nullable', 'string', 'max:255'],
+            'edges' => ['nullable', 'array'],
+            'edges.*.from_client_id' => ['required_with:edges', 'string', 'max:64'],
+            'edges.*.from_output' => ['required_with:edges', 'string', 'max:64'],
+            'edges.*.to_client_id' => ['nullable', 'string', 'max:64'],
+            'edges.*.reply_type' => ['nullable', 'string', 'in:'.implode(',', AutomationReplyType::values())],
+            'edges.*.match_value' => ['nullable', 'string', 'max:255'],
+            'edges.*.label' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $automation = $syncer->sync($automation, $validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Embudo guardado correctamente.'),
+            'graph' => $syncer->export($automation),
+        ]);
     }
 
     public function update(UpdateAutomationRequest $request, Automation $automation): RedirectResponse

@@ -5,6 +5,9 @@
     </a>
     @endcan
     @can('update', $automation)
+    <a href="{{ route('automation.flow', $automation) }}" class="text-body" title="{{ __('Editar embudo') }}">
+        <i class="ti ti-sitemap ti-sm me-2"></i>
+    </a>
     <a href="{{ route('automation.edit', $automation) }}" class="text-body" title="{{ __('Editar') }}">
         <i class="ti ti-edit ti-sm me-2"></i>
     </a>

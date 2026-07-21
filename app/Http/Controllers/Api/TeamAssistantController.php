@@ -23,6 +23,7 @@ class TeamAssistantController extends Controller
             'prompt_key' => 'nullable|string|max:255',
             'automation_slug' => 'nullable|string|max:255',
             'automation_id' => 'nullable|integer|min:1',
+            'session_key' => 'nullable|string|max:191',
         ]);
 
         $teamId = $request->get('team_id');
@@ -38,6 +39,7 @@ class TeamAssistantController extends Controller
 
         $automationSlug = $request->input('automation_slug');
         $automationId = $request->filled('automation_id') ? (int) $request->input('automation_id') : null;
+        $sessionKey = $request->filled('session_key') ? trim((string) $request->input('session_key')) : null;
 
         try
         {
@@ -48,6 +50,7 @@ class TeamAssistantController extends Controller
                 \is_string($automationSlug) ? $automationSlug : null,
                 $automationId,
                 $promptKey,
+                $sessionKey,
             );
         } catch (NotFoundHttpException $e)
         {
@@ -67,6 +70,15 @@ class TeamAssistantController extends Controller
         {
             $payload['automation_id'] = $result['automation_id'];
             $payload['automation_slug'] = $result['automation_slug'] ?? null;
+        }
+
+        if (array_key_exists('step_key', $result))
+        {
+            $payload['step_key'] = $result['step_key'];
+        }
+        if (! empty($result['flow_completed']))
+        {
+            $payload['flow_completed'] = true;
         }
 
         if (! empty($result['audio_base64']))

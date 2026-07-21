@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Automation extends Model
@@ -95,6 +96,27 @@ class Automation extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function steps(): HasMany
+    {
+        return $this->hasMany(AutomationStep::class)->orderBy('id');
+    }
+
+    public function transitions(): HasMany
+    {
+        return $this->hasMany(AutomationTransition::class);
+    }
+
+    public function entryStep(): ?AutomationStep
+    {
+        return $this->steps()->where('is_entry', true)->first()
+            ?? $this->steps()->orderBy('id')->first();
+    }
+
+    public function hasFlowGraph(): bool
+    {
+        return $this->steps()->exists();
     }
 
     public function scopeForTeam(Builder $query, int $teamId): Builder

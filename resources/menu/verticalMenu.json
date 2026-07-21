@@ -233,16 +233,9 @@
       "module_key": "prompts"
     },
     {
-      "url": "funnel/list",
-      "name": "Funnel",
-      "icon": "menu-icon tf-icons ti ti-filter",
-      "slug": "funnel-list",
-      "module_key": "funnel"
-    },
-    {
       "url": "automation/list",
-      "name": "Automations",
-      "icon": "menu-icon tf-icons ti ti-robot",
+      "name": "Embudos",
+      "icon": "menu-icon tf-icons ti ti-filter",
       "slug": "automation-list",
       "module_key": "automations"
     },
