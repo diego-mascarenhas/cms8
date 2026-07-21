@@ -60,7 +60,7 @@ class ContactLanguageVariant extends Model
     {
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
 
-        return static::select([
+        $query = static::select([
             'source_language_code',
             'target_language_code',
         ])
@@ -69,8 +69,10 @@ class ContactLanguageVariant extends Model
             ->whereHas('contact', function ($query) use ($teamId)
             {
                 $query->where('team_id', $teamId);
-            })
-            ->whereRaw('SUBSTRING_INDEX(source_language_code, "-", 1) != SUBSTRING_INDEX(target_language_code, "-", 1)') // Exclude same language combinations (comparing base language codes)
+            });
+
+        return $query
+            ->whereRaw(self::differentBaseLanguageSql($query))
             ->groupBy('source_language_code', 'target_language_code')
             ->havingRaw('COUNT(DISTINCT contact_id) < ?', [$maxCount])
             ->orderBy('collaborator_count', 'asc')
@@ -92,5 +94,19 @@ class ContactLanguageVariant extends Model
                     'count' => $combination->collaborator_count,
                 ];
             });
+    }
+
+    /**
+     * Compare language base codes (before first "-") in a driver-portable way.
+     * MySQL: SUBSTRING_INDEX — PostgreSQL: split_part — SQLite: substr/instr.
+     */
+    protected static function differentBaseLanguageSql(Builder $query): string
+    {
+        return match ($query->getConnection()->getDriverName())
+        {
+            'pgsql' => "split_part(source_language_code, '-', 1) <> split_part(target_language_code, '-', 1)",
+            'sqlite' => "CASE WHEN instr(source_language_code, '-') > 0 THEN substr(source_language_code, 1, instr(source_language_code, '-') - 1) ELSE source_language_code END <> CASE WHEN instr(target_language_code, '-') > 0 THEN substr(target_language_code, 1, instr(target_language_code, '-') - 1) ELSE target_language_code END",
+            default => 'SUBSTRING_INDEX(source_language_code, "-", 1) != SUBSTRING_INDEX(target_language_code, "-", 1)',
+        };
     }
 }

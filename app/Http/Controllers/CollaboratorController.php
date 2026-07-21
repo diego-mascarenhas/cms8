@@ -11,7 +11,6 @@ use App\Models\Language;
 use App\Models\Project;
 use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\Request;
-use Spatie\Activitylog\Models\Activity; // Added this import for the new method
 
 class CollaboratorController extends Controller
 {
@@ -944,44 +943,8 @@ class CollaboratorController extends Controller
         // Use the Contact Policy for authorization
         $this->authorize('view', $collaborator);
 
-        // Get activities for this collaborator
-        $activities = Activity::where(function ($query) use ($id, $collaborator)
-        {
-            // Activities on the contact
-            $query->where('subject_type', Contact::class)
-                ->where('subject_id', $id);
-
-            // Also get activities from the linked user if exists
-            if ($collaborator->user_id)
-            {
-                $query->orWhere(function ($subQuery) use ($collaborator)
-                {
-                    $subQuery->where('subject_type', \App\Models\User::class)
-                        ->where('subject_id', $collaborator->user_id);
-                });
-            }
-        })
-            ->with(['causer', 'subject'])
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
-            ->get();
-
-        // Format activities for display
-        $formattedActivities = $activities->map(function ($activity) use ($collaborator)
-        {
-            $isOwnActivity = $activity->causer_id === $collaborator->user_id;
-
-            return [
-                'id' => $activity->id,
-                'description' => $activity->description,
-                'properties' => $activity->properties,
-                'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
-                'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
-                'is_own_activity' => $isOwnActivity,
-                'time_ago' => $activity->created_at->diffForHumans(),
-                'created_at' => $activity->created_at,
-            ];
-        });
+        // Activity log package was removed; keep the view contract with an empty list.
+        $formattedActivities = collect();
 
         return view('collaborator.activity', compact('collaborator', 'formattedActivities'));
     }
@@ -1028,61 +991,8 @@ class CollaboratorController extends Controller
         // Get collaborators with incomplete data
         $incompleteCollaborators = Contact::getIncompleteCollaborators(20);
 
-        // Get recent team activities (simplified approach)
-        $teamId = auth()->user()->currentTeam->id;
-
-        // Get all team users IDs
-        $teamUserIds = \App\Models\User::whereHas('teams', function ($query) use ($teamId)
-        {
-            $query->where('teams.id', $teamId);
-        })->pluck('id');
-
-        // Get team contact IDs
-        $teamContactIds = Contact::where('team_id', $teamId)->pluck('id');
-
-        // Get team project IDs
-        $teamProjectIds = Project::where('team_id', $teamId)->pluck('id');
-
-        // Get recent activities from team members or on team subjects (limited to last 10)
-        $recentActivities = Activity::with(['causer', 'subject'])
-            ->where(function ($query) use ($teamUserIds, $teamContactIds, $teamProjectIds)
-            {
-                // Activities by team members
-                $query->whereIn('causer_id', $teamUserIds)
-                      // Or activities on team contacts
-                    ->orWhere(function ($subQuery) use ($teamContactIds)
-                    {
-                        $subQuery->where('subject_type', Contact::class)
-                            ->whereIn('subject_id', $teamContactIds);
-                    })
-                      // Or activities on team projects
-                    ->orWhere(function ($subQuery) use ($teamProjectIds)
-                    {
-                        $subQuery->where('subject_type', Project::class)
-                            ->whereIn('subject_id', $teamProjectIds);
-                    });
-            })
-            ->latest()
-            ->limit(10)
-            ->get();
-
-        // Format activities for display
-        $formattedActivities = $recentActivities->map(function ($activity)
-        {
-            return [
-                'id' => $activity->id,
-                'user_name' => $activity->causer ? $activity->causer->name : 'Sistema',
-                'user_photo' => $activity->causer ? $activity->causer->profile_photo_url : null,
-                'is_system_activity' => ! $activity->causer,
-                'description' => $activity->description,
-                'subject_type' => $activity->subject ? class_basename($activity->subject_type) : null,
-                'subject_id' => $activity->subject_id,
-                'subject_name' => $activity->subject && method_exists($activity->subject, 'name') ? $activity->subject->name : null,
-                'time_ago' => $activity->created_at->diffForHumans(),
-                'created_at' => $activity->created_at,
-                'properties' => $activity->properties,
-            ];
-        });
+        // Activity log package was removed; keep the dashboard contract with an empty list.
+        $formattedActivities = collect();
 
         return view('collaborator.dashboard', compact('totalCollaborators', 'newCollaboratorsThisMonth', 'activeProjects', 'activeLanguages', 'languageCombinations', 'topLanguages', 'incompleteCollaborators', 'formattedActivities'));
     }

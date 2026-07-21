@@ -1,30 +1,25 @@
 #!/usr/bin/env bash
 
-# Dump production PostgreSQL on the Forge VPS over SSH, then download it locally.
-# Pair with: ./scripts/import-pgsql-backup.sh ~/Downloads/humano-prod-….sql.gz
-#
+# Dump production PostgreSQL on the Forge VPS over SSH, download it, then import locally.
 # Default flow:
-#   1) ssh forge@HOST
-#   2) pg_dump on the VPS (using the site .env DB_* credentials)
-#   3) scp the .sql.gz to ~/Downloads
+#   1) ssh forge@HOST → pg_dump
+#   2) scp → ~/Downloads/humano-prod-….sql.gz
+#   3) ./scripts/import-pgsql-backup.sh (automatic)
 #
 # Usage:
 #   ./scripts/export-pgsql-from-forge.sh
-#   ./scripts/export-pgsql-from-forge.sh --site /home/forge/humano.app
-#   ./scripts/export-pgsql-from-forge.sh --via-prod-read   # fallback: dump from Mac with DB_PROD_READ_*
-#
-# .env (local):
-#   FORGE_SSH_HOST=geri.revisionalpha.cloud   # or omit → uses DB_PROD_READ_HOST
-#   FORGE_SSH_USER=forge
-#   FORGE_SSH_PORT=22
-#   FORGE_SITE_PATH=/home/forge/tu-sitio.app   # optional; auto-detected if only one site
-#   FORGE_SSH_IDENTITY=~/.ssh/id_rsa            # optional
+#   ./scripts/export-pgsql-from-forge.sh --site /home/forge/humano.revisionalpha.com
+#   ./scripts/export-pgsql-from-forge.sh --no-import
+#   ./scripts/export-pgsql-from-forge.sh --via-prod-read
 #
 # Options:
 #   --host / --user / --port / --site / --identity
 #   --output PATH
 #   --keep-remote
 #   --plain
+#   --no-import      Only download; do not import into local DB
+#   --skip-pm2       Passed through to import-pgsql-backup.sh
+#   --no-roles       Passed through to import-pgsql-backup.sh
 #   --via-prod-read
 #   --help
 
@@ -43,6 +38,9 @@ SITE_PATH=""
 OUTPUT_FILE=""
 KEEP_REMOTE=0
 PLAIN=0
+DO_IMPORT=1
+IMPORT_SKIP_PM2=0
+IMPORT_NO_ROLES=0
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -56,7 +54,7 @@ warn() { echo -e "${YELLOW}!${NC} $*"; }
 fail() { echo -e "${RED}✗${NC} $*" >&2; exit 1; }
 
 usage() {
-    sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
     exit "${1:-0}"
 }
 
@@ -72,6 +70,9 @@ while [[ $# -gt 0 ]]; do
         --output|-o) OUTPUT_FILE="${2:-}"; shift 2 ;;
         --keep-remote) KEEP_REMOTE=1; shift ;;
         --plain) PLAIN=1; shift ;;
+        --no-import) DO_IMPORT=0; shift ;;
+        --skip-pm2) IMPORT_SKIP_PM2=1; shift ;;
+        --no-roles) IMPORT_NO_ROLES=1; shift ;;
         --help|-h) usage 0 ;;
         *) fail "Unknown argument: $1 (see --help)" ;;
     esac
@@ -379,6 +380,19 @@ case "${MODE}" in
 esac
 
 ok "Dump ready: ${OUTPUT_FILE}"
-echo
-info "Import locally with:"
-echo "  ./scripts/import-pgsql-backup.sh \"${OUTPUT_FILE}\""
+
+if [[ "${DO_IMPORT}" -eq 1 ]]; then
+    IMPORT_SCRIPT="${SCRIPT_DIR}/import-pgsql-backup.sh"
+    [[ -x "${IMPORT_SCRIPT}" ]] || fail "Import script not found/executable: ${IMPORT_SCRIPT}"
+
+    info "Importing dump into local database…"
+    import_args=("${OUTPUT_FILE}")
+    [[ "${IMPORT_SKIP_PM2}" -eq 1 ]] && import_args+=(--skip-pm2)
+    [[ "${IMPORT_NO_ROLES}" -eq 1 ]] && import_args+=(--no-roles)
+
+    "${IMPORT_SCRIPT}" "${import_args[@]}"
+    ok "Local database restored from production dump."
+else
+    info "Skipped local import (--no-import). Run manually:"
+    echo "  ./scripts/import-pgsql-backup.sh \"${OUTPUT_FILE}\""
+fi
