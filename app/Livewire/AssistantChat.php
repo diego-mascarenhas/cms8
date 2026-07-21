@@ -189,6 +189,14 @@ class AssistantChat extends Component
             ? trim($forcedKeyRaw)
             : null;
 
+        if ($forcedFlowRoutingKey === null && $teamId !== null)
+        {
+            $forcedFlowRoutingKey = app(\App\Services\AssistantAutomationRunner::class)->resolveChannelPromptKey(
+                (int) $teamId,
+                \App\Models\Automation::CHANNEL_HUMANO,
+            );
+        }
+
         if ($teamId !== null && $text !== '')
         {
             if ($this->tryWebSlashCommands($text, $user, (int) $teamId, $conversationContext))

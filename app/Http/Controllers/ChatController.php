@@ -1461,6 +1461,33 @@ class ChatController extends Controller
             $customerPhone = $fromUser !== '' ? $fromUser : null;
         }
         $forcedFlowRoutingKey = $request->filled('flow_routing_key') ? trim((string) $request->input('flow_routing_key')) : '';
+        $flowAppendix = null;
+        $flowSession = null;
+        if ($teamId !== null)
+        {
+            $flowContext = app(\App\Services\AssistantAutomationRunner::class)->resolveFlowContext(
+                (int) $teamId,
+                \App\Models\Automation::CHANNEL_CHAT,
+                $message,
+                'user:'.(string) $contextUser->id,
+                $request->filled('automation_slug') ? trim((string) $request->input('automation_slug')) : null,
+                $request->filled('automation_id') ? (int) $request->input('automation_id') : null,
+                $forcedFlowRoutingKey !== '' ? $forcedFlowRoutingKey : null,
+            );
+
+            if (! empty($flowContext['completed']))
+            {
+                return response()->json([
+                    'success' => true,
+                    'response' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    'flow_completed' => true,
+                ]);
+            }
+
+            $forcedFlowRoutingKey = (string) ($flowContext['prompt_key'] ?? '');
+            $flowAppendix = $flowContext['appendix'] ?? null;
+            $flowSession = $flowContext['session'] ?? null;
+        }
         $replyResponse = $replyService->getReply(
             $message,
             $history,
@@ -1471,7 +1498,15 @@ class ChatController extends Controller
             $forcedFlowRoutingKey !== '' ? $forcedFlowRoutingKey : null,
             $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
             $request->boolean('preview_only'),
+            null,
+            false,
+            $flowAppendix,
         );
+
+        if ($flowSession !== null)
+        {
+            app(\App\Services\AssistantAutomationRunner::class)->markFlowAwaitingReply($flowSession);
+        }
 
         $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
         $serverTaskApply = $teamId !== null && ! $request->boolean('preview_only')

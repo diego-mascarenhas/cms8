@@ -9,6 +9,7 @@ use App\Http\Controllers\AssistantActivityController;
 use App\Http\Controllers\AttendanceController;
 // use App\Http\Controllers\AcademyController; // Now using humano-academy package
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AutomationController;
 use App\Http\Controllers\CampaignsController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificationController;
@@ -1061,6 +1062,23 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/prompt/{prompt}/preview', [PromptController::class, 'preview'])->name('prompt.preview');
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
+
+    Route::get('/funnel/list', [AutomationController::class, 'indexFunnels'])->name('funnel-list');
+    Route::get('/funnel/create', [AutomationController::class, 'createFunnel'])->name('funnel.create');
+    Route::get('/funnel/{automation}/edit', [AutomationController::class, 'edit'])->name('funnel.edit');
+    Route::get('/funnel/{automation}/flow', [AutomationController::class, 'flow'])->name('funnel.flow');
+    Route::post('/funnel/{automation}/flow', [AutomationController::class, 'saveFlow'])->name('funnel.flow.save');
+    Route::put('/funnel/{automation}', [AutomationController::class, 'update'])->name('funnel.update');
+    Route::delete('/funnel/{automation}', [AutomationController::class, 'destroy'])->name('funnel.destroy');
+    Route::get('/funnel/{automation}', [AutomationController::class, 'showFunnel'])->name('funnel.show');
+
+    Route::get('/automation/list', [AutomationController::class, 'indexActions'])->name('automation-list');
+    Route::get('/automation/create', [AutomationController::class, 'createAction'])->name('automation.create');
+    Route::post('/automation', [AutomationController::class, 'store'])->name('automation.store');
+    Route::get('/automation/{automation}/edit', [AutomationController::class, 'edit'])->name('automation.edit');
+    Route::get('/automation/{automation}', [AutomationController::class, 'show'])->name('automation.show');
+    Route::put('/automation/{automation}', [AutomationController::class, 'update'])->name('automation.update');
+    Route::delete('/automation/{automation}', [AutomationController::class, 'destroy'])->name('automation.destroy');
 
     // Software Management
     Route::get('/software', [SoftwareController::class, 'index'])->name('software.index');

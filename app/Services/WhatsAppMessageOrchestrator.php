@@ -1167,6 +1167,31 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     }
 
                     $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
+                    $flowAppendix = null;
+                    $flowSession = null;
+                    if ($assistantTeamId !== null)
+                    {
+                        $flowContext = app(\App\Services\AssistantAutomationRunner::class)->resolveFlowContext(
+                            (int) $assistantTeamId,
+                            \App\Models\Automation::CHANNEL_WHATSAPP,
+                            (string) $body,
+                            'wa:'.(string) $cleanFrom,
+                            null,
+                            null,
+                            $forcedFlowRoutingKey,
+                        );
+                        if (! empty($flowContext['completed']))
+                        {
+                            // Fall through with a short completion style via forced null and appendix
+                            $forcedFlowRoutingKey = null;
+                            $flowAppendix = __('El usuario completó el embudo conversacional. Agradecé brevemente y ofrecé ayuda adicional.');
+                        } else
+                        {
+                            $forcedFlowRoutingKey = $flowContext['prompt_key'] ?? $forcedFlowRoutingKey;
+                            $flowAppendix = $flowContext['appendix'] ?? null;
+                            $flowSession = $flowContext['session'] ?? null;
+                        }
+                    }
                     $replyResponse = $replyService->getReply(
                         $body,
                         $history,
@@ -1179,7 +1204,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         false,
                         \App\Services\Assistant\AssistantActorContextService::CHANNEL_WHATSAPP,
                         false,
+                        $flowAppendix,
                     );
+
+                    if ($flowSession !== null)
+                    {
+                        app(\App\Services\AssistantAutomationRunner::class)->markFlowAwaitingReply($flowSession);
+                    }
 
                     $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
 

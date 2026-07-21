@@ -80,6 +80,13 @@ class HumanoGuidePresentations
                 'description' => __('Resumen matutino con métricas, foco del día y respuestas sugeridas para WhatsApp y correo.'),
                 'icon' => 'chart-line',
             ],
+            [
+                'url' => GuidePresentation::url('embudos'),
+                'title' => __('Embudos'),
+                'subtitle' => __('Flujos conversacionales'),
+                'description' => __('Diseñá pasos, conectá salidas según la respuesta del usuario y dispará automatizaciones (cita, contacto, tarea…).'),
+                'icon' => 'filter',
+            ],
         ];
     }
 }

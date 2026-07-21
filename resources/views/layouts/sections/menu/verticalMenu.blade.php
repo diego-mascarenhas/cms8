@@ -41,42 +41,7 @@ $configData = Helper::appClasses();
 
     {{-- active menu method --}}
     @php
-    $activeClass = null;
-    $currentRouteName = Route::currentRouteName();
-
-    if ($currentRouteName === $menu->slug) {
-    $activeClass = 'active';
-    }
-    elseif (isset($menu->submenu)) {
-    if (gettype($menu->slug) === 'array') {
-    foreach($menu->slug as $slug){
-    if (str_contains($currentRouteName,$slug) and strpos($currentRouteName,$slug) === 0) {
-    $activeClass = 'active open';
-    }
-    }
-    }
-    else{
-    if (str_contains($currentRouteName,$menu->slug) and strpos($currentRouteName,$menu->slug) === 0) {
-    $activeClass = 'active open';
-    }
-    }
-    }
-    else {
-    // For items without submenu, check if route starts with slug
-    if (str_contains($currentRouteName,$menu->slug) and strpos($currentRouteName,$menu->slug) === 0) {
-    $activeClass = 'active';
-    }
-    }
-
-    // Disambiguate menu items that share a route but differ by query string (e.g. CMS post_type).
-    if ($activeClass !== null && isset($menu->active_query)) {
-    foreach ((array) $menu->active_query as $queryKey => $queryValue) {
-    if ((string) request()->query($queryKey) !== (string) $queryValue) {
-    $activeClass = null;
-    break;
-    }
-    }
-    }
+    $activeClass = \App\Helpers\MenuHelper::menuActiveClass($menu, Route::currentRouteName(), true);
     @endphp
 
     {{-- main menu --}}

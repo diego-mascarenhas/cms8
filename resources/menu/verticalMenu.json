@@ -234,16 +234,16 @@
     },
     {
       "url": "funnel/list",
-      "name": "Funnel",
+      "name": "Embudos",
       "icon": "menu-icon tf-icons ti ti-filter",
-      "slug": "funnel-list",
-      "module_key": "funnel"
+      "slug": "funnel",
+      "module_key": "automations"
     },
     {
       "url": "automation/list",
-      "name": "Automations",
+      "name": "Automatizaciones",
       "icon": "menu-icon tf-icons ti ti-robot",
-      "slug": "automation-list",
+      "slug": "automation",
       "module_key": "automations"
     },
     {

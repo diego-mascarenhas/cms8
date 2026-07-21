@@ -250,6 +250,13 @@ class ModuleSeeder extends Seeder
             'group' => 'automation',
             'order' => 1,
         ],
+        'automations' => [
+            'name' => 'Automations',
+            'icon' => 'robot',
+            'description' => 'Omnichannel assistant flows (prompts packaged for WhatsApp, chat, API and web embed).',
+            'group' => 'automation',
+            'order' => 4,
+        ],
         'ocr' => [
             'name' => 'OCR',
             'icon' => 'scan',

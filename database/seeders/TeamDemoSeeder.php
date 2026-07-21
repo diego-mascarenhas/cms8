@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Helpers\GrapesJsHelper;
+use App\Models\Automation;
 use App\Models\CalendarEvent;
 use App\Models\Category;
 use App\Models\Contact;
@@ -27,6 +28,7 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\User;
+use App\Services\AutomationFlowGraphSyncer;
 use App\Services\DemoDataService;
 use App\Services\Finance\FinancialProjectionHistoryGenerator;
 use App\Services\Finance\PaymentAccountCompatibilityService;
@@ -81,6 +83,9 @@ class TeamDemoSeeder extends Seeder
 
         // 6.1. Demo WhatsApp threads (chat list / mobile API) — fictitious line, see DemoWhatsAppConversationsSeeder
         $this->call(DemoWhatsAppConversationsSeeder::class);
+
+        // 6.2. Omnichannel assistant automations (prompts packaged for API / chat / WhatsApp)
+        $this->createDemoAutomations($team);
 
         // 7. Create demo message
         $this->createDemoMessage();
@@ -292,6 +297,632 @@ class TeamDemoSeeder extends Seeder
         ]);
 
         $this->command->info('✅ Created Demo categories');
+    }
+
+    /**
+     * Sample omnichannel automations for the Demo team (idempotent).
+     *
+     * Embudos = routing conversacional por canal.
+     * Acciones = bloques reutilizables (crear contacto, tarea, cita…) disparables
+     * desde un embudo o desde el canal de entrada directo.
+     */
+    private function createDemoAutomations(Team $team): void
+    {
+        $this->command?->info('🤖 Creating Demo automations...');
+
+        Module::firstOrCreate(
+            ['key' => 'automations'],
+            [
+                'name' => 'Automations',
+                'icon' => 'robot',
+                'description' => 'Omnichannel assistant flows',
+                'is_core' => false,
+                'group' => 'automation',
+                'order' => 4,
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('automations');
+
+        $definitions = [
+            // --- Embudos (routing por canal) ---
+            [
+                'name' => 'Soporte web (embed)',
+                'slug' => 'soporte-web',
+                'kind' => 'funnel',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => false,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => true,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Hola — soy el asistente demo. ¿En qué te ayudo?',
+                    'description' => 'Embudo de chat/embed: deriva a cita o contacto.',
+                ],
+            ],
+            [
+                'name' => 'Recepción WhatsApp',
+                'slug' => 'recepcion-whatsapp',
+                'kind' => 'funnel',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => false,
+                    'whatsapp' => true,
+                    'chat' => false,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => '¡Hola! ¿Querés agendar una cita, dejar tus datos o algo más?',
+                    'description' => 'Embudo de entrada por WhatsApp: contacto, cita o catálogo.',
+                ],
+            ],
+            [
+                'name' => 'Recepción email',
+                'slug' => 'recepcion-email',
+                'kind' => 'funnel',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => false,
+                    'whatsapp' => false,
+                    'chat' => false,
+                    'email' => true,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => null,
+                    'description' => 'Embudo de emails entrantes: crear contacto o tarea de seguimiento.',
+                ],
+            ],
+            [
+                'name' => 'Embudo de ventas',
+                'slug' => 'embudo-ventas',
+                'kind' => 'funnel',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => '¡Hola! ¿Te interesa conocer nuestros productos o agendar una demo?',
+                    'description' => 'Calificación comercial: interés → catálogo / contacto / seguimiento.',
+                ],
+            ],
+            [
+                'name' => 'Embudo de soporte',
+                'slug' => 'embudo-soporte',
+                'kind' => 'funnel',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => true,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Hola, soy soporte. Contame el problema o la consulta.',
+                    'description' => 'Soporte omnichannel: incidencia → tarea, consulta → contacto.',
+                ],
+            ],
+            [
+                'name' => 'Registro de citas',
+                'slug' => 'registro-citas',
+                'kind' => 'funnel',
+                'entry_prompt_key' => null,
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => true,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Vamos a reservar tu cita. Primero te registro y después elegimos día y hora.',
+                    'description' => 'Flujo de cita con registro previo (datos de contacto → agendar).',
+                ],
+            ],
+
+            // --- Acciones reutilizables ---
+            [
+                'name' => 'Registrar lead (ventas)',
+                'slug' => 'registrar-lead-ventas',
+                'kind' => 'action',
+                'entry_prompt_key' => 'contacts:assistant_contactos',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Voy a registrar tus datos como lead comercial.',
+                    'description' => 'Alta de lead/contacto en el embudo de ventas.',
+                ],
+            ],
+            [
+                'name' => 'Ticket de soporte',
+                'slug' => 'ticket-soporte',
+                'kind' => 'action',
+                'entry_prompt_key' => 'tasks:assistant_tareas',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => true,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Creo un ticket interno con tu consulta.',
+                    'description' => 'Crea una tarea de soporte a partir de la incidencia del usuario.',
+                ],
+            ],
+            [
+                'name' => 'Registrar para cita',
+                'slug' => 'registrar-para-cita',
+                'kind' => 'action',
+                'entry_prompt_key' => 'contacts:assistant_contactos',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => true,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Necesito nombre, teléfono o email para dejarte registrado.',
+                    'description' => 'Registro de contacto previo al agendado de la cita.',
+                ],
+            ],
+            [
+                'name' => 'Crear contacto (WhatsApp)',
+                'slug' => 'contacto-desde-whatsapp',
+                'kind' => 'action',
+                'entry_prompt_key' => 'contacts:assistant_contactos',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => false,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Perfecto. Voy a guardar tus datos como contacto.',
+                    'description' => 'Alta de contacto a partir de un mensaje de WhatsApp (nombre, teléfono, email).',
+                ],
+            ],
+            [
+                'name' => 'Crear contacto (Email)',
+                'slug' => 'contacto-desde-email',
+                'kind' => 'action',
+                'entry_prompt_key' => 'contacts:assistant_contactos',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => false,
+                    'chat' => false,
+                    'email' => true,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => null,
+                    'description' => 'Alta de contacto a partir de un email recibido (remitente, asunto, cuerpo).',
+                ],
+            ],
+            [
+                'name' => 'Contactos CRM',
+                'slug' => 'contactos-crm',
+                'kind' => 'action',
+                'entry_prompt_key' => 'contacts:assistant_contactos',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => true,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Puedo ayudarte con contactos y categorías del CRM.',
+                    'description' => 'Gestión general de contactos (asistente Humano, chat, WhatsApp, API).',
+                ],
+            ],
+            [
+                'name' => 'Crear tarea (Email)',
+                'slug' => 'tarea-desde-email',
+                'kind' => 'action',
+                'entry_prompt_key' => 'tasks:assistant_tareas',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => false,
+                    'chat' => false,
+                    'email' => true,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => null,
+                    'description' => 'Crea una tarea de seguimiento a partir del contenido de un email.',
+                ],
+            ],
+            [
+                'name' => 'Crear tarea (Humano)',
+                'slug' => 'tarea-desde-humano',
+                'kind' => 'action',
+                'entry_prompt_key' => 'tasks:assistant_tareas',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => false,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Decime el título y a quién asignarla.',
+                    'description' => 'Crear tareas desde el asistente interno o el chat web.',
+                ],
+            ],
+            [
+                'name' => 'Agendar cita (WhatsApp)',
+                'slug' => 'citas-whatsapp',
+                'kind' => 'action',
+                'entry_prompt_key' => 'calendar:assistant_citas',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => true,
+                    'chat' => true,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => '¿Qué día y horario te viene bien?',
+                    'description' => 'Agendar cita vía WhatsApp / chat usando el calendario del equipo.',
+                ],
+            ],
+            [
+                'name' => 'Agendar cita (Email)',
+                'slug' => 'cita-desde-email',
+                'kind' => 'action',
+                'entry_prompt_key' => 'calendar:assistant_citas',
+                'channels' => [
+                    'humano' => true,
+                    'whatsapp' => false,
+                    'chat' => false,
+                    'email' => true,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => null,
+                    'description' => 'Proponer o crear una cita a partir de un email de solicitud.',
+                ],
+            ],
+            [
+                'name' => 'Catálogo WhatsApp',
+                'slug' => 'catalogo-whatsapp',
+                'kind' => 'action',
+                'entry_prompt_key' => 'products:assistant_catalogo',
+                'channels' => [
+                    'humano' => false,
+                    'whatsapp' => true,
+                    'chat' => false,
+                    'email' => false,
+                    'api' => false,
+                ],
+                'settings' => [
+                    'welcome_message' => 'Te muestro el catálogo. ¿Buscás algo en particular?',
+                    'description' => 'Mostrar productos y carrito en el hilo de WhatsApp.',
+                ],
+            ],
+        ];
+
+        foreach ($definitions as $def)
+        {
+            $existing = Automation::withoutGlobalScope('team')
+                ->where('team_id', $team->id)
+                ->where('slug', $def['slug'])
+                ->first();
+
+            Automation::withoutGlobalScope('team')->updateOrCreate(
+                [
+                    'team_id' => $team->id,
+                    'slug' => $def['slug'],
+                ],
+                [
+                    'name' => $def['name'],
+                    'kind' => $def['kind'],
+                    'entry_prompt_key' => $def['entry_prompt_key'],
+                    'is_active' => true,
+                    'channels' => Automation::normalizeChannels($def['channels']),
+                    'settings' => $def['settings'],
+                    'public_token' => $existing?->public_token ?: bin2hex(random_bytes(32)),
+                ],
+            );
+        }
+
+        $bySlug = fn (string $slug) => Automation::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('slug', $slug)
+            ->first();
+
+        $this->command?->info('✅ Created Demo automations (embudos + acciones por canal)');
+
+        $this->seedDemoFunnelGraph(
+            $bySlug('soporte-web'),
+            instruction: 'Saludá y preguntá si necesita una cita, ayuda con un contacto o crear una tarea.',
+            outputs: [
+                ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'cita', 'label' => 'Cita', 'exit' => 'citas-whatsapp'],
+                ['id' => 'output_2', 'reply_type' => 'choice', 'match_value' => 'contacto', 'label' => 'Contacto', 'exit' => 'contactos-crm'],
+                ['id' => 'output_3', 'reply_type' => 'choice', 'match_value' => 'tarea', 'label' => 'Tarea', 'exit' => 'tarea-desde-humano'],
+                ['id' => 'output_4', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra', 'exit' => null],
+            ],
+            resolveExit: $bySlug,
+        );
+
+        $this->seedDemoFunnelGraph(
+            $bySlug('recepcion-whatsapp'),
+            instruction: 'Sos la recepción por WhatsApp. Preguntá si quiere dejar datos de contacto, agendar una cita o ver el catálogo.',
+            outputs: [
+                ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'contacto', 'label' => 'Contacto', 'exit' => 'contacto-desde-whatsapp'],
+                ['id' => 'output_2', 'reply_type' => 'choice', 'match_value' => 'cita', 'label' => 'Cita', 'exit' => 'citas-whatsapp'],
+                ['id' => 'output_3', 'reply_type' => 'choice', 'match_value' => 'catalogo', 'label' => 'Catálogo', 'exit' => 'catalogo-whatsapp'],
+                ['id' => 'output_4', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra', 'exit' => null],
+            ],
+            resolveExit: $bySlug,
+        );
+
+        $this->seedDemoFunnelGraph(
+            $bySlug('recepcion-email'),
+            instruction: 'Analizá el email entrante. Si es un lead nuevo, derivá a crear contacto. Si pide seguimiento interno, derivá a crear tarea. Si pide reunión, derivá a cita.',
+            outputs: [
+                ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'contacto', 'label' => 'Contacto', 'exit' => 'contacto-desde-email'],
+                ['id' => 'output_2', 'reply_type' => 'choice', 'match_value' => 'tarea', 'label' => 'Tarea', 'exit' => 'tarea-desde-email'],
+                ['id' => 'output_3', 'reply_type' => 'choice', 'match_value' => 'cita', 'label' => 'Cita', 'exit' => 'cita-desde-email'],
+                ['id' => 'output_4', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra', 'exit' => null],
+            ],
+            resolveExit: $bySlug,
+        );
+
+        $this->seedDemoFunnelGraph(
+            $bySlug('embudo-ventas'),
+            instruction: 'Sos el asistente comercial. Calificá el interés: si quiere ver productos, catálogo; si quiere comprar o dejar datos, registrar lead; si pide demo/reunión, cita; si no interesa ahora, crear tarea de seguimiento.',
+            outputs: [
+                ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'catalogo', 'label' => 'Catálogo', 'exit' => 'catalogo-whatsapp'],
+                ['id' => 'output_2', 'reply_type' => 'choice', 'match_value' => 'lead', 'label' => 'Registrar lead', 'exit' => 'registrar-lead-ventas'],
+                ['id' => 'output_3', 'reply_type' => 'choice', 'match_value' => 'demo', 'label' => 'Demo / cita', 'exit' => 'citas-whatsapp'],
+                ['id' => 'output_4', 'reply_type' => 'choice', 'match_value' => 'seguimiento', 'label' => 'Seguimiento', 'exit' => 'tarea-desde-humano'],
+                ['id' => 'output_5', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra', 'exit' => null],
+            ],
+            resolveExit: $bySlug,
+        );
+
+        $this->seedDemoFunnelGraph(
+            $bySlug('embudo-soporte'),
+            instruction: 'Sos soporte. Clasificá: incidencia/bug → ticket; consulta comercial o datos → contacto; si pide hablar con alguien urgente → tarea de seguimiento.',
+            outputs: [
+                ['id' => 'output_1', 'reply_type' => 'choice', 'match_value' => 'incidencia', 'label' => 'Incidencia', 'exit' => 'ticket-soporte'],
+                ['id' => 'output_2', 'reply_type' => 'choice', 'match_value' => 'consulta', 'label' => 'Consulta', 'exit' => 'contactos-crm'],
+                ['id' => 'output_3', 'reply_type' => 'choice', 'match_value' => 'urgente', 'label' => 'Urgente', 'exit' => 'ticket-soporte'],
+                ['id' => 'output_4', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra', 'exit' => null],
+            ],
+            resolveExit: $bySlug,
+        );
+
+        $this->seedDemoRegistroCitasFunnel($bySlug('registro-citas'), $bySlug);
+    }
+
+    /**
+     * @param  list<array{id: string, reply_type: string, match_value: ?string, label: string, exit: ?string}>  $outputs
+     * @param  callable(string): (?Automation)  $resolveExit
+     */
+    private function seedDemoFunnelGraph(?Automation $funnel, string $instruction, array $outputs, callable $resolveExit): void
+    {
+        if (! $funnel)
+        {
+            return;
+        }
+
+        $mappedOutputs = [];
+        $edges = [];
+        foreach ($outputs as $output)
+        {
+            $exitAutomation = $output['exit'] ? $resolveExit($output['exit']) : null;
+            $mappedOutputs[] = [
+                'id' => $output['id'],
+                'reply_type' => $output['reply_type'],
+                'match_value' => $output['match_value'],
+                'label' => $output['label'],
+                'to_automation_id' => $exitAutomation?->id,
+            ];
+
+            if ($exitAutomation)
+            {
+                $edges[] = [
+                    'from_client_id' => '1',
+                    'from_output' => $output['id'],
+                    'to_client_id' => null,
+                    'to_automation_id' => $exitAutomation->id,
+                ];
+            } else
+            {
+                $edges[] = [
+                    'from_client_id' => '1',
+                    'from_output' => $output['id'],
+                    'to_client_id' => '2',
+                ];
+            }
+        }
+
+        app(AutomationFlowGraphSyncer::class)->sync($funnel, [
+            'nodes' => [
+                [
+                    'client_id' => '1',
+                    'key' => 'inicio',
+                    'label' => 'Inicio',
+                    'prompt_key' => null,
+                    'instruction' => $instruction,
+                    'is_entry' => true,
+                    'position_x' => 80,
+                    'position_y' => 120,
+                    'outputs' => $mappedOutputs,
+                ],
+                [
+                    'client_id' => '2',
+                    'key' => 'cierre',
+                    'label' => 'Cierre',
+                    'prompt_key' => null,
+                    'instruction' => 'Agradecé y cerrá el flujo de forma breve.',
+                    'is_entry' => false,
+                    'position_x' => 520,
+                    'position_y' => 120,
+                    'outputs' => [],
+                ],
+            ],
+            'edges' => $edges,
+        ]);
+
+        $this->command?->info("✅ Demo funnel graph seeded on {$funnel->slug}");
+    }
+
+    /**
+     * Multi-step appointment funnel: confirm → register contact data → book slot.
+     *
+     * @param  callable(string): (?Automation)  $resolveExit
+     */
+    private function seedDemoRegistroCitasFunnel(?Automation $funnel, callable $resolveExit): void
+    {
+        if (! $funnel)
+        {
+            return;
+        }
+
+        $agendar = $resolveExit('citas-whatsapp');
+
+        app(AutomationFlowGraphSyncer::class)->sync($funnel, [
+            'nodes' => [
+                [
+                    'client_id' => '1',
+                    'key' => 'inicio',
+                    'label' => '¿Reservar cita?',
+                    'prompt_key' => null,
+                    'instruction' => 'Preguntá si quiere reservar una cita. Si dice que sí, pasamos al registro de datos. Si no, cerrá amablemente.',
+                    'is_entry' => true,
+                    'position_x' => 60,
+                    'position_y' => 140,
+                    'outputs' => [
+                        ['id' => 'output_1', 'reply_type' => 'yes_no', 'match_value' => 'yes', 'label' => 'Sí', 'to_automation_id' => null],
+                        ['id' => 'output_2', 'reply_type' => 'yes_no', 'match_value' => 'no', 'label' => 'No', 'to_automation_id' => null],
+                        ['id' => 'output_3', 'reply_type' => 'fallback', 'match_value' => null, 'label' => 'Otra', 'to_automation_id' => null],
+                    ],
+                ],
+                [
+                    'client_id' => '2',
+                    'key' => 'registro',
+                    'label' => 'Registro',
+                    'prompt_key' => 'contacts:assistant_contactos',
+                    'instruction' => 'Pedí y guardá nombre, teléfono y/o email como contacto del CRM antes de agendar. Cuando tengas los datos mínimos, pedí confirmación para pasar a elegir horario.',
+                    'is_entry' => false,
+                    'position_x' => 360,
+                    'position_y' => 60,
+                    'outputs' => [
+                        [
+                            'id' => 'output_1',
+                            'reply_type' => 'yes_no',
+                            'match_value' => 'yes',
+                            'label' => 'Datos OK → agendar',
+                            'to_automation_id' => null,
+                        ],
+                        [
+                            'id' => 'output_2',
+                            'reply_type' => 'email',
+                            'match_value' => null,
+                            'label' => 'Email',
+                            'to_automation_id' => null,
+                        ],
+                        [
+                            'id' => 'output_3',
+                            'reply_type' => 'phone',
+                            'match_value' => null,
+                            'label' => 'Teléfono',
+                            'to_automation_id' => null,
+                        ],
+                        [
+                            'id' => 'output_4',
+                            'reply_type' => 'free_text',
+                            'match_value' => null,
+                            'label' => 'Nombre / datos',
+                            'to_automation_id' => null,
+                        ],
+                    ],
+                ],
+                [
+                    'client_id' => '3',
+                    'key' => 'agendar',
+                    'label' => 'Elegir horario',
+                    'prompt_key' => 'calendar:assistant_citas',
+                    'instruction' => 'Con el contacto ya registrado, ofrecé disponibilidad y creá el evento en el calendario del equipo. Cuando confirme la cita, cerrá el flujo.',
+                    'is_entry' => false,
+                    'position_x' => 680,
+                    'position_y' => 60,
+                    'outputs' => [
+                        [
+                            'id' => 'output_1',
+                            'reply_type' => 'yes_no',
+                            'match_value' => 'yes',
+                            'label' => 'Cita confirmada',
+                            'to_automation_id' => $agendar?->id,
+                        ],
+                        [
+                            'id' => 'output_2',
+                            'reply_type' => 'date',
+                            'match_value' => null,
+                            'label' => 'Fecha',
+                            'to_automation_id' => null,
+                        ],
+                        [
+                            'id' => 'output_3',
+                            'reply_type' => 'fallback',
+                            'match_value' => null,
+                            'label' => 'Otra',
+                            'to_automation_id' => null,
+                        ],
+                    ],
+                ],
+                [
+                    'client_id' => '4',
+                    'key' => 'cierre',
+                    'label' => 'Cierre',
+                    'prompt_key' => null,
+                    'instruction' => 'Agradecé y confirmá el cierre del flujo en una frase breve.',
+                    'is_entry' => false,
+                    'position_x' => 360,
+                    'position_y' => 260,
+                    'outputs' => [],
+                ],
+            ],
+            'edges' => [
+                ['from_client_id' => '1', 'from_output' => 'output_1', 'to_client_id' => '2'],
+                ['from_client_id' => '1', 'from_output' => 'output_2', 'to_client_id' => '4'],
+                ['from_client_id' => '1', 'from_output' => 'output_3', 'to_client_id' => '4'],
+                ['from_client_id' => '2', 'from_output' => 'output_1', 'to_client_id' => '3'],
+                ['from_client_id' => '2', 'from_output' => 'output_2', 'to_client_id' => '2'],
+                ['from_client_id' => '2', 'from_output' => 'output_3', 'to_client_id' => '2'],
+                ['from_client_id' => '2', 'from_output' => 'output_4', 'to_client_id' => '2'],
+                [
+                    'from_client_id' => '3',
+                    'from_output' => 'output_1',
+                    'to_client_id' => '4',
+                    'to_automation_id' => $agendar?->id,
+                ],
+                ['from_client_id' => '3', 'from_output' => 'output_2', 'to_client_id' => '3'],
+                ['from_client_id' => '3', 'from_output' => 'output_3', 'to_client_id' => '4'],
+            ],
+        ]);
+
+        $this->command?->info('✅ Demo funnel graph seeded on registro-citas (¿reservar? → registro → agendar)');
     }
 
     private function createDemoTaskCategories(): void

@@ -24,12 +24,6 @@ class ModifyMenuBasedOnRole
 
         if ($user)
         {
-            // Skip menu processing for AJAX/Livewire requests (performance optimization)
-            if ($request->ajax() || $request->header('X-Livewire'))
-            {
-                return $next($request);
-            }
-
             // Eager load user relationships to avoid N+1 queries
             $relationsToLoad = [];
 
@@ -54,15 +48,28 @@ class ModifyMenuBasedOnRole
                 $user->load($relationsToLoad);
             }
 
-            // Resolve team safely; if user has no current team, try first attached team
+            // Resolve team safely; if user has no current team, switch to first available.
+            // Important: forceFill alone leaves a cached null currentTeam relation and causes
+            // 500s on the same request (e.g. autologin → dashboard.collaborator).
             $team = $user->currentTeam;
             if (! $team)
             {
-                $team = $user->teams()->first();
-                if ($team && (int) ($user->current_team_id ?? 0) !== (int) $team->id)
+                $team = $user->teams->first() ?? $user->ownedTeams()->first();
+                if ($team)
                 {
-                    $user->forceFill(['current_team_id' => $team->id])->save();
+                    $user->switchTeam($team);
                 }
+            }
+
+            if (! $team && ! $this->allowsRequestsWithoutTeam($request))
+            {
+                return redirect()->route('error-without-team');
+            }
+
+            // Skip menu processing for AJAX/Livewire requests (performance optimization)
+            if ($request->ajax() || $request->header('X-Livewire'))
+            {
+                return $next($request);
             }
 
             // Eager load modules to avoid N+1 queries when checking hasModule()
@@ -168,5 +175,23 @@ class ModifyMenuBasedOnRole
         }
 
         return $next($request);
+    }
+
+    /**
+     * Routes that must remain reachable while the user has no resolvable team.
+     */
+    private function allowsRequestsWithoutTeam(Request $request): bool
+    {
+        if (str_starts_with($request->path(), 'livewire'))
+        {
+            return true;
+        }
+
+        return $request->routeIs([
+            'error-without-team',
+            'logout',
+            'teams.create',
+            'teams.invitations.confirm',
+        ]);
     }
 }

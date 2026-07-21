@@ -251,6 +251,23 @@ class AuthController extends Controller
             // Log the user in using the session guard
             auth()->login($user, true);
 
+            // Ensure a current team is bound before the dashboard request.
+            // Users with null current_team_id otherwise hit 500 on dashboard.collaborator
+            // until a later request reloads the user from the database.
+            if (! $user->currentTeam)
+            {
+                $team = $user->allTeams()->first();
+                if ($team)
+                {
+                    $user->switchTeam($team);
+                }
+            }
+
+            if (! $user->currentTeam)
+            {
+                return redirect()->route('error-without-team');
+            }
+
             // Redirect to the appropriate dashboard based on user role
             if ($user->hasRole('admin'))
             {
