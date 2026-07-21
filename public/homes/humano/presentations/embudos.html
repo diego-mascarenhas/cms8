@@ -440,13 +440,17 @@
     scrollChat();
   }
 
-  function setNode(n, state) {
+  function setNode(n) {
     slide.querySelectorAll('.pres-node').forEach((node) => {
       const id = Number(node.dataset.node);
-      node.classList.remove('is-on', 'is-done');
-      if (id < n) node.classList.add('is-done');
-      if (id === n) node.classList.add(state === 'done' ? 'is-done' : 'is-on');
+      node.classList.toggle('is-on', id === n);
+      node.classList.remove('is-done');
     });
+    slide.querySelectorAll('.pres-arrow').forEach((a) => a.classList.remove('is-on'));
+    if (n > 1) {
+      const prev = slide.querySelector('[data-arrow="' + (n - 1) + '"]');
+      if (prev) prev.classList.add('is-on');
+    }
     scrollNodeIntoView(n);
   }
 
@@ -454,65 +458,57 @@
     if (played) return;
     played = true;
     resetDemo();
-    setNode(1, 'on');
 
-    // Cliente inicia — ritmo más pausado; más espera al chequear disponibilidad
-    later(700, () => showMsg(0));
+    // Cliente inicia — ritmo ~×2 para presentación
     later(1400, () => {
+      showMsg(0);
+      setNode(1);
       const hit = slide.querySelector('[data-hit="nlp"]');
       if (hit) hit.classList.add('is-hit');
     });
-    later(2200, () => showTyping(true));
-    later(3800, () => {
+    later(4400, () => showTyping(true));
+    later(7600, () => {
       showTyping(false);
       showMsg(1);
     });
-    later(4800, () => {
-      const a1 = slide.querySelector('[data-arrow="1"]');
-      if (a1) a1.classList.add('is-on');
-      setNode(2, 'on');
-    });
-    later(6000, () => showMsg(2));
-    later(6800, () => {
+    later(9600, () => setNode(2));
+    later(12000, () => showMsg(2));
+    later(13600, () => {
       const chip = slide.querySelector('[data-chip="lead"]');
       if (chip) chip.classList.add('is-on');
       const lead = slide.querySelector('.st-lead');
       if (lead) lead.classList.add('is-on');
     });
-    later(7600, () => showTyping(true));
-    later(9400, () => {
+    later(15200, () => showTyping(true));
+    later(18800, () => {
       showTyping(false);
       showMsg(3);
-      const a2 = slide.querySelector('[data-arrow="2"]');
-      if (a2) a2.classList.add('is-on');
-      setNode(3, 'on');
+      setNode(3);
     });
-    later(11200, () => showMsg(4));
+    later(22400, () => showMsg(4));
     // Busca disponibilidad: typing más largo
-    later(12200, () => showTyping(true));
-    later(16000, () => {
+    later(24400, () => showTyping(true));
+    later(32000, () => {
       showTyping(false);
       showMsg(5);
       const busy = slide.querySelector('[data-hit="busy"]');
       if (busy) busy.classList.add('is-busy');
-      const a3 = slide.querySelector('[data-arrow="3"]');
-      if (a3) a3.classList.add('is-on');
     });
-    later(17600, () => {
-      setNode(4, 'on');
+    later(35200, () => {
+      setNode(4);
       showMsg(6);
     });
-    later(19200, () => showTyping(true));
-    later(21000, () => {
+    later(38400, () => showTyping(true));
+    later(42000, () => {
       showTyping(false);
       showMsg(7);
     });
-    later(22600, () => showMsg(8));
-    later(23800, () => showTyping(true));
-    later(25600, () => {
+    later(45200, () => showMsg(8));
+    later(47600, () => showTyping(true));
+    later(51200, () => {
       showTyping(false);
       showMsg(9);
-      setNode(4, 'done');
+      setNode(4);
       ['cal', 'conv'].forEach((key) => {
         const chip = slide.querySelector('[data-chip="' + key + '"]');
         if (chip) chip.classList.add('is-on');
