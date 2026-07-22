@@ -248,7 +248,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $storedValue, [
                         'group' => $group,
                         'type' => $type,
-                        'is_encrypted' => in_array($key, array_merge(['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json'], \App\Support\AdPlatformCredentials::ENCRYPTED_KEYS)),
+                        'is_encrypted' => in_array($key, array_merge(['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'mercadopago_access_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json'], \App\Support\AdPlatformCredentials::ENCRYPTED_KEYS)),
                     ]);
                 }
             }
@@ -607,6 +607,26 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('cuentica_inbound_sync_enabled', '1'),
                         'is_encrypted' => false,
                         'help' => 'Importa facturas de venta (/invoice) y compra (/expense) desde Cuéntica al sistema local de forma continua (como Stripe).',
+                    ],
+                ],
+            ],
+            'mercadopago' => [
+                'title' => 'Mercado Pago',
+                'icon' => 'ti ti-wallet',
+                'settings' => [
+                    'mercadopago_access_token' => [
+                        'label' => 'Access Token',
+                        'type' => 'password',
+                        'value' => $team->getSetting('mercadopago_access_token'),
+                        'is_encrypted' => true,
+                        'help' => 'Access Token de producción o prueba (APP_USR-…). Se usa para sincronizar pagos a payment_syncs.',
+                    ],
+                    'mercadopago_public_key' => [
+                        'label' => 'Public Key',
+                        'type' => 'text',
+                        'value' => $team->getSetting('mercadopago_public_key'),
+                        'is_encrypted' => false,
+                        'help' => 'Opcional. Clave pública del panel de desarrolladores de Mercado Pago.',
                     ],
                 ],
             ],
