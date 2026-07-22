@@ -934,6 +934,7 @@ Route::middleware(['auth'])->group(function ()
     // Expense module
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');
     Route::get('/expense/export-hacienda', [ExpenseController::class, 'exportHacienda'])->name('expense.export-hacienda');
+    Route::get('/expense/export-credit-notes', [ExpenseController::class, 'exportCreditNotes'])->name('expense.export-credit-notes');
     Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
     Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
     Route::post('/expense/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('expense.check-document-duplicate');

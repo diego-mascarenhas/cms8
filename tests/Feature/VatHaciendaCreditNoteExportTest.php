@@ -170,4 +170,78 @@ class VatHaciendaCreditNoteExportTest extends TestCase
         $this->assertStringContainsString('21,00', $csv);
         $this->assertStringContainsString('121,00', $csv);
     }
+
+    public function test_expense_page_shows_export_dropdown_with_credit_notes(): void
+    {
+        $this->get(route('expense.index', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))
+            ->assertOk()
+            ->assertSee('expenseExportDropdown', false)
+            ->assertSee('/expense/export-hacienda', false)
+            ->assertSee('/expense/export-credit-notes', false)
+            ->assertSee(__('Credit notes'), false);
+    }
+
+    public function test_expense_credit_notes_export_only_includes_buy_credit_notes(): void
+    {
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'EXP-001',
+            'date' => '2024-05-05',
+            'gross_amount' => 50,
+            'total_amount' => 60.5,
+            'balance' => 0,
+            'status' => 2,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'manual',
+        ]);
+
+        $abono = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 2,
+            'operation' => 'buy',
+            'number' => 'EXP-CN-001',
+            'date' => '2024-05-12',
+            'gross_amount' => 50,
+            'total_amount' => 60.5,
+            'balance' => 0,
+            'status' => 4,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'manual',
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $abono->id,
+            'description' => 'Abono gasto',
+            'quantity' => 1,
+            'unit_price' => 50,
+            'discount' => 0,
+            'tax_percentage' => 21,
+        ]);
+
+        $haciendaCsv = $this->get(route('expense.export-hacienda', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))->streamedContent();
+
+        $this->assertStringContainsString('EXP-001', $haciendaCsv);
+        $this->assertStringNotContainsString('EXP-CN-001', $haciendaCsv);
+
+        $creditNotesCsv = $this->get(route('expense.export-credit-notes', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))->streamedContent();
+
+        $this->assertStringContainsString('EXP-CN-001', $creditNotesCsv);
+        $this->assertStringNotContainsString('EXP-001', $creditNotesCsv);
+        $this->assertStringContainsString('-50,00', $creditNotesCsv);
+        $this->assertStringContainsString('-10,50', $creditNotesCsv);
+        $this->assertStringContainsString('-60,50', $creditNotesCsv);
+    }
 }
