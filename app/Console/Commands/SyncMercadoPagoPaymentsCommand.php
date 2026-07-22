@@ -181,36 +181,50 @@ class SyncMercadoPagoPaymentsCommand extends Command
     }
 
     /**
+     * Mercado Pago expects begin_date/end_date as NOW-XDAYS / NOW, or
+     * absolute dates as yyyy-MM-dd'T'HH:mm:ss.SSSZ (not Carbon's default ISO8601).
+     *
      * @return array{0: string, 1: string}
      */
     private function resolveDateRange(mixed $from, mixed $to, int $recentDays): array
     {
-        $end = now()->endOfDay();
-        $begin = now()->subDays($recentDays)->startOfDay();
+        $hasFrom = is_string($from) && trim($from) !== '';
+        $hasTo = is_string($to) && trim($to) !== '';
 
-        if (is_string($from) && trim($from) !== '')
+        if (! $hasFrom && ! $hasTo)
+        {
+            return [
+                'NOW-'.$recentDays.'DAYS',
+                'NOW',
+            ];
+        }
+
+        $end = now()->utc()->endOfDay();
+        $begin = now()->utc()->subDays($recentDays)->startOfDay();
+
+        if ($hasFrom)
         {
             try
             {
-                $begin = Carbon::parse($from)->startOfDay();
+                $begin = Carbon::parse($from)->utc()->startOfDay();
             } catch (\Throwable)
             {
             }
         }
 
-        if (is_string($to) && trim($to) !== '')
+        if ($hasTo)
         {
             try
             {
-                $end = Carbon::parse($to)->endOfDay();
+                $end = Carbon::parse($to)->utc()->endOfDay();
             } catch (\Throwable)
             {
             }
         }
 
         return [
-            $begin->toIso8601String(),
-            $end->toIso8601String(),
+            $begin->format('Y-m-d\TH:i:s.000\Z'),
+            $end->format('Y-m-d\TH:i:s.000\Z'),
         ];
     }
 }

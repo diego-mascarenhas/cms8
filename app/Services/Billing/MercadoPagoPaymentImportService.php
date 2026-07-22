@@ -117,7 +117,7 @@ class MercadoPagoPaymentImportService
         $account = PaymentAccount::withoutGlobalScopes()->firstOrCreate(
             [
                 'team_id' => $teamId,
-                'code' => 'mercadopago',
+                'code' => 'mp',
             ],
             [
                 'name' => 'Mercado Pago',

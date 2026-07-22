@@ -614,19 +614,24 @@ class TeamSettingController extends Controller
                 'title' => 'Mercado Pago',
                 'icon' => 'ti ti-wallet',
                 'settings' => [
-                    'mercadopago_access_token' => [
-                        'label' => 'Access Token',
-                        'type' => 'password',
-                        'value' => $team->getSetting('mercadopago_access_token'),
-                        'is_encrypted' => true,
-                        'help' => 'Access Token de producción o prueba (APP_USR-…). Se usa para sincronizar pagos a payment_syncs.',
-                    ],
+                    // Same order as Mercado Pago Credenciales: Public Key, then Access Token.
                     'mercadopago_public_key' => [
                         'label' => 'Public Key',
                         'type' => 'text',
                         'value' => $team->getSetting('mercadopago_public_key'),
                         'is_encrypted' => false,
-                        'help' => 'Opcional. Clave pública del panel de desarrolladores de Mercado Pago.',
+                        'help' => 'Opcional. Misma pantalla de credenciales (arriba en el panel de MP). No uses esta clave para sincronizar pagos.',
+                    ],
+                    'mercadopago_access_token' => [
+                        'label' => 'Access Token',
+                        'type' => 'password',
+                        // Do not prefill secrets: avoids confusing Public Key / Client Secret with the real token.
+                        'value' => '',
+                        'is_encrypted' => true,
+                        'placeholder' => $team->getSetting('mercadopago_access_token')
+                            ? '•••••••• (guardado — pega uno nuevo para reemplazar)'
+                            : 'APP_USR-…',
+                        'help' => 'Obligatorio para sincronizar. En Credenciales de producción es el segundo campo (debajo de Public Key). No uses Client ID ni Client Secret. Déjalo vacío para no cambiar el valor guardado.',
                     ],
                 ],
             ],
@@ -2283,6 +2288,82 @@ class TeamSettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Error inesperado al conectar con Cuéntica: '.$exception->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Test Mercado Pago connection using the team access token.
+     */
+    public function testMercadoPagoConnection(Team $team): JsonResponse
+    {
+        $this->authorize('update', $team);
+
+        $token = trim((string) $team->getSetting('mercadopago_access_token'));
+        if ($token === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Falta el Access Token de Mercado Pago. Configúralo en los ajustes y vuelve a probar.',
+            ]);
+        }
+
+        // UUID-shaped APP_USR-… values are Public Key (or Client Secret), not Access Tokens.
+        if (preg_match('/^APP_USR-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $token))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'El valor guardado parece la Public Key (formato UUID), no el Access Token. '
+                    .'En Credenciales de producción copia el Access Token (segundo campo, debajo de Public Key) '
+                    .'y guárdalo antes de probar.',
+            ]);
+        }
+
+        if (! preg_match('/^APP_USR-\d{10,}-\d{6}-[a-f0-9]{32}-\d+$/i', $token)
+            && ! preg_match('/^TEST-\d{10,}-\d{6}-[a-f0-9]{32}-\d+$/i', $token))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'El Access Token no tiene el formato esperado de Mercado Pago '
+                    .'(APP_USR-… o TEST-… con segmentos numéricos/hex largos). '
+                    .'Revisa que hayas copiado el Access Token completo desde Credenciales.',
+            ]);
+        }
+
+        try
+        {
+            $response = \Illuminate\Support\Facades\Http::withToken($token)
+                ->acceptJson()
+                ->timeout(15)
+                ->get('https://api.mercadopago.com/users/me');
+
+            if (! $response->successful())
+            {
+                $detail = trim((string) ($response->json('message') ?? $response->body()));
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error de conexión con Mercado Pago (HTTP '.$response->status().')'
+                        .($detail !== '' ? ': '.$detail : '.'),
+                ]);
+            }
+
+            $payload = $response->json();
+            $nickname = is_array($payload)
+                ? ($payload['nickname'] ?? $payload['email'] ?? $payload['id'] ?? 'cuenta')
+                : 'cuenta';
+            $siteId = is_array($payload) ? ($payload['site_id'] ?? null) : null;
+            $suffix = $siteId ? " · Sitio: {$siteId}" : '';
+
+            return response()->json([
+                'success' => true,
+                'message' => "Conexión con Mercado Pago correcta. Usuario: {$nickname}{$suffix}",
+            ]);
+        } catch (\Throwable $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error inesperado al conectar con Mercado Pago: '.$exception->getMessage(),
             ]);
         }
     }

@@ -67,6 +67,15 @@ class MercadoPagoPaymentSyncCommandTest extends TestCase
             '--limit' => 10,
         ])->assertSuccessful();
 
+        Http::assertSent(function ($request)
+        {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return str_contains($request->url(), 'api.mercadopago.com/v1/payments/search')
+                && ($query['begin_date'] ?? null) === 'NOW-90DAYS'
+                && ($query['end_date'] ?? null) === 'NOW';
+        });
+
         $sync = PaymentSync::query()
             ->where('team_id', $team->id)
             ->where('provider', 'mercadopago')
@@ -76,6 +85,37 @@ class MercadoPagoPaymentSyncCommandTest extends TestCase
         $this->assertNotNull($sync);
         $this->assertSame('approved', $sync->status);
         $this->assertSame(250000, (int) $sync->amount_cents);
+    }
+
+    public function test_sync_command_formats_absolute_dates_for_mercadopago(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('mercadopago_access_token', 'APP_USR-test-token', [
+            'group' => 'mercadopago',
+            'type' => 'password',
+            'is_encrypted' => true,
+        ]);
+
+        Http::fake([
+            'api.mercadopago.com/v1/payments/search*' => Http::response([
+                'paging' => ['total' => 0, 'limit' => 50, 'offset' => 0],
+                'results' => [],
+            ], 200),
+        ]);
+
+        $this->artisan('mercadopago:sync-payments', [
+            '--team_id' => $team->id,
+            '--from' => '2026-01-01',
+            '--to' => '2026-01-31',
+        ])->assertSuccessful();
+
+        Http::assertSent(function ($request)
+        {
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['begin_date'] ?? null) === '2026-01-01T00:00:00.000Z'
+                && ($query['end_date'] ?? null) === '2026-01-31T23:59:59.000Z';
+        });
     }
 
     public function test_import_command_creates_payment_from_sync(): void
@@ -131,6 +171,69 @@ class MercadoPagoPaymentSyncCommandTest extends TestCase
         $this->actingAs($user)
             ->get(route('team-settings.edit', ['team' => $team, 'group' => 'mercadopago']))
             ->assertOk()
-            ->assertSee('mercadopago_access_token', false);
+            ->assertSee('mercadopago_access_token', false)
+            ->assertSee('btnTestMercadoPago', false)
+            ->assertSee('https://www.mercadopago.com.ar/developers/panel/app', false);
+    }
+
+    public function test_mercadopago_connection_test_succeeds_with_valid_token(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting(
+            'mercadopago_access_token',
+            'APP_USR-1234567890123456-010101-abcdef0123456789abcdef0123456789-123456789',
+            [
+                'group' => 'mercadopago',
+                'type' => 'password',
+                'is_encrypted' => true,
+            ],
+        );
+
+        Http::fake([
+            'api.mercadopago.com/users/me' => Http::response([
+                'id' => 123,
+                'nickname' => 'TESTUSER',
+                'email' => 'test@example.com',
+                'site_id' => 'MLA',
+            ], 200),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('team-settings.test-mercadopago', $team))
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+            ])
+            ->assertJsonFragment(['message' => 'Conexión con Mercado Pago correcta. Usuario: TESTUSER · Sitio: MLA']);
+    }
+
+    public function test_mercadopago_connection_test_rejects_uuid_shaped_token(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting(
+            'mercadopago_access_token',
+            'APP_USR-b44108b5-85f7-4848-b3bd-c25c9dbc807e',
+            [
+                'group' => 'mercadopago',
+                'type' => 'password',
+                'is_encrypted' => true,
+            ],
+        );
+
+        Http::fake();
+
+        $this->actingAs($user)
+            ->postJson(route('team-settings.test-mercadopago', $team))
+            ->assertOk()
+            ->assertJson([
+                'success' => false,
+            ])
+            ->assertJsonFragment(['message' => 'El valor guardado parece la Public Key (formato UUID), no el Access Token. En Credenciales de producción copia el Access Token (segundo campo, debajo de Public Key) y guárdalo antes de probar.']);
+
+        Http::assertNothingSent();
     }
 }

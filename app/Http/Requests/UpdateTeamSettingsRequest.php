@@ -33,8 +33,8 @@ class UpdateTeamSettingsRequest extends FormRequest
             'cuentica.cuentica_inbound_sync_enabled' => 'nullable|boolean',
 
             // Mercado Pago credentials
-            'mercadopago.mercadopago_access_token' => 'nullable|string|max:255',
-            'mercadopago.mercadopago_public_key' => 'nullable|string|max:255',
+            'mercadopago.mercadopago_access_token' => 'nullable|string|max:500',
+            'mercadopago.mercadopago_public_key' => 'nullable|string|max:500',
 
             // Categories settings
             'categories.categories_default_status' => 'nullable|string|in:active,inactive',
