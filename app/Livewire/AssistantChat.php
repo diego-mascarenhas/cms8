@@ -2,18 +2,21 @@
 
 namespace App\Livewire;
 
+use App\Models\Automation;
 use App\Models\TaskStatus;
 use App\Models\Team;
 use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\Assistant\AssistantInboundContactCreationService;
 use App\Services\Assistant\AssistantInboundTaskStatusService;
+use App\Services\AssistantAutomationRunner;
 use App\Services\AssistantChatService;
 use App\Services\ChatAssistantReplyService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
 use Livewire\Component;
@@ -49,18 +52,27 @@ class AssistantChat extends Component
     /** When true (e.g. layout FAB panel), the card toolbar (flow title, voice toggle, new chat) is omitted. */
     public bool $hideHeader = false;
 
+    /**
+     * Active funnel/action automation for the Humano assistant channel.
+     * Set by typing the slug, the Probar embudo button, or startAutomation event.
+     */
+    public ?int $automationId = null;
+
     protected $listeners = [
         'assistant-reset-context' => 'clearChat',
         'finance-assistant-prefill' => 'prefillInput',
+        'assistant-start-automation' => 'startAutomation',
     ];
 
     public function mount(
         AgentConversationContextService $conversationContext,
         ?string $promptKey = null,
         bool $hideHeader = false,
+        ?int $automationId = null,
     ): void {
         $this->promptKey = $promptKey;
         $this->hideHeader = $hideHeader;
+        $this->automationId = $automationId;
 
         if (! auth()->check())
         {
@@ -163,6 +175,99 @@ class AssistantChat extends Component
 
         $this->messages = [];
         $this->conversationId = null;
+        $this->automationId = null;
+    }
+
+    /**
+     * Start (or switch to) a team automation funnel from the FAB / funnel show page.
+     *
+     * @param  int|string|null  $automationId
+     */
+    public function startAutomation(mixed $automationId = null, mixed $slug = null): void
+    {
+        if (! auth()->check())
+        {
+            return;
+        }
+
+        if (is_array($automationId))
+        {
+            $payload = $automationId;
+            $id = (int) ($payload['automationId'] ?? $payload['automation_id'] ?? 0);
+            $slugValue = trim((string) ($payload['slug'] ?? ''));
+        } else
+        {
+            $id = (int) ($automationId ?? 0);
+            $slugValue = is_string($slug) ? trim($slug) : '';
+        }
+
+        $teamId = auth()->user()->currentTeam?->id;
+        if ($teamId === null)
+        {
+            return;
+        }
+
+        $runner = app(AssistantAutomationRunner::class);
+        $automation = $id > 0
+            ? $runner->findById($id, (int) $teamId)
+            : ($slugValue !== '' ? $runner->findBySlug($slugValue, (int) $teamId) : null);
+
+        if ($automation === null || ! $automation->is_active || ! $automation->allowsChannel(Automation::CHANNEL_HUMANO))
+        {
+            $this->messages[] = [
+                'role' => 'assistant',
+                'content' => __('No se pudo iniciar ese embudo en el asistente. Revisá que esté activo y con el canal Humano habilitado.'),
+                'routed_to' => null,
+            ];
+
+            return;
+        }
+
+        $conversationContext = app(AgentConversationContextService::class);
+        $this->clearChat($conversationContext);
+        $this->automationId = $automation->id;
+        $this->input = 'empezar';
+        $this->sendMessage(
+            app(AssistantChatService::class),
+            $conversationContext,
+            app(ChatAssistantReplyService::class),
+        );
+    }
+
+    protected function bindAutomationFromUserMessage(string $text, int $teamId, AssistantAutomationRunner $runner): void
+    {
+        $normalized = Str::lower(trim($text));
+        if ($normalized === '')
+        {
+            return;
+        }
+
+        if (preg_match('/^\/(?:embudo|funnel)\s+([a-z0-9\-_]+)$/i', $normalized, $matches) === 1)
+        {
+            $automation = $runner->findBySlug($matches[1], $teamId);
+            if ($automation && $automation->is_active && $automation->allowsChannel(Automation::CHANNEL_HUMANO))
+            {
+                $this->automationId = $automation->id;
+            }
+
+            return;
+        }
+
+        if ($this->automationId !== null)
+        {
+            return;
+        }
+
+        if (! preg_match('/^[a-z0-9][a-z0-9\-_]*$/', $normalized))
+        {
+            return;
+        }
+
+        $automation = $runner->findBySlug($normalized, $teamId);
+        if ($automation && $automation->is_active && $automation->allowsChannel(Automation::CHANNEL_HUMANO))
+        {
+            $this->automationId = $automation->id;
+        }
     }
 
     public function render()
@@ -189,13 +294,9 @@ class AssistantChat extends Component
             ? trim($forcedKeyRaw)
             : null;
 
-        if ($forcedFlowRoutingKey === null && $teamId !== null)
-        {
-            $forcedFlowRoutingKey = app(\App\Services\AssistantAutomationRunner::class)->resolveChannelPromptKey(
-                (int) $teamId,
-                \App\Models\Automation::CHANNEL_HUMANO,
-            );
-        }
+        $flowAppendix = null;
+        $flowSession = null;
+        $runner = app(AssistantAutomationRunner::class);
 
         if ($teamId !== null && $text !== '')
         {
@@ -206,6 +307,67 @@ class AssistantChat extends Component
 
                 return;
             }
+
+            $this->bindAutomationFromUserMessage($text, (int) $teamId, $runner);
+        }
+
+        if ($teamId !== null && $this->automationId !== null)
+        {
+            $flowContext = $runner->resolveFlowContext(
+                (int) $teamId,
+                Automation::CHANNEL_HUMANO,
+                $text,
+                'user:'.(string) $user->id,
+                null,
+                $this->automationId,
+                $forcedFlowRoutingKey,
+            );
+
+            if (! empty($flowContext['completed']))
+            {
+                $this->automationId = null;
+                $this->messages[] = [
+                    'role' => 'assistant',
+                    'content' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    'routed_to' => null,
+                ];
+                $conversationContext->persistMessages(
+                    $user->id,
+                    $userContent,
+                    __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    null,
+                    [],
+                    [],
+                    [],
+                    [],
+                    $teamId,
+                    false,
+                    null,
+                );
+                $conversation = $conversationContext->getAssistantConversationForUser($user->id, $teamId);
+                $this->conversationId = $conversation?->id;
+
+                return;
+            }
+
+            if (($flowContext['prompt_key'] ?? null) !== null && trim((string) $flowContext['prompt_key']) !== '')
+            {
+                $forcedFlowRoutingKey = trim((string) $flowContext['prompt_key']);
+            }
+            $flowAppendix = $flowContext['appendix'] ?? null;
+            $flowSession = $flowContext['session'] ?? null;
+
+            $flowAutomation = $flowContext['automation'] ?? null;
+            if ($flowAutomation instanceof Automation)
+            {
+                $this->automationId = (int) $flowAutomation->id;
+            }
+        } elseif ($forcedFlowRoutingKey === null && $teamId !== null)
+        {
+            $forcedFlowRoutingKey = $runner->resolveChannelPromptKey(
+                (int) $teamId,
+                Automation::CHANNEL_HUMANO,
+            );
         }
 
         $replyResponse = $replyService->getReply(
@@ -218,7 +380,15 @@ class AssistantChat extends Component
             $forcedFlowRoutingKey,
             null,
             false,
+            null,
+            false,
+            is_string($flowAppendix) ? $flowAppendix : null,
         );
+
+        if ($flowSession !== null)
+        {
+            $runner->markFlowAwaitingReply($flowSession);
+        }
 
         $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];
         $serverTaskApply = $teamId !== null

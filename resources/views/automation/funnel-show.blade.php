@@ -11,6 +11,17 @@
         <p class="text-muted">{{ __('Vista del flujo: pasos y qué ocurre con cada respuesta (solo lectura)') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
+        @if($automation->is_active && $automation->allowsChannel(\App\Models\Automation::CHANNEL_HUMANO))
+        <button
+            type="button"
+            class="btn btn-primary waves-effect waves-light"
+            id="funnel-try-assistant-btn"
+            data-automation-id="{{ $automation->id }}"
+            data-automation-slug="{{ $automation->slug }}"
+        >
+            <i class="ti ti-message-chatbot me-1"></i>{{ __('Probar en asistente') }}
+        </button>
+        @endif
         @can('update', $automation)
         <a href="{{ route('funnel.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
             <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}
@@ -148,4 +159,20 @@
         @endforeach
     </div>
 @endif
+@endsection
+
+@section('page-script')
+<script>
+document.getElementById('funnel-try-assistant-btn')?.addEventListener('click', function () {
+    const automationId = parseInt(this.dataset.automationId || '0', 10);
+    const slug = this.dataset.automationSlug || '';
+    const offcanvasEl = document.getElementById('assistant-offcanvas');
+    if (offcanvasEl && window.bootstrap?.Offcanvas) {
+        window.bootstrap.Offcanvas.getOrCreateInstance(offcanvasEl).show();
+    }
+    if (window.Livewire) {
+        Livewire.dispatch('assistant-start-automation', { automationId, slug });
+    }
+});
+</script>
 @endsection
