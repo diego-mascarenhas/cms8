@@ -154,6 +154,42 @@ class AutomationFlowEngineTest extends TestCase
         $this->assertSame($funnel->id, $handed['from_automation_id']);
     }
 
+    public function test_step_appendix_prioritizes_funnel_over_general_menu(): void
+    {
+        $team = Team::factory()->create();
+        $automation = Automation::factory()->funnel()->create([
+            'team_id' => $team->id,
+            'channels' => Automation::normalizeChannels(['api' => true]),
+        ]);
+
+        app(AutomationFlowGraphSyncer::class)->sync($automation, [
+            'nodes' => [
+                [
+                    'client_id' => '1',
+                    'label' => 'Propuesta de valor',
+                    'instruction' => 'Definir el problema dominante',
+                    'is_entry' => true,
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'outputs' => [
+                        ['id' => 'output_1', 'reply_type' => AutomationReplyType::FreeText->value, 'match_value' => null, 'label' => 'Texto'],
+                    ],
+                ],
+            ],
+            'edges' => [],
+        ]);
+
+        $step = $automation->fresh()->entryStep();
+        $this->assertNotNull($step);
+        $appendix = app(AutomationFlowEngine::class)->stepSystemAppendix($step);
+
+        $this->assertStringContainsString('Embudo de automatización activo', $appendix);
+        $this->assertStringContainsString('NO uses el menú general de módulos', $appendix);
+        $this->assertStringContainsString('NO ofrezcas', $appendix);
+        $this->assertStringContainsString('Propuesta de valor', $appendix);
+        $this->assertStringContainsString('Definir el problema dominante', $appendix);
+    }
+
     public function test_runner_uses_step_prompt_key_with_flow(): void
     {
         $team = Team::factory()->create();
