@@ -49,4 +49,25 @@ class PaymentSync extends Model
     {
         return $query->where('provider', strtolower($provider));
     }
+
+    /**
+     * CVU / account funding transfers often expose the collector as "payer".
+     */
+    public function lacksIdentifiablePayer(): bool
+    {
+        $operationType = strtolower(trim((string) data_get($this->raw_payload, 'operation_type', '')));
+        if ($operationType === 'account_fund')
+        {
+            return true;
+        }
+
+        $payerId = trim((string) data_get($this->raw_payload, 'payer.id', ''));
+        $collectorId = trim((string) data_get($this->raw_payload, 'collector_id', ''));
+        if ($payerId !== '' && $collectorId !== '' && $payerId === $collectorId)
+        {
+            return true;
+        }
+
+        return blank($this->customer_id) && blank($this->customer_email);
+    }
 }

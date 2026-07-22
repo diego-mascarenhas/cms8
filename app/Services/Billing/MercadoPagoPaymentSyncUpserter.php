@@ -29,18 +29,7 @@ class MercadoPagoPaymentSyncUpserter
         $netCents = max(0, $amountCents - $refundedCents);
 
         $payer = Arr::get($paymentPayload, 'payer', []);
-        $customerId = null;
-        $customerEmail = null;
-        if (is_array($payer))
-        {
-            $payerId = Arr::get($payer, 'id');
-            if (filled($payerId))
-            {
-                $customerId = (string) $payerId;
-            }
-            $email = strtolower(trim((string) Arr::get($payer, 'email', '')));
-            $customerEmail = $email !== '' ? $email : null;
-        }
+        [$customerId, $customerEmail] = $this->resolveCustomerIdentity($paymentPayload, is_array($payer) ? $payer : []);
 
         $description = Arr::get($paymentPayload, 'description');
         if (! is_string($description) || trim($description) === '')
@@ -54,6 +43,8 @@ class MercadoPagoPaymentSyncUpserter
         {
             $description = null;
         }
+
+        $invoiceExternalId = $this->resolveInvoiceExternalId($paymentPayload);
 
         $createdAt = $this->parseDateTime(
             Arr::get($paymentPayload, 'date_approved')
@@ -74,13 +65,107 @@ class MercadoPagoPaymentSyncUpserter
                 'amount_cents' => $amountCents,
                 'amount_refunded_cents' => $refundedCents,
                 'amount_net_cents' => $netCents,
-                'invoice_external_id' => null,
+                'invoice_external_id' => $invoiceExternalId,
                 'description' => $description,
                 'charge_created_at' => $createdAt,
                 'last_synced_at' => now(),
                 'raw_payload' => $paymentPayload,
             ],
         );
+    }
+
+    /**
+     * Bank transfers into the MP account (account_fund) often list the collector as "payer".
+     * That is not the end client — leave identity empty so UI/import do not treat it as a customer.
+     *
+     * @param  array<string, mixed>  $paymentPayload
+     * @param  array<string, mixed>  $payer
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function resolveCustomerIdentity(array $paymentPayload, array $payer): array
+    {
+        if ($this->isCollectorSelfTransfer($paymentPayload, $payer))
+        {
+            return [null, null];
+        }
+
+        $customerId = null;
+        $customerEmail = null;
+
+        $payerId = Arr::get($payer, 'id');
+        if (filled($payerId))
+        {
+            $customerId = (string) $payerId;
+        }
+
+        $email = strtolower(trim((string) Arr::get($payer, 'email', '')));
+        $customerEmail = $email !== '' ? $email : null;
+
+        return [$customerId, $customerEmail];
+    }
+
+    /**
+     * @param  array<string, mixed>  $paymentPayload
+     * @param  array<string, mixed>  $payer
+     */
+    private function isCollectorSelfTransfer(array $paymentPayload, array $payer): bool
+    {
+        $operationType = strtolower(trim((string) Arr::get($paymentPayload, 'operation_type', '')));
+        if ($operationType === 'account_fund')
+        {
+            return true;
+        }
+
+        $payerId = trim((string) Arr::get($payer, 'id', ''));
+        $collectorId = trim((string) Arr::get($paymentPayload, 'collector_id', ''));
+
+        return $payerId !== '' && $collectorId !== '' && $payerId === $collectorId;
+    }
+
+    /**
+     * Prefer explicit invoice pointers from Mercado Pago (not generic bank descriptions).
+     *
+     * @param  array<string, mixed>  $paymentPayload
+     */
+    private function resolveInvoiceExternalId(array $paymentPayload): ?string
+    {
+        $candidates = [
+            Arr::get($paymentPayload, 'external_reference'),
+            Arr::get($paymentPayload, 'metadata.invoice_id'),
+            Arr::get($paymentPayload, 'metadata.humano_invoice_id'),
+            Arr::get($paymentPayload, 'metadata.invoice_number'),
+        ];
+
+        foreach ($candidates as $candidate)
+        {
+            if (! is_string($candidate) && ! is_numeric($candidate))
+            {
+                continue;
+            }
+
+            $value = trim((string) $candidate);
+            if ($value === '' || $this->isGenericPaymentLabel($value))
+            {
+                continue;
+            }
+
+            return $value;
+        }
+
+        return null;
+    }
+
+    private function isGenericPaymentLabel(string $value): bool
+    {
+        $normalized = mb_strtolower(trim($value));
+
+        return in_array($normalized, [
+            'bank transfer',
+            'varios',
+            'payment',
+            'pago',
+            'transferencia',
+        ], true);
     }
 
     private function majorToCents(float $amount, string $currency): int

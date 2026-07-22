@@ -57,9 +57,13 @@ class ImportMercadoPagoPaymentSyncsCommand extends Command
             $query->whereNotExists(function ($q)
             {
                 $q->from('payments')
-                    ->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
                     ->whereColumn('payments.team_id', 'payment_syncs.team_id')
-                    ->where('payments.source_provider', 'mercadopago');
+                    ->where('payments.source_provider', 'mercadopago')
+                    ->where(function ($inner)
+                    {
+                        $inner->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
+                            ->orWhereRaw("payments.source_reference_id LIKE payment_syncs.external_id || ':%'");
+                    });
             });
         }
 

@@ -50,6 +50,7 @@ use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\ManualController;
+use App\Http\Controllers\MercadoPagoPaymentSyncController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\MultimediaController;
@@ -922,6 +923,9 @@ Route::middleware(['auth'])->group(function ()
 
     // Payments (all transactions)
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/syncs/mercadopago', [MercadoPagoPaymentSyncController::class, 'index'])->name('payments.syncs.mercadopago.index');
+    Route::get('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'assign'])->name('payments.syncs.mercadopago.assign');
+    Route::post('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'import'])->name('payments.syncs.mercadopago.import');
     Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
     Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');
     Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');

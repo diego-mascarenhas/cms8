@@ -4,19 +4,27 @@ namespace App\Services\Billing;
 
 use App\Enums\TransactionType;
 use App\Models\Enterprise;
+use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentSync;
 use App\Models\PaymentType;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class MercadoPagoPaymentImportService
 {
+    /**
+     * @param  list<int>  $forceInvoiceIds
+     */
     public function importFromPaymentSync(
         PaymentSync $row,
         bool $fallbackEmail = true,
         bool $linkCodeOnEmailMatch = true,
         bool $dryRun = false,
+        ?int $forceEnterpriseId = null,
+        ?int $forceInvoiceId = null,
+        array $forceInvoiceIds = [],
     ): ?Payment {
         if (strtolower((string) $row->provider) !== 'mercadopago')
         {
@@ -38,12 +46,22 @@ class MercadoPagoPaymentImportService
         $currency = strtoupper((string) $row->currency);
         $amountMajor = $this->majorAmountFromCents($netCents, $currency);
 
-        [$enterpriseId] = $this->resolveEnterpriseId(
-            $row,
-            $fallbackEmail,
-            $linkCodeOnEmailMatch,
-            $dryRun,
-        );
+        if ($forceEnterpriseId !== null)
+        {
+            $enterpriseId = $forceEnterpriseId;
+            if ($linkCodeOnEmailMatch && ! $dryRun)
+            {
+                $this->linkPayerCodeToEnterprise($row, $enterpriseId);
+            }
+        } else
+        {
+            [$enterpriseId] = $this->resolveEnterpriseId(
+                $row,
+                $fallbackEmail,
+                $linkCodeOnEmailMatch,
+                $dryRun,
+            );
+        }
 
         if (! $enterpriseId)
         {
@@ -51,6 +69,13 @@ class MercadoPagoPaymentImportService
         }
 
         $date = $this->resolvePaymentDate($row);
+        $forcedInvoiceIds = array_values(array_unique(array_filter(array_map(
+            'intval',
+            $forceInvoiceIds !== []
+                ? $forceInvoiceIds
+                : ($forceInvoiceId !== null ? [$forceInvoiceId] : []),
+        ))));
+
         $description = (string) ($row->description ?? '');
         $remarks = trim($description) !== ''
             ? Str::limit($description, 500)
@@ -68,6 +93,23 @@ class MercadoPagoPaymentImportService
             return null;
         }
 
+        if (count($forcedInvoiceIds) > 1)
+        {
+            return $this->importSplitAcrossInvoices(
+                $row,
+                $enterpriseId,
+                $amountMajor,
+                $date,
+                $remarks,
+                $accountId,
+                $typeId,
+                $forcedInvoiceIds,
+            );
+        }
+
+        $invoiceId = $forcedInvoiceIds[0]
+            ?? $this->resolveInvoiceId($row, $enterpriseId, $amountMajor, $date);
+
         $existing = Payment::withoutGlobalScopes()
             ->where('team_id', $row->team_id)
             ->where('source_provider', 'mercadopago')
@@ -78,7 +120,7 @@ class MercadoPagoPaymentImportService
             'enterprise_id' => $enterpriseId,
             'transaction_type' => TransactionType::INCOME,
             'date' => $date,
-            'invoice_id' => null,
+            'invoice_id' => $invoiceId,
             'account_id' => $accountId,
             'type_id' => $typeId,
             'amount' => $amountMajor,
@@ -91,6 +133,11 @@ class MercadoPagoPaymentImportService
 
         if ($existing)
         {
+            if ($existing->invoice_id !== null)
+            {
+                unset($payload['invoice_id']);
+            }
+
             $existing->fill($payload);
             $existing->save();
 
@@ -101,6 +148,87 @@ class MercadoPagoPaymentImportService
             $payload,
             ['team_id' => $row->team_id],
         ));
+    }
+
+    public function isAlreadyImported(PaymentSync $row): bool
+    {
+        $externalId = (string) $row->external_id;
+
+        return Payment::withoutGlobalScopes()
+            ->where('team_id', $row->team_id)
+            ->where('source_provider', 'mercadopago')
+            ->where(function ($query) use ($externalId): void
+            {
+                $query->where('source_reference_id', $externalId)
+                    ->orWhere('source_reference_id', 'like', $externalId.':%');
+            })
+            ->exists();
+    }
+
+    /**
+     * @param  list<int>  $invoiceIds
+     */
+    private function importSplitAcrossInvoices(
+        PaymentSync $row,
+        int $enterpriseId,
+        float $paymentAmount,
+        string $date,
+        string $remarks,
+        int $accountId,
+        int $typeId,
+        array $invoiceIds,
+    ): ?Payment {
+        $invoices = Invoice::withoutGlobalScopes()
+            ->where('team_id', $row->team_id)
+            ->where('enterprise_id', $enterpriseId)
+            ->where('operation', 'sell')
+            ->where('balance', '>', 0)
+            ->whereIn('id', $invoiceIds)
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get();
+
+        if ($invoices->count() !== count($invoiceIds))
+        {
+            return null;
+        }
+
+        $sum = round((float) $invoices->sum(fn (Invoice $invoice) => (float) $invoice->balance), 2);
+        if (abs($sum - round($paymentAmount, 2)) > 0.05)
+        {
+            return null;
+        }
+
+        $first = null;
+        foreach ($invoices as $invoice)
+        {
+            $amount = round((float) $invoice->balance, 2);
+            $sourceReferenceId = $row->external_id.':'.$invoice->id;
+
+            $payment = Payment::withoutGlobalScopes()->updateOrCreate(
+                [
+                    'team_id' => $row->team_id,
+                    'source_provider' => 'mercadopago',
+                    'source_reference_id' => $sourceReferenceId,
+                ],
+                [
+                    'enterprise_id' => $enterpriseId,
+                    'transaction_type' => TransactionType::INCOME,
+                    'date' => $date,
+                    'invoice_id' => $invoice->id,
+                    'account_id' => $accountId,
+                    'type_id' => $typeId,
+                    'amount' => $amount,
+                    'remarks' => Str::limit($remarks.' · '.$invoice->number, 500),
+                    'status' => 2,
+                    'source_synced_at' => $row->last_synced_at ?? now(),
+                ],
+            );
+
+            $first ??= $payment;
+        }
+
+        return $first;
     }
 
     private function majorAmountFromCents(int $cents, string $currency): float
@@ -147,6 +275,83 @@ class MercadoPagoPaymentImportService
         $fallback = PaymentType::query()->orderBy('id')->value('id');
 
         return $fallback !== null ? (int) $fallback : null;
+    }
+
+    private function resolveInvoiceId(PaymentSync $row, int $enterpriseId, float $amount, string $paymentDate): ?int
+    {
+        $ref = trim((string) ($row->invoice_external_id ?? ''));
+        if ($ref === '')
+        {
+            $ref = trim((string) data_get($row->raw_payload, 'external_reference', ''));
+        }
+
+        if ($ref !== '' && ! $this->isGenericPaymentLabel($ref))
+        {
+            $byReference = Invoice::withoutGlobalScopes()
+                ->where('team_id', $row->team_id)
+                ->where('operation', 'sell')
+                ->where(function ($query) use ($ref): void
+                {
+                    $query->where('number', $ref)
+                        ->orWhere('source_reference_id', $ref);
+
+                    if (ctype_digit($ref))
+                    {
+                        $query->orWhere('id', (int) $ref);
+                    }
+                })
+                ->orderByDesc('id')
+                ->first();
+
+            if ($byReference)
+            {
+                return (int) $byReference->id;
+            }
+        }
+
+        $amountQuery = Invoice::withoutGlobalScopes()
+            ->where('team_id', $row->team_id)
+            ->where('enterprise_id', $enterpriseId)
+            ->where('operation', 'sell')
+            ->where('balance', '>', 0)
+            ->where(function ($query) use ($amount): void
+            {
+                $query->whereBetween('total_amount', [$amount - 0.01, $amount + 0.01])
+                    ->orWhereBetween('gross_amount', [$amount - 0.01, $amount + 0.01]);
+            });
+
+        $matchCount = (clone $amountQuery)->count();
+        if ($matchCount === 1)
+        {
+            return (int) $amountQuery->value('id');
+        }
+
+        if ($matchCount > 1)
+        {
+            $from = Carbon::parse($paymentDate)->subDays(45)->toDateString();
+            $to = Carbon::parse($paymentDate)->addDays(15)->toDateString();
+            $dated = (clone $amountQuery)->whereBetween('date', [$from, $to]);
+
+            if ($dated->count() === 1)
+            {
+                return (int) $dated->value('id');
+            }
+        }
+
+        return null;
+    }
+
+    private function isGenericPaymentLabel(string $value): bool
+    {
+        $normalized = mb_strtolower(trim($value));
+
+        return in_array($normalized, [
+            'bank transfer',
+            'varios',
+            'payment',
+            'pago',
+            'transferencia',
+        ], true);
     }
 
     /**
@@ -208,6 +413,39 @@ class MercadoPagoPaymentImportService
         return [$matched->id, 'email'];
     }
 
+    private function linkPayerCodeToEnterprise(PaymentSync $row, int $enterpriseId): void
+    {
+        $customerId = $row->customer_id !== null ? trim((string) $row->customer_id) : '';
+        if ($customerId === '')
+        {
+            return;
+        }
+
+        $enterprise = Enterprise::query()
+            ->where('team_id', $row->team_id)
+            ->whereKey($enterpriseId)
+            ->first();
+
+        if (! $enterprise || filled($enterprise->code))
+        {
+            return;
+        }
+
+        $codeTaken = Enterprise::query()
+            ->where('team_id', $row->team_id)
+            ->where('code', $customerId)
+            ->whereKeyNot($enterpriseId)
+            ->exists();
+
+        if ($codeTaken)
+        {
+            return;
+        }
+
+        $enterprise->code = $customerId;
+        $enterprise->save();
+    }
+
     private function resolvePaymentDate(PaymentSync $row): string
     {
         if ($row->charge_created_at)
@@ -222,7 +460,7 @@ class MercadoPagoPaymentImportService
         {
             try
             {
-                return \Carbon\Carbon::parse($raw)->toDateString();
+                return Carbon::parse($raw)->toDateString();
             } catch (\Throwable)
             {
             }
