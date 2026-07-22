@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Enums\TransactionType;
 use App\Models\Payment;
+use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Support\DataTableFormatter;
 use App\Support\PaymentTableAmountFormatter;
 use Carbon\Carbon;
@@ -15,15 +16,19 @@ use Yajra\DataTables\Services\DataTable;
 
 class ExpenseDataTable extends DataTable
 {
-    /**
-     * Build the DataTable class.
-     */
+    private string $reportingCurrency;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->reportingCurrency = app(PaymentReportingCurrencyService::class)->reportingCurrencyForCurrentTeam();
+    }
+
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'expense.action')
             ->setRowId('id')
-            ->rawColumns(['action', 'status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'amount'])
+            ->rawColumns(['status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'amount', 'currency', 'country'])
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d/m/Y');
@@ -78,7 +83,7 @@ class ExpenseDataTable extends DataTable
                     return '<span class="text-muted">-</span>';
                 }
 
-                return DataTableFormatter::showLink(
+                $name = DataTableFormatter::showLink(
                     $data->enterprise,
                     'client.show',
                     $data->enterprise->name,
@@ -86,12 +91,26 @@ class ExpenseDataTable extends DataTable
                     [$data->enterprise->id],
                     'fw-medium text-body',
                 );
+                $taxId = PaymentTableAmountFormatter::taxIdForPayment($data);
+
+                if ($taxId === '')
+                {
+                    return $name;
+                }
+
+                return '<div>'.$name.'<br><small class="text-muted">'.e($taxId).'</small></div>';
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {
-                $query->whereHas('enterprise', function ($q) use ($keyword)
+                $query->where(function ($inner) use ($keyword)
                 {
-                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                    $inner->whereHas('enterprise', function ($q) use ($keyword)
+                    {
+                        $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                    })->orWhereHas('invoice.billingAddress', function ($q) use ($keyword)
+                    {
+                        $q->whereRaw('identification_number LIKE ?', ["%{$keyword}%"]);
+                    });
                 });
             })
             ->editColumn('account_id', function ($data)
@@ -104,9 +123,26 @@ class ExpenseDataTable extends DataTable
             })
             ->editColumn('amount', function ($data)
             {
-                return PaymentTableAmountFormatter::formatExpense(
+                $date = $data->invoice?->date
+                    ? Carbon::parse($data->invoice->date)
+                    : Carbon::parse($data->date);
+
+                return PaymentTableAmountFormatter::formatConverted(
                     (float) $data->amount,
                     $data->currency_code,
+                    $this->reportingCurrency,
+                    $date,
+                    'text-danger fw-bold',
+                );
+            })
+            ->addColumn('currency', function ($data)
+            {
+                return PaymentTableAmountFormatter::currencyBadge($data->currency_code);
+            })
+            ->addColumn('country', function ($data)
+            {
+                return PaymentTableAmountFormatter::countryBadge(
+                    PaymentTableAmountFormatter::countryForPayment($data),
                 );
             })
             ->editColumn('status', function ($data)
@@ -122,7 +158,9 @@ class ExpenseDataTable extends DataTable
             ->where('transaction_type', TransactionType::EXPENSE)
             ->with([
                 'enterprise',
-                'invoice',
+                'invoice.currency',
+                'invoice.billingAddress',
+                'invoice.stripeInvoiceSync',
                 'type',
                 'account' => fn ($query) => $query->withoutGlobalScope('activeStatus')->with('currency'),
             ]);
@@ -173,25 +211,26 @@ class ExpenseDataTable extends DataTable
             Column::make('account_id')
                 ->title(__('Account'))
                 ->addClass('min-desktop'),
-            Column::make('type_id')
-                ->title(__('Type'))
-                ->addClass('min-desktop'),
             Column::make('amount')
                 ->title(__('Amount'))
                 ->addClass('min-tablet')
                 ->className('text-end'),
+            Column::computed('currency')
+                ->title(__('Currency'))
+                ->addClass('min-desktop')
+                ->className('text-center')
+                ->orderable(false)
+                ->searchable(false),
+            Column::computed('country')
+                ->title(__('Country'))
+                ->addClass('min-desktop')
+                ->className('text-center')
+                ->orderable(false)
+                ->searchable(false),
             Column::make('status')
                 ->title(__('Status'))
                 ->addClass('min-phone')
                 ->className('text-center'),
-            Column::computed('action')
-                ->title(__('Actions'))
-                ->width(20)
-                ->className('text-center')
-                ->addClass('min-desktop')
-                ->exportable(false)
-                ->printable(false)
-                ->width(30),
         ];
     }
 

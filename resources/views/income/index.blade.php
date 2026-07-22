@@ -21,10 +21,12 @@
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">{{ __('Income') }}</h4>
         <p class="text-muted">{{ __('Manage your income and revenue') }}</p>
-        <p class="text-muted small mb-0">{{ __('Totals in :currency (system exchange rates).', ['currency' => $reportingCurrency]) }}</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
         @include('partials.vat-period-selector')
+        <a href="{{ route('income.export-hacienda', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}" class="btn btn-outline-primary">
+            <i class="ti ti-download me-1"></i> {{ __('Export Hacienda') }}
+        </a>
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
             <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
         </a>

@@ -21,11 +21,13 @@
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">Gastos</h4>
         <p class="text-muted">Gestiona tus gastos y costes</p>
-        <p class="text-muted small mb-0">Totales en {{ $reportingCurrency }} (tipos de cambio del sistema).</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
         @include('partials.vat-period-selector')
         <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('expense.export-hacienda', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}" class="btn btn-outline-primary">
+                <i class="ti ti-download me-1"></i> {{ __('Export Hacienda') }}
+            </a>
             <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
                 <i class="ti ti-list me-1"></i> Todos los pagos
             </a>

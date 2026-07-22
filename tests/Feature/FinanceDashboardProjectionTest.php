@@ -70,7 +70,10 @@ class FinanceDashboardProjectionTest extends TestCase
         $this->actingAs($user)
             ->get(route('finance-dashboard.projection'))
             ->assertOk()
-            ->assertSee(__('Financial projection report'), false);
+            ->assertSee(__('Financial projection report'), false)
+            ->assertDontSee(__('Financial assistant'), false)
+            ->assertDontSee(__('Growth scenario'), false)
+            ->assertDontSee(__('Totals converted to :currency using team reporting currency.', ['currency' => 'EUR']), false);
     }
 
     public function test_category_breakdown_links_to_category_invoiced_items(): void

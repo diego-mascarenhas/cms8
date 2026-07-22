@@ -928,9 +928,11 @@ Route::middleware(['auth'])->group(function ()
 
     // Income module
     Route::get('/income/list', [IncomeController::class, 'index'])->name('income.index');
+    Route::get('/income/export-hacienda', [IncomeController::class, 'exportHacienda'])->name('income.export-hacienda');
 
     // Expense module
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');
+    Route::get('/expense/export-hacienda', [ExpenseController::class, 'exportHacienda'])->name('expense.export-hacienda');
     Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
     Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
     Route::post('/expense/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('expense.check-document-duplicate');

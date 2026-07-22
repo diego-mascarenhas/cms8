@@ -24,6 +24,7 @@ use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
 use Carbon\Carbon;
@@ -35,6 +36,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExpenseController extends Controller
 {
@@ -42,6 +44,7 @@ class ExpenseController extends Controller
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
         private readonly VatReportingService $vatReportingService,
+        private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
     ) {}
 
     public function index(Request $request, ExpenseDataTable $dataTable)
@@ -150,6 +153,23 @@ class ExpenseController extends Controller
             'vatPeriod',
             'vatMode',
         ));
+    }
+
+    public function exportHacienda(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: null,
+            period: $request->string('vat_period')->toString() ?: null,
+        );
+
+        return $this->vatHaciendaCsvExportService->download(
+            operation: 'buy',
+            from: $vatSelection['range']['from'],
+            to: $vatSelection['range']['to'],
+            periodLabel: $vatSelection['label'],
+        );
     }
 
     public function create(): View

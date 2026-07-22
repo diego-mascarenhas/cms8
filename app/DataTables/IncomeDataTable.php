@@ -4,7 +4,9 @@ namespace App\DataTables;
 
 use App\Enums\TransactionType;
 use App\Models\Payment;
+use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Support\DataTableFormatter;
+use App\Support\PaymentTableAmountFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
@@ -14,22 +16,33 @@ use Yajra\DataTables\Services\DataTable;
 
 class IncomeDataTable extends DataTable
 {
-    /**
-     * Build the DataTable class.
-     */
+    private string $reportingCurrency;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->reportingCurrency = app(PaymentReportingCurrencyService::class)->reportingCurrencyForCurrentTeam();
+    }
+
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'income.action')
             ->setRowId('id')
-            ->rawColumns(['action', 'status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'amount'])
+            ->rawColumns(['status', 'invoice_id', 'enterprise_id', 'account_id', 'type_id', 'amount', 'currency', 'country'])
             ->editColumn('date', function ($data)
             {
                 return Carbon::parse($data->date)->format('d/m/Y');
             })
             ->editColumn('invoice_id', function ($data)
             {
-                return $data->invoice?->number ?? '<span class="text-muted">-</span>';
+                if (! $data->invoice)
+                {
+                    return '<span class="text-muted">-</span>';
+                }
+
+                return '<a href="'.e(route('invoice.show', $data->invoice->id)).'" class="text-body">'
+                    .e($data->invoice->number)
+                    .'</a>';
             })
             ->filterColumn('invoice_id', function ($query, $keyword)
             {
@@ -45,7 +58,7 @@ class IncomeDataTable extends DataTable
                     return '<span class="text-muted">-</span>';
                 }
 
-                return DataTableFormatter::showLink(
+                $name = DataTableFormatter::showLink(
                     $data,
                     'payments.show',
                     $data->enterprise->name,
@@ -53,12 +66,29 @@ class IncomeDataTable extends DataTable
                     [$data->id],
                     'fw-medium text-body',
                 );
+                $taxId = PaymentTableAmountFormatter::taxIdForPayment($data);
+
+                if ($taxId === '')
+                {
+                    return $name;
+                }
+
+                return '<div>'.$name.'<br><small class="text-muted">'.e($taxId).'</small></div>';
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {
-                $query->whereHas('enterprise', function ($q) use ($keyword)
+                $query->where(function ($inner) use ($keyword)
                 {
-                    $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                    $inner->whereHas('enterprise', function ($q) use ($keyword)
+                    {
+                        $q->whereRaw('name LIKE ?', ["%{$keyword}%"]);
+                    })->orWhereHas('invoice.billingAddress', function ($q) use ($keyword)
+                    {
+                        $q->whereRaw('identification_number LIKE ?', ["%{$keyword}%"]);
+                    })->orWhereHas('invoice.stripeInvoiceSync', function ($q) use ($keyword)
+                    {
+                        $q->whereRaw('customer_tax_id LIKE ?', ["%{$keyword}%"]);
+                    });
                 });
             })
             ->editColumn('account_id', function ($data)
@@ -71,7 +101,27 @@ class IncomeDataTable extends DataTable
             })
             ->editColumn('amount', function ($data)
             {
-                return '<span class="text-success fw-bold">+ '.number_format($data->amount, 2, ',', '.').'</span>';
+                $date = $data->invoice?->date
+                    ? Carbon::parse($data->invoice->date)
+                    : Carbon::parse($data->date);
+
+                return PaymentTableAmountFormatter::formatConverted(
+                    (float) $data->amount,
+                    $data->currency_code,
+                    $this->reportingCurrency,
+                    $date,
+                    'text-success fw-bold',
+                );
+            })
+            ->addColumn('currency', function ($data)
+            {
+                return PaymentTableAmountFormatter::currencyBadge($data->currency_code);
+            })
+            ->addColumn('country', function ($data)
+            {
+                return PaymentTableAmountFormatter::countryBadge(
+                    PaymentTableAmountFormatter::countryForPayment($data),
+                );
             })
             ->editColumn('status', function ($data)
             {
@@ -84,7 +134,14 @@ class IncomeDataTable extends DataTable
         return $model
             ->newQuery()
             ->where('transaction_type', TransactionType::INCOME)
-            ->with(['enterprise', 'invoice', 'account', 'type']);
+            ->with([
+                'enterprise',
+                'invoice.currency',
+                'invoice.billingAddress',
+                'invoice.stripeInvoiceSync',
+                'type',
+                'account' => fn ($query) => $query->withoutGlobalScope('activeStatus')->with('currency'),
+            ]);
     }
 
     public function html(): HtmlBuilder
@@ -132,25 +189,27 @@ class IncomeDataTable extends DataTable
             Column::make('account_id')
                 ->title(__('Account'))
                 ->addClass('min-desktop'),
-            Column::make('type_id')
-                ->title(__('Type'))
-                ->addClass('min-desktop'),
             Column::make('amount')
                 ->title(__('Amount'))
                 ->addClass('min-tablet')
-                ->className('text-end'),
+                ->className('text-end')
+                ->orderable(true),
+            Column::computed('currency')
+                ->title(__('Currency'))
+                ->addClass('min-desktop')
+                ->className('text-center')
+                ->orderable(false)
+                ->searchable(false),
+            Column::computed('country')
+                ->title(__('Country'))
+                ->addClass('min-desktop')
+                ->className('text-center')
+                ->orderable(false)
+                ->searchable(false),
             Column::make('status')
                 ->title(__('Status'))
                 ->addClass('min-phone')
                 ->className('text-center'),
-            Column::computed('action')
-                ->title(__('Actions'))
-                ->width(20)
-                ->className('text-center')
-                ->addClass('min-desktop')
-                ->exportable(false)
-                ->printable(false)
-                ->width(30),
         ];
     }
 

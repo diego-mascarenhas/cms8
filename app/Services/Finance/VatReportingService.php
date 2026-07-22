@@ -338,18 +338,16 @@ class VatReportingService
         return round($total, 2);
     }
 
-    private function invoicesQuery(int $teamId, string $operation, Carbon $from, Carbon $to): Builder
-    {
-        return Invoice::query()
-            ->withoutGlobalScopes()
-            ->where('team_id', $teamId)
-            ->where('operation', $operation)
-            ->whereNotIn('status', [3, 7, 9])
-            ->whereDate('date', '>=', $from->toDateString())
-            ->whereDate('date', '<=', $to->toDateString());
+    public function invoicesForPeriod(
+        int $teamId,
+        string $operation,
+        Carbon $from,
+        Carbon $to,
+    ): Builder {
+        return $this->invoicesQuery($teamId, $operation, $from, $to);
     }
 
-    private function vatAmountForInvoice(Invoice $invoice): float
+    public function vatAmountForInvoice(Invoice $invoice): float
     {
         /** @var Collection<int, \App\Models\InvoiceItem> $items */
         $items = $invoice->relationLoaded('items')
@@ -385,7 +383,7 @@ class VatReportingService
         return 0.0;
     }
 
-    private function convertAmount(float $amount, string $fromCurrency, string $toCurrency, Carbon $date): ?float
+    public function convertAmount(float $amount, string $fromCurrency, string $toCurrency, Carbon $date): ?float
     {
         $fromCurrency = strtoupper(trim($fromCurrency));
         $toCurrency = strtoupper(trim($toCurrency));
@@ -401,5 +399,16 @@ class VatReportingService
         }
 
         return ExchangeRate::convertOnOrBeforeDate($amount, $fromCurrency, $toCurrency, $date);
+    }
+
+    private function invoicesQuery(int $teamId, string $operation, Carbon $from, Carbon $to): Builder
+    {
+        return Invoice::query()
+            ->withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('operation', $operation)
+            ->whereNotIn('status', [3, 7, 9])
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString());
     }
 }

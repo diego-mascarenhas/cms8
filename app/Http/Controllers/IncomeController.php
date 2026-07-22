@@ -6,15 +6,18 @@ use App\DataTables\IncomeDataTable;
 use App\Enums\TransactionType;
 use App\Models\Payment;
 use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IncomeController extends Controller
 {
     public function __construct(
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
         private readonly VatReportingService $vatReportingService,
+        private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
     ) {}
 
     public function index(Request $request, IncomeDataTable $dataTable)
@@ -123,5 +126,22 @@ class IncomeController extends Controller
             'vatPeriod',
             'vatMode',
         ));
+    }
+
+    public function exportHacienda(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: null,
+            period: $request->string('vat_period')->toString() ?: null,
+        );
+
+        return $this->vatHaciendaCsvExportService->download(
+            operation: 'sell',
+            from: $vatSelection['range']['from'],
+            to: $vatSelection['range']['to'],
+            periodLabel: $vatSelection['label'],
+        );
     }
 }

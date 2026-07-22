@@ -201,6 +201,19 @@ class ExchangeRate extends Model
      */
     public static function convertOnOrBeforeDate(float $amount, string $from, string $to, $date): ?float
     {
+        $rate = static::rateOnOrBeforeDate($from, $to, $date);
+
+        return $rate === null ? null : round($amount * $rate, 2);
+    }
+
+    /**
+     * Full-precision rate from → to on or before the given date (invoice date for fiscal exports).
+     * Tries monthly history (direct, inverse, USD bridge), then latest daily rates.
+     *
+     * @param  string|\Carbon\Carbon  $date
+     */
+    public static function rateOnOrBeforeDate(string $from, string $to, $date): ?float
+    {
         $from = strtoupper(trim($from));
         $to = strtoupper(trim($to));
 
@@ -211,22 +224,33 @@ class ExchangeRate extends Model
 
         if ($from === $to)
         {
-            return round($amount, 2);
+            return 1.0;
         }
 
         $history = ExchangeRateHistory::latestRateOnOrBefore($from, $to, $date);
         if ($history)
         {
-            return round($amount * (float) $history->rate, 2);
+            return (float) $history->rate;
         }
 
         $inverseHistory = ExchangeRateHistory::latestRateOnOrBefore($to, $from, $date);
         if ($inverseHistory && (float) $inverseHistory->rate > 0)
         {
-            return round($amount / (float) $inverseHistory->rate, 2);
+            return 1 / (float) $inverseHistory->rate;
         }
 
-        return static::convert($amount, $from, $to);
+        if ($from !== 'USD' && $to !== 'USD')
+        {
+            $usdToFrom = ExchangeRateHistory::latestRateOnOrBefore('USD', $from, $date);
+            $usdToTo = ExchangeRateHistory::latestRateOnOrBefore('USD', $to, $date);
+
+            if ($usdToFrom && $usdToTo && (float) $usdToFrom->rate > 0)
+            {
+                return (1 / (float) $usdToFrom->rate) * (float) $usdToTo->rate;
+            }
+        }
+
+        return static::getLatestRate($from, $to);
     }
 
     /**
