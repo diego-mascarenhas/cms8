@@ -19,6 +19,9 @@
     if (($group ?? '') === 'cuentica') {
         $headerActions = '<button type="button" id="btnTestCuentica" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-cuentica', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
     }
+    if (($group ?? '') === 'mercadopago') {
+        $headerActions = '<button type="button" id="btnTestMercadoPago" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-mercadopago', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
+    }
     if (($group ?? '') === 'wordpress') {
         $headerActions = '<button type="button" id="btnTestWordPress" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-wordpress', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
     }
@@ -33,6 +36,10 @@
 
 @if (($group ?? '') === 'cuentica')
     <div id="cuenticaTestResult" class="mb-3"></div>
+@endif
+
+@if (($group ?? '') === 'mercadopago')
+    <div id="mercadopagoTestResult" class="mb-3"></div>
 @endif
 
 @if (($group ?? '') === 'wordpress')
@@ -59,6 +66,16 @@
                     {{ __('Después de elegir la plataforma, configura las credenciales del proveedor:') }}
                     <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'cuentica']) }}" class="alert-link">{{ __('Cuéntica') }}</a>
                     {{ __('(España). ARCA estará disponible próximamente.') }}
+                </div>
+            @endif
+
+            @if (($group ?? '') === 'mercadopago')
+                <div class="alert alert-info mb-4">
+                    {{ __('Obtén el Access Token en el panel de desarrolladores de Mercado Pago:') }}
+                    <a href="https://www.mercadopago.com.ar/developers/panel/app" target="_blank" rel="noopener noreferrer" class="alert-link">
+                        https://www.mercadopago.com.ar/developers/panel/app
+                    </a>
+                    — {{ __('elige tu aplicación y abre Credenciales de producción (o de prueba).') }}
                 </div>
             @endif
 
@@ -334,6 +351,45 @@
                 })
                 .catch(error => {
                     console.error('Cuéntica test connection error:', error);
+                    result.innerHTML = '<div class="alert alert-danger mb-0 d-flex align-items-center"><i class="ti ti-alert-circle me-2"></i><span>{{ __('Error inesperado al probar la conexión.') }}</span></div>';
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                });
+            });
+        })();
+
+        // Mercado Pago connection test
+        (function() {
+            const btn = document.getElementById('btnTestMercadoPago');
+            if (!btn) {
+                return;
+            }
+
+            const result = document.getElementById('mercadopagoTestResult');
+            const originalText = btn.innerHTML;
+
+            btn.addEventListener('click', function() {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>{{ __('Probando...') }}';
+                result.innerHTML = '';
+
+                fetch(btn.dataset.url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    const cssClass = data.success ? 'alert-success' : 'alert-warning';
+                    const icon = data.success ? 'ti-circle-check' : 'ti-alert-triangle';
+                    result.innerHTML = '<div class="alert ' + cssClass + ' mb-0 d-flex align-items-center"><i class="ti ' + icon + ' me-2"></i><span>' + (data.message || '') + '</span></div>';
+                })
+                .catch(error => {
+                    console.error('Mercado Pago test connection error:', error);
                     result.innerHTML = '<div class="alert alert-danger mb-0 d-flex align-items-center"><i class="ti ti-alert-circle me-2"></i><span>{{ __('Error inesperado al probar la conexión.') }}</span></div>';
                 })
                 .finally(() => {

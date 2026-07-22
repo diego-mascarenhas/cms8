@@ -103,6 +103,113 @@ class PaymentAccountCrudTest extends TestCase
         $this->assertSame('Cuenta reactivada', $account->fresh()->name);
     }
 
+    public function test_admin_can_list_payment_accounts_with_datatable(): void
+    {
+        $user = $this->makeAdminUser();
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'code' => 'CAJA',
+            'name' => 'Caja principal',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payment-account.index'))
+            ->assertOk()
+            ->assertSee('payment-account-table', false)
+            ->assertSee('Cuentas de pago', false);
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('payment-account.index', $this->dataTablesQueryParams('Caja principal')));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString('Caja principal', (string) data_get($response->json('data.0'), 'name'));
+        $this->assertSame($account->id, (int) data_get($response->json('data.0'), 'id'));
+    }
+
+    public function test_datatable_includes_inactive_payment_accounts(): void
+    {
+        $user = $this->makeAdminUser();
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => (int) $user->current_team_id,
+            'code' => 'OLD',
+            'name' => 'Cuenta archivada',
+            'currency_id' => 978,
+            'status' => 0,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('payment-account.index', $this->dataTablesQueryParams('archivada')));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString('Cuenta archivada', (string) data_get($response->json('data.0'), 'name'));
+        $this->assertStringContainsString('Inactiva', (string) data_get($response->json('data.0'), 'status'));
+    }
+
+    public function test_datatable_lists_active_accounts_before_inactive(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'ZZZ',
+            'name' => 'Zeta inactiva',
+            'currency_id' => 978,
+            'status' => 0,
+        ]);
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'AAA',
+            'name' => 'Alfa activa',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $params = $this->dataTablesQueryParams();
+        $params['order'] = [
+            ['column' => 5, 'dir' => 'desc'],
+            ['column' => 1, 'dir' => 'asc'],
+        ];
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('payment-account.index', $params));
+
+        $response->assertOk();
+        $this->assertSame(2, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString('Alfa activa', (string) data_get($response->json('data.0'), 'name'));
+        $this->assertStringContainsString('Zeta inactiva', (string) data_get($response->json('data.1'), 'name'));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dataTablesQueryParams(string $search = ''): array
+    {
+        return [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 25,
+            'search' => ['value' => $search, 'regex' => 'false'],
+            'order' => [['column' => 1, 'dir' => 'asc']],
+            'columns' => [
+                ['data' => 'id', 'name' => 'id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'code', 'name' => 'code', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'currency_code', 'name' => 'currency_code', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'payment_types', 'name' => 'payment_types', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'status', 'name' => 'status', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+            ],
+        ];
+    }
+
     private function makeAdminUser(): User
     {
         $user = User::factory()->create();

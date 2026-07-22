@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\PaymentAccountDataTable;
 use App\Http\Requests\StorePaymentAccountRequest;
 use App\Http\Requests\UpdatePaymentAccountRequest;
 use App\Models\Currency;
@@ -18,19 +19,11 @@ class PaymentAccountController extends Controller
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
     ) {}
 
-    public function index(): View
+    public function index(PaymentAccountDataTable $dataTable)
     {
         $this->authorize('viewAny', PaymentAccount::class);
 
-        $teamId = (int) auth()->user()->currentTeam->id;
-
-        $accounts = PaymentAccount::withoutGlobalScopes()
-            ->with(['currency', 'paymentTypes'])
-            ->where('team_id', $teamId)
-            ->orderBy('name')
-            ->get();
-
-        return view('payment-account.index', compact('accounts'));
+        return $dataTable->render('payment-account.index');
     }
 
     public function create(): View

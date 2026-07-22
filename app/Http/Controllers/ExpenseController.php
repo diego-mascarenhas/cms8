@@ -24,71 +24,171 @@ use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Services\Finance\VatHaciendaCsvExportService;
+use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ExpenseController extends Controller
 {
     public function __construct(
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
+        private readonly VatReportingService $vatReportingService,
+        private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
     ) {}
 
-    public function index(ExpenseDataTable $dataTable)
+    public function index(Request $request, ExpenseDataTable $dataTable)
     {
         $this->authorize('viewAny', Payment::class);
 
-        // Get accounts with balances (native currency per account)
         $accounts = $this->paymentReportingCurrencyService->accountBalancesForDisplay();
-
         $reportingCurrency = $this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam();
 
-        $currentMonthExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: null,
+            period: $request->string('vat_period')->toString() ?: null,
+        );
+
+        $periodRange = $vatSelection['range'];
+        $previousPeriodRange = $this->vatReportingService->previousComparableRange($vatSelection);
+
+        $periodExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
             TransactionType::EXPENSE,
             $reportingCurrency,
             fn ($query) => $query
-                ->whereMonth('payments.date', Carbon::now()->month)
-                ->whereYear('payments.date', Carbon::now()->year),
+                ->whereDate('payments.date', '>=', $periodRange['from']->toDateString())
+                ->whereDate('payments.date', '<=', $periodRange['to']->toDateString()),
         );
 
-        $lastMonthExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+        $previousPeriodExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
             TransactionType::EXPENSE,
             $reportingCurrency,
             fn ($query) => $query
-                ->whereMonth('payments.date', Carbon::now()->subMonth()->month)
-                ->whereYear('payments.date', Carbon::now()->subMonth()->year),
+                ->whereDate('payments.date', '>=', $previousPeriodRange['from']->toDateString())
+                ->whereDate('payments.date', '<=', $previousPeriodRange['to']->toDateString()),
         );
 
-        $percentageChange = $lastMonthExpense > 0
-            ? (($currentMonthExpense - $lastMonthExpense) / $lastMonthExpense) * 100
+        $percentageChange = $previousPeriodExpense > 0
+            ? (($periodExpense - $previousPeriodExpense) / $previousPeriodExpense) * 100
             : 0;
 
-        $ytdExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+        $yearFrom = Carbon::create($vatSelection['year'], 1, 1)->startOfDay();
+        $yearTo = $vatSelection['year'] === (int) now()->year
+            ? now()->endOfDay()
+            : Carbon::create($vatSelection['year'], 12, 31)->endOfDay();
+
+        $yearExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
             TransactionType::EXPENSE,
             $reportingCurrency,
-            fn ($query) => $query->whereYear('payments.date', Carbon::now()->year),
+            fn ($query) => $query
+                ->whereDate('payments.date', '>=', $yearFrom->toDateString())
+                ->whereDate('payments.date', '<=', $yearTo->toDateString()),
         );
 
-        $totalExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
+        $previousYearFrom = $yearFrom->copy()->subYear();
+        $previousYearTo = $yearTo->copy()->subYear();
+
+        $previousYearExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
             TransactionType::EXPENSE,
             $reportingCurrency,
+            fn ($query) => $query
+                ->whereDate('payments.date', '>=', $previousYearFrom->toDateString())
+                ->whereDate('payments.date', '<=', $previousYearTo->toDateString()),
         );
+
+        $yearPercentageChange = $previousYearExpense > 0
+            ? (($yearExpense - $previousYearExpense) / $previousYearExpense) * 100
+            : 0;
+
+        $selectedVat = $this->vatReportingService->sumExpenseVat(
+            $periodRange['from'],
+            $periodRange['to'],
+            $reportingCurrency,
+        );
+
+        $previousYearPeriodFrom = $periodRange['from']->copy()->subYear();
+        $previousYearPeriodTo = $periodRange['to']->copy()->subYear();
+        $previousYearVat = $this->vatReportingService->sumExpenseVat(
+            $previousYearPeriodFrom,
+            $previousYearPeriodTo,
+            $reportingCurrency,
+        );
+        $vatPercentageChange = $previousYearVat > 0
+            ? (($selectedVat - $previousYearVat) / $previousYearVat) * 100
+            : 0;
+
+        $selectedVatLabel = $vatSelection['label'];
+        $periodLabel = $vatSelection['label'];
+        $vatYears = $vatSelection['years'];
+        $vatYear = $vatSelection['year'];
+        $vatPeriod = $vatSelection['period'];
+        $vatMode = $vatSelection['mode'];
 
         return $dataTable->render('expense.index', compact(
             'accounts',
-            'currentMonthExpense',
+            'periodExpense',
+            'previousPeriodExpense',
             'percentageChange',
-            'ytdExpense',
-            'totalExpense',
+            'yearExpense',
+            'previousYearExpense',
+            'yearPercentageChange',
             'reportingCurrency',
+            'selectedVat',
+            'previousYearVat',
+            'vatPercentageChange',
+            'selectedVatLabel',
+            'periodLabel',
+            'vatYears',
+            'vatYear',
+            'vatPeriod',
+            'vatMode',
         ));
+    }
+
+    public function exportHacienda(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: null,
+            period: $request->string('vat_period')->toString() ?: null,
+        );
+
+        return $this->vatHaciendaCsvExportService->download(
+            operation: 'buy',
+            from: $vatSelection['range']['from'],
+            to: $vatSelection['range']['to'],
+            periodLabel: $vatSelection['label'],
+            documentScope: 'invoices',
+        );
+    }
+
+    public function exportCreditNotes(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: null,
+            period: $request->string('vat_period')->toString() ?: null,
+        );
+
+        return $this->vatHaciendaCsvExportService->download(
+            operation: 'buy',
+            from: $vatSelection['range']['from'],
+            to: $vatSelection['range']['to'],
+            periodLabel: $vatSelection['label'],
+            documentScope: 'credit_notes',
+        );
     }
 
     public function create(): View

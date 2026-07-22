@@ -34,6 +34,16 @@
     };
     $incomeChartColors = ['#28c76f', '#55d187', '#83df9e', '#b2edc4', '#1f9d57', '#3dd68c', '#6ee7a8', '#9ef0c4'];
     $expenseChartColors = ['#ea5455', '#f08182', '#f5adaf', '#fad8d9', '#d43f3f', '#ff6b6b', '#ff9999', '#ffc9c9'];
+    $incomeDelta = $summary['prior_year_income'] > 0
+        ? (($summary['income'] - $summary['prior_year_income']) / $summary['prior_year_income']) * 100
+        : 0.0;
+    $expenseDelta = $summary['prior_year_expense'] > 0
+        ? (($summary['expense'] - $summary['prior_year_expense']) / $summary['prior_year_expense']) * 100
+        : 0.0;
+    $priorProfit = (float) ($summary['prior_year_income'] ?? 0) - (float) ($summary['prior_year_expense'] ?? 0);
+    $profitDelta = $priorProfit != 0.0
+        ? (($summary['profit'] - $priorProfit) / abs($priorProfit)) * 100
+        : 0.0;
 @endphp
 
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
@@ -41,14 +51,19 @@
         <h4 class="mb-1 mt-3">
             <span class="text-muted fw-light">{{ __('Accounting Dashboard') }}/</span>
             {{ __('Financial projection report') }}
+            <i
+                class="ti ti-info-circle text-muted ms-1"
+                style="font-size: 1rem; cursor: help; vertical-align: middle;"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="{{ __('Totals use invoice line amounts grouped by category. Voided, draft, and credit-note invoices are excluded.') }}"
+            ></i>
         </h4>
         <p class="text-muted mb-0">{{ __('Based on invoiced line items by category (historical billing data).') }}</p>
-        <p class="text-muted small mb-0">{{ __('Totals converted to :currency using team reporting currency.', ['currency' => $reportingCurrency]) }}</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap align-items-center gap-2">
         <form method="GET" action="{{ route('finance-dashboard.projection') }}" class="d-flex align-items-center">
-            <label for="projection-year" class="form-label mb-0 me-2">{{ __('Year') }}</label>
-            <select id="projection-year" name="year" class="form-select" onchange="this.form.submit()">
+            <select id="projection-year" name="year" class="form-select w-auto" aria-label="{{ __('Year') }}" onchange="this.form.submit()">
                 @foreach($availableYears as $year)
                     <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
                 @endforeach
@@ -57,15 +72,6 @@
         <a href="{{ route('finance-dashboard.index', ['year' => $selectedYear]) }}" class="btn btn-outline-secondary">
             <i class="ti ti-arrow-left me-1"></i>{{ __('Accounting Dashboard') }}
         </a>
-    </div>
-</div>
-
-<div class="alert alert-secondary mb-4" role="status">
-    <div class="d-flex gap-2">
-        <i class="ti ti-info-circle mt-1"></i>
-        <div class="small">
-            {{ __('Totals use invoice line amounts grouped by category. Voided, draft, and credit-note invoices are excluded.') }}
-        </div>
     </div>
 </div>
 
@@ -100,21 +106,19 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Invoiced income') }} ({{ $selectedYear }})</span>
-                @if ($conversion['complete'])
-                    <h3 class="mb-0 mt-2 text-success">{{ $formatCardAmount($summary['income']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
-                @else
-                    <h3 class="mb-0 mt-2 text-success">{{ $formatNativeTotals($conversion['native_totals']['income']) }}</h3>
-                @endif
-                @if($summary['prior_year_income'] > 0)
-                    @php
-                        $incomeDelta = (($summary['income'] - $summary['prior_year_income']) / $summary['prior_year_income']) * 100;
-                    @endphp
-                    <small class="text-muted">{{ __('vs :year', ['year' => $selectedYear - 1]) }}:
-                        <span class="{{ $incomeDelta >= 0 ? 'text-success' : 'text-danger' }}">
-                            {{ $incomeDelta >= 0 ? '+' : '' }}{{ number_format($incomeDelta, 1) }}%
-                        </span>
-                    </small>
-                @endif
+                <div class="d-flex align-items-center my-2">
+                    @if ($conversion['complete'])
+                        <h3 class="mb-0 me-2 text-success">{{ $formatCardAmount($summary['income']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                    @else
+                        <h3 class="mb-0 me-2 text-success">{{ $formatNativeTotals($conversion['native_totals']['income']) }}</h3>
+                    @endif
+                    @if($summary['prior_year_income'] > 0 && $incomeDelta != 0)
+                        <p class="mb-0 {{ $incomeDelta >= 0 ? 'text-success' : 'text-danger' }}">
+                            ({{ $incomeDelta >= 0 ? '+' : '' }}{{ number_format($incomeDelta, 1) }}%)
+                        </p>
+                    @endif
+                </div>
+                <p class="mb-0 text-muted">{{ __('vs :year', ['year' => $selectedYear - 1]) }}</p>
             </div>
         </div>
     </div>
@@ -122,21 +126,19 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Invoiced expenses') }} ({{ $selectedYear }})</span>
-                @if ($conversion['complete'])
-                    <h3 class="mb-0 mt-2 text-danger">{{ $formatCardAmount($summary['expense']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
-                @else
-                    <h3 class="mb-0 mt-2 text-danger">{{ $formatNativeTotals($conversion['native_totals']['expense']) }}</h3>
-                @endif
-                @if($summary['prior_year_expense'] > 0)
-                    @php
-                        $expenseDelta = (($summary['expense'] - $summary['prior_year_expense']) / $summary['prior_year_expense']) * 100;
-                    @endphp
-                    <small class="text-muted">{{ __('vs :year', ['year' => $selectedYear - 1]) }}:
-                        <span class="{{ $expenseDelta <= 0 ? 'text-success' : 'text-danger' }}">
-                            {{ $expenseDelta >= 0 ? '+' : '' }}{{ number_format($expenseDelta, 1) }}%
-                        </span>
-                    </small>
-                @endif
+                <div class="d-flex align-items-center my-2">
+                    @if ($conversion['complete'])
+                        <h3 class="mb-0 me-2 text-danger">{{ $formatCardAmount($summary['expense']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                    @else
+                        <h3 class="mb-0 me-2 text-danger">{{ $formatNativeTotals($conversion['native_totals']['expense']) }}</h3>
+                    @endif
+                    @if($summary['prior_year_expense'] > 0 && $expenseDelta != 0)
+                        <p class="mb-0 {{ $expenseDelta <= 0 ? 'text-success' : 'text-danger' }}">
+                            ({{ $expenseDelta >= 0 ? '+' : '' }}{{ number_format($expenseDelta, 1) }}%)
+                        </p>
+                    @endif
+                </div>
+                <p class="mb-0 text-muted">{{ __('vs :year', ['year' => $selectedYear - 1]) }}</p>
             </div>
         </div>
     </div>
@@ -144,14 +146,24 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Net profit (invoiced)') }}</span>
+                <div class="d-flex align-items-center my-2">
+                    @if ($conversion['complete'])
+                        <h3 class="mb-0 me-2 {{ $summary['profit'] >= 0 ? 'text-success' : 'text-danger' }}">
+                            {{ $formatCardAmount($summary['profit']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
+                        </h3>
+                        @if($profitDelta != 0)
+                            <p class="mb-0 {{ $profitDelta >= 0 ? 'text-success' : 'text-danger' }}">
+                                ({{ $profitDelta >= 0 ? '+' : '' }}{{ number_format($profitDelta, 1) }}%)
+                            </p>
+                        @endif
+                    @else
+                        <h3 class="mb-0 me-2 text-muted">—</h3>
+                    @endif
+                </div>
                 @if ($conversion['complete'])
-                    <h3 class="mb-0 mt-2 {{ $summary['profit'] >= 0 ? 'text-success' : 'text-danger' }}">
-                        {{ $formatCardAmount($summary['profit']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
-                    </h3>
-                    <small class="text-muted">{{ __('Margin') }}: {{ number_format($summary['margin_percent'], 1) }}%</small>
+                    <p class="mb-0 text-muted">{{ __('Margin') }}: {{ number_format($summary['margin_percent'], 1) }}%</p>
                 @else
-                    <h3 class="mb-0 mt-2 text-muted">—</h3>
-                    <small class="text-muted">{{ __('Profit requires converted totals.') }}</small>
+                    <p class="mb-0 text-muted">{{ __('Profit requires converted totals.') }}</p>
                 @endif
             </div>
         </div>
@@ -160,21 +172,23 @@
         <div class="card h-100">
             <div class="card-body">
                 <span class="text-muted">{{ __('Avg. monthly profit') }}</span>
-                @if ($conversion['complete'])
-                    <h3 class="mb-0 mt-2 {{ $scenario['avg_monthly_profit'] >= 0 ? 'text-info' : 'text-danger' }}">
-                        {{ $formatCardAmount($scenario['avg_monthly_profit']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
-                    </h3>
-                @else
-                    <h3 class="mb-0 mt-2 text-muted">—</h3>
-                @endif
-                <small class="text-muted">{{ __('Months with billing activity in :year', ['year' => $selectedYear]) }}</small>
+                <div class="d-flex align-items-center my-2">
+                    @if ($conversion['complete'])
+                        <h3 class="mb-0 me-2 {{ $scenario['avg_monthly_profit'] >= 0 ? 'text-info' : 'text-danger' }}">
+                            {{ $formatCardAmount($scenario['avg_monthly_profit']) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small>
+                        </h3>
+                    @else
+                        <h3 class="mb-0 me-2 text-muted">—</h3>
+                    @endif
+                </div>
+                <p class="mb-0 text-muted">{{ __('Months with billing activity in :year', ['year' => $selectedYear]) }}</p>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row g-4 mb-4">
-    <div class="col-lg-8">
+    <div class="col-12">
         <div class="card h-100">
             <div class="card-header">
                 <h5 class="card-title m-0">{{ __('Income vs expenses (invoiced)') }}</h5>
@@ -182,19 +196,6 @@
             </div>
             <div class="card-body">
                 <div id="projectionTrendChart"></div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4">
-        <div class="card h-100">
-            <div class="card-header">
-                <h5 class="card-title m-0">{{ __('Growth scenario') }}</h5>
-                <p class="text-muted small mb-0">{{ __('Estimate from average monthly profit') }}</p>
-            </div>
-            <div class="card-body">
-                <label class="form-label" for="growth-multiplier">{{ __('Target multiplier (e.g. 2 = double profit)') }}</label>
-                <input type="number" class="form-control mb-3" id="growth-multiplier" min="1" max="20" step="0.5" value="2">
-                <div id="growth-scenario-result" class="small text-muted"></div>
             </div>
         </div>
     </div>
@@ -207,79 +208,21 @@
     'selectedYear' => $selectedYear,
     'selectedMonth' => $selectedMonth,
 ])
-
-@can('viewAny', App\Models\Invoice::class)
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title m-0">{{ __('Financial assistant') }}</h5>
-                <p class="text-muted small mb-0">{{ __('Ask about projections, x2/x5 scenarios, and cost reduction using your invoiced data.') }}</p>
-            </div>
-            <div class="card-body">
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    @foreach([
-                        __('What do I need to double profit in :year?', ['year' => $selectedYear]),
-                        __('Which expense categories should we cut first in :year?', ['year' => $selectedYear]),
-                        __('Compare invoiced profit vs last year'),
-                        __('Run a x5 growth scenario for :year', ['year' => $selectedYear]),
-                    ] as $suggestionText)
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-outline-primary finance-assistant-suggestion"
-                            data-prompt="{{ $suggestionText }}"
-                        >{{ $suggestionText }}</button>
-                    @endforeach
-                </div>
-                <div id="finance-projection-assistant" style="min-height: 22rem;">
-                    @livewire('assistant-chat', [
-                        'promptKey' => 'assistant_finanzas',
-                        'hideHeader' => false,
-                    ], key('finance-projection-assistant-'.auth()->id().'-'.$selectedYear))
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-@endcan
 @endsection
 
 @section('page-script')
 <script>
-function prefillFinanceProjectionAssistant(message) {
-    const root = document.getElementById('finance-projection-assistant');
-    if (!root) {
-        return;
-    }
-
-    const wireId = root.querySelector('[wire\\:id]')?.getAttribute('wire:id');
-    if (wireId && typeof Livewire !== 'undefined') {
-        const component = Livewire.find(wireId);
-        if (component) {
-            component.set('input', message);
-            root.querySelector('#assistant-chat-input')?.focus();
-            return;
-        }
-    }
-
-    if (typeof Livewire !== 'undefined') {
-        Livewire.dispatch('finance-assistant-prefill', { message: message });
-        root.querySelector('#assistant-chat-input')?.focus();
-    }
-}
-
 document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.finance-assistant-suggestion').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            const prompt = btn.getAttribute('data-prompt') || btn.textContent.trim();
-            prefillFinanceProjectionAssistant(prompt);
-        });
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        }
     });
 
     const monthlyTrend = @json($monthlyTrend);
     const incomeCategories = @json($incomeCategories);
     const expenseCategories = @json($expenseCategories);
-    const scenario = @json($scenario);
 
     const formatMoney = function (val) {
         return new Intl.NumberFormat(document.documentElement.lang || 'es', {
@@ -353,38 +296,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     renderDonut('#incomeCategoryChart', incomeCategories, incomeChartColors);
     renderDonut('#expenseCategoryChart', expenseCategories, expenseChartColors);
-
-    const multiplierInput = document.getElementById('growth-multiplier');
-    const resultEl = document.getElementById('growth-scenario-result');
-
-    function updateGrowthScenario() {
-        const multiplier = parseFloat(multiplierInput.value) || 1;
-        const current = scenario.avg_monthly_profit;
-        const target = current * multiplier;
-        const gap = target - current;
-        const avgIncome = scenario.avg_monthly_income;
-        const avgExpense = scenario.avg_monthly_expense;
-
-        let html = '<p class="mb-2"><strong>' + @json(__('Current avg. monthly profit')) + ':</strong> ' + formatMoney(current) + '</p>';
-        html += '<p class="mb-2"><strong>' + @json(__('Target profit')) + ' (×' + multiplier + '):</strong> ' + formatMoney(target) + '</p>';
-        html += '<p class="mb-2"><strong>' + @json(__('Monthly gap')) + ':</strong> <span class="' + (gap >= 0 ? 'text-primary' : 'text-success') + '">' + formatMoney(gap) + '</span></p>';
-
-        if (gap > 0 && avgIncome > 0) {
-            const incomePct = (gap / avgIncome) * 100;
-            html += '<p class="mb-1">' + @json(__('Equivalent to increasing invoiced income by about')) + ' <strong>' + incomePct.toFixed(1) + '%</strong> ' + @json(__('per month (holding expenses steady).')) + '</p>';
-        }
-        if (gap > 0 && avgExpense > 0) {
-            const expensePct = (gap / avgExpense) * 100;
-            html += '<p class="mb-0">' + @json(__('Or reducing invoiced expenses by about')) + ' <strong>' + expensePct.toFixed(1) + '%</strong> ' + @json(__('per month (holding income steady).')) + '</p>';
-        }
-
-        resultEl.innerHTML = html;
-    }
-
-    if (multiplierInput && resultEl) {
-        multiplierInput.addEventListener('input', updateGrowthScenario);
-        updateGrowthScenario();
-    }
 });
 </script>
 @endsection

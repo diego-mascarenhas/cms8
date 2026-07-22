@@ -21,35 +21,58 @@
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">Gastos</h4>
         <p class="text-muted">Gestiona tus gastos y costes</p>
-        <p class="text-muted small mb-0">Totales en {{ $reportingCurrency }} (tipos de cambio del sistema).</p>
     </div>
-    <div class="mt-3 mt-md-0">
-        <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary me-2">
-            <i class="ti ti-list me-1"></i> Todos los pagos
-        </a>
-        <a href="{{ route('expense.create') }}" class="btn btn-primary waves-effect waves-light">
-            <i class="ti ti-plus me-1"></i> Añadir gasto
-        </a>
+    <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+        @include('partials.vat-period-selector')
+        <div class="d-flex flex-wrap gap-2">
+            <div class="dropdown">
+                <button class="btn btn-outline-primary dropdown-toggle" type="button" id="expenseExportDropdown"
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="ti ti-download me-1"></i> {{ __('Export') }}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="expenseExportDropdown">
+                    <li>
+                        <a class="dropdown-item" href="{{ route('expense.export-hacienda', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}">
+                            <i class="ti ti-file-invoice me-2"></i> {{ __('Invoices') }}
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('expense.export-credit-notes', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}">
+                            <i class="ti ti-receipt-refund me-2"></i> {{ __('Credit notes') }}
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
+                <i class="ti ti-list me-1"></i> Todos los pagos
+            </a>
+            <a href="{{ route('expense.create') }}" class="btn btn-primary waves-effect waves-light">
+                <i class="ti ti-plus me-1"></i> Añadir gasto
+            </a>
+        </div>
     </div>
 </div>
 
 <!-- Financial Metrics Cards -->
 <div class="row g-4 mb-4">
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>Mes actual</span>
+                        <span>{{ $periodLabel }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ $formatCardAmount($currentMonthExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($periodExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                             @if($percentageChange != 0)
                                 <p class="mb-0 {{ $percentageChange < 0 ? 'text-success' : 'text-danger' }}">
                                     ({{ $percentageChange > 0 ? '+' : '' }}{{ number_format($percentageChange, 1) }}%)
                                 </p>
                             @endif
                         </div>
-                        <p class="mb-0">vs mes anterior</p>
+                        <p class="mb-0">
+                            {{ $vatMode === 'quarter' ? 'vs trimestre anterior' : 'vs mes anterior' }}:
+                            {{ $formatCardAmount($previousPeriodExpense) }} {{ $reportingCurrency }}
+                        </p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-danger">
@@ -60,60 +83,54 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>Año en curso</span>
+                        <span>{{ __('I.V.A.') }} {{ $periodLabel }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ $formatCardAmount($ytdExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($selectedVat) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            @if($vatPercentageChange != 0)
+                                <p class="mb-0 {{ $vatPercentageChange < 0 ? 'text-success' : 'text-danger' }}">
+                                    ({{ $vatPercentageChange > 0 ? '+' : '' }}{{ number_format($vatPercentageChange, 1) }}%)
+                                </p>
+                            @endif
                         </div>
-                        <p class="mb-0">{{ date('Y') }}</p>
+                        <p class="mb-0">
+                            vs año anterior: {{ $formatCardAmount($previousYearVat) }} {{ $reportingCurrency }}
+                        </p>
+                    </div>
+                    <div class="avatar">
+                        <span class="avatar-initial rounded bg-label-warning">
+                            <i class="ti {{ $vatMode === 'quarter' ? 'ti-calendar-event' : 'ti-receipt-tax' }} ti-sm"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ $vatYear }}</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($yearExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            @if($yearPercentageChange != 0)
+                                <p class="mb-0 {{ $yearPercentageChange < 0 ? 'text-success' : 'text-danger' }}">
+                                    ({{ $yearPercentageChange > 0 ? '+' : '' }}{{ number_format($yearPercentageChange, 1) }}%)
+                                </p>
+                            @endif
+                        </div>
+                        <p class="mb-0">
+                            vs año anterior: {{ $formatCardAmount($previousYearExpense) }} {{ $reportingCurrency }}
+                        </p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-danger">
                             <i class="ti ti-calendar-stats ti-sm"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
-                    <div class="content-left">
-                        <span>Total gastos</span>
-                        <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ $formatCardAmount($totalExpense) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
-                        </div>
-                        <p class="mb-0">Histórico</p>
-                    </div>
-                    <div class="avatar">
-                        <span class="avatar-initial rounded bg-label-danger">
-                            <i class="ti ti-receipt ti-sm"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
-                    <div class="content-left">
-                        <span>Cuentas</span>
-                        <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ count($accounts) }}</h3>
-                        </div>
-                        <p class="mb-0">Cuentas activas</p>
-                    </div>
-                    <div class="avatar">
-                        <span class="avatar-initial rounded bg-label-primary">
-                            <i class="ti ti-wallet ti-sm"></i>
                         </span>
                     </div>
                 </div>

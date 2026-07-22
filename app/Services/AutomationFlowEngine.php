@@ -268,12 +268,22 @@ class AutomationFlowEngine
 
     public function stepSystemAppendix(AutomationStep $step): string
     {
-        $lines = [];
+        $lines = [
+            '# Embudo de automatización activo (prioridad máxima)',
+            'Estás ejecutando un embudo. NO uses el menú general de módulos (contactos, citas, tareas, campañas, finanzas, catálogo).',
+            'NO ofrezcas “Explorar cómo funciona Humano” ni un tour del producto.',
+            'Seguí SOLO el paso actual y pedí la información de ese paso.',
+            '',
+            '# Paso del embudo: '.$step->label,
+        ];
+
         $instruction = trim((string) ($step->instruction ?? ''));
         if ($instruction !== '')
         {
-            $lines[] = '# Paso del embudo: '.$step->label;
             $lines[] = $instruction;
+        } else
+        {
+            $lines[] = 'Continuá este paso del embudo según el contexto de la conversación.';
         }
 
         $transitions = $step->relationLoaded('transitions')

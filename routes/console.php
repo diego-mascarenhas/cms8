@@ -78,6 +78,20 @@ Schedule::command('payment-syncs:import-stripe --limit=120 --fallback-email --li
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('mercadopago:sync-payments --limit=40 --recent-days=90')
+    ->cron('10,25,40,55 * * * *')
+    ->name('mercadopago-payments-sync')
+    ->description('Sync Mercado Pago payments into payment_syncs (staging)')
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('payment-syncs:import-mercadopago --limit=120 --fallback-email --link-code-on-email-match')
+    ->cron('14,29,44,59 * * * *')
+    ->name('mercadopago-payment-syncs-import')
+    ->description('Import pending Mercado Pago payment_syncs into core payments')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('invoices:reconcile-stripe-collected-payments --limit=80')
     ->cron('20,50 * * * *')
     ->name('stripe-collected-invoice-payments-reconcile')

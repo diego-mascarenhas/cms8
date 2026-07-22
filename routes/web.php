@@ -50,6 +50,7 @@ use App\Http\Controllers\LegalDocumentsController;
 use App\Http\Controllers\List60Controller;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\ManualController;
+use App\Http\Controllers\MercadoPagoPaymentSyncController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
 use App\Http\Controllers\MultimediaController;
@@ -348,6 +349,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
     Route::post('/team/{team}/test-cuentica', [TeamSettingController::class, 'testCuenticaConnection'])->name('team-settings.test-cuentica');
+    Route::post('/team/{team}/test-mercadopago', [TeamSettingController::class, 'testMercadoPagoConnection'])->name('team-settings.test-mercadopago');
     Route::post('/team/{team}/test-wordpress', [TeamSettingController::class, 'testWordPressConnection'])->name('team-settings.test-wordpress');
     Route::get('/integrations/google/connect', [GoogleIntegrationController::class, 'connect'])->name('integrations.google.connect');
     Route::get('/integrations/google/callback', [GoogleIntegrationController::class, 'callback'])->name('integrations.google.callback');
@@ -921,6 +923,9 @@ Route::middleware(['auth'])->group(function ()
 
     // Payments (all transactions)
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/syncs/mercadopago', [MercadoPagoPaymentSyncController::class, 'index'])->name('payments.syncs.mercadopago.index');
+    Route::get('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'assign'])->name('payments.syncs.mercadopago.assign');
+    Route::post('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'import'])->name('payments.syncs.mercadopago.import');
     Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
     Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');
     Route::get('/payments/{id}', [PaymentController::class, 'show'])->name('payments.show');
@@ -928,9 +933,13 @@ Route::middleware(['auth'])->group(function ()
 
     // Income module
     Route::get('/income/list', [IncomeController::class, 'index'])->name('income.index');
+    Route::get('/income/export-hacienda', [IncomeController::class, 'exportHacienda'])->name('income.export-hacienda');
+    Route::get('/income/export-credit-notes', [IncomeController::class, 'exportCreditNotes'])->name('income.export-credit-notes');
 
     // Expense module
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');
+    Route::get('/expense/export-hacienda', [ExpenseController::class, 'exportHacienda'])->name('expense.export-hacienda');
+    Route::get('/expense/export-credit-notes', [ExpenseController::class, 'exportCreditNotes'])->name('expense.export-credit-notes');
     Route::get('/expense/create', [ExpenseController::class, 'create'])->name('expense.create');
     Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
     Route::post('/expense/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('expense.check-document-duplicate');

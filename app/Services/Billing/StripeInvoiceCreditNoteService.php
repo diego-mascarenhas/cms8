@@ -14,6 +14,7 @@ class StripeInvoiceCreditNoteService
     public function __construct(
         private readonly StripeInvoiceSyncRefresher $invoiceSyncRefresher,
         private readonly StripeInvoiceCoreImportService $coreImportService,
+        private readonly StripeCreditNoteCoreImportService $creditNoteCoreImportService,
         private readonly StripeCreditNoteCreatePayloadBuilder $payloadBuilder,
     ) {}
 
@@ -71,15 +72,48 @@ class StripeInvoiceCreditNoteService
             ]);
         }
 
+        // Refresh original invoice balance/status only — amounts stay as issued.
+        $originalSnapshot = [
+            'gross_amount' => (float) $invoice->gross_amount,
+            'total_amount' => (float) $invoice->total_amount,
+            'number' => (string) $invoice->number,
+            'date' => (string) $invoice->date,
+        ];
+
         $sync = $this->invoiceSyncRefresher->refreshFromStripe($client, $team->id, $externalId);
         if ($sync !== null)
         {
-            $this->coreImportService->importFromSyncRow(
+            $refreshed = $this->coreImportService->importFromSyncRow(
                 $sync->fresh(),
                 fallbackEmail: true,
                 linkCodeOnEmailMatch: true,
             );
+
+            // Guard: never let a credit-note refresh rewrite the original fiscal document amounts/number.
+            if ($refreshed instanceof Invoice)
+            {
+                $needsRestore = abs((float) $refreshed->gross_amount - $originalSnapshot['gross_amount']) > 0.009
+                    || abs((float) $refreshed->total_amount - $originalSnapshot['total_amount']) > 0.009
+                    || (string) $refreshed->number !== $originalSnapshot['number'];
+
+                if ($needsRestore)
+                {
+                    $refreshed->forceFill([
+                        'gross_amount' => $originalSnapshot['gross_amount'],
+                        'total_amount' => $originalSnapshot['total_amount'],
+                        'number' => $originalSnapshot['number'],
+                        'date' => $originalSnapshot['date'],
+                    ])->save();
+                }
+            }
         }
+
+        // Separate abono document (negative in Hacienda export).
+        $this->creditNoteCoreImportService->importFromStripePayload(
+            (int) $team->id,
+            $creditNote->toArray(),
+            $invoice->fresh() ?? $invoice,
+        );
 
         return [
             'credit_note_id' => (string) $creditNote->id,

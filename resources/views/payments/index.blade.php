@@ -8,6 +8,11 @@
         <h4 class="mb-1 mt-3">{{ __('Payments') }}</h4>
         <p class="text-muted">{{ __('Manage your payments') }}</p>
     </div>
+    <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+        <a href="{{ route('payments.syncs.mercadopago.index') }}" class="btn btn-label-info">
+            <i class="ti ti-wallet me-1"></i>{{ __('payment_sync.mercadopago.open_queue') }}
+        </a>
+    </div>
 </div>
 
 @if (session('success'))

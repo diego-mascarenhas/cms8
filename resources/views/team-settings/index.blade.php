@@ -135,6 +135,17 @@
                 <div class="col-md-4 mb-3">
                     <div class="card h-100">
                         <div class="card-body text-center">
+                            <i class="ti ti-wallet mb-3" style="font-size: 2rem;"></i>
+                            <h5 class="card-title">{{ __('Mercado Pago') }}</h5>
+                            <p class="card-text">{{ __('Access Token para sincronizar pagos. Panel:') }} <a href="https://www.mercadopago.com.ar/developers/panel/app" target="_blank" rel="noopener noreferrer">developers/panel/app</a></p>
+                            <a href="{{ route('team-settings.edit', ['team' => $team, 'group' => 'mercadopago']) }}" class="btn btn-primary">{{ __('Configure') }}</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
                             <i class="ti ti-category mb-3" style="font-size: 2rem;"></i>
                             <h5 class="card-title">{{ __('Categories') }}</h5>
                             <p class="card-text">{{ __('Configure default category settings and preferences') }}</p>

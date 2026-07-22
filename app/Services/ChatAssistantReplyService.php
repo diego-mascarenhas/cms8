@@ -91,6 +91,8 @@ class ChatAssistantReplyService
             $instructions .= "\n\n---\n\n".$businessAppendix;
         }
 
+        $hasGuideAppendix = $humanoGuideAppendix !== null && trim($humanoGuideAppendix) !== '';
+
         if ($withTools && $teamId !== null && $contextUserId !== null)
         {
             $forced = $forcedFlowRoutingKey !== null ? trim($forcedFlowRoutingKey) : '';
@@ -104,11 +106,27 @@ class ChatAssistantReplyService
                         'routing_key' => $forced,
                         'persist_assistant_flow_key' => 'set',
                     ];
+                } elseif ($hasGuideAppendix)
+                {
+                    // Automation funnel / interactive guide owns the turn: do not fall back to sticky discovery.
+                    $resolution = [
+                        'prompt' => null,
+                        'routing_key' => null,
+                        'persist_assistant_flow_key' => 'omit',
+                    ];
                 } else
                 {
                     $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
                     $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
                 }
+            } elseif ($hasGuideAppendix)
+            {
+                // Active automation funnel step (or Humano guide appendix): skip intent menus.
+                $resolution = [
+                    'prompt' => null,
+                    'routing_key' => null,
+                    'persist_assistant_flow_key' => 'omit',
+                ];
             } else
             {
                 $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
@@ -164,6 +182,7 @@ class ChatAssistantReplyService
 
             if ($flowPrompt === null
                 && ! $previewOnly
+                && ! $hasGuideAppendix
                 && ! $this->toolIntentPrompts->keywordIntentRoutingEnabled($teamId))
             {
                 $discovery = $this->flowDiscoveryModeAppendix((int) $teamId);
@@ -197,9 +216,9 @@ class ChatAssistantReplyService
             }
         }
 
-        if ($humanoGuideAppendix !== null && trim($humanoGuideAppendix) !== '')
+        if ($hasGuideAppendix)
         {
-            $instructions .= "\n\n---\n\n".trim($humanoGuideAppendix);
+            $instructions .= "\n\n---\n\n".trim((string) $humanoGuideAppendix);
         } elseif ($withTools && $teamId !== null && $actorContext !== null)
         {
             $hintKey = $actorContext->usesWebInteractiveGuideHint()
