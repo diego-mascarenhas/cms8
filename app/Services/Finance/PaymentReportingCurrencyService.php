@@ -47,8 +47,10 @@ class PaymentReportingCurrencyService
     public function sumsByCurrency(Builder $query): array
     {
         $payments = $this->loadPaymentsWithAccountCurrency($query, [
+            'payments.id',
             'payments.amount',
             'payments.account_id',
+            'payments.invoice_id',
         ]);
 
         $sums = [];
@@ -113,10 +115,12 @@ class PaymentReportingCurrencyService
                 ->where('payments.status', 2)
                 ->whereYear('payments.date', $year),
             [
+                'payments.id',
                 'payments.amount',
                 'payments.date',
                 'payments.transaction_type',
                 'payments.account_id',
+                'payments.invoice_id',
             ],
         );
 
@@ -232,14 +236,29 @@ class PaymentReportingCurrencyService
     {
         return (clone $query)
             ->whereNotNull('payments.account_id')
-            ->with(['account' => fn ($relation) => $relation->withoutGlobalScopes()->with('currency')])
+            ->with([
+                'account' => fn ($relation) => $relation->withoutGlobalScopes()->with('currency'),
+                'invoice' => fn ($relation) => $relation->withoutGlobalScopes()->with('currency'),
+            ])
             ->get($columns);
     }
 
     private function paymentCurrencyCode(Payment $payment): ?string
     {
-        $currencyCode = strtoupper((string) $payment->account?->currency?->code);
+        $accountCurrency = strtoupper(trim((string) ($payment->account?->currency?->code ?? '')));
+        if ($accountCurrency !== '')
+        {
+            return $accountCurrency;
+        }
 
-        return $currencyCode !== '' ? $currencyCode : null;
+        $invoiceCurrency = strtoupper(trim((string) ($payment->invoice?->currency_code ?? '')));
+        if ($invoiceCurrency !== '')
+        {
+            return $invoiceCurrency;
+        }
+
+        $fallback = strtoupper(trim((string) config('verifactu.default_currency', 'EUR')));
+
+        return $fallback !== '' ? $fallback : null;
     }
 }

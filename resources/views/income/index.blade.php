@@ -23,7 +23,8 @@
         <p class="text-muted">{{ __('Manage your income and revenue') }}</p>
         <p class="text-muted small mb-0">{{ __('Totals in :currency (system exchange rates).', ['currency' => $reportingCurrency]) }}</p>
     </div>
-    <div class="mt-3 mt-md-0">
+    <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+        @include('partials.vat-period-selector')
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
             <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
         </a>
@@ -32,21 +33,24 @@
 
 <!-- Financial Metrics Cards -->
 <div class="row g-4 mb-4">
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>{{ __('Current Month') }}</span>
+                        <span>{{ $periodLabel }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ $formatCardAmount($currentMonthIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($periodIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
                             @if($percentageChange != 0)
                                 <p class="mb-0 {{ $percentageChange > 0 ? 'text-success' : 'text-danger' }}">
                                     ({{ $percentageChange > 0 ? '+' : '' }}{{ number_format($percentageChange, 1) }}%)
                                 </p>
                             @endif
                         </div>
-                        <p class="mb-0">{{ __('vs last month') }}</p>
+                        <p class="mb-0">
+                            {{ $vatMode === 'quarter' ? __('vs previous quarter') : __('vs last month') }}:
+                            {{ $formatCardAmount($previousPeriodIncome) }} {{ $reportingCurrency }}
+                        </p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-success">
@@ -57,60 +61,54 @@
             </div>
         </div>
     </div>
-    <div class="col-sm-6 col-lg-3">
+    <div class="col-md-4">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="content-left">
-                        <span>{{ __('Year to Date') }}</span>
+                        <span>{{ __('I.V.A.') }} {{ $periodLabel }}</span>
                         <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ $formatCardAmount($ytdIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($selectedVat) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            @if($vatPercentageChange != 0)
+                                <p class="mb-0 {{ $vatPercentageChange > 0 ? 'text-success' : 'text-danger' }}">
+                                    ({{ $vatPercentageChange > 0 ? '+' : '' }}{{ number_format($vatPercentageChange, 1) }}%)
+                                </p>
+                            @endif
                         </div>
-                        <p class="mb-0">{{ date('Y') }}</p>
+                        <p class="mb-0">
+                            {{ __('vs previous year') }}: {{ $formatCardAmount($previousYearVat) }} {{ $reportingCurrency }}
+                        </p>
+                    </div>
+                    <div class="avatar">
+                        <span class="avatar-initial rounded bg-label-info">
+                            <i class="ti {{ $vatMode === 'quarter' ? 'ti-calendar-event' : 'ti-receipt-tax' }} ti-sm"></i>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ $vatYear }}</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $formatCardAmount($yearIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
+                            @if($yearPercentageChange != 0)
+                                <p class="mb-0 {{ $yearPercentageChange > 0 ? 'text-success' : 'text-danger' }}">
+                                    ({{ $yearPercentageChange > 0 ? '+' : '' }}{{ number_format($yearPercentageChange, 1) }}%)
+                                </p>
+                            @endif
+                        </div>
+                        <p class="mb-0">
+                            {{ __('vs previous year') }}: {{ $formatCardAmount($previousYearIncome) }} {{ $reportingCurrency }}
+                        </p>
                     </div>
                     <div class="avatar">
                         <span class="avatar-initial rounded bg-label-success">
                             <i class="ti ti-calendar-stats ti-sm"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
-                    <div class="content-left">
-                        <span>{{ __('Total Income') }}</span>
-                        <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ $formatCardAmount($totalIncome) }} <small class="text-muted fs-6">{{ $reportingCurrency }}</small></h3>
-                        </div>
-                        <p class="mb-0">{{ __('All time') }}</p>
-                    </div>
-                    <div class="avatar">
-                        <span class="avatar-initial rounded bg-label-success">
-                            <i class="ti ti-coin ti-sm"></i>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-        <div class="card">
-            <div class="card-body">
-                <div class="d-flex align-items-start justify-content-between">
-                    <div class="content-left">
-                        <span>{{ __('Accounts') }}</span>
-                        <div class="d-flex align-items-center my-2">
-                            <h3 class="mb-0 me-2">{{ count($accounts) }}</h3>
-                        </div>
-                        <p class="mb-0">{{ __('Active accounts') }}</p>
-                    </div>
-                    <div class="avatar">
-                        <span class="avatar-initial rounded bg-label-primary">
-                            <i class="ti ti-wallet ti-sm"></i>
                         </span>
                     </div>
                 </div>

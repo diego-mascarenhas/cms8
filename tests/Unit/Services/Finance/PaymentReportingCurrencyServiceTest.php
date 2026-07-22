@@ -12,6 +12,9 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use Database\Seeders\CurrencySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -28,7 +31,12 @@ class PaymentReportingCurrencyServiceTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed([CurrencySeeder::class]);
+        $this->seed([
+            CurrencySeeder::class,
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+        ]);
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
         $user = User::factory()->withPersonalTeam()->create();
@@ -107,6 +115,62 @@ class PaymentReportingCurrencyServiceTest extends TestCase
         );
 
         $this->assertSame('140.00', number_format($total, 2, '.', ''));
+    }
+
+    public function test_sum_uses_invoice_currency_when_account_has_no_currency(): void
+    {
+        $this->team->setSetting('finance_reporting_currency', 'EUR', ['group' => 'finance']);
+
+        $stripeAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'code' => 'stripe',
+            'name' => 'Stripe',
+            'currency_id' => null,
+            'status' => 1,
+        ]);
+        $paymentType = PaymentType::query()->create(['name' => 'Stripe']);
+        $eurId = (int) Currency::query()->where('code', 'EUR')->value('id');
+
+        $enterprise = \App\Models\Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'name' => 'Client',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = \App\Models\Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'INV-STRIPE-1',
+            'date' => now()->toDateString(),
+            'gross_amount' => 100,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+            'currency_id' => $eurId,
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $this->team->id,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $stripeAccount->id,
+            'invoice_id' => $invoice->id,
+            'type_id' => $paymentType->id,
+            'amount' => 100,
+            'status' => 2,
+            'source_provider' => 'stripe',
+        ]);
+
+        $total = $this->service->sumApprovedPaymentsConverted(
+            TransactionType::INCOME,
+            'EUR',
+            fn ($query) => $query->whereYear('payments.date', now()->year),
+        );
+
+        $this->assertSame(100.0, $total);
     }
 
     private function createAccount(string $code, int $currencyId): PaymentAccount

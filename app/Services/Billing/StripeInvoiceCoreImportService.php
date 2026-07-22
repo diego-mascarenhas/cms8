@@ -15,6 +15,7 @@ class StripeInvoiceCoreImportService
     public function __construct(
         private readonly StripeInvoiceCoreMapper $mapper,
         private readonly InvoiceCurrencyService $currencyService,
+        private readonly StripeInvoiceItemImporter $itemImporter,
     ) {}
 
     public function importFromSyncRow(
@@ -86,11 +87,15 @@ class StripeInvoiceCoreImportService
         {
             $existing->fill($payload);
             $existing->save();
+            $this->itemImporter->syncForInvoice($existing, $row);
 
-            return $existing;
+            return $existing->fresh(['items']);
         }
 
-        return Invoice::withoutGlobalScopes()->create($payload);
+        $invoice = Invoice::withoutGlobalScopes()->create($payload);
+        $this->itemImporter->syncForInvoice($invoice, $row);
+
+        return $invoice->fresh(['items']);
     }
 
     /**
