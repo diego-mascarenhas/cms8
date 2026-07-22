@@ -3,30 +3,20 @@
 @section('title', __('Colaboradores'))
 
 @section('content')
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0">{{ __('Colaboradores') }}</h4>
-            </div>
-            <div class="card-body">
-                <h5>{{ __('Fichas de colaboradores') }}</h5>
-                <p>{{ __('Los colaboradores son personas externas que trabajan contigo en proyectos: freelancers, partners, proveedores, etc. En cada ficha de colaborador puedes:') }}</p>
-                <ul>
-                    <li>{{ __('Crear y mantener el perfil con datos de contacto, habilidades, software que domina, servicios que ofrece y temas o especialidades.') }}</li>
-                    <li>{{ __('Gestionar tarifas y precios por colaborador (por hora, por proyecto o por servicio) para presupuestar correctamente.') }}</li>
-                    <li>{{ __('Registrar disponibilidad y ausencias en un calendario: así ves qué días está disponible antes de asignarle un proyecto.') }}</li>
-                    <li>{{ __('Subir portafolios, imágenes o archivos de referencia en la sección de medios.') }}</li>
-                    <li>{{ __('Vincular el colaborador a una cuenta de usuario para que pueda entrar en Humano y ver los proyectos y tareas asignados.') }}</li>
-                    <li>{{ __('Enviarles notificaciones o invitaciones (por ejemplo para unirse a un proyecto).') }}</li>
-                </ul>
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">{{ __('Colaboradores') }}</h4>
+    </div>
+    <div class="card-body">
+        <h5>{{ __('Perfiles de colaboradores') }}</h5>
+        <p>{{ __('Los colaboradores son profesionales (internos o externos) que participan en proyectos. Puedes mantener perfiles con habilidades, disponibilidad, portafolio y datos de contacto.') }}</p>
 
-                <h5 class="mt-4">{{ __('Asignación a proyectos') }}</h5>
-                <p>{{ __('Al crear o editar un proyecto puedes asignar uno o varios colaboradores y, si lo usas, añadir servicios o tareas. Puedes filtrar colaboradores por habilidades o disponibilidad para encontrar al más adecuado. Las tarifas y la disponibilidad te ayudan a planificar plazos y costes del proyecto.') }}</p>
+        <h5 class="mt-4">{{ __('Tarifas y asignación') }}</h5>
+        <p>{{ __('El administrador define tarifas y asigna colaboradores a proyectos. En la ficha del proyecto se ven los miembros asignados y, para admin, información de coste.') }}</p>
 
-                <p class="mb-0">{{ __('Todo lo que configures aquí (tarifas, habilidades, disponibilidad) se utiliza al armar presupuestos y al planificar el trabajo.') }}</p>
-            </div>
-        </div>
+        <x-manual.role-compare section="collaborators" />
+
+        <p class="mb-0">{{ __('No confundas el rol “Collaborator” (usuario que inicia sesión) con el módulo “Colaboradores” (ficha de profesional del catálogo).') }}</p>
     </div>
 </div>
 @endsection

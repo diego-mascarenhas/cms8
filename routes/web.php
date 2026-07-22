@@ -53,6 +53,7 @@ use App\Http\Controllers\ManualController;
 use App\Http\Controllers\MercadoPagoPaymentSyncController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
+use App\Http\Controllers\MockupController;
 use App\Http\Controllers\MultimediaController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
@@ -1449,6 +1450,25 @@ Route::prefix('manual')->name('manual.')->group(function ()
     Route::get('/campaigns', [ManualController::class, 'campaigns'])->name('campaigns');
     Route::get('/team', [ManualController::class, 'team'])->name('team');
     Route::get('/more-features', [ManualController::class, 'moreFeatures'])->name('more-features');
+});
+
+// Visual mockups / form diagrams for the user manual (Public)
+Route::prefix('mockups')->name('mockups.')->group(function ()
+{
+    Route::get('/', [MockupController::class, 'index'])->name('index');
+    Route::get('/overview', [MockupController::class, 'overview'])->name('overview');
+    Route::get('/roles-flow', [MockupController::class, 'rolesFlow'])->name('roles-flow');
+    Route::get('/client-journey', [MockupController::class, 'clientJourney'])->name('client-journey');
+    Route::get('/client-ticket', [MockupController::class, 'clientTicket'])->name('client-ticket');
+    Route::get('/client-home', [MockupController::class, 'clientHome'])->name('client-home');
+    Route::get('/contact-form', [MockupController::class, 'contactForm'])->name('contact-form');
+    Route::get('/client-form', [MockupController::class, 'clientForm'])->name('client-form');
+    Route::get('/project-form', [MockupController::class, 'projectForm'])->name('project-form');
+    Route::get('/task-form', [MockupController::class, 'taskForm'])->name('task-form');
+    Route::get('/service-form', [MockupController::class, 'serviceForm'])->name('service-form');
+    Route::get('/invoice-flow', [MockupController::class, 'invoiceFlow'])->name('invoice-flow');
+    Route::get('/collaborator-day', [MockupController::class, 'collaboratorDay'])->name('collaborator-day');
+    Route::get('/admin-setup', [MockupController::class, 'adminSetup'])->name('admin-setup');
 });
 
 // Help Documentation Routes (Public - No Authentication Required)
