@@ -75,8 +75,10 @@ class VatHaciendaCsvExportTest extends TestCase
         $this->assertStringContainsString('Razón Social', $csv);
         $this->assertStringContainsString('INV-IN-001', $csv);
         $this->assertStringContainsString('Cliente Hacienda SL', $csv);
-        $this->assertStringContainsString('121,00', $csv);
+        // First Importe column = net (without tax); Tax and Total columns keep IVA breakdown.
+        $this->assertStringContainsString('100,00', $csv);
         $this->assertStringContainsString('21,00', $csv);
+        $this->assertStringContainsString('121,00', $csv);
         $this->assertStringNotContainsString('INV-IN-002', $csv);
         $this->assertStringContainsString('TOTALES', $csv);
         $this->assertStringContainsString('1 registros', $csv);

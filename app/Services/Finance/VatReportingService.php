@@ -315,13 +315,13 @@ class VatReportingService
         foreach ($invoices as $invoice)
         {
             $vatAmount = $this->vatAmountForInvoice($invoice);
-            if ($vatAmount <= 0)
+            if ($vatAmount == 0.0)
             {
                 continue;
             }
 
             $converted = $this->convertAmount(
-                $vatAmount,
+                abs($vatAmount),
                 $invoice->currency_code,
                 $targetCurrency,
                 $invoice->date ? Carbon::parse($invoice->date) : $from,
@@ -332,7 +332,7 @@ class VatReportingService
                 continue;
             }
 
-            $total += $converted;
+            $total += $invoice->isCreditNote() ? -abs($converted) : $converted;
         }
 
         return round($total, 2);
@@ -370,17 +370,21 @@ class VatReportingService
 
         if ($hasExplicitTaxRate)
         {
-            return round(max(0, $lineTaxTotal), 2);
-        }
-
-        if ($invoice->operation === 'buy')
+            $tax = round(abs($lineTaxTotal), 2);
+        } else
         {
+            // Sell and buy: when lines lack tax %, derive IVA from total − base
+            // (Stripe/Cuéntica Spain invoices often store base in gross_amount).
             $diff = (float) $invoice->total_amount - (float) $invoice->gross_amount;
-
-            return round(max(0, $diff), 2);
+            $tax = round(max(0, $diff), 2);
         }
 
-        return 0.0;
+        if ($invoice->isCreditNote())
+        {
+            return round(-$tax, 2);
+        }
+
+        return $tax;
     }
 
     public function convertAmount(float $amount, string $fromCurrency, string $toCurrency, Carbon $date): ?float

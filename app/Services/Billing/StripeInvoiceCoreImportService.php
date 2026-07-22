@@ -36,9 +36,7 @@ class StripeInvoiceCoreImportService
             return null;
         }
 
-        $date = $row->invoice_created_at
-            ? Carbon::parse($row->invoice_created_at)->toDateString()
-            : now()->toDateString();
+        $date = $this->resolveFiscalDate($row);
         $dueDate = $row->invoice_due_date
             ? Carbon::parse($row->invoice_due_date)->toDateString()
             : null;
@@ -182,5 +180,28 @@ class StripeInvoiceCoreImportService
         }
 
         return 'STR-'.Str::upper(Str::substr($externalId, -8));
+    }
+
+    /**
+     * Fiscal date follows Stripe finalization (number assignment), not draft creation.
+     */
+    private function resolveFiscalDate(InvoiceSync $row): string
+    {
+        $payload = is_array($row->raw_payload) ? $row->raw_payload : [];
+        $finalizedAt = data_get($payload, 'status_transitions.finalized_at');
+
+        if (is_numeric($finalizedAt))
+        {
+            return Carbon::createFromTimestampUTC((int) $finalizedAt)
+                ->setTimezone(config('app.timezone'))
+                ->toDateString();
+        }
+
+        if ($row->invoice_created_at)
+        {
+            return Carbon::parse($row->invoice_created_at)->toDateString();
+        }
+
+        return now()->toDateString();
     }
 }

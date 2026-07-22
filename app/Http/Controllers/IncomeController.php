@@ -142,6 +142,25 @@ class IncomeController extends Controller
             from: $vatSelection['range']['from'],
             to: $vatSelection['range']['to'],
             periodLabel: $vatSelection['label'],
+            documentScope: 'invoices',
+        );
+    }
+
+    public function exportCreditNotes(Request $request): StreamedResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $request->integer('vat_year') ?: null,
+            period: $request->string('vat_period')->toString() ?: null,
+        );
+
+        return $this->vatHaciendaCsvExportService->download(
+            operation: 'sell',
+            from: $vatSelection['range']['from'],
+            to: $vatSelection['range']['to'],
+            periodLabel: $vatSelection['label'],
+            documentScope: 'credit_notes',
         );
     }
 }

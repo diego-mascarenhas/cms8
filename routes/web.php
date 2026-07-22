@@ -929,6 +929,7 @@ Route::middleware(['auth'])->group(function ()
     // Income module
     Route::get('/income/list', [IncomeController::class, 'index'])->name('income.index');
     Route::get('/income/export-hacienda', [IncomeController::class, 'exportHacienda'])->name('income.export-hacienda');
+    Route::get('/income/export-credit-notes', [IncomeController::class, 'exportCreditNotes'])->name('income.export-credit-notes');
 
     // Expense module
     Route::get('/expense/list', [ExpenseController::class, 'index'])->name('expense.index');

@@ -159,6 +159,21 @@ class Invoice extends Model
         };
     }
 
+    public function isCreditNote(): bool
+    {
+        if (in_array((int) $this->status, [4, 6], true))
+        {
+            return true;
+        }
+
+        if ((int) $this->type_id === 2)
+        {
+            return true;
+        }
+
+        return str_starts_with((string) $this->source_reference_id, 'cn_');
+    }
+
     public function isOverdue(): bool
     {
         if (in_array((int) $this->status, [3, 4, 5, 6, 7, 9], true))

@@ -24,9 +24,24 @@
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
         @include('partials.vat-period-selector')
-        <a href="{{ route('income.export-hacienda', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}" class="btn btn-outline-primary">
-            <i class="ti ti-download me-1"></i> {{ __('Export Hacienda') }}
-        </a>
+        <div class="dropdown">
+            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="incomeExportDropdown"
+                data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="ti ti-download me-1"></i> {{ __('Export') }}
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="incomeExportDropdown">
+                <li>
+                    <a class="dropdown-item" href="{{ route('income.export-hacienda', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}">
+                        <i class="ti ti-file-invoice me-2"></i> {{ __('Invoices') }}
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item" href="{{ route('income.export-credit-notes', ['vat_year' => $vatYear, 'vat_period' => $vatPeriod]) }}">
+                        <i class="ti ti-receipt-refund me-2"></i> {{ __('Credit notes') }}
+                    </a>
+                </li>
+            </ul>
+        </div>
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
             <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
         </a>

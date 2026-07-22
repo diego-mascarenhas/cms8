@@ -22,16 +22,25 @@ class VatHaciendaCsvExportService
         string $periodLabel,
         ?int $teamId = null,
         ?string $targetCurrency = null,
+        string $documentScope = 'invoices',
     ): StreamedResponse {
         $teamId ??= (int) auth()->user()->currentTeam->id;
         $targetCurrency = strtoupper($targetCurrency
             ?? $this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam());
 
+        $documentScope = in_array($documentScope, ['invoices', 'credit_notes'], true)
+            ? $documentScope
+            : 'invoices';
+
         $slug = $operation === 'buy' ? 'gastos' : 'ingresos';
+        if ($documentScope === 'credit_notes')
+        {
+            $slug = 'notas-credito';
+        }
         $periodSlug = Str::slug($periodLabel) ?: $from->format('Y-m');
         $fileName = 'hacienda-'.$slug.'-'.$periodSlug.'-'.now()->format('Ymd-His').'.csv';
 
-        return response()->streamDownload(function () use ($teamId, $operation, $from, $to, $targetCurrency)
+        return response()->streamDownload(function () use ($teamId, $operation, $from, $to, $targetCurrency, $documentScope)
         {
             $handle = fopen('php://output', 'w');
 
@@ -58,7 +67,7 @@ class VatHaciendaCsvExportService
                 'rows' => 0,
             ];
 
-            $this->vatReportingService
+            $query = $this->vatReportingService
                 ->invoicesForPeriod($teamId, $operation, $from, $to)
                 ->with([
                     'items',
@@ -66,7 +75,28 @@ class VatHaciendaCsvExportService
                     'enterprise',
                     'billingAddress',
                     'stripeInvoiceSync',
-                ])
+                ]);
+
+            if ($documentScope === 'credit_notes')
+            {
+                $query->where(function ($creditNotes)
+                {
+                    $creditNotes->whereIn('status', [4, 6])
+                        ->orWhere('type_id', 2)
+                        ->orWhere('source_reference_id', 'like', 'cn_%');
+                });
+            } else
+            {
+                $query->whereNotIn('status', [4, 6])
+                    ->where('type_id', '!=', 2)
+                    ->where(function ($regular)
+                    {
+                        $regular->whereNull('source_reference_id')
+                            ->orWhere('source_reference_id', 'not like', 'cn_%');
+                    });
+            }
+
+            $query
                 ->orderBy('date')
                 ->orderBy('id')
                 ->chunk(200, function ($invoices) use ($handle, $targetCurrency, $from, &$totals)
@@ -122,7 +152,8 @@ class VatHaciendaCsvExportService
         $currency = strtoupper((string) $invoice->currency_code);
         // Fiscal conversion uses the invoice issue date (same as Stripe Hacienda CSV).
         $invoiceDate = $invoice->date ? Carbon::parse($invoice->date) : $fallbackDate;
-        $total = (float) $invoice->total_amount;
+        $sign = $invoice->isCreditNote() ? -1.0 : 1.0;
+        $total = $sign * abs((float) $invoice->total_amount);
         $tax = $this->vatReportingService->vatAmountForInvoice($invoice);
         $subtotal = round($total - $tax, 2);
 
@@ -159,7 +190,7 @@ class VatHaciendaCsvExportService
             $invoiceDate->format('d/m/Y'),
             $this->resolveEnterpriseName($invoice),
             $this->resolveTaxId($invoice),
-            number_format($total, 2, ',', '.'),
+            number_format($subtotal, 2, ',', '.'),
             $currency,
             $exchangeRateDisplay,
             $subtotalTarget !== null ? number_format($subtotalTarget, 2, ',', '.') : '',
