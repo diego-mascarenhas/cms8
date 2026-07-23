@@ -101,7 +101,7 @@ class AssistantAutomationRunnerTest extends TestCase
             'slug' => 'embudo-estrategico-humano',
             'channels' => Automation::normalizeChannels(['whatsapp' => true, 'humano' => true]),
             'settings' => [
-                'entry_aliases' => ['estrategia', 'embudo de operaciones'],
+                'entry_aliases' => ['embudo', 'estrategia', 'embudo de operaciones'],
             ],
         ]);
 
@@ -122,6 +122,10 @@ class AssistantAutomationRunnerTest extends TestCase
         $this->assertSame(
             'embudo-estrategico-humano',
             $runner->resolveSlugFromMessage('embudo de operaciones', $team->id, Automation::CHANNEL_WHATSAPP),
+        );
+        $this->assertSame(
+            'embudo-estrategico-humano',
+            $runner->resolveSlugFromMessage('Embudo', $team->id, Automation::CHANNEL_WHATSAPP),
         );
         $this->assertNull(
             $runner->resolveSlugFromMessage('embudo-estrategico-humano', $team->id, Automation::CHANNEL_EMAIL),

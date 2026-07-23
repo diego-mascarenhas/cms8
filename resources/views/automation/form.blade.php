@@ -137,6 +137,20 @@
                 @enderror
             </div>
 
+            @if(($kind ?? \App\Enums\AutomationKind::Action) === \App\Enums\AutomationKind::Funnel)
+            <div class="col-12">
+                <label class="form-label" for="entry_aliases">{{ __('Palabras para disparar (aliases)') }}</label>
+                <input type="text" class="form-control @error('settings.entry_aliases') is-invalid @enderror" id="entry_aliases"
+                    name="settings[entry_aliases]"
+                    value="{{ old('settings.entry_aliases', isset($automation) ? implode(', ', $automation->settings['entry_aliases'] ?? []) : '') }}"
+                    placeholder="{{ __('ej: embudo, estrategia, embudo de operaciones') }}">
+                <div class="form-text">{{ __('Separá con comas. El usuario puede escribir cualquiera de estas palabras en WhatsApp o en el asistente para entrar a este embudo.') }}</div>
+                @error('settings.entry_aliases')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
+            </div>
+            @endif
+
             @if(isset($automation))
             <div class="col-12">
                 <div class="form-check">

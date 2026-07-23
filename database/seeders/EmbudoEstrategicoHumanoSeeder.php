@@ -93,7 +93,7 @@ class EmbudoEstrategicoHumanoSeeder extends Seeder
                 'settings' => [
                     'welcome_message' => 'Estrategia de Humano en 4 pasos: valor, mercado, posicionamiento y estructura. Luego el embudo comercial.',
                     'description' => 'Propuesta de valor → mercado objetivo → posicionamiento → roles → embudo comercial (atraer a retener).',
-                    'entry_aliases' => ['estrategia', 'embudo de operaciones'],
+                    'entry_aliases' => ['embudo', 'estrategia', 'embudo de operaciones'],
                 ],
             ],
         );

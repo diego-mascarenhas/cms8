@@ -60,6 +60,27 @@ class AssistantAutomationRunner
     }
 
     /**
+     * Automation that already has an open flow session awaiting a reply for this peer.
+     */
+    public function findAwaitingAutomation(int $teamId, string $channel, string $externalKey): ?Automation
+    {
+        $session = \App\Models\AutomationFlowSession::query()
+            ->where('team_id', $teamId)
+            ->where('channel', $channel)
+            ->where('external_key', $externalKey)
+            ->where('meta->awaiting_reply', true)
+            ->orderByDesc('last_message_at')
+            ->first();
+
+        if ($session === null)
+        {
+            return null;
+        }
+
+        return $this->findById((int) $session->automation_id, $teamId);
+    }
+
+    /**
      * Resolve an automation slug from a free-text message (exact slug, /embudo slug, or entry_aliases).
      */
     public function resolveSlugFromMessage(string $message, int $teamId, string $channel): ?string
@@ -197,7 +218,9 @@ class AssistantAutomationRunner
             $automation = $this->findBySlug(trim($automationSlug), $teamId);
         } else
         {
-            $automation = $this->findDefaultForChannel($teamId, $channel);
+            // Prefer an open funnel session over the team default (needed for WhatsApp mid-flow replies).
+            $automation = $this->findAwaitingAutomation($teamId, $channel, $externalKey)
+                ?? $this->findDefaultForChannel($teamId, $channel);
         }
 
         if ($automation === null || ! $automation->allowsChannel($channel) || ! $automation->is_active)

@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Enums\TransactionType;
 use App\Models\Enterprise;
 use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentSync;
@@ -17,6 +18,53 @@ class MercadoPagoPaymentImportService
     public function __construct(
         private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
     ) {}
+
+    /**
+     * When a Stripe invoice was marked paid out of band with a Mercado Pago reference,
+     * create the matching Humano payment if it is still missing.
+     */
+    public function importOutOfBandLinkForStripeInvoice(Invoice $invoice): ?Payment
+    {
+        if (strtolower((string) $invoice->source_provider) !== 'stripe')
+        {
+            return null;
+        }
+
+        $stripeExternalId = trim((string) $invoice->source_reference_id);
+        if ($stripeExternalId === '' || ! $invoice->enterprise_id)
+        {
+            return null;
+        }
+
+        if ($this->hasNonCancelledPaymentForInvoice((int) $invoice->id))
+        {
+            return null;
+        }
+
+        $paymentReference = $this->stripeOutOfBandPaymentReference(
+            (int) $invoice->team_id,
+            $stripeExternalId,
+        );
+        if ($paymentReference === null)
+        {
+            return null;
+        }
+
+        $sync = $this->findMercadoPagoSyncByReference((int) $invoice->team_id, $paymentReference);
+        if (! $sync instanceof PaymentSync || $this->isAlreadyImported($sync))
+        {
+            return null;
+        }
+
+        return $this->importFromPaymentSync(
+            $sync,
+            fallbackEmail: false,
+            linkCodeOnEmailMatch: false,
+            dryRun: false,
+            forceEnterpriseId: (int) $invoice->enterprise_id,
+            forceInvoiceIds: [(int) $invoice->id],
+        );
+    }
 
     /**
      * @param  list<int>  $forceInvoiceIds
@@ -553,5 +601,73 @@ class MercadoPagoPaymentImportService
         }
 
         return now()->toDateString();
+    }
+
+    private function hasNonCancelledPaymentForInvoice(int $invoiceId): bool
+    {
+        return Payment::withoutGlobalScopes()
+            ->where('invoice_id', $invoiceId)
+            ->where('status', '!=', 0)
+            ->exists();
+    }
+
+    private function stripeOutOfBandPaymentReference(int $teamId, string $stripeExternalId): ?string
+    {
+        $invoiceSync = InvoiceSync::query()
+            ->where('team_id', $teamId)
+            ->where('provider', 'stripe')
+            ->where('external_id', $stripeExternalId)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $invoiceSync)
+        {
+            return null;
+        }
+
+        $reference = trim((string) data_get($invoiceSync->raw_payload, 'metadata.payment_reference', ''));
+
+        return $reference !== '' ? $reference : null;
+    }
+
+    private function findMercadoPagoSyncByReference(int $teamId, string $paymentReference): ?PaymentSync
+    {
+        $candidates = PaymentSync::query()
+            ->where('team_id', $teamId)
+            ->where('provider', 'mercadopago')
+            ->where('status', 'approved')
+            ->where(function ($query) use ($paymentReference): void
+            {
+                $query->where('external_id', $paymentReference)
+                    ->orWhereRaw(
+                        "TRIM(COALESCE(raw_payload->'transaction_details'->>'transaction_id', '')) = ?",
+                        [$paymentReference],
+                    )
+                    ->orWhereRaw(
+                        "TRIM(COALESCE(raw_payload->'point_of_interaction'->'transaction_data'->>'e2e_id', '')) = ?",
+                        [$paymentReference],
+                    )
+                    ->orWhereRaw(
+                        "TRIM(COALESCE(raw_payload->'point_of_interaction'->'transaction_data'->>'transaction_id', '')) = ?",
+                        [$paymentReference],
+                    );
+            })
+            ->orderByDesc('id')
+            ->get();
+
+        foreach ($candidates as $candidate)
+        {
+            if (! $candidate instanceof PaymentSync)
+            {
+                continue;
+            }
+
+            if (in_array($paymentReference, $candidate->stripeMatchReferences(), true))
+            {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }
