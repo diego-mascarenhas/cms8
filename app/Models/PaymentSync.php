@@ -70,4 +70,27 @@ class PaymentSync extends Model
 
         return blank($this->customer_id) && blank($this->customer_email);
     }
+
+    /**
+     * Mercado Pago "Código de identificación" (e2e / Coelsa id for bank transfers).
+     */
+    public function identificationCode(): ?string
+    {
+        $candidates = [
+            data_get($this->raw_payload, 'transaction_details.transaction_id'),
+            data_get($this->raw_payload, 'point_of_interaction.transaction_data.e2e_id'),
+            data_get($this->raw_payload, 'point_of_interaction.transaction_data.transaction_id'),
+        ];
+
+        foreach ($candidates as $candidate)
+        {
+            $value = trim((string) $candidate);
+            if ($value !== '')
+            {
+                return $value;
+            }
+        }
+
+        return null;
+    }
 }

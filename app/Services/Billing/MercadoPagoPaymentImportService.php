@@ -25,6 +25,8 @@ class MercadoPagoPaymentImportService
         ?int $forceEnterpriseId = null,
         ?int $forceInvoiceId = null,
         array $forceInvoiceIds = [],
+        ?int $forceTypeId = null,
+        ?string $remarksOverride = null,
     ): ?Payment {
         if (strtolower((string) $row->provider) !== 'mercadopago')
         {
@@ -76,10 +78,7 @@ class MercadoPagoPaymentImportService
                 : ($forceInvoiceId !== null ? [$forceInvoiceId] : []),
         ))));
 
-        $description = (string) ($row->description ?? '');
-        $remarks = trim($description) !== ''
-            ? Str::limit($description, 500)
-            : 'Mercado Pago '.$row->external_id;
+        $remarks = $this->resolveRemarks($row, $remarksOverride);
 
         if ($dryRun)
         {
@@ -87,7 +86,7 @@ class MercadoPagoPaymentImportService
         }
 
         $accountId = $this->ensureMercadoPagoPaymentAccount($row->team_id);
-        $typeId = $this->resolveMercadoPagoPaymentTypeId();
+        $typeId = $forceTypeId ?? $this->resolveMercadoPagoPaymentTypeId();
         if ($accountId === null || $typeId === null)
         {
             return null;
@@ -229,6 +228,45 @@ class MercadoPagoPaymentImportService
         }
 
         return $first;
+    }
+
+    private function resolveRemarks(
+        PaymentSync $row,
+        ?string $remarksOverride,
+    ): string {
+        $parts = [];
+
+        $identificationCode = $row->identificationCode();
+        if ($identificationCode !== null)
+        {
+            $parts[] = 'Ref: '.$identificationCode;
+        }
+
+        if ($remarksOverride !== null)
+        {
+            $trimmed = trim($remarksOverride);
+            if ($trimmed !== '')
+            {
+                $parts[] = $trimmed;
+            }
+        } else
+        {
+            $description = trim((string) ($row->description ?? ''));
+            if ($description !== '' && ! in_array(mb_strtolower($description), ['bank transfer', 'transferencia'], true))
+            {
+                $parts[] = $description;
+            } elseif ($identificationCode === null)
+            {
+                $parts[] = 'Mercado Pago '.$row->external_id;
+            }
+        }
+
+        if ($parts === [])
+        {
+            return 'Mercado Pago '.$row->external_id;
+        }
+
+        return Str::limit(implode(' · ', $parts), 500);
     }
 
     private function majorAmountFromCents(int $cents, string $currency): float

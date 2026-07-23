@@ -38,6 +38,7 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
                     fn ($query) => $query->where('team_id', $teamId)->where('operation', 'sell'),
                 ),
             ],
+            'remarks' => ['nullable', 'string', 'max:500'],
             'link_payer_code' => ['sometimes', 'boolean'],
         ];
     }

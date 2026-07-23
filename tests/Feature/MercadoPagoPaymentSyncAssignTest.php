@@ -111,6 +111,7 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
             ->post(route('payments.syncs.mercadopago.import', $sync), [
                 'enterprise_id' => $enterprise->id,
                 'invoice_ids' => [$invoice->id],
+                'remarks' => '0005-0950',
                 'link_payer_code' => 1,
             ])
             ->assertRedirect(route('payments.index'));
@@ -124,7 +125,80 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         $this->assertNotNull($payment);
         $this->assertSame($enterprise->id, (int) $payment->enterprise_id);
         $this->assertSame($invoice->id, (int) $payment->invoice_id);
+        $this->assertSame(12, (int) $payment->type_id);
+        $this->assertSame('0005-0950', $payment->remarks);
         $this->assertSame('999888', $enterprise->fresh()->code);
+    }
+
+    public function test_assign_materializes_open_stripe_invoice_sync_for_client(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => '301',
+            'code' => 'cus_TDu3TWcwCTek5O',
+            'email' => 'info@trescientosuno.com',
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_1TvCA8RwN51ygFdebsmbYyGd',
+            'customer_id' => 'cus_TDu3TWcwCTek5O',
+            'customer_email' => 'info@trescientosuno.com',
+            'number' => '0005-0957',
+            'status' => 'open',
+            'currency' => 'eur',
+            'amount_due' => 24.00,
+            'amount_paid' => 0,
+            'amount_remaining' => 24.00,
+            'subtotal' => 19.83,
+            'total' => 24.00,
+            'paid' => false,
+            'invoice_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'mp-open-stripe',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 1060816,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 1060816,
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payments.syncs.mercadopago.assign', [
+                'sync' => $sync,
+                'enterprise_id' => $enterprise->id,
+            ]))
+            ->assertOk()
+            ->assertSee('0005-0957', false)
+            ->assertDontSee(__('payment_sync.mercadopago.no_open_invoices'), false);
+
+        $this->assertDatabaseHas('invoices', [
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_1TvCA8RwN51ygFdebsmbYyGd',
+            'number' => '0005-0957',
+        ]);
+
+        $local = Invoice::withoutGlobalScopes()
+            ->where('source_reference_id', 'in_1TvCA8RwN51ygFdebsmbYyGd')
+            ->first();
+
+        $this->assertNotNull($local);
+        $this->assertGreaterThan(0, (float) $local->balance);
     }
 
     public function test_admin_can_import_split_across_two_invoices(): void

@@ -18,6 +18,69 @@ class StripeInvoiceCoreImportService
         private readonly StripeInvoiceItemImporter $itemImporter,
     ) {}
 
+    /**
+     * Materialize open Stripe invoice_syncs into core invoices for a client.
+     * Used when assigning Mercado Pago payments so unpaid Stripe invoices appear.
+     *
+     * @return int Number of sync rows processed
+     */
+    public function importOpenSyncsForEnterprise(int $teamId, int $enterpriseId, int $limit = 50): int
+    {
+        $enterprise = Enterprise::query()
+            ->where('team_id', $teamId)
+            ->whereKey($enterpriseId)
+            ->first();
+
+        if (! $enterprise || blank($enterprise->code))
+        {
+            return 0;
+        }
+
+        $syncs = InvoiceSync::query()
+            ->where('team_id', $teamId)
+            ->where('provider', 'stripe')
+            ->where('customer_id', $enterprise->code)
+            ->where(function ($query): void
+            {
+                $query->whereIn('status', ['open', 'uncollectible'])
+                    ->orWhere(function ($inner): void
+                    {
+                        $inner->where('paid', false)
+                            ->where('amount_remaining', '>', 0);
+                    });
+            })
+            ->whereNotExists(function ($query): void
+            {
+                $query->from('invoices')
+                    ->whereColumn('invoices.source_reference_id', 'invoice_syncs.external_id')
+                    ->whereColumn('invoices.team_id', 'invoice_syncs.team_id')
+                    ->where('invoices.source_provider', 'stripe');
+            })
+            ->orderByRaw('invoice_created_at IS NULL')
+            ->orderBy('invoice_created_at')
+            ->orderBy('id')
+            ->limit(max(1, $limit))
+            ->get();
+
+        $processed = 0;
+
+        foreach ($syncs as $sync)
+        {
+            if (! $sync instanceof InvoiceSync)
+            {
+                continue;
+            }
+
+            $invoice = $this->importFromSyncRow($sync, false, false, false);
+            if ($invoice !== null)
+            {
+                $processed++;
+            }
+        }
+
+        return $processed;
+    }
+
     public function importFromSyncRow(
         InvoiceSync $row,
         bool $fallbackEmail = true,

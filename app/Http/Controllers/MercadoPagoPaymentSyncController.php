@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\PaymentSync;
 use App\Services\Billing\MercadoPagoInvoiceSuggestionService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
+use App\Services\Billing\StripeInvoiceCoreImportService;
 use App\Support\PaymentInvoiceLinkOptionFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class MercadoPagoPaymentSyncController extends Controller
     public function __construct(
         private readonly MercadoPagoPaymentImportService $importService,
         private readonly MercadoPagoInvoiceSuggestionService $suggestionService,
+        private readonly StripeInvoiceCoreImportService $stripeInvoiceImportService,
     ) {}
 
     public function index(): View
@@ -84,6 +86,8 @@ class MercadoPagoPaymentSyncController extends Controller
 
         if ($selectedEnterpriseId > 0)
         {
+            $this->stripeInvoiceImportService->importOpenSyncsForEnterprise($teamId, $selectedEnterpriseId);
+
             $invoices = Invoice::query()
                 ->where('team_id', $teamId)
                 ->where('enterprise_id', $selectedEnterpriseId)
@@ -143,6 +147,7 @@ class MercadoPagoPaymentSyncController extends Controller
             dryRun: false,
             forceEnterpriseId: (int) $validated['enterprise_id'],
             forceInvoiceIds: $invoiceIds,
+            remarksOverride: $validated['remarks'] ?? null,
         );
 
         if ($payment === null)
