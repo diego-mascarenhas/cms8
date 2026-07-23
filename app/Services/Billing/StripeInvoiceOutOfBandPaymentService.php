@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentType;
 use App\Models\Team;
@@ -122,12 +123,116 @@ class StripeInvoiceOutOfBandPaymentService
         return true;
     }
 
+    /**
+     * Attach Mercado Pago metadata to an already-paid Stripe invoice (no pay call).
+     */
+    public function linkMetadataFromPayment(Payment $payment): bool
+    {
+        if (! $payment->invoice_id)
+        {
+            return false;
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()
+            ->whereKey($payment->invoice_id)
+            ->first();
+
+        if (! $invoice instanceof Invoice || ! $this->isStripeInvoiceReference($invoice))
+        {
+            return false;
+        }
+
+        $externalId = (string) $invoice->source_reference_id;
+        $sync = InvoiceSync::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('provider', 'stripe')
+            ->where('external_id', $externalId)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return false;
+        }
+
+        $alreadyPaid = $sync->paid || strtolower((string) $sync->status) === 'paid';
+        if (! $alreadyPaid || ! $sync->lacksMercadoPagoLinkMetadata())
+        {
+            return false;
+        }
+
+        $team = Team::query()->find($invoice->team_id);
+        if (! $team instanceof Team)
+        {
+            return false;
+        }
+
+        $secret = trim((string) $team->getSetting('stripe_secret'));
+        if ($secret === '')
+        {
+            Log::warning('Stripe metadata link skipped: missing stripe_secret', [
+                'team_id' => $invoice->team_id,
+                'invoice_id' => $invoice->id,
+            ]);
+
+            return false;
+        }
+
+        $client = $this->makeClient($secret);
+        $paymentType = $this->resolvePaymentTypeLabel($payment);
+        $reference = $this->resolvePaymentReference($payment);
+        $mercadoPagoId = $this->resolveMercadoPagoId($payment);
+
+        try
+        {
+            $client->invoices->update($externalId, [
+                'metadata' => array_filter([
+                    'humano_payment_id' => (string) $payment->id,
+                    'payment_method' => $paymentType,
+                    'payment_reference' => $reference,
+                    'mercadopago_id' => $mercadoPagoId,
+                    'payment_notes' => filled($payment->remarks) ? (string) $payment->remarks : null,
+                    'source_provider' => (string) $payment->source_provider,
+                ], fn ($value) => $value !== null && $value !== ''),
+            ]);
+        } catch (ApiErrorException $exception)
+        {
+            Log::warning('Stripe metadata link failed', [
+                'invoice_id' => $invoice->id,
+                'external_id' => $externalId,
+                'payment_id' => $payment->id,
+                'message' => $exception->getMessage(),
+            ]);
+
+            return false;
+        }
+
+        $refreshed = $this->syncRefresher->refreshFromStripe($client, (int) $invoice->team_id, $externalId);
+        if ($refreshed !== null)
+        {
+            $this->coreImportService->importFromSyncRow(
+                $refreshed,
+                false,
+                false,
+                false,
+                (int) $invoice->enterprise_id,
+            );
+        }
+
+        return true;
+    }
+
     protected function makeClient(string $secret): StripeClient
     {
         return new StripeClient($secret);
     }
 
     private function isStripeOpenInvoice(Invoice $invoice): bool
+    {
+        return $this->isStripeInvoiceReference($invoice);
+    }
+
+    private function isStripeInvoiceReference(Invoice $invoice): bool
     {
         if (strtolower((string) $invoice->source_provider) !== 'stripe')
         {

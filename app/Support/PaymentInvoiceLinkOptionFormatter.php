@@ -26,4 +26,23 @@ class PaymentInvoiceLinkOptionFormatter
 
         return implode(' — ', $parts);
     }
+
+    public static function paidLinkLabel(Invoice $invoice): string
+    {
+        $parts = [
+            $invoice->number,
+            $invoice->date
+                ? Carbon::parse($invoice->date)->format('d/m/Y')
+                : '—',
+        ];
+
+        if ($invoice->enterprise)
+        {
+            $parts[] = $invoice->enterprise->name;
+        }
+
+        $parts[] = Helpers::formatDecimal((float) $invoice->total_amount).' '.$invoice->currency_code;
+
+        return implode(' — ', $parts);
+    }
 }
