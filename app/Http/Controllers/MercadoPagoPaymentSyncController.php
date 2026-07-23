@@ -230,6 +230,13 @@ class MercadoPagoPaymentSyncController extends Controller
                     $query->orWhereRaw(
                         "TRIM(COALESCE(raw_payload->'metadata'->>'payment_reference', '')) = ?",
                         [$reference],
+                    )->orWhereRaw(
+                        "TRIM(COALESCE(
+                            raw_payload->'metadata'->>'mercadopago_id',
+                            raw_payload->'metadata'->>'mercadopago_payment_id',
+                            ''
+                        )) = ?",
+                        [$reference],
                     );
                 }
             })

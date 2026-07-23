@@ -432,6 +432,107 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         );
     }
 
+    public function test_datatable_marks_syncs_linked_via_stripe_mercadopago_id(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Stripe MP id',
+            'code' => 'cus_mp_id_linked',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0951',
+            'date' => now()->toDateString(),
+            'gross_amount' => 5000,
+            'discount' => 0,
+            'total_amount' => 5000,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_stripe_linked_mp_id',
+        ]);
+
+        PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '168215955681',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 500000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 500000,
+            'description' => 'Bank Transfer',
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'operation_type' => 'regular_payment',
+                'transaction_details' => [
+                    'transaction_id' => 'UNRELATED_BANK_REF',
+                ],
+            ],
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_stripe_linked_mp_id',
+            'status' => 'paid',
+            'currency' => 'ars',
+            'number' => '0005-0951',
+            'amount_due' => 5000,
+            'amount_paid' => 5000,
+            'amount_remaining' => 0,
+            'total' => 5000,
+            'paid' => true,
+            'invoice_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'metadata' => [
+                    'payment_method' => 'MercadoPago',
+                    'mercadopago_id' => '168215955681',
+                    'source_provider' => 'mercadopago',
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('payments.syncs.mercadopago.index', [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 25,
+            'assignment_filter' => 'stripe',
+            'search' => ['value' => '168215955681', 'regex' => 'false'],
+            'order' => [['column' => 2, 'dir' => 'desc']],
+            'columns' => [
+                ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'transaction_indicator', 'name' => 'transaction_indicator', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'charge_created_at', 'name' => 'charge_created_at', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'amount_label', 'name' => 'amount_label', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'payer', 'name' => 'payer', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'external_id', 'name' => 'external_id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+            ],
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString(
+            route('invoice.show', $invoice->id),
+            (string) data_get($response->json('data.0'), 'action'),
+        );
+        $this->assertStringContainsString('0005-0951', (string) data_get($response->json('data.0'), 'action'));
+    }
+
     public function test_stripe_linked_sync_without_local_invoice_links_to_materialize_route(): void
     {
         [$user, $team] = $this->makeAdminWithTeam();

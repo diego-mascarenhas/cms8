@@ -315,7 +315,14 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
                 ->whereColumn('invoice_syncs.team_id', 'payment_syncs.team_id')
                 ->where('invoice_syncs.team_id', $teamId)
                 ->where('invoice_syncs.provider', 'stripe')
-                ->whereRaw("NULLIF(TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference'), '') IS NOT NULL")
+                ->whereRaw("(
+                    NULLIF(TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference'), '') IS NOT NULL
+                    OR NULLIF(TRIM(COALESCE(
+                        invoice_syncs.raw_payload->'metadata'->>'mercadopago_id',
+                        invoice_syncs.raw_payload->'metadata'->>'mercadopago_payment_id',
+                        ''
+                    )), '') IS NOT NULL
+                )")
                 ->where(function ($match): void
                 {
                     $match->whereRaw(
@@ -332,6 +339,12 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
                         "NULLIF(TRIM(COALESCE(payment_syncs.raw_payload->'point_of_interaction'->'transaction_data'->>'transaction_id', '')), '') IS NOT NULL
                         AND TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference')
                             = TRIM(payment_syncs.raw_payload->'point_of_interaction'->'transaction_data'->>'transaction_id')",
+                    )->orWhereRaw(
+                        "TRIM(COALESCE(
+                            invoice_syncs.raw_payload->'metadata'->>'mercadopago_id',
+                            invoice_syncs.raw_payload->'metadata'->>'mercadopago_payment_id',
+                            ''
+                        )) = payment_syncs.external_id",
                     );
                 });
         };

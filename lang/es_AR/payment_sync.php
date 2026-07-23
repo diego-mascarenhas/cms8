@@ -28,7 +28,7 @@ return [
         'assign_action' => 'Asignar',
         'view_invoice' => 'Factura',
         'stripe_linked' => 'Stripe',
-        'stripe_linked_hint' => 'Esta referencia de Mercado Pago ya se usó como payment_reference al marcar una factura de Stripe como pagada fuera de banda.',
+        'stripe_linked_hint' => 'Esta referencia de Mercado Pago ya figura en la factura de Stripe (payment_reference o mercadopago_id) por un cobro fuera de banda.',
         'section_payment' => 'Pago en Mercado Pago',
         'section_client' => 'Cliente en Humano',
         'enterprise_label' => 'Cliente Stripe con saldo',

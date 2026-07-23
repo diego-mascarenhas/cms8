@@ -28,7 +28,7 @@ return [
         'assign_action' => 'Assign',
         'view_invoice' => 'Invoice',
         'stripe_linked' => 'Stripe',
-        'stripe_linked_hint' => 'This Mercado Pago reference was already used as payment_reference when marking a Stripe invoice paid out of band.',
+        'stripe_linked_hint' => 'This Mercado Pago reference already appears on the Stripe invoice (payment_reference or mercadopago_id) from an out-of-band payment.',
         'section_payment' => 'Mercado Pago payment',
         'section_client' => 'Humano client',
         'enterprise_label' => 'Stripe client with balance',
