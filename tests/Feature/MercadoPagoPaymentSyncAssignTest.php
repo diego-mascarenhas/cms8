@@ -59,8 +59,32 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         $this->actingAs($user)
             ->get(route('payments.syncs.mercadopago.index'))
             ->assertOk()
-            ->assertSee('mp-pending-1', false)
-            ->assertSee('Bank Transfer', false);
+            ->assertSee('mercadopago-payment-sync-table', false);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('payments.syncs.mercadopago.index', [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 25,
+            'search' => ['value' => 'mp-pending-1', 'regex' => 'false'],
+            'order' => [['column' => 1, 'dir' => 'desc']],
+            'columns' => [
+                ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'charge_created_at', 'name' => 'charge_created_at', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'amount_label', 'name' => 'amount_label', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'payer', 'name' => 'payer', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'description', 'name' => 'description', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'external_id', 'name' => 'external_id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+            ],
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString('mp-pending-1', (string) data_get($response->json('data.0'), 'external_id'));
+        $this->assertStringContainsString('Bank Transfer', (string) data_get($response->json('data.0'), 'description'));
     }
 
     public function test_admin_can_import_sync_with_forced_enterprise_and_invoice(): void

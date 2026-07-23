@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\DataTables\MercadoPagoPaymentSyncDataTable;
 use App\Http\Requests\ImportMercadoPagoPaymentSyncRequest;
 use App\Models\Enterprise;
 use App\Models\Invoice;
@@ -23,33 +24,11 @@ class MercadoPagoPaymentSyncController extends Controller
         private readonly StripeInvoiceCoreImportService $stripeInvoiceImportService,
     ) {}
 
-    public function index(): View
+    public function index(MercadoPagoPaymentSyncDataTable $dataTable)
     {
         $this->authorize('viewAny', Payment::class);
 
-        $teamId = (int) auth()->user()->currentTeam->id;
-
-        $syncs = PaymentSync::query()
-            ->where('team_id', $teamId)
-            ->where('provider', 'mercadopago')
-            ->where('status', 'approved')
-            ->whereNotExists(function ($query): void
-            {
-                $query->from('payments')
-                    ->whereColumn('payments.team_id', 'payment_syncs.team_id')
-                    ->where('payments.source_provider', 'mercadopago')
-                    ->where(function ($inner): void
-                    {
-                        $inner->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
-                            ->orWhereRaw("payments.source_reference_id LIKE payment_syncs.external_id || ':%'");
-                    });
-            })
-            ->orderByRaw('charge_created_at IS NULL')
-            ->orderByDesc('charge_created_at')
-            ->orderByDesc('id')
-            ->paginate(50);
-
-        return view('payments.syncs.mercadopago.index', compact('syncs'));
+        return $dataTable->render('payments.syncs.mercadopago.index');
     }
 
     public function assign(Request $request, PaymentSync $sync): View|RedirectResponse
