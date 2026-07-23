@@ -166,9 +166,49 @@ class MercadoPagoPaymentSyncController extends Controller
                 'reference' => $sync->external_id,
             ]);
 
-        return redirect()
+        $redirect = redirect()
             ->route('payments.index')
             ->with('success', $message);
+
+        if ($this->stripeInvoiceStillOpenAfterImport($payment))
+        {
+            $redirect->with('warning', __('payment_sync.mercadopago.warnings.stripe_still_open'));
+        }
+
+        return $redirect;
+    }
+
+    private function stripeInvoiceStillOpenAfterImport(?\App\Models\Payment $payment): bool
+    {
+        if (! $payment?->invoice_id)
+        {
+            return false;
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()->whereKey($payment->invoice_id)->first();
+        if (! $invoice || strtolower((string) $invoice->source_provider) !== 'stripe')
+        {
+            return false;
+        }
+
+        $externalId = trim((string) $invoice->source_reference_id);
+        if ($externalId === '' || ! str_starts_with($externalId, 'in_'))
+        {
+            return false;
+        }
+
+        $sync = \App\Models\InvoiceSync::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('provider', 'stripe')
+            ->where('external_id', $externalId)
+            ->first();
+
+        if (! $sync)
+        {
+            return true;
+        }
+
+        return ! $sync->paid && strtolower((string) $sync->status) !== 'paid';
     }
 
     private function ensureTeamSync(PaymentSync $sync): void

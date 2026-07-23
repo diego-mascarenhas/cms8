@@ -61,5 +61,8 @@ return [
             'type_required' => 'You must choose a payment type.',
             'type_invalid' => 'Invalid payment type.',
         ],
+        'warnings' => [
+            'stripe_still_open' => 'The payment was saved in Humano, but Stripe still shows the invoice as open. Check the team Stripe secret and mark it paid out of band (payment method + reference are sent in metadata).',
+        ],
     ],
 ];

@@ -61,5 +61,8 @@ return [
             'type_required' => 'Debes elegir un tipo de pago.',
             'type_invalid' => 'El tipo de pago no es válido.',
         ],
+        'warnings' => [
+            'stripe_still_open' => 'El pago se guardó en Humano, pero en Stripe la factura sigue abierta. Revisa el stripe_secret del equipo y vuelve a marcar el cobro (se envían tipo de pago y referencia en metadata).',
+        ],
     ],
 ];

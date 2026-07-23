@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\User;
+use App\Services\Billing\StripeInvoiceOutOfBandPaymentService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +21,7 @@ class InvoicePaymentRegistrationService
     public function __construct(
         private readonly InvoiceCurrencyService $invoiceCurrencyService,
         private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
+        private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
     ) {}
 
     public function canRegisterPayment(User $user, Invoice $invoice): bool
@@ -195,9 +197,15 @@ class InvoicePaymentRegistrationService
             ]);
 
             $invoice->balance = max(0, round((float) $invoice->balance - $amount, 2));
+            if ((float) $invoice->balance <= 0)
+            {
+                $invoice->status = 2;
+            }
             $invoice->save();
 
-            return $payment;
+            $this->stripeOutOfBandPaymentService->markPaidFromPayment($payment);
+
+            return $payment->fresh() ?? $payment;
         });
     }
 

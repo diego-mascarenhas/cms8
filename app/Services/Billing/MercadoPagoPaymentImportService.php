@@ -14,6 +14,10 @@ use Illuminate\Support\Str;
 
 class MercadoPagoPaymentImportService
 {
+    public function __construct(
+        private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
+    ) {}
+
     /**
      * @param  list<int>  $forceInvoiceIds
      */
@@ -143,10 +147,14 @@ class MercadoPagoPaymentImportService
             return $existing;
         }
 
-        return Payment::withoutGlobalScopes()->create(array_merge(
+        $payment = Payment::withoutGlobalScopes()->create(array_merge(
             $payload,
             ['team_id' => $row->team_id],
         ));
+
+        $this->finalizeLinkedInvoice($payment);
+
+        return $payment;
     }
 
     public function isAlreadyImported(PaymentSync $row): bool
@@ -224,10 +232,50 @@ class MercadoPagoPaymentImportService
                 ],
             );
 
+            if ($payment->wasRecentlyCreated)
+            {
+                $this->finalizeLinkedInvoice($payment);
+            }
+
             $first ??= $payment;
         }
 
         return $first;
+    }
+
+    private function finalizeLinkedInvoice(Payment $payment): void
+    {
+        $this->applyPaymentToLocalInvoice($payment);
+        $this->stripeOutOfBandPaymentService->markPaidFromPayment($payment);
+    }
+
+    private function applyPaymentToLocalInvoice(Payment $payment): void
+    {
+        if (! $payment->invoice_id)
+        {
+            return;
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()->whereKey($payment->invoice_id)->first();
+        if (! $invoice instanceof Invoice)
+        {
+            return;
+        }
+
+        $amount = round((float) $payment->amount, 2);
+        $balance = round((float) $invoice->balance, 2);
+        if ($amount <= 0 || $balance <= 0)
+        {
+            return;
+        }
+
+        $applied = min($amount, $balance);
+        $invoice->balance = max(0, round($balance - $applied, 2));
+        if ((float) $invoice->balance <= 0)
+        {
+            $invoice->status = 2;
+        }
+        $invoice->save();
     }
 
     private function resolveRemarks(
