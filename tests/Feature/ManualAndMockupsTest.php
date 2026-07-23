@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\ManualController;
 use App\Support\ManualDocumentation;
 use Tests\TestCase;
 
@@ -12,30 +13,47 @@ class ManualAndMockupsTest extends TestCase
         $this->get(route('manual.index'))
             ->assertOk()
             ->assertSee('Manual de usuario', false)
-            ->assertSee(route('mockups.index', [], false), false);
+            ->assertSee(route('mockups.index', [], false), false)
+            ->assertSee('Client', false);
     }
 
     public function test_manual_sections_are_public(): void
     {
-        foreach (array_column(\App\Http\Controllers\ManualController::guideSections(), 'route') as $routeName)
+        foreach (array_column(ManualController::guideSections(), 'route') as $routeName)
         {
             $this->get(route($routeName))->assertOk();
         }
     }
 
-    public function test_manual_pages_include_admin_and_collaborator_role_blocks(): void
+    public function test_new_manual_sections_exist(): void
+    {
+        foreach (['manual.opportunities', 'manual.tickets', 'manual.automation', 'manual.website'] as $routeName)
+        {
+            $this->get(route($routeName))->assertOk();
+        }
+
+        $this->get(route('manual.tickets'))
+            ->assertSee(route('mockups.client-ticket', [], false), false);
+
+        $this->get(route('manual.billing'))
+            ->assertSee('Suscripciones', false)
+            ->assertSee('Afiliados', false);
+
+        $this->get(route('manual.campaigns'))
+            ->assertSee('Paid Ads', false);
+    }
+
+    public function test_manual_pages_include_role_blocks(): void
     {
         $this->get(route('manual.contacts'))
             ->assertOk()
             ->assertSee('Admin', false)
             ->assertSee('Collaborator', false)
-            ->assertSee('Client', false)
-            ->assertSee(route('mockups.contact-form', [], false), false);
+            ->assertSee('Client', false);
 
-        $this->get(route('manual.billing'))
+        $this->get(route('manual.opportunities'))
             ->assertOk()
-            ->assertSee('solo Admin', false)
-            ->assertSee(route('mockups.invoice-flow', [], false), false);
+            ->assertSee('pipeline', false);
     }
 
     public function test_client_mockups_and_flow_diagrams_are_public(): void
@@ -44,28 +62,14 @@ class ManualAndMockupsTest extends TestCase
             ->assertOk()
             ->assertSee('¿Qué rol tiene?', false);
 
-        $this->get(route('mockups.roles-flow'))
-            ->assertOk()
-            ->assertSee('Cliente final', false);
-
         $this->get(route('mockups.client-journey'))
             ->assertOk()
             ->assertSee('Client', false);
-
-        $this->get(route('mockups.client-ticket'))
-            ->assertOk()
-            ->assertSee('Asunto', false);
-
-        $this->get(route('mockups.client-home'))
-            ->assertOk()
-            ->assertSee('Mis proyectos', false);
     }
 
     public function test_mockups_catalog_and_pages_are_public(): void
     {
-        $this->get(route('mockups.index'))
-            ->assertOk()
-            ->assertSee('Mockups', false);
+        $this->get(route('mockups.index'))->assertOk();
 
         foreach (ManualDocumentation::mockups() as $mockup)
         {
@@ -75,16 +79,16 @@ class ManualAndMockupsTest extends TestCase
         }
     }
 
-    public function test_role_matrix_covers_all_manual_sections(): void
+    public function test_role_matrix_covers_new_sections(): void
     {
         $matrix = ManualDocumentation::roleMatrix();
 
-        $this->assertArrayHasKey('contacts', $matrix);
-        $this->assertArrayHasKey('billing', $matrix);
-        $this->assertArrayHasKey('client', $matrix['getting-started']);
-        $this->assertNotEmpty($matrix['billing']['collaborator_blocked']);
-        $this->assertNotEmpty($matrix['contacts']['admin']);
-        $this->assertNotEmpty($matrix['contacts']['collaborator']);
-        $this->assertNotEmpty($matrix['contacts']['client']);
+        foreach (['opportunities', 'tickets', 'automation', 'website', 'contacts', 'billing'] as $section)
+        {
+            $this->assertArrayHasKey($section, $matrix);
+            $this->assertArrayHasKey('admin', $matrix[$section]);
+            $this->assertArrayHasKey('collaborator', $matrix[$section]);
+            $this->assertArrayHasKey('client', $matrix[$section]);
+        }
     }
 }

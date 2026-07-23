@@ -43,6 +43,10 @@
             <a href="{{ \App\Support\GuidePresentation::url('lista-de-60') }}" class="btn btn-sm btn-label-primary" target="_blank" rel="noopener">
                 <i class="ti ti-presentation me-1"></i>{{ __('app.list60_manual_view_presentation') }}
             </a>
+            <a href="{{ \App\Support\GuidePresentation::url('prospeccion') }}" class="btn btn-sm btn-label-secondary" target="_blank" rel="noopener">
+                <i class="ti ti-presentation me-1"></i>{{ __('Presentación prospección') }}
+            </a>
+            <a href="{{ route('help.contacts') }}" class="btn btn-sm btn-label-secondary">{{ __('Ayuda: contactos') }}</a>
         </p>
     </div>
 </div>

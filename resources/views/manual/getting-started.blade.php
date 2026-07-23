@@ -34,12 +34,13 @@
                 <h5 class="mt-4">{{ __('Navegación por el menú') }}</h5>
                 <p>{{ __('El menú principal lateral te permite acceder a:') }}</p>
                 <ul>
-                    <li>{{ __('Dashboard y Hoy para tener una visión general.') }}</li>
-                    <li>{{ __('Contactos, Clientes y Colaboradores para gestionar personas.') }}</li>
-                    <li>{{ __('Servicios, Proyectos y Tareas para el trabajo del día a día.') }}</li>
-                    <li>{{ __('Productos, Pedidos, Facturas y Pagos para comercio y cobros (facturación: solo Admin).') }}</li>
-                    <li>{{ __('Mensajes y Plantillas para campañas de comunicación.') }}</li>
-                    <li>{{ __('Usuarios y Departamentos dentro de Equipo (usuarios: solo Admin).') }}</li>
+                    <li>{{ __('Dashboard, Hoy y Calendario.') }}</li>
+                    <li>{{ __('Contactos (y Lista de 60), Clientes, Colaboradores.') }}</li>
+                    <li>{{ __('Servicios, Proyectos, Oportunidades y Tareas.') }}</li>
+                    <li>{{ __('Chat / WhatsApp y Tickets.') }}</li>
+                    <li>{{ __('E-commerce (productos, tiendas, pedidos).') }}</li>
+                    <li>{{ __('Facturación (solo Admin), Marketing y Automatización.') }}</li>
+                    <li>{{ __('Sitio web / CMS y Equipo (usuarios: solo Admin).') }}</li>
                 </ul>
 
                 <p class="mb-3">{{ __('Los elementos del menú que ves dependen de tu rol y de los módulos activados para tu equipo.') }}</p>

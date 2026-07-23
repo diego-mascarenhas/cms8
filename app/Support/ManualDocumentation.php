@@ -40,14 +40,75 @@ class ManualDocumentation
                 'admin' => [
                     'Resumen del equipo completo: contactos, proyectos, métricas y alertas.',
                     'Puede ver Insight diario / performance del equipo si está activo.',
+                    'Calendario del equipo y sincronización Google (configuración en Team Settings).',
                 ],
                 'collaborator' => [
                     'Dashboard y Hoy centrados en su trabajo y tareas del día.',
-                    'No ve paneles financieros del equipo.',
+                    'Agenda operativa; no ve paneles financieros del equipo.',
                 ],
                 'client' => [
                     'Entra a un dashboard de cliente (vista operativa restringida).',
                     'No ve métricas internas ni finanzas del proveedor.',
+                ],
+            ],
+            'opportunities' => [
+                'admin' => [
+                    'Ve y gestiona todas las oportunidades del equipo.',
+                    'Define etapas del pipeline y vincula a contactos/clientes/proyectos.',
+                ],
+                'collaborator' => [
+                    'Crea y gestiona oportunidades de su responsabilidad.',
+                    'Actualiza etapa y seguimiento comercial.',
+                ],
+                'client' => [
+                    'No opera el pipeline interno de ventas.',
+                ],
+                'client_blocked' => [
+                    'Listado y edición de oportunidades del equipo.',
+                ],
+            ],
+            'tickets' => [
+                'admin' => [
+                    'Ve y gestiona la cola de tickets del equipo.',
+                    'Asigna, prioriza y cierra incidencias.',
+                ],
+                'collaborator' => [
+                    'Atiende tickets propios o asignados.',
+                    'Responde y actualiza estado.',
+                ],
+                'client' => [
+                    'Crea tickets de soporte (asunto, prioridad, descripción, adjuntos).',
+                    'Es el canal principal de ayuda del usuario final.',
+                ],
+            ],
+            'automation' => [
+                'admin' => [
+                    'Gestiona prompts, embudos, automatizaciones e integraciones.',
+                    'Define flujos conversacionales y acciones automáticas.',
+                ],
+                'collaborator' => [
+                    'Uso limitado según módulos; no administra automatizaciones avanzadas.',
+                ],
+                'client' => [
+                    'No configura prompts ni embudos; puede ser destinatario de flujos.',
+                ],
+                'client_blocked' => [
+                    'Prompts, embudos, automatizaciones, hub de integraciones.',
+                ],
+            ],
+            'website' => [
+                'admin' => [
+                    'Landing editor, CMS (páginas/posts/media), multimedia y academia.',
+                    'Sincronización WordPress vía plugins IDONEO.',
+                ],
+                'collaborator' => [
+                    'Puede editar contenidos CMS según permisos del módulo.',
+                ],
+                'client' => [
+                    'Consume el sitio/landing; no edita el CMS del equipo.',
+                ],
+                'client_blocked' => [
+                    'Editor de landing, posts, media y academia interna.',
                 ],
             ],
             'contacts' => [
@@ -167,7 +228,7 @@ class ManualDocumentation
             'billing' => [
                 'admin' => [
                     'Facturas, pagos, ingresos, gastos, tarifas y finanzas.',
-                    'Sync de pagos (MercadoPago, Stripe, etc.).',
+                    'Suscripciones (Stripe), afiliados y sync de pagos (MercadoPago, etc.).',
                 ],
                 'collaborator' => [
                     'Sin acceso al menú de facturación.',
@@ -177,7 +238,7 @@ class ManualDocumentation
                     'Recibe facturas/cobros por los canales que el admin configure (email, enlace).',
                 ],
                 'collaborator_blocked' => [
-                    'Facturas, pagos, ingresos, gastos, tarifas, finanzas, afiliados.',
+                    'Facturas, pagos, ingresos, gastos, tarifas, finanzas, suscripciones, afiliados.',
                 ],
                 'client_blocked' => [
                     'Todo el menú Billing e infraestructura.',
@@ -185,16 +246,17 @@ class ManualDocumentation
             ],
             'campaigns' => [
                 'admin' => [
-                    'Campañas email/SMS y plantillas del equipo.',
+                    'Campañas, mensajes, plantillas y publicidad de pago (Paid Ads).',
+                    'Configura plataformas publicitarias en Team Settings.',
                 ],
                 'collaborator' => [
-                    'Uso operativo de mensajes/plantillas si el módulo está activo.',
+                    'Uso operativo de campañas/mensajes/plantillas y paid ads según módulo.',
                 ],
                 'client' => [
-                    'Es destinatario de campañas, no emisor.',
+                    'Es destinatario de campañas, no emisor ni gestor de ads.',
                 ],
                 'client_blocked' => [
-                    'Crear o lanzar campañas.',
+                    'Crear campañas, plantillas o anuncios de pago.',
                 ],
             ],
             'team' => [
@@ -215,14 +277,16 @@ class ManualDocumentation
             ],
             'more-features' => [
                 'admin' => [
-                    'Prompts, embudos, automatizaciones, infraestructura, CMS, suscripción.',
+                    'Servidores, hosting, notificaciones masivas y suscripción del plan Humano.',
                 ],
                 'collaborator' => [
-                    'CMS/multimedia según módulos; sin automatizaciones ni servidores.',
+                    'Notificaciones operativas según módulo; sin infraestructura.',
                 ],
                 'client' => [
-                    'Puede crear tickets de soporte (asunto, prioridad, descripción, adjuntos).',
-                    'Sin prompts, embudos, automatizaciones ni servidores.',
+                    'Sin servidores ni gestión del plan de la plataforma.',
+                ],
+                'client_blocked' => [
+                    'Infraestructura y suscripción Humano.',
                 ],
             ],
         ];

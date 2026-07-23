@@ -28,6 +28,9 @@
         <x-manual.role-compare section="tasks" />
 
         <a href="{{ route('mockups.collaborator-day') }}" class="btn btn-sm btn-label-secondary">{{ __('Ver flujo del día collaborator') }}</a>
+        <a href="{{ \App\Support\GuidePresentation::url('tareas') }}" class="btn btn-sm btn-label-primary" target="_blank" rel="noopener">
+            <i class="ti ti-presentation me-1"></i>{{ __('Presentación tareas') }}
+        </a>
     </div>
 </div>
 @endsection

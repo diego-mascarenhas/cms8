@@ -1443,11 +1443,15 @@ Route::prefix('manual')->name('manual.')->group(function ()
     Route::get('/collaborators', [ManualController::class, 'collaborators'])->name('collaborators');
     Route::get('/services', [ManualController::class, 'services'])->name('services');
     Route::get('/projects', [ManualController::class, 'projects'])->name('projects');
+    Route::get('/opportunities', [ManualController::class, 'opportunities'])->name('opportunities');
     Route::get('/tasks', [ManualController::class, 'tasks'])->name('tasks');
     Route::get('/chat', [ManualController::class, 'chat'])->name('chat');
+    Route::get('/tickets', [ManualController::class, 'tickets'])->name('tickets');
     Route::get('/products-and-orders', [ManualController::class, 'productsAndOrders'])->name('products-and-orders');
     Route::get('/billing', [ManualController::class, 'billing'])->name('billing');
     Route::get('/campaigns', [ManualController::class, 'campaigns'])->name('campaigns');
+    Route::get('/automation', [ManualController::class, 'automation'])->name('automation');
+    Route::get('/website', [ManualController::class, 'website'])->name('website');
     Route::get('/team', [ManualController::class, 'team'])->name('team');
     Route::get('/more-features', [ManualController::class, 'moreFeatures'])->name('more-features');
 });

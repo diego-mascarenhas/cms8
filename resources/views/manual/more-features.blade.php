@@ -8,26 +8,26 @@
         <h4 class="card-title mb-0">{{ __('Más funciones') }}</h4>
     </div>
     <div class="card-body">
-        <p>{{ __('Otros módulos según plan y configuración:') }}</p>
+        <p>{{ __('Funciones complementarias. Para contenidos, automatización y e-commerce usa las secciones dedicadas del menú del manual.') }}</p>
 
-        <h5>{{ __('Empresas (Enterprises)') }}</h5>
-        <p>{{ __('Compañías u organizaciones asociadas a contactos y clientes.') }}</p>
+        <h5>{{ __('Notificaciones') }}</h5>
+        <p>{{ __('Avisos en la app o por email a usuarios o contactos (individuales o masivos).') }}</p>
 
-        <h5 class="mt-4">{{ __('Contenidos, CMS y multimedia') }}</h5>
-        <p>{{ __('Bloques reutilizables, entradas/páginas (p. ej. WordPress) y galería de archivos.') }}</p>
+        <h5 class="mt-4">{{ __('Infraestructura (servidores y hosting)') }}</h5>
+        <p>{{ __('Alta de servidores y hosting y comprobación de estado. Solo Admin / Root (gate de infraestructura).') }}</p>
 
-        <h5 class="mt-4">{{ __('Prompts, embudos y automatizaciones') }}</h5>
-        <p>{{ __('Instrucciones para el asistente IA, flujos conversacionales y acciones automáticas. Gestión avanzada: Admin.') }}</p>
+        <h5 class="mt-4">{{ __('Suscripción al plan Humano') }}</h5>
+        <p>{{ __('Gestión del plan de la plataforma (no confundir con el módulo Suscripciones de clientes en Billing).') }}</p>
 
-        <h5 class="mt-4">{{ __('Infraestructura') }}</h5>
-        <p>{{ __('Servidores y hosting: solo Admin / Root.') }}</p>
-
-        <h5 class="mt-4">{{ __('Suscripción Humano') }}</h5>
-        <p>{{ __('Plan de la plataforma y facturación de Humano: Admin.') }}</p>
+        <div class="alert alert-info mt-4" role="alert">
+            <strong>{{ __('Ver también') }}:</strong>
+            <a href="{{ route('manual.automation') }}">{{ __('Automatización') }}</a>,
+            <a href="{{ route('manual.website') }}">{{ __('Sitio web') }}</a>,
+            <a href="{{ route('manual.tickets') }}">{{ __('Tickets') }}</a>,
+            <a href="{{ route('help.index') }}">{{ __('Ayuda técnica') }}</a>.
+        </div>
 
         <x-manual.role-compare section="more-features" />
-
-        <p class="mb-0">{{ __('Para API, variables de entorno e integraciones consulta') }} <a href="{{ route('help.index') }}">{{ __('Ayuda y documentación') }}</a>.</p>
     </div>
 </div>
 @endsection

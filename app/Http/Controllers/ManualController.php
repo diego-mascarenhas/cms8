@@ -12,121 +12,96 @@ class ManualController extends Controller
         return view('manual.ayuda');
     }
 
-    /**
-     * Display the user manual index
-     */
     public function index()
     {
         return view('manual.index');
     }
 
-    /**
-     * Display the getting started / overview section
-     */
     public function gettingStarted()
     {
         return view('manual.getting-started');
     }
 
-    /**
-     * Display the dashboard and today section
-     */
     public function dashboard()
     {
         return view('manual.dashboard');
     }
 
-    /**
-     * Display the contacts and prospecting section
-     */
     public function contacts()
     {
         return view('manual.contacts');
     }
 
-    /**
-     * Display the clients section
-     */
     public function clients()
     {
         return view('manual.clients');
     }
 
-    /**
-     * Display the collaborators section
-     */
     public function collaborators()
     {
         return view('manual.collaborators');
     }
 
-    /**
-     * Display the services section
-     */
     public function services()
     {
         return view('manual.services');
     }
 
-    /**
-     * Display the projects section
-     */
     public function projects()
     {
         return view('manual.projects');
     }
 
-    /**
-     * Display the tasks and time tracking section
-     */
+    public function opportunities()
+    {
+        return view('manual.opportunities');
+    }
+
     public function tasks()
     {
         return view('manual.tasks');
     }
 
-    /**
-     * Display the chat and WhatsApp section
-     */
     public function chat()
     {
         return view('manual.chat');
     }
 
-    /**
-     * Display the products and orders (e-commerce) section
-     */
+    public function tickets()
+    {
+        return view('manual.tickets');
+    }
+
     public function productsAndOrders()
     {
         return view('manual.products-and-orders');
     }
 
-    /**
-     * Display the billing section (invoices, payments, income, expenses)
-     */
     public function billing()
     {
         return view('manual.billing');
     }
 
-    /**
-     * Display the messages and templates (campaigns) section
-     */
     public function campaigns()
     {
         return view('manual.campaigns');
     }
 
-    /**
-     * Display the team section (users, departments)
-     */
+    public function automation()
+    {
+        return view('manual.automation');
+    }
+
+    public function website()
+    {
+        return view('manual.website');
+    }
+
     public function team()
     {
         return view('manual.team');
     }
 
-    /**
-     * Display the rest of features (enterprises, contents, prompts, etc.)
-     */
     public function moreFeatures()
     {
         return view('manual.more-features');
@@ -146,8 +121,8 @@ class ManualController extends Controller
             ],
             [
                 'route' => 'manual.dashboard',
-                'title' => __('Dashboard y Hoy'),
-                'description' => __('Vista general y vista del día.'),
+                'title' => __('Dashboard, Hoy y Calendario'),
+                'description' => __('Resumen, día a día y agenda.'),
                 'icon' => 'ti-layout-dashboard',
             ],
             [
@@ -181,6 +156,12 @@ class ManualController extends Controller
                 'icon' => 'ti-folders',
             ],
             [
+                'route' => 'manual.opportunities',
+                'title' => __('Oportunidades'),
+                'description' => __('Pipeline comercial y seguimiento de deals.'),
+                'icon' => 'ti-chart-donut',
+            ],
+            [
                 'route' => 'manual.tasks',
                 'title' => __('Tareas y tiempo'),
                 'description' => __('Tareas, kanban, registro de tiempo y asistencia.'),
@@ -193,22 +174,40 @@ class ManualController extends Controller
                 'icon' => 'ti-brand-whatsapp',
             ],
             [
+                'route' => 'manual.tickets',
+                'title' => __('Tickets'),
+                'description' => __('Soporte interno y portal del Client.'),
+                'icon' => 'ti-ticket',
+            ],
+            [
                 'route' => 'manual.products-and-orders',
-                'title' => __('Productos y pedidos'),
-                'description' => __('Catálogo de productos y gestión de pedidos.'),
+                'title' => __('E-commerce'),
+                'description' => __('Productos, tiendas y pedidos.'),
                 'icon' => 'ti-shopping-cart',
             ],
             [
                 'route' => 'manual.billing',
                 'title' => __('Facturas y pagos'),
-                'description' => __('Facturación, pagos, ingresos, gastos y panel financiero.'),
+                'description' => __('Facturación, suscripciones, afiliados y finanzas.'),
                 'icon' => 'ti-receipt',
             ],
             [
                 'route' => 'manual.campaigns',
-                'title' => __('Mensajes y plantillas'),
-                'description' => __('Campañas de email/SMS y plantillas de mensajes.'),
+                'title' => __('Marketing'),
+                'description' => __('Campañas, mensajes, plantillas y paid ads.'),
                 'icon' => 'ti-mail',
+            ],
+            [
+                'route' => 'manual.automation',
+                'title' => __('Automatización'),
+                'description' => __('Prompts, embudos, automatizaciones e integraciones.'),
+                'icon' => 'ti-robot',
+            ],
+            [
+                'route' => 'manual.website',
+                'title' => __('Sitio web y contenidos'),
+                'description' => __('Landing, CMS, multimedia y academia.'),
+                'icon' => 'ti-world',
             ],
             [
                 'route' => 'manual.team',
@@ -219,7 +218,7 @@ class ManualController extends Controller
             [
                 'route' => 'manual.more-features',
                 'title' => __('Más funciones'),
-                'description' => __('Empresas, contenidos, prompts, notificaciones y otras herramientas.'),
+                'description' => __('Infraestructura, notificaciones y plan Humano.'),
                 'icon' => 'ti-dots',
             ],
         ];
