@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\TransactionType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class PaymentSync extends Model
 {
@@ -40,6 +42,27 @@ class PaymentSync extends Model
         return $this->belongsTo(Team::class);
     }
 
+    public function importedMercadoPagoPayment(): ?Payment
+    {
+        $externalId = trim((string) $this->external_id);
+        if ($externalId === '')
+        {
+            return null;
+        }
+
+        return Payment::withoutGlobalScopes()
+            ->with('invoice')
+            ->where('team_id', $this->team_id)
+            ->where('source_provider', 'mercadopago')
+            ->where(function ($query) use ($externalId): void
+            {
+                $query->where('source_reference_id', $externalId)
+                    ->orWhere('source_reference_id', 'like', $externalId.':%');
+            })
+            ->orderBy('id')
+            ->first();
+    }
+
     public function scopeTeam(Builder $query, int $teamId): Builder
     {
         return $query->where('team_id', $teamId);
@@ -48,6 +71,14 @@ class PaymentSync extends Model
     public function scopeProvider(Builder $query, string $provider): Builder
     {
         return $query->where('provider', strtolower($provider));
+    }
+
+    /**
+     * Mercado Pago Payments API rows are money received by the collector.
+     */
+    public function transactionType(): TransactionType
+    {
+        return TransactionType::INCOME;
     }
 
     /**
@@ -92,5 +123,103 @@ class PaymentSync extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Values that may appear as Stripe invoice metadata.payment_reference
+     * when the invoice was marked paid out of band with type + reference.
+     *
+     * @return list<string>
+     */
+    public function stripeMatchReferences(): array
+    {
+        $refs = [];
+        $identificationCode = $this->identificationCode();
+        if ($identificationCode !== null)
+        {
+            $refs[] = $identificationCode;
+        }
+
+        $externalId = trim((string) $this->external_id);
+        if ($externalId !== '')
+        {
+            $refs[] = $externalId;
+        }
+
+        return array_values(array_unique($refs));
+    }
+
+    /**
+     * Stripe invoices linked via metadata.payment_reference (out-of-band type + reference).
+     *
+     * @return array<string, array{invoice_id: ?int, number: ?string, stripe_external_id: string}>
+     */
+    public static function stripeLinkedInvoiceMap(int $teamId): array
+    {
+        $rows = DB::table('invoice_syncs as s')
+            ->leftJoin('invoices as i', function ($join): void
+            {
+                $join->on('i.team_id', '=', 's.team_id')
+                    ->whereColumn('i.source_reference_id', 's.external_id')
+                    ->where('i.source_provider', '=', 'stripe');
+            })
+            ->where('s.team_id', $teamId)
+            ->where('s.provider', 'stripe')
+            ->whereNotNull('s.raw_payload')
+            ->whereRaw("NULLIF(TRIM(s.raw_payload->'metadata'->>'payment_reference'), '') IS NOT NULL")
+            ->selectRaw("TRIM(s.raw_payload->'metadata'->>'payment_reference') as payment_reference")
+            ->selectRaw('s.external_id as stripe_external_id')
+            ->selectRaw('i.id as invoice_id')
+            ->selectRaw('COALESCE(i.number, s.number) as invoice_number')
+            ->orderByDesc('i.id')
+            ->orderByDesc('s.id')
+            ->get();
+
+        $map = [];
+        foreach ($rows as $row)
+        {
+            $reference = trim((string) $row->payment_reference);
+            if ($reference === '' || isset($map[$reference]))
+            {
+                continue;
+            }
+
+            $invoiceId = $row->invoice_id !== null ? (int) $row->invoice_id : null;
+            $number = trim((string) ($row->invoice_number ?? ''));
+            $stripeExternalId = trim((string) ($row->stripe_external_id ?? ''));
+
+            $map[$reference] = [
+                'invoice_id' => $invoiceId,
+                'number' => $number !== '' ? $number : null,
+                'stripe_external_id' => $stripeExternalId,
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * @param  array<string, array{invoice_id: ?int, number: ?string, stripe_external_id?: string}>  $stripeLinkedInvoices
+     * @return array{invoice_id: ?int, number: ?string, stripe_external_id?: string}|null
+     */
+    public function linkedStripeInvoice(array $stripeLinkedInvoices): ?array
+    {
+        foreach ($this->stripeMatchReferences() as $reference)
+        {
+            if (isset($stripeLinkedInvoices[$reference]))
+            {
+                return $stripeLinkedInvoices[$reference];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, array{invoice_id: ?int, number: ?string, stripe_external_id?: string}>  $stripeLinkedInvoices
+     */
+    public function isLinkedViaStripe(array $stripeLinkedInvoices): bool
+    {
+        return $this->linkedStripeInvoice($stripeLinkedInvoices) !== null;
     }
 }

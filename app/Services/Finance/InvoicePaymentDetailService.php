@@ -6,11 +6,16 @@ use App\Enums\TransactionType;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentSync;
+use App\Services\Billing\MercadoPagoPaymentImportService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class InvoicePaymentDetailService
 {
+    public function __construct(
+        private readonly MercadoPagoPaymentImportService $mercadoPagoPaymentImportService,
+    ) {}
+
     /**
      * @return Collection<int, array{
      *     id: int|null,
@@ -27,6 +32,8 @@ class InvoicePaymentDetailService
      */
     public function forInvoice(Invoice $invoice): Collection
     {
+        $this->mercadoPagoPaymentImportService->importOutOfBandLinkForStripeInvoice($invoice);
+
         $payments = $this->resolvePayments($invoice);
 
         if ($payments->isNotEmpty())

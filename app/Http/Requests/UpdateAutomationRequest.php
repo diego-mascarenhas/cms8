@@ -47,6 +47,7 @@ class UpdateAutomationRequest extends FormRequest
             'channels.api' => ['sometimes', 'boolean'],
             'settings' => ['nullable', 'array'],
             'settings.welcome_message' => ['nullable', 'string', 'max:2000'],
+            'settings.entry_aliases' => ['nullable', 'string', 'max:1000'],
             'regenerate_token' => ['sometimes', 'boolean'],
         ];
     }

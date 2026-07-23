@@ -17,7 +17,6 @@ use App\Services\PerformanceInsightSlashDispatcher;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
 use Livewire\Component;
@@ -237,34 +236,25 @@ class AssistantChat extends Component
 
     protected function bindAutomationFromUserMessage(string $text, int $teamId, AssistantAutomationRunner $runner): void
     {
-        $normalized = Str::lower(trim($text));
-        if ($normalized === '')
+        if (trim($text) === '')
         {
             return;
         }
 
-        if (preg_match('/^\/(?:embudo|funnel)\s+([a-z0-9\-_]+)$/i', $normalized, $matches) === 1)
-        {
-            $automation = $runner->findBySlug($matches[1], $teamId);
-            if ($automation && $automation->is_active && $automation->allowsChannel(Automation::CHANNEL_HUMANO))
-            {
-                $this->automationId = $automation->id;
-            }
-
-            return;
-        }
-
-        if ($this->automationId !== null)
+        // Explicit /embudo slug always rebinds; free-text aliases only when no funnel is active.
+        $isExplicitCommand = preg_match('/^\/(?:embudo|funnel)\s+/iu', trim($text)) === 1;
+        if ($this->automationId !== null && ! $isExplicitCommand)
         {
             return;
         }
 
-        if (! preg_match('/^[a-z0-9][a-z0-9\-_]*$/', $normalized))
+        $slug = $runner->resolveSlugFromMessage($text, $teamId, Automation::CHANNEL_HUMANO);
+        if ($slug === null)
         {
             return;
         }
 
-        $automation = $runner->findBySlug($normalized, $teamId);
+        $automation = $runner->findBySlug($slug, $teamId);
         if ($automation && $automation->is_active && $automation->allowsChannel(Automation::CHANNEL_HUMANO))
         {
             $this->automationId = $automation->id;

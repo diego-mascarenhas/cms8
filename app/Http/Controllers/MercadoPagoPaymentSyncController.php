@@ -6,6 +6,7 @@ use App\DataTables\MercadoPagoPaymentSyncDataTable;
 use App\Http\Requests\ImportMercadoPagoPaymentSyncRequest;
 use App\Models\Enterprise;
 use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentSync;
 use App\Services\Billing\MercadoPagoInvoiceSuggestionService;
@@ -48,6 +49,14 @@ class MercadoPagoPaymentSyncController extends Controller
             return redirect()
                 ->route('payments.syncs.mercadopago.index')
                 ->with('error', __('payment_sync.mercadopago.errors.not_approved'));
+        }
+
+        $linkedInvoice = $this->resolveOrMaterializeLinkedStripeInvoice($sync);
+        if ($linkedInvoice instanceof Invoice)
+        {
+            $this->importService->importOutOfBandLinkForStripeInvoice($linkedInvoice);
+
+            return redirect()->route('invoice.show', $linkedInvoice->id);
         }
 
         $teamId = (int) auth()->user()->currentTeam->id;
@@ -95,6 +104,24 @@ class MercadoPagoPaymentSyncController extends Controller
             'amountMajor' => $amountMajor,
             'invoiceOptionFormatter' => PaymentInvoiceLinkOptionFormatter::class,
         ]);
+    }
+
+    public function linkedInvoice(PaymentSync $sync): RedirectResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+        $this->ensureTeamSync($sync);
+
+        $invoice = $this->resolveOrMaterializeLinkedStripeInvoice($sync);
+        if (! $invoice instanceof Invoice)
+        {
+            return redirect()
+                ->route('payments.syncs.mercadopago.index')
+                ->with('error', __('payment_sync.mercadopago.errors.stripe_invoice_missing'));
+        }
+
+        $this->importService->importOutOfBandLinkForStripeInvoice($invoice);
+
+        return redirect()->route('invoice.show', $invoice->id);
     }
 
     public function import(ImportMercadoPagoPaymentSyncRequest $request, PaymentSync $sync): RedirectResponse
@@ -157,6 +184,58 @@ class MercadoPagoPaymentSyncController extends Controller
         return $redirect;
     }
 
+    private function resolveOrMaterializeLinkedStripeInvoice(PaymentSync $sync): ?Invoice
+    {
+        $invoiceSync = $this->findLinkedStripeInvoiceSync($sync);
+        if (! $invoiceSync instanceof InvoiceSync)
+        {
+            return null;
+        }
+
+        $existing = Invoice::withoutGlobalScopes()
+            ->where('team_id', $sync->team_id)
+            ->where('source_provider', 'stripe')
+            ->where('source_reference_id', $invoiceSync->external_id)
+            ->first();
+
+        if ($existing instanceof Invoice)
+        {
+            return $existing;
+        }
+
+        return $this->stripeInvoiceImportService->importFromSyncRow(
+            $invoiceSync,
+            fallbackEmail: true,
+            linkCodeOnEmailMatch: false,
+            dryRun: false,
+        );
+    }
+
+    private function findLinkedStripeInvoiceSync(PaymentSync $sync): ?InvoiceSync
+    {
+        $references = $sync->stripeMatchReferences();
+        if ($references === [])
+        {
+            return null;
+        }
+
+        return InvoiceSync::query()
+            ->where('team_id', $sync->team_id)
+            ->where('provider', 'stripe')
+            ->where(function ($query) use ($references): void
+            {
+                foreach ($references as $reference)
+                {
+                    $query->orWhereRaw(
+                        "TRIM(COALESCE(raw_payload->'metadata'->>'payment_reference', '')) = ?",
+                        [$reference],
+                    );
+                }
+            })
+            ->orderByDesc('id')
+            ->first();
+    }
+
     private function stripeInvoiceStillOpenAfterImport(?\App\Models\Payment $payment): bool
     {
         if (! $payment?->invoice_id)
@@ -176,7 +255,7 @@ class MercadoPagoPaymentSyncController extends Controller
             return false;
         }
 
-        $sync = \App\Models\InvoiceSync::query()
+        $sync = InvoiceSync::query()
             ->where('team_id', $invoice->team_id)
             ->where('provider', 'stripe')
             ->where('external_id', $externalId)

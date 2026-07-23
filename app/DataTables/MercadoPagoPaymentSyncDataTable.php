@@ -12,12 +12,43 @@ use Yajra\DataTables\Services\DataTable;
 
 class MercadoPagoPaymentSyncDataTable extends DataTable
 {
+    /** @var array<string, array{invoice_id: ?int, number: ?string, stripe_external_id?: string}>|null */
+    private ?array $stripeLinkedInvoices = null;
+
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
+        $stripeLinkedInvoices = $this->stripeLinkedInvoices();
+
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'payments.syncs.mercadopago.action')
+            ->addColumn('action', function (PaymentSync $sync) use ($stripeLinkedInvoices): string
+            {
+                $linked = $sync->linkedStripeInvoice($stripeLinkedInvoices);
+                $invoiceId = $linked['invoice_id'] ?? null;
+                $invoiceNumber = $linked['number'] ?? null;
+
+                if ($invoiceId === null)
+                {
+                    $importedPayment = $sync->importedMercadoPagoPayment();
+                    if ($importedPayment?->invoice_id)
+                    {
+                        $invoiceId = (int) $importedPayment->invoice_id;
+                        $invoiceNumber = $importedPayment->invoice?->number ?? $invoiceNumber;
+                    }
+                }
+
+                return view('payments.syncs.mercadopago.action', [
+                    'id' => $sync->id,
+                    'isStripeLinked' => $linked !== null || $invoiceId !== null,
+                    'linkedInvoiceId' => $invoiceId,
+                    'linkedInvoiceNumber' => $invoiceNumber,
+                ])->render();
+            })
             ->setRowId('id')
-            ->rawColumns(['action', 'payer', 'external_id'])
+            ->rawColumns(['action', 'payer', 'external_id', 'transaction_indicator'])
+            ->addColumn('transaction_indicator', function (PaymentSync $sync): string
+            {
+                return $sync->transactionType()->badge();
+            })
             ->editColumn('charge_created_at', function (PaymentSync $sync): string
             {
                 if ($sync->charge_created_at === null)
@@ -35,7 +66,7 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
                     ? (float) $cents
                     : round($cents / 100, 2);
 
-                return number_format($amount, 2, ',', '.').' '.$currency;
+                return e(number_format($amount, 2, ',', '.').' '.$currency);
             })
             ->addColumn('payer', function (PaymentSync $sync): string
             {
@@ -55,10 +86,6 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
                 }
 
                 return $parts === [] ? '—' : implode(' <span class="text-muted">·</span> ', $parts);
-            })
-            ->editColumn('description', function (PaymentSync $sync): string
-            {
-                return filled($sync->description) ? (string) $sync->description : '—';
             })
             ->editColumn('external_id', function (PaymentSync $sync): string
             {
@@ -105,33 +132,86 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
     public function query(PaymentSync $model): QueryBuilder
     {
         $teamId = (int) auth()->user()->currentTeam->id;
+        $assignmentFilter = $this->assignmentFilter();
 
-        return $model->newQuery()
+        $query = $model->newQuery()
             ->where('team_id', $teamId)
             ->where('provider', 'mercadopago')
-            ->where('status', 'approved')
-            ->whereNotExists(function ($query): void
+            ->where('status', 'approved');
+
+        $notImported = function ($sub): void
+        {
+            $sub->from('payments')
+                ->whereColumn('payments.team_id', 'payment_syncs.team_id')
+                ->where('payments.source_provider', 'mercadopago')
+                ->where(function ($inner): void
+                {
+                    $inner->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
+                        ->orWhereRaw("payments.source_reference_id LIKE payment_syncs.external_id || ':%'");
+                });
+        };
+
+        $stripeLinked = $this->stripeLinkedExistsCallback($teamId);
+
+        if ($assignmentFilter === 'stripe')
+        {
+            $query->whereExists($stripeLinked);
+        } elseif ($assignmentFilter === 'all')
+        {
+            // Pending queue + Stripe-linked rows (even after import).
+            $query->where(function ($outer) use ($notImported, $stripeLinked): void
             {
-                $query->from('payments')
-                    ->whereColumn('payments.team_id', 'payment_syncs.team_id')
-                    ->where('payments.source_provider', 'mercadopago')
-                    ->where(function ($inner): void
-                    {
-                        $inner->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
-                            ->orWhereRaw("payments.source_reference_id LIKE payment_syncs.external_id || ':%'");
-                    });
+                $outer->whereNotExists($notImported)
+                    ->orWhereExists($stripeLinked);
             });
+        } else
+        {
+            $query->whereNotExists($notImported)
+                ->whereNotExists($stripeLinked);
+        }
+
+        return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $assignmentLabel = e(__('payment_sync.mercadopago.filters.assignment'));
+        $unassignedLabel = e(__('payment_sync.mercadopago.filters.unassigned'));
+        $stripeLabel = e(__('payment_sync.mercadopago.filters.stripe_linked'));
+        $allLabel = e(__('payment_sync.mercadopago.filters.all'));
+
+        $initComplete = "function () {
+    var api = this.api();
+    var f = jQuery('#mercadopago-payment-sync-table_filter');
+    if (! f.length) { return; }
+    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+    if (! jQuery('#mp-sync-assignment-filter').length) {
+        f.prepend(
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"mp-sync-assignment-filter\" class=\"form-label mb-0 me-2 text-nowrap\">{$assignmentLabel}</label>' +
+            '<select id=\"mp-sync-assignment-filter\" class=\"form-select form-select-sm\" style=\"min-width:12rem;max-width:14rem;\">' +
+            '<option value=\"unassigned\" selected>{$unassignedLabel}</option>' +
+            '<option value=\"stripe\">{$stripeLabel}</option>' +
+            '<option value=\"all\">{$allLabel}</option>' +
+            '</select></div>'
+        );
+    }
+    f.find('label').addClass('ms-auto mb-0');
+    jQuery('#mp-sync-assignment-filter').off('change.mpAssignment').on('change.mpAssignment', function () {
+        api.ajax.reload();
+    });
+}";
+
         return $this
             ->builder()
             ->setTableId('mercadopago-payment-sync-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.assignment_filter = ($('#mp-sync-assignment-filter').val() || 'unassigned');",
+            )
             ->dom('frtip')
-            ->orderBy(1, 'desc')
+            ->orderBy(2, 'desc')
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
@@ -140,7 +220,11 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
             ->parameters([
                 'select' => false,
                 'autoWidth' => false,
+                'initComplete' => $initComplete,
                 'drawCallback' => 'function() {
+                    var f = jQuery("#mercadopago-payment-sync-table_filter");
+                    f.addClass("d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2");
+                    f.find("label").addClass("ms-auto mb-0");
                     $("#mercadopago-payment-sync-table tbody tr").css({
                         "user-select": "none",
                         "-webkit-user-select": "none",
@@ -155,6 +239,13 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
     {
         return [
             Column::make('id')->hidden(),
+            Column::computed('transaction_indicator')
+                ->title('')
+                ->addClass('all')
+                ->width(30)
+                ->searchable(false)
+                ->orderable(false)
+                ->className('text-center'),
             Column::make('charge_created_at')
                 ->title(__('payment_sync.mercadopago.columns.date'))
                 ->addClass('min-tablet')
@@ -170,9 +261,6 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
                 ->addClass('all')
                 ->orderable(false)
                 ->searchable(true),
-            Column::make('description')
-                ->title(__('payment_sync.mercadopago.columns.description'))
-                ->addClass('min-desktop'),
             Column::make('external_id')
                 ->title(__('payment_sync.mercadopago.columns.external_id'))
                 ->addClass('min-tablet'),
@@ -190,5 +278,62 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
     protected function filename(): string
     {
         return 'MercadoPagoPaymentSync_'.date('YmdHis');
+    }
+
+    /**
+     * @return array<string, array{invoice_id: ?int, number: ?string, stripe_external_id?: string}>
+     */
+    private function stripeLinkedInvoices(): array
+    {
+        if ($this->stripeLinkedInvoices !== null)
+        {
+            return $this->stripeLinkedInvoices;
+        }
+
+        $teamId = (int) auth()->user()->currentTeam->id;
+
+        return $this->stripeLinkedInvoices = PaymentSync::stripeLinkedInvoiceMap($teamId);
+    }
+
+    private function assignmentFilter(): string
+    {
+        $filter = strtolower(trim((string) request()->input('assignment_filter', 'unassigned')));
+
+        return in_array($filter, ['unassigned', 'stripe', 'all'], true)
+            ? $filter
+            : 'unassigned';
+    }
+
+    /**
+     * @return \Closure(\Illuminate\Database\Query\Builder): void
+     */
+    private function stripeLinkedExistsCallback(int $teamId): \Closure
+    {
+        return function ($sub) use ($teamId): void
+        {
+            $sub->from('invoice_syncs')
+                ->whereColumn('invoice_syncs.team_id', 'payment_syncs.team_id')
+                ->where('invoice_syncs.team_id', $teamId)
+                ->where('invoice_syncs.provider', 'stripe')
+                ->whereRaw("NULLIF(TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference'), '') IS NOT NULL")
+                ->where(function ($match): void
+                {
+                    $match->whereRaw(
+                        "TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference') = payment_syncs.external_id",
+                    )->orWhereRaw(
+                        "NULLIF(TRIM(COALESCE(payment_syncs.raw_payload->'transaction_details'->>'transaction_id', '')), '') IS NOT NULL
+                        AND TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference')
+                            = TRIM(payment_syncs.raw_payload->'transaction_details'->>'transaction_id')",
+                    )->orWhereRaw(
+                        "NULLIF(TRIM(COALESCE(payment_syncs.raw_payload->'point_of_interaction'->'transaction_data'->>'e2e_id', '')), '') IS NOT NULL
+                        AND TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference')
+                            = TRIM(payment_syncs.raw_payload->'point_of_interaction'->'transaction_data'->>'e2e_id')",
+                    )->orWhereRaw(
+                        "NULLIF(TRIM(COALESCE(payment_syncs.raw_payload->'point_of_interaction'->'transaction_data'->>'transaction_id', '')), '') IS NOT NULL
+                        AND TRIM(invoice_syncs.raw_payload->'metadata'->>'payment_reference')
+                            = TRIM(payment_syncs.raw_payload->'point_of_interaction'->'transaction_data'->>'transaction_id')",
+                    );
+                });
+        };
     }
 }

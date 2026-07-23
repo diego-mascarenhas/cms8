@@ -105,9 +105,7 @@ class AutomationController extends Controller
             'entry_prompt_key' => $validated['entry_prompt_key'] ?? null,
             'is_active' => $request->boolean('is_active'),
             'channels' => Automation::normalizeChannels($validated['channels'] ?? []),
-            'settings' => [
-                'welcome_message' => $validated['settings']['welcome_message'] ?? null,
-            ],
+            'settings' => $this->settingsFromValidated($validated, $kind),
         ]);
 
         if ($kind === AutomationKind::Funnel)
@@ -249,7 +247,7 @@ class AutomationController extends Controller
             'channels' => Automation::normalizeChannels($validated['channels'] ?? []),
             'settings' => array_merge(
                 is_array($automation->settings) ? $automation->settings : [],
-                ['welcome_message' => $validated['settings']['welcome_message'] ?? null],
+                $this->settingsFromValidated($validated, $automation->kind ?? AutomationKind::Action),
             ),
         ]);
 
@@ -297,6 +295,55 @@ class AutomationController extends Controller
         {
             abort_unless($automation->isAction(), 404);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    protected function settingsFromValidated(array $validated, AutomationKind $kind): array
+    {
+        $settings = [
+            'welcome_message' => $validated['settings']['welcome_message'] ?? null,
+        ];
+
+        if ($kind === AutomationKind::Funnel)
+        {
+            $settings['entry_aliases'] = $this->parseEntryAliases($validated['settings']['entry_aliases'] ?? null);
+        }
+
+        return $settings;
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function parseEntryAliases(mixed $raw): array
+    {
+        if (is_array($raw))
+        {
+            $parts = $raw;
+        } else
+        {
+            $parts = preg_split('/[,;\n]+/', (string) $raw) ?: [];
+        }
+
+        $aliases = [];
+        foreach ($parts as $part)
+        {
+            if (! is_string($part) && ! is_numeric($part))
+            {
+                continue;
+            }
+            $alias = mb_strtolower(trim((string) $part));
+            if ($alias === '' || in_array($alias, $aliases, true))
+            {
+                continue;
+            }
+            $aliases[] = $alias;
+        }
+
+        return $aliases;
     }
 
     /**
