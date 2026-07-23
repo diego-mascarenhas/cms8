@@ -126,5 +126,9 @@ class AssistantAutomationRunnerTest extends TestCase
         $this->assertNull(
             $runner->resolveSlugFromMessage('embudo-estrategico-humano', $team->id, Automation::CHANNEL_EMAIL),
         );
+        $this->assertNull(
+            $runner->resolveSlugFromMessage('Embudo', $team->id, Automation::CHANNEL_WHATSAPP),
+            'La palabra "Embudo" sola no es slug ni alias; no debe disparar el embudo.',
+        );
     }
 }

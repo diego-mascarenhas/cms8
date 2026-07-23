@@ -112,6 +112,26 @@ class AutomationCrudTest extends TestCase
         $this->assertNotSame($oldToken, $automation->public_token);
     }
 
+    public function test_admin_can_deactivate_automation_via_unchecked_checkbox(): void
+    {
+        $user = $this->createAdminWithAutomationsModule();
+        $automation = Automation::factory()->create([
+            'team_id' => $user->current_team_id,
+            'slug' => 'active-funnel',
+            'is_active' => true,
+        ]);
+
+        // Unchecked HTML checkboxes omit the field entirely from the request.
+        $this->actingAs($user)->put(route('automation.update', $automation), [
+            'name' => $automation->name,
+            'slug' => 'active-funnel',
+            'channels' => ['whatsapp' => '1'],
+        ])->assertRedirect(route('automation.show', $automation));
+
+        $automation->refresh();
+        $this->assertFalse($automation->is_active);
+    }
+
     public function test_admin_can_view_funnel_overview_read_only(): void
     {
         $user = $this->createAdminWithAutomationsModule();

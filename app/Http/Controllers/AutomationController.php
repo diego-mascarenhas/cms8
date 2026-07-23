@@ -103,7 +103,7 @@ class AutomationController extends Controller
             'slug' => $slug,
             'kind' => $kind,
             'entry_prompt_key' => $validated['entry_prompt_key'] ?? null,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
             'channels' => Automation::normalizeChannels($validated['channels'] ?? []),
             'settings' => [
                 'welcome_message' => $validated['settings']['welcome_message'] ?? null,
@@ -245,7 +245,7 @@ class AutomationController extends Controller
             'name' => $validated['name'],
             'slug' => $slug,
             'entry_prompt_key' => $validated['entry_prompt_key'] ?? null,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
             'channels' => Automation::normalizeChannels($validated['channels'] ?? []),
             'settings' => array_merge(
                 is_array($automation->settings) ? $automation->settings : [],
