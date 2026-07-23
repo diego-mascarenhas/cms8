@@ -523,17 +523,6 @@ class ChatController extends Controller
             $userChatAiToggleDefault = ! filter_var($blocked, FILTER_VALIDATE_BOOLEAN);
         }
 
-        if ($viewAssistant ?? false)
-        {
-            $contactChatAiToggleDefault = $userChatAiToggleDefault;
-        } elseif ($selectedContact !== null)
-        {
-            $contactChatAiToggleDefault = $selectedContact->allowsInboundChatAssistant();
-        } else
-        {
-            $contactChatAiToggleDefault = false;
-        }
-
         $presentation = TeamWhatsAppChatPresentation::resolveForTeam(auth()->user()?->currentTeam);
         $whatsappDriver = $presentation['whatsappDriver'];
         $whatsappStatus = $presentation['whatsappStatus'];
@@ -548,6 +537,18 @@ class ChatController extends Controller
         $assistantAutoRespondAdminsWhenOff = auth()->check() && auth()->user()->currentTeam
             ? filter_var(auth()->user()->currentTeam->getSetting('assistant_auto_respond_admins_when_off', '0'), FILTER_VALIDATE_BOOLEAN)
             : false;
+
+        // Header contact toggle reflects per-contact preference (editable even when team global is off).
+        if ($viewAssistant ?? false)
+        {
+            $contactChatAiToggleDefault = $userChatAiToggleDefault;
+        } elseif ($selectedContact !== null)
+        {
+            $contactChatAiToggleDefault = $selectedContact->allowsInboundChatAssistant();
+        } else
+        {
+            $contactChatAiToggleDefault = false;
+        }
 
         $currentTeam = auth()->user()?->currentTeam;
         $assistantChatStub = $currentTeam

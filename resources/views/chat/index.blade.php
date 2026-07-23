@@ -756,7 +756,10 @@
             setChatSendButtonsDisabled(true);
             function reenableSend() { setChatSendButtonsDisabled(false); }
             var isAssistantViewForm = form.getAttribute('data-view-assistant') === '1';
-            var aiOn = isAssistantViewForm ? true : (sendIntent === 'suggest');
+            // Assistant view: header toggle gates AI. WhatsApp view: only "Sugerir" opens AI preview.
+            var aiOn = isAssistantViewForm
+                ? !!(useAiToggle && useAiToggle.checked)
+                : (sendIntent === 'suggest');
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             var toVal = recipientInput ? recipientInput.value.replace('whatsapp:', '').trim() : '';
@@ -778,6 +781,11 @@
             }
 
             if (!aiOn) {
+                if (isAssistantViewForm) {
+                    showChatSendErrorBar(@json(__('El asistente está desactivado. Activá el interruptor del robot para obtener respuestas.')));
+                    reenableSend();
+                    return;
+                }
                 if (hasAudio) {
                     var audioBlob = window.getPendingRecordedAudio && window.getPendingRecordedAudio();
                     if (!audioBlob) { reenableSend(); return; }

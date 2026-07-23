@@ -43,6 +43,7 @@ class ChatSendActionsUiTest extends TestCase
         $this->assertStringContainsString('name="send_intent" value="suggest"', $html);
         $this->assertStringContainsString('id="chatScheduleModal"', $html);
         $this->assertStringContainsString('id="use-ai-toggle"', $html);
+        $this->assertStringContainsString('useAiToggle && useAiToggle.checked', $html);
         $this->assertStringContainsString('dropdown-toggle-split', $html);
         $this->assertStringContainsString('data-bs-target="#chatScheduleModal"', $html);
         $this->assertStringContainsString('chatJsLocale', $html);

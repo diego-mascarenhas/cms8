@@ -922,7 +922,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 Log::info("New contact email notification sent to {$notificationEmail} for from {$cleanFrom}");
             }
 
-            // Automatic AI response: team settings prevail over per-contact preferences and blacklist.
+            // Automatic AI response: team global setting is master; contact opt-out and blacklist also block.
             $shouldProcessAutoAi = false;
             if ($channel === 'whatsapp' && $this->team)
             {
@@ -938,21 +938,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $assistantTeamIdEarly,
                     $cleanFrom,
                 );
-
-                if (! $shouldProcessAutoAi && $assistantTeamIdEarly !== null)
-                {
-                    $runner = app(\App\Services\AssistantAutomationRunner::class);
-                    $waExternalKey = 'wa:'.(string) $cleanFrom;
-                    $slugFromMessage = $runner->resolveSlugFromMessage(
-                        (string) $body,
-                        (int) $assistantTeamIdEarly,
-                        \App\Models\Automation::CHANNEL_WHATSAPP,
-                    );
-                    if ($slugFromMessage !== null || $runner->hasAwaitingWhatsAppFlowSession((int) $assistantTeamIdEarly, $waExternalKey))
-                    {
-                        $shouldProcessAutoAi = true;
-                    }
-                }
             }
 
             if ($shouldHandleRegistration && $chatController !== null)
