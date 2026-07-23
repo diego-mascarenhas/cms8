@@ -92,4 +92,39 @@ class AssistantAutomationRunnerTest extends TestCase
         $this->expectException(NotFoundHttpException::class);
         $runner->runForTeam($team->id, Automation::CHANNEL_API, 'Hi', 'does-not-exist');
     }
+
+    public function test_resolve_slug_from_message_supports_slug_command_and_aliases(): void
+    {
+        $team = Team::factory()->create();
+        Automation::factory()->funnel()->create([
+            'team_id' => $team->id,
+            'slug' => 'embudo-estrategico-humano',
+            'channels' => Automation::normalizeChannels(['whatsapp' => true, 'humano' => true]),
+            'settings' => [
+                'entry_aliases' => ['estrategia', 'embudo de operaciones'],
+            ],
+        ]);
+
+        $runner = app(AssistantAutomationRunner::class);
+
+        $this->assertSame(
+            'embudo-estrategico-humano',
+            $runner->resolveSlugFromMessage('embudo-estrategico-humano', $team->id, Automation::CHANNEL_WHATSAPP),
+        );
+        $this->assertSame(
+            'embudo-estrategico-humano',
+            $runner->resolveSlugFromMessage('/embudo embudo-estrategico-humano', $team->id, Automation::CHANNEL_WHATSAPP),
+        );
+        $this->assertSame(
+            'embudo-estrategico-humano',
+            $runner->resolveSlugFromMessage('Estrategia', $team->id, Automation::CHANNEL_WHATSAPP),
+        );
+        $this->assertSame(
+            'embudo-estrategico-humano',
+            $runner->resolveSlugFromMessage('embudo de operaciones', $team->id, Automation::CHANNEL_WHATSAPP),
+        );
+        $this->assertNull(
+            $runner->resolveSlugFromMessage('embudo-estrategico-humano', $team->id, Automation::CHANNEL_EMAIL),
+        );
+    }
 }
