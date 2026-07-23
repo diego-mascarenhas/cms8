@@ -97,19 +97,18 @@ class MercadoPagoPaymentSyncController extends Controller
 
             $suggestions = $this->suggestionService->suggest($invoices, $amountMajor);
 
-            foreach ($paidUnlinkedInvoices as $paidInvoice)
+            $paidForSuggestions = $paidUnlinkedInvoices->map(function (Invoice $invoice): Invoice
             {
-                if (abs(round((float) $paidInvoice->total_amount, 2) - $amountMajor) > 0.05)
-                {
-                    continue;
-                }
+                $clone = clone $invoice;
+                $clone->balance = $invoice->total_amount;
 
-                $suggestions[] = [
-                    'invoice_ids' => [(int) $paidInvoice->id],
-                    'label' => PaymentInvoiceLinkOptionFormatter::paidLinkLabel($paidInvoice),
-                    'total' => round((float) $paidInvoice->total_amount, 2),
-                    'kind' => 'paid_link',
-                ];
+                return $clone;
+            });
+
+            foreach ($this->suggestionService->suggest($paidForSuggestions, $amountMajor) as $paidSuggestion)
+            {
+                $paidSuggestion['kind'] = 'paid_link';
+                $suggestions[] = $paidSuggestion;
             }
 
             if ($selectedInvoiceIds === [] && count($suggestions) === 1)

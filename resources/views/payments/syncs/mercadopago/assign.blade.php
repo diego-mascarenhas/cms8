@@ -239,18 +239,5 @@ document.querySelectorAll('.mp-apply-suggestion').forEach((button) => {
         });
     });
 });
-
-document.querySelectorAll('.mp-paid-link-check').forEach((checkbox) => {
-    checkbox.addEventListener('change', () => {
-        if (!checkbox.checked) {
-            return;
-        }
-        document.querySelectorAll('.mp-invoice-check').forEach((other) => {
-            if (other !== checkbox) {
-                other.checked = false;
-            }
-        });
-    });
-});
 </script>
 @endsection

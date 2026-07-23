@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentSync;
 use App\Models\PaymentType;
+use App\Support\MercadoPagoPaidInvoiceLinker;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -146,6 +147,31 @@ class MercadoPagoPaymentImportService
 
         if (count($forcedInvoiceIds) > 1)
         {
+            $selectedInvoices = Invoice::withoutGlobalScopes()
+                ->where('team_id', $row->team_id)
+                ->where('enterprise_id', $enterpriseId)
+                ->whereIn('id', $forcedInvoiceIds)
+                ->get();
+
+            $allPaidUnlinked = $selectedInvoices->count() === count($forcedInvoiceIds)
+                && $selectedInvoices->every(
+                    fn (Invoice $invoice) => MercadoPagoPaidInvoiceLinker::isPaidUnlinkedCandidate($invoice),
+                );
+
+            if ($allPaidUnlinked)
+            {
+                return $this->importSplitAcrossPaidUnlinkedInvoices(
+                    $row,
+                    $enterpriseId,
+                    $amountMajor,
+                    $date,
+                    $remarks,
+                    $accountId,
+                    $typeId,
+                    $forcedInvoiceIds,
+                );
+            }
+
             return $this->importSplitAcrossInvoices(
                 $row,
                 $enterpriseId,
@@ -258,6 +284,83 @@ class MercadoPagoPaymentImportService
         foreach ($invoices as $invoice)
         {
             $amount = round((float) $invoice->balance, 2);
+            $sourceReferenceId = $row->external_id.':'.$invoice->id;
+
+            $payment = Payment::withoutGlobalScopes()->updateOrCreate(
+                [
+                    'team_id' => $row->team_id,
+                    'source_provider' => 'mercadopago',
+                    'source_reference_id' => $sourceReferenceId,
+                ],
+                [
+                    'enterprise_id' => $enterpriseId,
+                    'transaction_type' => TransactionType::INCOME,
+                    'date' => $date,
+                    'invoice_id' => $invoice->id,
+                    'account_id' => $accountId,
+                    'type_id' => $typeId,
+                    'amount' => $amount,
+                    'remarks' => Str::limit($remarks.' · '.$invoice->number, 500),
+                    'status' => 2,
+                    'source_synced_at' => $row->last_synced_at ?? now(),
+                ],
+            );
+
+            if ($payment->wasRecentlyCreated)
+            {
+                $this->finalizeLinkedInvoice($payment);
+            }
+
+            $first ??= $payment;
+        }
+
+        return $first;
+    }
+
+    /**
+     * One Mercado Pago transfer covering several already-paid Stripe invoices (metadata backfill).
+     *
+     * @param  list<int>  $invoiceIds
+     */
+    private function importSplitAcrossPaidUnlinkedInvoices(
+        PaymentSync $row,
+        int $enterpriseId,
+        float $paymentAmount,
+        string $date,
+        string $remarks,
+        int $accountId,
+        int $typeId,
+        array $invoiceIds,
+    ): ?Payment {
+        $invoices = Invoice::withoutGlobalScopes()
+            ->where('team_id', $row->team_id)
+            ->where('enterprise_id', $enterpriseId)
+            ->where('operation', 'sell')
+            ->whereIn('id', $invoiceIds)
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get();
+
+        if ($invoices->count() !== count($invoiceIds))
+        {
+            return null;
+        }
+
+        if (! $invoices->every(fn (Invoice $invoice) => MercadoPagoPaidInvoiceLinker::isPaidUnlinkedCandidate($invoice)))
+        {
+            return null;
+        }
+
+        $sum = round((float) $invoices->sum(fn (Invoice $invoice) => (float) $invoice->total_amount), 2);
+        if (abs($sum - round($paymentAmount, 2)) > 0.05)
+        {
+            return null;
+        }
+
+        $first = null;
+        foreach ($invoices as $invoice)
+        {
+            $amount = round((float) $invoice->total_amount, 2);
             $sourceReferenceId = $row->external_id.':'.$invoice->id;
 
             $payment = Payment::withoutGlobalScopes()->updateOrCreate(
