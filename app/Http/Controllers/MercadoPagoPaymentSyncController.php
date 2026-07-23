@@ -12,6 +12,7 @@ use App\Models\PaymentSync;
 use App\Services\Billing\MercadoPagoInvoiceSuggestionService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\StripeInvoiceCoreImportService;
+use App\Support\MercadoPagoPaidInvoiceLinker;
 use App\Support\PaymentInvoiceLinkOptionFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -63,19 +64,21 @@ class MercadoPagoPaymentSyncController extends Controller
         $enterprises = Enterprise::query()
             ->where('team_id', $teamId)
             ->withStripeCustomerCode()
-            ->withOutstandingBalance()
+            ->withMercadoPagoAssignableInvoices()
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'email']);
 
         $selectedEnterpriseId = (int) ($request->query('enterprise_id') ?: old('enterprise_id'));
         $amountMajor = $this->amountMajor($sync);
         $invoices = collect();
+        $paidUnlinkedInvoices = collect();
         $suggestions = [];
         $selectedInvoiceIds = array_map('intval', (array) old('invoice_ids', []));
 
         if ($selectedEnterpriseId > 0)
         {
             $this->stripeInvoiceImportService->importOpenSyncsForEnterprise($teamId, $selectedEnterpriseId);
+            $this->stripeInvoiceImportService->importPaidUnlinkedSyncsForEnterprise($teamId, $selectedEnterpriseId);
 
             $invoices = Invoice::query()
                 ->where('team_id', $teamId)
@@ -87,7 +90,27 @@ class MercadoPagoPaymentSyncController extends Controller
                 ->limit(100)
                 ->get();
 
+            $paidUnlinkedInvoices = MercadoPagoPaidInvoiceLinker::paidUnlinkedForEnterprise(
+                $teamId,
+                $selectedEnterpriseId,
+            );
+
             $suggestions = $this->suggestionService->suggest($invoices, $amountMajor);
+
+            foreach ($paidUnlinkedInvoices as $paidInvoice)
+            {
+                if (abs(round((float) $paidInvoice->total_amount, 2) - $amountMajor) > 0.05)
+                {
+                    continue;
+                }
+
+                $suggestions[] = [
+                    'invoice_ids' => [(int) $paidInvoice->id],
+                    'label' => PaymentInvoiceLinkOptionFormatter::paidLinkLabel($paidInvoice),
+                    'total' => round((float) $paidInvoice->total_amount, 2),
+                    'kind' => 'paid_link',
+                ];
+            }
 
             if ($selectedInvoiceIds === [] && count($suggestions) === 1)
             {
@@ -99,6 +122,7 @@ class MercadoPagoPaymentSyncController extends Controller
             'sync' => $sync,
             'enterprises' => $enterprises,
             'invoices' => $invoices,
+            'paidUnlinkedInvoices' => $paidUnlinkedInvoices,
             'suggestions' => $suggestions,
             'selectedEnterpriseId' => $selectedEnterpriseId,
             'selectedInvoiceIds' => $selectedInvoiceIds,

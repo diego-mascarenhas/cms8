@@ -1011,6 +1011,30 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
             'raw_payload' => [],
         ]);
 
+        $paidUnlinked = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'AF Paid Unlinked',
+            'code' => 'cus_paid_unlinked',
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_paid_unlinked_only',
+            'customer_id' => 'cus_paid_unlinked',
+            'number' => '0005-PAID',
+            'status' => 'paid',
+            'currency' => 'ars',
+            'amount_due' => 100,
+            'amount_paid' => 100,
+            'amount_remaining' => 0,
+            'total' => 100,
+            'paid' => true,
+            'last_synced_at' => now(),
+            'raw_payload' => ['metadata' => []],
+        ]);
+
         $sync = PaymentSync::query()->create([
             'team_id' => $team->id,
             'provider' => 'mercadopago',
@@ -1032,8 +1056,96 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
 
         $this->assertStringContainsString('AF Con Deuda', $html);
         $this->assertStringContainsString('Cliente Sync Abierto', $html);
+        $this->assertStringContainsString('AF Paid Unlinked', $html);
         $this->assertStringNotContainsString('AF Sin Deuda', $html);
         $this->assertStringNotContainsString('Cliente Local', $html);
+    }
+
+    public function test_assign_lists_paid_stripe_invoices_without_mercadopago_metadata(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Nora Schvartz',
+            'code' => 'cus_TWH5XgAfpGuIbF',
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_paid_unlinked_nora',
+            'customer_id' => 'cus_TWH5XgAfpGuIbF',
+            'number' => '0005-0915',
+            'status' => 'paid',
+            'currency' => 'ars',
+            'amount_due' => 10608.16,
+            'amount_paid' => 10608.16,
+            'amount_remaining' => 0,
+            'total' => 10608.16,
+            'paid' => true,
+            'invoice_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'metadata' => [],
+            ],
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '168825700130',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 1060816,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 1060816,
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'transaction_details' => [
+                    'transaction_id' => 'XJ8G7V957E38ZM5MNEMPYR',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payments.syncs.mercadopago.assign', [
+                'sync' => $sync,
+                'enterprise_id' => $enterprise->id,
+            ]))
+            ->assertOk()
+            ->assertSee('0005-0915', false)
+            ->assertSee(__('payment_sync.mercadopago.paid_unlinked_heading'), false)
+            ->assertSee(__('payment_sync.mercadopago.suggestion_paid_link'), false);
+
+        $invoice = Invoice::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('source_reference_id', 'in_paid_unlinked_nora')
+            ->first();
+
+        $this->assertNotNull($invoice);
+        $this->assertSame(0.0, (float) $invoice->balance);
+
+        $this->actingAs($user)
+            ->post(route('payments.syncs.mercadopago.import', $sync), [
+                'enterprise_id' => $enterprise->id,
+                'invoice_ids' => [$invoice->id],
+                'link_payer_code' => 0,
+            ])
+            ->assertRedirect(route('payments.index'));
+
+        $payment = Payment::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('source_provider', 'mercadopago')
+            ->where('source_reference_id', '168825700130')
+            ->first();
+
+        $this->assertNotNull($payment);
+        $this->assertSame((int) $invoice->id, (int) $payment->invoice_id);
+        $this->assertEqualsWithDelta(10608.16, (float) $payment->amount, 0.01);
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\PaymentSync;
+use App\Support\MercadoPagoPaidInvoiceLinker;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -79,7 +80,46 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
 
                     return;
                 }
+            }
 
+            $paidUnlinked = $invoices->filter(
+                fn (Invoice $invoice) => MercadoPagoPaidInvoiceLinker::isPaidUnlinkedCandidate($invoice),
+            );
+            $open = $invoices->filter(fn (Invoice $invoice) => (float) $invoice->balance > 0);
+
+            if ($paidUnlinked->isNotEmpty())
+            {
+                if ($invoices->count() !== 1 || $open->isNotEmpty())
+                {
+                    $validator->errors()->add(
+                        'invoice_ids',
+                        __('payment_sync.mercadopago.errors.paid_link_single_only'),
+                    );
+
+                    return;
+                }
+
+                /** @var PaymentSync $sync */
+                $sync = $this->route('sync');
+                $paymentAmount = $this->paymentAmountMajor($sync);
+                $invoiceTotal = round((float) $paidUnlinked->first()->total_amount, 2);
+
+                if (abs($invoiceTotal - $paymentAmount) > 0.05)
+                {
+                    $validator->errors()->add(
+                        'invoice_ids',
+                        __('payment_sync.mercadopago.errors.paid_link_amount_mismatch', [
+                            'total' => number_format($invoiceTotal, 2, ',', '.'),
+                            'amount' => number_format($paymentAmount, 2, ',', '.'),
+                        ]),
+                    );
+                }
+
+                return;
+            }
+
+            foreach ($invoices as $invoice)
+            {
                 if ((float) $invoice->balance <= 0)
                 {
                     $validator->errors()->add(
@@ -95,11 +135,7 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
             {
                 /** @var PaymentSync $sync */
                 $sync = $this->route('sync');
-                $currency = strtoupper((string) $sync->currency);
-                $cents = (int) $sync->amount_net_cents;
-                $paymentAmount = in_array($currency, ['CLP', 'UYU', 'PYG'], true)
-                    ? (float) $cents
-                    : round($cents / 100, 2);
+                $paymentAmount = $this->paymentAmountMajor($sync);
                 $sum = round((float) $invoices->sum(fn (Invoice $invoice) => (float) $invoice->balance), 2);
 
                 if (abs($sum - $paymentAmount) > 0.05)
@@ -136,5 +172,18 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
     public function enterprise(): Enterprise
     {
         return Enterprise::query()->findOrFail((int) $this->validated('enterprise_id'));
+    }
+
+    private function paymentAmountMajor(PaymentSync $sync): float
+    {
+        $currency = strtoupper((string) $sync->currency);
+        $cents = (int) $sync->amount_net_cents;
+
+        if (in_array($currency, ['CLP', 'UYU', 'PYG'], true))
+        {
+            return (float) $cents;
+        }
+
+        return round($cents / 100, 2);
     }
 }

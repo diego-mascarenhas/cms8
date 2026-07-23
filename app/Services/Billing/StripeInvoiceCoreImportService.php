@@ -26,6 +26,42 @@ class StripeInvoiceCoreImportService
      */
     public function importOpenSyncsForEnterprise(int $teamId, int $enterpriseId, int $limit = 50): int
     {
+        return $this->importSyncsForEnterprise(
+            $teamId,
+            $enterpriseId,
+            fn ($query) => $query->where(function ($inner): void
+            {
+                $inner->whereIn('status', ['open', 'uncollectible'])
+                    ->orWhere(function ($unpaid): void
+                    {
+                        $unpaid->where('paid', false)
+                            ->where('amount_remaining', '>', 0);
+                    });
+            }),
+            $limit,
+        );
+    }
+
+    /**
+     * Materialize paid Stripe invoices that still lack Mercado Pago metadata (backfill).
+     *
+     * @return int Number of sync rows processed
+     */
+    public function importPaidUnlinkedSyncsForEnterprise(int $teamId, int $enterpriseId, int $limit = 50): int
+    {
+        return $this->importSyncsForEnterprise(
+            $teamId,
+            $enterpriseId,
+            fn ($query) => $query->paidWithoutMercadoPagoMetadata(),
+            $limit,
+        );
+    }
+
+    /**
+     * @param  callable(\Illuminate\Database\Eloquent\Builder): mixed  $constrain
+     */
+    private function importSyncsForEnterprise(int $teamId, int $enterpriseId, callable $constrain, int $limit): int
+    {
         $enterprise = Enterprise::query()
             ->where('team_id', $teamId)
             ->whereKey($enterpriseId)
@@ -36,22 +72,13 @@ class StripeInvoiceCoreImportService
             return 0;
         }
 
-        $syncs = InvoiceSync::query()
+        $query = InvoiceSync::query()
             ->where('team_id', $teamId)
             ->where('provider', 'stripe')
             ->where('customer_id', $enterprise->code)
-            ->where(function ($query): void
+            ->whereNotExists(function ($sub): void
             {
-                $query->whereIn('status', ['open', 'uncollectible'])
-                    ->orWhere(function ($inner): void
-                    {
-                        $inner->where('paid', false)
-                            ->where('amount_remaining', '>', 0);
-                    });
-            })
-            ->whereNotExists(function ($query): void
-            {
-                $query->from('invoices')
+                $sub->from('invoices')
                     ->whereColumn('invoices.source_reference_id', 'invoice_syncs.external_id')
                     ->whereColumn('invoices.team_id', 'invoice_syncs.team_id')
                     ->where('invoices.source_provider', 'stripe');
@@ -59,19 +86,26 @@ class StripeInvoiceCoreImportService
             ->orderByRaw('invoice_created_at IS NULL')
             ->orderBy('invoice_created_at')
             ->orderBy('id')
-            ->limit(max(1, $limit))
-            ->get();
+            ->limit(max(1, $limit));
+
+        $constrain($query);
 
         $processed = 0;
 
-        foreach ($syncs as $sync)
+        foreach ($query->get() as $sync)
         {
             if (! $sync instanceof InvoiceSync)
             {
                 continue;
             }
 
-            $invoice = $this->importFromSyncRow($sync, false, false, false);
+            $invoice = $this->importFromSyncRow(
+                $sync,
+                fallbackEmail: false,
+                linkCodeOnEmailMatch: false,
+                dryRun: false,
+                forceEnterpriseId: $enterpriseId,
+            );
             if ($invoice !== null)
             {
                 $processed++;
@@ -86,13 +120,20 @@ class StripeInvoiceCoreImportService
         bool $fallbackEmail = true,
         bool $linkCodeOnEmailMatch = true,
         bool $dryRun = false,
+        ?int $forceEnterpriseId = null,
     ): ?Invoice {
-        [$enterpriseId] = $this->resolveEnterpriseId(
-            $row,
-            $fallbackEmail,
-            $linkCodeOnEmailMatch,
-            $dryRun,
-        );
+        if ($forceEnterpriseId !== null)
+        {
+            $enterpriseId = $forceEnterpriseId;
+        } else
+        {
+            [$enterpriseId] = $this->resolveEnterpriseId(
+                $row,
+                $fallbackEmail,
+                $linkCodeOnEmailMatch,
+                $dryRun,
+            );
+        }
 
         if (! $enterpriseId)
         {

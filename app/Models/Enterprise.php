@@ -101,6 +101,52 @@ class Enterprise extends Model
         });
     }
 
+    /**
+     * Stripe clients that can receive an MP assignment: open balance, or paid Stripe
+     * invoices that still lack mercadopago_id metadata (backfill).
+     */
+    public function scopeWithMercadoPagoAssignableInvoices($query)
+    {
+        return $query->where(function ($outer): void
+        {
+            $outer->whereHas('invoices', function ($invoices): void
+            {
+                $invoices->where('operation', 'sell')
+                    ->where('balance', '>', 0);
+            })->orWhereExists(function ($sub): void
+            {
+                $sub->selectRaw('1')
+                    ->from('invoice_syncs')
+                    ->whereColumn('invoice_syncs.customer_id', 'enterprises.code')
+                    ->whereColumn('invoice_syncs.team_id', 'enterprises.team_id')
+                    ->where('invoice_syncs.provider', 'stripe')
+                    ->where(function ($status): void
+                    {
+                        $status->whereIn('invoice_syncs.status', ['open', 'uncollectible'])
+                            ->orWhere(function ($unpaid): void
+                            {
+                                $unpaid->where('invoice_syncs.paid', false)
+                                    ->where('invoice_syncs.amount_remaining', '>', 0);
+                            })
+                            ->orWhere(function ($paid): void
+                            {
+                                $paid->where(function ($paidStatus): void
+                                {
+                                    $paidStatus->where('invoice_syncs.paid', true)
+                                        ->orWhere('invoice_syncs.status', 'paid');
+                                })->whereRaw("(
+                                    NULLIF(TRIM(COALESCE(
+                                        invoice_syncs.raw_payload->'metadata'->>'mercadopago_id',
+                                        invoice_syncs.raw_payload->'metadata'->>'mercadopago_payment_id',
+                                        ''
+                                    )), '') IS NULL
+                                )");
+                            });
+                    });
+            });
+        });
+    }
+
     public function team()
     {
         return $this->belongsTo(Team::class);

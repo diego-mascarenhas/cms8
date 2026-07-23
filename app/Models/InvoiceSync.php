@@ -84,4 +84,38 @@ class InvoiceSync extends Model
     {
         return $query->whereBetween('invoice_created_at', [$from, $to]);
     }
+
+    /**
+     * Paid Stripe invoices that are not yet linked to a Mercado Pago payment via metadata.
+     */
+    public function scopePaidWithoutMercadoPagoMetadata(Builder $query): Builder
+    {
+        return $query
+            ->where('provider', 'stripe')
+            ->where(function (Builder $paid): void
+            {
+                $paid->where('paid', true)
+                    ->orWhere('status', 'paid');
+            })
+            ->whereRaw("(
+                NULLIF(TRIM(COALESCE(
+                    raw_payload->'metadata'->>'mercadopago_id',
+                    raw_payload->'metadata'->>'mercadopago_payment_id',
+                    ''
+                )), '') IS NULL
+            )");
+    }
+
+    public function lacksMercadoPagoLinkMetadata(): bool
+    {
+        $metadata = data_get($this->raw_payload, 'metadata', []);
+        if (! is_array($metadata))
+        {
+            return true;
+        }
+
+        $mercadoPagoId = trim((string) ($metadata['mercadopago_id'] ?? $metadata['mercadopago_payment_id'] ?? ''));
+
+        return $mercadoPagoId === '';
+    }
 }

@@ -92,6 +92,8 @@
                         >
                             @if ($suggestion['kind'] === 'exact')
                                 <span class="badge bg-label-success me-1">{{ __('payment_sync.mercadopago.suggestion_exact') }}</span>
+                            @elseif ($suggestion['kind'] === 'paid_link')
+                                <span class="badge bg-label-warning me-1">{{ __('payment_sync.mercadopago.suggestion_paid_link') }}</span>
                             @else
                                 <span class="badge bg-label-warning me-1">{{ __('payment_sync.mercadopago.suggestion_combo') }}</span>
                             @endif
@@ -111,27 +113,53 @@
                 <label class="form-label">{{ __('payment_sync.mercadopago.invoice_label') }}</label>
                 @if ($selectedEnterpriseId <= 0)
                     <p class="text-muted mb-0">{{ __('payment_sync.mercadopago.pick_client_first') }}</p>
-                @elseif ($invoices->isEmpty())
+                @elseif ($invoices->isEmpty() && $paidUnlinkedInvoices->isEmpty())
                     <p class="text-muted mb-0">{{ __('payment_sync.mercadopago.no_open_invoices') }}</p>
                 @else
-                    <div class="border rounded p-3" style="max-height: 320px; overflow: auto;">
-                        @foreach ($invoices as $invoice)
-                            <div class="form-check mb-2">
-                                <input
-                                    class="form-check-input mp-invoice-check"
-                                    type="checkbox"
-                                    name="invoice_ids[]"
-                                    value="{{ $invoice->id }}"
-                                    id="invoice_{{ $invoice->id }}"
-                                    @checked(in_array((int) $invoice->id, $selectedInvoiceIds, true))
-                                >
-                                <label class="form-check-label" for="invoice_{{ $invoice->id }}">
-                                    {{ $invoiceOptionFormatter::label($invoice) }}
-                                </label>
-                            </div>
-                        @endforeach
-                    </div>
-                    <div class="form-text">{{ __('payment_sync.mercadopago.invoice_hint') }}</div>
+                    @if ($invoices->isNotEmpty())
+                        <div class="fw-semibold small mb-2">{{ __('payment_sync.mercadopago.open_invoices_heading') }}</div>
+                        <div class="border rounded p-3 mb-3" style="max-height: 240px; overflow: auto;">
+                            @foreach ($invoices as $invoice)
+                                <div class="form-check mb-2">
+                                    <input
+                                        class="form-check-input mp-invoice-check"
+                                        type="checkbox"
+                                        name="invoice_ids[]"
+                                        value="{{ $invoice->id }}"
+                                        id="invoice_{{ $invoice->id }}"
+                                        @checked(in_array((int) $invoice->id, $selectedInvoiceIds, true))
+                                    >
+                                    <label class="form-check-label" for="invoice_{{ $invoice->id }}">
+                                        {{ $invoiceOptionFormatter::label($invoice) }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="form-text mb-3">{{ __('payment_sync.mercadopago.invoice_hint') }}</div>
+                    @endif
+
+                    @if ($paidUnlinkedInvoices->isNotEmpty())
+                        <div class="fw-semibold small mb-2">{{ __('payment_sync.mercadopago.paid_unlinked_heading') }}</div>
+                        <div class="border rounded border-warning p-3" style="max-height: 240px; overflow: auto;">
+                            @foreach ($paidUnlinkedInvoices as $invoice)
+                                <div class="form-check mb-2">
+                                    <input
+                                        class="form-check-input mp-invoice-check mp-paid-link-check"
+                                        type="checkbox"
+                                        name="invoice_ids[]"
+                                        value="{{ $invoice->id }}"
+                                        id="invoice_paid_{{ $invoice->id }}"
+                                        @checked(in_array((int) $invoice->id, $selectedInvoiceIds, true))
+                                    >
+                                    <label class="form-check-label" for="invoice_paid_{{ $invoice->id }}">
+                                        <span class="badge bg-label-warning me-1">{{ __('payment_sync.mercadopago.paid_unlinked_badge') }}</span>
+                                        {{ $invoiceOptionFormatter::paidLinkLabel($invoice) }}
+                                    </label>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="form-text">{{ __('payment_sync.mercadopago.paid_unlinked_hint') }}</div>
+                    @endif
                 @endif
                 @error('invoice_ids')
                     <div class="text-danger small mt-1">{{ $message }}</div>
@@ -208,6 +236,19 @@ document.querySelectorAll('.mp-apply-suggestion').forEach((button) => {
         const ids = JSON.parse(button.dataset.ids || '[]').map(String);
         document.querySelectorAll('.mp-invoice-check').forEach((checkbox) => {
             checkbox.checked = ids.includes(checkbox.value);
+        });
+    });
+});
+
+document.querySelectorAll('.mp-paid-link-check').forEach((checkbox) => {
+    checkbox.addEventListener('change', () => {
+        if (!checkbox.checked) {
+            return;
+        }
+        document.querySelectorAll('.mp-invoice-check').forEach((other) => {
+            if (other !== checkbox) {
+                other.checked = false;
+            }
         });
     });
 });

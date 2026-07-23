@@ -294,7 +294,13 @@ class MercadoPagoPaymentImportService
     private function finalizeLinkedInvoice(Payment $payment): void
     {
         $this->applyPaymentToLocalInvoice($payment);
-        $this->stripeOutOfBandPaymentService->markPaidFromPayment($payment);
+
+        if ($this->stripeOutOfBandPaymentService->markPaidFromPayment($payment))
+        {
+            return;
+        }
+
+        $this->stripeOutOfBandPaymentService->linkMetadataFromPayment($payment);
     }
 
     private function applyPaymentToLocalInvoice(Payment $payment): void
