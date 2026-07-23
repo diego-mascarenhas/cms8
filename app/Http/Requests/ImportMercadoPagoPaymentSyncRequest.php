@@ -164,6 +164,18 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
         ];
     }
 
+    protected function getRedirectUrl(): string
+    {
+        /** @var PaymentSync $sync */
+        $sync = $this->route('sync');
+        $enterpriseId = (int) $this->input('enterprise_id');
+
+        return route('payments.syncs.mercadopago.assign', array_filter([
+            'sync' => $sync,
+            'enterprise_id' => $enterpriseId > 0 ? $enterpriseId : null,
+        ]));
+    }
+
     /**
      * @return list<int>
      */

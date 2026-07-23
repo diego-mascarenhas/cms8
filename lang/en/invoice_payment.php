@@ -2,6 +2,14 @@
 
 return [
     'register_title' => 'Record payment',
+    'electronic_title' => 'Link electronic payment',
+    'electronic_sync' => 'Payment from sync',
+    'electronic_sync_placeholder' => 'Select a Mercado Pago payment',
+    'electronic_hint' => 'Only approved Mercado Pago payments not yet imported. Same-amount payments are listed first.',
+    'electronic_submit' => 'Link payment',
+    'electronic_empty' => 'No pending electronic sync payments to link.',
+    'electronic_open_queue' => 'Open Mercado Pago queue',
+    'electronic_success' => 'The electronic payment was linked to the invoice successfully.',
     'amount' => 'Amount',
     'date' => 'Date',
     'account' => 'Account',
@@ -17,5 +25,11 @@ return [
         'account_invalid' => 'The selected account is not valid.',
         'account_currency_mismatch' => 'The account must use the same currency as the invoice.',
         'type_not_allowed_for_account' => 'The selected payment method is not allowed for the chosen account.',
+        'sync_required' => 'You must choose an electronic payment.',
+        'sync_invalid' => 'The selected electronic payment is not valid.',
+        'sync_not_approved' => 'Only approved payments can be linked.',
+        'sync_already_imported' => 'That electronic payment was already imported.',
+        'sync_import_failed' => 'Could not link the electronic payment to the invoice.',
+        'invoice_without_enterprise' => 'The invoice has no client assigned.',
     ],
 ];

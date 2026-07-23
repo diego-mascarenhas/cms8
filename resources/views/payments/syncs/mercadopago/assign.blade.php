@@ -21,6 +21,16 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 @endif
+@if ($errors->any())
+    <div class="alert alert-danger alert-dismissible" role="alert">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $message)
+                <li>{{ $message }}</li>
+            @endforeach
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
 
 <div class="card">
     <div class="card-body">
