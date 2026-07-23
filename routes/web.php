@@ -40,6 +40,7 @@ use App\Http\Controllers\Homes\HumanoLandingController;
 use App\Http\Controllers\Homes\PerformanceInsightLandingController;
 use App\Http\Controllers\Homes\SlashLandingController;
 use App\Http\Controllers\HostingController;
+use App\Http\Controllers\HumanoConfigTransferController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\KanbanController;
@@ -1068,16 +1069,21 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
     Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');
     Route::get('/prompt/{prompt}/edit', [PromptController::class, 'edit'])->name('prompt.edit');
+    Route::get('/prompt/{prompt}/export', [HumanoConfigTransferController::class, 'exportPrompt'])->name('prompt.export');
     Route::get('/prompt/{prompt}', [PromptController::class, 'show'])->name('prompt.show');
     Route::post('/prompt/{prompt}/preview', [PromptController::class, 'preview'])->name('prompt.preview');
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
+
+    Route::get('/import', [HumanoConfigTransferController::class, 'importForm'])->name('humano.import');
+    Route::post('/import', [HumanoConfigTransferController::class, 'importStore'])->name('humano.import.store');
 
     Route::get('/funnel/list', [AutomationController::class, 'indexFunnels'])->name('funnel-list');
     Route::get('/funnel/create', [AutomationController::class, 'createFunnel'])->name('funnel.create');
     Route::get('/funnel/{automation}/edit', [AutomationController::class, 'edit'])->name('funnel.edit');
     Route::get('/funnel/{automation}/flow', [AutomationController::class, 'flow'])->name('funnel.flow');
     Route::post('/funnel/{automation}/flow', [AutomationController::class, 'saveFlow'])->name('funnel.flow.save');
+    Route::get('/funnel/{automation}/export', [HumanoConfigTransferController::class, 'exportFunnel'])->name('funnel.export');
     Route::put('/funnel/{automation}', [AutomationController::class, 'update'])->name('funnel.update');
     Route::delete('/funnel/{automation}', [AutomationController::class, 'destroy'])->name('funnel.destroy');
     Route::get('/funnel/{automation}', [AutomationController::class, 'showFunnel'])->name('funnel.show');
@@ -1086,6 +1092,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/automation/create', [AutomationController::class, 'createAction'])->name('automation.create');
     Route::post('/automation', [AutomationController::class, 'store'])->name('automation.store');
     Route::get('/automation/{automation}/edit', [AutomationController::class, 'edit'])->name('automation.edit');
+    Route::get('/automation/{automation}/export', [HumanoConfigTransferController::class, 'exportAction'])->name('automation.export');
     Route::get('/automation/{automation}', [AutomationController::class, 'show'])->name('automation.show');
     Route::put('/automation/{automation}', [AutomationController::class, 'update'])->name('automation.update');
     Route::delete('/automation/{automation}', [AutomationController::class, 'destroy'])->name('automation.destroy');

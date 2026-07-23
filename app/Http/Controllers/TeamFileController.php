@@ -8,6 +8,7 @@ use App\Http\Requests\TeamFile\StoreTeamFileRequest;
 use App\Http\Requests\TeamFile\UpdateTeamFileRequest;
 use App\Models\TeamFile;
 use App\Models\TeamFileHistory;
+use App\Support\TeamModuleAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -164,7 +165,7 @@ class TeamFileController extends Controller
 
     private function assertCurrentTeamHasTeamFilesModule(): void
     {
-        abort_unless(auth()->user()?->currentTeam?->hasModule('team_files'), 403);
+        TeamModuleAccess::abortUnless('team_files');
     }
 
     private function archiveCurrentFile(TeamFile $teamFile): ?int

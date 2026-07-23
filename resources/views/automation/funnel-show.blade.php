@@ -22,6 +22,11 @@
             <i class="ti ti-message-chatbot me-1"></i>{{ __('Probar en asistente') }}
         </button>
         @endif
+        @can('view', $automation)
+        <a href="{{ route('funnel.export', $automation) }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-download me-1"></i>{{ __('Exportar') }}
+        </a>
+        @endcan
         @can('update', $automation)
         <a href="{{ route('funnel.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
             <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}

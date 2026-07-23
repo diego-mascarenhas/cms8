@@ -42,16 +42,29 @@ class Handler extends ExceptionHandler
         // Handle 403 Unauthorized/Forbidden errors
         if ($exception instanceof \Symfony\Component\HttpKernel\Exception\HttpException && $exception->getStatusCode() === 403)
         {
-            return redirect('/misc-not-authorized');
+            return $this->redirectNotAuthorized($exception->getMessage());
         }
 
         // Handle Authorization exceptions
         if ($exception instanceof \Illuminate\Auth\Access\AuthorizationException)
         {
-            return redirect('/misc-not-authorized');
+            return $this->redirectNotAuthorized($exception->getMessage());
         }
 
         return parent::render($request, $exception);
+    }
+
+    protected function redirectNotAuthorized(?string $message = null)
+    {
+        $redirect = redirect('/misc-not-authorized');
+        $message = is_string($message) ? trim($message) : '';
+
+        if ($message !== '' && ! in_array(strtolower($message), ['forbidden', 'unauthorized', 'this action is unauthorized.'], true))
+        {
+            $redirect->with('unauthorized_message', $message);
+        }
+
+        return $redirect;
     }
 
     protected function unauthenticated($request, AuthenticationException $exception)
