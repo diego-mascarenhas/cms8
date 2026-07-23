@@ -1148,6 +1148,173 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         $this->assertEqualsWithDelta(10608.16, (float) $payment->amount, 0.01);
     }
 
+    public function test_admin_can_import_paid_unlinked_split_matching_payment_total(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Naturis',
+            'code' => 'cus_TWGg5P4h1jtpnV',
+        ]);
+
+        $invoiceIds = [];
+        foreach (['0005-A', '0005-B', '0005-C', '0005-D'] as $index => $number)
+        {
+            $externalId = 'in_naturis_paid_'.$index;
+            \App\Models\InvoiceSync::query()->create([
+                'team_id' => $team->id,
+                'provider' => 'stripe',
+                'external_id' => $externalId,
+                'customer_id' => 'cus_TWGg5P4h1jtpnV',
+                'number' => $number,
+                'status' => 'paid',
+                'currency' => 'ars',
+                'amount_due' => 9547.34,
+                'amount_paid' => 9547.34,
+                'amount_remaining' => 0,
+                'total' => 9547.34,
+                'paid' => true,
+                'invoice_created_at' => now()->subMonths(4 - $index),
+                'last_synced_at' => now(),
+                'raw_payload' => ['metadata' => []],
+            ]);
+
+            $invoice = Invoice::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'type_id' => 1,
+                'operation' => 'sell',
+                'number' => $number,
+                'date' => now()->subMonths(4 - $index)->toDateString(),
+                'gross_amount' => 9547.34,
+                'discount' => 0,
+                'total_amount' => 9547.34,
+                'balance' => 0,
+                'status' => 2,
+                'source_provider' => 'stripe',
+                'source_reference_id' => $externalId,
+            ]);
+            $invoiceIds[] = $invoice->id;
+        }
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '163897957145',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 3818936,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 3818936,
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'transaction_details' => [
+                    'transaction_id' => 'WY7ZEPN6MK1ROG742Q0M51',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('payments.syncs.mercadopago.import', $sync), [
+                'enterprise_id' => $enterprise->id,
+                'invoice_ids' => $invoiceIds,
+                'link_payer_code' => 0,
+            ])
+            ->assertRedirect(route('payments.index'));
+
+        $payments = Payment::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('source_provider', 'mercadopago')
+            ->where('source_reference_id', 'like', '163897957145:%')
+            ->orderBy('id')
+            ->get();
+
+        $this->assertCount(4, $payments);
+        $this->assertEqualsWithDelta(38189.36, (float) $payments->sum('amount'), 0.01);
+        foreach ($payments as $payment)
+        {
+            $this->assertEqualsWithDelta(9547.34, (float) $payment->amount, 0.01);
+            $this->assertContains((int) $payment->invoice_id, $invoiceIds);
+        }
+    }
+
+    public function test_alianza_stripe_client_can_be_assigned_on_import(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 3,
+            'status_id' => 1,
+            'name' => 'AF Construcciones',
+            'code' => 'cus_TWDzSciIesXAx2',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0816',
+            'date' => now()->toDateString(),
+            'gross_amount' => 15918.88,
+            'discount' => 0,
+            'total_amount' => 15918.88,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_af_paid_link',
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_af_paid_link',
+            'customer_id' => 'cus_TWDzSciIesXAx2',
+            'number' => '0005-0816',
+            'status' => 'paid',
+            'currency' => 'ars',
+            'total' => 15918.88,
+            'paid' => true,
+            'last_synced_at' => now(),
+            'raw_payload' => ['metadata' => []],
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '161534392800',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 1591888,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 1591888,
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('payments.syncs.mercadopago.import', $sync), [
+                'enterprise_id' => $enterprise->id,
+                'invoice_ids' => [$invoice->id],
+                'link_payer_code' => 0,
+            ])
+            ->assertRedirect(route('payments.index'))
+            ->assertSessionDoesntHaveErrors();
+
+        $this->assertTrue(
+            Payment::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('source_reference_id', '161534392800')
+                ->exists(),
+        );
+    }
+
     /**
      * @return array{0: User, 1: \App\Models\Team}
      */

@@ -29,7 +29,7 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
                 'required',
                 'integer',
                 Rule::exists('enterprises', 'id')->where(
-                    fn ($query) => $query->where('team_id', $teamId)->where('type_id', 1),
+                    fn ($query) => $query->where('team_id', $teamId),
                 ),
             ],
             'invoice_ids' => ['nullable', 'array'],
@@ -89,11 +89,11 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
 
             if ($paidUnlinked->isNotEmpty())
             {
-                if ($invoices->count() !== 1 || $open->isNotEmpty())
+                if ($paidUnlinked->count() !== $invoices->count() || $open->isNotEmpty())
                 {
                     $validator->errors()->add(
                         'invoice_ids',
-                        __('payment_sync.mercadopago.errors.paid_link_single_only'),
+                        __('payment_sync.mercadopago.errors.paid_link_mixed'),
                     );
 
                     return;
@@ -102,7 +102,10 @@ class ImportMercadoPagoPaymentSyncRequest extends FormRequest
                 /** @var PaymentSync $sync */
                 $sync = $this->route('sync');
                 $paymentAmount = $this->paymentAmountMajor($sync);
-                $invoiceTotal = round((float) $paidUnlinked->first()->total_amount, 2);
+                $invoiceTotal = round(
+                    (float) $paidUnlinked->sum(fn (Invoice $invoice) => (float) $invoice->total_amount),
+                    2,
+                );
 
                 if (abs($invoiceTotal - $paymentAmount) > 0.05)
                 {
