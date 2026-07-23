@@ -6,7 +6,10 @@ use App\Models\Team;
 use App\Models\User;
 
 /**
- * Team-level inbound WhatsApp assistant rules. General team settings prevail over per-contact preferences.
+ * Inbound WhatsApp assistant rules.
+ *
+ * Precedence: blacklist → team global auto-respond (master) → per-contact opt-out → admins-when-off exception.
+ * The header contact toggle cannot override a disabled team global setting.
  */
 class TeamInboundAssistantPolicy
 {
@@ -17,22 +20,25 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
-        if (filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN))
+        $teamAutoRespond = filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN);
+
+        if (! $teamAutoRespond)
         {
-            return true;
+            if (! filter_var($team->getSetting('assistant_auto_respond_admins_when_off', '0'), FILTER_VALIDATE_BOOLEAN))
+            {
+                return false;
+            }
+
+            return $this->inboundSenderIsTeamAdministrator($inboundSender, $membershipTeamId ?? (int) $team->id);
         }
 
+        // Team global is on: contact may still opt out via the header toggle / contact form.
         if ($inboundSenderPhone !== null && ! $this->contactAllowsAutoReply((int) $team->id, $inboundSenderPhone))
         {
             return false;
         }
 
-        if (! filter_var($team->getSetting('assistant_auto_respond_admins_when_off', '0'), FILTER_VALIDATE_BOOLEAN))
-        {
-            return false;
-        }
-
-        return $this->inboundSenderIsTeamAdministrator($inboundSender, $membershipTeamId ?? (int) $team->id);
+        return true;
     }
 
     /**

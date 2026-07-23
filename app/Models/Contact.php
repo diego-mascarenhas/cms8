@@ -74,8 +74,9 @@ class Contact extends Model implements HasMedia
     }
 
     /**
-     * Stored per-contact preference for manual chat compose (use-ai toggle). Inbound WhatsApp auto-replies
-     * follow team settings via {@see \App\Services\TeamInboundAssistantPolicy}; this flag does not override them.
+     * Per-contact preference for the chat header assistant toggle / contact form.
+     * When false, inbound WhatsApp auto-replies are blocked while team auto-respond is on
+     * ({@see \App\Services\TeamInboundAssistantPolicy}). Does not override a disabled team global.
      */
     public function allowsInboundChatAssistant(): bool
     {

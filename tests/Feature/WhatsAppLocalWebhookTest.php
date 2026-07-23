@@ -243,17 +243,11 @@ class WhatsAppLocalWebhookTest extends TestCase
         $this->assertGreaterThan(0, DocumentIngestion::query()->count());
     }
 
-    public function test_webhook_auto_ai_responds_when_team_enabled_even_if_contact_disables_assistant(): void
+    public function test_webhook_skips_auto_ai_when_contact_disables_assistant_even_if_team_enabled(): void
     {
         $this->mock(ChatAssistantReplyService::class, function ($mock): void
         {
-            $mock->shouldReceive('getReply')
-                ->once()
-                ->andReturn([
-                    'success' => true,
-                    'text' => 'Team auto reply',
-                    'tool_results' => [],
-                ]);
+            $mock->shouldNotReceive('getReply');
         });
 
         $user = User::factory()->create();
@@ -279,15 +273,14 @@ class WhatsAppLocalWebhookTest extends TestCase
         $response = $this->postJson(route('webhook.whatsapp-local'), [
             'from' => '34600000000',
             'to' => '34600000001',
-            'body' => 'Hello team wins',
-            'id' => 'msg_team_wins_1',
+            'body' => 'Hello contact opted out',
+            'id' => 'msg_contact_opt_out_1',
         ]);
 
         $response->assertStatus(200);
         $response->assertJson([
             'status' => 'success',
         ]);
-        $response->assertJsonMissing(['auto_ai_skipped' => 'contact_assistant_disabled']);
     }
 
     public function test_webhook_skips_auto_ai_when_team_disabled_even_if_contact_enables_assistant(): void
@@ -328,6 +321,54 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
     }
 
+    public function test_webhook_skips_auto_ai_when_team_disabled_even_with_funnel_slug_message(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+        $team->setSetting('assistant_auto_respond_admins_when_off', '0');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000000',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => true],
+        ]);
+
+        \App\Models\Automation::factory()->funnel()->create([
+            'team_id' => $team->id,
+            'slug' => 'embudo-leads',
+            'is_active' => true,
+            'channels' => [\App\Models\Automation::CHANNEL_WHATSAPP],
+            'settings' => [
+                'entry_aliases' => ['embudo', 'leads'],
+            ],
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => 'embudo-leads',
+            'id' => 'msg_team_off_funnel_1',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+        ]);
+    }
+
     public function test_webhook_auto_ai_when_team_enabled_and_contact_phone_is_national_digits_only(): void
     {
         $this->mock(ChatAssistantReplyService::class, function ($mock): void
@@ -354,7 +395,7 @@ class WhatsAppLocalWebhookTest extends TestCase
             'email' => 'national.client@example.com',
             'creator_id' => $user->id,
             'responsible_id' => $user->id,
-            'data' => (object) ['chat_assistant_ai_enabled' => false],
+            'data' => (object) ['chat_assistant_ai_enabled' => true],
         ]);
 
         Http::fake([
@@ -372,7 +413,6 @@ class WhatsAppLocalWebhookTest extends TestCase
         $response->assertJson([
             'status' => 'success',
         ]);
-        $response->assertJsonMissing(['auto_ai_skipped' => 'contact_assistant_disabled']);
     }
 
     public function test_webhook_skips_all_auto_replies_for_blacklisted_sender_number(): void

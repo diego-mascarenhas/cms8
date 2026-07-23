@@ -162,7 +162,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertOk()
             ->assertJson([
                 'success' => true,
-                'assistant_inbound_enabled' => true,
+                'assistant_inbound_enabled' => false,
                 'assistant_toggle_available' => true,
             ]);
 
