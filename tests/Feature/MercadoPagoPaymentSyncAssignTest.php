@@ -695,7 +695,7 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 'remarks' => '0005-0950',
                 'link_payer_code' => 1,
             ])
-            ->assertRedirect(route('payments.index'));
+            ->assertRedirect(route('payments.syncs.mercadopago.index'));
 
         $payment = Payment::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -847,7 +847,7 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 'enterprise_id' => $enterprise->id,
                 'invoice_ids' => [$invoiceA->id, $invoiceB->id],
             ])
-            ->assertRedirect(route('payments.index'));
+            ->assertRedirect(route('payments.syncs.mercadopago.index'));
 
         $this->assertSame(2, Payment::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -909,7 +909,10 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 'enterprise_id' => $enterpriseA->id,
                 'invoice_ids' => [$invoiceB->id],
             ])
-            ->assertRedirect(route('payments.syncs.mercadopago.assign', $sync))
+            ->assertRedirect(route('payments.syncs.mercadopago.assign', [
+                'sync' => $sync,
+                'enterprise_id' => $enterpriseA->id,
+            ]))
             ->assertSessionHasErrors('invoice_ids');
 
         $this->assertFalse(
@@ -1135,7 +1138,7 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 'invoice_ids' => [$invoice->id],
                 'link_payer_code' => 0,
             ])
-            ->assertRedirect(route('payments.index'));
+            ->assertRedirect(route('payments.syncs.mercadopago.index'));
 
         $payment = Payment::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -1224,7 +1227,7 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 'invoice_ids' => $invoiceIds,
                 'link_payer_code' => 0,
             ])
-            ->assertRedirect(route('payments.index'));
+            ->assertRedirect(route('payments.syncs.mercadopago.index'));
 
         $payments = Payment::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -1304,7 +1307,7 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 'invoice_ids' => [$invoice->id],
                 'link_payer_code' => 0,
             ])
-            ->assertRedirect(route('payments.index'))
+            ->assertRedirect(route('payments.syncs.mercadopago.index'))
             ->assertSessionDoesntHaveErrors();
 
         $this->assertTrue(

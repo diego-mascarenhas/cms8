@@ -182,7 +182,11 @@ class MercadoPagoPaymentSyncController extends Controller
 
         if ($payment === null)
         {
-            return back()
+            return redirect()
+                ->route('payments.syncs.mercadopago.assign', [
+                    'sync' => $sync,
+                    'enterprise_id' => (int) $validated['enterprise_id'],
+                ])
                 ->withInput()
                 ->with('error', __('payment_sync.mercadopago.errors.import_failed'));
         }
@@ -197,7 +201,7 @@ class MercadoPagoPaymentSyncController extends Controller
             ]);
 
         $redirect = redirect()
-            ->route('payments.index')
+            ->route('payments.syncs.mercadopago.index')
             ->with('success', $message);
 
         if ($this->stripeInvoiceStillOpenAfterImport($payment))
