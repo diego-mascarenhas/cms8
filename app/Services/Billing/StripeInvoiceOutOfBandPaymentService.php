@@ -83,6 +83,7 @@ class StripeInvoiceOutOfBandPaymentService
         $client = $this->makeClient($secret);
         $paymentType = $this->resolvePaymentTypeLabel($payment);
         $reference = $this->resolvePaymentReference($payment);
+        $mercadoPagoId = $this->resolveMercadoPagoId($payment);
 
         try
         {
@@ -91,6 +92,7 @@ class StripeInvoiceOutOfBandPaymentService
                     'humano_payment_id' => (string) $payment->id,
                     'payment_method' => $paymentType,
                     'payment_reference' => $reference,
+                    'mercadopago_id' => $mercadoPagoId,
                     'payment_notes' => filled($payment->remarks) ? (string) $payment->remarks : null,
                     'source_provider' => (string) $payment->source_provider,
                 ], fn ($value) => $value !== null && $value !== ''),
@@ -172,5 +174,21 @@ class StripeInvoiceOutOfBandPaymentService
         }
 
         return null;
+    }
+
+    private function resolveMercadoPagoId(Payment $payment): ?string
+    {
+        if (strtolower((string) $payment->source_provider) !== 'mercadopago')
+        {
+            return null;
+        }
+
+        $sourceReference = trim((string) $payment->source_reference_id);
+        if ($sourceReference === '')
+        {
+            return null;
+        }
+
+        return explode(':', $sourceReference, 2)[0];
     }
 }

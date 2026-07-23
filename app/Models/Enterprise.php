@@ -61,6 +61,46 @@ class Enterprise extends Model
         return $query->where('type_id', 2);
     }
 
+    /**
+     * Enterprises linked to a Stripe customer (code stored as cus_…).
+     */
+    public function scopeWithStripeCustomerCode($query)
+    {
+        return $query->where('code', 'like', 'cus_%');
+    }
+
+    /**
+     * Enterprises that currently owe something: local sell invoices with balance,
+     * or open/unpaid Stripe invoice_syncs for their customer code.
+     */
+    public function scopeWithOutstandingBalance($query)
+    {
+        return $query->where(function ($outer): void
+        {
+            $outer->whereHas('invoices', function ($invoices): void
+            {
+                $invoices->where('operation', 'sell')
+                    ->where('balance', '>', 0);
+            })->orWhereExists(function ($sub): void
+            {
+                $sub->selectRaw('1')
+                    ->from('invoice_syncs')
+                    ->whereColumn('invoice_syncs.customer_id', 'enterprises.code')
+                    ->whereColumn('invoice_syncs.team_id', 'enterprises.team_id')
+                    ->where('invoice_syncs.provider', 'stripe')
+                    ->where(function ($status): void
+                    {
+                        $status->whereIn('invoice_syncs.status', ['open', 'uncollectible'])
+                            ->orWhere(function ($unpaid): void
+                            {
+                                $unpaid->where('invoice_syncs.paid', false)
+                                    ->where('invoice_syncs.amount_remaining', '>', 0);
+                            });
+                    });
+            });
+        });
+    }
+
     public function team()
     {
         return $this->belongsTo(Team::class);

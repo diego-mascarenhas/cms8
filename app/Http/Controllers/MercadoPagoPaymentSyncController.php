@@ -61,8 +61,9 @@ class MercadoPagoPaymentSyncController extends Controller
 
         $teamId = (int) auth()->user()->currentTeam->id;
         $enterprises = Enterprise::query()
-            ->clients()
             ->where('team_id', $teamId)
+            ->withStripeCustomerCode()
+            ->withOutstandingBalance()
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'email']);
 
@@ -228,6 +229,13 @@ class MercadoPagoPaymentSyncController extends Controller
                 {
                     $query->orWhereRaw(
                         "TRIM(COALESCE(raw_payload->'metadata'->>'payment_reference', '')) = ?",
+                        [$reference],
+                    )->orWhereRaw(
+                        "TRIM(COALESCE(
+                            raw_payload->'metadata'->>'mercadopago_id',
+                            raw_payload->'metadata'->>'mercadopago_payment_id',
+                            ''
+                        )) = ?",
                         [$reference],
                     );
                 }

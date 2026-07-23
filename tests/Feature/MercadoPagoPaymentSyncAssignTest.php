@@ -432,6 +432,107 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         );
     }
 
+    public function test_datatable_marks_syncs_linked_via_stripe_mercadopago_id(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Stripe MP id',
+            'code' => 'cus_mp_id_linked',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0951',
+            'date' => now()->toDateString(),
+            'gross_amount' => 5000,
+            'discount' => 0,
+            'total_amount' => 5000,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_stripe_linked_mp_id',
+        ]);
+
+        PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '168215955681',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 500000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 500000,
+            'description' => 'Bank Transfer',
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'operation_type' => 'regular_payment',
+                'transaction_details' => [
+                    'transaction_id' => 'UNRELATED_BANK_REF',
+                ],
+            ],
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_stripe_linked_mp_id',
+            'status' => 'paid',
+            'currency' => 'ars',
+            'number' => '0005-0951',
+            'amount_due' => 5000,
+            'amount_paid' => 5000,
+            'amount_remaining' => 0,
+            'total' => 5000,
+            'paid' => true,
+            'invoice_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'metadata' => [
+                    'payment_method' => 'MercadoPago',
+                    'mercadopago_id' => '168215955681',
+                    'source_provider' => 'mercadopago',
+                ],
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('payments.syncs.mercadopago.index', [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 25,
+            'assignment_filter' => 'stripe',
+            'search' => ['value' => '168215955681', 'regex' => 'false'],
+            'order' => [['column' => 2, 'dir' => 'desc']],
+            'columns' => [
+                ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'transaction_indicator', 'name' => 'transaction_indicator', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'charge_created_at', 'name' => 'charge_created_at', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'amount_label', 'name' => 'amount_label', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'payer', 'name' => 'payer', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'external_id', 'name' => 'external_id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+            ],
+        ]));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString(
+            route('invoice.show', $invoice->id),
+            (string) data_get($response->json('data.0'), 'action'),
+        );
+        $this->assertStringContainsString('0005-0951', (string) data_get($response->json('data.0'), 'action'));
+    }
+
     public function test_stripe_linked_sync_without_local_invoice_links_to_materialize_route(): void
     {
         [$user, $team] = $this->makeAdminWithTeam();
@@ -816,6 +917,123 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
                 ->where('source_reference_id', 'mp-mismatch')
                 ->exists(),
         );
+    }
+
+    public function test_assign_selector_lists_only_stripe_enterprises_with_outstanding_balance(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $withDebt = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 3,
+            'status_id' => 1,
+            'name' => 'AF Con Deuda',
+            'code' => 'cus_with_debt',
+            'email' => 'debt@example.com',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $withDebt->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-AF-1',
+            'date' => now()->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        $paidOnly = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 3,
+            'status_id' => 1,
+            'name' => 'AF Sin Deuda',
+            'code' => 'cus_paid_only',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $paidOnly->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-AF-0',
+            'date' => now()->toDateString(),
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        $noStripe = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Local',
+            'code' => null,
+            'email' => 'local@example.com',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $noStripe->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-LOC-1',
+            'date' => now()->toDateString(),
+            'gross_amount' => 80,
+            'discount' => 0,
+            'total_amount' => 80,
+            'balance' => 80,
+            'status' => 1,
+        ]);
+
+        $openSyncOnly = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Sync Abierto',
+            'code' => 'cus_open_sync',
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_open_sync_only',
+            'customer_id' => 'cus_open_sync',
+            'number' => '0005-SYNC',
+            'status' => 'open',
+            'currency' => 'eur',
+            'amount_due' => 24.00,
+            'amount_paid' => 0,
+            'amount_remaining' => 24.00,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'mp-selector-filter',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 10000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 10000,
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $html = $this->actingAs($user)
+            ->get(route('payments.syncs.mercadopago.assign', $sync))
+            ->assertOk()
+            ->assertSee(__('payment_sync.mercadopago.enterprise_filter_hint'), false)
+            ->getContent();
+
+        $this->assertStringContainsString('AF Con Deuda', $html);
+        $this->assertStringContainsString('Cliente Sync Abierto', $html);
+        $this->assertStringNotContainsString('AF Sin Deuda', $html);
+        $this->assertStringNotContainsString('Cliente Local', $html);
     }
 
     /**

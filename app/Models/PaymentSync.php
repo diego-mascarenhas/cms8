@@ -150,7 +150,8 @@ class PaymentSync extends Model
     }
 
     /**
-     * Stripe invoices linked via metadata.payment_reference (out-of-band type + reference).
+     * Stripe invoices linked via out-of-band metadata:
+     * payment_reference (e2e / bank ref) and/or mercadopago_id (MP payment id).
      *
      * @return array<string, array{invoice_id: ?int, number: ?string, stripe_external_id: string}>
      */
@@ -166,8 +167,20 @@ class PaymentSync extends Model
             ->where('s.team_id', $teamId)
             ->where('s.provider', 'stripe')
             ->whereNotNull('s.raw_payload')
-            ->whereRaw("NULLIF(TRIM(s.raw_payload->'metadata'->>'payment_reference'), '') IS NOT NULL")
+            ->whereRaw("(
+                NULLIF(TRIM(s.raw_payload->'metadata'->>'payment_reference'), '') IS NOT NULL
+                OR NULLIF(TRIM(COALESCE(
+                    s.raw_payload->'metadata'->>'mercadopago_id',
+                    s.raw_payload->'metadata'->>'mercadopago_payment_id',
+                    ''
+                )), '') IS NOT NULL
+            )")
             ->selectRaw("TRIM(s.raw_payload->'metadata'->>'payment_reference') as payment_reference")
+            ->selectRaw("TRIM(COALESCE(
+                s.raw_payload->'metadata'->>'mercadopago_id',
+                s.raw_payload->'metadata'->>'mercadopago_payment_id',
+                ''
+            )) as mercadopago_id")
             ->selectRaw('s.external_id as stripe_external_id')
             ->selectRaw('i.id as invoice_id')
             ->selectRaw('COALESCE(i.number, s.number) as invoice_number')
@@ -178,21 +191,27 @@ class PaymentSync extends Model
         $map = [];
         foreach ($rows as $row)
         {
-            $reference = trim((string) $row->payment_reference);
-            if ($reference === '' || isset($map[$reference]))
-            {
-                continue;
-            }
-
             $invoiceId = $row->invoice_id !== null ? (int) $row->invoice_id : null;
             $number = trim((string) ($row->invoice_number ?? ''));
             $stripeExternalId = trim((string) ($row->stripe_external_id ?? ''));
-
-            $map[$reference] = [
+            $entry = [
                 'invoice_id' => $invoiceId,
                 'number' => $number !== '' ? $number : null,
                 'stripe_external_id' => $stripeExternalId,
             ];
+
+            foreach ([
+                trim((string) ($row->payment_reference ?? '')),
+                trim((string) ($row->mercadopago_id ?? '')),
+            ] as $key)
+            {
+                if ($key === '' || isset($map[$key]))
+                {
+                    continue;
+                }
+
+                $map[$key] = $entry;
+            }
         }
 
         return $map;

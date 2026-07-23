@@ -97,7 +97,9 @@ class StripeInvoiceOutOfBandPaymentServiceTest extends TestCase
             {
                 return $id === 'in_test_oob_1'
                     && ($params['metadata']['payment_method'] ?? null) === 'MercadoPago'
-                    && ($params['metadata']['payment_reference'] ?? null) === '76V4MR2Z8P4VPR389DEZOL';
+                    && ($params['metadata']['payment_reference'] ?? null) === '76V4MR2Z8P4VPR389DEZOL'
+                    && ($params['metadata']['mercadopago_id'] ?? null) === '169690439304'
+                    && ($params['metadata']['source_provider'] ?? null) === 'mercadopago';
             })
             ->andReturn((object) ['id' => 'in_test_oob_1']);
 
