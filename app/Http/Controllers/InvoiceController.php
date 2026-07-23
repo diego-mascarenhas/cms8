@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DataTables\InvoiceDataTable;
 use App\Http\Requests\StoreInvoiceCreditNoteRequest;
+use App\Http\Requests\StoreInvoiceElectronicPaymentRequest;
 use App\Http\Requests\StoreInvoicePaymentRequest;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
@@ -13,6 +14,7 @@ use App\Services\Billing\InvoiceInboundSyncService;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
+use App\Services\Finance\InvoiceElectronicPaymentLinkService;
 use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoicePaymentRegistrationService;
 use App\Services\Finance\InvoiceSummaryService;
@@ -24,12 +26,14 @@ use App\Services\Fiscal\NullFiscalExportAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
     public function __construct(
         private readonly InvoicePaymentRegistrationService $invoicePaymentRegistrationService,
+        private readonly InvoiceElectronicPaymentLinkService $invoiceElectronicPaymentLinkService,
         private readonly InvoiceCreditNoteService $invoiceCreditNoteService,
         private readonly StripeInvoiceCreditNoteService $stripeInvoiceCreditNoteService,
     ) {
@@ -234,10 +238,10 @@ class InvoiceController extends Controller
 
         $paymentDetails = app(InvoicePaymentDetailService::class)->forInvoice($invoice);
         $displayLineItems = app(InvoiceDisplayLineItemService::class)->forInvoice($invoice);
-        $canRegisterPayment = $this->invoicePaymentRegistrationService->canRegisterPayment(auth()->user(), $invoice);
-        $paymentFormDefaults = $canRegisterPayment
-            ? $this->invoicePaymentRegistrationService->formDefaults($invoice)
-            : null;
+        $canLinkElectronicPayment = $this->invoiceElectronicPaymentLinkService->canLink(auth()->user(), $invoice);
+        $electronicPaymentSyncOptions = $canLinkElectronicPayment
+            ? $this->invoiceElectronicPaymentLinkService->syncOptions($invoice)
+            : [];
         $canShowCreditNoteForm = $this->invoiceCreditNoteService->canShowCreditNoteForm(auth()->user(), $invoice);
         $canIssueCreditNote = $this->invoiceCreditNoteService->canIssueCreditNote(auth()->user(), $invoice);
         $creditNoteReasons = InvoiceCreditNoteService::STRIPE_REASONS;
@@ -253,8 +257,8 @@ class InvoiceController extends Controller
             'invoice',
             'paymentDetails',
             'displayLineItems',
-            'canRegisterPayment',
-            'paymentFormDefaults',
+            'canLinkElectronicPayment',
+            'electronicPaymentSyncOptions',
             'canShowCreditNoteForm',
             'canIssueCreditNote',
             'creditNoteReasons',
@@ -324,7 +328,7 @@ class InvoiceController extends Controller
         try
         {
             $this->invoicePaymentRegistrationService->register($request->user(), $invoice, $request->validated());
-        } catch (\Illuminate\Validation\ValidationException $exception)
+        } catch (ValidationException $exception)
         {
             return back()->withInput()->withErrors($exception->errors());
         }
@@ -332,6 +336,32 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoice.show', $invoice->id)
             ->with('success', __('invoice_payment.success'));
+    }
+
+    public function storeElectronicPayment(StoreInvoiceElectronicPaymentRequest $request, Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        if (! $this->invoiceElectronicPaymentLinkService->canLink($request->user(), $invoice))
+        {
+            abort(403);
+        }
+
+        try
+        {
+            $this->invoiceElectronicPaymentLinkService->link(
+                $request->user(),
+                $invoice,
+                $request->paymentSync(),
+            );
+        } catch (ValidationException $exception)
+        {
+            return back()->withInput()->withErrors($exception->errors());
+        }
+
+        return redirect()
+            ->route('invoice.show', $invoice->id)
+            ->with('success', __('invoice_payment.electronic_success'));
     }
 
     public function storeCreditNote(StoreInvoiceCreditNoteRequest $request, Invoice $invoice): RedirectResponse

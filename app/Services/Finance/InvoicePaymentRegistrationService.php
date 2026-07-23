@@ -59,6 +59,30 @@ class InvoicePaymentRegistrationService
         return $this->accountsForInvoiceCurrency($invoice)->isNotEmpty();
     }
 
+    public function isStripeInvoiceCollected(Invoice $invoice): bool
+    {
+        if (! filled($invoice->source_reference_id) || ! str_starts_with((string) $invoice->source_reference_id, 'in_'))
+        {
+            return false;
+        }
+
+        $sync = $invoice->relationLoaded('stripeInvoiceSync')
+            ? $invoice->stripeInvoiceSync
+            : $invoice->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return false;
+        }
+
+        if ($sync->paid)
+        {
+            return true;
+        }
+
+        return strtolower((string) $sync->status) === 'paid';
+    }
+
     /**
      * @return array{
      *     amount: float,
@@ -207,29 +231,5 @@ class InvoicePaymentRegistrationService
 
             return $payment->fresh() ?? $payment;
         });
-    }
-
-    private function isStripeInvoiceCollected(Invoice $invoice): bool
-    {
-        if (! filled($invoice->source_reference_id) || ! str_starts_with((string) $invoice->source_reference_id, 'in_'))
-        {
-            return false;
-        }
-
-        $sync = $invoice->relationLoaded('stripeInvoiceSync')
-            ? $invoice->stripeInvoiceSync
-            : $invoice->stripeInvoiceSync()->first();
-
-        if (! $sync instanceof InvoiceSync)
-        {
-            return false;
-        }
-
-        if ($sync->paid)
-        {
-            return true;
-        }
-
-        return strtolower((string) $sync->status) === 'paid';
     }
 }

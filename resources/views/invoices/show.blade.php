@@ -395,72 +395,45 @@
         @endforelse
       </div>
     </div>
-    @if ($canRegisterPayment && $paymentFormDefaults && ! empty($paymentFormDefaults['accounts']))
+    @if ($canLinkElectronicPayment)
     <div class="card mt-3">
       <div class="card-body">
-        <h6 class="mb-3">{{ __('invoice_payment.register_title') }}</h6>
-          <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" class="row g-3">
+        <h6 class="mb-3">{{ __('invoice_payment.electronic_title') }}</h6>
+        @if ($errors->has('payment_sync_id'))
+          <div class="alert alert-danger py-2">{{ $errors->first('payment_sync_id') }}</div>
+        @endif
+        @if (empty($electronicPaymentSyncOptions))
+          <p class="mb-0 text-muted">{{ __('invoice_payment.electronic_empty') }}</p>
+          <a href="{{ route('payments.syncs.mercadopago.index') }}" class="btn btn-sm btn-label-secondary mt-2">
+            <i class="ti ti-list me-1"></i>{{ __('invoice_payment.electronic_open_queue') }}
+          </a>
+        @else
+          <form action="{{ route('invoice.electronic-payments.store', $invoice) }}" method="POST" class="row g-3">
             @csrf
             <div class="col-12">
-              <label for="amount" class="form-label">{{ __('invoice_payment.amount') }} <span class="text-danger">*</span></label>
-              <div class="input-group">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  max="{{ $paymentFormDefaults['amount'] }}"
-                  name="amount"
-                  id="amount"
-                  class="form-control @error('amount') is-invalid @enderror"
-                  value="{{ old('amount', $paymentFormDefaults['amount']) }}"
-                  required
-                >
-                <span class="input-group-text">{{ $paymentFormDefaults['currency_code'] }}</span>
-              </div>
-              @error('amount')
-                <div class="invalid-feedback d-block">{{ $message }}</div>
-              @enderror
-            </div>
-            <div class="col-12">
-              <x-input-date
-                id="date"
-                label="{{ __('invoice_payment.date') }} (*)"
-                value="{{ old('date', $paymentFormDefaults['date']) }}"
-              />
-            </div>
-            <div class="col-12">
-              <x-input-select
-                id="account_id"
-                label="{{ __('invoice_payment.account') }}"
-                :options="$paymentFormDefaults['accounts']"
-                value="{{ old('account_id', $paymentFormDefaults['account_id']) }}"
-                placeholder="{{ __('Select') }}"
+              <label for="payment_sync_id" class="form-label">{{ __('invoice_payment.electronic_sync') }} <span class="text-danger">*</span></label>
+              <select
+                name="payment_sync_id"
+                id="payment_sync_id"
+                class="form-select @error('payment_sync_id') is-invalid @enderror"
                 required
-              />
-            </div>
-            <div class="col-12">
-              <x-input-select
-                id="type_id"
-                label="{{ __('invoice_payment.type') }}"
-                :options="$paymentFormDefaults['payment_types']"
-                value="{{ old('type_id', $paymentFormDefaults['type_id']) }}"
-                placeholder="{{ __('Select') }}"
-                required
-              />
-            </div>
-            <div class="col-12">
-              <x-input-textarea
-                id="remarks"
-                label="{{ __('invoice_payment.remarks') }}"
-                value="{{ old('remarks', '') }}"
-              />
+              >
+                <option value="">{{ __('invoice_payment.electronic_sync_placeholder') }}</option>
+                @foreach ($electronicPaymentSyncOptions as $option)
+                  <option value="{{ $option['id'] }}" @selected((string) old('payment_sync_id') === (string) $option['id'])>
+                    {{ $option['label'] }}
+                  </option>
+                @endforeach
+              </select>
+              <div class="form-text">{{ __('invoice_payment.electronic_hint') }}</div>
             </div>
             <div class="col-12">
               <button type="submit" class="btn btn-primary w-100">
-                <i class="ti ti-cash me-1"></i>{{ __('invoice_payment.submit') }}
+                <i class="ti ti-link me-1"></i>{{ __('invoice_payment.electronic_submit') }}
               </button>
             </div>
           </form>
+        @endif
       </div>
     </div>
     @endif

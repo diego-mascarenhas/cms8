@@ -2,6 +2,14 @@
 
 return [
     'register_title' => 'Registrar pago',
+    'electronic_title' => 'Vincular pago electrónico',
+    'electronic_sync' => 'Pago desde sync',
+    'electronic_sync_placeholder' => 'Selecciona un pago de Mercado Pago',
+    'electronic_hint' => 'Solo pagos aprobados en Mercado Pago que aún no están importados. Se priorizan los del mismo importe.',
+    'electronic_submit' => 'Vincular pago',
+    'electronic_empty' => 'No hay pagos electrónicos pendientes de sync para vincular.',
+    'electronic_open_queue' => 'Ver cola Mercado Pago',
+    'electronic_success' => 'El pago electrónico se vinculó correctamente a la factura.',
     'amount' => 'Importe',
     'date' => 'Fecha',
     'account' => 'Cuenta',
@@ -17,5 +25,11 @@ return [
         'account_invalid' => 'La cuenta seleccionada no es válida.',
         'account_currency_mismatch' => 'La cuenta debe estar en la misma moneda que la factura.',
         'type_not_allowed_for_account' => 'La forma de pago seleccionada no está permitida para la cuenta elegida.',
+        'sync_required' => 'Debes elegir un pago electrónico.',
+        'sync_invalid' => 'El pago electrónico seleccionado no es válido.',
+        'sync_not_approved' => 'Solo se pueden vincular pagos aprobados.',
+        'sync_already_imported' => 'Ese pago electrónico ya fue importado.',
+        'sync_import_failed' => 'No se pudo vincular el pago electrónico a la factura.',
+        'invoice_without_enterprise' => 'La factura no tiene cliente asignado.',
     ],
 ];
