@@ -46,4 +46,16 @@ class AssistantChatPipelineTest extends TestCase
             ->assertSet('input', '')
             ->assertSee('Mensaje simulado del asistente con herramientas.', false);
     }
+
+    public function test_assistant_chat_view_scales_markdown_headings_in_bubbles(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+
+        Livewire::actingAs($user->fresh())
+            ->test(AssistantChat::class, ['hideHeader' => true])
+            ->assertSee('.assistant-content h1', false)
+            ->assertSee('font-size: 1.05rem', false)
+            ->assertSee('.assistant-content h2', false);
+    }
 }
