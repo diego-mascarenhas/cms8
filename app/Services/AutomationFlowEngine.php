@@ -51,7 +51,12 @@ class AutomationFlowEngine
         $entry = $session->automation?->entryStep()
             ?? Automation::query()->find($session->automation_id)?->entryStep();
         $session->current_step_id = $entry?->id;
-        $session->meta = ['awaiting_reply' => false];
+        $previousMeta = is_array($session->meta) ? $session->meta : [];
+        $session->meta = array_filter([
+            'awaiting_reply' => false,
+            'completion_email_sent_at' => $previousMeta['completion_email_sent_at'] ?? null,
+            'completion_email_to' => $previousMeta['completion_email_to'] ?? null,
+        ], fn ($value) => $value !== null);
         $session->last_message_at = now();
         $session->save();
 

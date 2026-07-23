@@ -10,9 +10,12 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AssistantAutomationRunner
 {
+    public const ACTION_TYPE_SEND_FUNNEL_SUMMARY_EMAIL = 'send_funnel_summary_email';
+
     public function __construct(
         protected AssistantChatService $assistantChat,
         protected AutomationFlowEngine $flowEngine,
+        protected AutomationFunnelCompletionNotifier $funnelCompletionNotifier,
     ) {}
 
     public function findById(int $id, ?int $teamId = null): ?Automation
@@ -94,6 +97,7 @@ class AssistantAutomationRunner
      *     completed: bool,
      *     automation: Automation|null,
      *     exit_automation?: Automation|null,
+     *     completion_message?: string|null,
      *     session?: mixed
      * }
      */
@@ -150,6 +154,29 @@ class AssistantAutomationRunner
         if (($resolved['exit_automation_id'] ?? null) !== null)
         {
             $exit = $this->findById((int) $resolved['exit_automation_id'], $teamId);
+
+            if ($exit && $exit->is_active && $exit->allowsChannel($channel) && $this->isSendFunnelSummaryEmailAction($exit))
+            {
+                $this->funnelCompletionNotifier->notifyIfEligible(
+                    $automation,
+                    $session,
+                    $session->currentStep,
+                    true,
+                );
+                $this->flowEngine->resetSession($session);
+
+                return [
+                    'prompt_key' => null,
+                    'appendix' => null,
+                    'step' => null,
+                    'completed' => true,
+                    'automation' => $automation,
+                    'exit_automation' => $exit,
+                    'completion_message' => __('Listo. Te enviamos el resumen por email.'),
+                    'session' => $session,
+                ];
+            }
+
             $this->flowEngine->resetSession($session);
 
             if ($exit && $exit->is_active && $exit->allowsChannel($channel))
@@ -171,6 +198,7 @@ class AssistantAutomationRunner
                 'completed' => true,
                 'automation' => $automation,
                 'exit_automation' => $exit,
+                'session' => $session,
             ];
         }
 
@@ -224,10 +252,23 @@ class AssistantAutomationRunner
     ): array {
         $this->requireActive($automation, $channel);
 
+        if ($this->isSendFunnelSummaryEmailAction($automation))
+        {
+            return [
+                'response' => __('Esta acción se dispara desde una salida del embudo (Salida a automatización).'),
+                'routed_to' => null,
+                'automation_id' => $automation->id,
+                'automation_slug' => $automation->slug,
+                'step_key' => null,
+                'flow_completed' => true,
+            ];
+        }
+
         $promptKey = $automation->resolvedEntryPromptKey();
         $runMessage = $message;
         $stepKey = null;
         $session = null;
+        $step = null;
 
         if ($automation->hasFlowGraph())
         {
@@ -241,6 +282,30 @@ class AssistantAutomationRunner
             if (($resolved['exit_automation_id'] ?? null) !== null)
             {
                 $exit = $this->findById((int) $resolved['exit_automation_id'], (int) $automation->team_id);
+
+                if ($exit && $exit->is_active && $exit->allowsChannel($channel) && $this->isSendFunnelSummaryEmailAction($exit))
+                {
+                    $this->funnelCompletionNotifier->notifyIfEligible(
+                        $automation,
+                        $session,
+                        $session->currentStep,
+                        true,
+                    );
+                    $this->flowEngine->resetSession($session);
+
+                    return [
+                        'response' => __('Listo. Te enviamos el resumen por email.'),
+                        'routed_to' => null,
+                        'automation_id' => $exit->id,
+                        'automation_slug' => $exit->slug,
+                        'from_automation_id' => $automation->id,
+                        'from_automation_slug' => $automation->slug,
+                        'step_key' => null,
+                        'flow_completed' => true,
+                        'flow_exited' => true,
+                    ];
+                }
+
                 $this->flowEngine->resetSession($session);
 
                 if ($exit && $exit->is_active && $exit->allowsChannel($channel))
@@ -254,6 +319,13 @@ class AssistantAutomationRunner
                     ]);
                 }
 
+                $this->funnelCompletionNotifier->notifyIfEligible(
+                    $automation,
+                    $session,
+                    $session->currentStep,
+                    true,
+                );
+
                 return [
                     'response' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
                     'routed_to' => null,
@@ -266,6 +338,13 @@ class AssistantAutomationRunner
 
             if ($resolved['completed'])
             {
+                $completedStep = $session->currentStep;
+                $this->funnelCompletionNotifier->notifyIfEligible(
+                    $automation,
+                    $session,
+                    $completedStep,
+                    true,
+                );
                 $this->flowEngine->resetSession($session);
 
                 return [
@@ -303,6 +382,13 @@ class AssistantAutomationRunner
         if ($session !== null)
         {
             $this->flowEngine->markAwaitingReply($session);
+            $terminalStep = isset($step) && $step instanceof AutomationStep ? $step : null;
+            $this->funnelCompletionNotifier->notifyIfEligible(
+                $automation,
+                $session->fresh(),
+                $terminalStep,
+                false,
+            );
         }
 
         return array_merge($result, [
@@ -402,5 +488,15 @@ class AssistantAutomationRunner
         {
             return null;
         }
+    }
+
+    public function isSendFunnelSummaryEmailAction(Automation $automation): bool
+    {
+        if (! $automation->isAction())
+        {
+            return false;
+        }
+
+        return data_get($automation->settings, 'action_type') === self::ACTION_TYPE_SEND_FUNNEL_SUMMARY_EMAIL;
     }
 }

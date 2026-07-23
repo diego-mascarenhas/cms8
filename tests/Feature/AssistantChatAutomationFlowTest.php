@@ -188,10 +188,26 @@ class AssistantChatAutomationFlowTest extends TestCase
             'channels' => Automation::normalizeChannels(['humano' => true]),
         ]);
 
+        app(\App\Services\AutomationFlowGraphSyncer::class)->sync($funnel, [
+            'nodes' => [
+                [
+                    'client_id' => '1',
+                    'label' => 'Cierre',
+                    'instruction' => 'Resumen final',
+                    'is_entry' => true,
+                    'position_x' => 0,
+                    'position_y' => 0,
+                    'outputs' => [],
+                ],
+            ],
+            'edges' => [],
+        ]);
+
         $this->actingAs($user->fresh())
             ->get(route('funnel.show', $funnel))
             ->assertOk()
             ->assertSee(__('Probar en asistente'))
-            ->assertSee('funnel-try-assistant-btn', false);
+            ->assertSee('funnel-try-assistant-btn', false)
+            ->assertSee(__('Paso final: al llegar aquí el embudo se completa y se envía un email con el resumen a quien lo completó.'));
     }
 }

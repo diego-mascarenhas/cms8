@@ -49,6 +49,11 @@
     background: #fff;
   }
   .drawflow-delete { line-height: 1.2; }
+  #step-outputs-list .btn-remove-output {
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+  }
 </style>
 @endsection
 
@@ -129,6 +134,7 @@
                 <div class="mb-2">
                     <label class="form-label">{{ __('Salidas (respuestas esperadas)') }}</label>
                     <div id="step-outputs-list" class="small text-muted"></div>
+                    <div class="form-text">{{ __('Usá el ícono de basura para quitar una salida. Guardá el flujo después.') }}</div>
                 </div>
                 <button type="button" class="btn btn-sm btn-primary" id="btn-apply-step">{{ __('Aplicar al nodo') }}</button>
             </div>
@@ -173,13 +179,21 @@
                 </div>
                 <div class="mb-0">
                     <label class="form-label" for="out-exit">{{ __('Salida a automatización (opcional)') }}</label>
-                    <select class="form-select" id="out-exit">
+                    <select class="form-select" id="out-exit" @disabled(count($actionAutomations) === 0)>
                         <option value="">{{ __('— Continuar en el embudo —') }}</option>
                         @foreach($actionAutomations as $action)
                             <option value="{{ $action['id'] }}">{{ $action['name'] }} ({{ $action['slug'] }})</option>
                         @endforeach
                     </select>
-                    <div class="form-text">{{ __('Si elegís una automatización, al coincidir esta respuesta se dispara esa acción en lugar de otro paso del embudo.') }}</div>
+                    @if (count($actionAutomations) === 0)
+                        <div class="form-text text-warning">
+                            {{ __('No hay acciones activas en este equipo.') }}
+                            <a href="{{ route('automation.create') }}">{{ __('Creá una acción') }}</a>
+                            {{ __('para poder enlazar respuestas a automatizaciones (email, cita, contacto, etc.) en lugar de otro paso de diálogo.') }}
+                        </div>
+                    @else
+                        <div class="form-text">{{ __('Si elegís una automatización, al coincidir esta respuesta se dispara esa acción en lugar de otro paso del embudo.') }}</div>
+                    @endif
                 </div>
             </div>
             <div class="modal-footer">
@@ -223,6 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
   const initialGraph = @json($graph);
   const replyTypes = @json($replyTypes);
   const actionAutomations = @json($actionAutomations);
+  const i18nRemoveOutput = @json(__('Quitar salida'));
+  const i18nNoOutputs = @json(__('Sin salidas (paso terminal)'));
 
   function actionName(id) {
     if (!id) return null;
@@ -262,18 +278,87 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function outputsCount(data) {
-    return Math.max(1, (data.outputs || []).length);
+    return Math.max(0, (data.outputs || []).length);
+  }
+
+  function updateNodeBoxHtml(dfId, data) {
+    const nodeEl = document.querySelector(`#node-${dfId}`);
+    if (!nodeEl) return;
+    nodeEl.classList.toggle('is-entry', !!data.is_entry);
+    const title = nodeEl.querySelector('.title-box');
+    if (title) title.textContent = data.label || 'Paso';
+    const box = nodeEl.querySelector('.box');
+    if (box) {
+      box.innerHTML = `
+          <div><strong>Prompt:</strong> ${escapeHtml(data.prompt_key || '—')}</div>
+          <div class="mt-1 text-truncate" style="max-width:200px">${escapeHtml((data.instruction || '').slice(0, 80))}</div>
+          <div class="mt-1"><strong>Salidas:</strong> ${(data.outputs || []).map((o) => escapeHtml(o.label || o.reply_type)).join(', ') || '—'}</div>`;
+    }
+  }
+
+  function renderOutputsList(data) {
+    const list = document.getElementById('step-outputs-list');
+    if (!data.outputs || data.outputs.length === 0) {
+      list.innerHTML = '<em>' + escapeHtml(i18nNoOutputs) + '</em>';
+      return;
+    }
+    list.innerHTML = data.outputs.map((o, idx) => {
+      const exit = o.to_automation_id
+        ? ` · <span class="text-primary">${escapeHtml(actionName(o.to_automation_id) || '')}</span>`
+        : '';
+      return `<div class="border rounded p-1 mb-1 d-flex justify-content-between align-items-start gap-1">
+        <span>${escapeHtml(o.label || o.id)} · <code>${escapeHtml(o.reply_type)}</code>${o.match_value ? ' · ' + escapeHtml(o.match_value) : ''}${exit}</span>
+        <button type="button" class="btn btn-sm btn-icon btn-text-danger p-0 border-0 shadow-none btn-remove-output" data-index="${idx}" title="${escapeHtml(i18nRemoveOutput)}">
+          <i class="ti ti-trash"></i>
+        </button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.btn-remove-output').forEach((btn) => {
+      btn.addEventListener('click', function () {
+        removeOutputAt(parseInt(btn.getAttribute('data-index'), 10));
+      });
+    });
+  }
+
+  function removeOutputAt(index) {
+    if (!selectedNodeId) return;
+    const data = Object.assign({}, nodeData[selectedNodeId] || {});
+    data.outputs = (data.outputs || []).slice();
+    if (index < 0 || index >= data.outputs.length) return;
+
+    const removed = data.outputs[index];
+    const outId = removed.id || ('output_' + (index + 1));
+    data.outputs.splice(index, 1);
+
+    try {
+      editor.removeNodeOutput(selectedNodeId, outId);
+    } catch (e) {
+      console.warn(e);
+    }
+
+    const node = editor.getNodeFromId(selectedNodeId);
+    const keys = Object.keys((node && node.outputs) || {});
+    data.outputs.forEach((out, idx) => {
+      out.id = keys[idx] || ('output_' + (idx + 1));
+    });
+
+    nodeData[selectedNodeId] = data;
+    editor.updateNodeDataFromId(selectedNodeId, data);
+    updateNodeBoxHtml(selectedNodeId, data);
+    renderOutputsList(data);
   }
 
   function addNodeToEditor(data, x, y) {
     const clientId = String(data.client_id || nodeSeq++);
     data.client_id = clientId;
-    data.outputs = data.outputs && data.outputs.length ? data.outputs : [{
-      id: 'output_1',
-      reply_type: 'fallback',
-      match_value: null,
-      label: 'Otra respuesta'
-    }];
+    if (!Array.isArray(data.outputs)) {
+      data.outputs = [{
+        id: 'output_1',
+        reply_type: 'fallback',
+        match_value: null,
+        label: 'Otra respuesta'
+      }];
+    }
     const dfId = editor.addNode(
       'step',
       1,
@@ -389,13 +474,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('step-prompt').value = data.prompt_key || '';
     document.getElementById('step-instruction').value = data.instruction || '';
     document.getElementById('step-is-entry').checked = !!data.is_entry;
-    const list = document.getElementById('step-outputs-list');
-    list.innerHTML = (data.outputs || []).map((o) => {
-      const exit = o.to_automation_id
-        ? ` · <span class="text-primary">${escapeHtml(actionName(o.to_automation_id) || '')}</span>`
-        : '';
-      return `<div class="border rounded p-1 mb-1">${escapeHtml(o.label || o.id)} · <code>${escapeHtml(o.reply_type)}</code>${o.match_value ? ' · ' + escapeHtml(o.match_value) : ''}${exit}</div>`;
-    }).join('') || '<em>Sin salidas</em>';
+    renderOutputsList(data);
   }
 
   editor.on('nodeSelected', (id) => selectNode(id));
@@ -439,19 +518,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     nodeData[selectedNodeId] = data;
     editor.updateNodeDataFromId(selectedNodeId, data);
-    const nodeEl = document.querySelector(`#node-${selectedNodeId}`);
-    if (nodeEl) {
-      nodeEl.classList.toggle('is-entry', !!data.is_entry);
-      const title = nodeEl.querySelector('.title-box');
-      if (title) title.textContent = data.label;
-      const box = nodeEl.querySelector('.box');
-      if (box) {
-        box.innerHTML = `
-          <div><strong>Prompt:</strong> ${escapeHtml(data.prompt_key || '—')}</div>
-          <div class="mt-1 text-truncate" style="max-width:200px">${escapeHtml((data.instruction || '').slice(0, 80))}</div>
-          <div class="mt-1"><strong>Salidas:</strong> ${(data.outputs || []).map((o) => escapeHtml(o.label || o.reply_type)).join(', ') || '—'}</div>`;
-      }
-    }
+    updateNodeBoxHtml(selectedNodeId, data);
     selectNode(selectedNodeId);
   });
 
