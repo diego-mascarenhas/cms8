@@ -59,23 +59,24 @@
         <h6 class="mb-3">{{ __('payment_sync.mercadopago.section_client') }}</h6>
 
         <form method="GET" action="{{ route('payments.syncs.mercadopago.assign', $sync) }}" class="row g-3 mb-3">
-            <div class="col-12 col-md-8">
+            <div class="col-12">
                 <label for="enterprise_id_filter" class="form-label">{{ __('payment_sync.mercadopago.enterprise_label') }}</label>
-                <select name="enterprise_id" id="enterprise_id_filter" class="form-select" onchange="this.form.submit()">
-                    <option value="">{{ __('payment_sync.mercadopago.enterprise_placeholder') }}</option>
-                    @foreach ($enterprises as $enterprise)
-                        <option value="{{ $enterprise->id }}" @selected((string) $selectedEnterpriseId === (string) $enterprise->id)>
-                            {{ $enterprise->name }}
-                            @if (filled($enterprise->code)) ({{ $enterprise->code }}) @endif
-                            @if (filled($enterprise->email)) — {{ $enterprise->email }} @endif
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-12 col-md-4 d-flex align-items-end">
-                <button type="submit" class="btn btn-label-secondary">
-                    <i class="ti ti-refresh me-1"></i>{{ __('payment_sync.mercadopago.reload_invoices') }}
-                </button>
+                <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-start">
+                    <select name="enterprise_id" id="enterprise_id_filter" class="form-select" onchange="this.form.submit()">
+                        <option value="">{{ __('payment_sync.mercadopago.enterprise_placeholder') }}</option>
+                        @foreach ($enterprises as $enterprise)
+                            <option value="{{ $enterprise->id }}" @selected((string) $selectedEnterpriseId === (string) $enterprise->id)>
+                                {{ $enterprise->name }}
+                                @if (filled($enterprise->code)) ({{ $enterprise->code }}) @endif
+                                @if (filled($enterprise->email)) — {{ $enterprise->email }} @endif
+                            </option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="btn btn-label-secondary flex-shrink-0 text-nowrap">
+                        <i class="ti ti-refresh me-1"></i>{{ __('payment_sync.mercadopago.reload_invoices') }}
+                    </button>
+                </div>
+                <div class="form-text">{{ __('payment_sync.mercadopago.enterprise_filter_hint') }}</div>
             </div>
         </form>
 

@@ -61,8 +61,9 @@ class MercadoPagoPaymentSyncController extends Controller
 
         $teamId = (int) auth()->user()->currentTeam->id;
         $enterprises = Enterprise::query()
-            ->clients()
             ->where('team_id', $teamId)
+            ->withStripeCustomerCode()
+            ->withOutstandingBalance()
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'email']);
 

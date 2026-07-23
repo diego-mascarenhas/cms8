@@ -818,6 +818,123 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         );
     }
 
+    public function test_assign_selector_lists_only_stripe_enterprises_with_outstanding_balance(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $withDebt = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 3,
+            'status_id' => 1,
+            'name' => 'AF Con Deuda',
+            'code' => 'cus_with_debt',
+            'email' => 'debt@example.com',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $withDebt->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-AF-1',
+            'date' => now()->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        $paidOnly = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 3,
+            'status_id' => 1,
+            'name' => 'AF Sin Deuda',
+            'code' => 'cus_paid_only',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $paidOnly->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-AF-0',
+            'date' => now()->toDateString(),
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        $noStripe = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Local',
+            'code' => null,
+            'email' => 'local@example.com',
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $noStripe->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-LOC-1',
+            'date' => now()->toDateString(),
+            'gross_amount' => 80,
+            'discount' => 0,
+            'total_amount' => 80,
+            'balance' => 80,
+            'status' => 1,
+        ]);
+
+        $openSyncOnly = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Sync Abierto',
+            'code' => 'cus_open_sync',
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_open_sync_only',
+            'customer_id' => 'cus_open_sync',
+            'number' => '0005-SYNC',
+            'status' => 'open',
+            'currency' => 'eur',
+            'amount_due' => 24.00,
+            'amount_paid' => 0,
+            'amount_remaining' => 24.00,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'mp-selector-filter',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 10000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 10000,
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $html = $this->actingAs($user)
+            ->get(route('payments.syncs.mercadopago.assign', $sync))
+            ->assertOk()
+            ->assertSee(__('payment_sync.mercadopago.enterprise_filter_hint'), false)
+            ->getContent();
+
+        $this->assertStringContainsString('AF Con Deuda', $html);
+        $this->assertStringContainsString('Cliente Sync Abierto', $html);
+        $this->assertStringNotContainsString('AF Sin Deuda', $html);
+        $this->assertStringNotContainsString('Cliente Local', $html);
+    }
+
     /**
      * @return array{0: User, 1: \App\Models\Team}
      */
