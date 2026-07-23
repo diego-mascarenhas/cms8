@@ -6,6 +6,9 @@ return [
     'reason' => 'Reason',
     'confirm' => 'Issue the credit note in Stripe for this invoice?',
     'success' => 'Credit note :reference issued in Stripe.',
+    'view_original' => 'Original invoice',
+    'view_existing' => 'Credit note',
+    'create_title' => 'Create credit note',
     'reasons' => [
         'duplicate' => 'Duplicate',
         'fraudulent' => 'Fraudulent',

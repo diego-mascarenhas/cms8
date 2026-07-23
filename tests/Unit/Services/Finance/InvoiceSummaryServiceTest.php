@@ -502,7 +502,7 @@ class InvoiceSummaryServiceTest extends TestCase
 
         $creditNotesQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
         $this->service->applySummaryFilter($creditNotesQuery, 'credit_notes');
-        $this->assertSame(['NC-RECENT'], $creditNotesQuery->pluck('number')->all());
+        $this->assertEqualsCanonicalizing(['NC-RECENT', 'NC-OLD'], $creditNotesQuery->pluck('number')->all());
     }
 
     public function test_resolve_list_filter_maps_legacy_all_to_default(): void

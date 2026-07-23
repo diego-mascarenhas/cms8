@@ -33,7 +33,7 @@ class InvoiceSummaryService
 
     public const ROLLING_SUMMARY_DAYS = 30;
 
-    /** @var list<string> Filters whose card totals and list view use a rolling date window. */
+    /** @var list<string> Filters whose card totals use a rolling date window (list may still show all). */
     public const ROLLING_SUMMARY_FILTERS = ['credit_notes', 'collected'];
 
     /**
@@ -133,9 +133,7 @@ class InvoiceSummaryService
                     $inner->where('invoices.balance', '>', 0)
                         ->orWhere('invoices.operation', 'buy');
                 }),
-            'credit_notes' => $this->applyRollingDateFilter(
-                $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
-            ),
+            'credit_notes' => $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
             'collected' => $this->applyRollingDateFilter(
                 $query
                     ->whereNotIn('invoices.status', self::COLLECTED_EXCLUDED_STATUSES)

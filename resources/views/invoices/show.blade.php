@@ -32,6 +32,8 @@
     $invoiceDownloadUrl = $invoice->stripeInvoicePdfUrl();
     $showPendingBalance = round((float) $invoice->balance, 2) > 0
         && round((float) $invoice->balance, 2) < round((float) $invoice->total_amount, 2);
+    $originalInvoice = $originalInvoice ?? null;
+    $existingCreditNote = $existingCreditNote ?? null;
 @endphp
 <div class="row invoice-preview">
   <!-- Invoice -->
@@ -262,7 +264,20 @@
           {{ __('Download') }}
         </a>
         @endif
-        @if ($canShowCreditNoteForm)
+        @if ($originalInvoice)
+        <a class="btn btn-label-primary d-grid w-100 mb-2" href="{{ route('invoice.show', $originalInvoice->id) }}">
+          <i class="ti ti-file-invoice ti-xs me-2"></i>
+          {{ __('invoice_credit_note.view_original') }}
+          <span class="small fw-normal">#{{ $originalInvoice->number }}</span>
+        </a>
+        @endif
+        @if ($existingCreditNote)
+        <a class="btn btn-label-info d-grid w-100 mb-2" href="{{ route('invoice.show', $existingCreditNote->id) }}">
+          <i class="ti ti-receipt-refund ti-xs me-2"></i>
+          {{ __('invoice_credit_note.view_existing') }}
+          <span class="small fw-normal">#{{ $existingCreditNote->number }}</span>
+        </a>
+        @elseif ($canShowCreditNoteForm)
         <button
           type="button"
           class="btn btn-label-info d-grid w-100 mb-2"
@@ -270,7 +285,7 @@
           data-bs-target="#creditNoteModal"
         >
           <i class="ti ti-receipt-refund ti-xs me-2"></i>
-          {{ __('invoice_credit_note.issue_title') }}
+          {{ __('invoice_credit_note.create_title') }}
         </button>
         @endif
         @can('invoice.edit')
@@ -329,6 +344,7 @@
       </div>
     </div>
     @endif
+    @unless ($invoice->isCreditNote())
     <div class="card mt-3">
       <div class="card-body">
         <h6 class="mb-3">{{ __('Payments') }}</h6>
@@ -448,6 +464,7 @@
       </div>
     </div>
     @endif
+    @endunless
   </div>
   <!-- /Invoice Actions -->
 </div>
@@ -495,7 +512,7 @@
 </div>
 @endif
 
-@if ($canShowCreditNoteForm)
+@if ($canShowCreditNoteForm && ! $existingCreditNote)
 <div class="modal fade" id="creditNoteModal" tabindex="-1" aria-labelledby="creditNoteModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
@@ -507,7 +524,7 @@
         @csrf
         <div class="modal-header">
           <h5 class="modal-title" id="creditNoteModalLabel">
-            <i class="ti ti-receipt-refund me-2"></i>{{ __('invoice_credit_note.issue_title') }}
+            <i class="ti ti-receipt-refund me-2"></i>{{ __('invoice_credit_note.create_title') }}
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
         </div>

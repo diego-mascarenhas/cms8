@@ -86,7 +86,8 @@ class StripeCreditNoteCoreImportServiceTest extends TestCase
         );
 
         $this->assertInstanceOf(Invoice::class, $abono);
-        $this->assertSame('0005-0990', $abono->number);
+        $this->assertSame('CN-0005-0001', $abono->number);
+        $this->assertSame('0005-0990', $abono->providerNumber());
         $this->assertSame(2, (int) $abono->type_id);
         $this->assertSame(4, (int) $abono->status);
         $this->assertSame('cn_abono_001', $abono->source_reference_id);
@@ -94,6 +95,25 @@ class StripeCreditNoteCoreImportServiceTest extends TestCase
         $this->assertSame(121.0, (float) $abono->total_amount);
         $this->assertTrue($abono->isCreditNote());
         $this->assertSame(21.0, (float) $abono->items->first()->tax_percentage);
+
+        $second = app(StripeCreditNoteCoreImportService::class)->importFromStripePayload(
+            (int) $team->id,
+            [
+                'id' => 'cn_abono_002',
+                'number' => '0005-0991',
+                'status' => 'issued',
+                'created' => strtotime('2026-05-11 12:00:00'),
+                'subtotal' => 5000,
+                'total' => 6050,
+                'amount' => 6050,
+                'tax' => 1050,
+                'currency' => 'eur',
+            ],
+            $original,
+        );
+
+        $this->assertSame('CN-0005-0002', $second->number);
+        $this->assertSame('0005-0991', $second->providerNumber());
 
         $original->refresh();
         $this->assertSame(100.0, (float) $original->gross_amount);

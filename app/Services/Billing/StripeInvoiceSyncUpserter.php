@@ -112,7 +112,9 @@ class StripeInvoiceSyncUpserter
                 'invoice_due_date' => $this->normalizeTimestamp(Arr::get($invoicePayload, 'due_date')),
                 'paid' => (bool) Arr::get($invoicePayload, 'paid', false),
                 'hosted_invoice_url' => Arr::get($invoicePayload, 'hosted_invoice_url'),
-                'invoice_pdf' => Arr::get($invoicePayload, 'invoice_pdf'),
+                'invoice_pdf' => Arr::get($invoicePayload, 'invoice_pdf')
+                    ?? Arr::get($invoicePayload, 'pdf')
+                    ?? Arr::get($invoicePayload, 'pdf_url'),
                 'last_synced_at' => now(),
                 'raw_payload' => $invoicePayload,
             ],
