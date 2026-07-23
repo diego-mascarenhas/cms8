@@ -60,6 +60,84 @@ class AssistantAutomationRunner
     }
 
     /**
+     * Resolve an automation slug from a free-text message (exact slug, /embudo slug, or entry_aliases).
+     */
+    public function resolveSlugFromMessage(string $message, int $teamId, string $channel): ?string
+    {
+        $normalized = mb_strtolower(trim($message));
+        if ($normalized === '')
+        {
+            return null;
+        }
+
+        if (preg_match('/^\/(?:embudo|funnel)\s+([a-z0-9\-_]+)$/iu', $normalized, $matches) === 1)
+        {
+            return $this->slugIfAllowed($matches[1], $teamId, $channel);
+        }
+
+        if (preg_match('/^[a-z0-9][a-z0-9\-_]*$/u', $normalized) === 1)
+        {
+            $bySlug = $this->slugIfAllowed($normalized, $teamId, $channel);
+            if ($bySlug !== null)
+            {
+                return $bySlug;
+            }
+        }
+
+        $candidates = Automation::forTeam($teamId)
+            ->active()
+            ->get()
+            ->filter(fn (Automation $automation) => $automation->allowsChannel($channel));
+
+        foreach ($candidates as $automation)
+        {
+            $aliases = data_get($automation->settings, 'entry_aliases', []);
+            if (! is_array($aliases))
+            {
+                continue;
+            }
+
+            foreach ($aliases as $alias)
+            {
+                if (! is_string($alias))
+                {
+                    continue;
+                }
+                if (mb_strtolower(trim($alias)) === $normalized)
+                {
+                    return $automation->slug;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * True when this WhatsApp peer has an open funnel session awaiting a reply.
+     */
+    public function hasAwaitingWhatsAppFlowSession(int $teamId, string $externalKey): bool
+    {
+        return \App\Models\AutomationFlowSession::query()
+            ->where('team_id', $teamId)
+            ->where('channel', Automation::CHANNEL_WHATSAPP)
+            ->where('external_key', $externalKey)
+            ->where('meta->awaiting_reply', true)
+            ->exists();
+    }
+
+    private function slugIfAllowed(string $slug, int $teamId, string $channel): ?string
+    {
+        $automation = $this->findBySlug($slug, $teamId);
+        if ($automation && $automation->is_active && $automation->allowsChannel($channel))
+        {
+            return $automation->slug;
+        }
+
+        return null;
+    }
+
+    /**
      * @throws NotFoundHttpException
      * @throws AccessDeniedHttpException
      */

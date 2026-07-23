@@ -151,6 +151,66 @@ class InvoiceDataTableSearchTest extends TestCase
         $this->assertSame((string) $matchingInvoice->id, (string) $response->json('data.0.DT_RowId'));
     }
 
+    public function test_invoice_datatable_orders_same_date_by_number_desc(): void
+    {
+        $team = $this->user->currentTeam;
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Same Day Client',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $lower = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-0005-0021',
+            'date' => '2026-06-06',
+            'due_date' => null,
+            'gross_amount' => 10,
+            'discount' => 0,
+            'total_amount' => 10,
+            'balance' => 0,
+            'status' => 4,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_order_low',
+        ]);
+
+        $higher = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-0005-0028',
+            'date' => '2026-06-06',
+            'due_date' => null,
+            'gross_amount' => 20,
+            'discount' => 0,
+            'total_amount' => 20,
+            'balance' => 0,
+            'status' => 4,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_order_high',
+        ]);
+
+        $query = $this->invoiceDataTableBaseQuery();
+        $query['summary_filter'] = 'credit_notes';
+        $query['order'] = [['column' => 2, 'dir' => 'desc']];
+
+        $response = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('invoice.index').'?'.http_build_query($query));
+
+        $response->assertOk();
+        $this->assertSame(2, (int) $response->json('recordsFiltered'));
+        $this->assertSame((string) $higher->id, (string) $response->json('data.0.DT_RowId'));
+        $this->assertSame((string) $lower->id, (string) $response->json('data.1.DT_RowId'));
+    }
+
     private function invoiceDataTableUrl(string $searchValue): string
     {
         $query = $this->invoiceDataTableBaseQuery();

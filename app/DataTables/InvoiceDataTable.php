@@ -123,6 +123,14 @@ class InvoiceDataTable extends DataTable
             {
                 return Carbon::parse($data->date)->format('d-m-Y');
             })
+            ->orderColumn('date', function ($query, $order): void
+            {
+                $direction = strtolower((string) $order) === 'asc' ? 'asc' : 'desc';
+
+                $query->orderBy('invoices.date', $direction)
+                    ->orderBy('invoices.number', $direction)
+                    ->orderBy('invoices.id', $direction);
+            })
             ->editColumn('total_amount', function ($data)
             {
                 return InvoiceTableAmountFormatter::formatNative(

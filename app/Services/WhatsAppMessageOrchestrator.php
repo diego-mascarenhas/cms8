@@ -938,6 +938,21 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $assistantTeamIdEarly,
                     $cleanFrom,
                 );
+
+                if (! $shouldProcessAutoAi && $assistantTeamIdEarly !== null)
+                {
+                    $runner = app(\App\Services\AssistantAutomationRunner::class);
+                    $waExternalKey = 'wa:'.(string) $cleanFrom;
+                    $slugFromMessage = $runner->resolveSlugFromMessage(
+                        (string) $body,
+                        (int) $assistantTeamIdEarly,
+                        \App\Models\Automation::CHANNEL_WHATSAPP,
+                    );
+                    if ($slugFromMessage !== null || $runner->hasAwaitingWhatsAppFlowSession((int) $assistantTeamIdEarly, $waExternalKey))
+                    {
+                        $shouldProcessAutoAi = true;
+                    }
+                }
             }
 
             if ($shouldHandleRegistration && $chatController !== null)
@@ -1171,12 +1186,18 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $flowSession = null;
                     if ($assistantTeamId !== null)
                     {
-                        $flowContext = app(\App\Services\AssistantAutomationRunner::class)->resolveFlowContext(
+                        $automationRunner = app(\App\Services\AssistantAutomationRunner::class);
+                        $automationSlug = $automationRunner->resolveSlugFromMessage(
+                            (string) $body,
+                            (int) $assistantTeamId,
+                            \App\Models\Automation::CHANNEL_WHATSAPP,
+                        );
+                        $flowContext = $automationRunner->resolveFlowContext(
                             (int) $assistantTeamId,
                             \App\Models\Automation::CHANNEL_WHATSAPP,
                             (string) $body,
                             'wa:'.(string) $cleanFrom,
-                            null,
+                            $automationSlug,
                             null,
                             $forcedFlowRoutingKey,
                         );
