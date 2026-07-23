@@ -22,6 +22,11 @@
             <i class="ti ti-message-chatbot me-1"></i>{{ __('Probar en asistente') }}
         </button>
         @endif
+        @can('view', $automation)
+        <a href="{{ route('funnel.export', $automation) }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-download me-1"></i>{{ __('Exportar') }}
+        </a>
+        @endcan
         @can('update', $automation)
         <a href="{{ route('funnel.flow', $automation) }}" class="btn btn-success waves-effect waves-light">
             <i class="ti ti-sitemap me-1"></i>{{ __('Editar embudo') }}
@@ -107,8 +112,9 @@
                         @endif
 
                         @if($step->transitions->isEmpty())
-                            <div class="alert alert-secondary mb-0 py-2">
-                                {{ __('Sin salidas: el flujo puede terminar aquí o continuar según el prompt.') }}
+                            <div class="alert alert-success mb-0 py-2">
+                                <i class="ti ti-mail me-1"></i>
+                                {{ __('Paso final: al llegar aquí el embudo se completa y se envía un email con el resumen a quien lo completó.') }}
                             </div>
                         @else
                             <h6 class="mb-2">{{ __('Si el usuario responde…') }}</h6>

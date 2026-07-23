@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\PaymentSync;
 use App\Services\Billing\MercadoPagoInvoiceSuggestionService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
+use App\Services\Billing\StripeInvoiceCoreImportService;
 use App\Support\PaymentInvoiceLinkOptionFormatter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,7 @@ class MercadoPagoPaymentSyncController extends Controller
     public function __construct(
         private readonly MercadoPagoPaymentImportService $importService,
         private readonly MercadoPagoInvoiceSuggestionService $suggestionService,
+        private readonly StripeInvoiceCoreImportService $stripeInvoiceImportService,
     ) {}
 
     public function index(): View
@@ -84,6 +86,8 @@ class MercadoPagoPaymentSyncController extends Controller
 
         if ($selectedEnterpriseId > 0)
         {
+            $this->stripeInvoiceImportService->importOpenSyncsForEnterprise($teamId, $selectedEnterpriseId);
+
             $invoices = Invoice::query()
                 ->where('team_id', $teamId)
                 ->where('enterprise_id', $selectedEnterpriseId)
@@ -143,6 +147,7 @@ class MercadoPagoPaymentSyncController extends Controller
             dryRun: false,
             forceEnterpriseId: (int) $validated['enterprise_id'],
             forceInvoiceIds: $invoiceIds,
+            remarksOverride: $validated['remarks'] ?? null,
         );
 
         if ($payment === null)
@@ -161,9 +166,49 @@ class MercadoPagoPaymentSyncController extends Controller
                 'reference' => $sync->external_id,
             ]);
 
-        return redirect()
+        $redirect = redirect()
             ->route('payments.index')
             ->with('success', $message);
+
+        if ($this->stripeInvoiceStillOpenAfterImport($payment))
+        {
+            $redirect->with('warning', __('payment_sync.mercadopago.warnings.stripe_still_open'));
+        }
+
+        return $redirect;
+    }
+
+    private function stripeInvoiceStillOpenAfterImport(?\App\Models\Payment $payment): bool
+    {
+        if (! $payment?->invoice_id)
+        {
+            return false;
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()->whereKey($payment->invoice_id)->first();
+        if (! $invoice || strtolower((string) $invoice->source_provider) !== 'stripe')
+        {
+            return false;
+        }
+
+        $externalId = trim((string) $invoice->source_reference_id);
+        if ($externalId === '' || ! str_starts_with($externalId, 'in_'))
+        {
+            return false;
+        }
+
+        $sync = \App\Models\InvoiceSync::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('provider', 'stripe')
+            ->where('external_id', $externalId)
+            ->first();
+
+        if (! $sync)
+        {
+            return true;
+        }
+
+        return ! $sync->paid && strtolower((string) $sync->status) !== 'paid';
     }
 
     private function ensureTeamSync(PaymentSync $sync): void

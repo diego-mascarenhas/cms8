@@ -117,8 +117,18 @@ class Invoice extends Model
         }
 
         $payloadUrl = trim((string) data_get($sync->raw_payload, 'hosted_invoice_url', ''));
+        if ($payloadUrl !== '')
+        {
+            return $payloadUrl;
+        }
 
-        return $payloadUrl !== '' ? $payloadUrl : null;
+        // Stripe credit notes only expose a PDF — reuse it for the print action.
+        if ($this->isCreditNote())
+        {
+            return $this->stripeInvoicePdfUrl();
+        }
+
+        return null;
     }
 
     public function stripeInvoicePdfUrl(): ?string
@@ -139,9 +149,16 @@ class Invoice extends Model
             return $url;
         }
 
-        $payloadUrl = trim((string) data_get($sync->raw_payload, 'invoice_pdf', ''));
+        foreach (['invoice_pdf', 'pdf', 'pdf_url'] as $key)
+        {
+            $payloadUrl = trim((string) data_get($sync->raw_payload, $key, ''));
+            if ($payloadUrl !== '')
+            {
+                return $payloadUrl;
+            }
+        }
 
-        return $payloadUrl !== '' ? $payloadUrl : null;
+        return null;
     }
 
     public function getStatusLabelAttribute(): string
@@ -172,6 +189,124 @@ class Invoice extends Model
         }
 
         return str_starts_with((string) $this->source_reference_id, 'cn_');
+    }
+
+    /**
+     * Provider-facing document number (e.g. Stripe CN number), kept on invoice_syncs.
+     */
+    public function providerNumber(): ?string
+    {
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        if ($sync instanceof InvoiceSync)
+        {
+            $fromSync = trim((string) ($sync->number ?? ''));
+            if ($fromSync !== '')
+            {
+                return $fromSync;
+            }
+
+            $fromPayload = trim((string) data_get($sync->raw_payload, 'number', ''));
+            if ($fromPayload !== '')
+            {
+                return $fromPayload;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Stripe invoice id this credit note was issued against (from invoice_syncs.raw_payload).
+     */
+    public function stripeOriginalInvoiceExternalId(): ?string
+    {
+        if (! $this->isCreditNote())
+        {
+            return null;
+        }
+
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return null;
+        }
+
+        $invoiceField = data_get($sync->raw_payload, 'invoice');
+        if (is_array($invoiceField))
+        {
+            $invoiceField = data_get($invoiceField, 'id');
+        }
+
+        $externalId = trim((string) $invoiceField);
+
+        return str_starts_with($externalId, 'in_') ? $externalId : null;
+    }
+
+    /**
+     * Local invoice document that this credit note rectifies.
+     */
+    public function originalInvoice(): ?self
+    {
+        $externalId = $this->stripeOriginalInvoiceExternalId();
+        if ($externalId === null)
+        {
+            return null;
+        }
+
+        return static::withoutGlobalScopes()
+            ->where('team_id', $this->team_id)
+            ->where('source_provider', 'stripe')
+            ->where('source_reference_id', $externalId)
+            ->first();
+    }
+
+    /**
+     * Local credit-note documents issued against this Stripe invoice.
+     *
+     * @return \Illuminate\Support\Collection<int, self>
+     */
+    public function relatedCreditNotes()
+    {
+        $externalId = trim((string) $this->source_reference_id);
+        if ($externalId === '' || ! str_starts_with($externalId, 'in_'))
+        {
+            return collect();
+        }
+
+        $creditNoteExternalIds = InvoiceSync::query()
+            ->where('team_id', $this->team_id)
+            ->where('provider', 'stripe')
+            ->where('external_id', 'like', 'cn_%')
+            ->where('raw_payload->invoice', $externalId)
+            ->pluck('external_id');
+
+        if ($creditNoteExternalIds->isEmpty())
+        {
+            return collect();
+        }
+
+        return static::withoutGlobalScopes()
+            ->where('team_id', $this->team_id)
+            ->whereIn('source_reference_id', $creditNoteExternalIds)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    /**
+     * Most recent related credit note, if any.
+     */
+    public function existingCreditNote(): ?self
+    {
+        $related = $this->relatedCreditNotes();
+
+        return $related->first();
     }
 
     public function isOverdue(): bool

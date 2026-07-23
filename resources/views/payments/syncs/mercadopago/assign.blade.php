@@ -50,6 +50,10 @@
             <dd class="col-sm-9">{{ $sync->description ?: '—' }}</dd>
             <dt class="col-sm-3">{{ __('payment_sync.mercadopago.columns.external_id') }}</dt>
             <dd class="col-sm-9"><code>{{ $sync->external_id }}</code></dd>
+            @if ($sync->identificationCode())
+                <dt class="col-sm-3">{{ __('payment_sync.mercadopago.identification_code') }}</dt>
+                <dd class="col-sm-9"><code>{{ $sync->identificationCode() }}</code></dd>
+            @endif
         </dl>
 
         <h6 class="mb-3">{{ __('payment_sync.mercadopago.section_client') }}</h6>
@@ -131,6 +135,38 @@
                 @error('invoice_ids')
                     <div class="text-danger small mt-1">{{ $message }}</div>
                 @enderror
+            </div>
+
+            <div class="col-12">
+                <div class="form-group">
+                    <label class="form-label">{{ __('payment_sync.mercadopago.reference_number') }}</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        value="{{ $sync->identificationCode() ?: $sync->external_id }}"
+                        disabled
+                        readonly
+                    >
+                    <div class="form-text">{{ __('payment_sync.mercadopago.reference_number_hint') }}</div>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <div class="form-group">
+                    <label for="remarks" class="form-label">{{ __('payment_sync.mercadopago.remarks') }}</label>
+                    <textarea
+                        id="remarks"
+                        name="remarks"
+                        class="form-control @error('remarks') is-invalid @enderror"
+                        rows="3"
+                        maxlength="500"
+                        placeholder="{{ __('payment_sync.mercadopago.remarks_placeholder') }}"
+                    >{{ old('remarks', '') }}</textarea>
+                    <div class="form-text">{{ __('payment_sync.mercadopago.remarks_hint') }}</div>
+                    @error('remarks')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                </div>
             </div>
 
             <div class="col-12">

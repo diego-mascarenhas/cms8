@@ -5,39 +5,68 @@
 @section('content')
 <div class="row">
     <div class="col-12">
-        <div class="card">
+        <div class="card mb-4">
             <div class="card-header">
                 <h4 class="card-title mb-0">{{ __('Manual de usuario de Humano') }}</h4>
             </div>
             <div class="card-body">
-                <p class="lead">{{ __('Este manual describe todo lo que puedes hacer en Humano. Está pensado para usuarios finales y se centra en las funciones y el uso diario, no en detalles técnicos.') }}</p>
+                <p class="lead">{{ __('Este manual describe todo lo que puedes hacer en Humano. Está pensado para usuarios finales (Admin y Collaborator) y se centra en las funciones y el uso diario, no en detalles técnicos.') }}</p>
 
-                <p>{{ __('Puedes usar el menú lateral para ir a cualquier sección. Para documentación técnica (API, variables de entorno, integraciones), entra en') }} <a href="{{ route('help.index') }}">{{ __('Ayuda y documentación') }}</a>.</p>
+                <p>{{ __('Puedes usar el menú lateral para ir a cualquier sección. Los mockups muestran cómo se ven los formularios y los flujos. Para documentación técnica (API, variables de entorno, integraciones), entra en') }} <a href="{{ route('help.index') }}">{{ __('Ayuda y documentación') }}</a>.</p>
 
-                <h5 class="mt-4">{{ __('Qué encontrarás aquí') }}</h5>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="card border-primary h-100">
+                            <div class="card-body">
+                                <span class="badge bg-primary mb-2">Admin</span>
+                                <h5>{{ __('Administrador') }}</h5>
+                                <p class="mb-2">{{ __('Configura el equipo, usuarios, facturación y da acceso a Clients.') }}</p>
+                                <a href="{{ route('mockups.admin-setup') }}" class="btn btn-sm btn-primary">{{ __('Diagrama arranque') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-secondary h-100">
+                            <div class="card-body">
+                                <span class="badge bg-label-secondary mb-2">Collaborator</span>
+                                <h5>{{ __('Colaborador') }}</h5>
+                                <p class="mb-2">{{ __('Opera CRM, tareas, chat y tiempo. Sin billing ni usuarios.') }}</p>
+                                <a href="{{ route('mockups.collaborator-day') }}" class="btn btn-sm btn-label-secondary">{{ __('Diagrama del día') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card border-success h-100">
+                            <div class="card-body">
+                                <span class="badge bg-success mb-2">Client</span>
+                                <h5>{{ __('Cliente final') }}</h5>
+                                <p class="mb-2">{{ __('Usuario portal: ve sus proyectos, abre tickets y consulta presupuestos.') }}</p>
+                                <a href="{{ route('mockups.client-journey') }}" class="btn btn-sm btn-success">{{ __('Diagrama del viaje') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mt-2">{{ __('Qué encontrarás aquí') }}</h5>
                 <ul>
-                    <li><strong>{{ __('Primeros pasos') }}</strong> — {{ __('Roles, equipos y navegación básica.') }}</li>
-                    <li><strong>{{ __('Dashboard y Hoy') }}</strong> — {{ __('Vista general y vista del día.') }}</li>
-                    <li><strong>{{ __('Contactos') }}</strong> — {{ __('Gestión de contactos, prospección y Lista de 60.') }}</li>
-                    <li><strong>{{ __('Clientes') }}</strong> — {{ __('Fichas de clientes y datos relacionados.') }}</li>
-                    <li><strong>{{ __('Colaboradores') }}</strong> — {{ __('Perfiles, tarifas, disponibilidad y portafolios.') }}</li>
-                    <li><strong>{{ __('Servicios') }}</strong> — {{ __('Servicios que ofreces y su uso en proyectos.') }}</li>
-                    <li><strong>{{ __('Proyectos') }}</strong> — {{ __('Crear y gestionar proyectos, presupuestos y colaboradores.') }}</li>
-                    <li><strong>{{ __('Tareas y tiempo') }}</strong> — {{ __('Tareas, kanban, registro de tiempo y asistencia.') }}</li>
-                    <li><strong>{{ __('Chat y WhatsApp') }}</strong> — {{ __('Conversaciones e integración con WhatsApp.') }}</li>
-                    <li><strong>{{ __('Productos y pedidos') }}</strong> — {{ __('Catálogo de productos y gestión de pedidos.') }}</li>
-                    <li><strong>{{ __('Facturas y pagos') }}</strong> — {{ __('Facturación, pagos, ingresos, gastos y panel financiero.') }}</li>
-                    <li><strong>{{ __('Mensajes y plantillas') }}</strong> — {{ __('Campañas de email/SMS y plantillas de mensajes.') }}</li>
-                    <li><strong>{{ __('Equipo') }}</strong> — {{ __('Usuarios, departamentos y organización.') }}</li>
-                    <li><strong>{{ __('Más funciones') }}</strong> — {{ __('Empresas, contenidos, prompts, notificaciones y otras herramientas.') }}</li>
+                    @foreach (\App\Http\Controllers\ManualController::guideSections() as $section)
+                        <li>
+                            <a href="{{ route($section['route']) }}"><strong>{{ $section['title'] }}</strong></a>
+                            — {{ $section['description'] }}
+                        </li>
+                    @endforeach
                 </ul>
 
-                <div class="alert alert-info mt-4" role="alert">
-                    <h6 class="alert-heading mb-2">
-                        <i class="ti ti-info-circle me-2"></i>
-                        {{ __('¿Nuevo en Humano?') }}
-                    </h6>
-                    <p class="mb-0">{{ __('Empieza por') }} <a href="{{ route('manual.getting-started') }}" class="alert-link">{{ __('Primeros pasos') }}</a> {{ __('para conocer los roles, equipos y la navegación básica.') }}</p>
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="{{ route('manual.getting-started') }}" class="btn btn-primary">
+                        <i class="ti ti-rocket me-1"></i>{{ __('Primeros pasos') }}
+                    </a>
+                    <a href="{{ route('mockups.overview') }}" class="btn btn-label-primary">
+                        <i class="ti ti-git-fork me-1"></i>{{ __('Diagramas de flujo') }}
+                    </a>
+                    <a href="{{ route('mockups.index') }}" class="btn btn-label-secondary">
+                        <i class="ti ti-layout-board me-1"></i>{{ __('Catálogo de mockups') }}
+                    </a>
                 </div>
             </div>
         </div>

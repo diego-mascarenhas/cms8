@@ -19,7 +19,7 @@ class StripeInvoiceCreditNoteService
     ) {}
 
     /**
-     * @return array{credit_note_id: string, number: string|null, amount: float|null}
+     * @return array{credit_note_id: string, number: string|null, external_number: string|null, amount: float|null}
      */
     public function issueForInvoice(Invoice $invoice, string $reason): array
     {
@@ -109,7 +109,7 @@ class StripeInvoiceCreditNoteService
         }
 
         // Separate abono document (negative in Hacienda export).
-        $this->creditNoteCoreImportService->importFromStripePayload(
+        $abono = $this->creditNoteCoreImportService->importFromStripePayload(
             (int) $team->id,
             $creditNote->toArray(),
             $invoice->fresh() ?? $invoice,
@@ -117,7 +117,8 @@ class StripeInvoiceCreditNoteService
 
         return [
             'credit_note_id' => (string) $creditNote->id,
-            'number' => $creditNote->number ?? null,
+            'number' => $abono?->number ?? ($creditNote->number !== null ? (string) $creditNote->number : null),
+            'external_number' => $abono?->providerNumber(),
             'amount' => isset($creditNote->amount)
                 ? round(((int) $creditNote->amount) / 100, 2)
                 : null,

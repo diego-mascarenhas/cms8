@@ -79,6 +79,32 @@
         .assistant-markdown p:last-child { margin-bottom: 0; }
         .assistant-markdown strong { font-weight: 600; }
         .assistant-markdown ul, .assistant-markdown ol { padding-left: 1.25rem; margin-bottom: 0.5em; }
+        .assistant-markdown h1,
+        .assistant-markdown h2,
+        .assistant-markdown h3,
+        .assistant-markdown h4,
+        .assistant-markdown h5,
+        .assistant-markdown h6 {
+            font-size: 1rem;
+            font-weight: 600;
+            line-height: 1.35;
+            margin: 0.65em 0 0.35em;
+        }
+        .assistant-markdown h1 { font-size: 1.05rem; }
+        .assistant-markdown h2 { font-size: 1rem; }
+        .assistant-markdown h3,
+        .assistant-markdown h4,
+        .assistant-markdown h5,
+        .assistant-markdown h6 { font-size: 0.95rem; }
+        .assistant-markdown h1:first-child,
+        .assistant-markdown h2:first-child,
+        .assistant-markdown h3:first-child {
+            margin-top: 0;
+        }
+        .assistant-markdown hr {
+            margin: 0.65em 0;
+            opacity: 0.25;
+        }
         /* Long URLs / unbroken strings: wrap inside bubbles (flex children default to min-width:auto) */
         #chat-history-body .chat-message .d-flex.overflow-hidden {
             min-width: 0;

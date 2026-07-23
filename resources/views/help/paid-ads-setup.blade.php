@@ -1,4 +1,4 @@
-@extends('layouts/layoutMaster')
+@extends('layouts/layoutHelpSimple')
 
 @section('title', __('Paid Ads setup'))
 

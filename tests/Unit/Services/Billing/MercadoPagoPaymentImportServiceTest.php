@@ -321,6 +321,50 @@ class MercadoPagoPaymentImportServiceTest extends TestCase
         $this->assertSame('555', $enterprise->fresh()->code);
     }
 
+    public function test_import_persists_type_and_remarks_with_mp_identification_code(): void
+    {
+        $team = Team::factory()->create();
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente notas',
+            'code' => 'mp-payer-1',
+            'email' => 'notas@example.com',
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'with-meta-1',
+            'customer_id' => 'mp-payer-1',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 25000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 25000,
+            'description' => 'Bank Transfer',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'operation_type' => 'account_fund',
+                'transaction_details' => [
+                    'transaction_id' => '76V4MR2Z8P4VPR389DEZOL',
+                ],
+            ],
+        ]);
+
+        $payment = app(MercadoPagoPaymentImportService::class)->importFromPaymentSync(
+            $sync,
+            forceTypeId: 1,
+            remarksOverride: '0005-0950',
+        );
+
+        $this->assertInstanceOf(Payment::class, $payment);
+        $this->assertSame(1, (int) $payment->type_id);
+        $this->assertSame('Ref: 76V4MR2Z8P4VPR389DEZOL · 0005-0950', $payment->remarks);
+        $this->assertSame($enterprise->id, (int) $payment->enterprise_id);
+    }
+
     public function test_import_skips_non_approved_payments(): void
     {
         $team = Team::factory()->create();

@@ -82,7 +82,7 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           <span class="menu-header-text">{{ __('Variables de Entorno') }}</span>
         </li>
 
-        <li class="menu-item {{ request()->routeIs('help.environment-variables') && !request()->routeIs('help.environment-variables.google-analytics') ? 'active' : '' }}">
+        <li class="menu-item {{ request()->routeIs('help.environment-variables') && ! request()->routeIs('help.environment-variables.*') ? 'active' : '' }}">
           <a href="{{ route('help.environment-variables') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-settings"></i>
             <div>{{ __('Configuraciones') }}</div>
@@ -93,6 +93,27 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           <a href="{{ route('help.environment-variables.google-analytics') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-chart-line"></i>
             <div>{{ __('Google Analytics') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.environment-variables.google-people-calendar') ? 'active' : '' }}">
+          <a href="{{ route('help.environment-variables.google-people-calendar') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-calendar-event"></i>
+            <div>{{ __('Google People / Calendar') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.team-social-networks') ? 'active' : '' }}">
+          <a href="{{ route('help.team-social-networks') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-share"></i>
+            <div>{{ __('Team social networks') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.paid-ads-setup') ? 'active' : '' }}">
+          <a href="{{ route('help.paid-ads-setup') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-ad-2"></i>
+            <div>{{ __('Paid Ads setup') }}</div>
           </a>
         </li>
 
@@ -121,6 +142,20 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           <a href="{{ route('help.stripe-webhook') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-brand-stripe"></i>
             <div>{{ __('Stripe webhooks') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.email-spf-dns') ? 'active' : '' }}">
+          <a href="{{ route('help.email-spf-dns') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-mail"></i>
+            <div>{{ __('Email SPF / DNS') }}</div>
+          </a>
+        </li>
+
+        <li class="menu-item {{ request()->routeIs('help.postgresql-search-unaccent') ? 'active' : '' }}">
+          <a href="{{ route('help.postgresql-search-unaccent') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-database"></i>
+            <div>{{ __('PostgreSQL unaccent') }}</div>
           </a>
         </li>
 

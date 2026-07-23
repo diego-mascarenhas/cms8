@@ -1,34 +1,29 @@
 @extends('layouts/layoutManual')
 
-@section('title', __('Productos y pedidos'))
+@section('title', __('E-commerce'))
 
 @section('content')
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0">{{ __('Productos y pedidos') }}</h4>
-            </div>
-            <div class="card-body">
-                <h5>{{ __('Productos') }}</h5>
-                <p>{{ __('Los productos son los artículos o servicios que vendes (por ejemplo un curso, una licencia, un producto físico). En el catálogo de productos puedes:') }}</p>
-                <ul>
-                    <li>{{ __('Crear y editar productos con nombre, precio, descripción, referencia y demás datos que uses.') }}</li>
-                    <li>{{ __('Mantener un listado ordenado que luego usas al crear pedidos o facturas.') }}</li>
-                    <li>{{ __('Añadir productos a pedidos como líneas con cantidad y precio.') }}</li>
-                </ul>
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">{{ __('E-commerce: productos, tiendas y pedidos') }}</h4>
+    </div>
+    <div class="card-body">
+        <h5>{{ __('Productos') }}</h5>
+        <p>{{ __('Catálogo de artículos o servicios vendibles: nombre, precio, descripción, referencia. Se usan al crear pedidos y, si aplica, al facturar.') }}</p>
 
-                <h5 class="mt-4">{{ __('Pedidos') }}</h5>
-                <p>{{ __('Un pedido representa una compra de un cliente. Puedes:') }}</p>
-                <ul>
-                    <li>{{ __('Crear pedidos y añadir líneas de producto (cantidad, precio, descuento si aplica).') }}</li>
-                    <li>{{ __('Vincular el pedido a un cliente o contacto para saber quién compra.') }}</li>
-                    <li>{{ __('Editar y ver el detalle del pedido y su estado (pendiente, enviado, cobrado, etc.).') }}</li>
-                </ul>
+        <h5 class="mt-4">{{ __('Tiendas (Stores)') }}</h5>
+        <p>{{ __('Define una o varias tiendas (canales de venta) asociadas al equipo. Útil si operas más de un front o sincronizas con WooCommerce.') }}</p>
 
-                <p class="mb-0">{{ __('Si usas WooCommerce, los productos y pedidos se pueden sincronizar con tu tienda; la configuración técnica se explica en la sección de Ayuda.') }}</p>
-            </div>
-        </div>
+        <h5 class="mt-4">{{ __('Pedidos') }}</h5>
+        <p>{{ __('Compra de un cliente: líneas de producto, cantidades, precios y estado (pendiente, enviado, cobrado, etc.).') }}</p>
+
+        <h5 class="mt-4">{{ __('WooCommerce') }}</h5>
+        <p>{{ __('Puedes sincronizar productos y pedidos con tu tienda WordPress/WooCommerce.') }}</p>
+        <p class="mb-0">
+            <a href="{{ route('help.woocommerce-configuration') }}" class="btn btn-sm btn-label-primary">{{ __('Configuración WooCommerce (Ayuda)') }}</a>
+        </p>
+
+        <x-manual.role-compare section="products-and-orders" />
     </div>
 </div>
 @endsection

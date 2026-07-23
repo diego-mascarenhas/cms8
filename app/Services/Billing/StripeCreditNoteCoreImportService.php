@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Models\Invoice;
+use App\Services\Finance\CreditNoteNumberAllocator;
 use App\Services\Finance\InvoiceCurrencyService;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -13,6 +14,8 @@ class StripeCreditNoteCoreImportService
 {
     public function __construct(
         private readonly InvoiceCurrencyService $currencyService,
+        private readonly CreditNoteNumberAllocator $creditNoteNumberAllocator,
+        private readonly StripeInvoiceSyncUpserter $invoiceSyncUpserter,
     ) {}
 
     /**
@@ -60,11 +63,23 @@ class StripeCreditNoteCoreImportService
         $total ??= $subtotal;
         $tax ??= round(max(0, $total - $subtotal), 2);
 
-        $number = trim((string) (Arr::get($creditNotePayload, 'number') ?? ''));
-        if ($number === '')
+        $stripeNumber = trim((string) (Arr::get($creditNotePayload, 'number') ?? ''));
+        if ($stripeNumber === '')
         {
-            $number = 'CN-'.Str::upper(Str::substr($externalId, -8));
+            $stripeNumber = 'CN-'.Str::upper(Str::substr($externalId, -8));
         }
+
+        $existing = Invoice::withoutGlobalScopes()
+            ->where('source_provider', 'stripe')
+            ->where('source_reference_id', $externalId)
+            ->first();
+
+        $number = $existing && $this->creditNoteNumberAllocator->isHumanoCreditNoteNumber((string) $existing->number)
+            ? (string) $existing->number
+            : $this->creditNoteNumberAllocator->next(
+                $teamId,
+                $this->creditNoteNumberAllocator->seriePrefixFromInvoiceNumber($originalInvoice->number),
+            );
 
         $payload = [
             'team_id' => $teamId,
@@ -91,10 +106,17 @@ class StripeCreditNoteCoreImportService
                 ?? $this->currencyService->defaultCurrencyId();
         }
 
-        $existing = Invoice::withoutGlobalScopes()
-            ->where('source_provider', 'stripe')
-            ->where('source_reference_id', $externalId)
-            ->first();
+        // Keep Stripe's document number on invoice_syncs (no invoices.external_number column).
+        $syncPayload = $creditNotePayload;
+        $syncPayload['number'] = $stripeNumber;
+        if (! isset($syncPayload['customer']) && filled($originalInvoice->source_reference_id))
+        {
+            $syncPayload['customer'] = data_get(
+                $originalInvoice->stripeInvoiceSync?->raw_payload,
+                'customer',
+            ) ?? $originalInvoice->stripeInvoiceSync?->customer_id;
+        }
+        $this->invoiceSyncUpserter->upsertFromPayload($teamId, $syncPayload);
 
         if ($existing)
         {

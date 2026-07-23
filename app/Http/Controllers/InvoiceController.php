@@ -246,6 +246,8 @@ class InvoiceController extends Controller
             && (int) $invoice->team_id === (int) auth()->user()->currentTeam->id
             && auth()->user()->ownsTeam(auth()->user()->currentTeam);
         $paymentStatusOptions = app(PaymentStatusUpdateService::class)->selectableStatuses();
+        $originalInvoice = $invoice->isCreditNote() ? $invoice->originalInvoice() : null;
+        $existingCreditNote = (! $invoice->isCreditNote()) ? $invoice->existingCreditNote() : null;
 
         return view('invoices.show', compact(
             'invoice',
@@ -262,6 +264,8 @@ class InvoiceController extends Controller
             'fiscalPlatform',
             'fiscalExport',
             'canExportFiscal',
+            'originalInvoice',
+            'existingCreditNote',
         ));
     }
 

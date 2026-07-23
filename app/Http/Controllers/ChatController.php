@@ -1463,6 +1463,8 @@ class ChatController extends Controller
         $forcedFlowRoutingKey = $request->filled('flow_routing_key') ? trim((string) $request->input('flow_routing_key')) : '';
         $flowAppendix = null;
         $flowSession = null;
+        $flowStep = null;
+        $flowAutomation = null;
         if ($teamId !== null)
         {
             $flowContext = app(\App\Services\AssistantAutomationRunner::class)->resolveFlowContext(
@@ -1477,9 +1479,26 @@ class ChatController extends Controller
 
             if (! empty($flowContext['completed']))
             {
+                $completedAutomation = $flowContext['automation'] ?? null;
+                $completionMessage = trim((string) ($flowContext['completion_message'] ?? ''));
+                if ($completionMessage === '')
+                {
+                    if ($completedAutomation instanceof \App\Models\Automation)
+                    {
+                        app(\App\Services\AutomationFunnelCompletionNotifier::class)->notifyIfEligible(
+                            $completedAutomation,
+                            $flowContext['session'] ?? null,
+                            $flowContext['step'] ?? null,
+                            true,
+                        );
+                    }
+
+                    $completionMessage = __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.');
+                }
+
                 return response()->json([
                     'success' => true,
-                    'response' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    'response' => $completionMessage,
                     'flow_completed' => true,
                 ]);
             }
@@ -1487,6 +1506,8 @@ class ChatController extends Controller
             $forcedFlowRoutingKey = (string) ($flowContext['prompt_key'] ?? '');
             $flowAppendix = $flowContext['appendix'] ?? null;
             $flowSession = $flowContext['session'] ?? null;
+            $flowStep = $flowContext['step'] ?? null;
+            $flowAutomation = $flowContext['automation'] ?? null;
         }
         $replyResponse = $replyService->getReply(
             $message,
@@ -1506,6 +1527,15 @@ class ChatController extends Controller
         if ($flowSession !== null)
         {
             app(\App\Services\AssistantAutomationRunner::class)->markFlowAwaitingReply($flowSession);
+            if ($flowAutomation instanceof \App\Models\Automation)
+            {
+                app(\App\Services\AutomationFunnelCompletionNotifier::class)->notifyIfEligible(
+                    $flowAutomation,
+                    $flowSession->fresh(),
+                    $flowStep instanceof \App\Models\AutomationStep ? $flowStep : null,
+                    false,
+                );
+            }
         }
 
         $toolResults = is_array($replyResponse['tool_results'] ?? null) ? $replyResponse['tool_results'] : [];

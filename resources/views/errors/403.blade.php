@@ -47,10 +47,20 @@
 	<!-- Not Authorized -->
 	<div class="container-xxl container-p-y">
 		<div class="misc-wrapper text-center">
-			<h2 class="mb-1 mx-2">¡No estás autorizado!</h2>
+			<h2 class="mb-1 mx-2">
+				@if (! empty($exception?->getMessage()) && ! in_array(strtolower($exception->getMessage()), ['forbidden', 'unauthorized', 'this action is unauthorized.'], true))
+					{{ __('Módulo no disponible') }}
+				@else
+					¡No estás autorizado!
+				@endif
+			</h2>
 			<p class="mb-4 mx-2">
-				No tienes permisos para acceder a esta página con las credenciales que has proporcionado.<br>
-				Por favor, contacta al administrador del sistema.
+				@if (! empty($exception?->getMessage()) && ! in_array(strtolower($exception->getMessage()), ['forbidden', 'unauthorized', 'this action is unauthorized.'], true))
+					{{ $exception->getMessage() }}
+				@else
+					No tienes permisos para acceder a esta página con las credenciales que has proporcionado.<br>
+					Por favor, contacta al administrador del sistema.
+				@endif
 			</p>
 			<a href="{{ route('dashboard') }}" class="btn btn-primary mb-4">
 				<i class="ti ti-arrow-left me-1"></i> Volver al inicio

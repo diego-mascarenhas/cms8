@@ -11,6 +11,11 @@
         <p class="text-muted">{{ __('Detalle de la automatización') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
+        @can('view', $automation)
+        <a href="{{ route('automation.export', $automation) }}" class="btn btn-label-secondary waves-effect waves-light">
+            <i class="ti ti-download me-1"></i>{{ __('Exportar') }}
+        </a>
+        @endcan
         @can('update', $automation)
         <a href="{{ route('automation.edit', $automation) }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-edit me-1"></i>{{ __('Editar') }}

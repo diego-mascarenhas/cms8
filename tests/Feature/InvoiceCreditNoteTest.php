@@ -184,14 +184,14 @@ class InvoiceCreditNoteTest extends TestCase
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertSee(__('invoice_credit_note.issue_title'), false)
+            ->assertSee(__('invoice_credit_note.create_title'), false)
             ->assertSee(__('invoice_credit_note.issue_button'), false)
             ->assertSee('creditNoteModal', false);
 
         $this->actingAs($member)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_credit_note.issue_title'), false)
+            ->assertDontSee(__('invoice_credit_note.create_title'), false)
             ->assertDontSee('creditNoteModal', false);
     }
 
@@ -232,5 +232,164 @@ class InvoiceCreditNoteTest extends TestCase
             ->assertOk()
             ->assertSee(__('invoice_credit_note.issue_button'), false)
             ->assertSee(__('invoice_credit_note.errors.stripe_not_configured'), false);
+    }
+
+    public function test_credit_note_show_links_to_original_invoice(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+        $owner->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $original = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0500',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_original_for_cn',
+        ]);
+
+        $creditNote = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-0005-0001',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 4,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_linked_to_original',
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'cn_linked_to_original',
+            'number' => '0005-0500-CN-01',
+            'status' => 'issued',
+            'currency' => 'eur',
+            'paid' => true,
+            'raw_payload' => [
+                'id' => 'cn_linked_to_original',
+                'number' => '0005-0500-CN-01',
+                'invoice' => 'in_original_for_cn',
+                'pdf' => 'https://pay.stripe.com/credit_notes/example.pdf',
+            ],
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('invoice.show', $creditNote->id))
+            ->assertOk()
+            ->assertSee(__('invoice_credit_note.view_original'), false)
+            ->assertSee(route('invoice.show', $original->id), false)
+            ->assertSee('#'.$original->number, false)
+            ->assertDontSee(__('Payments'), false)
+            ->assertDontSee(__('No payments linked to this invoice'), false)
+            ->assertSee(__('Print'), false)
+            ->assertSee(__('Download'), false)
+            ->assertSee('https://pay.stripe.com/credit_notes/example.pdf', false);
+    }
+
+    public function test_invoice_show_links_to_existing_credit_note_instead_of_create_modal(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+        $team->setSetting('stripe_secret', 'sk_test_example', [
+            'type' => 'string',
+            'group' => 'stripe',
+            'is_encrypted' => false,
+        ]);
+        $owner->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0600',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_has_existing_cn',
+        ]);
+
+        $creditNote = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-0005-0099',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 121,
+            'balance' => 0,
+            'status' => 4,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_for_existing_invoice',
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'cn_for_existing_invoice',
+            'number' => '0005-0600-CN-01',
+            'status' => 'issued',
+            'currency' => 'eur',
+            'paid' => true,
+            'raw_payload' => [
+                'id' => 'cn_for_existing_invoice',
+                'number' => '0005-0600-CN-01',
+                'invoice' => 'in_has_existing_cn',
+            ],
+        ]);
+
+        $this->actingAs($owner)
+            ->get(route('invoice.show', $invoice->id))
+            ->assertOk()
+            ->assertSee(__('invoice_credit_note.view_existing'), false)
+            ->assertSee(route('invoice.show', $creditNote->id), false)
+            ->assertSee('#'.$creditNote->number, false)
+            ->assertDontSee(__('invoice_credit_note.create_title'), false)
+            ->assertDontSee('data-bs-target="#creditNoteModal"', false);
     }
 }

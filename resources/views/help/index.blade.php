@@ -184,6 +184,39 @@
                                         </div>
                                     </div>
                                 </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-success">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-puzzle display-4 text-success mb-3"></i>
+                                            <h5 class="card-title">{{ __('help_plugins.sidebar_title') }}</h5>
+                                            <p class="card-text">{{ __('Download and install IDONEO WordPress plugins for CMS sync and chat.') }}</p>
+                                            <a href="{{ route('help.plugins') }}" class="btn btn-success">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-warning">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-ad-2 display-4 text-warning mb-3"></i>
+                                            <h5 class="card-title">{{ __('Paid Ads setup') }}</h5>
+                                            <p class="card-text">{{ __('OAuth credentials for Google Ads, Meta, LinkedIn, TikTok and X in team settings.') }}</p>
+                                            <a href="{{ route('help.paid-ads-setup') }}" class="btn btn-warning">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-info">
+                                        <div class="card-body text-center">
+                                            <i class="ti ti-book display-4 text-info mb-3"></i>
+                                            <h5 class="card-title">{{ __('User Manual') }}</h5>
+                                            <p class="card-text">{{ __('End-user guide for Admin, Collaborator and Client: modules, flows and mockups.') }}</p>
+                                            <a href="{{ route('manual.index') }}" class="btn btn-info">{{ __('Open manual') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div id="cursor-mcp-setup" class="card border-primary mb-4 mt-4">
@@ -217,8 +250,8 @@
                                     <i class="ti ti-info-circle me-2"></i>
                                     {{ __('Getting Started') }}
                                 </h6>
-                                <p class="mb-0">{{ __('If you\'re new to Humano, we recommend starting with our "How to Use" guide to familiarize yourself with the platform.') }}</p>
-                                <a href="{{ route('help.usage') }}" class="alert-link">{{ __('Read the guide →') }}</a>
+                                <p class="mb-0">{{ __('If you are new to Humano, start with the User Manual (roles, modules and flows). Use this Help center for technical setup (API, env, webhooks).') }}</p>
+                                <a href="{{ route('manual.index') }}" class="alert-link">{{ __('Open the User Manual →') }}</a>
                             </div>
 
                         </div>

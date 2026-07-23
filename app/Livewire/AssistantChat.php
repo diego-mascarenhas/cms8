@@ -11,6 +11,7 @@ use App\Services\Assistant\AssistantInboundContactCreationService;
 use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantAutomationRunner;
 use App\Services\AssistantChatService;
+use App\Services\AutomationFunnelCompletionNotifier;
 use App\Services\ChatAssistantReplyService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Support\AssistantCreatedMessageRedirect;
@@ -296,6 +297,8 @@ class AssistantChat extends Component
 
         $flowAppendix = null;
         $flowSession = null;
+        $flowStep = null;
+        $flowAutomation = null;
         $runner = app(AssistantAutomationRunner::class);
 
         if ($teamId !== null && $text !== '')
@@ -325,16 +328,33 @@ class AssistantChat extends Component
 
             if (! empty($flowContext['completed']))
             {
+                $completedAutomation = $flowContext['automation'] ?? null;
+                $completionMessage = trim((string) ($flowContext['completion_message'] ?? ''));
+                if ($completionMessage === '')
+                {
+                    if ($completedAutomation instanceof Automation)
+                    {
+                        app(AutomationFunnelCompletionNotifier::class)->notifyIfEligible(
+                            $completedAutomation,
+                            $flowContext['session'] ?? null,
+                            $flowContext['step'] ?? null,
+                            true,
+                        );
+                    }
+
+                    $completionMessage = __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.');
+                }
+
                 $this->automationId = null;
                 $this->messages[] = [
                     'role' => 'assistant',
-                    'content' => __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    'content' => $completionMessage,
                     'routed_to' => null,
                 ];
                 $conversationContext->persistMessages(
                     $user->id,
                     $userContent,
-                    __('Gracias. Hemos completado este flujo. Si necesitás algo más, escribime de nuevo.'),
+                    $completionMessage,
                     null,
                     [],
                     [],
@@ -356,8 +376,9 @@ class AssistantChat extends Component
             }
             $flowAppendix = $flowContext['appendix'] ?? null;
             $flowSession = $flowContext['session'] ?? null;
-
+            $flowStep = $flowContext['step'] ?? null;
             $flowAutomation = $flowContext['automation'] ?? null;
+
             if ($flowAutomation instanceof Automation)
             {
                 $this->automationId = (int) $flowAutomation->id;
@@ -487,6 +508,16 @@ class AssistantChat extends Component
             (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
             $replyResponse['assistant_flow_routing_key'] ?? null,
         );
+
+        if ($flowAutomation instanceof Automation && $flowSession !== null)
+        {
+            app(AutomationFunnelCompletionNotifier::class)->notifyIfEligible(
+                $flowAutomation,
+                $flowSession->fresh(),
+                $flowStep instanceof \App\Models\AutomationStep ? $flowStep : null,
+                false,
+            );
+        }
 
         $createdMessageId = AssistantCreatedMessageRedirect::extractCreatedMessageIdFromToolResults($toolResults);
         if ($createdMessageId !== null)

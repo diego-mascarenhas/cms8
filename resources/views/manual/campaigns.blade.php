@@ -1,32 +1,27 @@
 @extends('layouts/layoutManual')
 
-@section('title', __('Mensajes y plantillas'))
+@section('title', __('Marketing'))
 
 @section('content')
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0">{{ __('Mensajes y plantillas') }}</h4>
-            </div>
-            <div class="card-body">
-                <h5>{{ __('Mensajes (campañas)') }}</h5>
-                <p>{{ __('Los mensajes son campañas de email o SMS que envías a tus contactos. Puedes:') }}</p>
-                <ul>
-                    <li>{{ __('Crear un mensaje y elegir el público (por ejemplo todos los contactos, una lista, un filtro).') }}</li>
-                    <li>{{ __('Redactar el contenido del mensaje o basarte en una plantilla.') }}</li>
-                    <li>{{ __('Programar o lanzar la campaña, pausarla y reanudarla si hace falta.') }}</li>
-                    <li>{{ __('Enviar una prueba a tu propio email o teléfono antes de lanzar.') }}</li>
-                    <li>{{ __('Seguir envíos, aperturas o clics en enlaces si la plataforma lo registra.') }}</li>
-                    <li>{{ __('Reenviar un envío concreto si falló o el destinatario no lo recibió.') }}</li>
-                </ul>
+<div class="card">
+    <div class="card-header">
+        <h4 class="card-title mb-0">{{ __('Marketing') }}</h4>
+    </div>
+    <div class="card-body">
+        <h5>{{ __('Campañas') }}</h5>
+        <p>{{ __('Campañas de email o SMS: elige público, redacta o usa plantilla, programa o lanza, envía prueba y sigue resultados.') }}</p>
 
-                <h5 class="mt-4">{{ __('Plantillas') }}</h5>
-                <p>{{ __('Las plantillas son diseños reutilizables para tus mensajes (cabecera, pie, bloques de texto, botones, etc.). Puedes crear y editar plantillas (por ejemplo en HTML o con el editor visual) y usarlas en las campañas para no empezar de cero cada vez y mantener una imagen coherente.') }}</p>
+        <h5 class="mt-4">{{ __('Mensajes y plantillas') }}</h5>
+        <p>{{ __('Mensajes individuales o masivos y diseños reutilizables (cabecera, pie, bloques) para mantener coherencia.') }}</p>
 
-                <p class="mb-0">{{ __('Con mensajes y plantillas puedes hacer newsletters, recordatorios, notificaciones o cualquier comunicación masiva desde Humano.') }}</p>
-            </div>
-        </div>
+        <h5 class="mt-4">{{ __('Publicidad de pago (Paid Ads)') }}</h5>
+        <p>{{ __('Gestiona campañas en Google Ads, Meta, LinkedIn, TikTok y X. Las credenciales se configuran por equipo en Team Settings.') }}</p>
+        <p class="mb-0">
+            <a href="{{ route('help.paid-ads-setup') }}" class="btn btn-sm btn-label-primary">{{ __('Setup Paid Ads (Ayuda)') }}</a>
+            <a href="{{ route('help.team-social-networks') }}" class="btn btn-sm btn-label-secondary">{{ __('Redes sociales del equipo') }}</a>
+        </p>
+
+        <x-manual.role-compare section="campaigns" />
     </div>
 </div>
 @endsection

@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateAutomationRequest;
 use App\Models\Automation;
 use App\Models\Prompt;
 use App\Services\AutomationFlowGraphSyncer;
+use App\Support\TeamModuleAccess;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class AutomationController extends Controller
     {
         $this->middleware(function ($request, $next)
         {
-            abort_unless(auth()->user()?->currentTeam?->hasModule('automations'), 403);
+            TeamModuleAccess::abortUnless('automations');
 
             return $next($request);
         });

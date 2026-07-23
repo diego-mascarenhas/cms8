@@ -14,6 +14,10 @@ use Illuminate\Support\Str;
 
 class MercadoPagoPaymentImportService
 {
+    public function __construct(
+        private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
+    ) {}
+
     /**
      * @param  list<int>  $forceInvoiceIds
      */
@@ -25,6 +29,8 @@ class MercadoPagoPaymentImportService
         ?int $forceEnterpriseId = null,
         ?int $forceInvoiceId = null,
         array $forceInvoiceIds = [],
+        ?int $forceTypeId = null,
+        ?string $remarksOverride = null,
     ): ?Payment {
         if (strtolower((string) $row->provider) !== 'mercadopago')
         {
@@ -76,10 +82,7 @@ class MercadoPagoPaymentImportService
                 : ($forceInvoiceId !== null ? [$forceInvoiceId] : []),
         ))));
 
-        $description = (string) ($row->description ?? '');
-        $remarks = trim($description) !== ''
-            ? Str::limit($description, 500)
-            : 'Mercado Pago '.$row->external_id;
+        $remarks = $this->resolveRemarks($row, $remarksOverride);
 
         if ($dryRun)
         {
@@ -87,7 +90,7 @@ class MercadoPagoPaymentImportService
         }
 
         $accountId = $this->ensureMercadoPagoPaymentAccount($row->team_id);
-        $typeId = $this->resolveMercadoPagoPaymentTypeId();
+        $typeId = $forceTypeId ?? $this->resolveMercadoPagoPaymentTypeId();
         if ($accountId === null || $typeId === null)
         {
             return null;
@@ -144,10 +147,14 @@ class MercadoPagoPaymentImportService
             return $existing;
         }
 
-        return Payment::withoutGlobalScopes()->create(array_merge(
+        $payment = Payment::withoutGlobalScopes()->create(array_merge(
             $payload,
             ['team_id' => $row->team_id],
         ));
+
+        $this->finalizeLinkedInvoice($payment);
+
+        return $payment;
     }
 
     public function isAlreadyImported(PaymentSync $row): bool
@@ -225,10 +232,89 @@ class MercadoPagoPaymentImportService
                 ],
             );
 
+            if ($payment->wasRecentlyCreated)
+            {
+                $this->finalizeLinkedInvoice($payment);
+            }
+
             $first ??= $payment;
         }
 
         return $first;
+    }
+
+    private function finalizeLinkedInvoice(Payment $payment): void
+    {
+        $this->applyPaymentToLocalInvoice($payment);
+        $this->stripeOutOfBandPaymentService->markPaidFromPayment($payment);
+    }
+
+    private function applyPaymentToLocalInvoice(Payment $payment): void
+    {
+        if (! $payment->invoice_id)
+        {
+            return;
+        }
+
+        $invoice = Invoice::withoutGlobalScopes()->whereKey($payment->invoice_id)->first();
+        if (! $invoice instanceof Invoice)
+        {
+            return;
+        }
+
+        $amount = round((float) $payment->amount, 2);
+        $balance = round((float) $invoice->balance, 2);
+        if ($amount <= 0 || $balance <= 0)
+        {
+            return;
+        }
+
+        $applied = min($amount, $balance);
+        $invoice->balance = max(0, round($balance - $applied, 2));
+        if ((float) $invoice->balance <= 0)
+        {
+            $invoice->status = 2;
+        }
+        $invoice->save();
+    }
+
+    private function resolveRemarks(
+        PaymentSync $row,
+        ?string $remarksOverride,
+    ): string {
+        $parts = [];
+
+        $identificationCode = $row->identificationCode();
+        if ($identificationCode !== null)
+        {
+            $parts[] = 'Ref: '.$identificationCode;
+        }
+
+        if ($remarksOverride !== null)
+        {
+            $trimmed = trim($remarksOverride);
+            if ($trimmed !== '')
+            {
+                $parts[] = $trimmed;
+            }
+        } else
+        {
+            $description = trim((string) ($row->description ?? ''));
+            if ($description !== '' && ! in_array(mb_strtolower($description), ['bank transfer', 'transferencia'], true))
+            {
+                $parts[] = $description;
+            } elseif ($identificationCode === null)
+            {
+                $parts[] = 'Mercado Pago '.$row->external_id;
+            }
+        }
+
+        if ($parts === [])
+        {
+            return 'Mercado Pago '.$row->external_id;
+        }
+
+        return Str::limit(implode(' · ', $parts), 500);
     }
 
     private function majorAmountFromCents(int $cents, string $currency): float

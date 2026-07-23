@@ -54,6 +54,17 @@ class AutomationFactory extends Factory
         return $this->state(fn () => ['entry_prompt_key' => $key]);
     }
 
+    public function sendFunnelSummaryEmail(): static
+    {
+        return $this->state(fn () => [
+            'kind' => \App\Enums\AutomationKind::Action,
+            'entry_prompt_key' => null,
+            'settings' => [
+                'action_type' => \App\Services\AssistantAutomationRunner::ACTION_TYPE_SEND_FUNNEL_SUMMARY_EMAIL,
+            ],
+        ]);
+    }
+
     public function withChannels(array $channels): static
     {
         return $this->state(fn () => [

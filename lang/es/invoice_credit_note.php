@@ -6,6 +6,9 @@ return [
     'reason' => 'Motivo',
     'confirm' => '¿Emitir la nota de crédito en Stripe para esta factura?',
     'success' => 'Nota de crédito :reference emitida en Stripe.',
+    'view_original' => 'Factura original',
+    'view_existing' => 'Nota de crédito',
+    'create_title' => 'Crear nota de crédito',
     'reasons' => [
         'duplicate' => 'Duplicado',
         'fraudulent' => 'Fraudulento',

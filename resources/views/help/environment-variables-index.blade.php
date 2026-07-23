@@ -98,26 +98,38 @@
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="card border h-100 opacity-75">
+                        <div class="card border h-100">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
-                                    <i class="ti ti-brand-stripe me-2 text-muted"></i>
+                                    <i class="ti ti-brand-stripe me-2 text-primary"></i>
                                     {{ __('Stripe') }}
-                                    <span class="badge bg-label-secondary ms-2">{{ __('Próximamente') }}</span>
                                 </h6>
-                                <p class="card-text small mb-2 text-muted">{{ __('Claves API y webhook para pagos con Stripe.') }}</p>
+                                <p class="card-text small mb-2">{{ __('Webhooks y eventos de Stripe para pagos y suscripciones.') }}</p>
+                                <a href="{{ route('help.stripe-webhook') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6 mb-3">
-                        <div class="card border h-100 opacity-75">
+                        <div class="card border h-100">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
-                                    <i class="ti ti-mail me-2 text-muted"></i>
-                                    {{ __('Email (SMTP / IMAP)') }}
-                                    <span class="badge bg-label-secondary ms-2">{{ __('Próximamente') }}</span>
+                                    <i class="ti ti-mail me-2 text-primary"></i>
+                                    {{ __('Email (SPF / DNS)') }}
                                 </h6>
-                                <p class="card-text small mb-2 text-muted">{{ __('Configuración de correo saliente e incoming para el equipo.') }}</p>
+                                <p class="card-text small mb-2">{{ __('Guía SPF y DNS para el envío de correo del equipo.') }}</p>
+                                <a href="{{ route('help.email-spf-dns') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-ad-2 me-2 text-primary"></i>
+                                    {{ __('Paid Ads') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('Credenciales OAuth por plataforma (Google, Meta, LinkedIn, TikTok, X) en Team Settings.') }}</p>
+                                <a href="{{ route('help.paid-ads-setup') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
                             </div>
                         </div>
                     </div>

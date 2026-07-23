@@ -3,25 +3,23 @@
 @section('title', __('Equipo'))
 
 @section('content')
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0">{{ __('Equipo') }}</h4>
-            </div>
-            <div class="card-body">
-                <h5>{{ __('Gestión de usuarios') }}</h5>
-                <p>{{ __('Los administradores pueden gestionar los usuarios del equipo: invitar a nuevas personas (por email), asignarles un rol (admin, colaborador, empleado), y activar o desactivar el acceso. Los usuarios son las cuentas que inician sesión en Humano; cada uno ve solo lo que su rol y permisos permiten.') }}</p>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h4 class="card-title mb-0">{{ __('Equipo') }}</h4>
+        <a href="{{ route('mockups.admin-setup') }}" class="btn btn-sm btn-label-primary">
+            <i class="ti ti-settings me-1"></i>{{ __('Mockup de arranque') }}
+        </a>
+    </div>
+    <div class="card-body">
+        <h5>{{ __('Gestión de usuarios') }}</h5>
+        <p>{{ __('Los administradores invitan usuarios, asignan roles (admin, collaborator, employee) y activan o desactivan el acceso.') }}</p>
 
-                <h5 class="mt-4">{{ __('Departamentos') }}</h5>
-                <p>{{ __('Los departamentos sirven para organizar el equipo (por ejemplo Ventas, Desarrollo, Administración). Puedes crear departamentos y asignar usuarios a cada uno; así puedes filtrar informes, tareas o permisos por departamento.') }}</p>
+        <h5 class="mt-4">{{ __('Departamentos') }}</h5>
+        <p>{{ __('Organizan el equipo (Ventas, Desarrollo, etc.) para filtrar informes y trabajo.') }}</p>
 
-                <h5 class="mt-4">{{ __('Organización') }}</h5>
-                <p>{{ __('Si está activo, el módulo de organización permite definir la estructura de la empresa (áreas, equipos, jerarquía) y vincularla a equipos o departamentos para una visión más clara de quién hace qué.') }}</p>
+        <x-manual.role-compare section="team" />
 
-                <p class="mb-0">{{ __('La configuración del equipo (datos fiscales, buzones de correo, tokens de API, etc.) se hace en la sección de ajustes del equipo; los detalles técnicos están en la Ayuda.') }}</p>
-            </div>
-        </div>
+        <p class="mb-0">{{ __('La configuración del equipo (datos fiscales, correo, tokens) está en ajustes; detalles técnicos en Ayuda.') }}</p>
     </div>
 </div>
 @endsection

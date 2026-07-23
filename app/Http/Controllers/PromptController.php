@@ -7,6 +7,7 @@ use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\TokenUsageLog;
 use App\Support\AiTasks;
+use App\Support\TeamModuleAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
@@ -21,7 +22,7 @@ class PromptController extends Controller
     {
         $this->middleware(function ($request, $next)
         {
-            abort_unless(auth()->user()?->currentTeam?->hasModule('prompts'), 403);
+            TeamModuleAccess::abortUnless('prompts');
 
             return $next($request);
         });

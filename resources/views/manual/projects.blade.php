@@ -3,30 +3,27 @@
 @section('title', __('Proyectos'))
 
 @section('content')
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h4 class="card-title mb-0">{{ __('Proyectos') }}</h4>
-            </div>
-            <div class="card-body">
-                <h5>{{ __('Crear y gestionar proyectos') }}</h5>
-                <p>{{ __('Un proyecto agrupa todo el trabajo para un cliente o un objetivo interno: presupuesto, servicios, colaboradores y tareas. En el módulo de proyectos puedes:') }}</p>
-                <ul>
-                    <li>{{ __('Crear proyectos nuevos y vincularlos a un cliente o contacto.') }}</li>
-                    <li>{{ __('Definir el presupuesto: especificación, unidades de tarifa, cantidades y totales. Puedes generar o editar la especificación del presupuesto desde la propia pantalla.') }}</li>
-                    <li>{{ __('Añadir servicios al proyecto (del catálogo de servicios) con cantidades y precios.') }}</li>
-                    <li>{{ __('Seleccionar y asignar colaboradores; el sistema puede filtrarlos por habilidades o disponibilidad.') }}</li>
-                    <li>{{ __('Enviar notificaciones a los colaboradores asignados para avisarles del proyecto o de cambios.') }}</li>
-                    <li>{{ __('Quitar colaboradores del proyecto si dejan de participar.') }}</li>
-                </ul>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <h4 class="card-title mb-0">{{ __('Proyectos') }}</h4>
+        <a href="{{ route('mockups.project-form') }}" class="btn btn-sm btn-label-primary">
+            <i class="ti ti-forms me-1"></i>{{ __('Mockup del formulario') }}
+        </a>
+    </div>
+    <div class="card-body">
+        <h5>{{ __('Crear y gestionar proyectos') }}</h5>
+        <p>{{ __('Un proyecto agrupa el trabajo para un cliente u objetivo: presupuesto, servicios, colaboradores y tareas. Puedes:') }}</p>
+        <ul>
+            <li>{{ __('Crear proyectos y vincularlos a un cliente o contacto.') }}</li>
+            <li>{{ __('Definir presupuesto, servicios, cantidades y totales (Admin).') }}</li>
+            <li>{{ __('Asignar colaboradores y notificarles cambios.') }}</li>
+            <li>{{ __('Seguir tareas y avance desde la ficha del proyecto.') }}</li>
+        </ul>
 
-                <h5 class="mt-4">{{ __('Vista detalle del proyecto') }}</h5>
-                <p>{{ __('En la ficha del proyecto ves el presupuesto completo, los servicios, los colaboradores y las tareas relacionadas. Puedes añadir tareas sugeridas y seguir el avance. Todo queda centralizado en un solo sitio.') }}</p>
+        <x-manual.role-compare section="projects" />
 
-                <p class="mb-0">{{ __('Los proyectos son el eje que conecta clientes, servicios, colaboradores y tareas; desde aquí se organiza y factura el trabajo.') }}</p>
-            </div>
-        </div>
+        <h5 class="mt-2">{{ __('Vista detalle') }}</h5>
+        <p class="mb-0">{{ __('En la ficha ves presupuesto (si eres Admin), servicios, colaboradores y tareas. Los campos de precio y coste están detrás del permiso de facturación.') }}</p>
     </div>
 </div>
 @endsection

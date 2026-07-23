@@ -40,6 +40,7 @@ use App\Http\Controllers\Homes\HumanoLandingController;
 use App\Http\Controllers\Homes\PerformanceInsightLandingController;
 use App\Http\Controllers\Homes\SlashLandingController;
 use App\Http\Controllers\HostingController;
+use App\Http\Controllers\HumanoConfigTransferController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\KanbanController;
@@ -53,6 +54,7 @@ use App\Http\Controllers\ManualController;
 use App\Http\Controllers\MercadoPagoPaymentSyncController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\MessageTrackingController;
+use App\Http\Controllers\MockupController;
 use App\Http\Controllers\MultimediaController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
@@ -1067,16 +1069,21 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/prompt/create', [PromptController::class, 'create'])->name('prompt.create');
     Route::post('/prompt', [PromptController::class, 'store'])->name('prompt.store');
     Route::get('/prompt/{prompt}/edit', [PromptController::class, 'edit'])->name('prompt.edit');
+    Route::get('/prompt/{prompt}/export', [HumanoConfigTransferController::class, 'exportPrompt'])->name('prompt.export');
     Route::get('/prompt/{prompt}', [PromptController::class, 'show'])->name('prompt.show');
     Route::post('/prompt/{prompt}/preview', [PromptController::class, 'preview'])->name('prompt.preview');
     Route::put('/prompt/{prompt}', [PromptController::class, 'update'])->name('prompt.update');
     Route::delete('/prompt/{prompt}', [PromptController::class, 'destroy'])->name('prompt.destroy');
+
+    Route::get('/import', [HumanoConfigTransferController::class, 'importForm'])->name('humano.import');
+    Route::post('/import', [HumanoConfigTransferController::class, 'importStore'])->name('humano.import.store');
 
     Route::get('/funnel/list', [AutomationController::class, 'indexFunnels'])->name('funnel-list');
     Route::get('/funnel/create', [AutomationController::class, 'createFunnel'])->name('funnel.create');
     Route::get('/funnel/{automation}/edit', [AutomationController::class, 'edit'])->name('funnel.edit');
     Route::get('/funnel/{automation}/flow', [AutomationController::class, 'flow'])->name('funnel.flow');
     Route::post('/funnel/{automation}/flow', [AutomationController::class, 'saveFlow'])->name('funnel.flow.save');
+    Route::get('/funnel/{automation}/export', [HumanoConfigTransferController::class, 'exportFunnel'])->name('funnel.export');
     Route::put('/funnel/{automation}', [AutomationController::class, 'update'])->name('funnel.update');
     Route::delete('/funnel/{automation}', [AutomationController::class, 'destroy'])->name('funnel.destroy');
     Route::get('/funnel/{automation}', [AutomationController::class, 'showFunnel'])->name('funnel.show');
@@ -1085,6 +1092,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/automation/create', [AutomationController::class, 'createAction'])->name('automation.create');
     Route::post('/automation', [AutomationController::class, 'store'])->name('automation.store');
     Route::get('/automation/{automation}/edit', [AutomationController::class, 'edit'])->name('automation.edit');
+    Route::get('/automation/{automation}/export', [HumanoConfigTransferController::class, 'exportAction'])->name('automation.export');
     Route::get('/automation/{automation}', [AutomationController::class, 'show'])->name('automation.show');
     Route::put('/automation/{automation}', [AutomationController::class, 'update'])->name('automation.update');
     Route::delete('/automation/{automation}', [AutomationController::class, 'destroy'])->name('automation.destroy');
@@ -1442,13 +1450,36 @@ Route::prefix('manual')->name('manual.')->group(function ()
     Route::get('/collaborators', [ManualController::class, 'collaborators'])->name('collaborators');
     Route::get('/services', [ManualController::class, 'services'])->name('services');
     Route::get('/projects', [ManualController::class, 'projects'])->name('projects');
+    Route::get('/opportunities', [ManualController::class, 'opportunities'])->name('opportunities');
     Route::get('/tasks', [ManualController::class, 'tasks'])->name('tasks');
     Route::get('/chat', [ManualController::class, 'chat'])->name('chat');
+    Route::get('/tickets', [ManualController::class, 'tickets'])->name('tickets');
     Route::get('/products-and-orders', [ManualController::class, 'productsAndOrders'])->name('products-and-orders');
     Route::get('/billing', [ManualController::class, 'billing'])->name('billing');
     Route::get('/campaigns', [ManualController::class, 'campaigns'])->name('campaigns');
+    Route::get('/automation', [ManualController::class, 'automation'])->name('automation');
+    Route::get('/website', [ManualController::class, 'website'])->name('website');
     Route::get('/team', [ManualController::class, 'team'])->name('team');
     Route::get('/more-features', [ManualController::class, 'moreFeatures'])->name('more-features');
+});
+
+// Visual mockups / form diagrams for the user manual (Public)
+Route::prefix('mockups')->name('mockups.')->group(function ()
+{
+    Route::get('/', [MockupController::class, 'index'])->name('index');
+    Route::get('/overview', [MockupController::class, 'overview'])->name('overview');
+    Route::get('/roles-flow', [MockupController::class, 'rolesFlow'])->name('roles-flow');
+    Route::get('/client-journey', [MockupController::class, 'clientJourney'])->name('client-journey');
+    Route::get('/client-ticket', [MockupController::class, 'clientTicket'])->name('client-ticket');
+    Route::get('/client-home', [MockupController::class, 'clientHome'])->name('client-home');
+    Route::get('/contact-form', [MockupController::class, 'contactForm'])->name('contact-form');
+    Route::get('/client-form', [MockupController::class, 'clientForm'])->name('client-form');
+    Route::get('/project-form', [MockupController::class, 'projectForm'])->name('project-form');
+    Route::get('/task-form', [MockupController::class, 'taskForm'])->name('task-form');
+    Route::get('/service-form', [MockupController::class, 'serviceForm'])->name('service-form');
+    Route::get('/invoice-flow', [MockupController::class, 'invoiceFlow'])->name('invoice-flow');
+    Route::get('/collaborator-day', [MockupController::class, 'collaboratorDay'])->name('collaborator-day');
+    Route::get('/admin-setup', [MockupController::class, 'adminSetup'])->name('admin-setup');
 });
 
 // Help Documentation Routes (Public - No Authentication Required)

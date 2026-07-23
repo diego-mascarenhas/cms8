@@ -15,9 +15,11 @@ use App\Http\Middleware\TrackContactViewing;
 use App\Http\Middleware\TrimStrings;
 use App\Http\Middleware\TrustProxies;
 use App\Http\Middleware\ValidateSignature;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -80,5 +82,36 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions)
     {
-        //
+        $redirectNotAuthorized = function (?string $message = null)
+        {
+            $redirect = redirect('/misc-not-authorized');
+            $message = is_string($message) ? trim($message) : '';
+
+            if ($message !== '' && ! in_array(strtolower($message), ['forbidden', 'unauthorized', 'this action is unauthorized.'], true))
+            {
+                $redirect->with('unauthorized_message', $message);
+            }
+
+            return $redirect;
+        };
+
+        $exceptions->render(function (HttpException $e, $request) use ($redirectNotAuthorized)
+        {
+            if ($e->getStatusCode() !== 403 || $request->expectsJson())
+            {
+                return null;
+            }
+
+            return $redirectNotAuthorized($e->getMessage());
+        });
+
+        $exceptions->render(function (AuthorizationException $e, $request) use ($redirectNotAuthorized)
+        {
+            if ($request->expectsJson())
+            {
+                return null;
+            }
+
+            return $redirectNotAuthorized($e->getMessage());
+        });
     })->create();
