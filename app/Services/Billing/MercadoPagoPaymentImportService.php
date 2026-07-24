@@ -10,7 +10,6 @@ use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentSync;
 use App\Models\PaymentType;
-use App\Support\MercadoPagoPaidInvoiceLinker;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -18,11 +17,130 @@ class MercadoPagoPaymentImportService
 {
     public function __construct(
         private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
+        private readonly StripeInvoiceCoreImportService $stripeInvoiceCoreImportService,
     ) {}
 
     /**
+     * One Mercado Pago transfer already tagged on one or more Stripe invoices
+     * (mercadopago_id / payment_reference) but missing Humano payment rows.
+     */
+    public function importFromExistingStripeMetadataLinks(PaymentSync $row): ?Payment
+    {
+        if (strtolower((string) $row->provider) !== 'mercadopago')
+        {
+            return null;
+        }
+
+        if (strtolower((string) $row->status) !== 'approved')
+        {
+            return null;
+        }
+
+        if ($this->isAlreadyImported($row))
+        {
+            return $row->importedMercadoPagoPayment();
+        }
+
+        $invoices = $this->materializeLinkedStripeInvoices($row);
+        if ($invoices->isEmpty())
+        {
+            return null;
+        }
+
+        $enterpriseIds = $invoices->pluck('enterprise_id')->filter()->unique()->values();
+        if ($enterpriseIds->count() !== 1)
+        {
+            return null;
+        }
+
+        return $this->importFromPaymentSync(
+            $row,
+            fallbackEmail: false,
+            linkCodeOnEmailMatch: false,
+            dryRun: false,
+            forceEnterpriseId: (int) $enterpriseIds->first(),
+            forceInvoiceIds: $invoices->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+        );
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Invoice>
+     */
+    public function materializeLinkedStripeInvoices(PaymentSync $row)
+    {
+        $invoices = collect();
+
+        foreach ($this->findLinkedStripeInvoiceSyncs($row) as $invoiceSync)
+        {
+            if (! $invoiceSync instanceof InvoiceSync)
+            {
+                continue;
+            }
+
+            $invoice = Invoice::withoutGlobalScopes()
+                ->where('team_id', $row->team_id)
+                ->where('source_provider', 'stripe')
+                ->where('source_reference_id', $invoiceSync->external_id)
+                ->first();
+
+            if (! $invoice instanceof Invoice)
+            {
+                $invoice = $this->stripeInvoiceCoreImportService->importFromSyncRow(
+                    $invoiceSync,
+                    fallbackEmail: true,
+                    linkCodeOnEmailMatch: false,
+                    dryRun: false,
+                );
+            }
+
+            if ($invoice instanceof Invoice)
+            {
+                $invoices->push($invoice);
+            }
+        }
+
+        return $invoices->unique('id')->values();
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, InvoiceSync>
+     */
+    public function findLinkedStripeInvoiceSyncs(PaymentSync $row)
+    {
+        $references = $row->stripeMatchReferences();
+        if ($references === [])
+        {
+            return collect();
+        }
+
+        return InvoiceSync::query()
+            ->where('team_id', $row->team_id)
+            ->where('provider', 'stripe')
+            ->where(function ($query) use ($references): void
+            {
+                foreach ($references as $reference)
+                {
+                    $query->orWhereRaw(
+                        "TRIM(COALESCE(raw_payload->'metadata'->>'payment_reference', '')) = ?",
+                        [$reference],
+                    )->orWhereRaw(
+                        "TRIM(COALESCE(
+                            raw_payload->'metadata'->>'mercadopago_id',
+                            raw_payload->'metadata'->>'mercadopago_payment_id',
+                            ''
+                        )) = ?",
+                        [$reference],
+                    );
+                }
+            })
+            ->orderBy('invoice_created_at')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
      * When a Stripe invoice was marked paid out of band with a Mercado Pago reference,
-     * create the matching Humano payment if it is still missing.
+     * create the matching Humano payment(s) if still missing (full MP transfer, all invoices).
      */
     public function importOutOfBandLinkForStripeInvoice(Invoice $invoice): ?Payment
     {
@@ -37,34 +155,21 @@ class MercadoPagoPaymentImportService
             return null;
         }
 
-        if ($this->hasNonCancelledPaymentForInvoice((int) $invoice->id))
-        {
-            return null;
-        }
-
-        $paymentReference = $this->stripeOutOfBandPaymentReference(
+        $sync = $this->findMercadoPagoSyncForStripeInvoice(
             (int) $invoice->team_id,
             $stripeExternalId,
         );
-        if ($paymentReference === null)
+        if (! $sync instanceof PaymentSync)
         {
             return null;
         }
 
-        $sync = $this->findMercadoPagoSyncByReference((int) $invoice->team_id, $paymentReference);
-        if (! $sync instanceof PaymentSync || $this->isAlreadyImported($sync))
+        if ($this->isAlreadyImported($sync))
         {
-            return null;
+            return $sync->importedMercadoPagoPayment();
         }
 
-        return $this->importFromPaymentSync(
-            $sync,
-            fallbackEmail: false,
-            linkCodeOnEmailMatch: false,
-            dryRun: false,
-            forceEnterpriseId: (int) $invoice->enterprise_id,
-            forceInvoiceIds: [(int) $invoice->id],
-        );
+        return $this->importFromExistingStripeMetadataLinks($sync);
     }
 
     /**
@@ -153,12 +258,15 @@ class MercadoPagoPaymentImportService
                 ->whereIn('id', $forcedInvoiceIds)
                 ->get();
 
-            $allPaidUnlinked = $selectedInvoices->count() === count($forcedInvoiceIds)
-                && $selectedInvoices->every(
-                    fn (Invoice $invoice) => MercadoPagoPaidInvoiceLinker::isPaidUnlinkedCandidate($invoice),
-                );
+            $allPaidStripe = $selectedInvoices->count() === count($forcedInvoiceIds)
+                && $selectedInvoices->every(function (Invoice $invoice): bool
+                {
+                    return strtolower((string) $invoice->source_provider) === 'stripe'
+                        && (float) $invoice->balance <= 0
+                        && str_starts_with(trim((string) $invoice->source_reference_id), 'in_');
+                });
 
-            if ($allPaidUnlinked)
+            if ($allPaidStripe)
             {
                 return $this->importSplitAcrossPaidUnlinkedInvoices(
                     $row,
@@ -346,11 +454,6 @@ class MercadoPagoPaymentImportService
             return null;
         }
 
-        if (! $invoices->every(fn (Invoice $invoice) => MercadoPagoPaidInvoiceLinker::isPaidUnlinkedCandidate($invoice)))
-        {
-            return null;
-        }
-
         $sum = round((float) $invoices->sum(fn (Invoice $invoice) => (float) $invoice->total_amount), 2);
         if (abs($sum - round($paymentAmount, 2)) > 0.05)
         {
@@ -363,35 +466,102 @@ class MercadoPagoPaymentImportService
             $amount = round((float) $invoice->total_amount, 2);
             $sourceReferenceId = $row->external_id.':'.$invoice->id;
 
-            $payment = Payment::withoutGlobalScopes()->updateOrCreate(
-                [
-                    'team_id' => $row->team_id,
-                    'source_provider' => 'mercadopago',
-                    'source_reference_id' => $sourceReferenceId,
-                ],
-                [
-                    'enterprise_id' => $enterpriseId,
-                    'transaction_type' => TransactionType::INCOME,
-                    'date' => $date,
-                    'invoice_id' => $invoice->id,
-                    'account_id' => $accountId,
-                    'type_id' => $typeId,
-                    'amount' => $amount,
-                    'remarks' => Str::limit($remarks.' · '.$invoice->number, 500),
-                    'status' => 2,
-                    'source_synced_at' => $row->last_synced_at ?? now(),
-                ],
+            $payment = $this->adoptExistingPaymentForInvoice(
+                $row,
+                $invoice,
+                $enterpriseId,
+                $amount,
+                $date,
+                $remarks,
+                $accountId,
+                $typeId,
+                $sourceReferenceId,
             );
 
-            if ($payment->wasRecentlyCreated)
+            if (! $payment instanceof Payment)
             {
-                $this->finalizeLinkedInvoice($payment);
+                $payment = Payment::withoutGlobalScopes()->updateOrCreate(
+                    [
+                        'team_id' => $row->team_id,
+                        'source_provider' => 'mercadopago',
+                        'source_reference_id' => $sourceReferenceId,
+                    ],
+                    [
+                        'enterprise_id' => $enterpriseId,
+                        'transaction_type' => TransactionType::INCOME,
+                        'date' => $date,
+                        'invoice_id' => $invoice->id,
+                        'account_id' => $accountId,
+                        'type_id' => $typeId,
+                        'amount' => $amount,
+                        'remarks' => Str::limit($remarks.' · '.$invoice->number, 500),
+                        'status' => 2,
+                        'source_synced_at' => $row->last_synced_at ?? now(),
+                    ],
+                );
+
+                if ($payment->wasRecentlyCreated)
+                {
+                    $this->finalizeLinkedInvoice($payment);
+                }
             }
 
             $first ??= $payment;
         }
 
         return $first;
+    }
+
+    /**
+     * Reuse a payment already posted on the invoice (do not create a duplicate).
+     */
+    private function adoptExistingPaymentForInvoice(
+        PaymentSync $row,
+        Invoice $invoice,
+        int $enterpriseId,
+        float $amount,
+        string $date,
+        string $remarks,
+        int $accountId,
+        int $typeId,
+        string $sourceReferenceId,
+    ): ?Payment {
+        $existing = Payment::withoutGlobalScopes()
+            ->where('team_id', $row->team_id)
+            ->where('invoice_id', $invoice->id)
+            ->where('status', '!=', 0)
+            ->orderByRaw("CASE
+                WHEN source_provider = 'mercadopago' AND source_reference_id = ? THEN 0
+                WHEN source_provider = 'mercadopago' AND source_reference_id = ? THEN 1
+                WHEN source_provider = 'mercadopago' THEN 2
+                ELSE 3
+            END", [$sourceReferenceId, $row->external_id])
+            ->orderBy('id')
+            ->first();
+
+        if (! $existing instanceof Payment)
+        {
+            return null;
+        }
+
+        $existing->fill([
+            'enterprise_id' => $enterpriseId,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => $existing->date ?: $date,
+            'account_id' => $existing->account_id ?: $accountId,
+            'type_id' => $existing->type_id ?: $typeId,
+            'amount' => ((float) $existing->amount) > 0 ? $existing->amount : $amount,
+            'remarks' => filled($existing->remarks)
+                ? $existing->remarks
+                : Str::limit($remarks.' · '.$invoice->number, 500),
+            'status' => 2,
+            'source_provider' => 'mercadopago',
+            'source_reference_id' => $sourceReferenceId,
+            'source_synced_at' => $row->last_synced_at ?? now(),
+        ]);
+        $existing->save();
+
+        return $existing;
     }
 
     private function finalizeLinkedInvoice(Payment $payment): void
@@ -720,7 +890,24 @@ class MercadoPagoPaymentImportService
             ->exists();
     }
 
-    private function stripeOutOfBandPaymentReference(int $teamId, string $stripeExternalId): ?string
+    private function findMercadoPagoSyncForStripeInvoice(int $teamId, string $stripeExternalId): ?PaymentSync
+    {
+        foreach ($this->stripeOutOfBandPaymentReferences($teamId, $stripeExternalId) as $reference)
+        {
+            $sync = $this->findMercadoPagoSyncByReference($teamId, $reference);
+            if ($sync instanceof PaymentSync)
+            {
+                return $sync;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function stripeOutOfBandPaymentReferences(int $teamId, string $stripeExternalId): array
     {
         $invoiceSync = InvoiceSync::query()
             ->where('team_id', $teamId)
@@ -731,12 +918,31 @@ class MercadoPagoPaymentImportService
 
         if (! $invoiceSync)
         {
-            return null;
+            return [];
         }
 
-        $reference = trim((string) data_get($invoiceSync->raw_payload, 'metadata.payment_reference', ''));
+        $refs = [];
+        foreach ([
+            data_get($invoiceSync->raw_payload, 'metadata.payment_reference'),
+            data_get($invoiceSync->raw_payload, 'metadata.mercadopago_id'),
+            data_get($invoiceSync->raw_payload, 'metadata.mercadopago_payment_id'),
+        ] as $value)
+        {
+            $trimmed = trim((string) $value);
+            if ($trimmed !== '')
+            {
+                $refs[] = $trimmed;
+            }
+        }
 
-        return $reference !== '' ? $reference : null;
+        return array_values(array_unique($refs));
+    }
+
+    private function stripeOutOfBandPaymentReference(int $teamId, string $stripeExternalId): ?string
+    {
+        $refs = $this->stripeOutOfBandPaymentReferences($teamId, $stripeExternalId);
+
+        return $refs[0] ?? null;
     }
 
     private function findMercadoPagoSyncByReference(int $teamId, string $paymentReference): ?PaymentSync

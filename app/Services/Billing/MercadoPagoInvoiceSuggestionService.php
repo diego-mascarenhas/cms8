@@ -82,6 +82,31 @@ class MercadoPagoInvoiceSuggestionService
             }
         }
 
+        if ($count <= 20)
+        {
+            for ($i = 0; $i < $count; $i++)
+            {
+                for ($j = $i + 1; $j < $count; $j++)
+                {
+                    for ($k = $j + 1; $k < $count; $k++)
+                    {
+                        for ($l = $k + 1; $l < $count; $l++)
+                        {
+                            $quad = [$items[$i], $items[$j], $items[$k], $items[$l]];
+                            $sum = round(
+                                $quad[0]['balance'] + $quad[1]['balance'] + $quad[2]['balance'] + $quad[3]['balance'],
+                                2,
+                            );
+                            if ($this->amountsMatch($sum, $paymentAmount))
+                            {
+                                $suggestions[] = $this->makeSuggestion($quad, $paymentAmount, 'combo');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         $unique = [];
         $seen = [];
         foreach ($suggestions as $suggestion)

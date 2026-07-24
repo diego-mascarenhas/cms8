@@ -28,6 +28,24 @@ class MercadoPagoInvoiceSuggestionServiceTest extends TestCase
         $this->assertContains([1, 2], $ids);
     }
 
+    public function test_suggests_four_equal_amount_invoices_matching_payment(): void
+    {
+        $service = new MercadoPagoInvoiceSuggestionService;
+
+        $invoices = new Collection([
+            $this->fakeInvoice(1, '0005-A', 51235.0),
+            $this->fakeInvoice(2, '0005-B', 51235.0),
+            $this->fakeInvoice(3, '0005-C', 51235.0),
+            $this->fakeInvoice(4, '0005-D', 51235.0),
+            $this->fakeInvoice(5, '0005-E', 100.0),
+        ]);
+
+        $suggestions = $service->suggest($invoices, 204940.0);
+        $ids = array_map(fn (array $row) => $row['invoice_ids'], $suggestions);
+
+        $this->assertContains([1, 2, 3, 4], $ids);
+    }
+
     private function fakeInvoice(int $id, string $number, float $balance): Invoice
     {
         $invoice = new Invoice;
