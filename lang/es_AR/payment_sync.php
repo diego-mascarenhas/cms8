@@ -41,6 +41,7 @@ return [
         'paid_unlinked_heading' => 'Facturas ya pagadas en Stripe (sin metadata MP)',
         'paid_unlinked_badge' => 'Paid',
         'paid_unlinked_hint' => 'Podés marcar varias si el pago cubre el total de esas facturas ya pagadas. Se crea el pago en Humano y se escribe mercadopago_id en cada factura de Stripe (sin volver a cobrar).',
+        'paid_at_label' => 'cobrada :date',
         'pick_client_first' => 'Primero elige un cliente para ver sus facturas pendientes.',
         'no_open_invoices' => 'Este cliente no tiene facturas abiertas ni pagadas sin vincular a Mercado Pago.',
         'type_label' => 'Tipo de pago',
@@ -63,6 +64,7 @@ return [
         'reload_invoices' => 'Cargar facturas del cliente',
         'success' => 'Pago Mercado Pago :reference importado correctamente.',
         'success_split' => 'Pago Mercado Pago :reference importado y repartido en :count facturas.',
+        'success_metadata_backfill' => 'Pago Mercado Pago :reference vinculado: :count pagos locales (sin duplicar).',
         'errors' => [
             'already_imported' => 'Este pago ya fue importado.',
             'not_approved' => 'Solo se pueden importar pagos aprobados.',

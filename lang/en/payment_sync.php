@@ -41,6 +41,7 @@ return [
         'paid_unlinked_heading' => 'Already paid on Stripe (no MP metadata)',
         'paid_unlinked_badge' => 'Paid',
         'paid_unlinked_hint' => 'You can select several if the payment covers those already-paid invoices in full. Creates the Humano payment and writes mercadopago_id on each Stripe invoice (without charging again).',
+        'paid_at_label' => 'paid :date',
         'pick_client_first' => 'Pick a client first to see open invoices.',
         'no_open_invoices' => 'This client has no open invoices and no paid invoices waiting for Mercado Pago linking.',
         'type_label' => 'Payment type',
@@ -63,6 +64,7 @@ return [
         'reload_invoices' => 'Load client invoices',
         'success' => 'Mercado Pago payment :reference imported successfully.',
         'success_split' => 'Mercado Pago payment :reference imported and split across :count invoices.',
+        'success_metadata_backfill' => 'Mercado Pago payment :reference linked: :count local payments (no duplicates).',
         'errors' => [
             'already_imported' => 'This payment was already imported.',
             'not_approved' => 'Only approved payments can be imported.',

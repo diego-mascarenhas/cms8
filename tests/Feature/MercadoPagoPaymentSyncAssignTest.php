@@ -1318,6 +1318,217 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
         );
     }
 
+    public function test_assign_backfills_local_payments_when_stripe_already_has_mercadopago_metadata(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'AEJBA',
+            'code' => 'cus_TWDwJSHxKsgNPT',
+        ]);
+
+        $invoiceIds = [];
+        foreach ([0, 1, 2, 3] as $index)
+        {
+            $externalId = 'in_aejba_mar20_'.$index;
+            \App\Models\InvoiceSync::query()->create([
+                'team_id' => $team->id,
+                'provider' => 'stripe',
+                'external_id' => $externalId,
+                'customer_id' => 'cus_TWDwJSHxKsgNPT',
+                'number' => '0005-0'.(600 + $index),
+                'status' => 'paid',
+                'currency' => 'ars',
+                'amount_due' => 51235,
+                'amount_paid' => 51235,
+                'amount_remaining' => 0,
+                'total' => 51235,
+                'paid' => true,
+                'invoice_created_at' => now()->subMonths(4 - $index),
+                'last_synced_at' => now(),
+                'raw_payload' => [
+                    'metadata' => [
+                        'mercadopago_id' => '150438897505',
+                        'payment_reference' => '67REZ8NPQJZ1POWP94KVGO',
+                        'payment_method' => 'MercadoPago',
+                    ],
+                    'status_transitions' => [
+                        'paid_at' => now()->subMonths(4)->timestamp,
+                    ],
+                ],
+            ]);
+
+            $invoice = Invoice::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'type_id' => 1,
+                'operation' => 'sell',
+                'number' => '0005-0'.(600 + $index),
+                'date' => now()->subMonths(4 - $index)->toDateString(),
+                'gross_amount' => 51235,
+                'discount' => 0,
+                'total_amount' => 51235,
+                'balance' => 0,
+                'status' => 2,
+                'source_provider' => 'stripe',
+                'source_reference_id' => $externalId,
+            ]);
+            $invoiceIds[] = $invoice->id;
+        }
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '150438897505',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 20494000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 20494000,
+            'charge_created_at' => now()->subMonths(4),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'transaction_details' => [
+                    'transaction_id' => '67REZ8NPQJZ1POWP94KVGO',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payments.syncs.mercadopago.assign', $sync))
+            ->assertRedirect(route('payments.syncs.mercadopago.index'))
+            ->assertSessionHas('success');
+
+        $payments = Payment::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('source_provider', 'mercadopago')
+            ->where('source_reference_id', 'like', '150438897505:%')
+            ->get();
+
+        $this->assertCount(4, $payments);
+        $this->assertEqualsWithDelta(204940.0, (float) $payments->sum('amount'), 0.01);
+        $this->assertEqualsCanonicalizing($invoiceIds, $payments->pluck('invoice_id')->map(fn ($id) => (int) $id)->all());
+    }
+
+    public function test_assign_adopts_existing_local_payments_without_duplicating(): void
+    {
+        [$user, $team] = $this->makeAdminWithTeam();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'AEJBA',
+            'code' => 'cus_TWDwJSHxKsgNPT',
+        ]);
+
+        $account = \App\Models\PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'mp',
+            'name' => 'Mercado Pago',
+            'status' => 1,
+        ]);
+        $typeId = (int) \App\Models\PaymentType::query()->where('name', 'MercadoPago')->value('id');
+
+        $invoiceIds = [];
+        $existingPaymentIds = [];
+        foreach ([0, 1, 2, 3] as $index)
+        {
+            $externalId = 'in_aejba_adopt_'.$index;
+            \App\Models\InvoiceSync::query()->create([
+                'team_id' => $team->id,
+                'provider' => 'stripe',
+                'external_id' => $externalId,
+                'customer_id' => 'cus_TWDwJSHxKsgNPT',
+                'number' => '0005-0'.(700 + $index),
+                'status' => 'paid',
+                'currency' => 'ars',
+                'total' => 51235,
+                'paid' => true,
+                'invoice_created_at' => now()->subMonths(4 - $index),
+                'last_synced_at' => now(),
+                'raw_payload' => [
+                    'metadata' => [
+                        'mercadopago_id' => '150438897505',
+                        'payment_reference' => '67REZ8NPQJZ1POWP94KVGO',
+                    ],
+                ],
+            ]);
+
+            $invoice = Invoice::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'type_id' => 1,
+                'operation' => 'sell',
+                'number' => '0005-0'.(700 + $index),
+                'date' => now()->subMonths(4 - $index)->toDateString(),
+                'gross_amount' => 51235,
+                'discount' => 0,
+                'total_amount' => 51235,
+                'balance' => 0,
+                'status' => 2,
+                'source_provider' => 'stripe',
+                'source_reference_id' => $externalId,
+            ]);
+            $invoiceIds[] = $invoice->id;
+
+            $payment = Payment::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'transaction_type' => \App\Enums\TransactionType::INCOME,
+                'date' => '2026-03-20',
+                'invoice_id' => $invoice->id,
+                'account_id' => $account->id,
+                'type_id' => $typeId,
+                'amount' => 51235,
+                'remarks' => 'Pago local previo',
+                'status' => 2,
+                'source_provider' => 'manual',
+                'source_reference_id' => 'legacy-local-'.$index,
+            ]);
+            $existingPaymentIds[] = $payment->id;
+        }
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '150438897505',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 20494000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 20494000,
+            'charge_created_at' => now()->subMonths(4),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'transaction_details' => [
+                    'transaction_id' => '67REZ8NPQJZ1POWP94KVGO',
+                ],
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payments.syncs.mercadopago.assign', $sync))
+            ->assertRedirect(route('payments.syncs.mercadopago.index'))
+            ->assertSessionHas('success');
+
+        $payments = Payment::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->whereIn('invoice_id', $invoiceIds)
+            ->where('status', '!=', 0)
+            ->get();
+
+        $this->assertCount(4, $payments);
+        $this->assertEqualsCanonicalizing($existingPaymentIds, $payments->pluck('id')->map(fn ($id) => (int) $id)->all());
+        $this->assertTrue($payments->every(
+            fn (Payment $payment) => $payment->source_provider === 'mercadopago'
+                && str_starts_with((string) $payment->source_reference_id, '150438897505:'),
+        ));
+    }
+
     /**
      * @return array{0: User, 1: \App\Models\Team}
      */

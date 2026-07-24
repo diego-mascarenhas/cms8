@@ -36,6 +36,14 @@ class PaymentInvoiceLinkOptionFormatter
                 : '—',
         ];
 
+        $paidAt = MercadoPagoPaidInvoiceLinker::stripePaidAt($invoice);
+        if ($paidAt !== null)
+        {
+            $parts[] = __('payment_sync.mercadopago.paid_at_label', [
+                'date' => $paidAt->format('d/m/Y H:i'),
+            ]);
+        }
+
         if ($invoice->enterprise)
         {
             $parts[] = $invoice->enterprise->name;

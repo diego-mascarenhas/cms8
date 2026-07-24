@@ -12,6 +12,7 @@ use App\Models\PaymentSync;
 use App\Services\Billing\MercadoPagoInvoiceSuggestionService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\StripeInvoiceCoreImportService;
+use App\Services\Billing\StripeInvoiceSyncRefresher;
 use App\Support\MercadoPagoPaidInvoiceLinker;
 use App\Support\PaymentInvoiceLinkOptionFormatter;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,7 @@ class MercadoPagoPaymentSyncController extends Controller
         private readonly MercadoPagoPaymentImportService $importService,
         private readonly MercadoPagoInvoiceSuggestionService $suggestionService,
         private readonly StripeInvoiceCoreImportService $stripeInvoiceImportService,
+        private readonly StripeInvoiceSyncRefresher $stripeInvoiceSyncRefresher,
     ) {}
 
     public function index(MercadoPagoPaymentSyncDataTable $dataTable)
@@ -40,9 +42,7 @@ class MercadoPagoPaymentSyncController extends Controller
 
         if ($this->importService->isAlreadyImported($sync))
         {
-            return redirect()
-                ->route('payments.syncs.mercadopago.index')
-                ->with('error', __('payment_sync.mercadopago.errors.already_imported'));
+            return $this->redirectAfterMetadataBackfill($sync);
         }
 
         if (strtolower((string) $sync->status) !== 'approved')
@@ -52,12 +52,10 @@ class MercadoPagoPaymentSyncController extends Controller
                 ->with('error', __('payment_sync.mercadopago.errors.not_approved'));
         }
 
-        $linkedInvoice = $this->resolveOrMaterializeLinkedStripeInvoice($sync);
-        if ($linkedInvoice instanceof Invoice)
+        $metadataLinkedPayment = $this->importService->importFromExistingStripeMetadataLinks($sync);
+        if ($metadataLinkedPayment instanceof Payment)
         {
-            $this->importService->importOutOfBandLinkForStripeInvoice($linkedInvoice);
-
-            return redirect()->route('invoice.show', $linkedInvoice->id);
+            return $this->redirectAfterMetadataBackfill($sync);
         }
 
         $teamId = (int) auth()->user()->currentTeam->id;
@@ -77,8 +75,27 @@ class MercadoPagoPaymentSyncController extends Controller
 
         if ($selectedEnterpriseId > 0)
         {
+            $enterprise = Enterprise::query()
+                ->where('team_id', $teamId)
+                ->whereKey($selectedEnterpriseId)
+                ->first();
+
+            if ($enterprise && filled($enterprise->code))
+            {
+                $this->stripeInvoiceSyncRefresher->syncPaidInvoicesForCustomer(
+                    $teamId,
+                    (string) $enterprise->code,
+                );
+            }
+
             $this->stripeInvoiceImportService->importOpenSyncsForEnterprise($teamId, $selectedEnterpriseId);
             $this->stripeInvoiceImportService->importPaidUnlinkedSyncsForEnterprise($teamId, $selectedEnterpriseId);
+
+            $metadataLinkedPayment = $this->importService->importFromExistingStripeMetadataLinks($sync);
+            if ($metadataLinkedPayment instanceof Payment)
+            {
+                return $this->redirectAfterMetadataBackfill($sync);
+            }
 
             $invoices = Invoice::query()
                 ->where('team_id', $teamId)
@@ -93,6 +110,7 @@ class MercadoPagoPaymentSyncController extends Controller
             $paidUnlinkedInvoices = MercadoPagoPaidInvoiceLinker::paidUnlinkedForEnterprise(
                 $teamId,
                 $selectedEnterpriseId,
+                preferPaidNear: $sync->charge_created_at,
             );
 
             $suggestions = $this->suggestionService->suggest($invoices, $amountMajor);
@@ -135,15 +153,19 @@ class MercadoPagoPaymentSyncController extends Controller
         $this->authorize('viewAny', Payment::class);
         $this->ensureTeamSync($sync);
 
-        $invoice = $this->resolveOrMaterializeLinkedStripeInvoice($sync);
+        $payment = $this->importService->importFromExistingStripeMetadataLinks($sync);
+        if ($payment instanceof Payment && $payment->invoice_id)
+        {
+            return redirect()->route('invoice.show', $payment->invoice_id);
+        }
+
+        $invoice = $this->importService->materializeLinkedStripeInvoices($sync)->first();
         if (! $invoice instanceof Invoice)
         {
             return redirect()
                 ->route('payments.syncs.mercadopago.index')
                 ->with('error', __('payment_sync.mercadopago.errors.stripe_invoice_missing'));
         }
-
-        $this->importService->importOutOfBandLinkForStripeInvoice($invoice);
 
         return redirect()->route('invoice.show', $invoice->id);
     }
@@ -212,63 +234,24 @@ class MercadoPagoPaymentSyncController extends Controller
         return $redirect;
     }
 
-    private function resolveOrMaterializeLinkedStripeInvoice(PaymentSync $sync): ?Invoice
+    private function redirectAfterMetadataBackfill(PaymentSync $sync): RedirectResponse
     {
-        $invoiceSync = $this->findLinkedStripeInvoiceSync($sync);
-        if (! $invoiceSync instanceof InvoiceSync)
-        {
-            return null;
-        }
-
-        $existing = Invoice::withoutGlobalScopes()
+        $count = Payment::withoutGlobalScopes()
             ->where('team_id', $sync->team_id)
-            ->where('source_provider', 'stripe')
-            ->where('source_reference_id', $invoiceSync->external_id)
-            ->first();
-
-        if ($existing instanceof Invoice)
-        {
-            return $existing;
-        }
-
-        return $this->stripeInvoiceImportService->importFromSyncRow(
-            $invoiceSync,
-            fallbackEmail: true,
-            linkCodeOnEmailMatch: false,
-            dryRun: false,
-        );
-    }
-
-    private function findLinkedStripeInvoiceSync(PaymentSync $sync): ?InvoiceSync
-    {
-        $references = $sync->stripeMatchReferences();
-        if ($references === [])
-        {
-            return null;
-        }
-
-        return InvoiceSync::query()
-            ->where('team_id', $sync->team_id)
-            ->where('provider', 'stripe')
-            ->where(function ($query) use ($references): void
+            ->where('source_provider', 'mercadopago')
+            ->where(function ($query) use ($sync): void
             {
-                foreach ($references as $reference)
-                {
-                    $query->orWhereRaw(
-                        "TRIM(COALESCE(raw_payload->'metadata'->>'payment_reference', '')) = ?",
-                        [$reference],
-                    )->orWhereRaw(
-                        "TRIM(COALESCE(
-                            raw_payload->'metadata'->>'mercadopago_id',
-                            raw_payload->'metadata'->>'mercadopago_payment_id',
-                            ''
-                        )) = ?",
-                        [$reference],
-                    );
-                }
+                $query->where('source_reference_id', $sync->external_id)
+                    ->orWhere('source_reference_id', 'like', $sync->external_id.':%');
             })
-            ->orderByDesc('id')
-            ->first();
+            ->count() ?: 1;
+
+        return redirect()
+            ->route('payments.syncs.mercadopago.index')
+            ->with('success', __('payment_sync.mercadopago.success_metadata_backfill', [
+                'reference' => $sync->external_id,
+                'count' => $count,
+            ]));
     }
 
     private function stripeInvoiceStillOpenAfterImport(?\App\Models\Payment $payment): bool
