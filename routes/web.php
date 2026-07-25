@@ -927,6 +927,9 @@ Route::middleware(['auth'])->group(function ()
     // Payments (all transactions)
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
     Route::get('/payments/syncs/mercadopago', [MercadoPagoPaymentSyncController::class, 'index'])->name('payments.syncs.mercadopago.index');
+    Route::get('/payments/syncs/mercadopago/auto-assign', [MercadoPagoPaymentSyncController::class, 'autoAssign'])->name('payments.syncs.mercadopago.auto-assign');
+    Route::post('/payments/syncs/mercadopago/auto-assign/accept', [MercadoPagoPaymentSyncController::class, 'autoAssignAccept'])->name('payments.syncs.mercadopago.auto-assign.accept');
+    Route::post('/payments/syncs/mercadopago/auto-assign/skip', [MercadoPagoPaymentSyncController::class, 'autoAssignSkip'])->name('payments.syncs.mercadopago.auto-assign.skip');
     Route::get('/payments/syncs/mercadopago/{sync}/linked-invoice', [MercadoPagoPaymentSyncController::class, 'linkedInvoice'])->name('payments.syncs.mercadopago.linked-invoice');
     Route::get('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'assign'])->name('payments.syncs.mercadopago.assign');
     Route::post('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'import'])->name('payments.syncs.mercadopago.import');

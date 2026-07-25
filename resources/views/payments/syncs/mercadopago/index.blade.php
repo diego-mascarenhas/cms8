@@ -8,9 +8,14 @@
         <h4 class="mb-1 mt-3">{{ __('payment_sync.mercadopago.index_title') }}</h4>
         <p class="text-muted">{{ __('payment_sync.mercadopago.index_subtitle') }}</p>
     </div>
-    <div class="mt-3 mt-md-0">
+    <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+        @can('create', App\Models\Payment::class)
+            <a href="{{ route('payments.syncs.mercadopago.auto-assign', ['rebuild' => 1]) }}" class="btn btn-primary">
+                <i class="ti ti-sparkles me-1"></i>{{ __('payment_sync.mercadopago.auto_assign.open') }}
+            </a>
+        @endcan
         <a href="{{ route('payments.index') }}" class="btn btn-label-secondary">
-            <i class="ti ti-arrow-left me-1"></i>{{ __('payment_sync.mercadopago.back_payments') }}
+            <i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}
         </a>
     </div>
 </div>
