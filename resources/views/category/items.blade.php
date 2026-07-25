@@ -32,6 +32,7 @@
         'selectedYear' => $selectedYear,
         'selectedMonth' => $selectedMonth,
         'hiddenFields' => array_filter([
+            'operation' => $operation ?? request()->query('operation'),
             'return' => request()->query('return'),
         ]),
     ])
@@ -44,6 +45,7 @@
             'totalAmount' => $totalAmount,
             'reportingCurrency' => $reportingCurrency,
             'conversionComplete' => $conversionComplete,
+            'amountTone' => $amountTone ?? 'auto',
             'emptyMessage' => __('No invoiced lines in this category.'),
         ])
     </div>

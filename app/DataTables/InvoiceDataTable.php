@@ -159,14 +159,42 @@ class InvoiceDataTable extends DataTable
         $summaryFilter = $summaryService->resolveListFilter(request()->input('summary_filter'));
         $summaryService->applySummaryFilter($query, $summaryFilter);
 
+        $operationFilter = $this->resolveOperationFilter(request()->input('operation_filter'));
+        if ($operationFilter !== 'all')
+        {
+            $query->where('invoices.operation', $operationFilter);
+        }
+
         return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $operationLabel = e(__('Operation'));
+        $allLabel = e(__('All'));
+        $saleLabel = e(__('Sale'));
+        $purchaseLabel = e(__('Purchase'));
+
         $initComplete = "function () {
             var api = this.api();
             window.invoiceSummaryFilter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."';
+
+            var f = jQuery('#invoice-table_filter');
+            if (f.length) {
+                f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+                if (! jQuery('#invoice-filter-operation').length) {
+                    f.prepend(
+                        '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+                        '<label for=\"invoice-filter-operation\" class=\"form-label mb-0 me-2 text-nowrap\">{$operationLabel}</label>' +
+                        '<select id=\"invoice-filter-operation\" class=\"form-select form-select-sm\" style=\"min-width:8rem;max-width:10rem;\">' +
+                        '<option value=\"all\" selected>{$allLabel}</option>' +
+                        '<option value=\"sell\">{$saleLabel}</option>' +
+                        '<option value=\"buy\">{$purchaseLabel}</option>' +
+                        '</select></div>'
+                    );
+                }
+                f.find('> label').addClass('ms-auto mb-0');
+            }
 
             function syncInvoiceSummaryFilterUi() {
                 jQuery('.filter-invoice-summary').each(function () {
@@ -181,7 +209,12 @@ class InvoiceDataTable extends DataTable
                 window.invoiceSummaryFilter = window.invoiceSummaryFilter === filter
                     ? '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'
                     : filter;
+                jQuery('#invoice-filter-operation').val('all');
                 syncInvoiceSummaryFilterUi();
+                api.ajax.reload();
+            });
+
+            jQuery('#invoice-filter-operation').off('change.invoiceOperation').on('change.invoiceOperation', function () {
                 api.ajax.reload();
             });
 
@@ -194,7 +227,7 @@ class InvoiceDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax(
                 '',
-                "data.summary_filter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."';",
+                "data.summary_filter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'; data.operation_filter = ($('#invoice-filter-operation').val() || 'all');",
             )
             ->dom('frtip')
             ->orderBy(2, 'desc')
@@ -208,6 +241,9 @@ class InvoiceDataTable extends DataTable
                 'autoWidth' => false,
                 'initComplete' => $initComplete,
                 'drawCallback' => 'function() {
+					var f = jQuery("#invoice-table_filter");
+					f.addClass("d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2");
+					f.find("> label").addClass("ms-auto mb-0");
 					$("#invoice-table tbody tr").css({
 						"user-select": "none",
 						"-webkit-user-select": "none",
@@ -216,6 +252,16 @@ class InvoiceDataTable extends DataTable
 					});
 				}',
             ]);
+    }
+
+    private function resolveOperationFilter(?string $filter): string
+    {
+        if (! in_array($filter, ['all', 'buy', 'sell'], true))
+        {
+            return 'all';
+        }
+
+        return $filter;
     }
 
     public function getColumns(): array

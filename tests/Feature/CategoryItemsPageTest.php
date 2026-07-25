@@ -99,6 +99,8 @@ class CategoryItemsPageTest extends TestCase
         $response->assertDontSee('Monthly payroll allocation');
         $response->assertSee('Pine Labs SA');
         $response->assertSee(route('client.show', $enterprise->id), false);
+        $response->assertSee('<th>'.e(__('Enterprise')).'</th>', false);
+        $response->assertSee('<th class="text-end">'.e(__('Total')).'</th>', false);
         $response->assertSee('Con descuento');
         $response->assertSee('1.775', false);
         $response->assertSee('EUR');
@@ -184,5 +186,95 @@ class CategoryItemsPageTest extends TestCase
             ->assertOk()
             ->assertSee('400 EUR', false)
             ->assertDontSee('300 EUR', false);
+    }
+
+    public function test_category_items_page_filters_by_operation(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $module = Module::query()->create([
+            'name' => 'Finance',
+            'key' => 'finance-'.uniqid(),
+            'icon' => 'ti-coin',
+            'description' => null,
+            'is_core' => false,
+            'status' => 1,
+        ]);
+
+        $category = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'Hosting',
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        foreach ([['sell', 'S-001', 300], ['buy', 'B-001', 150]] as [$operation, $number, $amount])
+        {
+            $invoice = Invoice::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'type_id' => 1,
+                'operation' => $operation,
+                'number' => $number,
+                'date' => Carbon::create(2026, 3, 10)->toDateString(),
+                'due_date' => Carbon::create(2026, 3, 30),
+                'gross_amount' => $amount,
+                'discount' => 0,
+                'total_amount' => $amount,
+                'balance' => 0,
+                'status' => 2,
+            ]);
+
+            InvoiceItem::query()->create([
+                'invoice_id' => $invoice->id,
+                'category_id' => $category->id,
+                'description' => "Line {$operation}",
+                'quantity' => 1,
+                'unit_price' => $amount,
+                'discount' => 0,
+            ]);
+        }
+
+        $this->actingAs($user)
+            ->get(route('categories.items', [
+                'id' => $category->id,
+                'year' => 2026,
+                'month' => 3,
+                'operation' => 'sell',
+            ]))
+            ->assertOk()
+            ->assertSee('300 EUR', false)
+            ->assertDontSee('150 EUR', false)
+            ->assertSee('name="operation"', false)
+            ->assertSee('value="sell"', false);
+
+        $this->actingAs($user)
+            ->get(route('categories.items', [
+                'id' => $category->id,
+                'year' => 2026,
+                'month' => 3,
+                'operation' => 'buy',
+            ]))
+            ->assertOk()
+            ->assertSee('150 EUR', false)
+            ->assertDontSee('300 EUR', false)
+            ->assertSee('value="buy"', false);
     }
 }

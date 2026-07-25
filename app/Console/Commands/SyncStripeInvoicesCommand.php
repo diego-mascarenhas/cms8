@@ -180,7 +180,7 @@ class SyncStripeInvoicesCommand extends Command
 
             if ($effectiveMode === 'mutable')
             {
-                $this->line("Team {$team->id}: mutable refresh done (statuses: draft, open, paid, uncollectible + stale open reconcile).");
+                $this->line("Team {$team->id}: mutable refresh done (statuses: draft, open, paid, uncollectible, void + stale open reconcile).");
             } else
             {
                 if ($syncedForTeam >= $maxPerTeam)
@@ -657,7 +657,7 @@ class SyncStripeInvoicesCommand extends Command
         bool $dryRun,
         StripeInvoiceSyncUpserter $upserter,
     ): array {
-        $statuses = ['draft', 'open', 'paid', 'uncollectible'];
+        $statuses = self::mutableInvoiceStatuses();
         $synced = 0;
         $scanned = 0;
 
@@ -790,5 +790,15 @@ class SyncStripeInvoicesCommand extends Command
         }
 
         return $filter;
+    }
+
+    /**
+     * Stripe invoice statuses refreshed in mutable mode (includes void/anuladas).
+     *
+     * @return list<string>
+     */
+    public static function mutableInvoiceStatuses(): array
+    {
+        return ['draft', 'open', 'paid', 'uncollectible', 'void'];
     }
 }

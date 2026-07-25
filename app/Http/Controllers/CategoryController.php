@@ -501,11 +501,19 @@ class CategoryController extends Controller
 
         $category = Category::where('team_id', $team->id)->findOrFail($id);
 
+        $operation = (string) $request->query('operation', '');
+        if ($operation !== '' && ! in_array($operation, ['sell', 'buy'], true))
+        {
+            abort(404);
+        }
+        $operation = $operation !== '' ? $operation : null;
+
         $period = $invoicedLineItemsService->resolvePeriodFilter($request);
         $items = $invoicedLineItemsService->queryItems(
             teamId: (int) $team->id,
             from: $period['from'],
             to: $period['to'],
+            operation: $operation,
             categoryId: (int) $category->id,
         );
 
@@ -525,6 +533,8 @@ class CategoryController extends Controller
             'availableYears' => $invoicedLineItemsService->availableYearsForTeam((int) $team->id),
             'selectedYear' => $period['year'],
             'selectedMonth' => $period['month'],
+            'operation' => $operation,
+            'amountTone' => $operation === 'sell' ? 'income' : ($operation === 'buy' ? 'expense' : 'auto'),
             'backUrl' => $this->resolveCategoryItemsBackUrl($request),
         ]);
     }

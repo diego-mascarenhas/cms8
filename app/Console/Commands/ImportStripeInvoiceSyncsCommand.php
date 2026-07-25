@@ -63,7 +63,17 @@ class ImportStripeInvoiceSyncsCommand extends Command
             });
         }
 
+        // Prefer missing core rows (esp. open/unpaid) so reconcile batches do not starve new invoices.
         $query
+            ->orderByRaw(
+                "CASE WHEN NOT EXISTS (
+                    SELECT 1 FROM invoices
+                    WHERE invoices.source_reference_id = invoice_syncs.external_id
+                      AND invoices.team_id = invoice_syncs.team_id
+                      AND invoices.source_provider = 'stripe'
+                ) THEN 0 ELSE 1 END",
+            )
+            ->orderByRaw("CASE WHEN invoice_syncs.status = 'open' THEN 0 ELSE 1 END")
             ->orderByRaw('invoice_created_at IS NULL')
             ->orderBy('invoice_created_at')
             ->orderBy('id');
