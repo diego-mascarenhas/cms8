@@ -42,7 +42,15 @@
             <dd class="col-sm-9">{{ number_format($amountMajor, 2, ',', '.') }} {{ strtoupper((string) $sync->currency) }}</dd>
             <dt class="col-sm-3">{{ __('payment_sync.mercadopago.columns.payer') }}</dt>
             <dd class="col-sm-9">
-                @if ($sync->lacksIdentifiablePayer())
+                @if ($sync->displayPayerName())
+                    <div>{{ $sync->displayPayerName() }}</div>
+                    @if ($sync->settlementPayerIdNumber())
+                        <div class="small text-muted">
+                            {{ $sync->settlementPayerIdType() ?: __('payment_sync.mercadopago.settlement_payer_id') }}:
+                            {{ $sync->settlementPayerIdNumber() }}
+                        </div>
+                    @endif
+                @elseif ($sync->lacksIdentifiablePayer())
                     <span class="text-muted">{{ __('payment_sync.mercadopago.payer_unknown') }}</span>
                     <div class="small text-muted">{{ __('payment_sync.mercadopago.payer_unknown_hint') }}</div>
                 @else

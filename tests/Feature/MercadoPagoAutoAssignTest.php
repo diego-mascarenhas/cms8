@@ -37,18 +37,18 @@ class MercadoPagoAutoAssignTest extends TestCase
         ]);
     }
 
-    public function test_index_shows_auto_assign_button(): void
+    public function test_index_shows_reconcile_button(): void
     {
         [$user] = $this->makeAdminWithTeam();
 
         $this->actingAs($user)
             ->get(route('payments.syncs.mercadopago.index'))
             ->assertOk()
-            ->assertSee(route('payments.syncs.mercadopago.auto-assign', ['rebuild' => 1]), false)
-            ->assertSee(__('payment_sync.mercadopago.auto_assign.open'), false);
+            ->assertSee(route('payments.reconcile', ['rebuild' => 1]), false)
+            ->assertSee(__('payment_sync.mercadopago.open_queue'), false);
     }
 
-    public function test_auto_assign_page_shows_suggestion_and_accepts_one_at_a_time(): void
+    public function test_auto_assign_matcher_still_builds_suggestions(): void
     {
         [$user, $team] = $this->makeAdminWithTeam();
 
@@ -115,7 +115,11 @@ class MercadoPagoAutoAssignTest extends TestCase
             'description' => 'Bank Transfer',
             'charge_created_at' => now()->subDays(2),
             'last_synced_at' => now(),
-            'raw_payload' => [],
+            'raw_payload' => [
+                'transaction_details' => [
+                    'transaction_id' => 'XJ8G7V957E38ZM5MNEMPYR',
+                ],
+            ],
         ]);
 
         $suggestions = app(MercadoPagoAutoAssignMatcherService::class)
@@ -126,19 +130,18 @@ class MercadoPagoAutoAssignTest extends TestCase
         $this->assertSame([(int) $invoice->id], $suggestions[0]['invoice_ids']);
 
         $this->actingAs($user)
-            ->get(route('payments.syncs.mercadopago.auto-assign', ['rebuild' => 1]))
+            ->get(route('payments.reconcile', ['rebuild' => 1]))
             ->assertOk()
-            ->assertSee(__('Back'), false)
-            ->assertDontSee(__('payment_sync.mercadopago.back_payments'), false)
-            ->assertSee('0005-0477', false)
-            ->assertSee('Bratislava Marketing Group', false)
-            ->assertSee(route('invoice.show', $invoice->id), false)
-            ->assertSee(__('payment_sync.mercadopago.auto_assign.view_invoice'), false)
-            ->assertSee(__('payment_sync.mercadopago.auto_assign.accept'), false);
+            ->assertSee(__('payment_sync.reconcile.subtitle_table'), false)
+            ->assertSee('payment-reconcile-table', false);
 
         $this->actingAs($user)
-            ->post(route('payments.syncs.mercadopago.auto-assign.accept'))
-            ->assertRedirect(route('payments.syncs.mercadopago.auto-assign'));
+            ->post(route('payments.reconcile.accept'), [
+                'sync_id' => $sync->id,
+                'enterprise_id' => $enterprise->id,
+                'invoice_ids' => [$invoice->id],
+            ])
+            ->assertRedirect(route('payments.reconcile'));
 
         $payment = Payment::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -149,99 +152,15 @@ class MercadoPagoAutoAssignTest extends TestCase
         $this->assertNotNull($payment);
         $this->assertSame((int) $invoice->id, (int) $payment->invoice_id);
         $this->assertEqualsWithDelta(6625.12, (float) $payment->amount, 0.01);
-
-        $this->actingAs($user)
-            ->get(route('payments.syncs.mercadopago.auto-assign'))
-            ->assertOk()
-            ->assertSee(__('payment_sync.mercadopago.auto_assign.done_title'), false);
     }
 
-    public function test_auto_assign_skip_advances_without_importing(): void
+    public function test_legacy_auto_assign_redirects_to_reconcile(): void
     {
-        [$user, $team] = $this->makeAdminWithTeam();
-
-        $enterprise = Enterprise::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'type_id' => 1,
-            'status_id' => 1,
-            'name' => 'Acme SL',
-            'code' => 'cus_ACME',
-            'email' => 'billing@acme.test',
-        ]);
-
-        InvoiceSync::query()->create([
-            'team_id' => $team->id,
-            'provider' => 'stripe',
-            'external_id' => 'in_acme_1',
-            'customer_id' => 'cus_ACME',
-            'number' => '0005-1000',
-            'status' => 'paid',
-            'currency' => 'ars',
-            'amount_due' => 100,
-            'amount_paid' => 100,
-            'amount_remaining' => 0,
-            'total' => 100,
-            'paid' => true,
-            'invoice_created_at' => now(),
-            'last_synced_at' => now(),
-            'raw_payload' => [
-                'status_transitions' => ['paid_at' => now()->timestamp],
-                'metadata' => [],
-            ],
-        ]);
-
-        Invoice::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'enterprise_id' => $enterprise->id,
-            'type_id' => 1,
-            'operation' => 'sell',
-            'number' => '0005-1000',
-            'date' => now()->toDateString(),
-            'due_date' => now()->toDateString(),
-            'gross_amount' => 100,
-            'discount' => 0,
-            'total_amount' => 100,
-            'balance' => 0,
-            'status' => 2,
-            'source_provider' => 'stripe',
-            'source_reference_id' => 'in_acme_1',
-        ]);
-
-        PaymentSync::query()->create([
-            'team_id' => $team->id,
-            'provider' => 'mercadopago',
-            'external_id' => 'mp-skip-1',
-            'customer_email' => 'billing@acme.test',
-            'status' => 'approved',
-            'currency' => 'ARS',
-            'amount_cents' => 10000,
-            'amount_refunded_cents' => 0,
-            'amount_net_cents' => 10000,
-            'charge_created_at' => now(),
-            'last_synced_at' => now(),
-            'raw_payload' => [],
-        ]);
+        [$user] = $this->makeAdminWithTeam();
 
         $this->actingAs($user)
             ->get(route('payments.syncs.mercadopago.auto-assign', ['rebuild' => 1]))
-            ->assertOk()
-            ->assertSee('0005-1000', false);
-
-        $this->actingAs($user)
-            ->post(route('payments.syncs.mercadopago.auto-assign.skip'))
-            ->assertRedirect(route('payments.syncs.mercadopago.auto-assign'));
-
-        $this->assertFalse(
-            Payment::withoutGlobalScopes()
-                ->where('team_id', $team->id)
-                ->where('source_reference_id', 'mp-skip-1')
-                ->exists(),
-        );
-
-        $this->actingAs($user)
-            ->get(route('payments.syncs.mercadopago.auto-assign'))
-            ->assertOk()
-            ->assertSee(__('payment_sync.mercadopago.auto_assign.done_title'), false);
+            ->assertRedirect(route('payments.reconcile', ['rebuild' => 1]));
     }
 
     /**

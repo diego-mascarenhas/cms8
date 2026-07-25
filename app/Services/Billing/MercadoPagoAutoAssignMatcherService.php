@@ -42,7 +42,8 @@ PROMPT;
      *     amount: float,
      *     currency: string,
      *     payment_date: string|null,
-     *     external_id: string
+     *     external_id: string,
+     *     identification_code: string|null
      * }>
      */
     public function buildSuggestions(int $teamId, int $limit = 25, bool $useAi = false): array
@@ -61,6 +62,7 @@ PROMPT;
 
         $enterprisesByCode = [];
         $enterprisesByEmail = [];
+        $enterprisesByNormalizedName = [];
         foreach ($enterprises as $enterprise)
         {
             $code = trim((string) ($enterprise->code ?? ''));
@@ -73,6 +75,12 @@ PROMPT;
             if ($email !== '')
             {
                 $enterprisesByEmail[$email][] = (int) $enterprise->id;
+            }
+
+            $normalizedName = $this->normalizePersonName((string) $enterprise->name);
+            if ($normalizedName !== '')
+            {
+                $enterprisesByNormalizedName[$normalizedName][] = (int) $enterprise->id;
             }
         }
 
@@ -97,6 +105,7 @@ PROMPT;
                 $enterprises,
                 $enterprisesByCode,
                 $enterprisesByEmail,
+                $enterprisesByNormalizedName,
                 $paidPool,
                 $openPool,
                 $usedInvoiceIds,
@@ -129,6 +138,7 @@ PROMPT;
      * @param  Collection<int, Enterprise>  $enterprises
      * @param  array<string, int>  $enterprisesByCode
      * @param  array<string, list<int>>  $enterprisesByEmail
+     * @param  array<string, list<int>>  $enterprisesByNormalizedName
      * @param  Collection<int, Invoice>  $paidPool
      * @param  Collection<int, Invoice>  $openPool
      * @param  array<int, true>  $usedInvoiceIds
@@ -145,6 +155,9 @@ PROMPT;
      *     currency: string,
      *     payment_date: string|null,
      *     external_id: string,
+     *     identification_code: string|null,
+     *     settlement_payer_name: string|null,
+     *     settlement_payer_id_number: string|null,
      *     used_ai?: bool
      * }|null
      */
@@ -153,6 +166,7 @@ PROMPT;
         Collection $enterprises,
         array $enterprisesByCode,
         array $enterprisesByEmail,
+        array $enterprisesByNormalizedName,
         Collection $paidPool,
         Collection $openPool,
         array $usedInvoiceIds,
@@ -166,8 +180,10 @@ PROMPT;
 
         [$enterpriseId, $enterpriseSource] = $this->resolveEnterpriseId(
             $sync,
+            $enterprises,
             $enterprisesByCode,
             $enterprisesByEmail,
+            $enterprisesByNormalizedName,
         );
 
         $paidCandidates = $paidPool
@@ -187,6 +203,10 @@ PROMPT;
                 $enterpriseId = (int) $enterpriseIds->first();
                 $enterpriseSource = 'amount';
                 $paidCandidates = $paidCandidates->where('enterprise_id', $enterpriseId)->values();
+            } elseif ($enterpriseIds->count() > 1)
+            {
+                // Amount is shared by several paid customers — do not guess via open invoices.
+                return null;
             }
         }
 
@@ -214,26 +234,17 @@ PROMPT;
             }
         }
 
+        // Without a resolved client, open invoices of a popular plan amount are unsafe.
+        if ($enterpriseId === null)
+        {
+            return null;
+        }
+
         $openCandidates = $openPool
             ->reject(fn (Invoice $invoice) => isset($usedInvoiceIds[(int) $invoice->id]))
             ->filter(fn (Invoice $invoice) => $this->amountsMatch((float) $invoice->balance, $amount))
-            ->when(
-                $enterpriseId !== null,
-                fn (Collection $collection) => $collection->where('enterprise_id', $enterpriseId),
-            )
+            ->where('enterprise_id', $enterpriseId)
             ->values();
-
-        if ($enterpriseId === null)
-        {
-            $enterpriseIds = $openCandidates->pluck('enterprise_id')->unique()->values();
-            if ($enterpriseIds->count() === 1)
-            {
-                $enterpriseId = (int) $enterpriseIds->first();
-                $enterpriseSource = 'amount';
-                $openCandidates = $openCandidates->where('enterprise_id', $enterpriseId)->values();
-                $enterprise = $enterprises->get($enterpriseId);
-            }
-        }
 
         if (! $enterprise || $openCandidates->isEmpty())
         {
@@ -540,7 +551,8 @@ PROMPT;
      *     amount: float,
      *     currency: string,
      *     payment_date: string|null,
-     *     external_id: string
+     *     external_id: string,
+     *     identification_code: string|null
      * }
      */
     private function formatSuggestion(
@@ -557,6 +569,7 @@ PROMPT;
         {
             'code' => __('payment_sync.mercadopago.auto_assign.client_by_code'),
             'email' => __('payment_sync.mercadopago.auto_assign.client_by_email'),
+            'settlement_name' => __('payment_sync.mercadopago.auto_assign.client_by_settlement_name'),
             'amount' => __('payment_sync.mercadopago.auto_assign.client_by_amount'),
             default => '',
         };
@@ -577,6 +590,9 @@ PROMPT;
             'currency' => strtoupper((string) $sync->currency),
             'payment_date' => $sync->charge_created_at?->format('d/m/Y H:i'),
             'external_id' => (string) $sync->external_id,
+            'identification_code' => $sync->identificationCode(),
+            'settlement_payer_name' => $sync->displayPayerName(),
+            'settlement_payer_id_number' => $sync->settlementPayerIdNumber(),
         ];
     }
 
@@ -620,20 +636,19 @@ PROMPT;
     }
 
     /**
+     * @param  Collection<int, Enterprise>  $enterprises
      * @param  array<string, int>  $enterprisesByCode
      * @param  array<string, list<int>>  $enterprisesByEmail
+     * @param  array<string, list<int>>  $enterprisesByNormalizedName
      * @return array{0: int|null, 1: string}
      */
     private function resolveEnterpriseId(
         PaymentSync $sync,
+        Collection $enterprises,
         array $enterprisesByCode,
         array $enterprisesByEmail,
+        array $enterprisesByNormalizedName,
     ): array {
-        if ($sync->lacksIdentifiablePayer())
-        {
-            return [null, 'none'];
-        }
-
         $customerId = $sync->customer_id !== null ? trim((string) $sync->customer_id) : '';
         if ($customerId !== '' && isset($enterprisesByCode[$customerId]))
         {
@@ -646,7 +661,78 @@ PROMPT;
             return [$enterprisesByEmail[$email][0], 'email'];
         }
 
+        $settlementName = trim((string) ($sync->settlementPayerName() ?? ''));
+        if ($settlementName !== '')
+        {
+            $matchedId = $this->matchEnterpriseBySettlementName(
+                $settlementName,
+                $enterprises,
+                $enterprisesByNormalizedName,
+            );
+            if ($matchedId !== null)
+            {
+                return [$matchedId, 'settlement_name'];
+            }
+        }
+
         return [null, 'none'];
+    }
+
+    /**
+     * @param  Collection<int, Enterprise>  $enterprises
+     * @param  array<string, list<int>>  $enterprisesByNormalizedName
+     */
+    private function matchEnterpriseBySettlementName(
+        string $settlementName,
+        Collection $enterprises,
+        array $enterprisesByNormalizedName,
+    ): ?int {
+        $normalizedPayer = $this->normalizePersonName($settlementName);
+        if ($normalizedPayer === '')
+        {
+            return null;
+        }
+
+        if (isset($enterprisesByNormalizedName[$normalizedPayer])
+            && count($enterprisesByNormalizedName[$normalizedPayer]) === 1)
+        {
+            return $enterprisesByNormalizedName[$normalizedPayer][0];
+        }
+
+        $matches = [];
+        foreach ($enterprises as $enterprise)
+        {
+            $normalizedEnterprise = $this->normalizePersonName((string) $enterprise->name);
+            if ($normalizedEnterprise === '')
+            {
+                continue;
+            }
+
+            if (
+                $normalizedEnterprise === $normalizedPayer
+                || str_contains($normalizedPayer, $normalizedEnterprise)
+                || str_contains($normalizedEnterprise, $normalizedPayer)
+            ) {
+                $matches[(int) $enterprise->id] = true;
+            }
+        }
+
+        if (count($matches) === 1)
+        {
+            return (int) array_key_first($matches);
+        }
+
+        return null;
+    }
+
+    private function normalizePersonName(string $name): string
+    {
+        $normalized = mb_strtolower(trim($name));
+        $normalized = str_replace(['.', ',', ';'], ' ', $normalized);
+        $normalized = preg_replace('/\b(s\.?\s*a\.?|s\.?\s*r\.?\s*l\.?|sa|srl|ltda|llc|inc)\b/u', ' ', $normalized) ?? $normalized;
+        $normalized = preg_replace('/\s+/u', ' ', $normalized) ?? $normalized;
+
+        return trim($normalized);
     }
 
     private function invoiceDate(Invoice $invoice): ?CarbonInterface

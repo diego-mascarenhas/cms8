@@ -37,7 +37,9 @@ class ManualAndMockupsTest extends TestCase
 
         $this->get(route('manual.billing'))
             ->assertSee('Suscripciones', false)
-            ->assertSee('Afiliados', false);
+            ->assertSee('Afiliados', false)
+            ->assertSee('Reconciliar', false)
+            ->assertSee('Extractos mensuales', false);
 
         $this->get(route('manual.campaigns'))
             ->assertSee('Paid Ads', false);

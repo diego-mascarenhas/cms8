@@ -229,6 +229,7 @@ class ManualDocumentation
                 'admin' => [
                     'Facturas, pagos, ingresos, gastos, tarifas y finanzas.',
                     'Suscripciones (Stripe), afiliados y sync de pagos (MercadoPago, etc.).',
+                    'Reconciliar: revisar matches de extractos (MP y, a futuro, CSV de bancos/PayPal), deshacer vínculos incorrectos.',
                 ],
                 'collaborator' => [
                     'Sin acceso al menú de facturación.',

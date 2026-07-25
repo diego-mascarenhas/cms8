@@ -792,6 +792,33 @@ class MercadoPagoPaymentImportService
             }
         }
 
+        $settlementName = trim((string) ($row->settlementPayerName() ?? ''));
+        if ($settlementName !== '')
+        {
+            $normalizedPayer = mb_strtolower(preg_replace('/\s+/u', ' ', trim($settlementName)) ?? '');
+            $nameMatches = Enterprise::query()
+                ->where('team_id', $row->team_id)
+                ->where('type_id', 1)
+                ->get(['id', 'name'])
+                ->filter(function (Enterprise $enterprise) use ($normalizedPayer): bool
+                {
+                    $normalizedEnterprise = mb_strtolower(preg_replace('/\s+/u', ' ', trim((string) $enterprise->name)) ?? '');
+
+                    return $normalizedEnterprise !== ''
+                        && (
+                            $normalizedEnterprise === $normalizedPayer
+                            || str_contains($normalizedPayer, $normalizedEnterprise)
+                            || str_contains($normalizedEnterprise, $normalizedPayer)
+                        );
+                })
+                ->values();
+
+            if ($nameMatches->count() === 1)
+            {
+                return [(int) $nameMatches->first()->id, 'settlement_name'];
+            }
+        }
+
         if (! $fallbackEmail)
         {
             return [null, 'none'];
