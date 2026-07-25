@@ -15,7 +15,7 @@
         'month' => $selectedMonth,
         'return' => request()->fullUrl(),
     ]);
-    $categoryItemsUrl = static function (?int $categoryId) use ($selectedYear, $selectedMonth): ?string
+    $categoryItemsUrl = static function (?int $categoryId, string $operation) use ($selectedYear, $selectedMonth): ?string
     {
         if ($categoryId === null)
         {
@@ -24,6 +24,7 @@
 
         return route('categories.items', [
             'id' => $categoryId,
+            'operation' => $operation,
             'year' => $selectedYear,
             'month' => $selectedMonth,
             'return' => request()->fullUrl(),
@@ -63,7 +64,7 @@
                                 @foreach($incomeCategories as $row)
                                     @php
                                         $swatchColor = $incomeChartColors[$loop->index % count($incomeChartColors)];
-                                        $categoryUrl = $categoryItemsUrl($row['id'] ?? null);
+                                        $categoryUrl = $categoryItemsUrl($row['id'] ?? null, 'sell');
                                     @endphp
                                     <tr>
                                         <td>
@@ -118,7 +119,7 @@
                                 @foreach($expenseCategories as $row)
                                     @php
                                         $swatchColor = $expenseChartColors[$loop->index % count($expenseChartColors)];
-                                        $categoryUrl = $categoryItemsUrl($row['id'] ?? null);
+                                        $categoryUrl = $categoryItemsUrl($row['id'] ?? null, 'buy');
                                     @endphp
                                     <tr>
                                         <td>

@@ -2,6 +2,11 @@
     $formatAmount = static fn (float $amount): string => \App\Helpers\Helpers::formatDecimal($amount, 0);
     $reportingCurrency = $reportingCurrency ?? strtoupper((string) config('verifactu.default_currency', 'EUR'));
     $lines = $lines ?? [];
+    $showDescriptionColumn = collect($lines)->contains(fn (array $line): bool => filled($line['description'] ?? null));
+    $showCategoryColumn = collect($lines)->contains(fn (array $line): bool => filled($line['category_name'] ?? null));
+    $amountClass = ($amountTone ?? 'auto') === 'income'
+        ? 'text-success'
+        : (($amountTone ?? 'auto') === 'expense' ? 'text-danger' : 'text-body');
 @endphp
 
 @if(! ($conversionComplete ?? true) && $lines !== [])
@@ -13,45 +18,56 @@
 @if($lines === [])
     <p class="text-muted mb-0 p-4">{{ $emptyMessage ?? __('No invoiced lines found.') }}</p>
 @else
-    <ul class="list-group list-group-flush">
-        @foreach($lines as $line)
-            <li class="list-group-item d-flex justify-content-between align-items-center gap-3">
-                <div class="flex-grow-1 min-w-0">
-                    @if(filled($line['description']))
-                        <strong class="d-block text-truncate">{{ $line['description'] }}</strong>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead>
+                <tr>
+                    <th>{{ __('Enterprise') }}</th>
+                    @if($showDescriptionColumn)
+                        <th>{{ __('Description') }}</th>
                     @endif
-                    @if($line['enterprise_id'])
-                        <a href="{{ route('client.show', $line['enterprise_id']) }}" class="text-muted small">
-                            {{ $line['enterprise_name'] }}
-                        </a>
-                    @else
-                        <small class="text-muted">{{ $line['enterprise_name'] }}</small>
+                    @if($showCategoryColumn)
+                        <th>{{ __('Category') }}</th>
                     @endif
-                    @if(filled($line['category_name']))
-                        <small class="text-muted d-block">{{ $line['category_name'] }}</small>
-                    @endif
-                </div>
-                <div class="text-end text-nowrap">
-                    @if($line['has_discount'])
-                        <small class="text-muted d-block">
-                            {{ __('With discount') }}
-                            @if($line['discount_amount'] !== null)
-                                ({{ $formatAmount((float) $line['discount_amount']) }} {{ $reportingCurrency }})
+                    <th class="text-end">{{ __('Total') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($lines as $line)
+                    <tr>
+                        <td>
+                            @if($line['enterprise_id'])
+                                <a href="{{ route('client.show', $line['enterprise_id']) }}" class="text-body">
+                                    {{ $line['enterprise_name'] }}
+                                </a>
+                            @else
+                                <span class="text-muted">{{ $line['enterprise_name'] }}</span>
                             @endif
-                        </small>
-                    @endif
-                    @php
-                        $amountClass = ($amountTone ?? 'auto') === 'income'
-                            ? 'text-success'
-                            : (($amountTone ?? 'auto') === 'expense' ? 'text-danger' : 'text-body');
-                    @endphp
-                    <span class="{{ $amountClass }} fw-medium">
-                        {{ $formatAmount((float) $line['amount']) }} {{ $reportingCurrency }}
-                    </span>
-                </div>
-            </li>
-        @endforeach
-    </ul>
+                        </td>
+                        @if($showDescriptionColumn)
+                            <td class="text-muted">{{ $line['description'] ?: '—' }}</td>
+                        @endif
+                        @if($showCategoryColumn)
+                            <td class="text-muted">{{ $line['category_name'] ?: '—' }}</td>
+                        @endif
+                        <td class="text-end text-nowrap">
+                            @if($line['has_discount'])
+                                <small class="text-muted d-block">
+                                    {{ __('With discount') }}
+                                    @if($line['discount_amount'] !== null)
+                                        ({{ $formatAmount((float) $line['discount_amount']) }} {{ $reportingCurrency }})
+                                    @endif
+                                </small>
+                            @endif
+                            <span class="{{ $amountClass }} fw-medium">
+                                {{ $formatAmount((float) $line['amount']) }} {{ $reportingCurrency }}
+                            </span>
+                        </td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
     <div class="p-4 border-top text-end">
         <h4 class="mb-0">
             <strong>{{ __('Total') }}: {{ $formatAmount((float) ($totalAmount ?? 0)) }} {{ $reportingCurrency }}</strong>
