@@ -70,12 +70,17 @@ class InvoiceShowDocumentLinksTest extends TestCase
             'external_id' => 'in_test_documents',
             'hosted_invoice_url' => 'https://invoice.stripe.com/i/test_hosted',
             'invoice_pdf' => 'https://pay.stripe.com/invoice/test/pdf',
+            'raw_payload' => [
+                'livemode' => false,
+            ],
         ]);
 
         $this->actingAs($user)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
             ->assertSee('https://invoice.stripe.com/i/test_hosted', false)
-            ->assertSee('https://pay.stripe.com/invoice/test/pdf', false);
+            ->assertSee('https://pay.stripe.com/invoice/test/pdf', false)
+            ->assertSee('https://dashboard.stripe.com/test/invoices/in_test_documents', false)
+            ->assertSee(__('View in Stripe'), false);
     }
 }

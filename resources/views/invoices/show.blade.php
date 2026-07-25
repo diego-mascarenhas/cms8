@@ -30,6 +30,7 @@
     $formatPaymentAmount = fn (float $amount, string $code): string => \App\Helpers\Helpers::formatDecimal($amount).' '.strtoupper($code);
     $invoicePrintUrl = $invoice->stripeHostedInvoiceUrl();
     $invoiceDownloadUrl = $invoice->stripeInvoicePdfUrl();
+    $invoiceStripeDashboardUrl = $invoice->stripeDashboardUrl();
     $showPendingBalance = round((float) $invoice->balance, 2) > 0
         && round((float) $invoice->balance, 2) < round((float) $invoice->total_amount, 2);
     $originalInvoice = $originalInvoice ?? null;
@@ -262,6 +263,12 @@
         <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoiceDownloadUrl }}">
           <i class="ti ti-download ti-xs me-2"></i>
           {{ __('Download') }}
+        </a>
+        @endif
+        @if ($invoiceStripeDashboardUrl)
+        <a class="btn btn-label-primary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoiceStripeDashboardUrl }}">
+          <i class="ti ti-brand-stripe ti-xs me-2"></i>
+          {{ __('View in Stripe') }}
         </a>
         @endif
         @if ($originalInvoice)

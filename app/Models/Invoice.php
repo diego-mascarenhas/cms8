@@ -161,6 +161,46 @@ class Invoice extends Model
         return null;
     }
 
+    public function stripeDashboardUrl(): ?string
+    {
+        if (strtolower((string) $this->source_provider) !== 'stripe')
+        {
+            return null;
+        }
+
+        $externalId = trim((string) $this->source_reference_id);
+        if ($externalId === '')
+        {
+            return null;
+        }
+
+        $resource = match (true)
+        {
+            str_starts_with($externalId, 'in_') => 'invoices',
+            str_starts_with($externalId, 'cn_') => 'credit_notes',
+            default => null,
+        };
+
+        if ($resource === null)
+        {
+            return null;
+        }
+
+        $sync = $this->relationLoaded('stripeInvoiceSync')
+            ? $this->stripeInvoiceSync
+            : $this->stripeInvoiceSync()->first();
+
+        $livemode = $sync instanceof InvoiceSync
+            ? data_get($sync->raw_payload, 'livemode')
+            : null;
+
+        $base = $livemode === false
+            ? 'https://dashboard.stripe.com/test/'
+            : 'https://dashboard.stripe.com/';
+
+        return $base.$resource.'/'.$externalId;
+    }
+
     public function getStatusLabelAttribute(): string
     {
         return match ((int) $this->status)
