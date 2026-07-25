@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 
 class InvoiceSummaryService
 {
-    /** @var list<int> Void, error, draft — excluded from payment summaries. */
+    /** @var list<int> Void, uncollectible, draft — excluded from payment summaries. */
     public const EXCLUDED_STATUSES = [3, 7, 9];
 
     /** @var list<int> */
@@ -20,7 +20,7 @@ class InvoiceSummaryService
     /** @var list<int> Bonificada — treated as zero balance, not pending collection. */
     public const BONIFIED_STATUSES = [5, 6];
 
-    /** @var list<int> Not treated as pending collection. */
+    /** @var list<int> Not treated as pending collection (only open/issued sales with balance). */
     public const UNPAID_EXCLUDED_STATUSES = [3, 4, 5, 6, 7, 9];
 
     /** @var list<int> */
@@ -29,7 +29,7 @@ class InvoiceSummaryService
     /** @var list<string> */
     public const SUMMARY_FILTERS = ['unpaid', 'credit_notes', 'collected', 'overdue'];
 
-    public const DEFAULT_LIST_FILTER = 'excluding_collected';
+    public const DEFAULT_LIST_FILTER = 'all';
 
     public const ROLLING_SUMMARY_DAYS = 30;
 
@@ -104,14 +104,9 @@ class InvoiceSummaryService
     {
         $filter = $filter ?? self::DEFAULT_LIST_FILTER;
 
-        if ($filter === 'all')
-        {
-            return self::DEFAULT_LIST_FILTER;
-        }
-
         $applicableFilters = array_merge(
             self::SUMMARY_FILTERS,
-            [self::DEFAULT_LIST_FILTER],
+            [self::DEFAULT_LIST_FILTER, 'excluding_collected'],
         );
 
         if (! in_array($filter, $applicableFilters, true))
@@ -124,15 +119,18 @@ class InvoiceSummaryService
 
     public function applySummaryFilter(Builder $query, string $filter): Builder
     {
+        if ($filter === 'all')
+        {
+            return $query;
+        }
+
+        $this->constrainToSales($query);
+
         return match ($filter)
         {
             'unpaid', 'excluding_collected' => $query
                 ->whereNotIn('invoices.status', self::UNPAID_EXCLUDED_STATUSES)
-                ->where(function (Builder $inner): void
-                {
-                    $inner->where('invoices.balance', '>', 0)
-                        ->orWhere('invoices.operation', 'buy');
-                }),
+                ->where('invoices.balance', '>', 0),
             'credit_notes' => $query->whereIn('invoices.status', self::CREDIT_NOTE_STATUSES),
             'collected' => $this->applyRollingDateFilter(
                 $query
@@ -154,8 +152,14 @@ class InvoiceSummaryService
 
     private function baseQuery(int $teamId): Builder
     {
-        return Invoice::withoutGlobalScopes()
-            ->where('team_id', $teamId);
+        return $this->constrainToSales(
+            Invoice::withoutGlobalScopes()->where('team_id', $teamId),
+        );
+    }
+
+    private function constrainToSales(Builder $query): Builder
+    {
+        return $query->where('invoices.operation', 'sell');
     }
 
     private function applyRollingDateFilter(Builder $query): Builder

@@ -29,7 +29,7 @@ class InvoiceListFilterTest extends TestCase
         ]);
     }
 
-    public function test_invoice_datatable_default_filter_includes_paid_purchase_invoices(): void
+    public function test_invoice_datatable_default_filter_includes_purchase_and_collected_invoices(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
@@ -53,14 +53,14 @@ class InvoiceListFilterTest extends TestCase
             'enterprise_id' => $client->id,
             'type_id' => 1,
             'operation' => 'sell',
-            'number' => 'VENTA-COBRADA',
+            'number' => 'VENTA-PENDIENTE',
             'date' => '2026-06-01',
             'due_date' => '2026-06-01',
             'gross_amount' => 100,
             'discount' => 0,
             'total_amount' => 100,
-            'balance' => 0,
-            'status' => 2,
+            'balance' => 100,
+            'status' => 1,
             'source_provider' => 'cuentica',
         ]);
 
@@ -80,18 +80,35 @@ class InvoiceListFilterTest extends TestCase
             'source_provider' => 'cuentica',
         ]);
 
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'COMPRA-PENDIENTE',
+            'date' => '2026-06-03',
+            'due_date' => null,
+            'gross_amount' => 80,
+            'discount' => 0,
+            'total_amount' => 80,
+            'balance' => 80,
+            'status' => 1,
+            'source_provider' => 'cuentica',
+        ]);
+
         $this->actingAs($user);
-        request()->merge(['summary_filter' => 'excluding_collected']);
+        request()->merge(['summary_filter' => 'all']);
 
         $numbers = app(InvoiceDataTable::class)
             ->query(app(Invoice::class))
+            ->orderBy('number')
             ->pluck('number')
             ->all();
 
-        $this->assertSame(['COMPRA-PAGADA'], $numbers);
+        $this->assertSame(['COMPRA-PAGADA', 'COMPRA-PENDIENTE', 'VENTA-PENDIENTE'], $numbers);
     }
 
-    public function test_invoice_datatable_legacy_all_filter_excludes_bonificadas(): void
+    public function test_invoice_datatable_unpaid_filter_excludes_purchases_and_bonificadas(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
@@ -135,8 +152,24 @@ class InvoiceListFilterTest extends TestCase
             'source_provider' => 'manual',
         ]);
 
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'COMPRA-PENDIENTE',
+            'date' => '2006-11-15',
+            'due_date' => null,
+            'gross_amount' => 80,
+            'discount' => 0,
+            'total_amount' => 80,
+            'balance' => 80,
+            'status' => 1,
+            'source_provider' => 'manual',
+        ]);
+
         $this->actingAs($user);
-        request()->merge(['summary_filter' => 'all']);
+        request()->merge(['summary_filter' => 'unpaid']);
 
         $numbers = app(InvoiceDataTable::class)
             ->query(app(Invoice::class))

@@ -242,7 +242,7 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame(['NC-002'], $creditNotesQuery->pluck('number')->all());
     }
 
-    public function test_default_list_filter_hides_collected_invoices(): void
+    public function test_default_list_filter_shows_all_invoices(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
@@ -288,6 +288,21 @@ class InvoiceSummaryServiceTest extends TestCase
             'team_id' => $team->id,
             'enterprise_id' => $enterprise->id,
             'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'C-BUY',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 40,
+            'discount' => 0,
+            'total_amount' => 40,
+            'balance' => 40,
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
             'operation' => 'sell',
             'number' => 'NC-001',
             'date' => now()->toDateString(),
@@ -301,7 +316,11 @@ class InvoiceSummaryServiceTest extends TestCase
 
         $defaultQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
         $this->service->applySummaryFilter($defaultQuery, InvoiceSummaryService::DEFAULT_LIST_FILTER);
-        $this->assertSame(['F-OPEN'], $defaultQuery->pluck('number')->all());
+        $this->assertSame(['C-BUY', 'F-OPEN', 'F-PAID', 'NC-001'], $defaultQuery->orderBy('number')->pluck('number')->all());
+
+        $unpaidQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($unpaidQuery, 'unpaid');
+        $this->assertSame(['F-OPEN'], $unpaidQuery->pluck('number')->all());
 
         $collectedQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
         $this->service->applySummaryFilter($collectedQuery, 'collected');
@@ -415,6 +434,70 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertSame('€60,00', $stats['unpaid']['amount_label']);
     }
 
+    public function test_unpaid_excludes_uncollectible_and_void_sales(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OPEN',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 40,
+            'discount' => 0,
+            'total_amount' => 40,
+            'balance' => 40,
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-UNCOLLECTIBLE',
+            'date' => now()->toDateString(),
+            'due_date' => now()->subDays(5)->toDateString(),
+            'gross_amount' => 80,
+            'discount' => 0,
+            'total_amount' => 80,
+            'balance' => 80,
+            'status' => 7,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-VOID',
+            'date' => now()->toDateString(),
+            'due_date' => now()->subDays(5)->toDateString(),
+            'gross_amount' => 90,
+            'discount' => 0,
+            'total_amount' => 90,
+            'balance' => 90,
+            'status' => 3,
+        ]);
+
+        $stats = $this->service->buildIndexStats($team->id);
+
+        $this->assertSame(1, $stats['unpaid']['count']);
+        $this->assertSame(['EUR' => 40.0], $stats['unpaid']['totals_by_currency']);
+        $this->assertSame(0, $stats['overdue']['count']);
+    }
+
     public function test_collected_and_credit_notes_stats_use_rolling_thirty_day_window(): void
     {
         Carbon::setTestNow('2026-06-06 12:00:00');
@@ -505,15 +588,87 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertEqualsCanonicalizing(['NC-RECENT', 'NC-OLD'], $creditNotesQuery->pluck('number')->all());
     }
 
-    public function test_resolve_list_filter_maps_legacy_all_to_default(): void
+    public function test_summary_cards_ignore_purchase_invoices(): void
     {
-        $this->assertSame('excluding_collected', $this->service->resolveListFilter('all'));
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Proveedor SL',
+            'type_id' => 2,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'VENTA-PENDIENTE',
+            'date' => now()->toDateString(),
+            'due_date' => now()->subDays(2)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'COMPRA-PENDIENTE',
+            'date' => now()->toDateString(),
+            'due_date' => now()->subDays(2)->toDateString(),
+            'gross_amount' => 500,
+            'discount' => 0,
+            'total_amount' => 500,
+            'balance' => 500,
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'COMPRA-PAGADA',
+            'date' => now()->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 200,
+            'discount' => 0,
+            'total_amount' => 200,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        $stats = $this->service->buildIndexStats($team->id);
+
+        $this->assertSame(1, $stats['unpaid']['count']);
+        $this->assertSame(['EUR' => 100.0], $stats['unpaid']['totals_by_currency']);
+        $this->assertSame(1, $stats['overdue']['count']);
+        $this->assertSame(0, $stats['collected']['count']);
+    }
+
+    public function test_resolve_list_filter_keeps_all_as_default(): void
+    {
+        $this->assertSame('all', $this->service->resolveListFilter('all'));
     }
 
     public function test_resolve_list_filter_falls_back_to_default_for_unknown_values(): void
     {
-        $this->assertSame('excluding_collected', $this->service->resolveListFilter(null));
-        $this->assertSame('excluding_collected', $this->service->resolveListFilter('invalid'));
+        $this->assertSame('all', $this->service->resolveListFilter(null));
+        $this->assertSame('all', $this->service->resolveListFilter('invalid'));
     }
 
     public function test_excluding_collected_filter_excludes_bonificada_with_zero_balance(): void
