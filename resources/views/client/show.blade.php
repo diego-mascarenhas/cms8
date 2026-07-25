@@ -362,6 +362,7 @@
                             <table class="table table-hover mb-0" id="clientInvoicesTable">
                                 <thead>
                                     <tr>
+                                        <th class="d-none">ID</th>
                                         <th>Número</th>
                                         <th>Fecha</th>
                                         <th>Vencimiento</th>
@@ -373,6 +374,7 @@
                                 <tbody>
                                     @foreach($invoices as $invoice)
                                         <tr>
+                                            <td class="d-none">{{ $invoice->id }}</td>
                                             <td>
                                                 @can('view', $invoice)
                                                     <a href="{{ route('invoice.show', $invoice->id) }}" class="text-decoration-none">{{ $invoice->number ?: '—' }}</a>
@@ -701,9 +703,10 @@ document.addEventListener('DOMContentLoaded', function () {
             pageLength: 5,
             lengthChange: false,
             ordering: true,
-            order: [[1, 'desc']],
+            order: [[0, 'desc']],
             responsive: true,
             columnDefs: [
+                { targets: 0, visible: false, searchable: false },
                 { targets: -1, className: 'text-center' },
             ],
         });
