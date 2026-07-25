@@ -98,4 +98,18 @@ class InvoiceStatusLabelTest extends TestCase
         $this->assertStringContainsString('Bonificada', $bonificada->status_badge);
         $this->assertStringNotContainsString('Pendiente', $bonificada->status_badge);
     }
+
+    public function test_stripe_uncollectible_status_shows_as_incobrable_not_error(): void
+    {
+        $invoice = new Invoice([
+            'status' => 7,
+            'due_date' => '2026-06-01',
+            'balance' => 39962,
+        ]);
+
+        $this->assertSame('Incobrable', $invoice->status_label);
+        $this->assertStringContainsString('Incobrable', $invoice->status_badge);
+        $this->assertStringContainsString('bg-label-warning', $invoice->status_badge);
+        $this->assertStringNotContainsString('Error', $invoice->status_badge);
+    }
 }

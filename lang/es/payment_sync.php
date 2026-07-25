@@ -33,7 +33,7 @@ return [
         'section_client' => 'Cliente en Humano',
         'enterprise_label' => 'Cliente Stripe',
         'enterprise_placeholder' => 'Selecciona un cliente con Stripe',
-        'enterprise_filter_hint' => 'Empresas con código Stripe (cus_…) y facturas abiertas, o ya pagadas en Stripe sin vincular a Mercado Pago.',
+        'enterprise_filter_hint' => 'Empresas con código Stripe (cus_…), facturas impagas (sin nota de crédito que las cubra) y cobro por factura (sin cargo automático con tarjeta).',
         'invoice_label' => 'Facturas (opcional, puedes marcar varias)',
         'invoice_placeholder' => 'Sin factura / elegir después',
         'invoice_hint' => 'Puedes marcar varias si el pago cubre 2 o más facturas; la suma de saldos debe coincidir con el importe.',

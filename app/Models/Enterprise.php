@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\Finance\InvoiceSummaryService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -79,31 +80,18 @@ class Enterprise extends Model
         {
             $outer->whereHas('invoices', function ($invoices): void
             {
-                $invoices->where('operation', 'sell')
-                    ->where('balance', '>', 0);
+                $this->constrainCollectibleSellInvoices($invoices);
             })->orWhereExists(function ($sub): void
             {
-                $sub->selectRaw('1')
-                    ->from('invoice_syncs')
-                    ->whereColumn('invoice_syncs.customer_id', 'enterprises.code')
-                    ->whereColumn('invoice_syncs.team_id', 'enterprises.team_id')
-                    ->where('invoice_syncs.provider', 'stripe')
-                    ->where(function ($status): void
-                    {
-                        $status->whereIn('invoice_syncs.status', ['open', 'uncollectible'])
-                            ->orWhere(function ($unpaid): void
-                            {
-                                $unpaid->where('invoice_syncs.paid', false)
-                                    ->where('invoice_syncs.amount_remaining', '>', 0);
-                            });
-                    });
+                $this->constrainOpenStripeInvoiceSyncs($sub);
             });
         });
     }
 
     /**
-     * Stripe clients that can receive an MP assignment: open balance, or paid Stripe
-     * invoices that still lack mercadopago_id metadata (backfill).
+     * Stripe clients for Mercado Pago assignment: unpaid local/Stripe invoices billed
+     * via send_invoice (no automatic card charge). Ignores credit notes, locally
+     * settled Stripe invoices, and open syncs already covered by a credit note.
      */
     public function scopeWithMercadoPagoAssignableInvoices($query)
     {
@@ -111,40 +99,81 @@ class Enterprise extends Model
         {
             $outer->whereHas('invoices', function ($invoices): void
             {
-                $invoices->where('operation', 'sell')
-                    ->where('balance', '>', 0);
+                $this->constrainCollectibleSellInvoices($invoices);
             })->orWhereExists(function ($sub): void
             {
-                $sub->selectRaw('1')
-                    ->from('invoice_syncs')
-                    ->whereColumn('invoice_syncs.customer_id', 'enterprises.code')
-                    ->whereColumn('invoice_syncs.team_id', 'enterprises.team_id')
-                    ->where('invoice_syncs.provider', 'stripe')
-                    ->where(function ($status): void
-                    {
-                        $status->whereIn('invoice_syncs.status', ['open', 'uncollectible'])
-                            ->orWhere(function ($unpaid): void
-                            {
-                                $unpaid->where('invoice_syncs.paid', false)
-                                    ->where('invoice_syncs.amount_remaining', '>', 0);
-                            })
-                            ->orWhere(function ($paid): void
-                            {
-                                $paid->where(function ($paidStatus): void
-                                {
-                                    $paidStatus->where('invoice_syncs.paid', true)
-                                        ->orWhere('invoice_syncs.status', 'paid');
-                                })->whereRaw("(
-                                    NULLIF(TRIM(COALESCE(
-                                        invoice_syncs.raw_payload->'metadata'->>'mercadopago_id',
-                                        invoice_syncs.raw_payload->'metadata'->>'mercadopago_payment_id',
-                                        ''
-                                    )), '') IS NULL
-                                )");
-                            });
-                    });
+                $this->constrainOpenStripeInvoiceSyncs($sub);
+                $sub->where(function ($collection): void
+                {
+                    $collection->whereRaw("(invoice_syncs.raw_payload->>'collection_method') = 'send_invoice'")
+                        ->orWhereRaw("(invoice_syncs.raw_payload->>'collection_method') IS NULL")
+                        ->orWhereRaw("TRIM(COALESCE(invoice_syncs.raw_payload->>'collection_method', '')) = ''");
+                });
             });
         });
+    }
+
+    /**
+     * Local sell invoices that still need collection (excludes credit notes / bonified).
+     */
+    protected function constrainCollectibleSellInvoices($invoices): void
+    {
+        $invoices->where('operation', 'sell')
+            ->where('balance', '>', 0)
+            ->whereNotIn('status', InvoiceSummaryService::UNPAID_EXCLUDED_STATUSES)
+            ->where(function ($type): void
+            {
+                $type->whereNull('type_id')
+                    ->orWhere('type_id', '!=', 2);
+            })
+            ->where(function ($source): void
+            {
+                $source->whereNull('source_reference_id')
+                    ->orWhere('source_reference_id', 'not like', 'cn_%');
+            });
+    }
+
+    /**
+     * Open Stripe invoice_syncs that are still collectible: not settled locally and
+     * not fully covered by an associated credit note.
+     */
+    protected function constrainOpenStripeInvoiceSyncs($sub): void
+    {
+        $sub->selectRaw('1')
+            ->from('invoice_syncs')
+            ->whereColumn('invoice_syncs.customer_id', 'enterprises.code')
+            ->whereColumn('invoice_syncs.team_id', 'enterprises.team_id')
+            ->where('invoice_syncs.provider', 'stripe')
+            ->where(function ($status): void
+            {
+                $status->whereIn('invoice_syncs.status', ['open', 'uncollectible'])
+                    ->orWhere(function ($unpaid): void
+                    {
+                        $unpaid->where('invoice_syncs.paid', false)
+                            ->where('invoice_syncs.amount_remaining', '>', 0);
+                    });
+            })
+            ->whereNotExists(function ($local): void
+            {
+                $local->selectRaw('1')
+                    ->from('invoices')
+                    ->whereColumn('invoices.source_reference_id', 'invoice_syncs.external_id')
+                    ->whereColumn('invoices.team_id', 'invoice_syncs.team_id')
+                    ->where('invoices.source_provider', 'stripe')
+                    ->where(function ($settled): void
+                    {
+                        $settled->where('invoices.balance', '<=', 0)
+                            ->orWhereIn('invoices.status', InvoiceSummaryService::UNPAID_EXCLUDED_STATUSES);
+                    });
+            })
+            ->whereRaw('(
+                SELECT COALESCE(SUM(ABS(credit_notes.total)), 0)
+                FROM invoice_syncs AS credit_notes
+                WHERE credit_notes.provider = \'stripe\'
+                  AND credit_notes.team_id = invoice_syncs.team_id
+                  AND credit_notes.external_id LIKE \'cn_%\'
+                  AND credit_notes.raw_payload->>\'invoice\' = invoice_syncs.external_id
+            ) < invoice_syncs.amount_remaining');
     }
 
     public function team()
