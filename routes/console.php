@@ -48,17 +48,16 @@ Schedule::command('service-syncs:import --provider=stripe --limit=120 --fallback
     ->withoutOverlapping()
     ->runInBackground();
 
-// Stripe invoice_syncs: small batches, staggered from import to limit CPU/API/DB churn.
-// Raise limits or frequency manually during one-off backfill if needed.
-Schedule::command('stripe:sync-invoices --mode=auto --limit=60 --recent-days=30')
-    ->everyTenMinutes()
+// Stripe invoice_syncs: webhook is primary; schedule is a twice-daily safety net.
+Schedule::command('stripe:sync-invoices --mode=auto --limit=500 --recent-days=90')
+    ->twiceDaily(6, 18)
     ->name('stripe-invoices-sync-auto')
     ->description('Auto Stripe invoices sync: backfill first, then mutable refresh')
     ->withoutOverlapping()
     ->runInBackground();
 
-Schedule::command('invoice-syncs:import-stripe --reconcile --limit=120 --fallback-email --link-code-on-email-match')
-    ->cron('5,15,25,35,45,55 * * * *')
+Schedule::command('invoice-syncs:import-stripe --reconcile --limit=2000 --fallback-email --link-code-on-email-match')
+    ->cron('15 6,18 * * *')
     ->name('stripe-invoice-syncs-import')
     ->description('Import/reconcile Stripe invoice_syncs into core invoices (status and balance)')
     ->withoutOverlapping()

@@ -77,10 +77,10 @@ return [
     ],
 
     'fallback_heading' => 'Respaldo automático si el webhook no llega',
-    'fallback_intro' => 'Humano ejecuta tareas programadas que sincronizan facturas y crean pagos faltantes. No sustituyen al webhook, pero corrigen desfases en minutos:',
+    'fallback_intro' => 'Humano ejecuta tareas programadas que sincronizan facturas y crean pagos faltantes. No sustituyen al webhook, pero corrigen desfases dos veces al día:',
     'fallback_items' => [
-        'stripe:sync-invoices — cada 10 min (refresca invoice_syncs desde la API)',
-        'invoice-syncs:import-stripe --reconcile — cada 10 min (actualiza balance y estado en invoices)',
+        'stripe:sync-invoices — 06:00 y 18:00 (refresca invoice_syncs desde la API)',
+        'invoice-syncs:import-stripe --reconcile — 06:15 y 18:15 (actualiza balance y estado en invoices)',
         'invoices:reconcile-stripe-collected-payments — :20 y :50 (creá pagos faltantes)',
     ],
 

@@ -77,10 +77,10 @@ return [
     ],
 
     'fallback_heading' => 'Automatic fallback if the webhook is missed',
-    'fallback_intro' => 'Humano runs scheduled tasks that sync invoices and create missing payments. They do not replace webhooks, but fix drift within minutes:',
+    'fallback_intro' => 'Humano runs scheduled tasks that sync invoices and create missing payments. They do not replace webhooks, but fix drift twice a day:',
     'fallback_items' => [
-        'stripe:sync-invoices — every 10 min (refreshes invoice_syncs from the API)',
-        'invoice-syncs:import-stripe --reconcile — every 10 min (updates balance and status on invoices)',
+        'stripe:sync-invoices — 06:00 and 18:00 (refreshes invoice_syncs from the API)',
+        'invoice-syncs:import-stripe --reconcile — 06:15 and 18:15 (updates balance and status on invoices)',
         'invoices:reconcile-stripe-collected-payments — at :20 and :50 (creates missing payments)',
     ],
 
