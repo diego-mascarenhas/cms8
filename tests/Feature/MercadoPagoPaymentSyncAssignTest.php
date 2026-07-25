@@ -1011,7 +1011,30 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
             'amount_remaining' => 24.00,
             'paid' => false,
             'last_synced_at' => now(),
-            'raw_payload' => [],
+            'raw_payload' => ['collection_method' => 'send_invoice'],
+        ]);
+
+        $chargeAutomatically = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Con Tarjeta',
+            'code' => 'cus_charge_auto',
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_charge_auto_open',
+            'customer_id' => 'cus_charge_auto',
+            'number' => '0005-CARD',
+            'status' => 'open',
+            'currency' => 'eur',
+            'amount_due' => 50.00,
+            'amount_paid' => 0,
+            'amount_remaining' => 50.00,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => ['collection_method' => 'charge_automatically'],
         ]);
 
         $paidUnlinked = Enterprise::withoutGlobalScopes()->create([
@@ -1035,7 +1058,88 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
             'total' => 100,
             'paid' => true,
             'last_synced_at' => now(),
-            'raw_payload' => ['metadata' => []],
+            'raw_payload' => ['metadata' => [], 'collection_method' => 'send_invoice'],
+        ]);
+
+        $settledLocally = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Sync Saldo Cero',
+            'code' => 'cus_settled_local',
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_settled_local_open',
+            'customer_id' => 'cus_settled_local',
+            'number' => '0005-SETTLED',
+            'status' => 'open',
+            'currency' => 'ars',
+            'amount_due' => 200,
+            'amount_paid' => 0,
+            'amount_remaining' => 200,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => ['collection_method' => 'send_invoice'],
+        ]);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $settledLocally->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-SETTLED',
+            'date' => now()->toDateString(),
+            'gross_amount' => 200,
+            'discount' => 0,
+            'total_amount' => 200,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_settled_local_open',
+        ]);
+
+        $coveredByCreditNote = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Con Nota Credito',
+            'code' => 'cus_with_credit_note',
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_open_with_cn',
+            'customer_id' => 'cus_with_credit_note',
+            'number' => '0005-CN-BASE',
+            'status' => 'open',
+            'currency' => 'eur',
+            'amount_due' => 24,
+            'amount_paid' => 0,
+            'amount_remaining' => 24,
+            'total' => 24,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => ['collection_method' => 'send_invoice'],
+        ]);
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'cn_covers_open_invoice',
+            'customer_id' => 'cus_with_credit_note',
+            'number' => '0005-CN-BASE-CN-01',
+            'status' => 'issued',
+            'currency' => 'eur',
+            'amount_due' => 24,
+            'amount_paid' => 0,
+            'amount_remaining' => 0,
+            'total' => 24,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'invoice' => 'in_open_with_cn',
+                'amount' => 2400,
+            ],
         ]);
 
         $sync = PaymentSync::query()->create([
@@ -1059,7 +1163,10 @@ class MercadoPagoPaymentSyncAssignTest extends TestCase
 
         $this->assertStringContainsString('AF Con Deuda', $html);
         $this->assertStringContainsString('Cliente Sync Abierto', $html);
-        $this->assertStringContainsString('AF Paid Unlinked', $html);
+        $this->assertStringNotContainsString('AF Paid Unlinked', $html);
+        $this->assertStringNotContainsString('Cliente Con Tarjeta', $html);
+        $this->assertStringNotContainsString('Cliente Sync Saldo Cero', $html);
+        $this->assertStringNotContainsString('Cliente Con Nota Credito', $html);
         $this->assertStringNotContainsString('AF Sin Deuda', $html);
         $this->assertStringNotContainsString('Cliente Local', $html);
     }

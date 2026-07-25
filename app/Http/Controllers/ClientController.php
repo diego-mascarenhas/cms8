@@ -277,15 +277,7 @@ class ClientController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $invoices = $client->invoices->sortByDesc(function ($invoice)
-        {
-            if (empty($invoice->date))
-            {
-                return 0;
-            }
-
-            return \Carbon\Carbon::parse($invoice->date)->timestamp;
-        })->values();
+        $invoices = $client->invoices->sortByDesc('id')->values();
 
         $invoiceBalanceTotal = $client->invoices->sum('balance');
 

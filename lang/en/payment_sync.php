@@ -33,7 +33,7 @@ return [
         'section_client' => 'Humano client',
         'enterprise_label' => 'Stripe client',
         'enterprise_placeholder' => 'Select a Stripe client',
-        'enterprise_filter_hint' => 'Enterprises with a Stripe customer code (cus_…) and open invoices, or paid Stripe invoices not yet linked to Mercado Pago.',
+        'enterprise_filter_hint' => 'Enterprises with a Stripe customer code (cus_…), unpaid invoices (not covered by a credit note), and invoice billing (no automatic card charge).',
         'invoice_label' => 'Invoices (optional, multi-select)',
         'invoice_placeholder' => 'No invoice / choose later',
         'invoice_hint' => 'Select several if the payment covers 2+ invoices; open balances must sum to the payment amount.',
