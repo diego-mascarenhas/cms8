@@ -178,4 +178,134 @@ class InvoiceListFilterTest extends TestCase
 
         $this->assertSame(['0001-00000541'], $numbers);
     }
+
+    public function test_invoice_datatable_operation_filter_buy_excludes_sales(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Proveedor SL',
+            'type_id' => 2,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'VENTA-001',
+            'date' => '2026-06-01',
+            'due_date' => '2026-06-01',
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+            'source_provider' => 'cuentica',
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'COMPRA-001',
+            'date' => '2026-06-02',
+            'due_date' => null,
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 50,
+            'status' => 1,
+            'source_provider' => 'cuentica',
+        ]);
+
+        $this->actingAs($user);
+        request()->merge([
+            'summary_filter' => 'all',
+            'operation_filter' => 'buy',
+        ]);
+
+        $numbers = app(InvoiceDataTable::class)
+            ->query(app(Invoice::class))
+            ->pluck('number')
+            ->all();
+
+        $this->assertSame(['COMPRA-001'], $numbers);
+    }
+
+    public function test_invoice_datatable_operation_filter_sell_excludes_purchases(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $client = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $supplier = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Proveedor SL',
+            'type_id' => 2,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'VENTA-001',
+            'date' => '2026-06-01',
+            'due_date' => '2026-06-01',
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+            'source_provider' => 'cuentica',
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'COMPRA-001',
+            'date' => '2026-06-02',
+            'due_date' => null,
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 50,
+            'status' => 1,
+            'source_provider' => 'cuentica',
+        ]);
+
+        $this->actingAs($user);
+        request()->merge([
+            'summary_filter' => 'all',
+            'operation_filter' => 'sell',
+        ]);
+
+        $numbers = app(InvoiceDataTable::class)
+            ->query(app(Invoice::class))
+            ->pluck('number')
+            ->all();
+
+        $this->assertSame(['VENTA-001'], $numbers);
+    }
 }
