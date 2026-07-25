@@ -96,6 +96,7 @@ class PaymentSummaryServiceTest extends TestCase
 
         $this->assertSame(1, $service->applyStatusFilter($baseQuery(), '1')->count());
         $this->assertSame(1, $service->applyStatusFilter($baseQuery(), '3')->count());
+        $this->assertSame(2, $service->applyStatusFilter($baseQuery(), 'actionable')->count());
         $this->assertSame(1, $service->applyStatusFilter($baseQuery(), '2')->count());
         $this->assertSame(2, $service->applyStatusFilter($baseQuery(), 'failed')->count());
         $this->assertSame(5, $service->applyStatusFilter($baseQuery(), 'all')->count());

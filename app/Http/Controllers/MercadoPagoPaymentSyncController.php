@@ -9,7 +9,6 @@ use App\Models\Invoice;
 use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentSync;
-use App\Services\Billing\MercadoPagoAutoAssignMatcherService;
 use App\Services\Billing\MercadoPagoInvoiceSuggestionService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\StripeInvoiceCoreImportService;
@@ -22,14 +21,11 @@ use Illuminate\View\View;
 
 class MercadoPagoPaymentSyncController extends Controller
 {
-    private const AUTO_ASSIGN_SESSION_KEY = 'mercadopago_auto_assign_queue';
-
     public function __construct(
         private readonly MercadoPagoPaymentImportService $importService,
         private readonly MercadoPagoInvoiceSuggestionService $suggestionService,
         private readonly StripeInvoiceCoreImportService $stripeInvoiceImportService,
         private readonly StripeInvoiceSyncRefresher $stripeInvoiceSyncRefresher,
-        private readonly MercadoPagoAutoAssignMatcherService $autoAssignMatcher,
     ) {}
 
     public function index(MercadoPagoPaymentSyncDataTable $dataTable)
@@ -39,53 +35,12 @@ class MercadoPagoPaymentSyncController extends Controller
         return $dataTable->render('payments.syncs.mercadopago.index');
     }
 
-    public function autoAssign(Request $request): View|RedirectResponse
+    public function autoAssign(Request $request): RedirectResponse
     {
         $this->authorize('create', Payment::class);
 
-        $teamId = (int) auth()->user()->currentTeam->id;
-        $rebuild = $request->boolean('rebuild') || ! $request->session()->has(self::AUTO_ASSIGN_SESSION_KEY);
-
-        if ($rebuild)
-        {
-            $suggestions = $this->autoAssignMatcher->buildSuggestions($teamId, useAi: false);
-            $request->session()->put(self::AUTO_ASSIGN_SESSION_KEY, [
-                'items' => $suggestions,
-                'index' => 0,
-                'accepted' => 0,
-                'skipped' => 0,
-            ]);
-        }
-
-        $queue = $request->session()->get(self::AUTO_ASSIGN_SESSION_KEY, [
-            'items' => [],
-            'index' => 0,
-            'accepted' => 0,
-            'skipped' => 0,
-        ]);
-
-        $items = array_values($queue['items'] ?? []);
-        $index = (int) ($queue['index'] ?? 0);
-
-        if ($items === [] || $index >= count($items))
-        {
-            return view('payments.syncs.mercadopago.auto-assign', [
-                'current' => null,
-                'index' => $index,
-                'total' => count($items),
-                'accepted' => (int) ($queue['accepted'] ?? 0),
-                'skipped' => (int) ($queue['skipped'] ?? 0),
-                'done' => true,
-            ]);
-        }
-
-        return view('payments.syncs.mercadopago.auto-assign', [
-            'current' => $items[$index],
-            'index' => $index,
-            'total' => count($items),
-            'accepted' => (int) ($queue['accepted'] ?? 0),
-            'skipped' => (int) ($queue['skipped'] ?? 0),
-            'done' => false,
+        return redirect()->route('payments.reconcile', [
+            'rebuild' => $request->boolean('rebuild') ? 1 : null,
         ]);
     }
 
@@ -93,93 +48,14 @@ class MercadoPagoPaymentSyncController extends Controller
     {
         $this->authorize('create', Payment::class);
 
-        $queue = $request->session()->get(self::AUTO_ASSIGN_SESSION_KEY);
-        if (! is_array($queue) || empty($queue['items']))
-        {
-            return redirect()->route('payments.syncs.mercadopago.auto-assign', ['rebuild' => 1]);
-        }
-
-        $items = array_values($queue['items']);
-        $index = (int) ($queue['index'] ?? 0);
-        $current = $items[$index] ?? null;
-
-        if (! is_array($current))
-        {
-            return redirect()->route('payments.syncs.mercadopago.auto-assign');
-        }
-
-        $sync = PaymentSync::query()->find((int) $current['sync_id']);
-        if (! $sync || (int) $sync->team_id !== (int) auth()->user()->currentTeam->id)
-        {
-            $queue['index'] = $index + 1;
-            $queue['skipped'] = (int) ($queue['skipped'] ?? 0) + 1;
-            $request->session()->put(self::AUTO_ASSIGN_SESSION_KEY, $queue);
-
-            return redirect()
-                ->route('payments.syncs.mercadopago.auto-assign')
-                ->with('error', __('payment_sync.mercadopago.errors.import_failed'));
-        }
-
-        $this->ensureTeamSync($sync);
-
-        if ($this->importService->isAlreadyImported($sync))
-        {
-            $queue['index'] = $index + 1;
-            $queue['skipped'] = (int) ($queue['skipped'] ?? 0) + 1;
-            $request->session()->put(self::AUTO_ASSIGN_SESSION_KEY, $queue);
-
-            return redirect()
-                ->route('payments.syncs.mercadopago.auto-assign')
-                ->with('warning', __('payment_sync.mercadopago.errors.already_imported'));
-        }
-
-        $payment = $this->importService->importFromPaymentSync(
-            $sync,
-            fallbackEmail: false,
-            linkCodeOnEmailMatch: false,
-            dryRun: false,
-            forceEnterpriseId: (int) $current['enterprise_id'],
-            forceInvoiceIds: array_map('intval', $current['invoice_ids'] ?? []),
-            remarksOverride: null,
-        );
-
-        $queue['index'] = $index + 1;
-
-        if ($payment === null)
-        {
-            $queue['skipped'] = (int) ($queue['skipped'] ?? 0) + 1;
-            $request->session()->put(self::AUTO_ASSIGN_SESSION_KEY, $queue);
-
-            return redirect()
-                ->route('payments.syncs.mercadopago.auto-assign')
-                ->with('error', __('payment_sync.mercadopago.errors.import_failed'));
-        }
-
-        $queue['accepted'] = (int) ($queue['accepted'] ?? 0) + 1;
-        $request->session()->put(self::AUTO_ASSIGN_SESSION_KEY, $queue);
-
-        return redirect()
-            ->route('payments.syncs.mercadopago.auto-assign')
-            ->with('success', __('payment_sync.mercadopago.success', [
-                'reference' => $sync->external_id,
-            ]));
+        return redirect()->route('payments.reconcile', ['rebuild' => 1]);
     }
 
     public function autoAssignSkip(Request $request): RedirectResponse
     {
         $this->authorize('create', Payment::class);
 
-        $queue = $request->session()->get(self::AUTO_ASSIGN_SESSION_KEY);
-        if (! is_array($queue) || empty($queue['items']))
-        {
-            return redirect()->route('payments.syncs.mercadopago.auto-assign', ['rebuild' => 1]);
-        }
-
-        $queue['index'] = (int) ($queue['index'] ?? 0) + 1;
-        $queue['skipped'] = (int) ($queue['skipped'] ?? 0) + 1;
-        $request->session()->put(self::AUTO_ASSIGN_SESSION_KEY, $queue);
-
-        return redirect()->route('payments.syncs.mercadopago.auto-assign');
+        return redirect()->route('payments.reconcile', ['rebuild' => 1]);
     }
 
     public function assign(Request $request, PaymentSync $sync): View|RedirectResponse

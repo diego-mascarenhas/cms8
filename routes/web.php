@@ -68,6 +68,7 @@ use App\Http\Controllers\PaidAdCampaignController;
 use App\Http\Controllers\PaidAdDashboardController;
 use App\Http\Controllers\PaymentAccountController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentReconcileController;
 use App\Http\Controllers\PaymentSubscriptionController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductManagementController;
@@ -926,6 +927,11 @@ Route::middleware(['auth'])->group(function ()
 
     // Payments (all transactions)
     Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
+    Route::get('/payments/reconcile', [PaymentReconcileController::class, 'index'])->name('payments.reconcile');
+    Route::post('/payments/reconcile/accept', [PaymentReconcileController::class, 'accept'])->name('payments.reconcile.accept');
+    Route::post('/payments/reconcile/skip', [PaymentReconcileController::class, 'skip'])->name('payments.reconcile.skip');
+    Route::post('/payments/reconcile/undo', [PaymentReconcileController::class, 'undo'])->name('payments.reconcile.undo');
+    Route::post('/payments/reconcile/dismiss', [PaymentReconcileController::class, 'dismiss'])->name('payments.reconcile.dismiss');
     Route::get('/payments/syncs/mercadopago', [MercadoPagoPaymentSyncController::class, 'index'])->name('payments.syncs.mercadopago.index');
     Route::get('/payments/syncs/mercadopago/auto-assign', [MercadoPagoPaymentSyncController::class, 'autoAssign'])->name('payments.syncs.mercadopago.auto-assign');
     Route::post('/payments/syncs/mercadopago/auto-assign/accept', [MercadoPagoPaymentSyncController::class, 'autoAssignAccept'])->name('payments.syncs.mercadopago.auto-assign.accept');

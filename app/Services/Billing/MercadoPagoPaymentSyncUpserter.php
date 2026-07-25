@@ -51,6 +51,17 @@ class MercadoPagoPaymentSyncUpserter
             ?? Arr::get($paymentPayload, 'date_created'),
         );
 
+        $existing = PaymentSync::query()
+            ->where('team_id', $teamId)
+            ->where('provider', 'mercadopago')
+            ->where('external_id', $externalId)
+            ->first();
+
+        $rawPayload = $this->mergePreservedSettlementPayer(
+            $paymentPayload,
+            is_array($existing?->raw_payload) ? $existing->raw_payload : [],
+        );
+
         return PaymentSync::query()->updateOrCreate(
             [
                 'team_id' => $teamId,
@@ -69,9 +80,34 @@ class MercadoPagoPaymentSyncUpserter
                 'description' => $description,
                 'charge_created_at' => $createdAt,
                 'last_synced_at' => now(),
-                'raw_payload' => $paymentPayload,
+                'raw_payload' => $rawPayload,
             ],
         );
+    }
+
+    /**
+     * Keep settlement_payer enrichment when Payments API overwrites raw_payload.
+     *
+     * @param  array<string, mixed>  $paymentPayload
+     * @param  array<string, mixed>  $existingPayload
+     * @return array<string, mixed>
+     */
+    private function mergePreservedSettlementPayer(array $paymentPayload, array $existingPayload): array
+    {
+        $merged = $paymentPayload;
+        $existing = Arr::get($existingPayload, PaymentSync::RAW_SETTLEMENT_PAYER_KEY, []);
+        if (! is_array($existing) || $existing === [])
+        {
+            return $merged;
+        }
+
+        $incoming = Arr::get($merged, PaymentSync::RAW_SETTLEMENT_PAYER_KEY, []);
+        $incoming = is_array($incoming) ? $incoming : [];
+
+        // Existing enrichment wins over any accidental key from the API payload.
+        $merged[PaymentSync::RAW_SETTLEMENT_PAYER_KEY] = array_replace_recursive($incoming, $existing);
+
+        return $merged;
     }
 
     /**

@@ -84,6 +84,13 @@ Schedule::command('mercadopago:sync-payments --limit=40 --recent-days=90')
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('mercadopago:enrich-settlement-payers --recent-days=90 --poll=120')
+    ->cron('12,42 * * * *')
+    ->name('mercadopago-settlement-payer-enrich')
+    ->description('Enrich Mercado Pago payment_syncs with settlement report payer name/id')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('payment-syncs:import-mercadopago --limit=120 --fallback-email --link-code-on-email-match')
     ->cron('14,29,44,59 * * * *')
     ->name('mercadopago-payment-syncs-import')

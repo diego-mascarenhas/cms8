@@ -15,6 +15,8 @@ class PaymentSummaryService
 
     public const FILTER_FAILED = 'failed';
 
+    public const FILTER_ACTIONABLE = 'actionable';
+
     /**
      * @param  Builder<Payment>  $query
      * @return Builder<Payment>
@@ -31,6 +33,11 @@ class PaymentSummaryService
         if ($filter === self::FILTER_FAILED)
         {
             return $query->whereNotIn('status', [0, 1, 2, 3]);
+        }
+
+        if ($filter === self::FILTER_ACTIONABLE)
+        {
+            return $query->whereIn('status', self::ACTIONABLE_STATUSES);
         }
 
         if (in_array((int) $filter, [1, 2, 3], true))

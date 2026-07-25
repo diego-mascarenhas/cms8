@@ -9,8 +9,8 @@
         <p class="text-muted">{{ __('Manage your payments') }}</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
-        <a href="{{ route('payments.syncs.mercadopago.index') }}" class="btn btn-label-info">
-            <i class="ti ti-wallet me-1"></i>{{ __('payment_sync.mercadopago.open_queue') }}
+        <a href="{{ route('payments.reconcile', ['rebuild' => 1]) }}" class="btn btn-primary">
+            <i class="ti ti-transfer-in me-1"></i>{{ __('payment_sync.mercadopago.open_queue') }}
         </a>
     </div>
 </div>
@@ -34,46 +34,27 @@
     <div class="card-widget-separator-wrapper">
         <div class="card-body card-widget-separator">
             <div class="row gy-4 gy-sm-1">
-                <div class="col-sm-6 col-lg-3">
+                <div class="col-sm-6 col-lg-4">
                     <div class="d-flex justify-content-between align-items-start card-widget-1 border-end pb-3 pb-sm-0">
                         <div>
-                            <h6 class="mb-2">{{ __('In Process') }}</h6>
-                            <h4 class="mb-0">{{ number_format($paymentSummary['in_process_count']) }}</h4>
-                        </div>
-                        <span class="avatar me-sm-4">
-                            <a
-                                href="#"
-                                class="avatar-initial bg-label-primary rounded payment-summary-filter"
-                                data-status-filter="1"
-                                title="{{ __('Filter by :status', ['status' => __('In Process')]) }}"
-                            >
-                                <i class="ti ti-loader ti-md"></i>
-                            </a>
-                        </span>
-                    </div>
-                    <hr class="d-none d-sm-block d-lg-none me-4">
-                </div>
-                <div class="col-sm-6 col-lg-3">
-                    <div class="d-flex justify-content-between align-items-start card-widget-2 border-end pb-3 pb-sm-0">
-                        <div>
                             <h6 class="mb-2">{{ __('Pending') }}</h6>
-                            <h4 class="mb-0">{{ number_format($paymentSummary['pending_count']) }}</h4>
+                            <h4 class="mb-0">{{ number_format($paymentSummary['actionable_count']) }}</h4>
                         </div>
                         <span class="avatar me-sm-4">
                             <a
                                 href="#"
                                 class="avatar-initial bg-label-warning rounded payment-summary-filter"
-                                data-status-filter="3"
+                                data-status-filter="actionable"
                                 title="{{ __('Filter by :status', ['status' => __('Pending')]) }}"
                             >
                                 <i class="ti ti-clock ti-md"></i>
                             </a>
                         </span>
                     </div>
-                    <hr class="d-none d-sm-block d-lg-none">
+                    <hr class="d-none d-sm-block d-lg-none me-4">
                 </div>
-                <div class="col-sm-6 col-lg-3">
-                    <div class="d-flex justify-content-between align-items-start card-widget-3 border-end pb-3 pb-sm-0">
+                <div class="col-sm-6 col-lg-4">
+                    <div class="d-flex justify-content-between align-items-start card-widget-2 border-end pb-3 pb-sm-0">
                         <div>
                             <h6 class="mb-2">{{ __('Approved') }}</h6>
                             <h4 class="mb-0">{{ number_format($paymentSummary['approved_count']) }}</h4>
@@ -89,10 +70,10 @@
                             </a>
                         </span>
                     </div>
-                    <hr class="d-none d-sm-block d-lg-none me-4">
+                    <hr class="d-none d-sm-block d-lg-none">
                 </div>
-                <div class="col-sm-6 col-lg-3">
-                    <div class="d-flex justify-content-between align-items-start card-widget-4 pb-3 pb-sm-0">
+                <div class="col-sm-6 col-lg-4">
+                    <div class="d-flex justify-content-between align-items-start card-widget-3 pb-3 pb-sm-0">
                         <div>
                             <h6 class="mb-2">{{ __('Failed') }}</h6>
                             <h4 class="mb-0">{{ number_format($paymentSummary['failed_count']) }}</h4>

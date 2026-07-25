@@ -92,6 +92,51 @@ class MercadoPagoPaymentImportServiceTest extends TestCase
         $this->assertTrue($sync->lacksIdentifiablePayer());
     }
 
+    public function test_upserter_preserves_settlement_payer_on_resync(): void
+    {
+        $team = Team::factory()->create();
+        $upserter = app(MercadoPagoPaymentSyncUpserter::class);
+
+        $sync = $upserter->upsertFromPayload($team->id, [
+            'id' => 169690439304,
+            'status' => 'approved',
+            'currency_id' => 'ARS',
+            'transaction_amount' => 10608.16,
+            'transaction_amount_refunded' => 0,
+            'operation_type' => 'account_fund',
+            'collector_id' => 616106613,
+            'payer' => [
+                'id' => '616106613',
+                'email' => 'diego.mascarenhas@icloud.com',
+            ],
+        ]);
+
+        $sync->mergeSettlementPayer('Hygeia Sa', 'CUIT', '30712345678');
+
+        $resync = $upserter->upsertFromPayload($team->id, [
+            'id' => 169690439304,
+            'status' => 'approved',
+            'currency_id' => 'ARS',
+            'transaction_amount' => 10608.16,
+            'transaction_amount_refunded' => 0,
+            'operation_type' => 'account_fund',
+            'collector_id' => 616106613,
+            'description' => 'Bank Transfer updated',
+            'payer' => [
+                'id' => '616106613',
+                'email' => 'diego.mascarenhas@icloud.com',
+            ],
+        ]);
+
+        $this->assertSame((int) $sync->id, (int) $resync->id);
+        $this->assertSame('Hygeia Sa', $resync->settlementPayerName());
+        $this->assertSame('CUIT', $resync->settlementPayerIdType());
+        $this->assertSame('30712345678', $resync->settlementPayerIdNumber());
+        $this->assertSame('Bank Transfer updated', $resync->description);
+        $this->assertSame('account_fund', data_get($resync->raw_payload, 'operation_type'));
+        $this->assertFalse($resync->lacksIdentifiablePayer());
+    }
+
     public function test_import_links_payment_to_invoice_by_external_reference(): void
     {
         $team = Team::factory()->create();

@@ -76,6 +76,19 @@
                 <dd class="col-sm-9">{{ number_format((float) $current['amount'], 2, ',', '.') }} {{ $current['currency'] }}</dd>
                 <dt class="col-sm-3">{{ __('payment_sync.mercadopago.columns.external_id') }}</dt>
                 <dd class="col-sm-9"><code>{{ $current['external_id'] }}</code></dd>
+                @if (! empty($current['settlement_payer_name']))
+                    <dt class="col-sm-3">{{ __('payment_sync.mercadopago.columns.payer') }}</dt>
+                    <dd class="col-sm-9">
+                        {{ $current['settlement_payer_name'] }}
+                        @if (! empty($current['settlement_payer_id_number']))
+                            <div class="small text-muted">{{ $current['settlement_payer_id_number'] }}</div>
+                        @endif
+                    </dd>
+                @endif
+                @if (! empty($current['identification_code']))
+                    <dt class="col-sm-3">{{ __('payment_sync.mercadopago.identification_code') }}</dt>
+                    <dd class="col-sm-9"><code>{{ $current['identification_code'] }}</code></dd>
+                @endif
             </dl>
         </div>
     </div>

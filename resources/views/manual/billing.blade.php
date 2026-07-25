@@ -28,6 +28,16 @@
             <a href="{{ route('help.stripe-webhook') }}" class="btn btn-sm btn-label-secondary">{{ __('Webhooks Stripe') }}</a>
         </p>
 
+        <h5 class="mt-4">{{ __('Reconciliar') }}</h5>
+        <p>{{ __('Desde Pagos, el botón Reconciliar abre la cola para revisar vínculos entre transferencias/extractos y facturas de Stripe.') }}</p>
+        <ul class="mb-3">
+            <li>{{ __('Revisá sugerencias de match (importe, fecha, emisor del extracto) y aceptá u omití de una en una.') }}</li>
+            <li>{{ __('Si un match ya importado no coincide con el emisor del extracto, podés confirmarlo, reasignarlo o deshacer el vínculo.') }}</li>
+            <li>{{ __('Deshacer quita el pago en Humano y la referencia en metadata de Stripe; no reabre la factura cobrada fuera de banda en Stripe.') }}</li>
+        </ul>
+        <p class="mb-2">{{ __('Extractos mensuales') }}</p>
+        <p>{{ __('La conciliación se apoya en extractos por proveedor y mes. Mercado Pago puede alimentarse automáticamente (reporte de liquidación). Más adelante podés subir CSV mensuales de bancos, PayPal u otros proveedores al mismo flujo de Reconciliar.') }}</p>
+
         <h5 class="mt-4">{{ __('Ingresos, gastos, tarifas y finanzas') }}</h5>
         <p>{{ __('Tesorería, tarifas de precio y panel financiero con totales y tendencias.') }}</p>
 

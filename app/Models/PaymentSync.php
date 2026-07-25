@@ -7,11 +7,17 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
 
 class PaymentSync extends Model
 {
     use HasFactory;
+
+    /**
+     * Humano enrichment key under raw_payload (preserved on provider re-sync).
+     */
+    public const RAW_SETTLEMENT_PAYER_KEY = 'settlement_payer';
 
     protected $fillable = [
         'team_id',
@@ -40,6 +46,11 @@ class PaymentSync extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function bankStatementLine(): HasOne
+    {
+        return $this->hasOne(BankStatementLine::class, 'external_id', 'external_id');
     }
 
     public function importedMercadoPagoPayment(): ?Payment
@@ -83,9 +94,15 @@ class PaymentSync extends Model
 
     /**
      * CVU / account funding transfers often expose the collector as "payer".
+     * Settlement-report enrichment (PAYER_NAME / PAYER_ID_NUMBER) counts as identifiable.
      */
     public function lacksIdentifiablePayer(): bool
     {
+        if (filled($this->settlementPayerName()) || filled($this->settlementPayerIdNumber()))
+        {
+            return false;
+        }
+
         $operationType = strtolower(trim((string) data_get($this->raw_payload, 'operation_type', '')));
         if ($operationType === 'account_fund')
         {
@@ -100,6 +117,77 @@ class PaymentSync extends Model
         }
 
         return blank($this->customer_id) && blank($this->customer_email);
+    }
+
+    /**
+     * @return array{name?: string, id_type?: string, id_number?: string, enriched_at?: string}
+     */
+    public function settlementPayer(): array
+    {
+        $payer = data_get($this->raw_payload, self::RAW_SETTLEMENT_PAYER_KEY, []);
+
+        return is_array($payer) ? $payer : [];
+    }
+
+    public function settlementPayerName(): ?string
+    {
+        $name = trim((string) ($this->settlementPayer()['name'] ?? ''));
+
+        return $name !== '' ? $name : null;
+    }
+
+    public function settlementPayerIdType(): ?string
+    {
+        $type = trim((string) ($this->settlementPayer()['id_type'] ?? ''));
+
+        return $type !== '' ? $type : null;
+    }
+
+    public function settlementPayerIdNumber(): ?string
+    {
+        $number = trim((string) ($this->settlementPayer()['id_number'] ?? ''));
+
+        return $number !== '' ? $number : null;
+    }
+
+    /**
+     * Merge settlement-report payer fields into raw_payload without dropping API payload keys.
+     */
+    public function mergeSettlementPayer(?string $name, ?string $idType, ?string $idNumber): void
+    {
+        $payload = is_array($this->raw_payload) ? $this->raw_payload : [];
+        $existing = data_get($payload, self::RAW_SETTLEMENT_PAYER_KEY, []);
+        $existing = is_array($existing) ? $existing : [];
+
+        $payload[self::RAW_SETTLEMENT_PAYER_KEY] = array_filter([
+            'name' => filled($name) ? trim((string) $name) : ($existing['name'] ?? null),
+            'id_type' => filled($idType) ? trim((string) $idType) : ($existing['id_type'] ?? null),
+            'id_number' => filled($idNumber) ? trim((string) $idNumber) : ($existing['id_number'] ?? null),
+            'enriched_at' => now()->toIso8601String(),
+            'reconcile_dismissed_at' => $existing['reconcile_dismissed_at'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $this->forceFill(['raw_payload' => $payload])->save();
+    }
+
+    public function isReconcileDismissed(): bool
+    {
+        return filled($this->settlementPayer()['reconcile_dismissed_at'] ?? null);
+    }
+
+    public function markReconcileDismissed(): void
+    {
+        $payload = is_array($this->raw_payload) ? $this->raw_payload : [];
+        $existing = data_get($payload, self::RAW_SETTLEMENT_PAYER_KEY, []);
+        $existing = is_array($existing) ? $existing : [];
+        $existing['reconcile_dismissed_at'] = now()->toIso8601String();
+        $payload[self::RAW_SETTLEMENT_PAYER_KEY] = $existing;
+        $this->forceFill(['raw_payload' => $payload])->save();
+    }
+
+    public function displayPayerName(): ?string
+    {
+        return $this->settlementPayerName();
     }
 
     /**
