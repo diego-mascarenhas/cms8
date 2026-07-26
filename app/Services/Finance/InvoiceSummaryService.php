@@ -29,12 +29,19 @@ class InvoiceSummaryService
     /** @var list<string> */
     public const SUMMARY_FILTERS = ['unpaid', 'credit_notes', 'collected', 'overdue'];
 
+    /** @var list<string> Dashboard KPI cards (not invoice list filters). */
+    public const DASHBOARD_CARDS = ['unpaid', 'overdue', 'expenses', 'profit'];
+
     public const DEFAULT_LIST_FILTER = 'all';
 
     public const ROLLING_SUMMARY_DAYS = 30;
 
     /** @var list<string> Filters whose card totals use a rolling date window (list may still show all). */
     public const ROLLING_SUMMARY_FILTERS = ['credit_notes', 'collected'];
+
+    public function __construct(
+        private readonly InvoiceAnalyticsService $invoiceAnalytics,
+    ) {}
 
     /**
      * @return array{
@@ -51,6 +58,54 @@ class InvoiceSummaryService
             'credit_notes' => $this->buildCreditNotesMetric($teamId),
             'collected' => $this->buildCollectedMetric($teamId),
             'overdue' => $this->buildOverdueMetric($teamId),
+        ];
+    }
+
+    /**
+     * Collection urgency + year-to-date P&L for the home dashboard.
+     *
+     * @return array{
+     *     unpaid: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
+     *     overdue: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
+     *     expenses: array{count: int, amount_label: string, totals_by_currency: array<string, float>, url: string},
+     *     profit: array{count: int|null, amount_label: string, totals_by_currency: array<string, float>, url: string, meta_label: string},
+     * }
+     */
+    public function buildDashboardStats(int $teamId): array
+    {
+        $year = (int) Carbon::now()->year;
+        $report = $this->invoiceAnalytics->buildYearReport($teamId, $year);
+        $currency = strtoupper((string) $report['reporting_currency']);
+        $expense = round((float) $report['summary']['expense'], 2);
+        $profit = round((float) $report['summary']['profit'], 2);
+        $resolvedYear = (int) $report['year'];
+        $projectionUrl = route('finance-dashboard.projection', ['year' => $resolvedYear]);
+
+        $expenseInvoiceCount = (int) Invoice::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('operation', 'buy')
+            ->whereNotIn('status', InvoiceAnalyticsService::EXCLUDED_INVOICE_STATUSES)
+            ->whereYear('date', $resolvedYear)
+            ->count();
+
+        return [
+            'unpaid' => $this->buildUnpaidMetric($teamId),
+            'overdue' => $this->buildOverdueMetric($teamId),
+            'expenses' => [
+                'count' => $expenseInvoiceCount,
+                'amount_label' => Helpers::formatMoney($expense, $currency),
+                'totals_by_currency' => [$currency => $expense],
+                'url' => $projectionUrl,
+            ],
+            'profit' => [
+                'count' => null,
+                'amount_label' => Helpers::formatMoney($profit, $currency),
+                'totals_by_currency' => [$currency => $profit],
+                'url' => $projectionUrl,
+                'meta_label' => __('app.invoice_summary_profit_margin', [
+                    'percent' => number_format((float) $report['summary']['margin_percent'], 1),
+                ]),
+            ],
         ];
     }
 

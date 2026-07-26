@@ -4,6 +4,7 @@ namespace Tests\Unit\Services\Finance;
 
 use App\Models\Enterprise;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\User;
 use App\Services\Finance\InvoiceSummaryService;
 use Carbon\Carbon;
@@ -719,5 +720,76 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->service->applySummaryFilter($query, 'excluding_collected');
 
         $this->assertSame(['0001-00000541'], $query->pluck('number')->all());
+    }
+
+    public function test_build_dashboard_stats_includes_ytd_expenses_and_profit(): void
+    {
+        Carbon::setTestNow('2026-07-25 12:00:00');
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $sell = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'S-YTD',
+            'date' => '2026-03-10',
+            'due_date' => '2026-03-20',
+            'gross_amount' => 1000,
+            'discount' => 0,
+            'total_amount' => 1000,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $sell->id,
+            'description' => 'Service',
+            'quantity' => 1,
+            'unit_price' => 1000,
+            'discount' => 0,
+        ]);
+
+        $buy = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'B-YTD',
+            'date' => '2026-04-05',
+            'due_date' => '2026-04-15',
+            'gross_amount' => 250,
+            'discount' => 0,
+            'total_amount' => 250,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $buy->id,
+            'description' => 'Supplier',
+            'quantity' => 1,
+            'unit_price' => 250,
+            'discount' => 0,
+        ]);
+
+        $stats = $this->service->buildDashboardStats((int) $team->id);
+
+        $this->assertSame(1, $stats['expenses']['count']);
+        $this->assertSame(250.0, $stats['expenses']['totals_by_currency']['EUR'] ?? null);
+        $this->assertSame(750.0, $stats['profit']['totals_by_currency']['EUR'] ?? null);
+        $this->assertNull($stats['profit']['count']);
+        $this->assertStringContainsString('finance-dashboard/projection', $stats['expenses']['url']);
+        $this->assertStringContainsString('year=2026', $stats['expenses']['url']);
+        $this->assertArrayHasKey('meta_label', $stats['profit']);
+
+        Carbon::setTestNow();
     }
 }

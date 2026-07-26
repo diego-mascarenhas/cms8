@@ -849,9 +849,9 @@
     @if ($invoiceStats ?? null)
         @include('partials.invoice-summary-cards', [
             'invoiceStats' => $invoiceStats,
-            'visibleFilters' => ['unpaid', 'overdue'],
+            'visibleFilters' => \App\Services\Finance\InvoiceSummaryService::DASHBOARD_CARDS,
             'linkToInvoiceList' => true,
-            'columnClass' => 'col-6',
+            'columnClass' => 'col-6 col-xl-3',
             'rowClass' => 'mb-4',
         ])
     @endif
