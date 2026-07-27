@@ -8,6 +8,7 @@ use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
 use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\StoreExpenseSupplierRequest;
+use App\Http\Requests\SuggestExpenseCategoriesRequest;
 use App\Models\Category;
 use App\Models\Country;
 use App\Models\Currency;
@@ -15,6 +16,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
+use App\Models\Module;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
@@ -244,6 +246,8 @@ class ExpenseController extends Controller
             4 => 'Rechazado',
         ];
 
+        $expenseCategoryOptions = $this->expenseCategoryOptions($teamId);
+
         return view('expense.create', compact(
             'enterprises',
             'paymentAccounts',
@@ -256,6 +260,7 @@ class ExpenseController extends Controller
             'documentTypes',
             'disabledDocumentTypes',
             'statusOptions',
+            'expenseCategoryOptions',
         ));
     }
 
@@ -328,6 +333,60 @@ class ExpenseController extends Controller
                 'name' => $enterprise->name,
                 'type_id' => $enterprise->type_id,
             ],
+        ]);
+    }
+
+    public function suggestedCategories(SuggestExpenseCategoriesRequest $request): JsonResponse
+    {
+        $this->authorize('create', Payment::class);
+
+        $teamId = (int) $request->user()->currentTeam->id;
+        $enterpriseId = (int) $request->validated('enterprise_id');
+
+        $previousInvoice = Invoice::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where('enterprise_id', $enterpriseId)
+            ->where('operation', 'buy')
+            ->whereHas('items', fn ($query) => $query->whereNotNull('category_id'))
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first(['id', 'number', 'date']);
+
+        if (! $previousInvoice instanceof Invoice)
+        {
+            return response()->json([
+                'success' => true,
+                'invoice' => null,
+                'items' => [],
+            ]);
+        }
+
+        $items = InvoiceItem::query()
+            ->with('category:id,name')
+            ->where('invoice_id', $previousInvoice->id)
+            ->orderBy('id')
+            ->get(['id', 'invoice_id', 'category_id', 'description'])
+            ->map(function (InvoiceItem $item): array
+            {
+                return [
+                    'category_id' => $item->category_id ? (int) $item->category_id : null,
+                    'category_name' => $item->category?->name,
+                    'description' => (string) $item->description,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'invoice' => [
+                'id' => $previousInvoice->id,
+                'number' => $previousInvoice->number,
+                'date' => filled($previousInvoice->date)
+                    ? Carbon::parse($previousInvoice->date)->format('Y-m-d')
+                    : null,
+            ],
+            'items' => $items,
         ]);
     }
 
@@ -557,13 +616,16 @@ class ExpenseController extends Controller
     /**
      * @param  array<int, array<string, mixed>>  $lineSummaries
      */
-    private function createInvoiceItems(Invoice $invoice, array $lineSummaries, ?int $categoryId): void
+    private function createInvoiceItems(Invoice $invoice, array $lineSummaries, ?int $fallbackCategoryId): void
     {
         foreach ($lineSummaries as $lineSummary)
         {
             $allocationFactor = (float) ($lineSummary['allocation_percent'] ?? 100) / 100;
             $unitPrice = round((float) ($lineSummary['base_amount'] ?? 0) * $allocationFactor, 2);
             $vatPercent = round((float) ($lineSummary['vat_percent'] ?? 0), 2);
+            $categoryId = ! empty($lineSummary['category_id'])
+                ? (int) $lineSummary['category_id']
+                : $fallbackCategoryId;
 
             InvoiceItem::query()->create([
                 'invoice_id' => $invoice->id,
@@ -635,6 +697,7 @@ class ExpenseController extends Controller
 
             return [
                 'concept' => (string) ($line['concept'] ?? ''),
+                'category_id' => ! empty($line['category_id']) ? (int) $line['category_id'] : null,
                 'base_amount' => $baseAmount,
                 'vat_percent' => $vatPercent,
                 'retention_percent' => $retentionPercent,
@@ -645,6 +708,90 @@ class ExpenseController extends Controller
                 'allocated_total' => $allocatedTotal,
             ];
         })->all();
+    }
+
+    /**
+     * @return array<int, array{id: int, name: string, group: string|null}>
+     */
+    private function expenseCategoryOptions(int $teamId): array
+    {
+        $moduleId = Module::query()->where('key', 'services')->value('id');
+
+        $categoriesQuery = Category::query()
+            ->where('status', '>', 0)
+            ->where(function ($query) use ($teamId)
+            {
+                $query->whereNull('team_id')
+                    ->orWhere('team_id', $teamId);
+            });
+
+        if ($moduleId)
+        {
+            $categoriesQuery->where('module_id', $moduleId);
+        } else
+        {
+            $categoriesQuery->whereNull('module_id');
+        }
+
+        $parents = (clone $categoriesQuery)
+            ->whereNull('parent_id')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $childrenByParent = (clone $categoriesQuery)
+            ->whereNotNull('parent_id')
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'parent_id'])
+            ->groupBy('parent_id');
+
+        $options = [];
+        $parentIds = $parents->pluck('id')->all();
+
+        foreach ($parents as $parent)
+        {
+            $children = $childrenByParent->get($parent->id);
+
+            if ($children === null || $children->isEmpty())
+            {
+                $options[] = [
+                    'id' => (int) $parent->id,
+                    'name' => (string) $parent->name,
+                    'group' => null,
+                ];
+
+                continue;
+            }
+
+            foreach ($children as $child)
+            {
+                $options[] = [
+                    'id' => (int) $child->id,
+                    'name' => (string) $child->name,
+                    'group' => (string) $parent->name,
+                ];
+            }
+        }
+
+        foreach ($childrenByParent as $parentId => $children)
+        {
+            if (in_array((int) $parentId, $parentIds, true))
+            {
+                continue;
+            }
+
+            foreach ($children as $child)
+            {
+                $options[] = [
+                    'id' => (int) $child->id,
+                    'name' => (string) $child->name,
+                    'group' => null,
+                ];
+            }
+        }
+
+        return $options;
     }
 
     /**

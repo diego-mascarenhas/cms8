@@ -49,6 +49,7 @@ class ExpenseCreateSupplierTest extends TestCase
             'team_id' => $team->id,
             'name' => 'Nuevo Proveedor SL',
             'type_id' => 2,
+            'status_id' => 2,
         ]);
     }
 

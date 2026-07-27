@@ -761,7 +761,7 @@ class CategoryController extends Controller
 
         $baseQuery = Category::query()
             ->where('module_id', $module->id)
-            ->where('status', 1)
+            ->where('status', '>', 0)
             ->where(function ($query) use ($team)
             {
                 $query->whereNull('team_id')
@@ -782,6 +782,8 @@ class CategoryController extends Controller
             ->groupBy('parent_id');
 
         $groups = [];
+        $parentIds = $parentCategories->pluck('id')->all();
+
         foreach ($parentCategories as $parentCategory)
         {
             $subs = $allSubcategories[$parentCategory->id] ?? null;
@@ -804,6 +806,23 @@ class CategoryController extends Controller
                             'label' => $c->name,
                         ];
                     })->values()->all(),
+                ];
+            }
+        }
+
+        foreach ($allSubcategories as $parentId => $subs)
+        {
+            if (in_array((int) $parentId, $parentIds, true))
+            {
+                continue;
+            }
+
+            foreach ($subs as $category)
+            {
+                $groups[] = [
+                    'type' => 'option',
+                    'id' => $category->id,
+                    'label' => $category->name,
                 ];
             }
         }

@@ -78,6 +78,7 @@ class ExpenseSupplierServiceTest extends TestCase
         ]);
 
         $this->assertSame(2, $enterprise->type_id);
+        $this->assertSame(2, (int) $enterprise->status_id);
         $this->assertSame('Proveedor OCR', $enterprise->name);
 
         $billing = EnterpriseBillingAddress::query()->where('enterprise_id', $enterprise->id)->first();
