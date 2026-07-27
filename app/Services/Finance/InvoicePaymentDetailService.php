@@ -28,6 +28,7 @@ class InvoicePaymentDetailService
      *     status_html: string|null,
      *     remarks: string|null,
      *     is_income: bool,
+     *     mercadopago: array{payer_name?: string, payment_channel?: string, operation_number?: string, identification_code?: string, cbu?: string}|null,
      * }>
      */
     public function forInvoice(Invoice $invoice): Collection
@@ -55,11 +56,50 @@ class InvoicePaymentDetailService
                     'status_html' => $payment->status_label,
                     'remarks' => filled($payment->remarks) ? (string) $payment->remarks : null,
                     'is_income' => $payment->transaction_type === TransactionType::INCOME,
+                    'mercadopago' => $this->mercadoPagoDetails($payment),
                 ];
             });
         }
 
         return $this->detailsFromStripePaymentSyncs($invoice);
+    }
+
+    /**
+     * @return array{payer_name?: string, payment_channel?: string, operation_number?: string, identification_code?: string, cbu?: string}|null
+     */
+    private function mercadoPagoDetails(Payment $payment): ?array
+    {
+        if (strtolower((string) $payment->source_provider) !== 'mercadopago')
+        {
+            return null;
+        }
+
+        $externalId = strtok((string) $payment->source_reference_id, ':');
+        if (! is_string($externalId) || $externalId === '')
+        {
+            return null;
+        }
+
+        $sync = PaymentSync::query()
+            ->where('team_id', $payment->team_id)
+            ->where('provider', 'mercadopago')
+            ->where('external_id', $externalId)
+            ->first();
+
+        if (! $sync instanceof PaymentSync)
+        {
+            return null;
+        }
+
+        $details = array_filter([
+            'payer_name' => $sync->displayPayerName(),
+            'payment_channel' => $sync->displayPaymentChannel(),
+            'operation_number' => $externalId,
+            'identification_code' => $sync->identificationCode(),
+            'cbu' => $sync->displayPayerCbu(),
+        ], fn (?string $value): bool => filled($value));
+
+        return $details !== [] ? $details : null;
     }
 
     /**
@@ -137,6 +177,7 @@ class InvoicePaymentDetailService
                     'status_html' => '<span class="badge rounded-pill bg-label-success">'.e(__('Approved')).'</span>',
                     'remarks' => null,
                     'is_income' => true,
+                    'mercadopago' => null,
                 ];
             });
     }

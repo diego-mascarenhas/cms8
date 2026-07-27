@@ -235,5 +235,110 @@ class InvoicePaymentDetailServiceTest extends TestCase
             'source_provider' => 'mercadopago',
             'source_reference_id' => '169690439304',
         ]);
+
+        $mercadopago = $details->first()['mercadopago'];
+        $this->assertSame('76V4MR2Z8P4VPR389DEZOL', $mercadopago['identification_code']);
+        $this->assertSame('169690439304', $mercadopago['operation_number']);
+    }
+
+    public function test_it_exposes_mercadopago_payer_channel_and_cbu_when_available(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'mp-ars',
+            'name' => 'Mercado Pago ARS',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $type = PaymentType::query()->findOrFail(12);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-002',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 41818.18,
+            'discount' => 0,
+            'total_amount' => 41818.18,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '166972675399',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 4181818,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 4181818,
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'payment_method_id' => 'cvu',
+                'payment_type_id' => 'bank_transfer',
+                'payer' => [
+                    'email' => 'diego@example.com',
+                ],
+                'transaction_details' => [
+                    'transaction_id' => 'LMORZP90GKOJZW65NEGJ46',
+                ],
+                'point_of_interaction' => [
+                    'transaction_data' => [
+                        'e2e_id' => 'LMORZP90GKOJZW65NEGJ46',
+                        'bank_info' => [
+                            'payer' => [
+                                'account_alias' => 'mi.alias.cbu',
+                            ],
+                        ],
+                    ],
+                ],
+                'settlement_payer' => [
+                    'name' => 'Diego Mascarenhas',
+                    'id_type' => 'CUIT',
+                    'id_number' => '20250242000',
+                ],
+            ],
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'invoice_id' => $invoice->id,
+            'transaction_type' => 'income',
+            'date' => now()->toDateString(),
+            'account_id' => $account->id,
+            'type_id' => $type->id,
+            'amount' => 41818.18,
+            'status' => 2,
+            'source_provider' => 'mercadopago',
+            'source_reference_id' => '166972675399',
+        ]);
+
+        $details = $this->service->forInvoice($invoice);
+
+        $mercadopago = $details->first()['mercadopago'];
+        $this->assertSame('Diego Mascarenhas', $mercadopago['payer_name']);
+        $this->assertSame('Transferencia bancaria (CVU)', $mercadopago['payment_channel']);
+        $this->assertSame('166972675399', $mercadopago['operation_number']);
+        $this->assertSame('LMORZP90GKOJZW65NEGJ46', $mercadopago['identification_code']);
+        $this->assertSame('mi.alias.cbu', $mercadopago['cbu']);
     }
 }

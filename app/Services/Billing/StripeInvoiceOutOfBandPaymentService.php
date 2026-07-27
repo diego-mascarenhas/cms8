@@ -44,7 +44,7 @@ class StripeInvoiceOutOfBandPaymentService
         }
 
         $amount = round((float) $payment->amount, 2);
-        $remaining = round((float) $invoice->balance, 2);
+        $remaining = $this->remainingAmountForOutOfBand($invoice);
         if ($amount <= 0 || $remaining <= 0)
         {
             return false;
@@ -155,6 +155,9 @@ class StripeInvoiceOutOfBandPaymentService
             return false;
         }
 
+        // Metadata-only path: Stripe already paid (or marked paid locally while Stripe
+        // sync still says open is handled by markPaidFromPayment). Skip when metadata
+        // is already present.
         $alreadyPaid = $sync->paid || strtolower((string) $sync->status) === 'paid';
         if (! $alreadyPaid || ! $sync->lacksMercadoPagoLinkMetadata())
         {
@@ -230,6 +233,57 @@ class StripeInvoiceOutOfBandPaymentService
     private function isStripeOpenInvoice(Invoice $invoice): bool
     {
         return $this->isStripeInvoiceReference($invoice);
+    }
+
+    /**
+     * Prefer the local invoice balance; when it was already zeroed without a Stripe
+     * pay (the resync case), fall back to amount_due / total from invoice_syncs.
+     */
+    private function remainingAmountForOutOfBand(Invoice $invoice): float
+    {
+        $local = round((float) $invoice->balance, 2);
+        if ($local > 0)
+        {
+            return $local;
+        }
+
+        $sync = InvoiceSync::query()
+            ->where('team_id', $invoice->team_id)
+            ->where('provider', 'stripe')
+            ->where('external_id', (string) $invoice->source_reference_id)
+            ->orderByDesc('id')
+            ->first();
+
+        if (! $sync instanceof InvoiceSync)
+        {
+            return 0.0;
+        }
+
+        if ($sync->paid || strtolower((string) $sync->status) === 'paid')
+        {
+            return 0.0;
+        }
+
+        $amountDue = data_get($sync->raw_payload, 'amount_due');
+        if (is_numeric($amountDue))
+        {
+            $currency = strtoupper((string) ($sync->currency ?: 'ARS'));
+            $zeroDecimal = [
+                'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+            ];
+            $major = in_array($currency, $zeroDecimal, true)
+                ? (float) $amountDue
+                : round(((float) $amountDue) / 100, 2);
+
+            if ($major > 0)
+            {
+                return $major;
+            }
+        }
+
+        $total = round((float) $sync->total, 2);
+
+        return $total > 0 ? $total : 0.0;
     }
 
     private function isStripeInvoiceReference(Invoice $invoice): bool

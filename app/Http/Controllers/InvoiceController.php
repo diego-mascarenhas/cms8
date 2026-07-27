@@ -10,7 +10,9 @@ use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\FiscalExport;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Services\Billing\InvoiceInboundSyncService;
+use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
@@ -36,6 +38,7 @@ class InvoiceController extends Controller
         private readonly InvoiceElectronicPaymentLinkService $invoiceElectronicPaymentLinkService,
         private readonly InvoiceCreditNoteService $invoiceCreditNoteService,
         private readonly StripeInvoiceCreditNoteService $stripeInvoiceCreditNoteService,
+        private readonly MercadoPagoPaymentImportService $mercadoPagoPaymentImportService,
     ) {
         // Note: Manual authorization in each method due to non-standard route parameter names
         // Laravel's authorizeResource() expects {invoice} parameter, but routes use {id}
@@ -249,6 +252,12 @@ class InvoiceController extends Controller
         $canUpdatePaymentStatus = auth()->user()->currentTeam
             && (int) $invoice->team_id === (int) auth()->user()->currentTeam->id
             && auth()->user()->ownsTeam(auth()->user()->currentTeam);
+        $canResyncPayment = $canUpdatePaymentStatus
+            && Payment::withoutGlobalScopes()
+                ->where('team_id', $invoice->team_id)
+                ->where('invoice_id', $invoice->id)
+                ->where('source_provider', 'mercadopago')
+                ->exists();
         $paymentStatusOptions = app(PaymentStatusUpdateService::class)->selectableStatuses();
         $originalInvoice = $invoice->isCreditNote() ? $invoice->originalInvoice() : null;
         $existingCreditNote = (! $invoice->isCreditNote()) ? $invoice->existingCreditNote() : null;
@@ -264,6 +273,7 @@ class InvoiceController extends Controller
             'creditNoteReasons',
             'defaultCreditNoteReason',
             'canUpdatePaymentStatus',
+            'canResyncPayment',
             'paymentStatusOptions',
             'fiscalPlatform',
             'fiscalExport',
@@ -362,6 +372,39 @@ class InvoiceController extends Controller
         return redirect()
             ->route('invoice.show', $invoice->id)
             ->with('success', __('invoice_payment.electronic_success'));
+    }
+
+    public function resyncPayment(Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        $user = auth()->user();
+        if (! $user->currentTeam
+            || (int) $invoice->team_id !== (int) $user->currentTeam->id
+            || ! $user->ownsTeam($user->currentTeam))
+        {
+            abort(403);
+        }
+
+        $result = $this->mercadoPagoPaymentImportService->resyncInvoicePayments($invoice);
+
+        if ($result['count'] === 0)
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', __('invoice_payment.resync_none'));
+        }
+
+        if ($result['stripe_updated'])
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('success', __('invoice_payment.resync_success'));
+        }
+
+        return redirect()
+            ->route('invoice.show', $invoice->id)
+            ->with('warning', __('invoice_payment.resync_local_only'));
     }
 
     public function storeCreditNote(StoreInvoiceCreditNoteRequest $request, Invoice $invoice): RedirectResponse

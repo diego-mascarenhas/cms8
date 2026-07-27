@@ -241,6 +241,12 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     @endif
+    @if (session('warning'))
+      <div class="alert alert-warning alert-dismissible mb-3" role="alert">
+        {{ session('warning') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    @endif
     @if (session('error'))
       <div class="alert alert-warning alert-dismissible mb-3" role="alert">
         {{ session('error') }}
@@ -288,8 +294,7 @@
         <button
           type="button"
           class="btn btn-label-info d-grid w-100 mb-2"
-          data-bs-toggle="modal"
-          data-bs-target="#creditNoteModal"
+          id="creditNoteOpenBtn"
         >
           <i class="ti ti-receipt-refund ti-xs me-2"></i>
           {{ __('invoice_credit_note.create_title') }}
@@ -310,67 +315,29 @@
       </div>
     </div>
 
-    @if ($fiscalPlatform)
-    @php
-      $fiscalPlatformLabel = ['cuentica' => 'Cuéntica', 'arca' => 'ARCA'][$fiscalPlatform] ?? ucfirst($fiscalPlatform);
-      $fiscalExported = $fiscalExport && in_array($fiscalExport->status, ['exported', 'rectified'], true);
-    @endphp
-    <div class="card mt-3">
-      <div class="card-body">
-        <h6 class="mb-3">{{ __('Fiscal export') }}</h6>
-        @if ($fiscalExported)
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <span class="badge bg-label-success">{{ __('Exported') }}</span>
-            <span class="fw-medium">{{ $fiscalPlatformLabel }}</span>
-          </div>
-          @if ($fiscalExport->external_number)
-          <p class="mb-1">
-            <span class="text-muted">{{ __('Number') }}:</span>
-            <span class="fw-medium">{{ $fiscalExport->external_number }}</span>
-          </p>
-          @endif
-          @if ($fiscalExport->exported_at)
-          <p class="mb-0 text-muted small">{{ \Carbon\Carbon::parse($fiscalExport->exported_at)->format('d-m-Y H:i') }}</p>
-          @endif
-        @else
-          @if ($fiscalExport && $fiscalExport->status === 'failed' && $fiscalExport->error_message)
-            <div class="alert alert-warning py-2 px-3 small mb-2" role="alert">{{ $fiscalExport->error_message }}</div>
-          @endif
-          @if ($canExportFiscal)
-            <form method="POST" action="{{ route('invoice.fiscal-export', $invoice->id) }}">
-              @csrf
-              <button type="submit" class="btn btn-label-primary d-grid w-100">
-                <i class="ti ti-file-export ti-xs me-2"></i>
-                {{ __('Export to :platform', ['platform' => $fiscalPlatformLabel]) }}
-              </button>
-            </form>
-          @else
-            <p class="mb-0 text-muted small">{{ __('This invoice is not ready for fiscal export yet.') }}</p>
-          @endif
-        @endif
-      </div>
-    </div>
-    @endif
     @unless ($invoice->isCreditNote())
     <div class="card mt-3">
       <div class="card-body">
-        <h6 class="mb-3">{{ __('Payments') }}</h6>
-        @if (session('success'))
-          <div class="alert alert-success alert-dismissible mb-3" role="alert">
-            {{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-          </div>
-        @endif
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="mb-0">{{ __('Payments') }}</h6>
+          @if ($canResyncPayment)
+          <form method="POST" action="{{ route('invoice.resync-payment', $invoice) }}">
+            @csrf
+            <button type="submit" class="btn btn-sm btn-icon btn-primary" title="{{ __('invoice_payment.resync_button') }}">
+              <i class="ti ti-refresh ti-xs"></i>
+            </button>
+          </form>
+          @endif
+        </div>
         @forelse($paymentDetails as $paymentDetail)
           <div @class(['mb-0' => $loop->last, 'mb-3 pb-3 border-bottom' => ! $loop->last])>
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
               <span class="fw-medium">{{ \Carbon\Carbon::parse($paymentDetail['date'])->format('d-m-Y') }}</span>
+              {{-- Payment status change modal temporarily disabled
               @if($canUpdatePaymentStatus && ! empty($paymentDetail['id']))
                 <button
                   type="button"
                   class="btn btn-sm p-0 border-0 bg-transparent payment-status-trigger"
-                  data-bs-toggle="modal"
-                  data-bs-target="#paymentStatusModal"
                   data-payment-id="{{ $paymentDetail['id'] }}"
                   data-payment-status="{{ $paymentDetail['status'] }}"
                   title="{{ __('payment_status.change_title') }}"
@@ -378,6 +345,10 @@
                   {!! $paymentDetail['status_html'] !!}
                 </button>
               @elseif($paymentDetail['status_html'])
+                {!! $paymentDetail['status_html'] !!}
+              @endif
+              --}}
+              @if($paymentDetail['status_html'])
                 {!! $paymentDetail['status_html'] !!}
               @endif
             </div>
@@ -391,9 +362,27 @@
             </p>
             @endif
             @if($paymentDetail['account'])
-            <p class="mb-0">
+            <p class="mb-1">
               <span class="text-muted">{{ __('Account') }}:</span>
               <span class="fw-medium">{{ $paymentDetail['account'] }}</span>
+            </p>
+            @endif
+            @if(! empty($paymentDetail['mercadopago']['operation_number']))
+            <p class="mb-1">
+              <span class="text-muted">{{ __('invoice_payment.mp_operation') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['mercadopago']['operation_number'] }}</span>
+            </p>
+            @endif
+            @if(! empty($paymentDetail['mercadopago']['identification_code']))
+            <p class="mb-1">
+              <span class="text-muted">{{ __('invoice_payment.mp_identification') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['mercadopago']['identification_code'] }}</span>
+            </p>
+            @endif
+            @if(! empty($paymentDetail['mercadopago']['cbu']))
+            <p class="mb-0">
+              <span class="text-muted">{{ __('invoice_payment.mp_cbu') }}:</span>
+              <span class="fw-medium">{{ $paymentDetail['mercadopago']['cbu'] }}</span>
             </p>
             @endif
           </div>
@@ -564,13 +553,30 @@ function deleteInvoice(id) {
     }
 }
 
-@if ($errors->has('reason') && ($canShowCreditNoteForm ?? false))
+@if ($canShowCreditNoteForm ?? false)
 document.addEventListener('DOMContentLoaded', function () {
     const modalElement = document.getElementById('creditNoteModal');
+    const openBtn = document.getElementById('creditNoteOpenBtn');
 
-    if (modalElement) {
-        bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    if (! modalElement) {
+        return;
     }
+
+    if (modalElement.parentElement !== document.body) {
+        document.body.appendChild(modalElement);
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+
+    if (openBtn) {
+        openBtn.addEventListener('click', function () {
+            modal.show();
+        });
+    }
+
+    @if ($errors->has('reason'))
+    modal.show();
+    @endif
 });
 @endif
 
@@ -585,6 +591,14 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
+    // Keep the dialog above the Vuexy layout (transform/filter ancestors break Bootstrap
+    // positioning and leave the backdrop covering the page while the dialog sits underneath).
+    if (modalElement.parentElement !== document.body) {
+        document.body.appendChild(modalElement);
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+
     document.querySelectorAll('.payment-status-trigger').forEach(function (trigger) {
         trigger.addEventListener('click', function () {
             const paymentId = trigger.getAttribute('data-payment-id');
@@ -592,11 +606,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             form.action = updateStatusUrlTemplate.replace('__PAYMENT__', paymentId);
             statusSelect.value = paymentStatus;
+            modal.show();
         });
     });
 
     @if ($errors->has('status'))
-    bootstrap.Modal.getOrCreateInstance(modalElement).show();
+    modal.show();
     @endif
 });
 @endif

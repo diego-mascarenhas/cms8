@@ -9,12 +9,18 @@ use App\Models\PaymentSync;
 use App\Models\Team;
 use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\MercadoPagoPaymentSyncUpserter;
+use App\Services\Billing\StripeInvoiceCoreImportService;
+use App\Services\Billing\StripeInvoiceOutOfBandPaymentService;
+use App\Services\Billing\StripeInvoiceSyncRefresher;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\PaymentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
+use Stripe\Service\InvoiceService;
+use Stripe\StripeClient;
 use Tests\TestCase;
 
 class MercadoPagoPaymentImportServiceTest extends TestCase
@@ -286,6 +292,180 @@ class MercadoPagoPaymentImportServiceTest extends TestCase
 
         $this->assertInstanceOf(Payment::class, $payment);
         $this->assertNull($payment->invoice_id);
+    }
+
+    public function test_import_finalizes_invoice_when_later_linking_a_previously_unlinked_payment(): void
+    {
+        $team = Team::factory()->create();
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente MP',
+            'code' => '998877',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0939',
+            'date' => '2026-07-02',
+            'due_date' => '2026-07-12',
+            'gross_amount' => 41818.18,
+            'discount' => 0,
+            'total_amount' => 41818.18,
+            'balance' => 41818.18,
+            'status' => 1,
+        ]);
+
+        $otherInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0902',
+            'date' => '2026-07-02',
+            'due_date' => '2026-07-12',
+            'gross_amount' => 41818.18,
+            'discount' => 0,
+            'total_amount' => 41818.18,
+            'balance' => 41818.18,
+            'status' => 1,
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '166972675399',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 4181818,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 4181818,
+            'description' => 'Transferencia a CVU',
+            'charge_created_at' => '2026-07-08 00:00:00',
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        $service = app(MercadoPagoPaymentImportService::class);
+
+        // Ambiguous amount match (two open invoices with the same balance) leaves the
+        // payment imported but unlinked, mirroring an automatic/scheduled import.
+        $unlinked = $service->importFromPaymentSync($sync, forceEnterpriseId: $enterprise->id);
+
+        $this->assertInstanceOf(Payment::class, $unlinked);
+        $this->assertNull($unlinked->invoice_id);
+        $this->assertSame(41818.18, (float) $invoice->fresh()->balance);
+
+        // Later, reconcile "accept" (or the invoice's "Vincular pago electrónico" selector)
+        // forces the invoice for this already-imported payment.
+        $linked = $service->importFromPaymentSync(
+            $sync->fresh(),
+            forceEnterpriseId: $enterprise->id,
+            forceInvoiceIds: [$invoice->id],
+        );
+
+        $this->assertSame($unlinked->id, $linked->id);
+        $this->assertSame($invoice->id, (int) $linked->invoice_id);
+
+        $invoice->refresh();
+        $this->assertSame(0.0, (float) $invoice->balance);
+        $this->assertSame(2, $invoice->status);
+        $this->assertSame(41818.18, (float) $otherInvoice->fresh()->balance);
+    }
+
+    public function test_import_pays_stripe_invoice_out_of_band_before_zeroing_local_balance(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('stripe_secret', 'sk_test_fake');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Stripe',
+            'code' => 'cus_test',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0950',
+            'date' => now()->toDateString(),
+            'gross_amount' => 10608.16,
+            'discount' => 0,
+            'total_amount' => 10608.16,
+            'balance' => 10608.16,
+            'status' => 1,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_test_oob_order',
+        ]);
+
+        $sync = PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => '169690439304',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 1060816,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 1060816,
+            'charge_created_at' => now(),
+            'last_synced_at' => now(),
+            'raw_payload' => [],
+        ]);
+
+        // If the invoice's remaining balance is zeroed out locally before this
+        // Stripe call happens, `pay()` never fires (see StripeInvoiceOutOfBandPaymentService).
+        $invoiceService = Mockery::mock(InvoiceService::class);
+        $invoiceService->shouldReceive('update')
+            ->once()
+            ->andReturn((object) ['id' => 'in_test_oob_order']);
+        $invoiceService->shouldReceive('pay')
+            ->once()
+            ->with('in_test_oob_order', ['paid_out_of_band' => true])
+            ->andReturn((object) ['id' => 'in_test_oob_order', 'status' => 'paid']);
+
+        $client = Mockery::mock(StripeClient::class);
+        $client->invoices = $invoiceService;
+
+        $syncRefresher = Mockery::mock(StripeInvoiceSyncRefresher::class);
+        $syncRefresher->shouldReceive('refreshFromStripe')->once()->andReturn(null);
+
+        $coreImport = Mockery::mock(StripeInvoiceCoreImportService::class);
+        $coreImport->shouldNotReceive('importFromSyncRow');
+
+        $stripeService = new class($syncRefresher, $coreImport, $client) extends StripeInvoiceOutOfBandPaymentService
+        {
+            public function __construct(
+                StripeInvoiceSyncRefresher $syncRefresher,
+                StripeInvoiceCoreImportService $coreImportService,
+                private readonly StripeClient $client,
+            ) {
+                parent::__construct($syncRefresher, $coreImportService);
+            }
+
+            protected function makeClient(string $secret): StripeClient
+            {
+                return $this->client;
+            }
+        };
+
+        $this->app->instance(StripeInvoiceOutOfBandPaymentService::class, $stripeService);
+
+        $payment = app(MercadoPagoPaymentImportService::class)->importFromPaymentSync(
+            $sync,
+            forceEnterpriseId: $enterprise->id,
+            forceInvoiceIds: [$invoice->id],
+        );
+
+        $this->assertInstanceOf(Payment::class, $payment);
+        $this->assertSame($invoice->id, (int) $payment->invoice_id);
     }
 
     public function test_import_creates_core_payment_for_approved_sync(): void
