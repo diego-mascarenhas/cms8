@@ -15,6 +15,7 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
                             {--from= : Report begin date (Y-m-d)}
                             {--to= : Report end date (Y-m-d)}
                             {--poll=90 : Seconds to wait for report generation}
+                            {--reuse-existing : Download existing reports only (no new report creation; use when HTTP 429 quota is hit)}
                             {--dry-run : Parse report without writing}';
 
     protected $description = 'Enrich Mercado Pago payment_syncs with payer name/id from Account money settlement report';
@@ -29,6 +30,7 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
     {
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
         $dryRun = (bool) $this->option('dry-run');
+        $reuseExisting = (bool) $this->option('reuse-existing');
         $poll = max(15, (int) $this->option('poll'));
         [$begin, $end] = $this->resolveDateRange(
             $this->option('from'),
@@ -61,11 +63,12 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
                 continue;
             }
 
-            $this->info("Team {$team->id}: requesting settlement report {$begin->toDateString()} → {$end->toDateString()}");
+            $mode = $reuseExisting ? 'reusing existing reports' : 'requesting settlement report';
+            $this->info("Team {$team->id}: {$mode} {$begin->toDateString()} → {$end->toDateString()}");
 
             try
             {
-                $result = $this->enricher->enrichTeam($team, $begin, $end, $dryRun, $poll);
+                $result = $this->enricher->enrichTeam($team, $begin, $end, $dryRun, $poll, $reuseExisting);
             } catch (\Throwable $e)
             {
                 $this->error("Team {$team->id}: {$e->getMessage()}");

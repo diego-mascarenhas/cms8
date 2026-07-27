@@ -5,7 +5,7 @@ return [
     'electronic_title' => 'Link electronic payment',
     'electronic_sync' => 'Payment from sync',
     'electronic_sync_placeholder' => 'Select a Mercado Pago payment',
-    'electronic_hint' => 'Only approved Mercado Pago payments not yet imported. Same-amount payments are listed first.',
+    'electronic_hint' => 'Only approved Mercado Pago payments not yet imported. Identified transferors (settlement) and same-amount payments are listed first. Missing names need mercadopago:enrich-settlement-payers.',
     'electronic_submit' => 'Link payment',
     'electronic_empty' => 'No pending electronic sync payments to link.',
     'electronic_open_queue' => 'Open Mercado Pago queue',

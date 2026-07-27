@@ -5,7 +5,7 @@ return [
     'electronic_title' => 'Vincular pago electrónico',
     'electronic_sync' => 'Pago desde sync',
     'electronic_sync_placeholder' => 'Selecciona un pago de Mercado Pago',
-    'electronic_hint' => 'Solo pagos aprobados en Mercado Pago que aún no están importados. Se priorizan los del mismo importe.',
+    'electronic_hint' => 'Solo pagos aprobados en Mercado Pago que aún no están importados. Primero los que tienen titular (settlement) y el mismo importe. Si falta el nombre, hay que enriquecer con mercadopago:enrich-settlement-payers.',
     'electronic_submit' => 'Vincular pago',
     'electronic_empty' => 'No hay pagos electrónicos pendientes de sync para vincular.',
     'electronic_open_queue' => 'Ver cola Mercado Pago',

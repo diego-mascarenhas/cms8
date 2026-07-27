@@ -42,6 +42,7 @@ class MercadoPagoSettlementPayerEnricher
         Carbon $endDate,
         bool $dryRun = false,
         int $pollSeconds = 90,
+        bool $reuseExisting = false,
     ): array {
         $token = trim((string) $team->getSetting('mercadopago_access_token'));
         if ($token === '')
@@ -51,6 +52,11 @@ class MercadoPagoSettlementPayerEnricher
 
         $client = $this->http($token);
         $this->ensureReportConfig($client);
+
+        if ($reuseExisting)
+        {
+            return $this->enrichFromExistingReports($client, $team, $beginDate, $endDate, $dryRun);
+        }
 
         $enriched = 0;
         $unmatched = 0;
@@ -64,7 +70,36 @@ class MercadoPagoSettlementPayerEnricher
             $chunks++;
             [$chunkBegin, $chunkEnd] = $chunk;
 
-            $fileName = $this->createAndWaitForReport($client, $chunkBegin, $chunkEnd, $pollSeconds);
+            try
+            {
+                $fileName = $this->createAndWaitForReport($client, $chunkBegin, $chunkEnd, $pollSeconds);
+            } catch (RuntimeException $exception)
+            {
+                if (! str_contains($exception->getMessage(), 'HTTP 429'))
+                {
+                    throw $exception;
+                }
+
+                $fileName = $this->findExistingReportFileName($client, $chunkBegin, $chunkEnd);
+                if ($fileName === null)
+                {
+                    throw new RuntimeException(
+                        'Unable to create settlement report (HTTP 429 quota) and no existing report covers '
+                        .$chunkBegin->toDateString().' → '.$chunkEnd->toDateString().'. '
+                        .'Wait for Mercado Pago to free report slots, or pass --reuse-existing for months that already have files.',
+                        0,
+                        $exception,
+                    );
+                }
+
+                Log::warning('Mercado Pago settlement report quota hit; reusing existing file', [
+                    'team_id' => $team->id,
+                    'file_name' => $fileName,
+                    'begin' => $chunkBegin->toDateString(),
+                    'end' => $chunkEnd->toDateString(),
+                ]);
+            }
+
             $csv = $this->downloadReport($client, $fileName);
             $rowsBySourceId = $this->parseCsvBySourceId($csv);
             $reportRows += count($rowsBySourceId);
@@ -74,48 +109,14 @@ class MercadoPagoSettlementPayerEnricher
                 $statementLines += $this->persistStatementLines($team, $rowsBySourceId, $fileName);
             }
 
-            foreach ($rowsBySourceId as $sourceId => $row)
-            {
-                $payerName = trim((string) ($row['PAYER_NAME'] ?? ''));
-                $payerIdType = trim((string) ($row['PAYER_ID_TYPE'] ?? ''));
-                $payerIdNumber = trim((string) ($row['PAYER_ID_NUMBER'] ?? ''));
-
-                if ($payerName === '' && $payerIdNumber === '')
-                {
-                    $skipped++;
-
-                    continue;
-                }
-
-                /** @var PaymentSync|null $sync */
-                $sync = PaymentSync::query()
-                    ->where('team_id', $team->id)
-                    ->where('provider', 'mercadopago')
-                    ->where('external_id', $sourceId)
-                    ->first();
-
-                if ($sync === null)
-                {
-                    $unmatched++;
-
-                    continue;
-                }
-
-                if ($dryRun)
-                {
-                    $enriched++;
-
-                    continue;
-                }
-
-                $sync->mergeSettlementPayer(
-                    $payerName !== '' ? $payerName : null,
-                    $payerIdType !== '' ? $payerIdType : null,
-                    $payerIdNumber !== '' ? $payerIdNumber : null,
-                );
-
-                $enriched++;
-            }
+            [$chunkEnriched, $chunkUnmatched, $chunkSkipped] = $this->applyRowsToSyncs(
+                $team,
+                $rowsBySourceId,
+                $dryRun,
+            );
+            $enriched += $chunkEnriched;
+            $unmatched += $chunkUnmatched;
+            $skipped += $chunkSkipped;
         }
 
         return [
@@ -126,6 +127,120 @@ class MercadoPagoSettlementPayerEnricher
             'chunks' => $chunks,
             'statement_lines' => $statementLines,
         ];
+    }
+
+    /**
+     * Download and apply already-generated settlement reports that overlap the window.
+     * Does not create new reports (safe when MP returns "Max number of reports achieved").
+     *
+     * @return array{enriched: int, report_rows: int, unmatched: int, skipped: int, chunks: int, statement_lines: int}
+     */
+    public function enrichFromExistingReports(
+        PendingRequest $client,
+        Team $team,
+        Carbon $beginDate,
+        Carbon $endDate,
+        bool $dryRun = false,
+    ): array {
+        $files = $this->existingReportFileNames($client, $beginDate, $endDate);
+        if ($files === [])
+        {
+            throw new RuntimeException(
+                'No existing settlement reports cover '.$beginDate->toDateString().' → '.$endDate->toDateString().'.',
+            );
+        }
+
+        $enriched = 0;
+        $unmatched = 0;
+        $skipped = 0;
+        $reportRows = 0;
+        $statementLines = 0;
+
+        foreach ($files as $fileName)
+        {
+            $csv = $this->downloadReport($client, $fileName);
+            $rowsBySourceId = $this->parseCsvBySourceId($csv);
+            $reportRows += count($rowsBySourceId);
+
+            if (! $dryRun)
+            {
+                $statementLines += $this->persistStatementLines($team, $rowsBySourceId, $fileName);
+            }
+
+            [$fileEnriched, $fileUnmatched, $fileSkipped] = $this->applyRowsToSyncs(
+                $team,
+                $rowsBySourceId,
+                $dryRun,
+            );
+            $enriched += $fileEnriched;
+            $unmatched += $fileUnmatched;
+            $skipped += $fileSkipped;
+        }
+
+        return [
+            'enriched' => $enriched,
+            'report_rows' => $reportRows,
+            'unmatched' => $unmatched,
+            'skipped' => $skipped,
+            'chunks' => count($files),
+            'statement_lines' => $statementLines,
+        ];
+    }
+
+    /**
+     * @param  array<string, array<string, string>>  $rowsBySourceId
+     * @return array{0: int, 1: int, 2: int} enriched, unmatched, skipped
+     */
+    private function applyRowsToSyncs(Team $team, array $rowsBySourceId, bool $dryRun): array
+    {
+        $enriched = 0;
+        $unmatched = 0;
+        $skipped = 0;
+
+        foreach ($rowsBySourceId as $sourceId => $row)
+        {
+            $payerName = trim((string) ($row['PAYER_NAME'] ?? ''));
+            $payerIdType = trim((string) ($row['PAYER_ID_TYPE'] ?? ''));
+            $payerIdNumber = trim((string) ($row['PAYER_ID_NUMBER'] ?? ''));
+
+            if ($payerName === '' && $payerIdNumber === '')
+            {
+                $skipped++;
+
+                continue;
+            }
+
+            /** @var PaymentSync|null $sync */
+            $sync = PaymentSync::query()
+                ->where('team_id', $team->id)
+                ->where('provider', 'mercadopago')
+                ->where('external_id', $sourceId)
+                ->first();
+
+            if ($sync === null)
+            {
+                $unmatched++;
+
+                continue;
+            }
+
+            if ($dryRun)
+            {
+                $enriched++;
+
+                continue;
+            }
+
+            $sync->mergeSettlementPayer(
+                $payerName !== '' ? $payerName : null,
+                $payerIdType !== '' ? $payerIdType : null,
+                $payerIdNumber !== '' ? $payerIdNumber : null,
+            );
+
+            $enriched++;
+        }
+
+        return [$enriched, $unmatched, $skipped];
     }
 
     /**
@@ -375,6 +490,65 @@ class MercadoPagoSettlementPayerEnricher
         } while (microtime(true) < $deadline);
 
         throw new RuntimeException('Timed out waiting for Mercado Pago settlement report file.');
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function existingReportFileNames(PendingRequest $client, Carbon $beginDate, Carbon $endDate): array
+    {
+        $list = $client->get('/v1/account/settlement_report/list');
+        if (! $list->successful() || ! is_array($list->json()))
+        {
+            return [];
+        }
+
+        $windowBegin = $beginDate->clone()->startOfDay();
+        $windowEnd = $endDate->clone()->endOfDay();
+        $files = [];
+
+        foreach ($list->json() as $report)
+        {
+            if (! is_array($report))
+            {
+                continue;
+            }
+
+            $fileName = trim((string) ($report['file_name'] ?? ''));
+            if ($fileName === '')
+            {
+                continue;
+            }
+
+            $status = strtolower(trim((string) ($report['status'] ?? 'processed')));
+            if ($status !== '' && ! in_array($status, ['processed', 'available', 'ready'], true))
+            {
+                continue;
+            }
+
+            $reportBegin = isset($report['begin_date']) ? Carbon::parse((string) $report['begin_date']) : null;
+            $reportEnd = isset($report['end_date']) ? Carbon::parse((string) $report['end_date']) : null;
+            if ($reportBegin === null || $reportEnd === null)
+            {
+                continue;
+            }
+
+            if ($reportEnd->lt($windowBegin) || $reportBegin->gt($windowEnd))
+            {
+                continue;
+            }
+
+            $files[$fileName] = true;
+        }
+
+        return array_keys($files);
+    }
+
+    public function findExistingReportFileName(PendingRequest $client, Carbon $beginDate, Carbon $endDate): ?string
+    {
+        $files = $this->existingReportFileNames($client, $beginDate, $endDate);
+
+        return $files[0] ?? null;
     }
 
     /**

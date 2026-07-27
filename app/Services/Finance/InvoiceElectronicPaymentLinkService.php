@@ -74,8 +74,10 @@ class InvoiceElectronicPaymentLinkService
                 $amount = $this->amountMajor($sync);
                 $currencyRank = $syncCurrency === $currency ? 0 : 1;
                 $amountDelta = abs($amount - $balance);
+                // Prefer rows with a real transferor identity (settlement name / third-party payer).
+                $identityRank = $sync->displayPayerIdentity() !== null ? 0 : 1;
 
-                return [$currencyRank, $amountDelta, -1 * (optional($sync->charge_created_at)?->timestamp ?? 0)];
+                return [$identityRank, $currencyRank, $amountDelta, -1 * (optional($sync->charge_created_at)?->timestamp ?? 0)];
             })
             ->take($limit)
             ->values();
@@ -159,8 +161,15 @@ class InvoiceElectronicPaymentLinkService
         $parts = [
             $date,
             $amount.' '.$currency,
-            (string) $sync->external_id,
         ];
+
+        $payerIdentity = $sync->displayPayerIdentity();
+        if ($payerIdentity !== null)
+        {
+            $parts[] = $payerIdentity;
+        }
+
+        $parts[] = (string) $sync->external_id;
 
         $identification = $sync->identificationCode();
         if ($identification !== null)
