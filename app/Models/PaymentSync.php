@@ -194,6 +194,12 @@ class PaymentSync extends Model
             return $name;
         }
 
+        $bankPayer = trim((string) ($this->bankStatementLine?->payer_name ?? ''));
+        if ($bankPayer !== '')
+        {
+            return $bankPayer;
+        }
+
         $firstName = trim((string) data_get($this->raw_payload, 'payer.first_name', ''));
         $lastName = trim((string) data_get($this->raw_payload, 'payer.last_name', ''));
         $fullName = trim($firstName.' '.$lastName);
@@ -202,9 +208,72 @@ class PaymentSync extends Model
             return $fullName;
         }
 
+        // CVU/account_fund transfers expose the collector as "payer"; that email
+        // (often the shop owner's) is useless for identifying who transferred.
+        if ($this->payerIsCollector())
+        {
+            return null;
+        }
+
         $email = trim((string) data_get($this->raw_payload, 'payer.email', ''));
 
         return $email !== '' ? $email : null;
+    }
+
+    /**
+     * Label-friendly identity: settlement name, else real third-party email/CUIT.
+     * Never returns the collector's own email for account_fund transfers.
+     */
+    public function displayPayerIdentity(): ?string
+    {
+        $name = $this->displayPayerName();
+        $idType = $this->settlementPayerIdType()
+            ?? (trim((string) data_get($this->raw_payload, 'payer.identification.type', '')) ?: null);
+        $idNumber = $this->settlementPayerIdNumber();
+
+        if ($idNumber === null && ! $this->payerIsCollector())
+        {
+            $candidate = trim((string) data_get($this->raw_payload, 'payer.identification.number', ''));
+            $idNumber = $candidate !== '' ? $candidate : null;
+        }
+
+        if ($name !== null && $idNumber !== null)
+        {
+            $prefix = $idType ? strtoupper((string) $idType).' ' : '';
+
+            return $name.' ('.$prefix.$idNumber.')';
+        }
+
+        if ($name !== null)
+        {
+            return $name;
+        }
+
+        if ($idNumber !== null)
+        {
+            $prefix = $idType ? strtoupper((string) $idType).' ' : '';
+
+            return $prefix.$idNumber;
+        }
+
+        return null;
+    }
+
+    /**
+     * True when the Payments API "payer" is really the collector (account funding).
+     */
+    public function payerIsCollector(): bool
+    {
+        $operationType = strtolower(trim((string) data_get($this->raw_payload, 'operation_type', '')));
+        if ($operationType === 'account_fund')
+        {
+            return true;
+        }
+
+        $payerId = trim((string) data_get($this->raw_payload, 'payer.id', ''));
+        $collectorId = trim((string) data_get($this->raw_payload, 'collector_id', ''));
+
+        return $payerId !== '' && $collectorId !== '' && $payerId === $collectorId;
     }
 
     /**

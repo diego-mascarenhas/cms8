@@ -40,6 +40,8 @@ class StripeInvoiceCoreMapper
             'open' => 1,
             'paid' => 2,
             'void' => 3,
+            // Stripe credit notes use "issued"; local status 4 = Nota de Crédito.
+            'issued' => 4,
             'uncollectible' => 7,
             default => 7,
         };
