@@ -589,6 +589,60 @@ class InvoiceSummaryServiceTest extends TestCase
         $this->assertEqualsCanonicalizing(['NC-RECENT', 'NC-OLD'], $creditNotesQuery->pluck('number')->all());
     }
 
+    public function test_credit_notes_filter_includes_stripe_cn_even_when_status_was_wrongly_uncollectible(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0252-CN-01',
+            'date' => now()->subDays(3)->toDateString(),
+            'due_date' => null,
+            'gross_amount' => 24,
+            'discount' => 0,
+            'total_amount' => 24,
+            'balance' => 0,
+            'status' => 7,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_test_recent',
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OPEN',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        $creditNotesQuery = Invoice::withoutGlobalScopes()->where('team_id', $team->id);
+        $this->service->applySummaryFilter($creditNotesQuery, 'credit_notes');
+
+        $this->assertSame(['0005-0252-CN-01'], $creditNotesQuery->pluck('number')->all());
+
+        $stats = $this->service->buildIndexStats($team->id);
+        $this->assertSame(1, $stats['credit_notes']['count']);
+        $this->assertSame(['EUR' => 24.0], $stats['credit_notes']['totals_by_currency']);
+    }
+
     public function test_summary_cards_ignore_purchase_invoices(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

@@ -23,6 +23,7 @@ class StripeInvoiceCoreMapperTest extends TestCase
         $this->assertSame(1, $this->mapper->mapStatus('open'));
         $this->assertSame(2, $this->mapper->mapStatus('paid'));
         $this->assertSame(3, $this->mapper->mapStatus('void'));
+        $this->assertSame(4, $this->mapper->mapStatus('issued'));
         $this->assertSame(7, $this->mapper->mapStatus('uncollectible'));
         $this->assertSame(7, $this->mapper->mapStatus('unknown'));
     }

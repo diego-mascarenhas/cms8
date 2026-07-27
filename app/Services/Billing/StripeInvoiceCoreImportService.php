@@ -149,21 +149,24 @@ class StripeInvoiceCoreImportService
         $discount = $this->normalizeNullableAmount($row->total_discount_amount);
         $total = $this->normalizeAmount($row->total ?? $row->amount_due ?? $gross);
         $coreFields = $this->mapper->mapFromInvoiceSync($row);
+        $isCreditNote = str_starts_with((string) $row->external_id, 'cn_');
 
         $payload = [
             'team_id' => $row->team_id,
             'enterprise_id' => $enterpriseId,
             'billing_id' => null,
-            'type_id' => 1,
+            'type_id' => $isCreditNote ? 2 : 1,
             'operation' => 'sell',
             'number' => $this->resolveInvoiceNumber($row->number, $row->external_id),
             'date' => $date,
-            'due_date' => $dueDate,
+            'due_date' => $isCreditNote ? null : $dueDate,
             'gross_amount' => $gross,
             'discount' => $discount,
             'total_amount' => $total,
-            'balance' => $coreFields['balance'],
-            'status' => $coreFields['status'],
+            'balance' => $isCreditNote ? 0.0 : $coreFields['balance'],
+            'status' => $isCreditNote
+                ? ($coreFields['status'] === 3 ? 3 : 4)
+                : $coreFields['status'],
             'source_provider' => 'stripe',
             'source_reference_id' => $row->external_id,
             'source_synced_at' => $row->last_synced_at ?? now(),
@@ -187,6 +190,12 @@ class StripeInvoiceCoreImportService
 
         if ($existing)
         {
+            if ($isCreditNote && filled($existing->number))
+            {
+                // Keep Humano CN numbering (e.g. 0005-0252-CN-01); Stripe's lives on invoice_syncs.
+                unset($payload['number']);
+            }
+
             $existing->fill($payload);
             $existing->save();
             $this->itemImporter->syncForInvoice($existing, $row);
