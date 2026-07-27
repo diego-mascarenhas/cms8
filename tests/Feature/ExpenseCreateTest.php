@@ -49,7 +49,20 @@ class ExpenseCreateTest extends TestCase
             ->assertOk()
             ->assertSee('Registrar un nuevo gasto', false)
             ->assertSee($account->name, false)
-            ->assertSee('Transferencia bancaria', false);
+            ->assertSee('Transferencia bancaria', false)
+            ->assertSee('Crear proveedor', false)
+            ->assertSee('createSupplierModal', false)
+            ->assertSee('open-create-supplier-modal', false)
+            ->assertSee('Dirección fiscal', false)
+            ->assertSee('NIF/CIF', false)
+            ->assertSee('createSupplierUrl', false)
+            ->assertSee('line-category-badge', false)
+            ->assertSee('Sin categoría', false)
+            ->assertSee('lineCategoryModal', false)
+            ->assertSee('Todavía no hay categorías de servicio', false)
+            ->assertDontSee('>Ítems</h6>', false)
+            ->assertSee('expense-submit-btn', false)
+            ->assertSee('document-number-duplicate-warning', false);
     }
 
     public function test_create_page_disables_unavailable_document_types(): void
@@ -142,6 +155,57 @@ class ExpenseCreateTest extends TestCase
 
         $this->assertNotNull($payment);
         $this->assertSame('1493.82', number_format((float) $payment->amount, 2, '.', ''));
+    }
+
+    public function test_store_persists_line_category_on_invoice_item(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+        $category = \App\Models\Category::factory()->create([
+            'team_id' => (int) $user->current_team_id,
+            'name' => 'Software',
+            'status' => 1,
+            'parent_id' => null,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-06-22',
+                'document_number' => 'FAC-CAT-001',
+                'lines' => [
+                    [
+                        'concept' => 'Licencia anual',
+                        'category_id' => $category->id,
+                        'base_amount' => '100,00',
+                        'vat_percent' => '21',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
+                'payments' => [[
+                    'payment_date' => '2026-06-22',
+                    'amount' => '121,00',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('expense.index'))
+            ->assertSessionHas('success');
+
+        $invoice = Invoice::withoutGlobalScopes()->latest('id')->first();
+        $this->assertNotNull($invoice);
+
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $invoice->id,
+            'description' => 'Licencia anual',
+            'category_id' => $category->id,
+        ]);
     }
 
     public function test_store_validates_required_fields_with_laravel(): void

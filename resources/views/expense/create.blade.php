@@ -129,12 +129,12 @@
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label for="enterprise_id" class="form-label mb-0">Proveedor (*)</label>
                             @can('create', \App\Models\Enterprise::class)
-                                <button type="button" class="btn btn-sm btn-outline-primary d-none" id="open-create-supplier-modal">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="open-create-supplier-modal">
                                     <i class="ti ti-building-store me-1"></i> Crear proveedor
                                 </button>
                             @endcan
                         </div>
-                        <select id="enterprise_id" name="enterprise_id" class="form-select select2 @error('enterprise_id') is-invalid @enderror">
+                        <select id="enterprise_id" name="enterprise_id" class="form-select select2-enterprise @error('enterprise_id') is-invalid @enderror">
                             <option value="">Selecciona un proveedor</option>
                             @foreach ($enterprises as $enterprise)
                                 <option value="{{ $enterprise->id }}" {{ old('enterprise_id') == $enterprise->id ? 'selected' : '' }}>
@@ -167,21 +167,10 @@
                     <div class="col-12">
                         <label for="document_number" class="form-label">Número de comprobante</label>
                         <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
-                        <small id="document-number-duplicate-warning" class="d-none text-warning d-block mt-1"></small>
+                        <small id="document-number-duplicate-warning" class="d-none text-danger d-block mt-1"></small>
                         @error('document_number')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
-                    </div>
-
-                    <div class="col-12">
-                        <x-module-categories-select
-                            id="expense_category_id"
-                            label="Tipo de gasto"
-                            moduleKey="products"
-                            :selected="old('expense_category_id')"
-                            :allowEmpty="true"
-                            emptyText="Selecciona una categoría"
-                        />
                     </div>
 
                     <div class="col-12">
@@ -210,14 +199,38 @@
                     <table class="table table-bordered">
                         <tbody id="expense-lines-body">
                             @foreach ($oldLines as $index => $line)
+                                @php
+                                    $selectedLineCategoryId = (string) data_get($line, 'category_id', old('lines.'.$index.'.category_id', ''));
+                                    $selectedLineCategoryName = collect($expenseCategoryOptions)
+                                        ->firstWhere('id', (int) $selectedLineCategoryId)['name'] ?? '';
+                                    $hasLineCategory = $selectedLineCategoryId !== '';
+                                @endphp
                                 <tr class="expense-line" data-line-index="{{ $index }}">
                                     <td>
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 gap-2">
                                             <label class="form-label small mb-0">Concepto (*)</label>
-                                            <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">
-                                                <i class="ti ti-trash ti-xs"></i>
-                                            </button>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input
+                                                    type="hidden"
+                                                    name="lines[{{ $index }}][category_id]"
+                                                    class="line-category-id"
+                                                    value="{{ $hasLineCategory ? $selectedLineCategoryId : '' }}"
+                                                >
+                                                <button
+                                                    type="button"
+                                                    class="badge border-0 line-category-badge {{ $hasLineCategory ? 'bg-label-primary' : 'bg-label-secondary' }}"
+                                                    title="Seleccionar categoría"
+                                                >
+                                                    {{ $hasLineCategory ? ($selectedLineCategoryName !== '' ? $selectedLineCategoryName : '#'.$selectedLineCategoryId) : 'Sin categoría' }}
+                                                </button>
+                                                <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">
+                                                    <i class="ti ti-trash ti-xs"></i>
+                                                </button>
+                                            </div>
                                         </div>
+                                        @error('lines.'.$index.'.category_id')
+                                            <div class="invalid-feedback d-block mb-2">{{ $message }}</div>
+                                        @enderror
                                         <div class="mb-2">
                                             <input
                                                 type="text"
@@ -491,8 +504,8 @@
         <div class="d-flex justify-content-between align-items-center mt-4">
             <a href="{{ route('expense.index') }}" class="btn btn-label-secondary">Cancelar</a>
             <div class="d-flex gap-2">
-                <button type="submit" name="submit_action" value="draft" class="btn btn-label-primary">Guardar borrador</button>
-                <button type="submit" name="submit_action" value="save" class="btn btn-primary">Guardar gasto</button>
+                <button type="submit" name="submit_action" value="draft" class="btn btn-label-primary expense-submit-btn">Guardar borrador</button>
+                <button type="submit" name="submit_action" value="save" class="btn btn-primary expense-submit-btn">Guardar gasto</button>
             </div>
         </div>
     </form>
@@ -575,6 +588,65 @@
     </div>
 </div>
 @endcan
+
+<div class="modal fade" id="lineCategoryModal" tabindex="-1" aria-labelledby="lineCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lineCategoryModalLabel">Categoría del ítem</h5>
+                <div class="d-flex align-items-center gap-1">
+                    @can('viewAny', \App\Models\Category::class)
+                        @livewire(\App\Livewire\ModuleCategoriesManagerModal::class, ['moduleKey' => 'services', 'linkedSelectId' => 'line_category_modal_select'], key('expense-line-cat-mgr-services'))
+                    @endcan
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="line-category-suggestion" class="alert alert-primary d-none mb-3" role="status">
+                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                        <div>
+                            <div class="fw-medium mb-1">Sugerida por factura anterior</div>
+                            <div class="small" id="line-category-suggestion-text"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary" id="apply-line-category-suggestion">Usar sugerencia</button>
+                    </div>
+                </div>
+                <div id="line-category-empty" class="alert alert-warning {{ count($expenseCategoryOptions) ? 'd-none' : '' }} mb-3" role="status">
+                    Todavía no hay categorías de servicio. Usa el engranaje para crearlas, o escribe un nombre en el buscador y pulsa «Añadir».
+                </div>
+                <label for="line_category_modal_select" class="form-label">Selecciona una categoría</label>
+                <select
+                    id="line_category_modal_select"
+                    class="form-select"
+                    data-placeholder="Sin categoría"
+                    data-allow-clear="true"
+                    data-module-key="services"
+                    data-empty-text="Sin categoría"
+                    data-show-empty-option="1"
+                    data-allow-empty-select="1"
+                >
+                    <option value="">Sin categoría</option>
+                    @foreach (collect($expenseCategoryOptions)->groupBy(fn ($option) => $option['group'] ?? '') as $groupLabel => $groupOptions)
+                        @if ($groupLabel !== '')
+                            <optgroup label="{{ $groupLabel }}">
+                        @endif
+                        @foreach ($groupOptions as $categoryOption)
+                            <option value="{{ $categoryOption['id'] }}">{{ $categoryOption['name'] }}</option>
+                        @endforeach
+                        @if ($groupLabel !== '')
+                            </optgroup>
+                        @endif
+                    @endforeach
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-label-secondary" id="clear-line-category">Quitar</button>
+                <button type="button" class="btn btn-primary" id="save-line-category">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('page-script')
@@ -589,12 +661,14 @@
     ])->values();
     $defaultPaymentTypeIdJs = $defaultPaymentTypeId ?? null;
     $defaultPaymentAccountIdJs = $defaultPaymentAccountId ?? null;
+    $expenseCategoryOptionsJs = collect($expenseCategoryOptions ?? [])->values();
 @endphp
 <script>
     $(function () {
         var $createSupplierModal = $('#createSupplierModal');
+        var expenseCategoryOptions = @json($expenseCategoryOptionsJs);
 
-        $('.select2').not('.select2-supplier-country').not('.payment-type-select').not('.payment-account-select').not('.payment-status-select').each(function () {
+        $('.select2').not('.select2-supplier-country').not('.select2-enterprise').not('.payment-type-select').not('.payment-account-select').not('.payment-status-select').each(function () {
             var $this = $(this);
             $this.wrap('<div class="position-relative"></div>');
             $this.select2({
@@ -603,6 +677,46 @@
                 allowClear: false
             });
         });
+
+        var lastEnterpriseSearchTerm = '';
+        var canCreateSupplier = $('#open-create-supplier-modal').length > 0;
+        var $enterpriseSelectInit = $('#enterprise_id');
+
+        if ($enterpriseSelectInit.length) {
+            if (! $enterpriseSelectInit.parent().hasClass('position-relative')) {
+                $enterpriseSelectInit.wrap('<div class="position-relative"></div>');
+            }
+
+            $enterpriseSelectInit.select2({
+                dropdownParent: $enterpriseSelectInit.parent(),
+                width: '100%',
+                allowClear: false,
+                placeholder: 'Selecciona un proveedor',
+                language: {
+                    noResults: function () {
+                        if (canCreateSupplier) {
+                            return 'Sin resultados. Clic aquí o en «Crear proveedor» para darlo de alta con datos fiscales.';
+                        }
+
+                        return 'Sin resultados';
+                    },
+                    searching: function () {
+                        return 'Buscando…';
+                    }
+                }
+            });
+
+            $enterpriseSelectInit.on('select2:open', function () {
+                var $searchField = $('.select2-container--open .select2-search__field');
+                $searchField.off('input.enterpriseCreate').on('input.enterpriseCreate', function () {
+                    lastEnterpriseSearchTerm = $.trim(String($(this).val() || ''));
+                });
+            });
+
+            $(document).on('mouseenter', '#select2-enterprise_id-results .select2-results__message', function () {
+                $(this).css({ cursor: 'pointer', color: 'var(--bs-primary)' });
+            });
+        }
 
         function initSupplierCountrySelect() {
             var $country = $('#supplier_country');
@@ -709,22 +823,34 @@
         var $enterpriseDetectionStatus = $('#enterprise-detection-status');
         var $documentNumberInput = $('#document_number');
         var $documentNumberDuplicateWarning = $('#document-number-duplicate-warning');
+        var $expenseSubmitButtons = $('form.card-body .expense-submit-btn');
         var documentDuplicateCheckTimer = null;
         var documentDuplicateRequest = null;
+        var documentNumberIsDuplicate = false;
         var $openCreateSupplierModal = $('#open-create-supplier-modal');
         var $createSupplierForm = $('#create-supplier-form');
         var $createSupplierError = $('#create-supplier-error');
         var detectedSupplierData = null;
+
+        function setExpenseSubmitEnabled(enabled) {
+            $expenseSubmitButtons.prop('disabled', !enabled);
+            $expenseSubmitButtons.toggleClass('disabled', !enabled);
+        }
+
         function clearDocumentDuplicateWarning() {
+            documentNumberIsDuplicate = false;
             $documentNumberInput.removeClass('is-invalid');
             $documentNumberDuplicateWarning.addClass('d-none').text('');
+            setExpenseSubmitEnabled(true);
         }
 
         function showDocumentDuplicateWarning(message) {
+            documentNumberIsDuplicate = true;
             $documentNumberInput.addClass('is-invalid');
             $documentNumberDuplicateWarning
                 .removeClass('d-none')
                 .text(message || 'Este número de comprobante ya fue registrado para este proveedor.');
+            setExpenseSubmitEnabled(false);
         }
 
         function scheduleDocumentDuplicateCheck() {
@@ -778,6 +904,13 @@
                     }
 
                     showDocumentDuplicateWarning(warningMessage);
+                },
+                error: function (xhr, textStatus) {
+                    if (textStatus === 'abort') {
+                        return;
+                    }
+
+                    clearDocumentDuplicateWarning();
                 },
             });
         }
@@ -1312,9 +1445,189 @@
             updateDocumentName();
         });
 
+        var $lineCategoryModal = $('#lineCategoryModal');
+        var $lineCategoryModalSelect = $('#line_category_modal_select');
+        var $lineCategorySuggestion = $('#line-category-suggestion');
+        var $lineCategorySuggestionText = $('#line-category-suggestion-text');
+        var suggestedCategoryItems = [];
+        var activeCategoryLineIndex = null;
+        var suggestedCategoriesUrl = @json(route('expense.suggested-categories'));
+        var suggestedCategoriesRequest = null;
+
+        function syncExpenseCategoryOptionsFromSelect() {
+            var options = [];
+
+            $lineCategoryModalSelect.find('option').each(function () {
+                if (! this.value) {
+                    return;
+                }
+
+                var $option = $(this);
+                var $group = $option.parent('optgroup');
+
+                options.push({
+                    id: parseInt(this.value, 10),
+                    name: $.trim(String($option.text() || '')),
+                    group: $group.length ? String($group.attr('label') || '') : null,
+                });
+            });
+
+            expenseCategoryOptions = options;
+            $('#line-category-empty').toggleClass('d-none', options.length > 0);
+        }
+
+        function categoryNameById(categoryId) {
+            if (!categoryId) {
+                return '';
+            }
+
+            var match = (expenseCategoryOptions || []).find(function (option) {
+                return String(option.id) === String(categoryId);
+            });
+
+            if (match) {
+                return String(match.name);
+            }
+
+            var $option = $lineCategoryModalSelect.find('option[value="' + String(categoryId).replace(/"/g, '\\"') + '"]').first();
+
+            return $option.length ? $.trim(String($option.text() || '')) : '';
+        }
+
+        function setLineCategory($row, categoryId, categoryName) {
+            if (! $row || ! $row.length) {
+                return;
+            }
+
+            var id = categoryId ? String(categoryId) : '';
+            var resolvedName = categoryName || categoryNameById(id);
+            var hasCategory = id !== '';
+            var $badge = $row.find('.line-category-badge');
+
+            $row.find('.line-category-id').val(hasCategory ? id : '');
+            $badge
+                .text(hasCategory ? (resolvedName || ('#' + id)) : 'Sin categoría')
+                .toggleClass('bg-label-primary', hasCategory)
+                .toggleClass('bg-label-secondary', !hasCategory);
+        }
+
+        function suggestionForLineIndex(lineIndex) {
+            var item = suggestedCategoryItems[lineIndex] || null;
+            if (!item || !item.category_id) {
+                return null;
+            }
+
+            return {
+                category_id: item.category_id,
+                category_name: item.category_name || categoryNameById(item.category_id),
+                description: item.description || '',
+            };
+        }
+
+        function applySuggestedCategoriesToLines(onlyEmpty) {
+            $linesBody.find('.expense-line').each(function (index) {
+                var $row = $(this);
+                var currentCategoryId = $.trim(String($row.find('.line-category-id').val() || ''));
+
+                if (onlyEmpty && currentCategoryId !== '') {
+                    return;
+                }
+
+                var suggestion = suggestionForLineIndex(index);
+                if (!suggestion) {
+                    return;
+                }
+
+                setLineCategory($row, suggestion.category_id, suggestion.category_name);
+            });
+        }
+
+        function initLineCategoryModalSelect() {
+            if (! $lineCategoryModalSelect.length) {
+                return;
+            }
+
+            if ($lineCategoryModalSelect.hasClass('select2-hidden-accessible')) {
+                $lineCategoryModalSelect.select2('destroy');
+            }
+
+            $lineCategoryModalSelect.select2({
+                dropdownParent: $lineCategoryModal,
+                width: '100%',
+                allowClear: true,
+                placeholder: 'Sin categoría',
+            });
+        }
+
+        function openLineCategoryModal($row) {
+            if (! $row || ! $row.length || ! $lineCategoryModal.length) {
+                return;
+            }
+
+            activeCategoryLineIndex = parseInt($row.data('line-index'), 10);
+            if (! Number.isFinite(activeCategoryLineIndex)) {
+                activeCategoryLineIndex = $row.index();
+            }
+
+            var currentCategoryId = $.trim(String($row.find('.line-category-id').val() || ''));
+            var suggestion = suggestionForLineIndex(activeCategoryLineIndex);
+
+            initLineCategoryModalSelect();
+            $lineCategoryModalSelect.val(currentCategoryId).trigger('change');
+
+            if (suggestion && suggestion.category_id) {
+                var suggestionLabel = suggestion.category_name || ('#' + suggestion.category_id);
+                if (suggestion.description) {
+                    suggestionLabel += ' · ' + suggestion.description;
+                }
+                $lineCategorySuggestionText.text(suggestionLabel);
+                $lineCategorySuggestion.removeClass('d-none');
+            } else {
+                $lineCategorySuggestion.addClass('d-none');
+                $lineCategorySuggestionText.text('');
+            }
+
+            bootstrap.Modal.getOrCreateInstance($lineCategoryModal.get(0)).show();
+        }
+
+        function loadSuggestedCategoriesForEnterprise(enterpriseId, options) {
+            var config = options || {};
+            suggestedCategoryItems = [];
+
+            if (!suggestedCategoriesUrl || !enterpriseId) {
+                return;
+            }
+
+            if (suggestedCategoriesRequest && typeof suggestedCategoriesRequest.abort === 'function') {
+                suggestedCategoriesRequest.abort();
+            }
+
+            suggestedCategoriesRequest = $.ajax({
+                url: suggestedCategoriesUrl,
+                type: 'GET',
+                data: {
+                    enterprise_id: enterpriseId,
+                },
+                success: function (response) {
+                    if (!response || response.success !== true) {
+                        return;
+                    }
+
+                    suggestedCategoryItems = Array.isArray(response.items) ? response.items : [];
+
+                    if (config.applyToEmptyLines !== false) {
+                        applySuggestedCategoriesToLines(true);
+                    }
+                },
+            });
+        }
+
         function createLineRow(index, lineData) {
             var line = lineData || {};
             var concept = line.concept ? String(line.concept) : '';
+            var categoryId = line.category_id ? String(line.category_id) : '';
+            var categoryName = line.category_name || categoryNameById(categoryId);
+            var hasCategory = categoryId !== '';
             var baseAmount = formatAmount(line.base_amount !== undefined ? line.base_amount : 0);
             var vatPercent = Number.isFinite(parseFloat(line.vat_percent)) ? parseFloat(line.vat_percent).toFixed(2) : '0';
             var retentionPercent = Number.isFinite(parseFloat(line.retention_percent)) ? parseFloat(line.retention_percent).toFixed(2) : '0';
@@ -1323,11 +1636,17 @@
             return [
                 '<tr class="expense-line" data-line-index="' + index + '">',
                 '  <td>',
-                '    <div class="d-flex justify-content-between align-items-center mb-2">',
+                '    <div class="d-flex justify-content-between align-items-center mb-2 gap-2">',
                 '      <label class="form-label small mb-0">Concepto (*)</label>',
-                '      <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">',
-                '        <i class="ti ti-trash ti-xs"></i>',
-                '      </button>',
+                '      <div class="d-flex align-items-center gap-2">',
+                '        <input type="hidden" name="lines[' + index + '][category_id]" class="line-category-id" value="' + escapeHtml(hasCategory ? categoryId : '') + '">',
+                '        <button type="button" class="badge border-0 line-category-badge ' + (hasCategory ? 'bg-label-primary' : 'bg-label-secondary') + '" title="Seleccionar categoría">',
+                escapeHtml(hasCategory ? (categoryName || ('#' + categoryId)) : 'Sin categoría'),
+                '        </button>',
+                '        <button type="button" class="remove-line-btn text-muted border-0 bg-transparent p-0" title="Eliminar línea" style="line-height: 1;">',
+                '          <i class="ti ti-trash ti-xs"></i>',
+                '        </button>',
+                '      </div>',
                 '    </div>',
                 '    <div class="mb-2">',
                 '      <input type="text" name="lines[' + index + '][concept]" class="form-control line-concept" value="' + escapeHtml(concept) + '">',
@@ -1394,20 +1713,39 @@
         }
 
         function prefillSupplierModal(supplier) {
-            if (!supplier || typeof supplier !== 'object') {
-                return;
+            var data = supplier && typeof supplier === 'object' ? supplier : {};
+            var form = $('#create-supplier-form').get(0);
+
+            if (form) {
+                form.reset();
             }
 
-            $('#supplier_name').val(supplier.name || supplier.legal_name || supplier.brand_name || '');
-            $('#supplier_identification_number').val(supplier.identification_number || '');
-            $('#supplier_email').val(supplier.email || '');
-            $('#supplier_phone').val(isValidSupplierPhone(supplier.phone) ? supplier.phone : '');
-            $('#supplier_website').val(supplier.website || '');
-            $('#supplier_address').val(supplier.address || '');
-            $('#supplier_postal_code').val(supplier.postal_code || '');
-            $('#supplier_locality').val(supplier.locality || '');
-            $('#supplier_province').val(supplier.province || '');
-            $('#supplier_country').val((supplier.country || 'ES').toUpperCase()).trigger('change');
+            $('#supplier_name').val(data.name || data.legal_name || data.brand_name || '');
+            $('#supplier_identification_number').val(data.identification_number || '');
+            $('#supplier_email').val(data.email || '');
+            $('#supplier_phone').val(isValidSupplierPhone(data.phone) ? data.phone : '');
+            $('#supplier_website').val(data.website || '');
+            $('#supplier_address').val(data.address || '');
+            $('#supplier_postal_code').val(data.postal_code || '');
+            $('#supplier_locality').val(data.locality || '');
+            $('#supplier_province').val(data.province || '');
+            $('#supplier_country').val((data.country || 'ES').toUpperCase()).trigger('change');
+        }
+
+        function openCreateSupplierModal(extraData) {
+            var supplier = Object.assign({}, detectedSupplierData || {}, extraData || {});
+
+            if (!supplier.name && lastEnterpriseSearchTerm !== '') {
+                supplier.name = lastEnterpriseSearchTerm;
+            }
+
+            if ($enterpriseSelect.hasClass('select2-hidden-accessible')) {
+                $enterpriseSelect.select2('close');
+            }
+
+            prefillSupplierModal(supplier);
+            $createSupplierError.addClass('d-none').text('');
+            bootstrap.Modal.getOrCreateInstance($createSupplierModal.get(0)).show();
         }
 
         function updateEnterpriseDetectionUi(data) {
@@ -1415,10 +1753,6 @@
             $enterpriseDetectionStatus
                 .removeClass('text-success text-warning text-danger text-muted')
                 .text('');
-
-            if ($openCreateSupplierModal.length) {
-                $openCreateSupplierModal.addClass('d-none');
-            }
 
             var match = data.enterprise_match || {};
             var enterpriseName = data.enterprise_name ? String(data.enterprise_name) : '';
@@ -1443,24 +1777,18 @@
                 $enterpriseDetectionStatus
                     .addClass('text-warning')
                     .text('Posible proveedor detectado: ' + enterpriseName + '. Confirma o selecciona otro.');
-                if ($openCreateSupplierModal.length) {
-                    $openCreateSupplierModal.removeClass('d-none');
-                }
                 return;
             }
 
             if (enterpriseName !== '') {
                 $enterpriseDetectionStatus
                     .addClass('text-warning')
-                    .text('No encontramos "' + enterpriseName + '" en tus proveedores. Selecciona uno o créalo.');
+                    .text('No encontramos "' + enterpriseName + '" en tus proveedores. Selecciona uno o créalo con datos fiscales.');
+                lastEnterpriseSearchTerm = enterpriseName;
             } else {
                 $enterpriseDetectionStatus
                     .addClass('text-muted')
                     .text('Selecciona el proveedor de la factura o créalo si no existe.');
-            }
-
-            if ($openCreateSupplierModal.length) {
-                $openCreateSupplierModal.removeClass('d-none');
             }
         }
 
@@ -1502,6 +1830,7 @@
                 });
                 nextLineIndex = data.lines.length;
                 initAmountInputs($linesBody);
+                applySuggestedCategoriesToLines(true);
             }
 
             refreshSummary();
@@ -1561,9 +1890,13 @@
 
         if ($openCreateSupplierModal.length) {
             $openCreateSupplierModal.on('click', function () {
-                prefillSupplierModal(detectedSupplierData);
-                $createSupplierError.addClass('d-none').text('');
-                bootstrap.Modal.getOrCreateInstance($createSupplierModal.get(0)).show();
+                openCreateSupplierModal();
+            });
+
+            $(document).on('mousedown', '#select2-enterprise_id-results .select2-results__message', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                openCreateSupplierModal();
             });
         }
 
@@ -1639,8 +1972,92 @@
             var $row = $(createLineRow(nextLineIndex));
             $linesBody.append($row);
             initAmountInputs($row);
+
+            var suggestion = suggestionForLineIndex(nextLineIndex);
+            if (suggestion) {
+                setLineCategory($row, suggestion.category_id, suggestion.category_name);
+            }
+
             nextLineIndex += 1;
             refreshSummary();
+        });
+
+        $linesBody.on('click', '.line-category-badge', function () {
+            openLineCategoryModal($(this).closest('.expense-line'));
+        });
+
+        if ($lineCategoryModal.length) {
+            initLineCategoryModalSelect();
+            syncExpenseCategoryOptionsFromSelect();
+            $lineCategoryModal.on('shown.bs.modal', function () {
+                syncExpenseCategoryOptionsFromSelect();
+                initLineCategoryModalSelect();
+            });
+
+            $('#apply-line-category-suggestion').on('click', function () {
+                var suggestion = suggestionForLineIndex(activeCategoryLineIndex);
+                if (!suggestion) {
+                    return;
+                }
+
+                $lineCategoryModalSelect.val(String(suggestion.category_id)).trigger('change');
+            });
+
+            $('#clear-line-category').on('click', function () {
+                var $row = $linesBody.find('.expense-line').filter(function () {
+                    return String($(this).data('line-index')) === String(activeCategoryLineIndex);
+                }).first();
+
+                setLineCategory($row, '', '');
+                bootstrap.Modal.getOrCreateInstance($lineCategoryModal.get(0)).hide();
+            });
+
+            $('#save-line-category').on('click', function () {
+                var $row = $linesBody.find('.expense-line').filter(function () {
+                    return String($(this).data('line-index')) === String(activeCategoryLineIndex);
+                }).first();
+                var selectedId = $.trim(String($lineCategoryModalSelect.val() || ''));
+                var selectedName = '';
+
+                if (selectedId !== '') {
+                    selectedName = $.trim(String($lineCategoryModalSelect.find('option:selected').first().text() || ''));
+                    if (selectedName === '' || selectedName === 'Sin categoría') {
+                        selectedName = categoryNameById(selectedId);
+                    }
+                }
+
+                syncExpenseCategoryOptionsFromSelect();
+                setLineCategory($row, selectedId, selectedName);
+                bootstrap.Modal.getOrCreateInstance($lineCategoryModal.get(0)).hide();
+            });
+
+            function registerExpenseCategoryRefreshListener() {
+                if (typeof Livewire === 'undefined' || typeof Livewire.on !== 'function') {
+                    return;
+                }
+
+                Livewire.on('module-categories-refreshed', function (event) {
+                    var detail = Array.isArray(event) ? event[0] : event;
+                    if (! detail || detail.selectId !== 'line_category_modal_select') {
+                        return;
+                    }
+
+                    setTimeout(function () {
+                        syncExpenseCategoryOptionsFromSelect();
+                        initLineCategoryModalSelect();
+                    }, 250);
+                });
+            }
+
+            if (window.Livewire) {
+                registerExpenseCategoryRefreshListener();
+            } else {
+                document.addEventListener('livewire:init', registerExpenseCategoryRefreshListener);
+            }
+        }
+
+        $enterpriseSelect.on('change.suggestedCategories', function () {
+            loadSuggestedCategoriesForEnterprise($(this).val(), { applyToEmptyLines: true });
         });
 
         $(document).on('click', '.remove-line-btn', function () {
@@ -1780,7 +2197,14 @@
             updatePaymentsSummary();
         });
 
-        $('form.card-body').on('submit', function () {
+        $('form.card-body').on('submit', function (event) {
+            if (documentNumberIsDuplicate) {
+                event.preventDefault();
+                setExpenseSubmitEnabled(false);
+                $documentNumberInput.trigger('focus');
+                return false;
+            }
+
             normalizeAmountInputsForSubmit();
         });
 
@@ -1842,6 +2266,9 @@
         $documentNumberInput.on('input', scheduleDocumentDuplicateCheck);
 
         initAmountInputs($('form.card-body'));
+        if ($enterpriseSelect.val()) {
+            loadSuggestedCategoriesForEnterprise($enterpriseSelect.val(), { applyToEmptyLines: true });
+        }
         refreshSummary();
 
         @if ($errors->any())
@@ -1855,4 +2282,9 @@
         @endif
     });
 </script>
+@include('components.partials.select2-module-category-quick-create', [
+    'selectId' => 'line_category_modal_select',
+    'moduleKey' => 'services',
+    'multiple' => false,
+])
 @endsection

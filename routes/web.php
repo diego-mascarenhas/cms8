@@ -957,6 +957,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
     Route::post('/expense/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('expense.check-document-duplicate');
     Route::post('/expense/create-supplier', [ExpenseController::class, 'createSupplier'])->name('expense.create-supplier');
+    Route::get('/expense/suggested-categories', [ExpenseController::class, 'suggestedCategories'])->name('expense.suggested-categories');
     Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
 
     Route::get('/payment-account/list', [PaymentAccountController::class, 'index'])->name('payment-account.index');
