@@ -43,6 +43,7 @@ class StoreExpenseRequest extends FormRequest
             'currency_id' => ['nullable', 'integer', 'exists:currencies,id'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.concept' => ['required', 'string', 'max:255'],
+            'lines.*.category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'lines.*.base_amount' => ['required', 'numeric', 'min:0.01'],
             'lines.*.vat_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'lines.*.retention_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -95,6 +96,7 @@ class StoreExpenseRequest extends FormRequest
 
             $normalizedLines[] = [
                 'concept' => $concept,
+                'category_id' => filled($line['category_id'] ?? null) ? (int) $line['category_id'] : null,
                 'base_amount' => Helpers::parseDecimalInput($baseAmount) ?? $baseAmount,
                 'vat_percent' => Helpers::parseDecimalInput($line['vat_percent'] ?? 0) ?? ($line['vat_percent'] ?? 0),
                 'retention_percent' => Helpers::parseDecimalInput($line['retention_percent'] ?? 0) ?? ($line['retention_percent'] ?? 0),
@@ -272,6 +274,7 @@ class StoreExpenseRequest extends FormRequest
             'currency_id' => 'moneda',
             'lines' => 'líneas',
             'lines.*.concept' => 'concepto',
+            'lines.*.category_id' => 'categoría del ítem',
             'lines.*.base_amount' => 'importe',
             'lines.*.vat_percent' => 'IVA',
             'lines.*.retention_percent' => 'retención',

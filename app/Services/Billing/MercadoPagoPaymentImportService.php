@@ -318,13 +318,20 @@ class MercadoPagoPaymentImportService
 
         if ($existing)
         {
-            if ($existing->invoice_id !== null)
+            $wasUnlinked = $existing->invoice_id === null;
+
+            if (! $wasUnlinked)
             {
                 unset($payload['invoice_id']);
             }
 
             $existing->fill($payload);
             $existing->save();
+
+            if ($wasUnlinked && $existing->invoice_id !== null)
+            {
+                $this->finalizeLinkedInvoice($existing);
+            }
 
             return $existing;
         }
@@ -337,6 +344,39 @@ class MercadoPagoPaymentImportService
         $this->finalizeLinkedInvoice($payment);
 
         return $payment;
+    }
+
+    /**
+     * Re-run the invoice/Stripe finalization for Mercado Pago payments already
+     * linked to this invoice. Covers payments that were linked without ever
+     * finalizing (e.g. an already-imported payment matched via reconcile
+     * "accept" or the invoice's "Vincular pago electrónico" selector), and is
+     * safe to call repeatedly since each finalize step is a no-op once applied.
+     *
+     * @return array{count: int, stripe_updated: bool}
+     */
+    public function resyncInvoicePayments(Invoice $invoice): array
+    {
+        $payments = Payment::withoutGlobalScopes()
+            ->where('team_id', $invoice->team_id)
+            ->where('invoice_id', $invoice->id)
+            ->where('source_provider', 'mercadopago')
+            ->get();
+
+        $stripeUpdated = false;
+
+        foreach ($payments as $payment)
+        {
+            if ($this->finalizeLinkedInvoice($payment))
+            {
+                $stripeUpdated = true;
+            }
+        }
+
+        return [
+            'count' => $payments->count(),
+            'stripe_updated' => $stripeUpdated,
+        ];
     }
 
     public function isAlreadyImported(PaymentSync $row): bool
@@ -564,16 +604,25 @@ class MercadoPagoPaymentImportService
         return $existing;
     }
 
-    private function finalizeLinkedInvoice(Payment $payment): void
+    /**
+     * @return bool True when Stripe metadata/pay was updated.
+     */
+    private function finalizeLinkedInvoice(Payment $payment): bool
     {
-        $this->applyPaymentToLocalInvoice($payment);
-
+        // Stripe writes must run first: they rely on the invoice's remaining
+        // balance to decide whether to pay out of band, and applying the
+        // payment locally beforehand would zero that balance out.
         if ($this->stripeOutOfBandPaymentService->markPaidFromPayment($payment))
         {
-            return;
+            $this->applyPaymentToLocalInvoice($payment);
+
+            return true;
         }
 
-        $this->stripeOutOfBandPaymentService->linkMetadataFromPayment($payment);
+        $metadataLinked = $this->stripeOutOfBandPaymentService->linkMetadataFromPayment($payment);
+        $this->applyPaymentToLocalInvoice($payment);
+
+        return $metadataLinked;
     }
 
     private function applyPaymentToLocalInvoice(Payment $payment): void

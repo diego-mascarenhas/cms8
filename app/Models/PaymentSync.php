@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class PaymentSync extends Model
 {
@@ -187,7 +188,64 @@ class PaymentSync extends Model
 
     public function displayPayerName(): ?string
     {
-        return $this->settlementPayerName();
+        $name = $this->settlementPayerName();
+        if ($name !== null)
+        {
+            return $name;
+        }
+
+        $firstName = trim((string) data_get($this->raw_payload, 'payer.first_name', ''));
+        $lastName = trim((string) data_get($this->raw_payload, 'payer.last_name', ''));
+        $fullName = trim($firstName.' '.$lastName);
+        if ($fullName !== '')
+        {
+            return $fullName;
+        }
+
+        $email = trim((string) data_get($this->raw_payload, 'payer.email', ''));
+
+        return $email !== '' ? $email : null;
+    }
+
+    /**
+     * Human-friendly Mercado Pago payment channel (e.g. "Transferencia bancaria (CVU)").
+     */
+    public function displayPaymentChannel(): ?string
+    {
+        $methodId = strtolower(trim((string) data_get($this->raw_payload, 'payment_method_id', '')));
+        $typeId = strtolower(trim((string) data_get($this->raw_payload, 'payment_type_id', '')));
+
+        return match (true)
+        {
+            $methodId === 'cvu' || $typeId === 'bank_transfer' => __('invoice_payment.mp_channel_bank_transfer'),
+            $methodId === 'account_money' || $typeId === 'account_money' => __('invoice_payment.mp_channel_account_money'),
+            $typeId !== '' => Str::title(str_replace('_', ' ', $typeId)),
+            default => null,
+        };
+    }
+
+    /**
+     * CBU/CVU or account alias of the payer's originating bank account, when
+     * Mercado Pago exposes it (rarely populated for account_fund transfers).
+     */
+    public function displayPayerCbu(): ?string
+    {
+        $candidates = [
+            data_get($this->raw_payload, 'point_of_interaction.transaction_data.bank_info.payer.account_id'),
+            data_get($this->raw_payload, 'point_of_interaction.transaction_data.bank_info.payer.account_alias'),
+            data_get($this->raw_payload, 'point_of_interaction.transaction_data.bank_info.payer.external_account_id'),
+        ];
+
+        foreach ($candidates as $candidate)
+        {
+            $value = trim((string) $candidate);
+            if ($value !== '')
+            {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /**

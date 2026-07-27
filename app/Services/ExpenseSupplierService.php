@@ -133,7 +133,7 @@ PROMPT;
         $enterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $teamId,
             'type_id' => 2,
-            'status_id' => 1,
+            'status_id' => 2,
             'name' => Str::limit($name, 75, ''),
             'email' => filled($supplierData['email'] ?? null) ? trim((string) $supplierData['email']) : null,
             'phone' => filled($supplierData['phone'] ?? null) ? trim((string) $supplierData['phone']) : null,

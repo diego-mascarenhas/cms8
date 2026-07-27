@@ -62,7 +62,7 @@ class ModuleCategoriesManagerModal extends Component
 
         $base = Category::query()
             ->where('module_id', $module->id)
-            ->where('status', 1)
+            ->where('status', '>', 0)
             ->where(function ($query) use ($teamId)
             {
                 $query->whereNull('team_id')

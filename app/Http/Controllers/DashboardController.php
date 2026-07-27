@@ -436,7 +436,7 @@ class DashboardController extends Controller
         $invoiceStats = null;
         if ($activeTeam->hasModule('invoices') && auth()->user()->can('viewAny', Invoice::class))
         {
-            $invoiceStats = app(InvoiceSummaryService::class)->buildIndexStats((int) $activeTeam->id);
+            $invoiceStats = app(InvoiceSummaryService::class)->buildDashboardStats((int) $activeTeam->id);
         }
 
         return view('dashboard', compact(

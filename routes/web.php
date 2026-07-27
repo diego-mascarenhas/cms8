@@ -907,6 +907,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/invoices/{invoice}/link-enterprise', [InvoiceController::class, 'linkEnterprise'])->name('invoice.link-enterprise.store');
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'storePayment'])->name('invoice.payments.store');
     Route::post('/invoices/{invoice}/electronic-payments', [InvoiceController::class, 'storeElectronicPayment'])->name('invoice.electronic-payments.store');
+    Route::post('/invoices/{invoice}/resync-payment', [InvoiceController::class, 'resyncPayment'])->name('invoice.resync-payment');
     Route::post('/invoices/{invoice}/credit-notes', [InvoiceController::class, 'storeCreditNote'])->name('invoice.credit-notes.store');
     Route::post('/invoices/{invoice}/fiscal-export', [InvoiceController::class, 'exportFiscal'])->name('invoice.fiscal-export');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
@@ -957,6 +958,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/expense/detect-document', [ExpenseController::class, 'detectDocument'])->name('expense.detect-document');
     Route::post('/expense/check-document-duplicate', [ExpenseController::class, 'checkDocumentDuplicate'])->name('expense.check-document-duplicate');
     Route::post('/expense/create-supplier', [ExpenseController::class, 'createSupplier'])->name('expense.create-supplier');
+    Route::get('/expense/suggested-categories', [ExpenseController::class, 'suggestedCategories'])->name('expense.suggested-categories');
     Route::post('/expense', [ExpenseController::class, 'store'])->name('expense.store');
 
     Route::get('/payment-account/list', [PaymentAccountController::class, 'index'])->name('payment-account.index');

@@ -292,4 +292,114 @@ class StripeInvoiceOutOfBandPaymentServiceTest extends TestCase
 
         $this->assertFalse($service->markPaidFromPayment($payment));
     }
+
+    public function test_marks_stripe_paid_using_sync_amount_when_local_balance_already_zero(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('stripe_secret', 'sk_test_fake');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente Stripe',
+            'code' => 'cus_test',
+        ]);
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'mp',
+            'name' => 'Mercado Pago',
+            'status' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0939',
+            'date' => now()->toDateString(),
+            'gross_amount' => 41818.18,
+            'discount' => 0,
+            'total_amount' => 41818.18,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_test_resync_zero_local',
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_test_resync_zero_local',
+            'customer_id' => 'cus_test',
+            'number' => '0005-0939',
+            'status' => 'open',
+            'currency' => 'ars',
+            'total' => 41818.18,
+            'paid' => false,
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'amount_due' => 4181818,
+                'metadata' => [],
+            ],
+        ]);
+
+        $payment = Payment::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'invoice_id' => $invoice->id,
+            'account_id' => $account->id,
+            'type_id' => 12,
+            'amount' => 41818.18,
+            'status' => 2,
+            'source_provider' => 'mercadopago',
+            'source_reference_id' => '166972675399',
+        ]);
+
+        $invoiceService = Mockery::mock(InvoiceService::class);
+        $invoiceService->shouldReceive('update')
+            ->once()
+            ->withArgs(function (string $id, array $params): bool
+            {
+                return $id === 'in_test_resync_zero_local'
+                    && ($params['metadata']['mercadopago_id'] ?? null) === '166972675399';
+            })
+            ->andReturn((object) ['id' => 'in_test_resync_zero_local']);
+
+        $invoiceService->shouldReceive('pay')
+            ->once()
+            ->with('in_test_resync_zero_local', ['paid_out_of_band' => true])
+            ->andReturn((object) ['id' => 'in_test_resync_zero_local', 'status' => 'paid']);
+
+        $client = Mockery::mock(StripeClient::class);
+        $client->invoices = $invoiceService;
+
+        $syncRefresher = Mockery::mock(StripeInvoiceSyncRefresher::class);
+        $syncRefresher->shouldReceive('refreshFromStripe')->once()->andReturn(null);
+
+        $coreImport = Mockery::mock(StripeInvoiceCoreImportService::class);
+        $coreImport->shouldNotReceive('importFromSyncRow');
+
+        $service = new class($syncRefresher, $coreImport, $client) extends StripeInvoiceOutOfBandPaymentService
+        {
+            public function __construct(
+                StripeInvoiceSyncRefresher $syncRefresher,
+                StripeInvoiceCoreImportService $coreImportService,
+                private readonly StripeClient $client,
+            ) {
+                parent::__construct($syncRefresher, $coreImportService);
+            }
+
+            protected function makeClient(string $secret): StripeClient
+            {
+                return $this->client;
+            }
+        };
+
+        $this->assertTrue($service->markPaidFromPayment($payment));
+    }
 }

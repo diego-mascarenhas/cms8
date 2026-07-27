@@ -33,6 +33,14 @@ return [
         ],
     ],
 
+    'mercadopago' => [
+        // When false, skips the scheduled settlement-payer enrich (manual artisan still works).
+        'settlement_enrich_schedule_enabled' => filter_var(
+            env('MERCADOPAGO_SETTLEMENT_ENRICH_SCHEDULE_ENABLED', true),
+            FILTER_VALIDATE_BOOLEAN,
+        ),
+    ],
+
     'twilio' => [
         'sid' => env('TWILIO_SID'),
         'token' => env('TWILIO_TOKEN'),

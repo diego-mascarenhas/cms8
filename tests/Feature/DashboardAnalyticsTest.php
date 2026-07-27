@@ -108,9 +108,12 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertOk();
         $response->assertSee('Pendientes de pago', false);
         $response->assertSee('Vencidas', false);
+        $response->assertSee('Gastos', false);
+        $response->assertSee('Beneficio anual', false);
         $response->assertSee('1 factura', false);
         $response->assertSee(route('invoice.index', ['summary_filter' => 'unpaid']), false);
         $response->assertSee(route('invoice.index', ['summary_filter' => 'overdue']), false);
+        $response->assertSee(route('finance-dashboard.projection', ['year' => now()->year]), false);
         $response->assertDontSee('Notas de crédito', false);
     }
 
@@ -150,6 +153,8 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertOk();
         $response->assertSee(__('app.invoice_summary_unpaid_title'), false);
         $response->assertSee(__('app.invoice_summary_overdue_title'), false);
+        $response->assertSee(__('app.invoice_summary_expenses_title'), false);
+        $response->assertSee(__('app.invoice_summary_profit_title'), false);
     }
 
     public function test_dashboard_hides_invoice_summary_cards_when_invoices_module_disabled(): void
