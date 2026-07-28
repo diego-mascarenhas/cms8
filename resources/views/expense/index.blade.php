@@ -146,17 +146,19 @@
             <div class="row gy-4 gy-sm-1">
                 @foreach($accounts as $index => $account)
                     <div class="col-sm-6 col-lg-3">
-                        <div class="d-flex justify-content-between align-items-start card-widget border-end pb-3 pb-sm-0">
-                            <div>
-                                <h4 class="mb-2">{{ number_format($account['balance'], 2) }}</h4>
-                                <p class="mb-0 fw-medium">{{ $account['name'] }}</p>
-                            </div>
-                            <span class="avatar me-sm-4">
-                                <span class="avatar-initial bg-label-secondary rounded">
-                                    {{ $account['currency_code'] }}
+                        <a href="{{ route('payment-account.show', $account['id']) }}" class="text-body text-decoration-none d-block">
+                            <div class="d-flex justify-content-between align-items-start card-widget border-end pb-3 pb-sm-0">
+                                <div>
+                                    <h4 class="mb-2">{{ number_format($account['balance'], 2) }}</h4>
+                                    <p class="mb-0 fw-medium">{{ $account['name'] }}</p>
+                                </div>
+                                <span class="avatar me-sm-4">
+                                    <span class="avatar-initial bg-label-secondary rounded">
+                                        {{ $account['currency_code'] }}
+                                    </span>
                                 </span>
-                            </span>
-                        </div>
+                            </div>
+                        </a>
                         @if ($index < count($accounts) - 1)
                             <hr class="d-none d-sm-block d-lg-none me-4">
                         @endif

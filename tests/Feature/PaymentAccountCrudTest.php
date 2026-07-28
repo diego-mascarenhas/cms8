@@ -187,6 +187,109 @@ class PaymentAccountCrudTest extends TestCase
         $this->assertStringContainsString('Zeta inactiva', (string) data_get($response->json('data.1'), 'name'));
     }
 
+    public function test_admin_can_view_payment_account_movements(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'CAJA',
+            'name' => 'Caja Fuerte',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $otherAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'BANK',
+            'name' => 'Banco',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        \App\Models\Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'transaction_type' => \App\Enums\TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $account->id,
+            'type_id' => 1,
+            'amount' => 99,
+            'status' => 2,
+        ]);
+
+        \App\Models\Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'transaction_type' => \App\Enums\TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'account_id' => $otherAccount->id,
+            'type_id' => 1,
+            'amount' => 50,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payment-account.show', $account))
+            ->assertOk()
+            ->assertSee('Caja Fuerte', false)
+            ->assertSee('payment-account-movements-table', false)
+            ->assertSee('99.00', false);
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
+            ->getJson(route('payment-account.show', array_merge(
+                ['paymentAccount' => $account->id],
+                $this->paymentMovementsDataTablesParams(),
+            )));
+
+        $response->assertOk();
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
+        $this->assertStringContainsString('99', (string) data_get($response->json('data.0'), 'amount'));
+    }
+
+    public function test_cannot_view_payment_account_from_another_team(): void
+    {
+        $user = $this->makeAdminUser();
+        $otherTeam = Team::factory()->create();
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $otherTeam->id,
+            'code' => 'OTHER',
+            'name' => 'Otra caja',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('payment-account.show', $account->id))
+            ->assertNotFound();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function paymentMovementsDataTablesParams(): array
+    {
+        return [
+            'draw' => 1,
+            'start' => 0,
+            'length' => 25,
+            'search' => ['value' => '', 'regex' => 'false'],
+            'order' => [['column' => 1, 'dir' => 'desc']],
+            'columns' => [
+                ['data' => 'id', 'name' => 'id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'transaction_indicator', 'name' => 'transaction_indicator', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'date', 'name' => 'date', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'invoice_id', 'name' => 'invoice_id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'enterprise_id', 'name' => 'enterprise_id', 'searchable' => 'true', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'type_id', 'name' => 'type_id', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'amount', 'name' => 'amount', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'status', 'name' => 'status', 'searchable' => 'true', 'orderable' => 'true', 'search' => ['value' => '', 'regex' => 'false']],
+                ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false', 'search' => ['value' => '', 'regex' => 'false']],
+            ],
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */

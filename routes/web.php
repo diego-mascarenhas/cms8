@@ -964,6 +964,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/payment-account/list', [PaymentAccountController::class, 'index'])->name('payment-account.index');
     Route::get('/payment-account/create', [PaymentAccountController::class, 'create'])->name('payment-account.create');
     Route::post('/payment-account', [PaymentAccountController::class, 'store'])->name('payment-account.store');
+    Route::get('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'show'])->name('payment-account.show');
     Route::get('/payment-account/{paymentAccount}/edit', [PaymentAccountController::class, 'edit'])->name('payment-account.edit');
     Route::put('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'update'])->name('payment-account.update');
 
