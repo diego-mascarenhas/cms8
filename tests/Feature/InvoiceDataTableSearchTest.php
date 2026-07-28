@@ -211,6 +211,96 @@ class InvoiceDataTableSearchTest extends TestCase
         $this->assertSame((string) $lower->id, (string) $response->json('data.1.DT_RowId'));
     }
 
+    public function test_invoice_datatable_orders_by_status_business_priority(): void
+    {
+        $team = $this->user->currentTeam;
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Status Sort Client',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $anulada = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'ST-ANULADA',
+            'date' => '2026-07-01',
+            'due_date' => '2026-07-10',
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 3,
+        ]);
+
+        $cobrada = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'ST-COBRADA',
+            'date' => '2026-07-02',
+            'due_date' => '2026-07-20',
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        $pendiente = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'ST-PENDIENTE',
+            'date' => '2026-07-03',
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 50,
+            'status' => 2,
+        ]);
+
+        $vencida = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'ST-VENCIDA',
+            'date' => '2026-06-01',
+            'due_date' => now()->subDays(5)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 50,
+            'status' => 2,
+        ]);
+
+        $query = $this->invoiceDataTableBaseQuery();
+        $query['summary_filter'] = 'all';
+        $query['order'] = [['column' => 6, 'dir' => 'asc']];
+        $query['search'] = ['value' => 'ST-', 'regex' => 'false'];
+
+        $response = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('invoice.index').'?'.http_build_query($query));
+
+        $response->assertOk();
+        $this->assertSame(4, (int) $response->json('recordsFiltered'));
+        // ASC priority: Vencida → Pendiente → Cobrada → Anulada
+        $this->assertSame((string) $vencida->id, (string) $response->json('data.0.DT_RowId'));
+        $this->assertSame((string) $pendiente->id, (string) $response->json('data.1.DT_RowId'));
+        $this->assertSame((string) $cobrada->id, (string) $response->json('data.2.DT_RowId'));
+        $this->assertSame((string) $anulada->id, (string) $response->json('data.3.DT_RowId'));
+    }
+
     private function invoiceDataTableUrl(string $searchValue): string
     {
         $query = $this->invoiceDataTableBaseQuery();
