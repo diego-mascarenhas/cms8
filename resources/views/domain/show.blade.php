@@ -424,34 +424,64 @@
         </div>
 
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Registros MX</h5>
+                <button type="button" class="btn btn-xs btn-label-secondary" id="add-mx-record">
+                    <i class="ti ti-plus ti-xs me-1"></i>Añadir MX
+                </button>
             </div>
             <div class="card-body">
                 <form action="{{ route('domain.mx-records', $domain->id) }}" method="POST">
                     @csrf
                     <div id="mx-records-list">
                         @forelse($mxRecords as $index => $record)
-                            <div class="row g-2 mb-2 mx-record-row">
-                                <div class="col-4">
-                                    <input type="number" name="mx_records[{{ $index }}][priority]" class="form-control form-control-sm" value="{{ $record['priority'] }}" min="0" required>
+                            <div class="row g-2 mb-2 align-items-center mx-record-row">
+                                <div class="col-auto">
+                                    <input
+                                        type="number"
+                                        name="mx_records[{{ $index }}][priority]"
+                                        class="form-control form-control-sm mx-priority-input"
+                                        value="{{ $record['priority'] }}"
+                                        min="0"
+                                        max="99"
+                                        required
+                                        title="Prioridad"
+                                    >
                                 </div>
-                                <div class="col-8">
+                                <div class="col">
                                     <input type="text" name="mx_records[{{ $index }}][target]" class="form-control form-control-sm" value="{{ $record['target'] }}" required>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-icon btn-sm btn-label-danger remove-mx-record" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
                                 </div>
                             </div>
                         @empty
-                            <div class="row g-2 mb-2 mx-record-row">
-                                <div class="col-4">
-                                    <input type="number" name="mx_records[0][priority]" class="form-control form-control-sm" value="10" min="0" required>
+                            <div class="row g-2 mb-2 align-items-center mx-record-row">
+                                <div class="col-auto">
+                                    <input
+                                        type="number"
+                                        name="mx_records[0][priority]"
+                                        class="form-control form-control-sm mx-priority-input"
+                                        value="10"
+                                        min="0"
+                                        max="99"
+                                        required
+                                        title="Prioridad"
+                                    >
                                 </div>
-                                <div class="col-8">
+                                <div class="col">
                                     <input type="text" name="mx_records[0][target]" class="form-control form-control-sm" placeholder="mail.example.com" required>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-icon btn-sm btn-label-danger remove-mx-record" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
                                 </div>
                             </div>
                         @endforelse
                     </div>
-                    <button type="button" class="btn btn-label-secondary btn-sm mb-3" id="add-mx-record">Añadir MX</button>
                     <button type="submit" class="btn btn-primary btn-sm w-100">Guardar registros MX</button>
                 </form>
             </div>
@@ -1164,21 +1194,103 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    addButton.addEventListener('click', function () {
-        const index = list.querySelectorAll('.mx-record-row').length;
+    function reindexMxRows() {
+        list.querySelectorAll('.mx-record-row').forEach(function (row, index) {
+            const priorityInput = row.querySelector('input[name*="[priority]"]');
+            const targetInput = row.querySelector('input[name*="[target]"]');
+
+            if (priorityInput)
+            {
+                priorityInput.name = 'mx_records[' + index + '][priority]';
+            }
+
+            if (targetInput)
+            {
+                targetInput.name = 'mx_records[' + index + '][target]';
+            }
+        });
+    }
+
+    function createMxRow(index, priority, target) {
         const row = document.createElement('div');
-        row.className = 'row g-2 mb-2 mx-record-row';
+        row.className = 'row g-2 mb-2 align-items-center mx-record-row';
         row.innerHTML = `
-            <div class="col-4">
-                <input type="number" name="mx_records[${index}][priority]" class="form-control form-control-sm" value="10" min="0" required>
+            <div class="col-auto">
+                <input
+                    type="number"
+                    name="mx_records[${index}][priority]"
+                    class="form-control form-control-sm mx-priority-input"
+                    value="${priority}"
+                    min="0"
+                    max="99"
+                    required
+                    title="Prioridad"
+                >
             </div>
-            <div class="col-8">
-                <input type="text" name="mx_records[${index}][target]" class="form-control form-control-sm" placeholder="mail.example.com" required>
+            <div class="col">
+                <input type="text" name="mx_records[${index}][target]" class="form-control form-control-sm" value="${target}" placeholder="mail.example.com" required>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-icon btn-sm btn-label-danger remove-mx-record" title="Eliminar">
+                    <i class="ti ti-trash"></i>
+                </button>
             </div>
         `;
-        list.appendChild(row);
+
+        return row;
+    }
+
+    addButton.addEventListener('click', function () {
+        const index = list.querySelectorAll('.mx-record-row').length;
+        list.appendChild(createMxRow(index, 10, ''));
+    });
+
+    list.addEventListener('click', function (event) {
+        const removeButton = event.target.closest('.remove-mx-record');
+
+        if (!removeButton)
+        {
+            return;
+        }
+
+        const row = removeButton.closest('.mx-record-row');
+
+        if (!row)
+        {
+            return;
+        }
+
+        if (list.querySelectorAll('.mx-record-row').length === 1)
+        {
+            const priorityInput = row.querySelector('input[name*="[priority]"]');
+            const targetInput = row.querySelector('input[name*="[target]"]');
+
+            if (priorityInput)
+            {
+                priorityInput.value = '10';
+            }
+
+            if (targetInput)
+            {
+                targetInput.value = '';
+            }
+
+            return;
+        }
+
+        row.remove();
+        reindexMxRows();
     });
 });
 </script>
+<style>
+.mx-priority-input {
+    width: 3.25rem;
+    min-width: 3.25rem;
+    padding-left: 0.35rem;
+    padding-right: 0.15rem;
+    text-align: center;
+}
+</style>
 @endpush
 @endsection
