@@ -365,6 +365,7 @@ class DomainController extends Controller
 
         $redirect = redirect()->route('domain.show', $domain->id)
             ->with('generated_password', $result['password'] ?? null)
+            ->with('cpanel_access_message', $result['access_message'] ?? null)
             ->with('cpanel_password_reset', true);
 
         if (! empty($result['warning']))

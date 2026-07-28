@@ -149,6 +149,7 @@ class DomainCpanelPasswordService
         $response = [
             'success' => true,
             'password' => $password,
+            'access_message' => $this->buildAccessMessage($domain, $password),
             'notified' => false,
             'channel' => null,
             'recipient' => null,

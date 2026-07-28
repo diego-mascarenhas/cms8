@@ -97,6 +97,10 @@ class DomainCpanelPasswordTest extends TestCase
         $response->assertSessionHas('success');
         $response->assertSessionHas('generated_password', 'NewSecure123!');
         $response->assertSessionHas('cpanel_password_reset', true);
+        $response->assertSessionHas('cpanel_access_message');
+        $this->assertStringContainsString('Usuario: siteuser', (string) session('cpanel_access_message'));
+        $this->assertStringContainsString('Contraseña: NewSecure123!', (string) session('cpanel_access_message'));
+        $this->assertStringContainsString('https://cpanel.test:2083/', (string) session('cpanel_access_message'));
 
         Http::assertSent(function ($request)
         {

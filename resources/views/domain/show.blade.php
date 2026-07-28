@@ -37,11 +37,21 @@
 
 @if (session('cpanel_password_reset') && session('generated_password'))
 <div class="alert alert-success mb-4">
-    <h5 class="alert-heading mb-2">Contraseña cPanel actualizada</h5>
-    <p class="mb-0">
-        <strong>Nueva contraseña (guárdala ahora, no se volverá a mostrar):</strong>
-        <code class="user-select-all">{{ session('generated_password') }}</code>
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+        <h5 class="alert-heading mb-0">Contraseña cPanel actualizada</h5>
+        <button type="button" class="btn btn-sm btn-label-success" id="copy-cpanel-access-message">
+            <i class="ti ti-copy me-1"></i> Copiar texto
+        </button>
+    </div>
+    <p class="mb-2 small">
+        Texto listo para enviar al cliente (guárdalo ahora, no se volverá a mostrar):
     </p>
+    <textarea
+        id="cpanel-access-message"
+        class="form-control font-monospace small"
+        rows="10"
+        readonly
+    >{{ session('cpanel_access_message') ?: ('Contraseña: '.session('generated_password')) }}</textarea>
 </div>
 @endif
 
@@ -709,6 +719,40 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const copyCpanelAccessButton = document.getElementById('copy-cpanel-access-message');
+    const cpanelAccessMessage = document.getElementById('cpanel-access-message');
+
+    if (copyCpanelAccessButton && cpanelAccessMessage)
+    {
+        copyCpanelAccessButton.addEventListener('click', async function () {
+            const text = cpanelAccessMessage.value;
+
+            try
+            {
+                if (navigator.clipboard && navigator.clipboard.writeText)
+                {
+                    await navigator.clipboard.writeText(text);
+                }
+                else
+                {
+                    cpanelAccessMessage.focus();
+                    cpanelAccessMessage.select();
+                    document.execCommand('copy');
+                }
+
+                copyCpanelAccessButton.innerHTML = '<i class="ti ti-check me-1"></i> Copiado';
+                setTimeout(function () {
+                    copyCpanelAccessButton.innerHTML = '<i class="ti ti-copy me-1"></i> Copiar texto';
+                }, 2000);
+            }
+            catch (error)
+            {
+                cpanelAccessMessage.focus();
+                cpanelAccessMessage.select();
+            }
+        });
+    }
+
     document.querySelectorAll('.change-email-password').forEach(function (button) {
         button.addEventListener('click', function () {
             const emailInput = document.getElementById('change_email_address');
