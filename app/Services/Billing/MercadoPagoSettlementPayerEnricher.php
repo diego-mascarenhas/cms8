@@ -15,9 +15,9 @@ use RuntimeException;
 class MercadoPagoSettlementPayerEnricher
 {
     /**
-     * Mercado Pago rejects creation above ~60 days; shorter chunks also finish faster.
+     * Mercado Pago rejects creation above ~60 days; calendar months stay under that limit.
      */
-    private const MAX_REPORT_DAYS = 30;
+    private const REPORT_TIMEZONE = 'America/Argentina/Buenos_Aires';
 
     private const CONFIG_COLUMNS = [
         'SOURCE_ID',
@@ -34,7 +34,7 @@ class MercadoPagoSettlementPayerEnricher
     /**
      * Pull Account money report rows, persist statement lines, and enrich payment_syncs by SOURCE_ID.
      *
-     * @return array{enriched: int, report_rows: int, unmatched: int, skipped: int, chunks: int, statement_lines: int}
+     * @return array{enriched: int, report_rows: int, unmatched: int, skipped: int, chunks: int, statement_lines: int, months_skipped: int}
      */
     public function enrichTeam(
         Team $team,
@@ -43,6 +43,7 @@ class MercadoPagoSettlementPayerEnricher
         bool $dryRun = false,
         int $pollSeconds = 90,
         bool $reuseExisting = false,
+        bool $force = false,
     ): array {
         $token = trim((string) $team->getSetting('mercadopago_access_token'));
         if ($token === '')
@@ -55,7 +56,7 @@ class MercadoPagoSettlementPayerEnricher
 
         if ($reuseExisting)
         {
-            return $this->enrichFromExistingReports($client, $team, $beginDate, $endDate, $dryRun);
+            return $this->enrichFromExistingReports($client, $team, $beginDate, $endDate, $dryRun, $force);
         }
 
         $enriched = 0;
@@ -64,35 +65,62 @@ class MercadoPagoSettlementPayerEnricher
         $reportRows = 0;
         $chunks = 0;
         $statementLines = 0;
+        $monthsSkipped = 0;
 
         foreach ($this->dateChunks($beginDate, $endDate) as $chunk)
         {
             $chunks++;
             [$chunkBegin, $chunkEnd] = $chunk;
 
-            try
+            if ($this->shouldSkipProcessedMonth($team, $chunkBegin, $force))
             {
-                $fileName = $this->createAndWaitForReport($client, $chunkBegin, $chunkEnd, $pollSeconds);
-            } catch (RuntimeException $exception)
+                $monthsSkipped++;
+
+                Log::info('Mercado Pago settlement month already processed; skipping', [
+                    'team_id' => $team->id,
+                    'begin' => $chunkBegin->toDateString(),
+                    'end' => $chunkEnd->toDateString(),
+                ]);
+
+                continue;
+            }
+
+            $fileName = $this->findBestExistingReportForMonth($client, $chunkBegin, $chunkEnd);
+
+            if ($fileName === null)
             {
-                if (! str_contains($exception->getMessage(), 'HTTP 429'))
+                try
                 {
-                    throw $exception;
-                }
-
-                $fileName = $this->findExistingReportFileName($client, $chunkBegin, $chunkEnd);
-                if ($fileName === null)
+                    $fileName = $this->createAndWaitForReport($client, $chunkBegin, $chunkEnd, $pollSeconds);
+                } catch (RuntimeException $exception)
                 {
-                    throw new RuntimeException(
-                        'Unable to create settlement report (HTTP 429 quota) and no existing report covers '
-                        .$chunkBegin->toDateString().' → '.$chunkEnd->toDateString().'. '
-                        .'Wait for Mercado Pago to free report slots, or pass --reuse-existing for months that already have files.',
-                        0,
-                        $exception,
-                    );
-                }
+                    if (! str_contains($exception->getMessage(), 'HTTP 429'))
+                    {
+                        throw $exception;
+                    }
 
-                Log::warning('Mercado Pago settlement report quota hit; reusing existing file', [
+                    $fileName = $this->findExistingReportFileName($client, $chunkBegin, $chunkEnd);
+                    if ($fileName === null)
+                    {
+                        throw new RuntimeException(
+                            'Unable to create settlement report (HTTP 429 quota) and no existing report covers '
+                            .$chunkBegin->toDateString().' → '.$chunkEnd->toDateString().'. '
+                            .'Wait for Mercado Pago to free report slots, or pass --reuse-existing for months that already have files.',
+                            0,
+                            $exception,
+                        );
+                    }
+
+                    Log::warning('Mercado Pago settlement report quota hit; reusing existing file', [
+                        'team_id' => $team->id,
+                        'file_name' => $fileName,
+                        'begin' => $chunkBegin->toDateString(),
+                        'end' => $chunkEnd->toDateString(),
+                    ]);
+                }
+            } else
+            {
+                Log::info('Mercado Pago settlement reusing existing report for month', [
                     'team_id' => $team->id,
                     'file_name' => $fileName,
                     'begin' => $chunkBegin->toDateString(),
@@ -126,6 +154,7 @@ class MercadoPagoSettlementPayerEnricher
             'skipped' => $skipped,
             'chunks' => $chunks,
             'statement_lines' => $statementLines,
+            'months_skipped' => $monthsSkipped,
         ];
     }
 
@@ -133,7 +162,7 @@ class MercadoPagoSettlementPayerEnricher
      * Download and apply already-generated settlement reports that overlap the window.
      * Does not create new reports (safe when MP returns "Max number of reports achieved").
      *
-     * @return array{enriched: int, report_rows: int, unmatched: int, skipped: int, chunks: int, statement_lines: int}
+     * @return array{enriched: int, report_rows: int, unmatched: int, skipped: int, chunks: int, statement_lines: int, months_skipped: int}
      */
     public function enrichFromExistingReports(
         PendingRequest $client,
@@ -141,23 +170,40 @@ class MercadoPagoSettlementPayerEnricher
         Carbon $beginDate,
         Carbon $endDate,
         bool $dryRun = false,
+        bool $force = false,
     ): array {
-        $files = $this->existingReportFileNames($client, $beginDate, $endDate);
-        if ($files === [])
-        {
-            throw new RuntimeException(
-                'No existing settlement reports cover '.$beginDate->toDateString().' → '.$endDate->toDateString().'.',
-            );
-        }
-
         $enriched = 0;
         $unmatched = 0;
         $skipped = 0;
         $reportRows = 0;
         $statementLines = 0;
+        $monthsSkipped = 0;
+        $chunks = 0;
 
-        foreach ($files as $fileName)
+        foreach ($this->dateChunks($beginDate, $endDate) as $chunk)
         {
+            $chunks++;
+            [$chunkBegin, $chunkEnd] = $chunk;
+
+            if ($this->shouldSkipProcessedMonth($team, $chunkBegin, $force))
+            {
+                $monthsSkipped++;
+
+                continue;
+            }
+
+            $fileName = $this->findBestExistingReportForMonth($client, $chunkBegin, $chunkEnd);
+            if ($fileName === null)
+            {
+                Log::warning('Mercado Pago settlement reuse-existing: no report for month', [
+                    'team_id' => $team->id,
+                    'begin' => $chunkBegin->toDateString(),
+                    'end' => $chunkEnd->toDateString(),
+                ]);
+
+                continue;
+            }
+
             $csv = $this->downloadReport($client, $fileName);
             $rowsBySourceId = $this->parseCsvBySourceId($csv);
             $reportRows += count($rowsBySourceId);
@@ -177,13 +223,21 @@ class MercadoPagoSettlementPayerEnricher
             $skipped += $fileSkipped;
         }
 
+        if ($reportRows === 0 && $monthsSkipped === 0)
+        {
+            throw new RuntimeException(
+                'No existing settlement reports cover '.$beginDate->toDateString().' → '.$endDate->toDateString().'.',
+            );
+        }
+
         return [
             'enriched' => $enriched,
             'report_rows' => $reportRows,
             'unmatched' => $unmatched,
             'skipped' => $skipped,
-            'chunks' => count($files),
+            'chunks' => $chunks,
             'statement_lines' => $statementLines,
+            'months_skipped' => $monthsSkipped,
         ];
     }
 
@@ -355,27 +409,70 @@ class MercadoPagoSettlementPayerEnricher
     }
 
     /**
+     * Split into calendar months (1st → last day) in Argentina time, matching Mercado Pago report windows.
+     *
      * @return list<array{0: Carbon, 1: Carbon}>
      */
     public function dateChunks(Carbon $beginDate, Carbon $endDate): array
     {
+        $tz = self::REPORT_TIMEZONE;
         $chunks = [];
-        $cursor = $beginDate->clone()->startOfDay();
-        $end = $endDate->clone()->endOfDay();
+        // Use civil Y-m-d so UTC midnight on the 1st does not slip into the previous AR month.
+        $cursor = Carbon::parse($beginDate->format('Y-m-d'), $tz)->startOfMonth();
+        $end = Carbon::parse($endDate->format('Y-m-d'), $tz)->endOfMonth();
 
         while ($cursor->lte($end))
         {
-            $chunkEnd = $cursor->clone()->addDays(self::MAX_REPORT_DAYS - 1)->endOfDay();
-            if ($chunkEnd->gt($end))
-            {
-                $chunkEnd = $end->clone();
-            }
-
-            $chunks[] = [$cursor->clone(), $chunkEnd];
-            $cursor = $chunkEnd->clone()->addSecond()->startOfDay();
+            $chunkBegin = $cursor->clone()->startOfMonth();
+            $chunkEnd = $cursor->clone()->endOfMonth();
+            $chunks[] = [$chunkBegin, $chunkEnd];
+            $cursor = $cursor->clone()->addMonthNoOverflow()->startOfMonth();
         }
 
         return $chunks;
+    }
+
+    public function monthAlreadyProcessed(Team $team, int $year, int $month): bool
+    {
+        $statement = BankStatement::query()
+            ->where('team_id', $team->id)
+            ->where('provider', BankStatement::PROVIDER_MERCADOPAGO)
+            ->where('period_year', $year)
+            ->where('period_month', $month)
+            ->first();
+
+        if (! $statement instanceof BankStatement)
+        {
+            return false;
+        }
+
+        if (filled($statement->original_filename))
+        {
+            return true;
+        }
+
+        return $statement->lines()->exists();
+    }
+
+    /**
+     * Past months with a local statement are skipped; the current month is always eligible for refresh.
+     */
+    public function shouldSkipProcessedMonth(Team $team, Carbon $monthBegin, bool $force = false): bool
+    {
+        if ($force)
+        {
+            return false;
+        }
+
+        $tz = self::REPORT_TIMEZONE;
+        $month = Carbon::parse($monthBegin->format('Y-m-d'), $tz)->startOfMonth();
+
+        if ($month->isSameMonth(now($tz)))
+        {
+            return false;
+        }
+
+        return $this->monthAlreadyProcessed($team, (int) $month->year, (int) $month->month);
     }
 
     private function http(string $token): PendingRequest
@@ -546,6 +643,73 @@ class MercadoPagoSettlementPayerEnricher
 
     public function findExistingReportFileName(PendingRequest $client, Carbon $beginDate, Carbon $endDate): ?string
     {
+        return $this->findBestExistingReportForMonth($client, $beginDate, $endDate);
+    }
+
+    /**
+     * Prefer a report that fully covers the calendar month with the smallest span (exact month when available).
+     */
+    public function findBestExistingReportForMonth(PendingRequest $client, Carbon $beginDate, Carbon $endDate): ?string
+    {
+        $list = $client->get('/v1/account/settlement_report/list');
+        if (! $list->successful() || ! is_array($list->json()))
+        {
+            return null;
+        }
+
+        $windowBegin = Carbon::parse($beginDate->format('Y-m-d'), self::REPORT_TIMEZONE)->startOfDay();
+        $windowEnd = Carbon::parse($endDate->format('Y-m-d'), self::REPORT_TIMEZONE)->endOfDay();
+        $bestFile = null;
+        $bestScore = null;
+
+        foreach ($list->json() as $report)
+        {
+            if (! is_array($report))
+            {
+                continue;
+            }
+
+            $fileName = trim((string) ($report['file_name'] ?? ''));
+            if ($fileName === '')
+            {
+                continue;
+            }
+
+            $status = strtolower(trim((string) ($report['status'] ?? 'processed')));
+            if ($status !== '' && ! in_array($status, ['processed', 'available', 'ready'], true))
+            {
+                continue;
+            }
+
+            $reportBegin = isset($report['begin_date']) ? Carbon::parse((string) $report['begin_date']) : null;
+            $reportEnd = isset($report['end_date']) ? Carbon::parse((string) $report['end_date']) : null;
+            if ($reportBegin === null || $reportEnd === null)
+            {
+                continue;
+            }
+
+            // Must fully cover the month window.
+            if ($reportBegin->gt($windowBegin) || $reportEnd->lt($windowEnd))
+            {
+                continue;
+            }
+
+            $spanDays = max(1, $reportBegin->diffInDays($reportEnd));
+            $score = $spanDays;
+
+            if ($bestScore === null || $score < $bestScore)
+            {
+                $bestScore = $score;
+                $bestFile = $fileName;
+            }
+        }
+
+        if ($bestFile !== null)
+        {
+            return $bestFile;
+        }
+
+        // Fallback: any overlapping report (legacy 30-day windows from older runs).
         $files = $this->existingReportFileNames($client, $beginDate, $endDate);
 
         return $files[0] ?? null;

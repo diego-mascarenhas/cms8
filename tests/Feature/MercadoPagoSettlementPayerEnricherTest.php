@@ -124,18 +124,72 @@ class MercadoPagoSettlementPayerEnricherTest extends TestCase
         $this->assertSame('20123456789', $parsed['123']['PAYER_ID_NUMBER']);
     }
 
-    public function test_date_chunks_respect_sixty_day_api_limit(): void
+    public function test_date_chunks_use_full_calendar_months(): void
     {
         $chunks = app(MercadoPagoSettlementPayerEnricher::class)->dateChunks(
-            Carbon::parse('2026-04-26')->startOfDay(),
-            Carbon::parse('2026-07-25')->endOfDay(),
+            Carbon::parse('2026-04-26', 'America/Argentina/Buenos_Aires')->startOfDay(),
+            Carbon::parse('2026-07-25', 'America/Argentina/Buenos_Aires')->endOfDay(),
         );
 
         $this->assertCount(4, $chunks);
-        $this->assertSame('2026-04-26', $chunks[0][0]->toDateString());
-        $this->assertSame('2026-05-25', $chunks[0][1]->toDateString());
-        $this->assertSame('2026-05-26', $chunks[1][0]->toDateString());
-        $this->assertSame('2026-07-25', $chunks[array_key_last($chunks)][1]->toDateString());
+        $this->assertSame('2026-04-01', $chunks[0][0]->toDateString());
+        $this->assertSame('2026-04-30', $chunks[0][1]->toDateString());
+        $this->assertSame('2026-05-01', $chunks[1][0]->toDateString());
+        $this->assertSame('2026-05-31', $chunks[1][1]->toDateString());
+        $this->assertSame('2026-07-01', $chunks[array_key_last($chunks)][0]->toDateString());
+        $this->assertSame('2026-07-31', $chunks[array_key_last($chunks)][1]->toDateString());
+    }
+
+    public function test_enricher_skips_already_processed_past_months_unless_forced(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-28', 'America/Argentina/Buenos_Aires'));
+
+        $team = Team::factory()->create();
+        $team->setSetting('mercadopago_access_token', 'APP_USR-test-token', [
+            'group' => 'mercadopago',
+            'type' => 'password',
+            'is_encrypted' => true,
+        ]);
+
+        \App\Models\BankStatement::query()->create([
+            'team_id' => $team->id,
+            'provider' => \App\Models\BankStatement::PROVIDER_MERCADOPAGO,
+            'period_year' => 2026,
+            'period_month' => 4,
+            'source' => \App\Models\BankStatement::SOURCE_API,
+            'original_filename' => 'humano-settlement-report-april.csv',
+        ]);
+
+        Http::fake([
+            'api.mercadopago.com/v1/account/settlement_report/config' => Http::response([
+                'file_name_prefix' => 'humano-settlement-report',
+                'columns' => [
+                    ['key' => 'SOURCE_ID'],
+                    ['key' => 'PAYER_NAME'],
+                ],
+            ], 200),
+            'api.mercadopago.com/v1/account/settlement_report/list' => Http::response([], 200),
+            'api.mercadopago.com/v1/account/settlement_report' => Http::response([
+                'id' => 1,
+                'file_name' => 'should-not-be-created.csv',
+            ], 202),
+        ]);
+
+        $result = app(MercadoPagoSettlementPayerEnricher::class)->enrichTeam(
+            $team,
+            Carbon::parse('2026-04-01', 'America/Argentina/Buenos_Aires')->startOfDay(),
+            Carbon::parse('2026-04-30', 'America/Argentina/Buenos_Aires')->endOfDay(),
+            dryRun: false,
+            pollSeconds: 15,
+            force: false,
+        );
+
+        $this->assertSame(1, $result['months_skipped']);
+        $this->assertSame(0, $result['report_rows']);
+        Http::assertNotSent(fn ($request) => $request->method() === 'POST'
+            && str_ends_with($request->url(), '/v1/account/settlement_report'));
+
+        Carbon::setTestNow();
     }
 
     public function test_reuse_existing_skips_report_creation_and_enriches_from_list(): void

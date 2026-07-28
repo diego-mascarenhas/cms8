@@ -85,7 +85,7 @@ Schedule::command('mercadopago:sync-payments --limit=40 --recent-days=90')
     ->runInBackground();
 
 Schedule::command('mercadopago:enrich-settlement-payers --recent-days=90 --poll=120')
-    ->cron('12,42 * * * *')
+    ->dailyAt('06:15')
     ->name('mercadopago-settlement-payer-enrich')
     ->description('Enrich Mercado Pago payment_syncs with settlement report payer name/id')
     ->when(fn () => (bool) config('services.mercadopago.settlement_enrich_schedule_enabled'))
