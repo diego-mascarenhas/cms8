@@ -30,6 +30,7 @@ class StoreDomainEmailRequest extends FormRequest
         return [
             'email' => ['required', 'string', 'max:64', 'regex:/^[a-z0-9._-]+$/'],
             'password' => ['required', 'string', 'max:255', Password::min(12)->letters()->mixedCase()->numbers()->symbols()],
+            'form_context' => ['nullable', 'string', 'in:create_email'],
         ];
     }
 
@@ -40,8 +41,25 @@ class StoreDomainEmailRequest extends FormRequest
     {
         return [
             'email.required' => 'Indica el nombre de la cuenta de correo.',
+            'email.max' => 'El nombre de la cuenta no puede superar :max caracteres.',
             'email.regex' => 'El nombre solo puede contener letras, números, puntos, guiones y guiones bajos.',
             'password.required' => 'Indica la contraseña de la cuenta.',
+            'password.min' => 'La contraseña debe tener al menos :min caracteres.',
+            'password.letters' => 'La contraseña debe incluir al menos una letra.',
+            'password.mixed' => 'La contraseña debe incluir mayúsculas y minúsculas.',
+            'password.numbers' => 'La contraseña debe incluir al menos un número.',
+            'password.symbols' => 'La contraseña debe incluir al menos un símbolo.',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'email' => 'nombre de cuenta',
+            'password' => 'contraseña',
         ];
     }
 }

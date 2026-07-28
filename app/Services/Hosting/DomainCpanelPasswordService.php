@@ -154,9 +154,49 @@ class DomainCpanelPasswordService
             'recipient_source' => null,
         ];
 
+        return array_merge($response, $this->sendAccessNotification(
+            $user,
+            $domain,
+            $accessMessage,
+            'Acceso cPanel '.$domain->domain,
+            $notifyTo,
+            $notifyChannel,
+        ));
+    }
+
+    /**
+     * @return array{
+     *     notified: bool,
+     *     channel: string|null,
+     *     recipient: string|null,
+     *     recipient_source: string|null,
+     *     warning?: string,
+     * }
+     */
+    public function sendAccessNotification(
+        User $user,
+        Domain $domain,
+        string $accessMessage,
+        string $subject,
+        ?string $notifyTo,
+        string $notifyChannel,
+    ): array {
+        $domain->loadMissing('service.enterprise.contacts');
+
+        $notifyChannel = in_array($notifyChannel, [self::NOTIFY_NONE, self::NOTIFY_WHATSAPP, self::NOTIFY_EMAIL], true)
+            ? $notifyChannel
+            : self::NOTIFY_NONE;
+
+        $empty = [
+            'notified' => false,
+            'channel' => null,
+            'recipient' => null,
+            'recipient_source' => null,
+        ];
+
         if ($notifyChannel === self::NOTIFY_NONE)
         {
-            return $response;
+            return $empty;
         }
 
         $notifyTo = $notifyTo !== null ? trim($notifyTo) : null;
@@ -172,19 +212,19 @@ class DomainCpanelPasswordService
                 $hostingEmail = $this->hostingPlanEmail($domain);
                 if ($hostingEmail === null)
                 {
-                    return array_merge($response, [
+                    return array_merge($empty, [
                         'warning' => 'Contraseña actualizada, pero el plan de hosting no tiene un email válido.',
                     ]);
                 }
 
-                $this->sendHostingPlanEmail($user, $hostingEmail, 'Acceso cPanel '.$domain->domain, $accessMessage);
+                $this->sendHostingPlanEmail($user, $hostingEmail, $subject, $accessMessage);
 
-                $response['notified'] = true;
-                $response['channel'] = self::NOTIFY_EMAIL;
-                $response['recipient'] = $hostingEmail;
-                $response['recipient_source'] = self::NOTIFY_TO_HOSTING;
-
-                return $response;
+                return [
+                    'notified' => true,
+                    'channel' => self::NOTIFY_EMAIL,
+                    'recipient' => $hostingEmail,
+                    'recipient_source' => self::NOTIFY_TO_HOSTING,
+                ];
             }
 
             $contactId = is_numeric($notifyTo) ? (int) $notifyTo : null;
@@ -193,7 +233,7 @@ class DomainCpanelPasswordService
             {
                 $channelLabel = $notifyChannel === self::NOTIFY_EMAIL ? 'email' : 'WhatsApp';
 
-                return array_merge($response, [
+                return array_merge($empty, [
                     'warning' => 'Contraseña actualizada, pero no hay un contacto con '.$channelLabel.' para enviar los datos.',
                 ]);
             }
@@ -207,30 +247,30 @@ class DomainCpanelPasswordService
                 $contact,
                 $notifyChannel,
                 $accessMessage,
-                'Acceso cPanel '.$domain->domain,
+                $subject,
             );
 
-            $response['notified'] = true;
-            $response['channel'] = $notifyChannel;
-            $response['recipient'] = $recipient;
-            $response['recipient_source'] = 'contact';
+            return [
+                'notified' => true,
+                'channel' => $notifyChannel,
+                'recipient' => $recipient,
+                'recipient_source' => 'contact',
+            ];
         } catch (ValidationException $exception)
         {
             $message = collect($exception->errors())->flatten()->filter()->first();
             $channelLabel = $notifyChannel === self::NOTIFY_EMAIL ? 'email' : 'WhatsApp';
 
-            return array_merge($response, [
+            return array_merge($empty, [
                 'warning' => 'Contraseña actualizada, pero no se pudo enviar por '.$channelLabel
                     .($message ? ': '.$message : '.'),
             ]);
         } catch (\Throwable $exception)
         {
-            return array_merge($response, [
+            return array_merge($empty, [
                 'warning' => 'Contraseña actualizada, pero no se pudo enviar el email: '.$exception->getMessage(),
             ]);
         }
-
-        return $response;
     }
 
     public function buildAccessMessage(Domain $domain, string $password): string
@@ -246,6 +286,23 @@ class DomainCpanelPasswordService
             'Contraseña: '.$password,
             '',
             'Te recomendamos guardar esta contraseña en un lugar seguro y cambiarla si lo preferís.',
+        ]);
+    }
+
+    public function buildMailboxAccessMessage(Domain $domain, string $mailboxEmail, string $password): string
+    {
+        $webmailUrl = $domain->server?->getWebmailUrl($mailboxEmail)
+            ?? ('https://'.($domain->server?->hostname ?: $domain->domain).':2096/');
+
+        return implode("\n", [
+            'Hola, te enviamos los datos de acceso al correo:',
+            '',
+            'Cuenta: '.$mailboxEmail,
+            'Webmail: '.$webmailUrl,
+            'Contraseña: '.$password,
+            '',
+            'También podés configurar la cuenta en tu cliente de correo (Outlook, Thunderbird, Mail, etc.).',
+            'Te recomendamos guardar esta contraseña en un lugar seguro.',
         ]);
     }
 

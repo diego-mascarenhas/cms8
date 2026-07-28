@@ -849,7 +849,7 @@ class CpanelConnector implements ControlPanelConnector
     {
         $localPart = str_contains($email, '@') ? explode('@', $email, 2)[0] : $email;
 
-        return $this->uapiRequest($server, $domain, 'Email', 'passwdpop', [
+        return $this->uapiRequest($server, $domain, 'Email', 'passwd_pop', [
             'email' => $localPart,
             'domain' => $domain->domain,
             'password' => $password,
@@ -951,8 +951,8 @@ class CpanelConnector implements ControlPanelConnector
 
     public function getMxRecords(Server $server, Domain $domain): array
     {
-        $result = $this->uapiRequest($server, $domain, 'DNS', 'parse_zone', [
-            'zone' => $domain->domain,
+        $result = $this->uapiRequest($server, $domain, 'Email', 'list_mxs', [
+            'domain' => $domain->domain,
         ]);
 
         if (! $result['success'])
@@ -961,12 +961,24 @@ class CpanelConnector implements ControlPanelConnector
         }
 
         $records = collect($result['data'] ?? [])
-            ->filter(fn (array $record) => strtoupper((string) ($record['record_type'] ?? $record['type'] ?? '')) === 'MX')
-            ->map(fn (array $record) => [
-                'line' => $record['line'] ?? null,
-                'priority' => (int) ($record['preference'] ?? $record['priority'] ?? 0),
-                'target' => rtrim((string) ($record['destination'] ?? $record['target'] ?? ''), '.'),
+            ->flatMap(function (mixed $row): array
+            {
+                if (! is_array($row))
+                {
+                    return [];
+                }
+
+                $entries = $row['entries'] ?? null;
+
+                return is_array($entries) ? $entries : [];
+            })
+            ->filter(fn (mixed $entry): bool => is_array($entry) && filled($entry['mx'] ?? null))
+            ->map(fn (array $entry): array => [
+                'line' => null,
+                'priority' => (int) ($entry['priority'] ?? 0),
+                'target' => rtrim((string) $entry['mx'], '.'),
             ])
+            ->sortBy('priority')
             ->values()
             ->all();
 
@@ -985,38 +997,42 @@ class CpanelConnector implements ControlPanelConnector
             return $existing;
         }
 
-        $edits = [];
-
         foreach ($existing['records'] as $record)
         {
-            if ($record['line'] === null)
-            {
-                continue;
-            }
+            $delete = $this->uapiRequest($server, $domain, 'Email', 'delete_mx', [
+                'domain' => $domain->domain,
+                'exchanger' => $record['target'],
+                'priority' => (int) $record['priority'],
+            ], expectData: false);
 
-            $edits[] = [
-                'action' => 'remove',
-                'line' => $record['line'],
-            ];
+            if (! ($delete['success'] ?? false))
+            {
+                return $delete;
+            }
         }
 
         foreach ($records as $record)
         {
-            $edits[] = [
-                'action' => 'add',
-                'record_type' => 'MX',
-                'dname' => $domain->domain.'.',
-                'ttl' => 14400,
-                'preference' => (int) $record['priority'],
-                'exchange' => rtrim((string) $record['target'], '.').'.',
-            ];
+            $target = rtrim((string) ($record['target'] ?? ''), '.');
+
+            if ($target === '')
+            {
+                continue;
+            }
+
+            $add = $this->uapiRequest($server, $domain, 'Email', 'add_mx', [
+                'domain' => $domain->domain,
+                'exchanger' => $target,
+                'priority' => (int) ($record['priority'] ?? 0),
+            ], expectData: false);
+
+            if (! ($add['success'] ?? false))
+            {
+                return $add;
+            }
         }
 
-        return $this->uapiRequest($server, $domain, 'DNS', 'mass_edit_zone', [
-            'zone' => $domain->domain,
-            'serial' => time(),
-            'edit' => $edits,
-        ], expectData: false);
+        return ['success' => true];
     }
 
     /**

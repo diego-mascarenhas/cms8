@@ -24,6 +24,7 @@ class ResetDomainCpanelPasswordRequest extends FormRequest
         return [
             'password' => ['nullable', 'string', 'max:255', Password::min(12)->letters()->mixedCase()->numbers()->symbols()],
             'notify_channel' => ['required', Rule::in(['none', 'whatsapp', 'email'])],
+            'form_context' => ['nullable', 'string', 'in:cpanel_password'],
             'notify_to' => [
                 Rule::requiredIf(in_array($channel, ['whatsapp', 'email'], true)),
                 'nullable',
@@ -63,10 +64,26 @@ class ResetDomainCpanelPasswordRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'password.min' => 'La contraseña debe tener al menos 12 caracteres.',
+            'password.min' => 'La contraseña debe tener al menos :min caracteres.',
+            'password.letters' => 'La contraseña debe incluir al menos una letra.',
+            'password.mixed' => 'La contraseña debe incluir mayúsculas y minúsculas.',
+            'password.numbers' => 'La contraseña debe incluir al menos un número.',
+            'password.symbols' => 'La contraseña debe incluir al menos un símbolo.',
             'notify_channel.required' => 'Indicá cómo querés enviar los datos de acceso.',
             'notify_channel.in' => 'El canal de envío no es válido.',
             'notify_to.required' => 'Seleccioná el destinatario al que se enviarán los datos.',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function attributes(): array
+    {
+        return [
+            'password' => 'contraseña',
+            'notify_channel' => 'canal de envío',
+            'notify_to' => 'destinatario',
         ];
     }
 
