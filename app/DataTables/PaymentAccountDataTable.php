@@ -19,7 +19,18 @@ class PaymentAccountDataTable extends DataTable
                 return view('payment-account.action', compact('account'))->render();
             })
             ->setRowId('id')
-            ->rawColumns(['action', 'status', 'currency_code', 'payment_types'])
+            ->rawColumns(['action', 'status', 'currency_code', 'payment_types', 'name'])
+            ->editColumn('name', function (PaymentAccount $account)
+            {
+                if (auth()->user()?->can('view', $account))
+                {
+                    return '<a href="'.e(route('payment-account.show', $account)).'" class="fw-medium text-body">'
+                        .e($account->name)
+                        .'</a>';
+                }
+
+                return e($account->name);
+            })
             ->addColumn('currency_code', function (PaymentAccount $account)
             {
                 $code = strtoupper((string) ($account->currency?->code ?? ''));

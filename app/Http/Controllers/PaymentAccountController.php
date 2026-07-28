@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\PaymentAccountDataTable;
+use App\DataTables\PaymentDataTable;
 use App\Http\Requests\StorePaymentAccountRequest;
 use App\Http\Requests\UpdatePaymentAccountRequest;
 use App\Models\Currency;
@@ -24,6 +25,20 @@ class PaymentAccountController extends Controller
         $this->authorize('viewAny', PaymentAccount::class);
 
         return $dataTable->render('payment-account.index');
+    }
+
+    public function show(PaymentAccount $paymentAccount, PaymentDataTable $dataTable)
+    {
+        $this->authorize('view', $paymentAccount);
+
+        $paymentAccount->load('currency');
+
+        return $dataTable
+            ->forAccount((int) $paymentAccount->id)
+            ->render('payment-account.show', [
+                'account' => $paymentAccount,
+                'balance' => (float) $paymentAccount->total_amount,
+            ]);
     }
 
     public function create(): View

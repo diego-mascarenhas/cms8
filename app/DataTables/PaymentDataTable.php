@@ -15,6 +15,15 @@ use Yajra\DataTables\Services\DataTable;
 
 class PaymentDataTable extends DataTable
 {
+    protected ?int $accountId = null;
+
+    public function forAccount(int $accountId): self
+    {
+        $this->accountId = $accountId;
+
+        return $this;
+    }
+
     /**
      * Build the DataTable class.
      *
@@ -83,7 +92,19 @@ class PaymentDataTable extends DataTable
             })
             ->editColumn('account_id', function ($data)
             {
-                return $data->account?->name ?? '<span class="text-muted">-</span>';
+                if (! $data->account)
+                {
+                    return '<span class="text-muted">-</span>';
+                }
+
+                if (auth()->user()?->can('view', $data->account))
+                {
+                    return '<a href="'.e(route('payment-account.show', $data->account)).'" class="text-body">'
+                        .e($data->account->name)
+                        .'</a>';
+                }
+
+                return e($data->account->name);
             })
             ->editColumn('type_id', function ($data)
             {
@@ -113,6 +134,11 @@ class PaymentDataTable extends DataTable
                 'account' => fn ($query) => $query->withoutGlobalScope('activeStatus')->with('currency'),
             ]);
 
+        if ($this->accountId !== null)
+        {
+            $query->where('account_id', $this->accountId);
+        }
+
         return app(PaymentSummaryService::class)->applyStatusFilter(
             $query,
             request()->input('status_filter'),
@@ -121,16 +147,16 @@ class PaymentDataTable extends DataTable
 
     public function html(): HtmlBuilder
     {
-        return $this
+        $tableId = $this->accountId !== null
+            ? 'payment-account-movements-table'
+            : 'payment-table';
+
+        $builder = $this
             ->builder()
-            ->setTableId('payment-table')
+            ->setTableId($tableId)
             ->columns($this->getColumns())
-            ->minifiedAjax(
-                '',
-                "data.status_filter = ($('#payment-status-filter').val() || 'all');",
-            )
             ->dom('frtip')
-            ->orderBy(2, 'desc')
+            ->orderBy($this->accountId !== null ? 1 : 2, 'desc')
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)
@@ -140,7 +166,7 @@ class PaymentDataTable extends DataTable
                 'select' => false,
                 'autoWidth' => false,
                 'drawCallback' => 'function() {
-					$("#payment-table tbody tr").css({
+					$("#'.$tableId.' tbody tr").css({
 						"user-select": "none",
 						"-webkit-user-select": "none",
 						"-moz-user-select": "none",
@@ -148,11 +174,21 @@ class PaymentDataTable extends DataTable
 					});
 				}',
             ]);
+
+        if ($this->accountId !== null)
+        {
+            return $builder->minifiedAjax();
+        }
+
+        return $builder->minifiedAjax(
+            '',
+            "data.status_filter = ($('#payment-status-filter').val() || 'all');",
+        );
     }
 
     public function getColumns(): array
     {
-        return [
+        $columns = [
             Column::make('id')->hidden(),
             Column::computed('transaction_indicator')
                 ->title('')
@@ -174,21 +210,28 @@ class PaymentDataTable extends DataTable
                 ->addClass('all')
                 ->searchable(true)
                 ->orderable(false),
-            Column::make('account_id')
-                ->title(__('Account'))
-                ->addClass('min-desktop'),
-            Column::make('type_id')
-                ->title(__('Type'))
-                ->addClass('min-desktop'),
-            Column::make('amount')
-                ->title(__('Amount'))
-                ->addClass('min-tablet')
-                ->className('text-end'),
-            Column::make('status')
-                ->title(__('Status'))
-                ->addClass('min-phone')
-                ->className('text-center'),
         ];
+
+        if ($this->accountId === null)
+        {
+            $columns[] = Column::make('account_id')
+                ->title(__('Account'))
+                ->addClass('min-desktop');
+        }
+
+        $columns[] = Column::make('type_id')
+            ->title(__('Type'))
+            ->addClass('min-desktop');
+        $columns[] = Column::make('amount')
+            ->title(__('Amount'))
+            ->addClass('min-tablet')
+            ->className('text-end');
+        $columns[] = Column::make('status')
+            ->title(__('Status'))
+            ->addClass('min-phone')
+            ->className('text-center');
+
+        return $columns;
     }
 
     protected function filename(): string
