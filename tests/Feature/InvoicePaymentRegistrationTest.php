@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\PaymentAccount;
-use App\Models\PaymentType;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -46,16 +45,16 @@ class InvoicePaymentRegistrationTest extends TestCase
             'status_id' => 1,
         ]);
 
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
         $account = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
             'symbol' => '$',
             'currency_id' => 32,
             'status' => 1,
         ]);
-
-        $type = PaymentType::query()->create(['name' => 'Transferencia']);
 
         $invoice = Invoice::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -78,7 +77,7 @@ class InvoicePaymentRegistrationTest extends TestCase
                 'amount' => 100,
                 'date' => now()->toDateString(),
                 'account_id' => $account->id,
-                'type_id' => $type->id,
+                'type_id' => 1,
             ])
             ->assertRedirect(route('invoice.show', $invoice->id))
             ->assertSessionHas('success');
@@ -104,16 +103,16 @@ class InvoicePaymentRegistrationTest extends TestCase
         $team->users()->attach($member, ['role' => 'admin']);
         $member->forceFill(['current_team_id' => $team->id])->save();
 
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
         $account = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
             'symbol' => '$',
             'currency_id' => 32,
             'status' => 1,
         ]);
-
-        $type = PaymentType::query()->create(['name' => 'Transferencia']);
 
         $enterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -144,7 +143,7 @@ class InvoicePaymentRegistrationTest extends TestCase
                 'amount' => 50,
                 'date' => now()->toDateString(),
                 'account_id' => $account->id,
-                'type_id' => $type->id,
+                'type_id' => 1,
             ]);
 
         $this->assertTrue(
@@ -157,7 +156,7 @@ class InvoicePaymentRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_invoice_show_displays_electronic_payment_form_only_for_team_owner(): void
+    public function test_invoice_show_displays_payment_forms_only_for_team_owner(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $owner->assignRole('admin');
@@ -165,10 +164,12 @@ class InvoicePaymentRegistrationTest extends TestCase
 
         $owner->forceFill(['current_team_id' => $team->id])->save();
 
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
         PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
             'symbol' => '$',
             'currency_id' => 32,
             'status' => 1,
@@ -206,12 +207,13 @@ class InvoicePaymentRegistrationTest extends TestCase
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
             ->assertSee(__('invoice_payment.electronic_title'), false)
-            ->assertDontSee(__('invoice_payment.register_title'), false);
+            ->assertSee(__('invoice_payment.register_title'), false);
 
         $this->actingAs($member)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.electronic_title'), false);
+            ->assertDontSee(__('invoice_payment.electronic_title'), false)
+            ->assertDontSee(__('invoice_payment.register_title'), false);
     }
 
     public function test_invoice_show_hides_electronic_payment_form_when_balance_is_zero(): void
@@ -256,7 +258,8 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.electronic_title'), false);
+            ->assertDontSee(__('invoice_payment.electronic_title'), false)
+            ->assertDontSee(__('invoice_payment.register_title'), false);
     }
 
     public function test_team_owner_can_link_mercadopago_sync_from_invoice_show(): void

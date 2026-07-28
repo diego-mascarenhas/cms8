@@ -245,6 +245,10 @@ class InvoiceController extends Controller
         $electronicPaymentSyncOptions = $canLinkElectronicPayment
             ? $this->invoiceElectronicPaymentLinkService->syncOptions($invoice)
             : [];
+        $canRegisterPayment = $this->invoicePaymentRegistrationService->canRegisterPayment(auth()->user(), $invoice);
+        $paymentFormDefaults = $canRegisterPayment
+            ? $this->invoicePaymentRegistrationService->formDefaults($invoice)
+            : null;
         $canShowCreditNoteForm = $this->invoiceCreditNoteService->canShowCreditNoteForm(auth()->user(), $invoice);
         $canIssueCreditNote = $this->invoiceCreditNoteService->canIssueCreditNote(auth()->user(), $invoice);
         $creditNoteReasons = InvoiceCreditNoteService::STRIPE_REASONS;
@@ -268,6 +272,8 @@ class InvoiceController extends Controller
             'displayLineItems',
             'canLinkElectronicPayment',
             'electronicPaymentSyncOptions',
+            'canRegisterPayment',
+            'paymentFormDefaults',
             'canShowCreditNoteForm',
             'canIssueCreditNote',
             'creditNoteReasons',
