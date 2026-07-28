@@ -51,6 +51,11 @@ class PaymentAccount extends Model
         return $this->hasMany(Payment::class, 'account_id');
     }
 
+    public function bankStatements()
+    {
+        return $this->hasMany(BankStatement::class);
+    }
+
     /**
      * CRUD routes must resolve inactive accounts; operational flows keep the activeStatus scope.
      */
