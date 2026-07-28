@@ -259,6 +259,14 @@
           <i class="ti ti-arrow-left ti-xs me-2"></i>
           {{ __('Back to List') }}
         </a>
+        @if ($invoice->enterprise)
+          @can('view', $invoice->enterprise)
+          <a class="btn btn-label-secondary d-grid w-100 mb-2" href="{{ route('client.show', $invoice->enterprise->id) }}">
+            <i class="ti ti-building ti-xs me-2"></i>
+            {{ __('Ver empresa') }}
+          </a>
+          @endcan
+        @endif
         @if ($invoicePrintUrl)
         <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoicePrintUrl }}">
           <i class="ti ti-printer ti-xs me-2"></i>

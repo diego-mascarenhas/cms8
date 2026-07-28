@@ -382,7 +382,7 @@
                                                     {{ $invoice->number ?: '—' }}
                                                 @endcan
                                             </td>
-                                            <td>{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d/m/Y') : '—' }}</td>
+                                            <td data-order="{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('Y-m-d') : '' }}">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d/m/Y') : '—' }}</td>
                                             <td>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '—' }}</td>
                                             <td class="text-end text-nowrap">{{ number_format((float) ($invoice->total_amount ?? 0), 2) }} <span class="text-muted">{{ $invoice->currency_code }}</span></td>
                                             <td class="text-end text-nowrap">{{ number_format((float) ($invoice->balance ?? 0), 2) }} <span class="text-muted">{{ $invoice->currency_code }}</span></td>
@@ -703,7 +703,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pageLength: 5,
             lengthChange: false,
             ordering: true,
-            order: [[0, 'desc']],
+            order: [[2, 'desc']],
             responsive: true,
             columnDefs: [
                 { targets: 0, visible: false, searchable: false },
