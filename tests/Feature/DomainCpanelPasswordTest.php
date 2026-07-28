@@ -89,7 +89,7 @@ class DomainCpanelPasswordTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('domain.cpanel-password', $domain->id), [
             'password' => 'NewSecure123!',
-            'contact_id' => $contact->id,
+            'notify_to' => (string) $contact->id,
             'notify_channel' => 'whatsapp',
         ]);
 
@@ -154,7 +154,7 @@ class DomainCpanelPasswordTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('domain.cpanel-password', $domain->id), [
             'password' => 'EmailSecure123!',
-            'contact_id' => $contact->id,
+            'notify_to' => (string) $contact->id,
             'notify_channel' => 'email',
         ]);
 
@@ -163,6 +163,58 @@ class DomainCpanelPasswordTest extends TestCase
         $this->assertStringContainsString('email', (string) session('success'));
 
         \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\SendNotificationJob::class);
+    }
+
+    public function test_reset_cpanel_password_can_notify_hosting_plan_email(): void
+    {
+        Http::fake([
+            'https://cpanel.test:2087/json-api/passwd*' => Http::response([
+                'metadata' => ['result' => 1],
+            ]),
+        ]);
+
+        \Illuminate\Support\Facades\Mail::fake();
+
+        [$user, $domain] = $this->createDomainWithServer([
+            'data' => [
+                'email' => 'jmgaraban@hotmail.com',
+                'plan' => 'revision_beginner',
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->post(route('domain.cpanel-password', $domain->id), [
+            'password' => 'HostingSecure123!',
+            'notify_to' => 'hosting',
+            'notify_channel' => 'email',
+        ]);
+
+        $response->assertRedirect(route('domain.show', $domain->id));
+        $response->assertSessionHas('success');
+        $this->assertStringContainsString('jmgaraban@hotmail.com', (string) session('success'));
+        $this->assertStringContainsString('plan de hosting', (string) session('success'));
+
+        \Illuminate\Support\Facades\Mail::assertSent(\App\Mail\CpanelAccessCredentialsMail::class, function ($mail)
+        {
+            return $mail->hasTo('jmgaraban@hotmail.com')
+                && str_contains($mail->bodyText, 'Usuario: siteuser');
+        });
+    }
+
+    public function test_domain_show_offers_hosting_plan_email_as_recipient(): void
+    {
+        Http::fake();
+
+        [$user, $domain] = $this->createDomainWithServer([
+            'data' => [
+                'email' => 'jmgaraban@hotmail.com',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('domain.show', $domain->id))
+            ->assertOk()
+            ->assertSee('Email del plan de hosting', false)
+            ->assertSee('jmgaraban@hotmail.com', false);
     }
 
     public function test_reset_cpanel_password_surfaces_whm_passwd_status_message(): void

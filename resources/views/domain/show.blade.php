@@ -643,7 +643,19 @@
 
                     @php
                         $notifiableContacts = collect($cpanelNotifiableContacts ?? []);
-                        $defaultChannel = old('notify_channel', $notifiableContacts->contains(fn ($c) => $c['can_whatsapp']) ? 'whatsapp' : ($notifiableContacts->contains(fn ($c) => $c['can_email']) ? 'email' : 'none'));
+                        $hostingPlanEmail = $cpanelHostingPlanEmail ?? null;
+                        $hasEmailRecipients = filled($hostingPlanEmail) || $notifiableContacts->contains(fn ($c) => $c['can_email']);
+                        $hasWhatsAppRecipients = $notifiableContacts->contains(fn ($c) => $c['can_whatsapp']);
+                        $defaultChannel = old(
+                            'notify_channel',
+                            $hasWhatsAppRecipients ? 'whatsapp' : ($hasEmailRecipients ? 'email' : 'none')
+                        );
+                        $defaultNotifyTo = old(
+                            'notify_to',
+                            $defaultChannel === 'email' && ! $notifiableContacts->contains(fn ($c) => $c['can_email']) && filled($hostingPlanEmail)
+                                ? 'hosting'
+                                : (string) ($notifiableContacts->first()['id'] ?? '')
+                        );
                     @endphp
 
                     <div class="mb-3">
@@ -654,11 +666,11 @@
                                 <label class="form-check-label" for="notify_channel_none">No enviar</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_whatsapp" value="whatsapp" @checked($defaultChannel === 'whatsapp') @disabled($notifiableContacts->where('can_whatsapp', true)->isEmpty())>
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_whatsapp" value="whatsapp" @checked($defaultChannel === 'whatsapp') @disabled(! $hasWhatsAppRecipients)>
                                 <label class="form-check-label" for="notify_channel_whatsapp">WhatsApp</label>
                             </div>
                             <div class="form-check">
-                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_email" value="email" @checked($defaultChannel === 'email') @disabled($notifiableContacts->where('can_email', true)->isEmpty())>
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_email" value="email" @checked($defaultChannel === 'email') @disabled(! $hasEmailRecipients)>
                                 <label class="form-check-label" for="notify_channel_email">Email</label>
                             </div>
                         </div>
@@ -667,10 +679,23 @@
                         @enderror
                     </div>
 
-                    @if($notifiableContacts->isNotEmpty())
+                    @if($hasEmailRecipients || $hasWhatsAppRecipients)
                     <div class="mb-3" id="cpanel-contact-wrap">
-                        <label for="cpanel_contact_id" class="form-label">Destinatario</label>
-                        <select name="contact_id" id="cpanel_contact_id" class="form-select @error('contact_id') is-invalid @enderror">
+                        <label for="cpanel_notify_to" class="form-label">Destinatario</label>
+                        <select name="notify_to" id="cpanel_notify_to" class="form-select @error('notify_to') is-invalid @enderror">
+                            @if(filled($hostingPlanEmail))
+                                <option
+                                    value="hosting"
+                                    data-can-whatsapp="0"
+                                    data-can-email="1"
+                                    data-email="{{ $hostingPlanEmail }}"
+                                    data-name="Email del plan de hosting"
+                                    data-source="hosting"
+                                    @selected($defaultNotifyTo === 'hosting')
+                                >
+                                    Email del plan de hosting ({{ $hostingPlanEmail }})
+                                </option>
+                            @endif
                             @foreach($notifiableContacts as $contact)
                                 <option
                                     value="{{ $contact['id'] }}"
@@ -679,19 +704,21 @@
                                     data-whatsapp="{{ $contact['whatsapp'] ?? '' }}"
                                     data-email="{{ $contact['email'] ?? '' }}"
                                     data-name="{{ $contact['name'] }}"
-                                    @selected((string) old('contact_id') === (string) $contact['id'])
+                                    data-source="contact"
+                                    @selected((string) $defaultNotifyTo === (string) $contact['id'])
                                 >
                                     {{ $contact['name'] }}
                                 </option>
                             @endforeach
                         </select>
-                        @error('contact_id')
+                        @error('notify_to')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                         <div class="alert alert-info mt-2 mb-0 py-2 px-3" id="cpanel-recipient-preview">
                             <small class="text-muted d-block mb-1">Se enviará a:</small>
                             <strong id="cpanel-recipient-name">—</strong>
                             <div id="cpanel-recipient-detail" class="small text-break"></div>
+                            <div id="cpanel-recipient-source" class="small text-muted mt-1"></div>
                         </div>
                         <p class="form-text mb-0 mt-2" id="cpanel-whatsapp-chat-hint">
                             Si enviás por WhatsApp, el mensaje queda en el chat del contacto.
@@ -699,7 +726,7 @@
                     </div>
                     @else
                     <div class="alert alert-warning mb-0">
-                        No hay contactos con WhatsApp o email vinculados al cliente de este hosting. La contraseña se actualizará y se mostrará en pantalla.
+                        No hay contactos con WhatsApp/email ni email del plan de hosting. La contraseña se actualizará y se mostrará en pantalla.
                     </div>
                     @endif
                 </div>
@@ -770,7 +797,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    @if($errors->has('email') || $errors->has('password') || $errors->has('contact_id') || $errors->has('notify_channel'))
+    @if($errors->has('email') || $errors->has('password') || $errors->has('contact_id') || $errors->has('notify_channel') || $errors->has('notify_to'))
         @if(old('email') && !str_contains(old('email'), '@'))
             const createModal = document.getElementById('createEmailModal');
 
@@ -778,7 +805,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 bootstrap.Modal.getOrCreateInstance(createModal).show();
             }
-        @elseif(old('notify_channel') !== null || old('contact_id') !== null)
+        @elseif(old('notify_channel') !== null || old('notify_to') !== null || old('contact_id') !== null)
             const cpanelPasswordModal = document.getElementById('resetCpanelPasswordModal');
 
             if (cpanelPasswordModal)
@@ -840,10 +867,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const cpanelContactSelect = document.getElementById('cpanel_contact_id');
+    const cpanelNotifyToSelect = document.getElementById('cpanel_notify_to');
     const cpanelContactWrap = document.getElementById('cpanel-contact-wrap');
     const cpanelRecipientName = document.getElementById('cpanel-recipient-name');
     const cpanelRecipientDetail = document.getElementById('cpanel-recipient-detail');
+    const cpanelRecipientSource = document.getElementById('cpanel-recipient-source');
     const cpanelWhatsappHint = document.getElementById('cpanel-whatsapp-chat-hint');
     const cpanelSubmitLabel = document.getElementById('cpanel-submit-label');
     const cpanelChannelInputs = document.querySelectorAll('.cpanel-notify-channel');
@@ -855,7 +883,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function refreshCpanelRecipientPreview() {
-        if (!cpanelContactSelect || !cpanelContactWrap)
+        if (!cpanelNotifyToSelect || !cpanelContactWrap)
         {
             return;
         }
@@ -864,9 +892,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const shouldSend = channel === 'whatsapp' || channel === 'email';
 
         cpanelContactWrap.classList.toggle('d-none', !shouldSend);
-        cpanelContactSelect.disabled = !shouldSend;
+        cpanelNotifyToSelect.disabled = !shouldSend;
 
-        Array.from(cpanelContactSelect.options).forEach(function (option) {
+        Array.from(cpanelNotifyToSelect.options).forEach(function (option) {
             const canWhatsapp = option.dataset.canWhatsapp === '1';
             const canEmail = option.dataset.canEmail === '1';
             const visible = channel === 'whatsapp' ? canWhatsapp : (channel === 'email' ? canEmail : true);
@@ -874,22 +902,26 @@ document.addEventListener('DOMContentLoaded', function () {
             option.disabled = !visible;
         });
 
-        const visibleOptions = Array.from(cpanelContactSelect.options).filter(function (option) {
+        const visibleOptions = Array.from(cpanelNotifyToSelect.options).filter(function (option) {
             return !option.disabled && !option.hidden;
         });
 
-        if (shouldSend && visibleOptions.length && (cpanelContactSelect.selectedOptions[0]?.disabled || cpanelContactSelect.selectedOptions[0]?.hidden))
+        if (shouldSend && visibleOptions.length && (cpanelNotifyToSelect.selectedOptions[0]?.disabled || cpanelNotifyToSelect.selectedOptions[0]?.hidden))
         {
-            cpanelContactSelect.value = visibleOptions[0].value;
+            cpanelNotifyToSelect.value = visibleOptions[0].value;
         }
 
-        const selected = cpanelContactSelect.selectedOptions[0];
+        const selected = cpanelNotifyToSelect.selectedOptions[0];
         if (cpanelRecipientName && cpanelRecipientDetail)
         {
             if (!shouldSend || !selected || selected.disabled)
             {
                 cpanelRecipientName.textContent = '—';
                 cpanelRecipientDetail.textContent = '';
+                if (cpanelRecipientSource)
+                {
+                    cpanelRecipientSource.textContent = '';
+                }
             }
             else
             {
@@ -897,6 +929,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 cpanelRecipientDetail.textContent = channel === 'email'
                     ? ('Email: ' + (selected.dataset.email || '—'))
                     : ('WhatsApp: ' + (selected.dataset.whatsapp || '—'));
+                if (cpanelRecipientSource)
+                {
+                    cpanelRecipientSource.textContent = selected.dataset.source === 'hosting'
+                        ? 'Origen: email del plan de hosting (cPanel)'
+                        : 'Origen: contacto del cliente';
+                }
             }
         }
 
@@ -926,9 +964,9 @@ document.addEventListener('DOMContentLoaded', function () {
         input.addEventListener('change', refreshCpanelRecipientPreview);
     });
 
-    if (cpanelContactSelect)
+    if (cpanelNotifyToSelect)
     {
-        cpanelContactSelect.addEventListener('change', refreshCpanelRecipientPreview);
+        cpanelNotifyToSelect.addEventListener('change', refreshCpanelRecipientPreview);
     }
 
     refreshCpanelRecipientPreview();

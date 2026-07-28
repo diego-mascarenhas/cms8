@@ -2,12 +2,14 @@
 
 namespace App\Services\Hosting;
 
+use App\Mail\CpanelAccessCredentialsMail;
 use App\Models\Contact;
 use App\Models\Domain;
 use App\Models\User;
 use App\Services\ContactOutreachService;
 use App\Services\ControlPanel\ControlPanelManager;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -19,10 +21,19 @@ class DomainCpanelPasswordService
 
     public const NOTIFY_EMAIL = 'email';
 
+    public const NOTIFY_TO_HOSTING = 'hosting';
+
     public function __construct(
         private readonly ControlPanelManager $controlPanelManager,
         private readonly ContactOutreachService $contactOutreachService,
     ) {}
+
+    public function hostingPlanEmail(Domain $domain): ?string
+    {
+        $email = trim((string) data_get($domain->data, 'email', ''));
+
+        return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : null;
+    }
 
     /**
      * @return Collection<int, array{
@@ -71,22 +82,6 @@ class DomainCpanelPasswordService
             ->values();
     }
 
-    /**
-     * @return Collection<int, Contact>
-     */
-    public function whatsappContactsForDomain(Domain $domain): Collection
-    {
-        $ids = $this->notifiableContactsForDomain($domain)
-            ->where('can_whatsapp', true)
-            ->pluck('id');
-
-        $domain->loadMissing('service.enterprise.contacts');
-
-        return ($domain->service?->enterprise?->contacts ?? collect())
-            ->whereIn('id', $ids)
-            ->values();
-    }
-
     public function generatePassword(): string
     {
         return Str::password(16, letters: true, numbers: true, symbols: true);
@@ -96,9 +91,11 @@ class DomainCpanelPasswordService
      * @return array{
      *     success: bool,
      *     password?: string,
+     *     access_message?: string,
      *     notified?: bool,
      *     channel?: string|null,
      *     recipient?: string|null,
+     *     recipient_source?: string|null,
      *     error?: string,
      *     warning?: string,
      * }
@@ -106,7 +103,7 @@ class DomainCpanelPasswordService
     public function resetAndOptionallyNotify(
         User $user,
         Domain $domain,
-        ?int $contactId = null,
+        ?string $notifyTo = null,
         string $notifyChannel = self::NOTIFY_WHATSAPP,
         ?string $password = null,
     ): array {
@@ -133,6 +130,7 @@ class DomainCpanelPasswordService
             : self::NOTIFY_NONE;
 
         $password = filled($password) ? (string) $password : $this->generatePassword();
+        $accessMessage = $this->buildAccessMessage($domain, $password);
 
         $result = $this->controlPanelManager
             ->forServer($domain->server)
@@ -149,10 +147,11 @@ class DomainCpanelPasswordService
         $response = [
             'success' => true,
             'password' => $password,
-            'access_message' => $this->buildAccessMessage($domain, $password),
+            'access_message' => $accessMessage,
             'notified' => false,
             'channel' => null,
             'recipient' => null,
+            'recipient_source' => null,
         ];
 
         if ($notifyChannel === self::NOTIFY_NONE)
@@ -160,33 +159,61 @@ class DomainCpanelPasswordService
             return $response;
         }
 
-        $contact = $this->resolveContact($domain, $contactId, $notifyChannel);
-        if (! $contact instanceof Contact)
+        $notifyTo = $notifyTo !== null ? trim($notifyTo) : null;
+        if ($notifyTo === null || $notifyTo === '')
         {
-            $channelLabel = $notifyChannel === self::NOTIFY_EMAIL ? 'email' : 'WhatsApp';
-
-            return array_merge($response, [
-                'warning' => 'Contraseña actualizada, pero no hay un contacto con '.$channelLabel.' para enviar los datos.',
-            ]);
+            $notifyTo = $this->defaultNotifyTo($domain, $notifyChannel);
         }
-
-        $recipient = $notifyChannel === self::NOTIFY_EMAIL
-            ? (string) $contact->email
-            : (string) $contact->getWhatsAppNumber();
 
         try
         {
+            if ($notifyChannel === self::NOTIFY_EMAIL && $notifyTo === self::NOTIFY_TO_HOSTING)
+            {
+                $hostingEmail = $this->hostingPlanEmail($domain);
+                if ($hostingEmail === null)
+                {
+                    return array_merge($response, [
+                        'warning' => 'Contraseña actualizada, pero el plan de hosting no tiene un email válido.',
+                    ]);
+                }
+
+                $this->sendHostingPlanEmail($user, $hostingEmail, 'Acceso cPanel '.$domain->domain, $accessMessage);
+
+                $response['notified'] = true;
+                $response['channel'] = self::NOTIFY_EMAIL;
+                $response['recipient'] = $hostingEmail;
+                $response['recipient_source'] = self::NOTIFY_TO_HOSTING;
+
+                return $response;
+            }
+
+            $contactId = is_numeric($notifyTo) ? (int) $notifyTo : null;
+            $contact = $this->resolveContact($domain, $contactId, $notifyChannel);
+            if (! $contact instanceof Contact)
+            {
+                $channelLabel = $notifyChannel === self::NOTIFY_EMAIL ? 'email' : 'WhatsApp';
+
+                return array_merge($response, [
+                    'warning' => 'Contraseña actualizada, pero no hay un contacto con '.$channelLabel.' para enviar los datos.',
+                ]);
+            }
+
+            $recipient = $notifyChannel === self::NOTIFY_EMAIL
+                ? (string) $contact->email
+                : (string) $contact->getWhatsAppNumber();
+
             $this->contactOutreachService->send(
                 $user,
                 $contact,
                 $notifyChannel,
-                $this->buildAccessMessage($domain, $password),
+                $accessMessage,
                 'Acceso cPanel '.$domain->domain,
             );
 
             $response['notified'] = true;
             $response['channel'] = $notifyChannel;
             $response['recipient'] = $recipient;
+            $response['recipient_source'] = 'contact';
         } catch (ValidationException $exception)
         {
             $message = collect($exception->errors())->flatten()->filter()->first();
@@ -195,6 +222,11 @@ class DomainCpanelPasswordService
             return array_merge($response, [
                 'warning' => 'Contraseña actualizada, pero no se pudo enviar por '.$channelLabel
                     .($message ? ': '.$message : '.'),
+            ]);
+        } catch (\Throwable $exception)
+        {
+            return array_merge($response, [
+                'warning' => 'Contraseña actualizada, pero no se pudo enviar el email: '.$exception->getMessage(),
             ]);
         }
 
@@ -215,6 +247,36 @@ class DomainCpanelPasswordService
             '',
             'Te recomendamos guardar esta contraseña en un lugar seguro y cambiarla si lo preferís.',
         ]);
+    }
+
+    private function defaultNotifyTo(Domain $domain, string $notifyChannel): ?string
+    {
+        if ($notifyChannel === self::NOTIFY_EMAIL)
+        {
+            $contact = $this->notifiableContactsForDomain($domain)->firstWhere('can_email', true);
+            if ($contact !== null)
+            {
+                return (string) $contact['id'];
+            }
+
+            return $this->hostingPlanEmail($domain) !== null ? self::NOTIFY_TO_HOSTING : null;
+        }
+
+        $contact = $this->notifiableContactsForDomain($domain)->firstWhere('can_whatsapp', true);
+
+        return $contact !== null ? (string) $contact['id'] : null;
+    }
+
+    private function sendHostingPlanEmail(User $user, string $email, string $subject, string $message): void
+    {
+        $mailable = new CpanelAccessCredentialsMail($subject, $message);
+
+        if (filled($user->email))
+        {
+            $mailable->replyTo((string) $user->email, (string) ($user->name ?? $user->email));
+        }
+
+        Mail::to($email)->send($mailable);
     }
 
     private function resolveContact(Domain $domain, ?int $contactId, string $notifyChannel): ?Contact

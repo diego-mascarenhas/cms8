@@ -88,6 +88,7 @@ class DomainController extends Controller
         $accountDisk = $domain->getCachedAccountDisk();
         $controlPanelError = $domain->getCachedControlPanelError();
         $cpanelNotifiableContacts = $this->domainCpanelPasswordService->notifiableContactsForDomain($domain);
+        $cpanelHostingPlanEmail = $this->domainCpanelPasswordService->hostingPlanEmail($domain);
         $canResetCpanelPassword = ($controlPanelType === 'cpanel')
             && $domain->server?->hasToken()
             && ! $accountIsSuspended
@@ -122,6 +123,7 @@ class DomainController extends Controller
             'webmailUrl',
             'cpanelUrl',
             'cpanelNotifiableContacts',
+            'cpanelHostingPlanEmail',
             'canResetCpanelPassword',
         ));
     }
@@ -352,7 +354,7 @@ class DomainController extends Controller
         $result = $this->domainCpanelPasswordService->resetAndOptionallyNotify(
             $request->user(),
             $domain,
-            isset($validated['contact_id']) ? (int) $validated['contact_id'] : null,
+            isset($validated['notify_to']) ? (string) $validated['notify_to'] : null,
             (string) ($validated['notify_channel'] ?? 'none'),
             $validated['password'] ?? null,
         );
@@ -377,11 +379,15 @@ class DomainController extends Controller
         {
             $channelLabel = ($result['channel'] ?? '') === 'email' ? 'email' : 'WhatsApp';
             $recipient = $result['recipient'] ?? '';
+            $sourceNote = ($result['recipient_source'] ?? '') === 'hosting'
+                ? ' (email del plan de hosting)'
+                : '';
 
             return $redirect->with(
                 'success',
                 'Contraseña de cPanel actualizada y enviada por '.$channelLabel
-                    .($recipient !== '' ? ' a '.$recipient : '').'.',
+                    .($recipient !== '' ? ' a '.$recipient : '')
+                    .$sourceNote.'.',
             );
         }
 

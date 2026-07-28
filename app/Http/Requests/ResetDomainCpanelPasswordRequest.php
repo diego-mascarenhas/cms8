@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Services\Hosting\DomainCpanelPasswordService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -23,12 +24,36 @@ class ResetDomainCpanelPasswordRequest extends FormRequest
         return [
             'password' => ['nullable', 'string', 'max:255', Password::min(12)->letters()->mixedCase()->numbers()->symbols()],
             'notify_channel' => ['required', Rule::in(['none', 'whatsapp', 'email'])],
-            'contact_id' => [
+            'notify_to' => [
                 Rule::requiredIf(in_array($channel, ['whatsapp', 'email'], true)),
                 'nullable',
-                'integer',
-                'exists:contacts,id',
+                'string',
+                function (string $attribute, mixed $value, \Closure $fail) use ($channel): void
+                {
+                    if (! in_array($channel, ['whatsapp', 'email'], true) || $value === null || $value === '')
+                    {
+                        return;
+                    }
+
+                    $value = (string) $value;
+
+                    if ($value === DomainCpanelPasswordService::NOTIFY_TO_HOSTING)
+                    {
+                        if ($channel !== 'email')
+                        {
+                            $fail('El email del plan de hosting solo se puede usar con el canal email.');
+                        }
+
+                        return;
+                    }
+
+                    if (! ctype_digit($value))
+                    {
+                        $fail('El destinatario seleccionado no es válido.');
+                    }
+                },
             ],
+            'contact_id' => ['nullable', 'integer', 'exists:contacts,id'],
         ];
     }
 
@@ -41,8 +66,7 @@ class ResetDomainCpanelPasswordRequest extends FormRequest
             'password.min' => 'La contraseña debe tener al menos 12 caracteres.',
             'notify_channel.required' => 'Indicá cómo querés enviar los datos de acceso.',
             'notify_channel.in' => 'El canal de envío no es válido.',
-            'contact_id.required' => 'Seleccioná el contacto al que se enviarán los datos.',
-            'contact_id.exists' => 'El contacto seleccionado no es válido.',
+            'notify_to.required' => 'Seleccioná el destinatario al que se enviarán los datos.',
         ];
     }
 
@@ -50,7 +74,6 @@ class ResetDomainCpanelPasswordRequest extends FormRequest
     {
         if (! $this->filled('notify_channel'))
         {
-            // Backward compatibility with the previous checkbox.
             if ($this->has('send_whatsapp'))
             {
                 $this->merge([
@@ -60,6 +83,13 @@ class ResetDomainCpanelPasswordRequest extends FormRequest
             {
                 $this->merge(['notify_channel' => 'whatsapp']);
             }
+        }
+
+        if (! $this->filled('notify_to') && $this->filled('contact_id'))
+        {
+            $this->merge([
+                'notify_to' => (string) $this->input('contact_id'),
+            ]);
         }
     }
 }
