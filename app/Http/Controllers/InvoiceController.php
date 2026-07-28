@@ -219,7 +219,8 @@ class InvoiceController extends Controller
     public function show($id): View
     {
         $invoice = Invoice::with([
-            'enterprise',
+            'enterprise.enterpriseBillingAddresses.taxStatusType',
+            'billingAddress.taxStatusType',
             'items.category',
             'type',
             'stripeInvoiceSync',

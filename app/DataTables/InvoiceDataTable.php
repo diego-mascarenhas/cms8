@@ -316,11 +316,7 @@ class InvoiceDataTable extends DataTable
                 ->addClass('min-desktop')
                 ->className('text-end')
                 ->searchable(false),
-            Column::make('balance')
-                ->title(__('Balance'))
-                ->addClass('min-desktop')
-                ->className('text-end')
-                ->searchable(false),
+            Column::make('balance')->hidden(),
             Column::make('status')
                 ->title(__('Status'))
                 ->addClass('min-phone')
