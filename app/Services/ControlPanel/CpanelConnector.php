@@ -407,6 +407,92 @@ class CpanelConnector implements ControlPanelConnector
         }
     }
 
+    public function changeAccountPassword(Server $server, Domain $domain, string $password): array
+    {
+        if (! $this->supports($server) || ! $server->hasToken())
+        {
+            return [
+                'success' => false,
+                'error' => 'Server is not configured for cPanel or missing token',
+            ];
+        }
+
+        $username = trim((string) $domain->username);
+        if ($username === '')
+        {
+            return [
+                'success' => false,
+                'error' => 'Domain does not have a cPanel username.',
+            ];
+        }
+
+        $params = [
+            'user' => $username,
+            'pass' => $password,
+            'password' => $password,
+            'db_pass_update' => 1,
+        ];
+
+        try
+        {
+            $response = $server->usesCpanelAccountAuth()
+                ? $this->whmBasicAuthRequest($server, '/json-api/passwd', $params)
+                : $this->whmRequest($server, '/json-api/passwd', $params);
+
+            if (! $response->successful())
+            {
+                Log::warning('cPanel passwd HTTP error', [
+                    'server_id' => $server->id,
+                    'domain' => $domain->domain,
+                    'username' => $username,
+                    'status' => $response->status(),
+                    'body' => $response->body(),
+                ]);
+
+                $payload = $response->json();
+
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage(
+                        is_array($payload) ? $payload : [],
+                        $response->body(),
+                    ),
+                ];
+            }
+
+            $payload = $response->json();
+
+            if (! is_array($payload) || ! $this->isWhmJsonApiSuccessful($payload))
+            {
+                Log::warning('cPanel passwd rejected', [
+                    'server_id' => $server->id,
+                    'domain' => $domain->domain,
+                    'username' => $username,
+                    'response' => $payload,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => $this->extractWhmErrorMessage(is_array($payload) ? $payload : []),
+                ];
+            }
+
+            return ['success' => true];
+        } catch (\Exception $e)
+        {
+            Log::error('cPanel passwd failed: '.$e->getMessage(), [
+                'server_id' => $server->id,
+                'domain' => $domain->domain,
+                'username' => $username,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => 'Connection error: '.$e->getMessage(),
+            ];
+        }
+    }
+
     public function setAccountSuspended(Server $server, Domain $domain, bool $suspended): array
     {
         if (! $this->supports($server) || ! $server->hasToken())
@@ -1339,34 +1425,37 @@ class CpanelConnector implements ControlPanelConnector
             return (int) $payload['metadata']['result'] === 1;
         }
 
-        $result = $payload['result'] ?? null;
-
-        if (! is_array($result))
+        foreach (['result', 'passwd'] as $key)
         {
-            return false;
-        }
+            $result = $payload[$key] ?? null;
 
-        if (array_is_list($result))
-        {
-            if ($result === [])
+            if (! is_array($result))
             {
-                return false;
+                continue;
             }
 
-            foreach ($result as $item)
+            if (array_is_list($result))
             {
-                if (! is_array($item) || (int) ($item['status'] ?? 0) !== 1)
+                if ($result === [])
                 {
                     return false;
                 }
+
+                foreach ($result as $item)
+                {
+                    if (! is_array($item) || (int) ($item['status'] ?? 0) !== 1)
+                    {
+                        return false;
+                    }
+                }
+
+                return true;
             }
 
-            return true;
-        }
-
-        if (isset($result['status']))
-        {
-            return (int) $result['status'] === 1;
+            if (isset($result['status']))
+            {
+                return (int) $result['status'] === 1;
+            }
         }
 
         return false;
@@ -1391,23 +1480,26 @@ class CpanelConnector implements ControlPanelConnector
             $messages = array_merge($messages, $this->normalizeWhmOutputLines($metadata['output'] ?? null));
         }
 
-        $result = $payload['result'] ?? null;
-
-        if (is_array($result) && array_is_list($result))
+        foreach (['result', 'passwd'] as $listKey)
         {
-            foreach ($result as $item)
+            $result = $payload[$listKey] ?? null;
+
+            if (is_array($result) && array_is_list($result))
             {
-                if (! is_array($item))
+                foreach ($result as $item)
                 {
-                    continue;
-                }
+                    if (! is_array($item))
+                    {
+                        continue;
+                    }
 
-                if ((int) ($item['status'] ?? 0) !== 1 && ! empty($item['statusmsg']))
-                {
-                    $messages[] = (string) $item['statusmsg'];
-                }
+                    if ((int) ($item['status'] ?? 0) !== 1 && ! empty($item['statusmsg']))
+                    {
+                        $messages[] = (string) $item['statusmsg'];
+                    }
 
-                $messages = array_merge($messages, $this->normalizeWhmOutputLines($item['rawout'] ?? null));
+                    $messages = array_merge($messages, $this->normalizeWhmOutputLines($item['rawout'] ?? null));
+                }
             }
         }
 
@@ -1422,6 +1514,7 @@ class CpanelConnector implements ControlPanelConnector
         }
 
         $cpanelResult = $payload['cpanelresult'] ?? null;
+        $result = $payload['result'] ?? null;
 
         if ($cpanelResult === null && is_array($result) && ! array_is_list($result))
         {
@@ -1473,7 +1566,7 @@ class CpanelConnector implements ControlPanelConnector
             return Str::limit(trim(strip_tags($fallbackBody)), 500);
         }
 
-        return 'WHM could not create the hosting account.';
+        return 'WHM request failed.';
     }
 
     /**

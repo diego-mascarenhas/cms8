@@ -35,6 +35,16 @@
 
 @include('hosting.partials.provisioning-notice')
 
+@if (session('cpanel_password_reset') && session('generated_password'))
+<div class="alert alert-success mb-4">
+    <h5 class="alert-heading mb-2">Contraseña cPanel actualizada</h5>
+    <p class="mb-0">
+        <strong>Nueva contraseña (guárdala ahora, no se volverá a mostrar):</strong>
+        <code class="user-select-all">{{ session('generated_password') }}</code>
+    </p>
+</div>
+@endif
+
 @if (session('success'))
     <div class="alert alert-success alert-dismissible mb-4" role="alert">
         {{ session('success') }}
@@ -150,9 +160,28 @@
     <!-- Main domain details -->
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between">
-                <h5 class="card-title mb-0">Detalle del dominio</h5>
-                <small class="text-muted">Actualizado: {{ $domain->updated_at->diffForHumans() }}</small>
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Detalle del dominio</h5>
+                    <small class="text-muted">Actualizado: {{ $domain->updated_at->diffForHumans() }}</small>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    @if (! empty($cpanelUrl))
+                        <a href="{{ $cpanelUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-label-secondary">
+                            <i class="ti ti-external-link me-1"></i> Abrir cPanel
+                        </a>
+                    @endif
+                    @if ($canResetCpanelPassword ?? false)
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#resetCpanelPasswordModal"
+                        >
+                            <i class="ti ti-key me-1"></i> Nueva contraseña
+                        </button>
+                    @endif
+                </div>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -561,6 +590,119 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="resetCpanelPasswordModal" tabindex="-1" aria-labelledby="resetCpanelPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('domain.cpanel-password', $domain->id) }}" method="POST" id="resetCpanelPasswordForm">
+                @csrf
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetCpanelPasswordModalLabel">Nueva contraseña cPanel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Se generará una nueva contraseña para <strong>{{ $domain->username }}</strong>
+                        @if (! empty($cpanelUrl))
+                            (<code>{{ $cpanelUrl }}</code>)
+                        @endif
+                        y podrás enviarla al cliente por WhatsApp o email.
+                    </p>
+                    <div class="mb-3">
+                        <label for="cpanel_password" class="form-label">Contraseña</label>
+                        <div class="input-group">
+                            <input
+                                type="text"
+                                name="password"
+                                id="cpanel_password"
+                                class="form-control @error('password') is-invalid @enderror"
+                                value="{{ old('password') }}"
+                                autocomplete="new-password"
+                                minlength="12"
+                                placeholder="Se genera automáticamente si la dejás vacía"
+                            >
+                            <button type="button" class="btn btn-outline-secondary" id="generate-cpanel-password" title="Generar contraseña segura">
+                                <i class="ti ti-wand"></i>
+                            </button>
+                        </div>
+                        @error('password')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <div class="form-text">Mínimo 12 caracteres con mayúsculas, minúsculas, números y símbolos. Si queda vacía, Humano la genera.</div>
+                    </div>
+
+                    @php
+                        $notifiableContacts = collect($cpanelNotifiableContacts ?? []);
+                        $defaultChannel = old('notify_channel', $notifiableContacts->contains(fn ($c) => $c['can_whatsapp']) ? 'whatsapp' : ($notifiableContacts->contains(fn ($c) => $c['can_email']) ? 'email' : 'none'));
+                    @endphp
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Enviar datos de acceso</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_none" value="none" @checked($defaultChannel === 'none')>
+                                <label class="form-check-label" for="notify_channel_none">No enviar</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_whatsapp" value="whatsapp" @checked($defaultChannel === 'whatsapp') @disabled($notifiableContacts->where('can_whatsapp', true)->isEmpty())>
+                                <label class="form-check-label" for="notify_channel_whatsapp">WhatsApp</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_email" value="email" @checked($defaultChannel === 'email') @disabled($notifiableContacts->where('can_email', true)->isEmpty())>
+                                <label class="form-check-label" for="notify_channel_email">Email</label>
+                            </div>
+                        </div>
+                        @error('notify_channel')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    @if($notifiableContacts->isNotEmpty())
+                    <div class="mb-3" id="cpanel-contact-wrap">
+                        <label for="cpanel_contact_id" class="form-label">Destinatario</label>
+                        <select name="contact_id" id="cpanel_contact_id" class="form-select @error('contact_id') is-invalid @enderror">
+                            @foreach($notifiableContacts as $contact)
+                                <option
+                                    value="{{ $contact['id'] }}"
+                                    data-can-whatsapp="{{ $contact['can_whatsapp'] ? '1' : '0' }}"
+                                    data-can-email="{{ $contact['can_email'] ? '1' : '0' }}"
+                                    data-whatsapp="{{ $contact['whatsapp'] ?? '' }}"
+                                    data-email="{{ $contact['email'] ?? '' }}"
+                                    data-name="{{ $contact['name'] }}"
+                                    @selected((string) old('contact_id') === (string) $contact['id'])
+                                >
+                                    {{ $contact['name'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('contact_id')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <div class="alert alert-info mt-2 mb-0 py-2 px-3" id="cpanel-recipient-preview">
+                            <small class="text-muted d-block mb-1">Se enviará a:</small>
+                            <strong id="cpanel-recipient-name">—</strong>
+                            <div id="cpanel-recipient-detail" class="small text-break"></div>
+                        </div>
+                        <p class="form-text mb-0 mt-2" id="cpanel-whatsapp-chat-hint">
+                            Si enviás por WhatsApp, el mensaje queda en el chat del contacto.
+                        </p>
+                    </div>
+                    @else
+                    <div class="alert alert-warning mb-0">
+                        No hay contactos con WhatsApp o email vinculados al cliente de este hosting. La contraseña se actualizará y se mostrará en pantalla.
+                    </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="cpanel-submit-btn">
+                        <i class="ti ti-key me-1"></i> <span id="cpanel-submit-label">Generar y aplicar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endif
 @endpush
 
@@ -584,13 +726,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    @if($errors->has('email') || $errors->has('password'))
+    @if($errors->has('email') || $errors->has('password') || $errors->has('contact_id') || $errors->has('notify_channel'))
         @if(old('email') && !str_contains(old('email'), '@'))
             const createModal = document.getElementById('createEmailModal');
 
             if (createModal)
             {
                 bootstrap.Modal.getOrCreateInstance(createModal).show();
+            }
+        @elseif(old('notify_channel') !== null || old('contact_id') !== null)
+            const cpanelPasswordModal = document.getElementById('resetCpanelPasswordModal');
+
+            if (cpanelPasswordModal)
+            {
+                bootstrap.Modal.getOrCreateInstance(cpanelPasswordModal).show();
             }
         @else
             const passwordModal = document.getElementById('changeEmailPasswordModal');
@@ -602,38 +751,144 @@ document.addEventListener('DOMContentLoaded', function () {
         @endif
     @endif
 
+    function generateSecurePassword() {
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const numbers = '0123456789';
+        const symbols = '!@#$%^&*()-_=+';
+        const all = lowercase + uppercase + numbers + symbols;
+        const length = 16;
+        let password = [
+            lowercase[Math.floor(Math.random() * lowercase.length)],
+            uppercase[Math.floor(Math.random() * uppercase.length)],
+            numbers[Math.floor(Math.random() * numbers.length)],
+            symbols[Math.floor(Math.random() * symbols.length)],
+        ];
+
+        for (let i = password.length; i < length; i++)
+        {
+            password.push(all[Math.floor(Math.random() * all.length)]);
+        }
+
+        return password.sort(function () {
+            return Math.random() - 0.5;
+        }).join('');
+    }
+
     const generateEmailPasswordButton = document.getElementById('generate-email-password');
     const createEmailPasswordInput = document.getElementById('create_email_password');
 
     if (generateEmailPasswordButton && createEmailPasswordInput)
     {
         generateEmailPasswordButton.addEventListener('click', function () {
-            const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-            const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            const numbers = '0123456789';
-            const symbols = '!@#$%^&*()-_=+';
-            const all = lowercase + uppercase + numbers + symbols;
-            const length = 16;
-            let password = [
-                lowercase[Math.floor(Math.random() * lowercase.length)],
-                uppercase[Math.floor(Math.random() * uppercase.length)],
-                numbers[Math.floor(Math.random() * numbers.length)],
-                symbols[Math.floor(Math.random() * symbols.length)],
-            ];
-
-            for (let i = password.length; i < length; i++)
-            {
-                password.push(all[Math.floor(Math.random() * all.length)]);
-            }
-
-            password = password.sort(function () {
-                return Math.random() - 0.5;
-            }).join('');
-
             createEmailPasswordInput.type = 'text';
-            createEmailPasswordInput.value = password;
+            createEmailPasswordInput.value = generateSecurePassword();
         });
     }
+
+    const generateCpanelPasswordButton = document.getElementById('generate-cpanel-password');
+    const cpanelPasswordInput = document.getElementById('cpanel_password');
+
+    if (generateCpanelPasswordButton && cpanelPasswordInput)
+    {
+        generateCpanelPasswordButton.addEventListener('click', function () {
+            cpanelPasswordInput.value = generateSecurePassword();
+        });
+    }
+
+    const cpanelContactSelect = document.getElementById('cpanel_contact_id');
+    const cpanelContactWrap = document.getElementById('cpanel-contact-wrap');
+    const cpanelRecipientName = document.getElementById('cpanel-recipient-name');
+    const cpanelRecipientDetail = document.getElementById('cpanel-recipient-detail');
+    const cpanelWhatsappHint = document.getElementById('cpanel-whatsapp-chat-hint');
+    const cpanelSubmitLabel = document.getElementById('cpanel-submit-label');
+    const cpanelChannelInputs = document.querySelectorAll('.cpanel-notify-channel');
+
+    function selectedCpanelChannel() {
+        const checked = document.querySelector('.cpanel-notify-channel:checked');
+
+        return checked ? checked.value : 'none';
+    }
+
+    function refreshCpanelRecipientPreview() {
+        if (!cpanelContactSelect || !cpanelContactWrap)
+        {
+            return;
+        }
+
+        const channel = selectedCpanelChannel();
+        const shouldSend = channel === 'whatsapp' || channel === 'email';
+
+        cpanelContactWrap.classList.toggle('d-none', !shouldSend);
+        cpanelContactSelect.disabled = !shouldSend;
+
+        Array.from(cpanelContactSelect.options).forEach(function (option) {
+            const canWhatsapp = option.dataset.canWhatsapp === '1';
+            const canEmail = option.dataset.canEmail === '1';
+            const visible = channel === 'whatsapp' ? canWhatsapp : (channel === 'email' ? canEmail : true);
+            option.hidden = !visible;
+            option.disabled = !visible;
+        });
+
+        const visibleOptions = Array.from(cpanelContactSelect.options).filter(function (option) {
+            return !option.disabled && !option.hidden;
+        });
+
+        if (shouldSend && visibleOptions.length && (cpanelContactSelect.selectedOptions[0]?.disabled || cpanelContactSelect.selectedOptions[0]?.hidden))
+        {
+            cpanelContactSelect.value = visibleOptions[0].value;
+        }
+
+        const selected = cpanelContactSelect.selectedOptions[0];
+        if (cpanelRecipientName && cpanelRecipientDetail)
+        {
+            if (!shouldSend || !selected || selected.disabled)
+            {
+                cpanelRecipientName.textContent = '—';
+                cpanelRecipientDetail.textContent = '';
+            }
+            else
+            {
+                cpanelRecipientName.textContent = selected.dataset.name || selected.textContent.trim();
+                cpanelRecipientDetail.textContent = channel === 'email'
+                    ? ('Email: ' + (selected.dataset.email || '—'))
+                    : ('WhatsApp: ' + (selected.dataset.whatsapp || '—'));
+            }
+        }
+
+        if (cpanelWhatsappHint)
+        {
+            cpanelWhatsappHint.classList.toggle('d-none', channel !== 'whatsapp');
+        }
+
+        if (cpanelSubmitLabel)
+        {
+            if (channel === 'whatsapp')
+            {
+                cpanelSubmitLabel.textContent = 'Generar y enviar por WhatsApp';
+            }
+            else if (channel === 'email')
+            {
+                cpanelSubmitLabel.textContent = 'Generar y enviar por email';
+            }
+            else
+            {
+                cpanelSubmitLabel.textContent = 'Generar y aplicar';
+            }
+        }
+    }
+
+    cpanelChannelInputs.forEach(function (input) {
+        input.addEventListener('change', refreshCpanelRecipientPreview);
+    });
+
+    if (cpanelContactSelect)
+    {
+        cpanelContactSelect.addEventListener('change', refreshCpanelRecipientPreview);
+    }
+
+    refreshCpanelRecipientPreview();
+
 
     const list = document.getElementById('mx-records-list');
     const addButton = document.getElementById('add-mx-record');

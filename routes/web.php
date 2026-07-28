@@ -993,6 +993,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/domain/{domain}/change-plan', [DomainController::class, 'changePlan'])->name('domain.change-plan');
     Route::post('/domain/{domain}/ensure-spf', [DomainController::class, 'ensureSpf'])->name('domain.ensure-spf');
     Route::post('/domain/{domain}/email-password', [DomainController::class, 'updateEmailPassword'])->name('domain.email-password');
+    Route::post('/domain/{domain}/cpanel-password', [DomainController::class, 'resetCpanelPassword'])->name('domain.cpanel-password');
     Route::post('/domain/{domain}/emails', [DomainController::class, 'storeEmailAccount'])->name('domain.emails.store');
     Route::post('/domain/{domain}/mx-records', [DomainController::class, 'updateMxRecords'])->name('domain.mx-records');
 

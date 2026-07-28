@@ -64,6 +64,11 @@ interface ControlPanelConnector
     /**
      * @return array{success: bool, error?: string}
      */
+    public function changeAccountPassword(Server $server, Domain $domain, string $password): array;
+
+    /**
+     * @return array{success: bool, error?: string}
+     */
     public function changeEmailPassword(Server $server, Domain $domain, string $email, string $password): array;
 
     /**

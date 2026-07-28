@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\DataTables\DomainDataTable;
 use App\Helpers\DnsHelper;
+use App\Http\Requests\ResetDomainCpanelPasswordRequest;
 use App\Http\Requests\StoreDomainEmailRequest;
 use App\Http\Requests\UpdateDomainEmailPasswordRequest;
 use App\Jobs\RefreshDomainDataJob;
 use App\Models\Domain;
 use App\Models\Server;
 use App\Services\ControlPanel\ControlPanelManager;
+use App\Services\Hosting\DomainCpanelPasswordService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,6 +21,7 @@ class DomainController extends Controller
 {
     public function __construct(
         private ControlPanelManager $controlPanelManager,
+        private DomainCpanelPasswordService $domainCpanelPasswordService,
     ) {
         $this->middleware('can:access-infrastructure-modules');
     }
@@ -65,7 +68,7 @@ class DomainController extends Controller
 
     public function show(Domain $domain): View
     {
-        $domain->load('server');
+        $domain->load(['server', 'service.enterprise.contacts']);
 
         $controlPanelType = $domain->server?->control_panel;
         $accountIsSuspended = $domain->suspended;
@@ -78,11 +81,17 @@ class DomainController extends Controller
         $currentNameservers = $displayInfo['nameservers'] ?? [];
         $nameserversMatch = $this->nameserversMatch($currentNameservers, $requiredNameservers);
         $webmailUrl = $domain->server?->getWebmailUrl();
+        $cpanelUrl = $domain->server?->getCpanelUrl();
         $emailAccounts = $domain->getCachedEmailAccounts();
         $mxRecords = $domain->getCachedMxRecords();
         $availablePlans = $domain->getCachedAvailablePlans();
         $accountDisk = $domain->getCachedAccountDisk();
         $controlPanelError = $domain->getCachedControlPanelError();
+        $cpanelNotifiableContacts = $this->domainCpanelPasswordService->notifiableContactsForDomain($domain);
+        $canResetCpanelPassword = ($controlPanelType === 'cpanel')
+            && $domain->server?->hasToken()
+            && ! $accountIsSuspended
+            && filled($domain->username);
 
         if ($domain->server && $this->controlPanelManager->supports($domain->server))
         {
@@ -111,6 +120,9 @@ class DomainController extends Controller
             'currentNameservers',
             'nameserversMatch',
             'webmailUrl',
+            'cpanelUrl',
+            'cpanelNotifiableContacts',
+            'canResetCpanelPassword',
         ));
     }
 
@@ -331,6 +343,48 @@ class DomainController extends Controller
             ->with($result['success'] ? 'success' : 'error', $result['success']
                 ? 'Contraseña de correo actualizada correctamente.'
                 : ($result['error'] ?? 'No se pudo actualizar la contraseña de correo.'));
+    }
+
+    public function resetCpanelPassword(ResetDomainCpanelPasswordRequest $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $result = $this->domainCpanelPasswordService->resetAndOptionallyNotify(
+            $request->user(),
+            $domain,
+            isset($validated['contact_id']) ? (int) $validated['contact_id'] : null,
+            (string) ($validated['notify_channel'] ?? 'none'),
+            $validated['password'] ?? null,
+        );
+
+        if (! ($result['success'] ?? false))
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', $result['error'] ?? 'No se pudo actualizar la contraseña de cPanel.');
+        }
+
+        $redirect = redirect()->route('domain.show', $domain->id)
+            ->with('generated_password', $result['password'] ?? null)
+            ->with('cpanel_password_reset', true);
+
+        if (! empty($result['warning']))
+        {
+            return $redirect->with('warning', $result['warning']);
+        }
+
+        if (! empty($result['notified']))
+        {
+            $channelLabel = ($result['channel'] ?? '') === 'email' ? 'email' : 'WhatsApp';
+            $recipient = $result['recipient'] ?? '';
+
+            return $redirect->with(
+                'success',
+                'Contraseña de cPanel actualizada y enviada por '.$channelLabel
+                    .($recipient !== '' ? ' a '.$recipient : '').'.',
+            );
+        }
+
+        return $redirect->with('success', 'Contraseña de cPanel actualizada correctamente.');
     }
 
     public function storeEmailAccount(StoreDomainEmailRequest $request, Domain $domain): RedirectResponse
