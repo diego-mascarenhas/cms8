@@ -82,21 +82,11 @@ class StripeInvoiceOutOfBandPaymentService
 
         $externalId = (string) $invoice->source_reference_id;
         $client = $this->makeClient($secret);
-        $paymentType = $this->resolvePaymentTypeLabel($payment);
-        $reference = $this->resolvePaymentReference($payment);
-        $mercadoPagoId = $this->resolveMercadoPagoId($payment);
 
         try
         {
             $client->invoices->update($externalId, [
-                'metadata' => array_filter([
-                    'humano_payment_id' => (string) $payment->id,
-                    'payment_method' => $paymentType,
-                    'payment_reference' => $reference,
-                    'mercadopago_id' => $mercadoPagoId,
-                    'payment_notes' => filled($payment->remarks) ? (string) $payment->remarks : null,
-                    'source_provider' => (string) $payment->source_provider,
-                ], fn ($value) => $value !== null && $value !== ''),
+                'metadata' => $this->buildPaymentMetadata($payment),
             ]);
 
             $client->invoices->pay($externalId, [
@@ -182,21 +172,11 @@ class StripeInvoiceOutOfBandPaymentService
         }
 
         $client = $this->makeClient($secret);
-        $paymentType = $this->resolvePaymentTypeLabel($payment);
-        $reference = $this->resolvePaymentReference($payment);
-        $mercadoPagoId = $this->resolveMercadoPagoId($payment);
 
         try
         {
             $client->invoices->update($externalId, [
-                'metadata' => array_filter([
-                    'humano_payment_id' => (string) $payment->id,
-                    'payment_method' => $paymentType,
-                    'payment_reference' => $reference,
-                    'mercadopago_id' => $mercadoPagoId,
-                    'payment_notes' => filled($payment->remarks) ? (string) $payment->remarks : null,
-                    'source_provider' => (string) $payment->source_provider,
-                ], fn ($value) => $value !== null && $value !== ''),
+                'metadata' => $this->buildPaymentMetadata($payment),
             ]);
         } catch (ApiErrorException $exception)
         {
@@ -228,6 +208,32 @@ class StripeInvoiceOutOfBandPaymentService
     protected function makeClient(string $secret): StripeClient
     {
         return new StripeClient($secret);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildPaymentMetadata(Payment $payment): array
+    {
+        return array_filter([
+            'humano_payment_id' => (string) $payment->id,
+            'payment_method' => $this->resolvePaymentTypeLabel($payment),
+            'payment_account' => $this->resolvePaymentAccountName($payment),
+            'humano_payment_account_id' => $payment->account_id ? (string) $payment->account_id : null,
+            'payment_reference' => $this->resolvePaymentReference($payment),
+            'mercadopago_id' => $this->resolveMercadoPagoId($payment),
+            'payment_notes' => filled($payment->remarks) ? (string) $payment->remarks : null,
+            'source_provider' => (string) $payment->source_provider,
+        ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function resolvePaymentAccountName(Payment $payment): ?string
+    {
+        $payment->loadMissing('account');
+
+        $name = trim((string) ($payment->account?->name ?? ''));
+
+        return $name !== '' ? $name : null;
     }
 
     private function isStripeOpenInvoice(Invoice $invoice): bool

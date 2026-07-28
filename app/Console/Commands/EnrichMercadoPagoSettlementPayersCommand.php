@@ -11,11 +11,12 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
 {
     protected $signature = 'mercadopago:enrich-settlement-payers
                             {--team_id= : Enrich only one team}
-                            {--recent-days=90 : Report window ending now, starting this many days ago}
-                            {--from= : Report begin date (Y-m-d)}
-                            {--to= : Report end date (Y-m-d)}
+                            {--recent-days=90 : Report window ending this month, starting this many days ago (expanded to full calendar months)}
+                            {--from= : Report begin month (Y-m-d); snapped to first day of that month}
+                            {--to= : Report end month (Y-m-d); snapped to last day of that month}
                             {--poll=90 : Seconds to wait for report generation}
                             {--reuse-existing : Download existing reports only (no new report creation; use when HTTP 429 quota is hit)}
+                            {--force : Reprocess months that were already enriched locally}
                             {--dry-run : Parse report without writing}';
 
     protected $description = 'Enrich Mercado Pago payment_syncs with payer name/id from Account money settlement report';
@@ -31,6 +32,7 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
         $dryRun = (bool) $this->option('dry-run');
         $reuseExisting = (bool) $this->option('reuse-existing');
+        $force = (bool) $this->option('force');
         $poll = max(15, (int) $this->option('poll'));
         [$begin, $end] = $this->resolveDateRange(
             $this->option('from'),
@@ -64,11 +66,19 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
             }
 
             $mode = $reuseExisting ? 'reusing existing reports' : 'requesting settlement report';
-            $this->info("Team {$team->id}: {$mode} {$begin->toDateString()} → {$end->toDateString()}");
+            $this->info("Team {$team->id}: {$mode} {$begin->toDateString()} → {$end->toDateString()}".($force ? ' (force)' : ''));
 
             try
             {
-                $result = $this->enricher->enrichTeam($team, $begin, $end, $dryRun, $poll, $reuseExisting);
+                $result = $this->enricher->enrichTeam(
+                    $team,
+                    $begin,
+                    $end,
+                    $dryRun,
+                    $poll,
+                    $reuseExisting,
+                    $force,
+                );
             } catch (\Throwable $e)
             {
                 $this->error("Team {$team->id}: {$e->getMessage()}");
@@ -77,13 +87,14 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
             }
 
             $this->line(sprintf(
-                'Team %d: enriched=%d report_rows=%d unmatched=%d skipped=%d chunks=%d%s',
+                'Team %d: enriched=%d report_rows=%d unmatched=%d skipped=%d chunks=%d months_skipped=%d%s',
                 $team->id,
                 $result['enriched'],
                 $result['report_rows'],
                 $result['unmatched'],
                 $result['skipped'],
                 $result['chunks'] ?? 1,
+                $result['months_skipped'] ?? 0,
                 $dryRun ? ' (dry-run)' : '',
             ));
         }
@@ -96,10 +107,13 @@ class EnrichMercadoPagoSettlementPayersCommand extends Command
      */
     private function resolveDateRange(?string $from, ?string $to, int $recentDays): array
     {
-        $end = filled($to) ? Carbon::parse($to)->endOfDay() : now();
+        $tz = 'America/Argentina/Buenos_Aires';
+        $end = filled($to)
+            ? Carbon::parse($to, $tz)->endOfMonth()
+            : now($tz)->endOfMonth();
         $begin = filled($from)
-            ? Carbon::parse($from)->startOfDay()
-            : $end->clone()->subDays($recentDays)->startOfDay();
+            ? Carbon::parse($from, $tz)->startOfMonth()
+            : $end->clone()->subDays($recentDays)->startOfMonth();
 
         return [$begin, $end];
     }

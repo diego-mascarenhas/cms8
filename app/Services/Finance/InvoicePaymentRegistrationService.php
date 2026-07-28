@@ -18,9 +18,10 @@ class InvoicePaymentRegistrationService
     /** @var list<int> */
     private const BLOCKED_STATUSES = [3, 4, 5, 6, 7, 9];
 
+    private const CASH_PAYMENT_TYPE_ID = 1;
+
     public function __construct(
         private readonly InvoiceCurrencyService $invoiceCurrencyService,
-        private readonly PaymentAccountCompatibilityService $paymentAccountCompatibilityService,
         private readonly StripeInvoiceOutOfBandPaymentService $stripeOutOfBandPaymentService,
     ) {}
 
@@ -56,7 +57,7 @@ class InvoicePaymentRegistrationService
             return false;
         }
 
-        return $this->accountsForInvoiceCurrency($invoice)->isNotEmpty();
+        return $this->cashAccountsForInvoiceCurrency($invoice)->isNotEmpty();
     }
 
     public function isStripeInvoiceCollected(Invoice $invoice): bool
@@ -96,17 +97,17 @@ class InvoicePaymentRegistrationService
      */
     public function formDefaults(Invoice $invoice): array
     {
-        $accounts = $this->accountsForInvoiceCurrency($invoice);
-        $defaultAccount = $accounts->first();
-        $defaultTypeId = $defaultAccount
-            ? ($this->paymentAccountCompatibilityService->acceptedPaymentTypeIds($defaultAccount)[0] ?? 2)
-            : 2;
+        $accounts = $this->cashAccountsForInvoiceCurrency($invoice);
+        $preferredAccount = $accounts->first(function (PaymentAccount $account): bool
+        {
+            $name = mb_strtolower((string) $account->name);
 
-        $paymentTypes = $this->paymentAccountCompatibilityService
-            ->filterPaymentTypesForAccount(
-                PaymentType::query()->orderBy('name')->get(['id', 'name']),
-                $defaultAccount,
-            )
+            return str_contains($name, 'efectivo') || preg_match('/\bcash\b/u', $name) === 1;
+        }) ?? $accounts->first();
+
+        $paymentTypes = PaymentType::query()
+            ->whereKey(self::CASH_PAYMENT_TYPE_ID)
+            ->get(['id', 'name'])
             ->map(fn ($type) => ['id' => $type->id, 'name' => $type->display_name])
             ->values()
             ->all();
@@ -114,13 +115,13 @@ class InvoicePaymentRegistrationService
         return [
             'amount' => round((float) $invoice->balance, 2),
             'date' => now()->toDateString(),
-            'account_id' => $defaultAccount?->id,
-            'type_id' => $defaultTypeId,
+            'account_id' => $preferredAccount?->id,
+            'type_id' => self::CASH_PAYMENT_TYPE_ID,
             'accounts' => $accounts
                 ->map(fn (PaymentAccount $account) => [
                     'id' => $account->id,
                     'name' => $account->name,
-                    'payment_type_ids' => $this->paymentAccountCompatibilityService->acceptedPaymentTypeIds($account),
+                    'payment_type_ids' => [self::CASH_PAYMENT_TYPE_ID],
                 ])
                 ->values()
                 ->all(),
@@ -142,6 +143,46 @@ class InvoicePaymentRegistrationService
             ->where('currency_id', $currencyId)
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Manual invoice payments are cash-only; exclude bank/e-wallet accounts.
+     *
+     * @return Collection<int, PaymentAccount>
+     */
+    public function cashAccountsForInvoiceCurrency(Invoice $invoice): Collection
+    {
+        return $this->accountsForInvoiceCurrency($invoice)
+            ->filter(fn (PaymentAccount $account): bool => $this->isCashAccountForManualPayment($account))
+            ->values();
+    }
+
+    public function isCashAccountForManualPayment(PaymentAccount $account): bool
+    {
+        $account->loadMissing('paymentTypes');
+
+        if ($account->paymentTypes->isNotEmpty())
+        {
+            return $account->paymentTypes->contains(
+                fn ($type): bool => (int) $type->id === self::CASH_PAYMENT_TYPE_ID,
+            );
+        }
+
+        $code = mb_strtoupper((string) $account->code);
+        $name = mb_strtolower((string) $account->name);
+
+        if ($code === 'CASH' || str_contains($code, 'CASH'))
+        {
+            return true;
+        }
+
+        if (str_contains($name, 'efectivo') || preg_match('/\bcash\b/u', $name) === 1)
+        {
+            return true;
+        }
+
+        // "Caja Fuerte" / generic cash drawer, but not "caja de ahorro(s)".
+        return str_contains($name, 'caja') && ! str_contains($name, 'ahorro');
     }
 
     /**
@@ -194,7 +235,14 @@ class InvoicePaymentRegistrationService
             ]);
         }
 
-        if (! $this->paymentAccountCompatibilityService->accountAcceptsType($account, (int) $data['type_id']))
+        if (! $this->isCashAccountForManualPayment($account))
+        {
+            throw ValidationException::withMessages([
+                'account_id' => __('invoice_payment.errors.account_invalid'),
+            ]);
+        }
+
+        if ((int) $data['type_id'] !== self::CASH_PAYMENT_TYPE_ID)
         {
             throw ValidationException::withMessages([
                 'type_id' => __('invoice_payment.errors.type_not_allowed_for_account'),

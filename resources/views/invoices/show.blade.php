@@ -391,6 +391,75 @@
         @endforelse
       </div>
     </div>
+    @if ($canRegisterPayment && $paymentFormDefaults && ! empty($paymentFormDefaults['accounts']))
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="mb-3">{{ __('invoice_payment.register_title') }}</h6>
+        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" class="row g-3" id="invoiceManualPaymentForm">
+          @csrf
+          <div class="col-12">
+            <label for="amount" class="form-label">{{ __('invoice_payment.amount') }} <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="{{ $paymentFormDefaults['amount'] }}"
+                name="amount"
+                id="amount"
+                class="form-control @error('amount') is-invalid @enderror"
+                value="{{ old('amount', $paymentFormDefaults['amount']) }}"
+                required
+              >
+              <span class="input-group-text">{{ $paymentFormDefaults['currency_code'] }}</span>
+            </div>
+            @error('amount')
+              <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+          </div>
+          <div class="col-12">
+            <x-input-date
+              id="date"
+              label="{{ __('invoice_payment.date') }} (*)"
+              value="{{ old('date', $paymentFormDefaults['date']) }}"
+            />
+          </div>
+          <div class="col-12">
+            <x-input-select
+              id="account_id"
+              label="{{ __('invoice_payment.account') }}"
+              :options="$paymentFormDefaults['accounts']"
+              value="{{ old('account_id', $paymentFormDefaults['account_id']) }}"
+              placeholder="{{ __('Select') }}"
+              required
+            />
+          </div>
+          <div class="col-12">
+            <x-input-select
+              id="type_id"
+              label="{{ __('invoice_payment.type') }}"
+              :options="$paymentFormDefaults['payment_types']"
+              value="{{ old('type_id', $paymentFormDefaults['type_id']) }}"
+              placeholder="{{ __('Select') }}"
+              required
+            />
+          </div>
+          <div class="col-12">
+            <x-input-textarea
+              id="remarks"
+              label="{{ __('invoice_payment.remarks') }}"
+              value="{{ old('remarks', '') }}"
+            />
+          </div>
+          <div class="col-12">
+            <button type="submit" class="btn btn-primary w-100">
+              <i class="ti ti-cash me-1"></i>{{ __('invoice_payment.submit') }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    @endif
     @if ($canLinkElectronicPayment)
     <div class="card mt-3">
       <div class="card-body">

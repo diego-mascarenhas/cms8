@@ -8,7 +8,6 @@ use App\Models\Invoice;
 use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
-use App\Models\PaymentType;
 use App\Models\User;
 use App\Services\Finance\InvoicePaymentRegistrationService;
 use Database\Seeders\CurrencySeeder;
@@ -50,10 +49,21 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
             'status_id' => 1,
         ]);
 
-        $matchingAccount = PaymentAccount::withoutGlobalScopes()->create([
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'code' => 'bank-ars',
             'name' => 'Banco ARS',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $cashAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
             'symbol' => '$',
             'currency_id' => 32,
             'status' => 1,
@@ -88,9 +98,119 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
 
         $this->assertSame(41818.18, $defaults['amount']);
         $this->assertSame(now()->toDateString(), $defaults['date']);
-        $this->assertSame($matchingAccount->id, $defaults['account_id']);
+        $this->assertSame($cashAccount->id, $defaults['account_id']);
+        $this->assertSame(1, $defaults['type_id']);
         $this->assertSame('ARS', $defaults['currency_code']);
         $this->assertCount(1, $defaults['accounts']);
+        $this->assertSame($cashAccount->id, $defaults['accounts'][0]['id']);
+    }
+
+    public function test_form_defaults_exclude_caja_de_ahorro_bank_accounts(): void
+    {
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'savings-ars',
+            'name' => 'Caja de Ahorro Francés',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $cashAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-cash-filter',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+        ]);
+
+        $defaults = $this->service->formDefaults($invoice);
+
+        $this->assertSame([$cashAccount->id], collect($defaults['accounts'])->pluck('id')->all());
+        $this->assertSame($cashAccount->id, $defaults['account_id']);
+    }
+
+    public function test_form_defaults_prefer_cash_account_and_type(): void
+    {
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'bank-ars',
+            'name' => 'Banco ARS',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $cashAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-cash',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+        ]);
+
+        $defaults = $this->service->formDefaults($invoice);
+
+        $this->assertSame($cashAccount->id, $defaults['account_id']);
+        $this->assertSame(1, $defaults['type_id']);
     }
 
     public function test_register_creates_payment_and_reduces_invoice_balance(): void
@@ -106,16 +226,16 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
             'status_id' => 1,
         ]);
 
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
         $account = PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $team->id,
-            'code' => 'bank-ars',
-            'name' => 'Banco ARS',
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
             'symbol' => '$',
             'currency_id' => 32,
             'status' => 1,
         ]);
-
-        $type = PaymentType::query()->create(['name' => 'Transferencia']);
 
         $invoice = Invoice::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -137,7 +257,7 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
             'amount' => 40,
             'date' => now()->toDateString(),
             'account_id' => $account->id,
-            'type_id' => $type->id,
+            'type_id' => 1,
         ]);
 
         $invoice->refresh();

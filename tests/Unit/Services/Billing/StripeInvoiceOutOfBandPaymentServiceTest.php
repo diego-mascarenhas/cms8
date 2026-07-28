@@ -93,10 +93,12 @@ class StripeInvoiceOutOfBandPaymentServiceTest extends TestCase
         $invoiceService = Mockery::mock(InvoiceService::class);
         $invoiceService->shouldReceive('update')
             ->once()
-            ->withArgs(function (string $id, array $params): bool
+            ->withArgs(function (string $id, array $params) use ($account): bool
             {
                 return $id === 'in_test_oob_1'
                     && ($params['metadata']['payment_method'] ?? null) === 'MercadoPago'
+                    && ($params['metadata']['payment_account'] ?? null) === 'Mercado Pago'
+                    && ($params['metadata']['humano_payment_account_id'] ?? null) === (string) $account->id
                     && ($params['metadata']['payment_reference'] ?? null) === '76V4MR2Z8P4VPR389DEZOL'
                     && ($params['metadata']['mercadopago_id'] ?? null) === '169690439304'
                     && ($params['metadata']['source_provider'] ?? null) === 'mercadopago';
@@ -206,11 +208,13 @@ class StripeInvoiceOutOfBandPaymentServiceTest extends TestCase
         $invoiceService = Mockery::mock(InvoiceService::class);
         $invoiceService->shouldReceive('update')
             ->once()
-            ->withArgs(function (string $id, array $params): bool
+            ->withArgs(function (string $id, array $params) use ($account): bool
             {
                 return $id === 'in_test_paid_link'
                     && ($params['metadata']['mercadopago_id'] ?? null) === '168825700130'
-                    && ($params['metadata']['payment_reference'] ?? null) === 'XJ8G7V957E38ZM5MNEMPYR';
+                    && ($params['metadata']['payment_reference'] ?? null) === 'XJ8G7V957E38ZM5MNEMPYR'
+                    && ($params['metadata']['payment_account'] ?? null) === 'Mercado Pago'
+                    && ($params['metadata']['humano_payment_account_id'] ?? null) === (string) $account->id;
             })
             ->andReturn((object) ['id' => 'in_test_paid_link']);
         $invoiceService->shouldNotReceive('pay');
@@ -363,10 +367,12 @@ class StripeInvoiceOutOfBandPaymentServiceTest extends TestCase
         $invoiceService = Mockery::mock(InvoiceService::class);
         $invoiceService->shouldReceive('update')
             ->once()
-            ->withArgs(function (string $id, array $params): bool
+            ->withArgs(function (string $id, array $params) use ($account): bool
             {
                 return $id === 'in_test_resync_zero_local'
-                    && ($params['metadata']['mercadopago_id'] ?? null) === '166972675399';
+                    && ($params['metadata']['mercadopago_id'] ?? null) === '166972675399'
+                    && ($params['metadata']['payment_account'] ?? null) === 'Mercado Pago'
+                    && ($params['metadata']['humano_payment_account_id'] ?? null) === (string) $account->id;
             })
             ->andReturn((object) ['id' => 'in_test_resync_zero_local']);
 
