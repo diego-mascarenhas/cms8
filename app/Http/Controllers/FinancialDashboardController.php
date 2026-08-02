@@ -108,12 +108,11 @@ class FinancialDashboardController extends Controller
         $selectedYear = max($bounds['min'], min($requestedYear > 0 ? $requestedYear : $currentYear, $bounds['max']));
 
         $report = $this->invoiceAnalytics->buildYearReport($teamId, $selectedYear);
-        $selectedMonth = Carbon::now()->month;
 
         return view('finance-dashboard.projection', [
             'report' => $report,
             'selectedYear' => $selectedYear,
-            'selectedMonth' => $selectedMonth,
+            'selectedMonth' => 0,
             'availableYears' => $report['available_years'],
         ]);
     }
@@ -133,11 +132,13 @@ class FinancialDashboardController extends Controller
 
         $teamId = (int) $team->id;
         $period = $this->invoicedLineItemsService->resolvePeriodFilter($request);
+        $uncategorizedOnly = $request->boolean('uncategorized');
         $items = $this->invoicedLineItemsService->queryItems(
             teamId: $teamId,
             from: $period['from'],
             to: $period['to'],
             operation: $operation,
+            uncategorizedOnly: $uncategorizedOnly,
         );
 
         $display = $this->invoicedLineItemsService->buildDisplayPayload(
@@ -152,6 +153,28 @@ class FinancialDashboardController extends Controller
             ? Carbon::create($period['year'], $period['month'], 1)->translatedFormat('F Y')
             : (string) $period['year'];
 
+        if ($uncategorizedOnly)
+        {
+            $pageTitle = $isIncome
+                ? __('Uncategorized income lines')
+                : __('Uncategorized expense lines');
+            $pageSubtitle = $isIncome
+                ? __('Uncategorized revenue lines for :period', ['period' => $periodLabel])
+                : __('Uncategorized expense lines for :period', ['period' => $periodLabel]);
+            $emptyMessage = $isIncome
+                ? __('No uncategorized income in this period.')
+                : __('No uncategorized expenses in this period.');
+        } else
+        {
+            $pageTitle = $isIncome ? __('All invoiced income lines') : __('All invoiced expense lines');
+            $pageSubtitle = $isIncome
+                ? __('Invoiced revenue lines for :period', ['period' => $periodLabel])
+                : __('Invoiced expense lines for :period', ['period' => $periodLabel]);
+            $emptyMessage = $isIncome
+                ? __('No invoiced income in this period.')
+                : __('No invoiced expenses in this period.');
+        }
+
         return view('finance-dashboard.invoiced-lines', [
             'lines' => $display['lines'],
             'totalAmount' => $display['total'],
@@ -162,13 +185,10 @@ class FinancialDashboardController extends Controller
             'selectedMonth' => $period['month'],
             'amountTone' => $isIncome ? 'income' : 'expense',
             'backUrl' => $this->resolveFinanceBackUrl($request),
-            'pageTitle' => $isIncome ? __('All invoiced income lines') : __('All invoiced expense lines'),
-            'pageSubtitle' => $isIncome
-                ? __('Invoiced revenue lines for :period', ['period' => $periodLabel])
-                : __('Invoiced expense lines for :period', ['period' => $periodLabel]),
-            'emptyMessage' => $isIncome
-                ? __('No invoiced income in this period.')
-                : __('No invoiced expenses in this period.'),
+            'pageTitle' => $pageTitle,
+            'pageSubtitle' => $pageSubtitle,
+            'emptyMessage' => $emptyMessage,
+            'uncategorizedOnly' => $uncategorizedOnly,
         ]);
     }
 

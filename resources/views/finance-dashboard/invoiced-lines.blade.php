@@ -24,6 +24,7 @@
         'hiddenFields' => array_filter([
             'operation' => request()->query('operation'),
             'return' => request()->query('return'),
+            'uncategorized' => ! empty($uncategorizedOnly) ? '1' : null,
         ]),
     ])
 </div>

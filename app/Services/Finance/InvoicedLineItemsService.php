@@ -60,9 +60,11 @@ class InvoicedLineItemsService
         Carbon $to,
         ?string $operation = null,
         ?int $categoryId = null,
+        bool $uncategorizedOnly = false,
     ): Collection {
         return InvoiceItem::query()
-            ->when($categoryId !== null, fn (Builder $query) => $query->where('category_id', $categoryId))
+            ->when($uncategorizedOnly, fn (Builder $query) => $query->whereNull('category_id'))
+            ->when(! $uncategorizedOnly && $categoryId !== null, fn (Builder $query) => $query->where('category_id', $categoryId))
             ->whereHas('invoice', function ($query) use ($teamId, $operation, $from, $to): void
             {
                 $query->withoutGlobalScopes()

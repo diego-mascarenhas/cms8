@@ -178,4 +178,104 @@ class FinanceDashboardInvoicedLinesTest extends TestCase
             ->assertSee('Expense 2')
             ->assertDontSee('Expense 5');
     }
+
+    public function test_invoiced_lines_page_filters_uncategorized_only(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $module = Module::query()->create([
+            'name' => 'Finance',
+            'key' => 'finance-'.uniqid(),
+            'icon' => 'ti-coin',
+            'description' => null,
+            'is_core' => false,
+            'status' => 1,
+        ]);
+
+        $category = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'Hosting',
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Gamma SA',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $categorizedInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'B-100',
+            'date' => Carbon::create(2026, 3, 10)->toDateString(),
+            'due_date' => Carbon::create(2026, 3, 30),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $categorizedInvoice->id,
+            'category_id' => $category->id,
+            'description' => 'Categorized expense',
+            'quantity' => 1,
+            'unit_price' => 100,
+            'discount' => 0,
+        ]);
+
+        $uncategorizedInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'B-101',
+            'date' => Carbon::create(2026, 3, 12)->toDateString(),
+            'due_date' => Carbon::create(2026, 3, 30),
+            'gross_amount' => 250,
+            'discount' => 0,
+            'total_amount' => 250,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $uncategorizedInvoice->id,
+            'category_id' => null,
+            'description' => 'Uncategorized expense',
+            'quantity' => 1,
+            'unit_price' => 250,
+            'discount' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('finance-dashboard.invoiced-lines', [
+                'operation' => 'buy',
+                'year' => 2026,
+                'month' => 0,
+                'uncategorized' => 1,
+            ]))
+            ->assertOk()
+            ->assertSee('Líneas de gasto sin categoría')
+            ->assertSee('Uncategorized expense')
+            ->assertDontSee('Categorized expense')
+            ->assertSee('name="uncategorized"', false)
+            ->assertSee('value="1"', false);
+    }
 }

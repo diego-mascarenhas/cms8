@@ -15,11 +15,17 @@
         'month' => $selectedMonth,
         'return' => request()->fullUrl(),
     ]);
-    $categoryItemsUrl = static function (?int $categoryId, string $operation) use ($selectedYear, $selectedMonth): ?string
+    $categoryItemsUrl = static function (?int $categoryId, string $operation) use ($selectedYear, $selectedMonth): string
     {
         if ($categoryId === null)
         {
-            return null;
+            return route('finance-dashboard.invoiced-lines', [
+                'operation' => $operation,
+                'year' => $selectedYear,
+                'month' => $selectedMonth,
+                'uncategorized' => 1,
+                'return' => request()->fullUrl(),
+            ]);
         }
 
         return route('categories.items', [
@@ -70,11 +76,7 @@
                                         <td>
                                             <span class="d-inline-flex align-items-center gap-2">
                                                 <span class="d-inline-block rounded-circle flex-shrink-0" style="width: 0.625rem; height: 0.625rem; background-color: {{ $swatchColor }}"></span>
-                                                @if($categoryUrl)
-                                                    <a href="{{ $categoryUrl }}" class="text-body">{{ $row['name'] }}</a>
-                                                @else
-                                                    <span>{{ $row['name'] }}</span>
-                                                @endif
+                                                <a href="{{ $categoryUrl }}" class="text-body">{{ $row['name'] }}</a>
                                             </span>
                                         </td>
                                         <td class="text-end">{{ $formatCategoryAmount($row['total']) }} <span class="text-muted">{{ $reportingCurrency }}</span></td>
@@ -125,11 +127,7 @@
                                         <td>
                                             <span class="d-inline-flex align-items-center gap-2">
                                                 <span class="d-inline-block rounded-circle flex-shrink-0" style="width: 0.625rem; height: 0.625rem; background-color: {{ $swatchColor }}"></span>
-                                                @if($categoryUrl)
-                                                    <a href="{{ $categoryUrl }}" class="text-body">{{ $row['name'] }}</a>
-                                                @else
-                                                    <span>{{ $row['name'] }}</span>
-                                                @endif
+                                                <a href="{{ $categoryUrl }}" class="text-body">{{ $row['name'] }}</a>
                                             </span>
                                         </td>
                                         <td class="text-end">{{ $formatCategoryAmount($row['total']) }} <span class="text-muted">{{ $reportingCurrency }}</span></td>
