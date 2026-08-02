@@ -112,6 +112,19 @@ class ServiceDataTable extends DataTable
             {
                 return $data->next_billing ? $data->next_billing->format('d-m-Y') : '-';
             })
+            ->orderColumn('next_billing', function ($query, $direction)
+            {
+                $direction = strtolower((string) $direction) === 'desc' ? 'desc' : 'asc';
+
+                if (DB::getDriverName() === 'pgsql')
+                {
+                    $query->orderByRaw("services.next_billing {$direction} NULLS LAST");
+                } else
+                {
+                    $query->orderByRaw('CASE WHEN services.next_billing IS NULL THEN 1 ELSE 0 END')
+                        ->orderBy('services.next_billing', $direction);
+                }
+            })
             ->addColumn('calculated_price', function ($data)
             {
                 $currencyCode = 'USD';
@@ -222,9 +235,18 @@ class ServiceDataTable extends DataTable
     });
 }";
 
+        $columns = $this->getColumns();
+        $nextBillingIndex = collect($columns)->search(
+            fn (Column $column): bool => ($column->name ?? $column->data ?? null) === 'next_billing',
+        );
+        if ($nextBillingIndex === false)
+        {
+            $nextBillingIndex = 7;
+        }
+
         return $this->builder()
             ->setTableId('service-table')
-            ->columns($this->getColumns())
+            ->columns($columns)
             ->minifiedAjax(
                 '',
                 "data.status_filter = ($('#service-filter-status').val() || '4');",
@@ -234,7 +256,7 @@ class ServiceDataTable extends DataTable
             ->processing(true)
             ->serverSide(true)
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
-            ->orderBy(7, 'asc') // Ordenar por próxima facturación
+            ->orderBy((int) $nextBillingIndex, 'asc')
             ->pageLength(25)
             ->parameters([
                 'initComplete' => $initComplete,
