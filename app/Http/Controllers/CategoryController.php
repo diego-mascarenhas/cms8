@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Module;
 use App\Models\Team;
 use App\Services\Finance\InvoicedLineItemsService;
+use App\Services\Finance\ServiceCategoryOptionsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -517,11 +518,13 @@ class CategoryController extends Controller
             categoryId: (int) $category->id,
         );
 
+        $canEditCategory = (bool) $request->user()?->hasRole('admin');
+
         $display = $invoicedLineItemsService->buildDisplayPayload(
             $items,
             (int) $team->id,
             showDescription: false,
-            showCategory: false,
+            showCategory: $canEditCategory,
         );
 
         return view('category.items', [
@@ -536,6 +539,10 @@ class CategoryController extends Controller
             'operation' => $operation,
             'amountTone' => $operation === 'sell' ? 'income' : ($operation === 'buy' ? 'expense' : 'auto'),
             'backUrl' => $this->resolveCategoryItemsBackUrl($request),
+            'canEditCategory' => $canEditCategory,
+            'categoryOptions' => $canEditCategory
+                ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $team->id)
+                : [],
         ]);
     }
 

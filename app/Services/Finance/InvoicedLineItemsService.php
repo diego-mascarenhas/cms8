@@ -77,7 +77,10 @@ class InvoicedLineItemsService
             })
             ->with(['invoice.enterprise', 'category'])
             ->get()
-            ->sortByDesc(fn (InvoiceItem $item) => $item->invoice?->date ?? '')
+            ->sortBy(
+                fn (InvoiceItem $item) => mb_strtolower((string) ($item->invoice?->enterprise?->name ?? '')),
+                SORT_NATURAL,
+            )
             ->values();
     }
 

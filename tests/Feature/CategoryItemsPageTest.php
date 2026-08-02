@@ -109,6 +109,9 @@ class CategoryItemsPageTest extends TestCase
         $response->assertSee($backUrl, false);
         $response->assertSee('name="month"', false);
         $response->assertSee('name="year"', false);
+        $response->assertSee('line-category-badge', false);
+        $response->assertSee('lineCategoryModal', false);
+        $response->assertSee('Payroll & Benefits');
     }
 
     public function test_category_items_page_filters_by_month(): void

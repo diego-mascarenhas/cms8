@@ -2,9 +2,7 @@
 
 namespace App\Console\Commands;
 
-use App\Models\InvoiceItem;
-use App\Models\InvoiceSync;
-use App\Services\Billing\ServiceSyncImporter;
+use App\Services\Finance\InvoiceItemCategoryBackfillService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
 
@@ -13,11 +11,13 @@ class CategorizeStripeInvoiceItemsCommand extends Command
     protected $signature = 'invoices:categorize-stripe-items
                             {--team_id= : Limit to one team}
                             {--limit=2000 : Max invoice items to process}
+                            {--from-prior-invoices : Also match prior sell lines (same client, description and amount)}
+                            {--replace-generic-parents : Also reclassify lines currently on coarse parent categories (e.g. Servicios)}
                             {--dry-run : Preview without writing}';
 
-    protected $description = 'Backfill invoice_items.category_id from linked services for Stripe sell lines';
+    protected $description = 'Backfill invoice_items.category_id from linked services and optionally prior invoices';
 
-    public function handle(ServiceSyncImporter $importer): int
+    public function handle(InvoiceItemCategoryBackfillService $backfill): int
     {
         if (! Schema::hasTable('invoice_items') || ! Schema::hasTable('invoice_syncs'))
         {
@@ -29,81 +29,29 @@ class CategorizeStripeInvoiceItemsCommand extends Command
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
         $limit = max(1, (int) $this->option('limit'));
         $dryRun = (bool) $this->option('dry-run');
+        $fromPrior = (bool) $this->option('from-prior-invoices');
+        $replaceGeneric = (bool) $this->option('replace-generic-parents');
 
-        $query = InvoiceItem::query()
-            ->select('invoice_items.*')
-            ->join('invoices', 'invoices.id', '=', 'invoice_items.invoice_id')
-            ->whereNull('invoice_items.category_id')
-            ->where('invoices.operation', 'sell')
-            ->where('invoices.source_provider', 'stripe')
-            ->whereNotNull('invoices.source_reference_id')
-            ->orderBy('invoice_items.id');
+        $this->info('Backfilling Stripe sell invoice item categories'
+            .($fromPrior ? ' (with prior-invoice matching)' : '')
+            .($replaceGeneric ? ' (including generic parents)' : '')
+            .($dryRun ? ' [dry-run]' : ''));
 
-        if ($teamId)
-        {
-            $query->where('invoices.team_id', $teamId);
-        }
-
-        $items = $query->limit($limit)->get();
-
-        $processed = 0;
-        $updated = 0;
-        $skipped = 0;
-
-        foreach ($items as $item)
-        {
-            if (! $item instanceof InvoiceItem)
-            {
-                continue;
-            }
-
-            $processed++;
-
-            $invoice = $item->invoice()->withoutGlobalScopes()->first();
-            if (! $invoice)
-            {
-                $skipped++;
-
-                continue;
-            }
-
-            $sync = InvoiceSync::query()
-                ->where('team_id', $invoice->team_id)
-                ->where('provider', 'stripe')
-                ->where('external_id', $invoice->source_reference_id)
-                ->first();
-
-            if (! $sync || ! filled($sync->stripe_subscription_id))
-            {
-                $skipped++;
-
-                continue;
-            }
-
-            $categoryId = $importer->resolveCategoryIdForInvoiceItem(
-                (int) $invoice->team_id,
-                (string) $sync->stripe_subscription_id,
-            );
-
-            if (! $categoryId)
-            {
-                $skipped++;
-
-                continue;
-            }
-
-            if (! $dryRun)
-            {
-                $item->forceFill(['category_id' => $categoryId])->save();
-            }
-
-            $updated++;
-        }
+        $stats = $backfill->backfill(
+            teamId: $teamId,
+            limit: $limit,
+            dryRun: $dryRun,
+            fromPriorInvoices: $fromPrior,
+            replaceGenericParents: $replaceGeneric,
+        );
 
         $this->table(['Metric', 'Count'], [
-            ['Processed', $processed],
-            ['Updated', $updated],
-            ['Skipped', $skipped],
+            ['Processed', $stats['processed']],
+            ['Updated', $stats['updated']],
+            ['From linked service', $stats['from_service']],
+            ['From prior invoices', $stats['from_prior']],
+            ['Services category filled', $stats['services_updated']],
+            ['Skipped', $stats['skipped']],
             ['Dry run', $dryRun ? 'yes' : 'no'],
         ]);
 

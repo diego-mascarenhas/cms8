@@ -76,7 +76,7 @@
                         @endif
                         <td class="text-end text-nowrap">
                             @if($line['has_discount'])
-                                <small class="text-muted d-block">
+                                <small class="text-muted me-1">
                                     {{ __('With discount') }}
                                     @if($line['discount_amount'] !== null)
                                         ({{ $formatAmount((float) $line['discount_amount']) }} {{ $reportingCurrency }})
