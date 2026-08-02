@@ -84,9 +84,12 @@ class InvoicedLineItemsService
     /**
      * @return array{
      *     lines: list<array{
+     *         id: int,
+     *         invoice_id: int|null,
      *         enterprise_id: int|null,
      *         enterprise_name: string,
      *         description: string|null,
+     *         category_id: int|null,
      *         category_name: string|null,
      *         amount: float,
      *         has_discount: bool,
@@ -124,9 +127,12 @@ class InvoicedLineItemsService
                 : null;
 
             $lines[] = [
+                'id' => (int) $item->id,
+                'invoice_id' => $invoice?->id ? (int) $invoice->id : null,
                 'enterprise_id' => $invoice?->enterprise_id ? (int) $invoice->enterprise_id : null,
                 'enterprise_name' => (string) ($invoice?->enterprise?->name ?? __('Unknown')),
                 'description' => $showDescription ? (string) $item->description : null,
+                'category_id' => $item->category_id ? (int) $item->category_id : null,
                 'category_name' => $showCategory
                     ? (string) ($item->category?->name ?? __('Uncategorized'))
                     : null,

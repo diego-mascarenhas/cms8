@@ -43,6 +43,7 @@ use App\Http\Controllers\HostingController;
 use App\Http\Controllers\HumanoConfigTransferController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoiceItemCategoryController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\laravel_example\UserManagement;
@@ -974,6 +975,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');
     Route::get('/finance-dashboard/projection', [FinancialDashboardController::class, 'projection'])->name('finance-dashboard.projection');
     Route::get('/finance-dashboard/invoiced-lines', [FinancialDashboardController::class, 'invoicedLines'])->name('finance-dashboard.invoiced-lines');
+    Route::patch('/invoice-items/{invoiceItem}/category', [InvoiceItemCategoryController::class, 'update'])->name('invoice-items.category.update');
 
     Route::prefix('payment')->group(function ()
     {

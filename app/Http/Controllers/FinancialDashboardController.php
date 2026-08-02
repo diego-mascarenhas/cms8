@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\Finance\InvoicedLineItemsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,6 +18,7 @@ class FinancialDashboardController extends Controller
         protected InvoiceAnalyticsService $invoiceAnalytics,
         protected InvoicedLineItemsService $invoicedLineItemsService,
         protected PaymentReportingCurrencyService $paymentReportingCurrencyService,
+        protected ServiceCategoryOptionsService $serviceCategoryOptionsService,
     ) {}
 
     public function index(Request $request)
@@ -175,6 +177,8 @@ class FinancialDashboardController extends Controller
                 : __('No invoiced expenses in this period.');
         }
 
+        $canEditCategory = $request->user()->hasRole('admin');
+
         return view('finance-dashboard.invoiced-lines', [
             'lines' => $display['lines'],
             'totalAmount' => $display['total'],
@@ -189,6 +193,10 @@ class FinancialDashboardController extends Controller
             'pageSubtitle' => $pageSubtitle,
             'emptyMessage' => $emptyMessage,
             'uncategorizedOnly' => $uncategorizedOnly,
+            'canEditCategory' => $canEditCategory,
+            'categoryOptions' => $canEditCategory
+                ? $this->serviceCategoryOptionsService->optionsForTeam($teamId)
+                : [],
         ]);
     }
 

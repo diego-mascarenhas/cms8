@@ -589,64 +589,11 @@
 </div>
 @endcan
 
-<div class="modal fade" id="lineCategoryModal" tabindex="-1" aria-labelledby="lineCategoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="lineCategoryModalLabel">Categoría del ítem</h5>
-                <div class="d-flex align-items-center gap-1">
-                    @can('viewAny', \App\Models\Category::class)
-                        @livewire(\App\Livewire\ModuleCategoriesManagerModal::class, ['moduleKey' => 'services', 'linkedSelectId' => 'line_category_modal_select'], key('expense-line-cat-mgr-services'))
-                    @endcan
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-            </div>
-            <div class="modal-body">
-                <div id="line-category-suggestion" class="alert alert-primary d-none mb-3" role="status">
-                    <div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-                        <div>
-                            <div class="fw-medium mb-1">Sugerida por factura anterior</div>
-                            <div class="small" id="line-category-suggestion-text"></div>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-primary" id="apply-line-category-suggestion">Usar sugerencia</button>
-                    </div>
-                </div>
-                <div id="line-category-empty" class="alert alert-warning {{ count($expenseCategoryOptions) ? 'd-none' : '' }} mb-3" role="status">
-                    Todavía no hay categorías de servicio. Usa el engranaje para crearlas, o escribe un nombre en el buscador y pulsa «Añadir».
-                </div>
-                <label for="line_category_modal_select" class="form-label">Selecciona una categoría</label>
-                <select
-                    id="line_category_modal_select"
-                    class="form-select"
-                    data-placeholder="Sin categoría"
-                    data-allow-clear="true"
-                    data-module-key="services"
-                    data-empty-text="Sin categoría"
-                    data-show-empty-option="1"
-                    data-allow-empty-select="1"
-                >
-                    <option value="">Sin categoría</option>
-                    @foreach (collect($expenseCategoryOptions)->groupBy(fn ($option) => $option['group'] ?? '') as $groupLabel => $groupOptions)
-                        @if ($groupLabel !== '')
-                            <optgroup label="{{ $groupLabel }}">
-                        @endif
-                        @foreach ($groupOptions as $categoryOption)
-                            <option value="{{ $categoryOption['id'] }}">{{ $categoryOption['name'] }}</option>
-                        @endforeach
-                        @if ($groupLabel !== '')
-                            </optgroup>
-                        @endif
-                    @endforeach
-                </select>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-label-secondary" id="clear-line-category">Quitar</button>
-                <button type="button" class="btn btn-primary" id="save-line-category">Guardar</button>
-            </div>
-        </div>
-    </div>
-</div>
+@include('partials.line-category-modal', [
+    'categoryOptions' => $expenseCategoryOptions ?? [],
+    'showSuggestion' => true,
+    'livewireKey' => 'expense-line-cat-mgr-services',
+])
 @endsection
 
 @section('page-script')

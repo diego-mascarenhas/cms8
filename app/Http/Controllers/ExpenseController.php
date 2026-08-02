@@ -16,7 +16,6 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoiceType;
-use App\Models\Module;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
@@ -26,6 +25,7 @@ use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentReportingCurrencyService;
+use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\ExpenseDocumentTypes;
@@ -246,7 +246,7 @@ class ExpenseController extends Controller
             4 => 'Rechazado',
         ];
 
-        $expenseCategoryOptions = $this->expenseCategoryOptions($teamId);
+        $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForTeam($teamId);
 
         return view('expense.create', compact(
             'enterprises',
@@ -713,87 +713,6 @@ class ExpenseController extends Controller
     /**
      * @return array<int, array{id: int, name: string, group: string|null}>
      */
-    private function expenseCategoryOptions(int $teamId): array
-    {
-        $moduleId = Module::query()->where('key', 'services')->value('id');
-
-        $categoriesQuery = Category::query()
-            ->where('status', '>', 0)
-            ->where(function ($query) use ($teamId)
-            {
-                $query->whereNull('team_id')
-                    ->orWhere('team_id', $teamId);
-            });
-
-        if ($moduleId)
-        {
-            $categoriesQuery->where('module_id', $moduleId);
-        } else
-        {
-            $categoriesQuery->whereNull('module_id');
-        }
-
-        $parents = (clone $categoriesQuery)
-            ->whereNull('parent_id')
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $childrenByParent = (clone $categoriesQuery)
-            ->whereNotNull('parent_id')
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get(['id', 'name', 'parent_id'])
-            ->groupBy('parent_id');
-
-        $options = [];
-        $parentIds = $parents->pluck('id')->all();
-
-        foreach ($parents as $parent)
-        {
-            $children = $childrenByParent->get($parent->id);
-
-            if ($children === null || $children->isEmpty())
-            {
-                $options[] = [
-                    'id' => (int) $parent->id,
-                    'name' => (string) $parent->name,
-                    'group' => null,
-                ];
-
-                continue;
-            }
-
-            foreach ($children as $child)
-            {
-                $options[] = [
-                    'id' => (int) $child->id,
-                    'name' => (string) $child->name,
-                    'group' => (string) $parent->name,
-                ];
-            }
-        }
-
-        foreach ($childrenByParent as $parentId => $children)
-        {
-            if (in_array((int) $parentId, $parentIds, true))
-            {
-                continue;
-            }
-
-            foreach ($children as $child)
-            {
-                $options[] = [
-                    'id' => (int) $child->id,
-                    'name' => (string) $child->name,
-                    'group' => null,
-                ];
-            }
-        }
-
-        return $options;
-    }
-
     /**
      * @param  array<int, array<string, mixed>>  $payments
      * @return array<int, array<string, mixed>>

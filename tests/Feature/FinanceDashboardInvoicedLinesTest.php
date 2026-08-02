@@ -276,6 +276,7 @@ class FinanceDashboardInvoicedLinesTest extends TestCase
             ->assertSee('Uncategorized expense')
             ->assertDontSee('Categorized expense')
             ->assertSee('name="uncategorized"', false)
-            ->assertSee('value="1"', false);
+            ->assertSee('value="1"', false)
+            ->assertSee('line-category-badge', false);
     }
 }
