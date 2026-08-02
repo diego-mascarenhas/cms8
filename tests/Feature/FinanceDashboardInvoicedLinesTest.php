@@ -97,7 +97,9 @@ class FinanceDashboardInvoicedLinesTest extends TestCase
         $response->assertSee('Annual plan');
         $response->assertSee('Hosting');
         $response->assertSee('Acme SL');
+        $response->assertSee('S-001');
         $response->assertSee(route('client.show', $enterprise->id), false);
+        $response->assertSee(route('invoice.show', $invoice->id), false);
         $response->assertSee('500 EUR', false);
         $response->assertSee('EUR');
         $response->assertDontSee('10/04/2026');

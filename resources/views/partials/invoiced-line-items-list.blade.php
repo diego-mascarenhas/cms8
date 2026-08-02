@@ -54,6 +54,12 @@
                             @else
                                 <span class="text-muted">{{ $line['enterprise_name'] }}</span>
                             @endif
+                            @if(! empty($line['invoice_id']) && filled($line['invoice_number'] ?? null))
+                                <span class="text-muted">·</span>
+                                <a href="{{ route('invoice.show', $line['invoice_id']) }}" class="text-muted">
+                                    {{ $line['invoice_number'] }}
+                                </a>
+                            @endif
                         </td>
                         @if($showDescriptionColumn)
                             <td class="text-muted">{{ $line['description'] ?: '—' }}</td>

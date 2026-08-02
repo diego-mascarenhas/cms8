@@ -98,7 +98,9 @@ class CategoryItemsPageTest extends TestCase
         $response->assertSee('Líneas facturadas en esta categoría');
         $response->assertDontSee('Monthly payroll allocation');
         $response->assertSee('Pine Labs SA');
+        $response->assertSee('B-001');
         $response->assertSee(route('client.show', $enterprise->id), false);
+        $response->assertSee(route('invoice.show', $invoice->id), false);
         $response->assertSee('<th>'.e(__('Enterprise')).'</th>', false);
         $response->assertSee('<th class="text-end">'.e(__('Total')).'</th>', false);
         $response->assertSee('Con descuento');
