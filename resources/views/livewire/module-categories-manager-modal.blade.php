@@ -1,6 +1,6 @@
-<div>
-    <button type="button" class="btn btn-sm btn-icon btn-text-secondary border-0 shadow-none" wire:click="openModal" title="{{ __('Manage categories') }}" aria-label="{{ __('Manage categories') }}" data-bs-toggle="tooltip">
-        <i class="ti ti-settings ti-sm"></i>
+<div class="d-inline-flex align-items-center lh-1">
+    <button type="button" class="btn btn-icon btn-text-secondary border-0 shadow-none p-0" style="width: 1.25rem; height: 1.25rem;" wire:click="openModal" title="{{ __('Manage categories') }}" aria-label="{{ __('Manage categories') }}" data-bs-toggle="tooltip">
+        <i class="ti ti-settings" style="font-size: 1rem; line-height: 1;"></i>
     </button>
 
     @if ($show)

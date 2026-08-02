@@ -13,6 +13,7 @@ return [
         'customer_name' => 'Customer',
         'customer_email' => 'Email',
         'plan_name' => 'Plan',
+        'category' => 'Category',
         'status' => 'Status',
         'amount_total' => 'Amount',
         'current_period_end' => 'Next',
@@ -22,6 +23,7 @@ return [
     'open_client' => 'Open client',
     'open_contact' => 'Open contact',
     'link_client' => 'Link to client',
+    'create_service' => 'Create service',
     'link' => [
         'title' => 'Link subscription to a client',
         'subtitle' => 'Store this Stripe customer id on the local client (enterprise code) so the subscription list matches a Humano client.',

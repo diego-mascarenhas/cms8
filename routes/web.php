@@ -1179,6 +1179,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::get('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClientForm'])->name('subscription.stripe-link-client');
     Route::post('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClient'])->name('subscription.stripe-link-client.store');
+    Route::patch('/subscription/stripe/{stripeSubscription}/service-category', [SubscriptionController::class, 'updateServiceCategory'])->name('subscription.stripe-service-category.update');
+    Route::post('/subscription/stripe/{stripeSubscription}/create-service', [SubscriptionController::class, 'createService'])->name('subscription.stripe-create-service');
     Route::post('/subscription/sync', [SubscriptionController::class, 'syncFromStripe'])->name('subscription.sync');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');

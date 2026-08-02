@@ -9,6 +9,10 @@ use Illuminate\Support\Arr;
 
 class StripeInvoiceItemImporter
 {
+    public function __construct(
+        private readonly ServiceSyncImporter $serviceSyncImporter,
+    ) {}
+
     public function syncForInvoice(Invoice $invoice, InvoiceSync $row): void
     {
         $payload = is_array($row->raw_payload) ? $row->raw_payload : [];
@@ -18,6 +22,11 @@ class StripeInvoiceItemImporter
         {
             return;
         }
+
+        $categoryId = $this->serviceSyncImporter->resolveCategoryIdForInvoiceItem(
+            (int) $invoice->team_id,
+            $row->stripe_subscription_id ? (string) $row->stripe_subscription_id : null,
+        );
 
         $invoice->items()->delete();
 
@@ -36,6 +45,7 @@ class StripeInvoiceItemImporter
 
             InvoiceItem::query()->create(array_merge($attributes, [
                 'invoice_id' => $invoice->id,
+                'category_id' => $categoryId,
             ]));
         }
     }

@@ -6,6 +6,7 @@ use App\DataTables\ServiceDataTable;
 use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Services\Finance\ServiceCategoryOptionsService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Log;
@@ -124,8 +125,11 @@ class ServiceController extends Controller
         $serviceSyncs = $teamId
             ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
+        $categoryOptions = $teamId
+            ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $teamId)
+            : [];
 
-        return view('service.form', compact('enterprise_id', 'serviceSyncs'));
+        return view('service.form', compact('enterprise_id', 'serviceSyncs', 'categoryOptions'));
     }
 
     /**
@@ -255,8 +259,11 @@ class ServiceController extends Controller
         $serviceSyncs = $teamId
             ? ServiceSync::where('team_id', $teamId)->where('provider', 'stripe')->orderBy('customer_name')->orderBy('plan_name')->get()
             : collect();
+        $categoryOptions = $teamId
+            ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $teamId)
+            : [];
 
-        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs'));
+        return view('service.form', compact('data', 'enterprise_id', 'serviceSyncs', 'categoryOptions'));
     }
 
     /**

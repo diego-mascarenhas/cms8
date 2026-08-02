@@ -13,6 +13,7 @@ return [
         'customer_name' => 'Cliente',
         'customer_email' => 'Correo electrónico',
         'plan_name' => 'Plan',
+        'category' => 'Categoría',
         'status' => 'Estado',
         'amount_total' => 'Importe',
         'current_period_end' => 'Próxima',
@@ -22,6 +23,7 @@ return [
     'open_client' => 'Ver cliente',
     'open_contact' => 'Ver contacto',
     'link_client' => 'Vincular a cliente',
+    'create_service' => 'Crear servicio',
     'link' => [
         'title' => 'Vincular suscripción a un cliente',
         'subtitle' => 'Asigna el id de cliente de Stripe al cliente local (código de empresa) para que la suscripción aparezca vinculada en Humano.',

@@ -5,6 +5,7 @@ namespace App\Services\Finance;
 use App\Models\Category;
 use App\Models\Module;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ServiceCategoryOptionsService
 {
@@ -37,6 +38,7 @@ class ServiceCategoryOptionsService
             ->orderBy('name')
             ->get(['id', 'name']);
 
+        /** @var Collection<int|string, Collection<int, Category>> $childrenByParent */
         $childrenByParent = (clone $categoriesQuery)
             ->whereNotNull('parent_id')
             ->orderBy('order')
@@ -44,20 +46,32 @@ class ServiceCategoryOptionsService
             ->get(['id', 'name', 'parent_id'])
             ->groupBy('parent_id');
 
+        $categoryById = (clone $categoriesQuery)->get(['id', 'name', 'parent_id'])->keyBy('id');
+        $parentIds = $parents->pluck('id')->map(fn ($id) => (int) $id)->all();
         $options = [];
-        $parentIds = $parents->pluck('id')->all();
+        $renderedIds = [];
 
         foreach ($parents as $parent)
         {
-            $children = $childrenByParent->get($parent->id);
+            $children = $childrenByParent->get($parent->id) ?? collect();
+            $nested = collect();
 
-            if ($children === null || $children->isEmpty())
+            foreach ($children as $child)
+            {
+                foreach ($childrenByParent->get($child->id) ?? collect() as $grandChild)
+                {
+                    $nested->push($grandChild);
+                }
+            }
+
+            if ($children->isEmpty() && $nested->isEmpty())
             {
                 $options[] = [
                     'id' => (int) $parent->id,
                     'name' => (string) $parent->name,
                     'group' => null,
                 ];
+                $renderedIds[(int) $parent->id] = true;
 
                 continue;
             }
@@ -69,6 +83,17 @@ class ServiceCategoryOptionsService
                     'name' => (string) $child->name,
                     'group' => (string) $parent->name,
                 ];
+                $renderedIds[(int) $child->id] = true;
+            }
+
+            foreach ($nested as $nestedCategory)
+            {
+                $options[] = [
+                    'id' => (int) $nestedCategory->id,
+                    'name' => $this->nestedLabel($nestedCategory, $categoryById),
+                    'group' => (string) $parent->name,
+                ];
+                $renderedIds[(int) $nestedCategory->id] = true;
             }
         }
 
@@ -79,11 +104,26 @@ class ServiceCategoryOptionsService
                 continue;
             }
 
+            $parentCategory = $categoryById->get((int) $parentId);
+            $skipAsNested = $parentCategory
+                && $parentCategory->parent_id !== null
+                && in_array((int) $parentCategory->parent_id, $parentIds, true);
+
+            if ($skipAsNested)
+            {
+                continue;
+            }
+
             foreach ($children as $child)
             {
+                if (isset($renderedIds[(int) $child->id]))
+                {
+                    continue;
+                }
+
                 $options[] = [
                     'id' => (int) $child->id,
-                    'name' => (string) $child->name,
+                    'name' => $this->nestedLabel($child, $categoryById),
                     'group' => null,
                 ];
             }
@@ -110,5 +150,35 @@ class ServiceCategoryOptionsService
                 fn (Builder $query) => $query->whereNull('module_id'),
             )
             ->exists();
+    }
+
+    /**
+     * @param  Collection<int|string, Category>  $categoryById
+     */
+    private function nestedLabel(Category $category, Collection $categoryById): string
+    {
+        $parts = [(string) $category->name];
+        $parentId = $category->parent_id ? (int) $category->parent_id : null;
+        $guard = 0;
+
+        while ($parentId && $guard < 5)
+        {
+            $parent = $categoryById->get($parentId);
+            if (! $parent)
+            {
+                break;
+            }
+
+            if ($parent->parent_id === null)
+            {
+                break;
+            }
+
+            array_unshift($parts, (string) $parent->name);
+            $parentId = $parent->parent_id ? (int) $parent->parent_id : null;
+            $guard++;
+        }
+
+        return implode(' › ', $parts);
     }
 }

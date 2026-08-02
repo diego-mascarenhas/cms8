@@ -782,32 +782,87 @@ class CategoryController extends Controller
             ->groupBy('parent_id');
 
         $groups = [];
-        $parentIds = $parentCategories->pluck('id')->all();
+        $parentIds = $parentCategories->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $categoryById = (clone $baseQuery)->get(['id', 'name', 'parent_id'])->keyBy('id');
+
+        $nestedLabel = function (Category $category) use ($categoryById): string
+        {
+            $parts = [(string) $category->name];
+            $parentId = $category->parent_id ? (int) $category->parent_id : null;
+            $guard = 0;
+
+            while ($parentId && $guard < 5)
+            {
+                $parent = $categoryById->get($parentId);
+                if (! $parent)
+                {
+                    break;
+                }
+
+                if ($parent->parent_id === null)
+                {
+                    break;
+                }
+
+                array_unshift($parts, (string) $parent->name);
+                $parentId = $parent->parent_id ? (int) $parent->parent_id : null;
+                $guard++;
+            }
+
+            return implode(' › ', $parts);
+        };
+
+        $renderedIds = [];
 
         foreach ($parentCategories as $parentCategory)
         {
-            $subs = $allSubcategories[$parentCategory->id] ?? null;
-            if (! $subs || $subs->isEmpty())
+            $subs = collect($allSubcategories[$parentCategory->id] ?? []);
+            $nested = collect();
+
+            foreach ($subs as $child)
+            {
+                foreach (collect($allSubcategories[$child->id] ?? []) as $grandChild)
+                {
+                    $nested->push($grandChild);
+                }
+            }
+
+            if ($subs->isEmpty() && $nested->isEmpty())
             {
                 $groups[] = [
                     'type' => 'option',
                     'id' => $parentCategory->id,
                     'label' => $parentCategory->name,
                 ];
-            } else
-            {
-                $groups[] = [
-                    'type' => 'group',
-                    'label' => $parentCategory->name,
-                    'options' => $subs->map(function (Category $c)
-                    {
-                        return [
-                            'id' => $c->id,
-                            'label' => $c->name,
-                        ];
-                    })->values()->all(),
-                ];
+                $renderedIds[(int) $parentCategory->id] = true;
+
+                continue;
             }
+
+            $options = $subs->map(function (Category $c) use (&$renderedIds)
+            {
+                $renderedIds[(int) $c->id] = true;
+
+                return [
+                    'id' => $c->id,
+                    'label' => $c->name,
+                ];
+            })->values();
+
+            foreach ($nested as $nestedCategory)
+            {
+                $renderedIds[(int) $nestedCategory->id] = true;
+                $options->push([
+                    'id' => $nestedCategory->id,
+                    'label' => $nestedLabel($nestedCategory),
+                ]);
+            }
+
+            $groups[] = [
+                'type' => 'group',
+                'label' => $parentCategory->name,
+                'options' => $options->all(),
+            ];
         }
 
         foreach ($allSubcategories as $parentId => $subs)
@@ -817,12 +872,27 @@ class CategoryController extends Controller
                 continue;
             }
 
+            $parentCategory = $categoryById->get((int) $parentId);
+            $skipAsNested = $parentCategory
+                && $parentCategory->parent_id !== null
+                && in_array((int) $parentCategory->parent_id, $parentIds, true);
+
+            if ($skipAsNested)
+            {
+                continue;
+            }
+
             foreach ($subs as $category)
             {
+                if (isset($renderedIds[(int) $category->id]))
+                {
+                    continue;
+                }
+
                 $groups[] = [
                     'type' => 'option',
                     'id' => $category->id,
-                    'label' => $category->name,
+                    'label' => $nestedLabel($category),
                 ];
             }
         }
