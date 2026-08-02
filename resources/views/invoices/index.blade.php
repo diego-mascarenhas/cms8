@@ -13,16 +13,18 @@
         <h4 class="mb-1 mt-3">{{ __('Invoices') }}</h4>
         <p class="text-muted">{{ __('Manage your invoices and billing') }}</p>
     </div>
-    @can('invoice.create')
     <div class="mt-3 mt-md-0 d-flex gap-2">
-        <button type="button" class="btn btn-label-primary" data-bs-toggle="modal" data-bs-target="#calculatorModal">
-            <i class="ti ti-calculator me-1"></i> {{ __('Calculator') }}
-        </button>
-        <a href="{{ route('invoice.create') }}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i> {{ __('New Invoice') }}
-        </a>
+        @can('create', App\Models\Payment::class)
+            <a href="{{ route('expense.create') }}" class="btn btn-outline-primary">
+                <i class="ti ti-receipt me-1"></i>Añadir gasto
+            </a>
+        @endcan
+        @can('create', App\Models\Invoice::class)
+            <a href="{{ route('invoice.create') }}" class="btn btn-primary">
+                <i class="ti ti-plus me-1"></i>Crear factura
+            </a>
+        @endcan
     </div>
-    @endcan
 </div>
 
 <!-- Exchange Rates Cards -->

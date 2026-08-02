@@ -914,10 +914,13 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
-    // Legacy invoice routes already defined above
     Route::prefix('invoice')->group(function ()
     {
-        Route::get('/create', [App\Http\Controllers\apps\InvoiceAdd::class, 'index'])->name('invoice.create');
+        Route::get('/create', [InvoiceController::class, 'create'])->name('invoice.create');
+        Route::post('/', [InvoiceController::class, 'store'])->name('invoice.store');
+        Route::post('/create-client', [InvoiceController::class, 'createClient'])->name('invoice.create-client');
+        Route::post('/check-document-duplicate', [InvoiceController::class, 'checkDocumentDuplicate'])->name('invoice.check-document-duplicate');
+        Route::get('/suggested-categories', [InvoiceController::class, 'suggestedCategories'])->name('invoice.suggested-categories');
 
         Route::delete('/destroy/{id}', function ($id)
         {

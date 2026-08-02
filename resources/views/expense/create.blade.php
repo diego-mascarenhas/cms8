@@ -1,6 +1,41 @@
+@php
+    $documentFlow = array_merge([
+        'mode' => 'buy',
+        'page_title' => 'Añadir gasto',
+        'breadcrumb' => 'Gastos',
+        'subtitle' => 'Registrar un nuevo gasto',
+        'back_route' => route('expense.index'),
+        'store_route' => route('expense.store'),
+        'party_label' => 'Proveedor (*)',
+        'party_placeholder' => 'Selecciona un proveedor',
+        'create_party_label' => 'Crear proveedor',
+        'create_party_modal_title' => 'Crear proveedor',
+        'create_party_help' => 'Los datos fiscales se guardarán en el proveedor para futuras facturas.',
+        'save_party_label' => 'Guardar proveedor',
+        'remarks_label' => 'Comentario personal del gasto',
+        'submit_label' => 'Guardar gasto',
+        'account_hint' => 'antes de registrar el gasto.',
+        'payments_section_title' => 'Pagos',
+        'add_payment_label' => 'Añadir pago',
+        'payment_date_label' => 'Fecha del pago (*)',
+        'remove_payment_title' => 'Eliminar pago',
+        'payments_empty_message' => 'Sin pagos registrados. La factura quedará pendiente de pago. Usa «Añadir pago» si quieres registrar uno.',
+        'payments_empty_summary' => 'Sin pagos registrados. Pendiente de pago:',
+        'paid_label' => 'Pagado',
+        'payments_overflow_prefix' => 'La suma de pagos supera el',
+        'payments_overflow_suffix' => 'total del gasto.',
+        'duplicate_message' => 'Este número de comprobante ya fue registrado para este proveedor.',
+        'detect_document_url' => route('expense.detect-document'),
+        'check_duplicate_url' => route('expense.check-document-duplicate'),
+        'create_party_url' => route('expense.create-supplier'),
+        'suggested_categories_url' => route('expense.suggested-categories'),
+        'livewire_key' => 'expense-line-cat-mgr-services',
+    ], $documentFlow ?? []);
+@endphp
+
 @extends('layouts/layoutMaster')
 
-@section('title', 'Añadir gasto')
+@section('title', $documentFlow['page_title'])
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/flatpickr/flatpickr.css') }}" />
@@ -28,11 +63,11 @@
 
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">Gastos/</span> Crear</h4>
-        <p class="text-muted">Registrar un nuevo gasto</p>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ $documentFlow['breadcrumb'] }}/</span> Crear</h4>
+        <p class="text-muted">{{ $documentFlow['subtitle'] }}</p>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="{{ route('expense.index') }}" class="btn btn-label-secondary waves-effect">
+        <a href="{{ $documentFlow['back_route'] }}" class="btn btn-label-secondary waves-effect">
             <i class="ti ti-arrow-left me-1"></i> Volver
         </a>
     </div>
@@ -49,7 +84,7 @@
 @endif
 
 <div class="card">
-    <form class="card-body" action="{{ route('expense.store') }}" method="POST" enctype="multipart/form-data" novalidate>
+    <form class="card-body" action="{{ $documentFlow['store_route'] }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
         @php
             $selectedDocumentType = old('document_type', 'invoice');
@@ -84,58 +119,60 @@
         </div>
 
         <div class="row g-3">
-            <div class="col-lg-7">
-                <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
-                <div
-                    id="document-drop-zone"
-                    class="border rounded p-4 h-100 position-relative overflow-hidden"
-                    style="border-style: dashed !important; cursor: pointer;"
-                    role="button"
-                    tabindex="0"
-                    aria-label="Suelta un archivo o haz clic para subir"
-                >
-                    <div id="document-file-meta" class="d-none position-absolute top-0 end-0 p-2 d-flex align-items-center gap-2" style="z-index: 2; max-width: 85%;">
-                        <span id="selected-document-name" class="text-primary small text-truncate"></span>
-                        <button
-                            type="button"
-                            id="remove-document-file"
-                            class="border-0 bg-transparent text-danger p-0"
-                            title="Eliminar documento"
-                            style="line-height: 1;"
-                        >
-                            <i class="ti ti-trash ti-xs"></i>
-                        </button>
-                    </div>
-                    <div class="d-flex flex-column align-items-center justify-content-center text-center h-100 w-100">
-                        <i id="document-drop-icon" class="ti ti-cloud-upload ti-lg mb-2 text-muted"></i>
-                        <p id="document-drop-title" class="mb-2 fw-medium">Suelta un archivo o haz clic para subir</p>
-                        <p id="document-drop-subtitle" class="mb-1 text-muted">Opcional: factura, ticket o documento fiscal</p>
-                        <div id="document-file-preview" class="d-none mt-2 w-100 h-100 d-flex align-items-center justify-content-center"></div>
-                        <p id="document-detection-status" class="mb-0 text-muted small mt-1"></p>
-                        <div id="document-detection-loading" class="d-none mt-2">
-                            <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
-                            <span class="small text-muted">Analizando documento...</span>
+            @if (($documentFlow['mode'] ?? 'buy') === 'buy')
+                <div class="col-lg-7">
+                    <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                    <div
+                        id="document-drop-zone"
+                        class="border rounded p-4 h-100 position-relative overflow-hidden"
+                        style="border-style: dashed !important; cursor: pointer;"
+                        role="button"
+                        tabindex="0"
+                        aria-label="Suelta un archivo o haz clic para subir"
+                    >
+                        <div id="document-file-meta" class="d-none position-absolute top-0 end-0 p-2 d-flex align-items-center gap-2" style="z-index: 2; max-width: 85%;">
+                            <span id="selected-document-name" class="text-primary small text-truncate"></span>
+                            <button
+                                type="button"
+                                id="remove-document-file"
+                                class="border-0 bg-transparent text-danger p-0"
+                                title="Eliminar documento"
+                                style="line-height: 1;"
+                            >
+                                <i class="ti ti-trash ti-xs"></i>
+                            </button>
+                        </div>
+                        <div class="d-flex flex-column align-items-center justify-content-center text-center h-100 w-100">
+                            <i id="document-drop-icon" class="ti ti-cloud-upload ti-lg mb-2 text-muted"></i>
+                            <p id="document-drop-title" class="mb-2 fw-medium">Suelta un archivo o haz clic para subir</p>
+                            <p id="document-drop-subtitle" class="mb-1 text-muted">Opcional: factura, ticket o documento fiscal</p>
+                            <div id="document-file-preview" class="d-none mt-2 w-100 h-100 d-flex align-items-center justify-content-center"></div>
+                            <p id="document-detection-status" class="mb-0 text-muted small mt-1"></p>
+                            <div id="document-detection-loading" class="d-none mt-2">
+                                <span class="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+                                <span class="small text-muted">Analizando documento...</span>
+                            </div>
                         </div>
                     </div>
+                    @error('document_file')
+                        <small class="text-danger d-block mt-2">{{ $message }}</small>
+                    @enderror
                 </div>
-                @error('document_file')
-                    <small class="text-danger d-block mt-2">{{ $message }}</small>
-                @enderror
-            </div>
+            @endif
 
-            <div class="col-lg-5">
+            <div class="{{ ($documentFlow['mode'] ?? 'buy') === 'buy' ? 'col-lg-5' : 'col-12' }}">
                 <div class="row g-3">
                     <div class="col-12">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label for="enterprise_id" class="form-label mb-0">Proveedor (*)</label>
+                            <label for="enterprise_id" class="form-label mb-0">{{ $documentFlow['party_label'] }}</label>
                             @can('create', \App\Models\Enterprise::class)
                                 <button type="button" class="btn btn-sm btn-outline-primary" id="open-create-supplier-modal">
-                                    <i class="ti ti-building-store me-1"></i> Crear proveedor
+                                    <i class="ti ti-building-store me-1"></i> {{ $documentFlow['create_party_label'] }}
                                 </button>
                             @endcan
                         </div>
                         <select id="enterprise_id" name="enterprise_id" class="form-select select2-enterprise @error('enterprise_id') is-invalid @enderror">
-                            <option value="">Selecciona un proveedor</option>
+                            <option value="">{{ $documentFlow['party_placeholder'] }}</option>
                             @foreach ($enterprises as $enterprise)
                                 <option value="{{ $enterprise->id }}" {{ old('enterprise_id') == $enterprise->id ? 'selected' : '' }}>
                                     {{ $enterprise->name }}
@@ -358,17 +395,17 @@
             <div class="alert alert-warning">
                 No hay cuentas de pago activas en tu empresa.
                 @can('create', \App\Models\PaymentAccount::class)
-                    <a href="{{ route('payment-account.create') }}">Crea una cuenta</a> antes de registrar el gasto.
+                    <a href="{{ route('payment-account.create') }}">Crea una cuenta</a> {{ $documentFlow['account_hint'] }}
                 @else
-                    Crea una cuenta antes de registrar el gasto.
+                    Crea una cuenta {{ $documentFlow['account_hint'] }}
                 @endcan
             </div>
         @endif
 
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">Pagos</h5>
+            <h5 class="mb-0">{{ $documentFlow['payments_section_title'] }}</h5>
             <button type="button" id="add-expense-payment" class="btn btn-sm btn-outline-primary">
-                <i class="ti ti-plus me-1"></i>Añadir pago
+                <i class="ti ti-plus me-1"></i>{{ $documentFlow['add_payment_label'] }}
             </button>
         </div>
 
@@ -377,7 +414,7 @@
                 <div class="expense-payment-block border rounded p-3 mb-2" data-payment-index="{{ $paymentIndex }}">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-2 col-lg-2">
-                            <label class="form-label" for="payment_date_{{ $paymentIndex }}">Fecha del pago (*)</label>
+                            <label class="form-label" for="payment_date_{{ $paymentIndex }}">{{ $documentFlow['payment_date_label'] }}</label>
                             <input
                                 type="text"
                                 id="payment_date_{{ $paymentIndex }}"
@@ -467,7 +504,7 @@
                             @enderror
                         </div>
                         <div class="col-md-1 col-lg-1 d-flex justify-content-end">
-                            <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="Eliminar pago">
+                            <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="{{ $documentFlow['remove_payment_title'] }}">
                                 <i class="ti ti-trash"></i>
                             </button>
                         </div>
@@ -476,7 +513,7 @@
             @endforeach
         </div>
         <p id="expense-payments-empty" class="text-muted small mb-0 {{ $initialPayments !== [] ? 'd-none' : '' }}">
-            Sin pagos registrados. La factura quedará pendiente de pago. Usa «Añadir pago» si quieres registrar uno.
+            {{ $documentFlow['payments_empty_message'] }}
         </p>
 
         <div id="payments-summary" class="small text-muted mt-2"></div>
@@ -486,7 +523,7 @@
 
         <div class="row g-3 mt-4">
             <div class="col-md-6">
-                <label for="remarks" class="form-label">Comentario personal del gasto</label>
+                <label for="remarks" class="form-label">{{ $documentFlow['remarks_label'] }}</label>
                 <input type="text" id="remarks" name="remarks" class="form-control @error('remarks') is-invalid @enderror" maxlength="1000" value="{{ old('remarks') }}">
                 @error('remarks')
                     <div class="invalid-feedback">{{ $message }}</div>
@@ -502,10 +539,10 @@
         </div>
 
         <div class="d-flex justify-content-between align-items-center mt-4">
-            <a href="{{ route('expense.index') }}" class="btn btn-label-secondary">Cancelar</a>
+            <a href="{{ $documentFlow['back_route'] }}" class="btn btn-label-secondary">Cancelar</a>
             <div class="d-flex gap-2">
                 <button type="submit" name="submit_action" value="draft" class="btn btn-label-primary expense-submit-btn">Guardar borrador</button>
-                <button type="submit" name="submit_action" value="save" class="btn btn-primary expense-submit-btn">Guardar gasto</button>
+                <button type="submit" name="submit_action" value="save" class="btn btn-primary expense-submit-btn">{{ $documentFlow['submit_label'] }}</button>
             </div>
         </div>
     </form>
@@ -516,12 +553,12 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createSupplierModalLabel">Crear proveedor</h5>
+                <h5 class="modal-title" id="createSupplierModalLabel">{{ $documentFlow['create_party_modal_title'] }}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="create-supplier-form">
                 <div class="modal-body">
-                    <p class="text-muted small mb-3">Los datos fiscales se guardarán en el proveedor para futuras facturas.</p>
+                    <p class="text-muted small mb-3">{{ $documentFlow['create_party_help'] }}</p>
                     <div class="row g-3">
                         <div class="col-md-8">
                             <label for="supplier_name" class="form-label">Nombre o razón social (*)</label>
@@ -576,7 +613,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-primary" id="create-supplier-submit">
-                        <span class="submit-label">Guardar proveedor</span>
+                        <span class="submit-label">{{ $documentFlow['save_party_label'] }}</span>
                         <span class="submit-loading d-none">
                             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
                             Guardando...
@@ -592,7 +629,7 @@
 @include('partials.line-category-modal', [
     'categoryOptions' => $expenseCategoryOptions ?? [],
     'showSuggestion' => true,
-    'livewireKey' => 'expense-line-cat-mgr-services',
+    'livewireKey' => $documentFlow['livewire_key'],
 ])
 @endsection
 
@@ -612,6 +649,8 @@
 @endphp
 <script>
     $(function () {
+        var documentFlow = @json($documentFlow);
+        var partyNoun = documentFlow.mode === 'sell' ? 'cliente' : 'proveedor';
         var $createSupplierModal = $('#createSupplierModal');
         var expenseCategoryOptions = @json($expenseCategoryOptionsJs);
 
@@ -638,11 +677,11 @@
                 dropdownParent: $enterpriseSelectInit.parent(),
                 width: '100%',
                 allowClear: false,
-                placeholder: 'Selecciona un proveedor',
+                placeholder: documentFlow.party_placeholder,
                 language: {
                     noResults: function () {
                         if (canCreateSupplier) {
-                            return 'Sin resultados. Clic aquí o en «Crear proveedor» para darlo de alta con datos fiscales.';
+                            return 'Sin resultados. Clic aquí o en «' + documentFlow.create_party_label + '» para darlo de alta con datos fiscales.';
                         }
 
                         return 'Sin resultados';
@@ -762,9 +801,9 @@
         var $linesBody = $('#expense-lines-body');
         var $currencySelect = $('#currency_id');
         var $summaryVatLines = $('#summary-vat-lines');
-        var detectDocumentUrl = @json(route('expense.detect-document'));
-        var checkDocumentDuplicateUrl = @json(route('expense.check-document-duplicate'));
-        var createSupplierUrl = @json(route('expense.create-supplier'));
+        var detectDocumentUrl = documentFlow.detect_document_url;
+        var checkDocumentDuplicateUrl = documentFlow.check_duplicate_url;
+        var createSupplierUrl = documentFlow.create_party_url;
         var csrfToken = @json(csrf_token());
         var $enterpriseSelect = $('#enterprise_id');
         var $enterpriseDetectionStatus = $('#enterprise-detection-status');
@@ -796,7 +835,7 @@
             $documentNumberInput.addClass('is-invalid');
             $documentNumberDuplicateWarning
                 .removeClass('d-none')
-                .text(message || 'Este número de comprobante ya fue registrado para este proveedor.');
+                .text(message || documentFlow.duplicate_message);
             setExpenseSubmitEnabled(false);
         }
 
@@ -845,7 +884,7 @@
                         return;
                     }
 
-                    var warningMessage = response.message || 'Este número de comprobante ya fue registrado para este proveedor.';
+                    var warningMessage = response.message || documentFlow.duplicate_message;
                     if (response.invoice && response.invoice.date) {
                         warningMessage += ' Registrado el ' + response.invoice.date + '.';
                     }
@@ -1060,7 +1099,7 @@
                 '<div class="expense-payment-block border rounded p-3 mb-2" data-payment-index="' + index + '">',
                 '  <div class="row g-3 align-items-end">',
                 '    <div class="col-md-2 col-lg-2">',
-                '      <label class="form-label" for="payment_date_' + index + '">Fecha del pago (*)</label>',
+                '      <label class="form-label" for="payment_date_' + index + '">' + escapeHtml(documentFlow.payment_date_label) + '</label>',
                 '      <input type="text" id="payment_date_' + index + '" name="payments[' + index + '][payment_date]" class="form-control expense-date payment-date" value="' + escapeHtml(paymentDate) + '">',
                 '    </div>',
                 '    <div class="col-md-2 col-lg-2">',
@@ -1093,7 +1132,7 @@
                 '      </select>',
                 '    </div>',
                 '    <div class="col-md-1 col-lg-1 d-flex justify-content-end">',
-                '      <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="Eliminar pago">',
+                '      <button type="button" class="btn btn-icon btn-label-danger remove-payment-btn" title="' + escapeHtml(documentFlow.remove_payment_title) + '">',
                 '        <i class="ti ti-trash"></i>',
                 '      </button>',
                 '    </div>',
@@ -1165,12 +1204,12 @@
                 $summary
                     .removeClass('text-danger')
                     .addClass('text-muted')
-                    .text('Sin pagos registrados. Pendiente de pago: ' + formatAmount(total));
+                    .text(documentFlow.payments_empty_summary + ' ' + formatAmount(total));
                 return;
             }
 
             var summaryParts = [
-                'Pagado: ' + formatAmount(paid),
+                documentFlow.paid_label + ': ' + formatAmount(paid),
                 'Total: ' + formatAmount(total),
             ];
 
@@ -1181,7 +1220,7 @@
             var summaryText = summaryParts.join(' · ');
 
             if (exceedsTotal) {
-                summaryText += ' — La suma de pagos supera el total del gasto.';
+                summaryText += ' — ' + documentFlow.payments_overflow_prefix + ' ' + documentFlow.payments_overflow_suffix;
             }
 
             $summary
@@ -1398,7 +1437,7 @@
         var $lineCategorySuggestionText = $('#line-category-suggestion-text');
         var suggestedCategoryItems = [];
         var activeCategoryLineIndex = null;
-        var suggestedCategoriesUrl = @json(route('expense.suggested-categories'));
+        var suggestedCategoriesUrl = documentFlow.suggested_categories_url;
         var suggestedCategoriesRequest = null;
 
         function syncExpenseCategoryOptionsFromSelect() {
@@ -1884,7 +1923,7 @@
                     },
                     success: function (response) {
                         if (!response || response.success !== true || !response.enterprise) {
-                            $createSupplierError.removeClass('d-none').text('No se pudo crear el proveedor.');
+                            $createSupplierError.removeClass('d-none').text('No se pudo crear el ' + partyNoun + '.');
                             return;
                         }
 
@@ -1893,12 +1932,12 @@
                         $enterpriseDetectionStatus
                             .removeClass('text-warning text-danger text-muted')
                             .addClass('text-success')
-                            .text('Proveedor creado y seleccionado: ' + response.enterprise.name + '.');
+                            .text((documentFlow.mode === 'sell' ? 'Cliente' : 'Proveedor') + ' creado y seleccionado: ' + response.enterprise.name + '.');
 
                         bootstrap.Modal.getOrCreateInstance($createSupplierModal.get(0)).hide();
                     },
                     error: function (xhr) {
-                        var message = 'No se pudo crear el proveedor.';
+                        var message = 'No se pudo crear el ' + partyNoun + '.';
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             message = xhr.responseJSON.message;
                         } else if (xhr.responseJSON && xhr.responseJSON.errors) {

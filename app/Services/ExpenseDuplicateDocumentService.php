@@ -18,8 +18,12 @@ class ExpenseDuplicateDocumentService
         return $normalized === '' ? null : $normalized;
     }
 
-    public function findDuplicate(int $teamId, int $enterpriseId, ?string $documentNumber): ?Invoice
-    {
+    public function findDuplicate(
+        int $teamId,
+        int $enterpriseId,
+        ?string $documentNumber,
+        string $operation = 'buy',
+    ): ?Invoice {
         $normalizedNumber = $this->normalizeDocumentNumber($documentNumber);
 
         if ($normalizedNumber === null)
@@ -30,13 +34,17 @@ class ExpenseDuplicateDocumentService
         return Invoice::withoutGlobalScopes()
             ->where('team_id', $teamId)
             ->where('enterprise_id', $enterpriseId)
-            ->where('operation', 'buy')
+            ->where('operation', $operation)
             ->whereRaw('LOWER(number) = ?', [mb_strtolower($normalizedNumber)])
             ->first();
     }
 
-    public function isDuplicate(int $teamId, int $enterpriseId, ?string $documentNumber): bool
-    {
-        return $this->findDuplicate($teamId, $enterpriseId, $documentNumber) instanceof Invoice;
+    public function isDuplicate(
+        int $teamId,
+        int $enterpriseId,
+        ?string $documentNumber,
+        string $operation = 'buy',
+    ): bool {
+        return $this->findDuplicate($teamId, $enterpriseId, $documentNumber, $operation) instanceof Invoice;
     }
 }

@@ -202,7 +202,9 @@ class StoreExpenseRequest extends FormRequest
             {
                 $validator->errors()->add(
                     'payments.0.amount',
-                    'La suma de los importes de pago no puede superar el total del gasto ('.Helpers::formatDecimal($invoiceTotal).').',
+                    'La suma de los importes de pago no puede superar el total '
+                        .($this->isSellFlow() ? 'de la factura' : 'del gasto')
+                        .' ('.Helpers::formatDecimal($invoiceTotal).').',
                 );
             }
 
@@ -245,13 +247,20 @@ class StoreExpenseRequest extends FormRequest
             if ($enterpriseId > 0 && filled($documentNumber))
             {
                 $duplicateInvoice = app(ExpenseDuplicateDocumentService::class)
-                    ->findDuplicate($teamId, $enterpriseId, (string) $documentNumber);
+                    ->findDuplicate(
+                        $teamId,
+                        $enterpriseId,
+                        (string) $documentNumber,
+                        $this->isSellFlow() ? 'sell' : 'buy',
+                    );
 
                 if ($duplicateInvoice instanceof Invoice)
                 {
                     $validator->errors()->add(
                         'document_number',
-                        'Este número de comprobante ya fue registrado para este proveedor.',
+                        'Este número de comprobante ya fue registrado para este '
+                            .($this->isSellFlow() ? 'cliente' : 'proveedor')
+                            .'.',
                     );
                 }
             }
@@ -265,7 +274,7 @@ class StoreExpenseRequest extends FormRequest
     {
         return [
             'document_type' => 'tipo de documento',
-            'enterprise_id' => 'proveedor',
+            'enterprise_id' => $this->isSellFlow() ? 'cliente' : 'proveedor',
             'document_file' => 'documento',
             'date' => 'fecha',
             'due_date' => 'fecha de vencimiento',
@@ -296,9 +305,9 @@ class StoreExpenseRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'lines.required' => 'Debes añadir al menos una línea al gasto.',
-            'lines.min' => 'Debes añadir al menos una línea al gasto.',
-            'enterprise_id.exists' => 'El proveedor seleccionado no es válido.',
+            'lines.required' => 'Debes añadir al menos una línea a '.($this->isSellFlow() ? 'la factura.' : 'el gasto.'),
+            'lines.min' => 'Debes añadir al menos una línea a '.($this->isSellFlow() ? 'la factura.' : 'el gasto.'),
+            'enterprise_id.exists' => 'El '.($this->isSellFlow() ? 'cliente' : 'proveedor').' seleccionado no es válido.',
             'payments.*.account_id.exists' => 'La cuenta seleccionada no es válida.',
             'lines.*.base_amount.required' => 'Importe obligatorio',
             'lines.*.base_amount.numeric' => 'Importe obligatorio',
@@ -332,5 +341,10 @@ class StoreExpenseRequest extends FormRequest
         }
 
         return round(max($total, 0), 2);
+    }
+
+    private function isSellFlow(): bool
+    {
+        return $this->routeIs('invoice.store');
     }
 }
