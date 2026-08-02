@@ -94,29 +94,31 @@
         @endphp
         <input type="hidden" id="document_type" name="document_type" value="{{ $selectedDocumentType }}">
 
-        <div class="row g-3 mb-3">
-            <div class="col-12">
-                <div class="d-flex flex-wrap gap-2">
-                    @foreach ($documentTypes as $documentTypeKey => $documentTypeLabel)
-                        @php
-                            $isDisabledDocumentType = in_array($documentTypeKey, $disabledDocumentTypes, true);
-                            $isSelectedDocumentType = ! $isDisabledDocumentType && $selectedDocumentType === $documentTypeKey;
-                        @endphp
-                        <button
-                            type="button"
-                            class="btn btn-sm {{ $isSelectedDocumentType ? 'btn-primary' : 'btn-outline-secondary' }} document-type-btn"
-                            data-document-type="{{ $documentTypeKey }}"
-                            @if ($isDisabledDocumentType) disabled @endif
-                        >
-                            {{ $documentTypeLabel }}
-                        </button>
-                    @endforeach
+        @if (($documentFlow['mode'] ?? 'buy') === 'buy')
+            <div class="row g-3 mb-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach ($documentTypes as $documentTypeKey => $documentTypeLabel)
+                            @php
+                                $isDisabledDocumentType = in_array($documentTypeKey, $disabledDocumentTypes, true);
+                                $isSelectedDocumentType = ! $isDisabledDocumentType && $selectedDocumentType === $documentTypeKey;
+                            @endphp
+                            <button
+                                type="button"
+                                class="btn btn-sm {{ $isSelectedDocumentType ? 'btn-primary' : 'btn-outline-secondary' }} document-type-btn"
+                                data-document-type="{{ $documentTypeKey }}"
+                                @if ($isDisabledDocumentType) disabled @endif
+                            >
+                                {{ $documentTypeLabel }}
+                            </button>
+                        @endforeach
+                    </div>
+                    @error('document_type')
+                        <small class="text-danger d-block mt-1">{{ $message }}</small>
+                    @enderror
                 </div>
-                @error('document_type')
-                    <small class="text-danger d-block mt-1">{{ $message }}</small>
-                @enderror
             </div>
-        </div>
+        @endif
 
         <div class="row g-3">
             @if (($documentFlow['mode'] ?? 'buy') === 'buy')
@@ -160,9 +162,12 @@
                 </div>
             @endif
 
-            <div class="{{ ($documentFlow['mode'] ?? 'buy') === 'buy' ? 'col-lg-5' : 'col-12' }}">
+            @php
+                $isSellDocumentFlow = ($documentFlow['mode'] ?? 'buy') === 'sell';
+            @endphp
+            <div class="{{ $isSellDocumentFlow ? 'col-12' : 'col-lg-5' }}">
                 <div class="row g-3">
-                    <div class="col-12">
+                    <div class="{{ $isSellDocumentFlow ? 'col-md-8' : 'col-12' }}">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label for="enterprise_id" class="form-label mb-0">{{ $documentFlow['party_label'] }}</label>
                             @can('create', \App\Models\Enterprise::class)
@@ -185,7 +190,24 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-6">
+                    @if ($isSellDocumentFlow)
+                        <div class="col-md-4">
+                            <label for="document_number" class="form-label">Número de comprobante</label>
+                            <input
+                                type="text"
+                                id="document_number"
+                                class="form-control"
+                                value=""
+                                placeholder="Automático"
+                                readonly
+                                tabindex="-1"
+                                aria-readonly="true"
+                            >
+                            <small class="text-muted d-block mt-1">Se asignará al guardar</small>
+                        </div>
+                    @endif
+
+                    <div class="{{ $isSellDocumentFlow ? 'col-md-4' : 'col-md-6' }}">
                         <label for="date" class="form-label">Fecha (*)</label>
                         <input type="text" id="date" name="date" class="form-control expense-date @error('date') is-invalid @enderror" value="{{ old('date', now()->toDateString()) }}">
                         @error('date')
@@ -193,7 +215,7 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="{{ $isSellDocumentFlow ? 'col-md-4' : 'col-md-6' }}">
                         <label for="due_date" class="form-label">Fecha vencimiento</label>
                         <input type="text" id="due_date" name="due_date" class="form-control expense-date @error('due_date') is-invalid @enderror" value="{{ old('due_date', old('date', now()->toDateString())) }}">
                         @error('due_date')
@@ -201,16 +223,18 @@
                         @enderror
                     </div>
 
-                    <div class="col-12">
-                        <label for="document_number" class="form-label">Número de comprobante</label>
-                        <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
-                        <small id="document-number-duplicate-warning" class="d-none text-danger d-block mt-1"></small>
-                        @error('document_number')
-                            <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
+                    @unless ($isSellDocumentFlow)
+                        <div class="col-12">
+                            <label for="document_number" class="form-label">Número de comprobante</label>
+                            <input type="text" id="document_number" name="document_number" class="form-control @error('document_number') is-invalid @enderror" value="{{ old('document_number') }}">
+                            <small id="document-number-duplicate-warning" class="d-none text-danger d-block mt-1"></small>
+                            @error('document_number')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                    @endunless
 
-                    <div class="col-12">
+                    <div class="{{ $isSellDocumentFlow ? 'col-md-4' : 'col-12' }}">
                         <label for="currency_id" class="form-label">Moneda</label>
                         <select id="currency_id" name="currency_id" class="form-select select2 @error('currency_id') is-invalid @enderror">
                             <option value="">Selecciona moneda</option>

@@ -65,7 +65,13 @@ class InvoiceCreateTest extends TestCase
             ->assertSee('Cobros', false)
             ->assertSee('Añadir cobro', false)
             ->assertDontSee('>Pagos</h5>', false)
-            ->assertDontSee('>Añadir pago<', false);
+            ->assertDontSee('>Añadir pago<', false)
+            ->assertDontSee('Ticket/Recibo', false)
+            ->assertDontSee('Amortización', false)
+            ->assertDontSee('Nómina', false)
+            ->assertSee('Automático', false)
+            ->assertSee('Se asignará al guardar', false)
+            ->assertSee('col-md-4', false);
     }
 
     public function test_store_creates_sell_invoice_and_income_payment(): void
