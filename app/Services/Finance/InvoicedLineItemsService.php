@@ -60,9 +60,11 @@ class InvoicedLineItemsService
         Carbon $to,
         ?string $operation = null,
         ?int $categoryId = null,
+        bool $uncategorizedOnly = false,
     ): Collection {
         return InvoiceItem::query()
-            ->when($categoryId !== null, fn (Builder $query) => $query->where('category_id', $categoryId))
+            ->when($uncategorizedOnly, fn (Builder $query) => $query->whereNull('category_id'))
+            ->when(! $uncategorizedOnly && $categoryId !== null, fn (Builder $query) => $query->where('category_id', $categoryId))
             ->whereHas('invoice', function ($query) use ($teamId, $operation, $from, $to): void
             {
                 $query->withoutGlobalScopes()
@@ -75,16 +77,23 @@ class InvoicedLineItemsService
             })
             ->with(['invoice.enterprise', 'category'])
             ->get()
-            ->sortByDesc(fn (InvoiceItem $item) => $item->invoice?->date ?? '')
+            ->sortBy(
+                fn (InvoiceItem $item) => mb_strtolower((string) ($item->invoice?->enterprise?->name ?? '')),
+                SORT_NATURAL,
+            )
             ->values();
     }
 
     /**
      * @return array{
      *     lines: list<array{
+     *         id: int,
+     *         invoice_id: int|null,
+     *         invoice_number: string|null,
      *         enterprise_id: int|null,
      *         enterprise_name: string,
      *         description: string|null,
+     *         category_id: int|null,
      *         category_name: string|null,
      *         amount: float,
      *         has_discount: bool,
@@ -122,9 +131,13 @@ class InvoicedLineItemsService
                 : null;
 
             $lines[] = [
+                'id' => (int) $item->id,
+                'invoice_id' => $invoice?->id ? (int) $invoice->id : null,
+                'invoice_number' => filled($invoice?->number) ? (string) $invoice->number : null,
                 'enterprise_id' => $invoice?->enterprise_id ? (int) $invoice->enterprise_id : null,
                 'enterprise_name' => (string) ($invoice?->enterprise?->name ?? __('Unknown')),
                 'description' => $showDescription ? (string) $item->description : null,
+                'category_id' => $item->category_id ? (int) $item->category_id : null,
                 'category_name' => $showCategory
                     ? (string) ($item->category?->name ?? __('Uncategorized'))
                     : null,

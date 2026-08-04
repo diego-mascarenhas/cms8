@@ -36,7 +36,7 @@ class CheckExpenseDocumentDuplicateRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'enterprise_id' => 'proveedor',
+            'enterprise_id' => $this->routeIs('invoice.check-document-duplicate') ? 'cliente' : 'proveedor',
             'document_number' => 'número de comprobante',
         ];
     }

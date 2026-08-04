@@ -6,10 +6,13 @@ use App\Actions\Subscriptions\SyncStripeSubscriptions as SyncStripeSubscriptions
 use App\DataTables\StripeSubscriptionDataTable;
 use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
+use App\Http\Requests\UpdateSubscriptionServiceCategoryRequest;
 use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
+use App\Services\Billing\ServiceSyncImporter;
+use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Stripe\StripeCheckoutSessionLogFormatter;
 use App\Services\Stripe\StripeSubscriptionService;
 use App\Services\StripeAccountResolver;
@@ -17,8 +20,10 @@ use App\Services\TaxIdentifierService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use RuntimeException;
 use Stripe\Stripe;
 use Stripe\StripeClient;
 
@@ -72,10 +77,95 @@ class SubscriptionController extends Controller
             $selectedStatus = '';
         }
 
+        $teamId = $teamId ? (int) $teamId : null;
+
         return $dataTable->render('subscription.index', [
             'statusCounts' => $statusCounts,
             'subscriptionStatuses' => $statuses,
             'selectedStatus' => $selectedStatus,
+            'categoryOptions' => $teamId
+                ? app(ServiceCategoryOptionsService::class)->optionsForTeam($teamId)
+                : [],
+            'canEditCategory' => (bool) auth()->user()?->canAccessBilling(),
+        ]);
+    }
+
+    public function updateServiceCategory(
+        UpdateSubscriptionServiceCategoryRequest $request,
+        StripeSubscription $stripeSubscription,
+        ServiceSyncImporter $importer,
+    ): JsonResponse {
+        $this->ensureStripeSubscriptionInCurrentTeam($stripeSubscription);
+
+        $service = $importer->findLinkedService($stripeSubscription);
+        if (! $service)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No service is linked to this subscription.'),
+            ], 422);
+        }
+
+        $this->authorize('update', $service);
+
+        $categoryId = $request->input('category_id');
+        $categoryId = $categoryId === null || $categoryId === '' ? null : (int) $categoryId;
+
+        try
+        {
+            $service = $importer->updateServiceCategory($stripeSubscription, $categoryId);
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'service_id' => (int) $service->id,
+            'category_id' => $service->category_id ? (int) $service->category_id : null,
+            'category_name' => (string) ($service->category?->name ?? __('Uncategorized')),
+        ]);
+    }
+
+    public function createService(
+        UpdateSubscriptionServiceCategoryRequest $request,
+        StripeSubscription $stripeSubscription,
+        ServiceSyncImporter $importer,
+    ): JsonResponse {
+        $this->ensureStripeSubscriptionInCurrentTeam($stripeSubscription);
+        $this->authorize('create', Service::class);
+
+        $categoryId = $request->input('category_id');
+        $categoryId = $categoryId === null || $categoryId === '' ? null : (int) $categoryId;
+
+        try
+        {
+            $service = $importer->createServiceFromSync(
+                $stripeSubscription,
+                categoryId: $categoryId,
+                fallbackEmail: true,
+                linkCodeOnEmailMatch: true,
+                assignDefaultCategory: false,
+            );
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $service->load('category');
+
+        return response()->json([
+            'success' => true,
+            'service_id' => (int) $service->id,
+            'category_id' => $service->category_id ? (int) $service->category_id : null,
+            'category_name' => (string) ($service->category?->name ?? __('Uncategorized')),
+            'service_url' => route('service.show', $service->id),
         ]);
     }
 

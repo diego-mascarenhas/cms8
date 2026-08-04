@@ -69,9 +69,14 @@
                 </form>
             @endif
         @endcan
+        @can('create', App\Models\Payment::class)
+            <a href="{{ route('expense.create') }}" class="btn btn-outline-primary waves-effect waves-light">
+                <i class="ti ti-receipt me-1"></i>Añadir gasto
+            </a>
+        @endcan
         @can('create', App\Models\Invoice::class)
             <a href="{{ route('invoice.create') }}" class="btn btn-primary waves-effect waves-light">
-                <i class="ti ti-plus me-1"></i>Crear Factura
+                <i class="ti ti-plus me-1"></i>Crear factura
             </a>
         @endcan
     </div>

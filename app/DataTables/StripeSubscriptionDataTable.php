@@ -20,7 +20,7 @@ class StripeSubscriptionDataTable extends DataTable
     {
         return (new EloquentDataTable($query))
             ->setRowId('id')
-            ->rawColumns(['customer_name', 'status', 'action'])
+            ->rawColumns(['customer_name', 'status', 'service_category', 'action'])
             ->filterColumn('customer_name', function (Builder $builder, string $keyword)
             {
                 $builder->where('service_syncs.customer_name', 'like', '%'.$keyword.'%');
@@ -52,6 +52,10 @@ class StripeSubscriptionDataTable extends DataTable
                 });
             })
             ->addColumn('enterprise_contact_search', fn () => '')
+            ->addColumn('service_category', function (StripeSubscription $sub)
+            {
+                return $this->renderServiceCategoryBadge($sub);
+            })
             ->addColumn('action', function (StripeSubscription $sub)
             {
                 $user = auth()->user();
@@ -61,18 +65,20 @@ class StripeSubscriptionDataTable extends DataTable
                 }
 
                 $parts = [];
-
-                $service = Service::withoutGlobalScopes()
-                    ->where('subscription_id', $sub->id)
-                    ->whereNull('deleted_at')
-                    ->orderBy('id')
-                    ->get()
-                    ->first(fn (Service $s) => $user->can('view', $s));
+                $service = $this->linkedService($sub);
 
                 if ($service)
                 {
                     $parts[] = '<a href="'.e(route('service.show', $service->id)).'" class="text-body" title="'.e(__('stripe_subscription.open_service')).'">'
                         .'<i class="ti ti-eye ti-sm"></i>'
+                        .'</a>';
+                } elseif (
+                    $sub->getAttribute('enterprise_match_id')
+                    && $user->can('create', Service::class)
+                    && $user->canAccessBilling()
+                ) {
+                    $parts[] = '<a href="javascript:;" class="text-body create-subscription-service" data-subscription-id="'.(int) $sub->id.'" title="'.e(__('stripe_subscription.create_service')).'">'
+                        .'<i class="ti ti-plus ti-sm"></i>'
                         .'</a>';
                 }
 
@@ -118,12 +124,7 @@ class StripeSubscriptionDataTable extends DataTable
                     return e($label);
                 }
 
-                $service = Service::withoutGlobalScopes()
-                    ->where('subscription_id', $sub->id)
-                    ->whereNull('deleted_at')
-                    ->orderBy('id')
-                    ->get()
-                    ->first(fn (Service $service) => $user->can('view', $service));
+                $service = $this->linkedService($sub);
 
                 if ($service)
                 {
@@ -272,6 +273,14 @@ class StripeSubscriptionDataTable extends DataTable
             Column::make('id')->hidden(),
             Column::make('customer_name')->title(__('stripe_subscription.columns.customer_name'))->addClass('all')->searchable(true)->orderable(true),
             Column::make('plan_name')->title(__('stripe_subscription.columns.plan_name'))->addClass('min-tablet')->searchable(true)->orderable(true),
+            Column::computed('service_category')
+                ->title(__('stripe_subscription.columns.category'))
+                ->exportable(false)
+                ->printable(false)
+                ->orderable(false)
+                ->searchable(false)
+                ->addClass('min-tablet')
+                ->className('text-center'),
             Column::make('status')->title(__('stripe_subscription.columns.status'))->addClass('min-phone')->className('text-center')->orderable(true),
             Column::make('current_period_end')->title(__('stripe_subscription.columns.current_period_end'))->addClass('min-desktop')->className('text-center')->orderable(true),
             Column::make('amount_total')->title(__('stripe_subscription.columns.amount_total'))->addClass('min-desktop')->className('text-end')->orderable(true),
@@ -288,7 +297,7 @@ class StripeSubscriptionDataTable extends DataTable
                 ->printable(false)
                 ->orderable(false)
                 ->searchable(false)
-                ->width(72)
+                ->width(96)
                 ->addClass('min-desktop')
                 ->className('text-center'),
         ];
@@ -297,5 +306,56 @@ class StripeSubscriptionDataTable extends DataTable
     protected function filename(): string
     {
         return 'StripeSubscription_'.date('YmdHis');
+    }
+
+    private function linkedService(StripeSubscription $sub): ?Service
+    {
+        $user = auth()->user();
+        if (! $user)
+        {
+            return null;
+        }
+
+        return Service::withoutGlobalScopes()
+            ->with('category')
+            ->where('subscription_id', $sub->id)
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->get()
+            ->first(fn (Service $service) => $user->can('view', $service));
+    }
+
+    private function renderServiceCategoryBadge(StripeSubscription $sub): string
+    {
+        $service = $this->linkedService($sub);
+        if (! $service)
+        {
+            return '<span class="text-muted">—</span>';
+        }
+
+        $user = auth()->user();
+        $categoryId = $service->category_id ? (string) $service->category_id : '';
+        $label = $categoryId !== ''
+            ? (string) ($service->category?->name ?? '#'.$categoryId)
+            : (string) __('Uncategorized');
+        $hasCategory = $categoryId !== '';
+        $badgeClass = $hasCategory ? 'bg-label-primary' : 'bg-label-secondary';
+
+        $canEdit = $user
+            && $user->canAccessBilling()
+            && $user->can('update', $service);
+
+        if (! $canEdit)
+        {
+            return '<span class="badge '.$badgeClass.'">'.e($label).'</span>';
+        }
+
+        return '<button type="button"'
+            .' class="badge '.$badgeClass.' border-0 subscription-category-badge"'
+            .' data-subscription-id="'.(int) $sub->id.'"'
+            .' data-service-id="'.(int) $service->id.'"'
+            .' data-category-id="'.e($categoryId).'">'
+            .e($label)
+            .'</button>';
     }
 }

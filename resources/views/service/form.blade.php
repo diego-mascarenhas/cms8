@@ -12,34 +12,39 @@
 @endsection
 
 @section('content')
-<div class="container-xxl flex-grow-1 container-p-y">
-    <h4 class="fw-bold py-3 mb-4">
-        <span class="text-muted fw-light">{{ __('Service') }} /</span> {{ isset($data) ? __('Edit Service') : __('Create Service') }}
-    </h4>
-
-    @if ($errors->any())
-    <div class="alert alert-danger">
-        <ul class="mb-0">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+    <div class="d-flex flex-column justify-content-center">
+        <h4 class="mb-1 mt-3">
+            <span class="text-muted fw-light">{{ __('Services') }}/</span>
+            {{ isset($data) ? __('Edit') : __('Create') }}
+        </h4>
+        <p class="text-muted">{{ __('Track your clients\' services') }}</p>
     </div>
-    @endif
+</div>
 
-    @if(session('error'))
-    <div class="alert alert-danger">
-        {{ session('error') }}
-    </div>
-    @endif
+@if ($errors->any())
+<div class="alert alert-danger">
+    <ul class="mb-0">
+        @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+        @endforeach
+    </ul>
+</div>
+@endif
 
-    @if(session('success'))
-    <div class="alert alert-success">
-        {{ session('success') }}
-    </div>
-    @endif
+@if(session('error'))
+<div class="alert alert-danger">
+    {{ session('error') }}
+</div>
+@endif
 
-    <form id="serviceForm" method="POST" action="{{ isset($data) ? route('service.update', $data->id) : route('service.store') }}">
+@if(session('success'))
+<div class="alert alert-success">
+    {{ session('success') }}
+</div>
+@endif
+
+<form id="serviceForm" method="POST" action="{{ isset($data) ? route('service.update', $data->id) : route('service.store') }}">
         @csrf
         @if(isset($data))
             @method('PUT')
@@ -50,8 +55,8 @@
         <div class="card mb-4">
             <h5 class="card-header">{{ __('Basic Information') }}</h5>
             <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
+                <div class="row g-3 align-items-start">
+                    <div class="col-12 col-md-6">
                         <x-team-users-select
                             id="responsible_id"
                             label="Asesor"
@@ -60,16 +65,56 @@
                         />
                     </div>
 
-                    <div class="col-md-6">
-                        <x-module-categories-select
-                            id="category_id"
-                            label="{{ __('Tipo de plan') }}"
-                            moduleKey="services"
-                            :selected="old('category_id', isset($data) ? $data->category_id : null)"
-                        />
+                    <div class="col-12 col-md-6">
+                        @php
+                            $selectedCategoryId = (string) old('category_id', isset($data) ? ($data->category_id ?? '') : '');
+                            $serviceCategoryOptions = collect($categoryOptions ?? []);
+                        @endphp
+                        <div class="form-group">
+                            <div class="d-flex align-items-center mb-2" style="height: 1.375rem;">
+                                <label for="category_id" class="form-label mb-0 me-1">{{ __('Tipo de plan') }}</label>
+                                @can('viewAny', \App\Models\Category::class)
+                                    <span class="d-inline-flex align-items-center lh-1">
+                                        @livewire(\App\Livewire\ModuleCategoriesManagerModal::class, [
+                                            'moduleKey' => 'services',
+                                            'linkedSelectId' => 'category_id',
+                                        ], key('service-form-cat-mgr-services'))
+                                    </span>
+                                @endcan
+                            </div>
+                            <select
+                                id="category_id"
+                                name="category_id"
+                                class="form-select select2-service-category @error('category_id') is-invalid @enderror"
+                                data-placeholder="{{ __('Uncategorized') }}"
+                                data-allow-clear="true"
+                                data-module-key="services"
+                                data-empty-text="{{ __('Uncategorized') }}"
+                                data-show-empty-option="1"
+                                data-allow-empty-select="1"
+                            >
+                                <option value="">{{ __('Uncategorized') }}</option>
+                                @foreach ($serviceCategoryOptions->groupBy(fn ($option) => $option['group'] ?? '') as $groupLabel => $groupOptions)
+                                    @if ($groupLabel !== '')
+                                        <optgroup label="{{ $groupLabel }}">
+                                    @endif
+                                    @foreach ($groupOptions as $categoryOption)
+                                        <option value="{{ $categoryOption['id'] }}" {{ $selectedCategoryId === (string) $categoryOption['id'] ? 'selected' : '' }}>
+                                            {{ $categoryOption['name'] }}
+                                        </option>
+                                    @endforeach
+                                    @if ($groupLabel !== '')
+                                        </optgroup>
+                                    @endif
+                                @endforeach
+                            </select>
+                            @error('category_id')
+                                <span class="invalid-feedback" role="alert"><strong>{{ $message }}</strong></span>
+                            @enderror
+                        </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6">
                         <x-client-select
                             id="enterprise_id"
                             label="{{ __('Empresa') }} (*)"
@@ -78,10 +123,12 @@
                         />
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6">
                         <div class="form-group">
-                            <label for="subscription_id" class="form-label">{{ __('Suscripción') }}</label>
-                            <select id="subscription_id" name="subscription_id" class="form-select" data-allow-clear="true">
+                            <div class="d-flex align-items-center mb-2" style="height: 1.375rem;">
+                                <label for="subscription_id" class="form-label mb-0">{{ __('Suscripción') }}</label>
+                            </div>
+                            <select id="subscription_id" name="subscription_id" class="form-select select2-subscription" data-allow-clear="true" data-placeholder="{{ __('Subscripción local') }}">
                                 <option value="" {{ old('subscription_id', isset($data) ? $data->subscription_id : '') === '' ? 'selected' : '' }}>{{ __('Subscripción local') }}</option>
                                 @php($serviceSyncOptions = $serviceSyncs ?? $stripeSubscriptions ?? collect())
                                 @foreach($serviceSyncOptions as $serviceSync)
@@ -90,7 +137,7 @@
                                         </option>
                                     @endforeach
                             </select>
-                            <small class="text-muted">
+                            <small class="text-muted d-block mt-1">
                                 {{ __('Suscripciones de clientes en Stripe.') }}
                                 @can('access-billing-modules')
                                 <a href="{{ route('subscription.index') }}" target="_blank" rel="noopener">{{ __('Ver todas') }}</a>
@@ -99,9 +146,11 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6">
                         <div class="form-group">
-                            <label for="operation" class="form-label">{{ __('Operación') }}</label>
+                            <div class="d-flex align-items-center mb-2" style="height: 1.375rem;">
+                                <label for="operation" class="form-label mb-0">{{ __('Operación') }}</label>
+                            </div>
                             <select id="operation" name="operation" class="form-select" required>
                                 <option value="sell" {{ old('operation', isset($data) ? $data->operation : 'sell') === 'sell' ? 'selected' : '' }}>{{ __('Venta') }}</option>
                                 <option value="buy" {{ old('operation', isset($data) ? $data->operation : 'sell') === 'buy' ? 'selected' : '' }}>{{ __('Compra') }}</option>
@@ -109,9 +158,11 @@
                         </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-12 col-md-6">
                         <div class="form-group">
-                            <label for="status" class="form-label">{{ __('Status') }}</label>
+                            <div class="d-flex align-items-center mb-2" style="height: 1.375rem;">
+                                <label for="status" class="form-label mb-0">{{ __('Status') }}</label>
+                            </div>
                             <select id="status" name="status" class="form-select" required>
                                 <option value="">{{ __('Select Status') }}</option>
                                 <option value="1" {{ isset($data) && $data->status == 1 ? 'selected' : '' }}>Suspendido</option>
@@ -498,12 +549,11 @@
         </div>
     </form>
 
-    <!-- Submit Buttons -->
-    <div class="row mt-4">
-        <div class="col-md-12 text-start">
-            <button type="submit" form="serviceForm" class="btn btn-primary">{{ __('Save') }}</button>
-            <a href="{{ route('service-list') }}" class="btn btn-secondary">{{ __('Cancel') }}</a>
-        </div>
+<!-- Submit Buttons -->
+<div class="row mt-4">
+    <div class="col-md-12 text-start">
+        <button type="submit" form="serviceForm" class="btn btn-primary">{{ __('Save') }}</button>
+        <a href="{{ route('service-list') }}" class="btn btn-secondary">{{ __('Cancel') }}</a>
     </div>
 </div>
 @endsection
@@ -513,15 +563,86 @@
     $(function () {
         'use strict';
 
-        // Initialize Select2
-        $('.select2').each(function () {
+        // Initialize Select2 (skip fields that init themselves)
+        $('.select2').not('.select2-service-category').not('.select2-subscription').each(function () {
             var $this = $(this);
-            $this.wrap('<div class="position-relative"></div>');
+            if ($this.hasClass('select2-hidden-accessible') || $this.attr('data-module-key')) {
+                return;
+            }
             $this.select2({
-                placeholder: 'Select',
-                dropdownParent: $this.parent()
+                placeholder: $this.data('placeholder') || 'Select',
+                allowClear: String($this.data('allow-clear')) === 'true',
+                dropdownParent: $(document.body),
+                width: '100%'
             });
         });
+
+        var $subscriptionSelect = $('#subscription_id');
+        if ($subscriptionSelect.length && $.fn.select2 && ! $subscriptionSelect.hasClass('select2-hidden-accessible')) {
+            $subscriptionSelect.select2({
+                placeholder: $subscriptionSelect.data('placeholder') || @json(__('Subscripción local')),
+                allowClear: true,
+                width: '100%',
+                dropdownParent: $(document.body),
+            });
+        }
+
+        var $categorySelect = $('#category_id');
+        if ($categorySelect.length && $.fn.select2) {
+            var categoryPlaceholder = $categorySelect.data('empty-text') || @json(__('Uncategorized'));
+
+            function initServiceCategorySelect() {
+                if ($categorySelect.hasClass('select2-hidden-accessible')) {
+                    $categorySelect.select2('destroy');
+                }
+
+                $categorySelect.select2({
+                    placeholder: categoryPlaceholder,
+                    allowClear: true,
+                    width: '100%',
+                    dropdownParent: $(document.body),
+                });
+            }
+
+            initServiceCategorySelect();
+
+            if (typeof Livewire !== 'undefined' && typeof Livewire.on === 'function') {
+                Livewire.on('module-categories-refreshed', function (event) {
+                    var detail = Array.isArray(event) ? event[0] : event;
+                    if (! detail || detail.selectId !== 'category_id') {
+                        return;
+                    }
+
+                    var moduleOptionsUrl = @json(route('categories.module-options'));
+                    $.getJSON(moduleOptionsUrl, { module_key: 'services' })
+                        .done(function (data) {
+                            var prevVal = $categorySelect.val();
+                            $categorySelect.empty();
+                            $categorySelect.append(new Option(categoryPlaceholder, '', false, false));
+
+                            (data.groups || []).forEach(function (g) {
+                                if (g.type === 'option') {
+                                    $categorySelect.append(new Option(g.label, String(g.id), false, false));
+                                } else if (g.type === 'group') {
+                                    var og = $('<optgroup>').attr('label', g.label);
+                                    (g.options || []).forEach(function (o) {
+                                        og.append(new Option(o.label, String(o.id), false, false));
+                                    });
+                                    $categorySelect.append(og);
+                                }
+                            });
+
+                            initServiceCategorySelect();
+
+                            if (prevVal && $categorySelect.find('option[value="' + String(prevVal).replace(/"/g, '\\"') + '"]').length) {
+                                $categorySelect.val(String(prevVal)).trigger('change');
+                            } else {
+                                $categorySelect.val(null).trigger('change');
+                            }
+                        });
+                });
+            }
+        }
 
         // Initialize Flatpickr
         $('.flatpickr-date').flatpickr({

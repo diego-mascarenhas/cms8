@@ -148,6 +148,34 @@ class InvoiceDataTable extends DataTable
             ->editColumn('status', function ($data)
             {
                 return $data->status_badge;
+            })
+            ->orderColumn('status', function ($query, $order): void
+            {
+                $direction = strtolower((string) $order) === 'asc' ? 'asc' : 'desc';
+
+                // Business priority (ASC): overdue → pending → issuing → draft → collected → …
+                $priorityExpression = 'CASE
+                    WHEN invoices.status NOT IN (3, 4, 5, 6, 7, 9)
+                        AND invoices.balance > 0
+                        AND invoices.due_date IS NOT NULL
+                        AND invoices.due_date < CURRENT_DATE THEN 1
+                    WHEN invoices.status NOT IN (3, 4, 5, 6, 7, 8, 9)
+                        AND invoices.balance > 0 THEN 2
+                    WHEN invoices.status = 8 THEN 3
+                    WHEN invoices.status = 9 THEN 4
+                    WHEN invoices.status NOT IN (3, 4, 5, 6, 7, 9)
+                        AND invoices.balance <= 0 THEN 5
+                    WHEN invoices.status = 5 THEN 6
+                    WHEN invoices.status = 4 THEN 7
+                    WHEN invoices.status = 6 THEN 8
+                    WHEN invoices.status = 7 THEN 9
+                    WHEN invoices.status = 3 THEN 10
+                    ELSE 99
+                END';
+
+                $query->orderByRaw("{$priorityExpression} {$direction}")
+                    ->orderByDesc('invoices.date')
+                    ->orderByDesc('invoices.id');
             });
     }
 
@@ -288,11 +316,7 @@ class InvoiceDataTable extends DataTable
                 ->addClass('min-desktop')
                 ->className('text-end')
                 ->searchable(false),
-            Column::make('balance')
-                ->title(__('Balance'))
-                ->addClass('min-desktop')
-                ->className('text-end')
-                ->searchable(false),
+            Column::make('balance')->hidden(),
             Column::make('status')
                 ->title(__('Status'))
                 ->addClass('min-phone')

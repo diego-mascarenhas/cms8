@@ -7,11 +7,19 @@ use App\Models\Server;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class DomainEmailAccountsTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+    }
 
     public function test_store_email_account_creates_pop_via_cpanel(): void
     {
@@ -24,6 +32,8 @@ class DomainEmailAccountsTest extends TestCase
             ]),
         ]);
 
+        \Illuminate\Support\Facades\Queue::fake();
+
         [$user, $domain] = $this->createDomainWithServer();
 
         $response = $this->actingAs($user)->post(route('domain.emails.store', $domain->id), [
@@ -34,6 +44,13 @@ class DomainEmailAccountsTest extends TestCase
         $response->assertRedirect(route('domain.show', $domain->id));
         $response->assertSessionHas('success');
 
+        $domain->refresh();
+        $this->assertTrue(collect($domain->data['email_accounts'] ?? [])->contains(
+            fn (array $account): bool => ($account['email'] ?? null) === 'info@example.test',
+        ));
+
+        \Illuminate\Support\Facades\Queue::assertPushed(\App\Jobs\RefreshDomainDataJob::class);
+
         Http::assertSent(function ($request)
         {
             return str_contains($request->url(), '/json-api/cpanel')
@@ -41,6 +58,12 @@ class DomainEmailAccountsTest extends TestCase
                 && ($request['email'] ?? null) === 'info'
                 && ($request['domain'] ?? null) === 'example.test';
         });
+
+        $this->actingAs($user)
+            ->get(route('domain.show', $domain->id))
+            ->assertOk()
+            ->assertSee('info@example.test', false)
+            ->assertDontSee('No hay cuentas de correo en este dominio.', false);
     }
 
     public function test_store_email_account_requires_strong_password(): void
@@ -48,15 +71,47 @@ class DomainEmailAccountsTest extends TestCase
         [$user, $domain] = $this->createDomainWithServer();
 
         $response = $this->actingAs($user)->from(route('domain.show', $domain->id))->post(route('domain.emails.store', $domain->id), [
+            'form_context' => 'create_email',
             'email' => 'info',
             'password' => 'weak',
         ]);
 
         $response->assertRedirect(route('domain.show', $domain->id));
         $response->assertSessionHasErrors(['password']);
+
+        $this->actingAs($user)
+            ->followingRedirects()
+            ->from(route('domain.show', $domain->id))
+            ->post(route('domain.emails.store', $domain->id), [
+                'form_context' => 'create_email',
+                'email' => '',
+                'password' => '',
+            ])
+            ->assertOk()
+            ->assertSee('Indica el nombre de la cuenta de correo.', false)
+            ->assertSee('Indica la contraseña de la cuenta.', false)
+            ->assertSee('is-invalid', false);
     }
 
-    public function test_update_email_password_calls_passwdpop(): void
+    public function test_store_email_account_shows_laravel_password_rules_under_input(): void
+    {
+        [$user, $domain] = $this->createDomainWithServer();
+
+        $this->actingAs($user)
+            ->from(route('domain.show', $domain->id))
+            ->followingRedirects()
+            ->post(route('domain.emails.store', $domain->id), [
+                'form_context' => 'create_email',
+                'email' => 'info',
+                'password' => 'weakpassword',
+            ])
+            ->assertOk()
+            ->assertSee('create_email_password', false)
+            ->assertSee('is-invalid', false)
+            ->assertSee('mayúsculas y minúsculas', false);
+    }
+
+    public function test_update_email_password_calls_passwd_pop(): void
     {
         Http::fake([
             'https://cpanel.test:2087/json-api/cpanel*' => Http::response([
@@ -71,6 +126,7 @@ class DomainEmailAccountsTest extends TestCase
         $response = $this->actingAs($user)->post(route('domain.email-password', $domain->id), [
             'email' => 'info@example.test',
             'password' => 'NewSecure123!',
+            'notify_channel' => 'none',
         ]);
 
         $response->assertRedirect(route('domain.show', $domain->id));
@@ -79,7 +135,7 @@ class DomainEmailAccountsTest extends TestCase
         Http::assertSent(function ($request)
         {
             return str_contains($request->url(), '/json-api/cpanel')
-                && ($request['cpanel_jsonapi_func'] ?? null) === 'passwdpop'
+                && ($request['cpanel_jsonapi_func'] ?? null) === 'passwd_pop'
                 && ($request['email'] ?? null) === 'info'
                 && ($request['domain'] ?? null) === 'example.test';
         });
@@ -178,9 +234,9 @@ class DomainEmailAccountsTest extends TestCase
      */
     private function createDomainWithServer(array $domainAttributes = []): array
     {
-        $user = User::factory()->create();
-        $team = \App\Models\Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
 
         $server = Server::withoutGlobalScopes()->create([
@@ -199,6 +255,7 @@ class DomainEmailAccountsTest extends TestCase
             'domain' => 'example.test',
             'server_id' => $server->id,
             'username' => 'siteuser',
+            'suspended' => false,
         ], $domainAttributes));
 
         return [$user, $domain];

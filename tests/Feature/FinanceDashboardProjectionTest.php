@@ -131,10 +131,49 @@ class FinanceDashboardProjectionTest extends TestCase
             'discount' => 0,
         ]);
 
+        $uncategorizedInvoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'B-200',
+            'date' => Carbon::create($year, 6, 8)->toDateString(),
+            'due_date' => Carbon::create($year, 6, 30)->toDateString(),
+            'gross_amount' => 300,
+            'discount' => 0,
+            'total_amount' => 300,
+            'balance' => 0,
+            'status' => 2,
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $uncategorizedInvoice->id,
+            'category_id' => null,
+            'description' => 'Misc expense',
+            'quantity' => 1,
+            'unit_price' => 300,
+            'discount' => 0,
+        ]);
+
         $this->actingAs($user)
             ->get(route('finance-dashboard.projection', ['year' => $year]))
             ->assertOk()
             ->assertSee('Web Development &amp; Projects', false)
-            ->assertSee('month='.Carbon::now()->month, false);
+            ->assertSee(route('categories.items', ['id' => $category->id]), false)
+            ->assertSee('operation=sell', false)
+            ->assertSee('month=0', false)
+            ->assertSee('Sin categoría')
+            ->assertSee('uncategorized=1', false);
+
+        $this->actingAs($user)
+            ->get(route('categories.items', [
+                'id' => $category->id,
+                'operation' => 'sell',
+                'year' => $year,
+                'month' => 0,
+            ]))
+            ->assertOk()
+            ->assertSee('Acme SL')
+            ->assertSee('1.200', false);
     }
 }

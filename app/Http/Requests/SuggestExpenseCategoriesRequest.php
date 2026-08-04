@@ -35,7 +35,7 @@ class SuggestExpenseCategoriesRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'enterprise_id' => 'proveedor',
+            'enterprise_id' => $this->routeIs('invoice.suggested-categories') ? 'cliente' : 'proveedor',
         ];
     }
 }

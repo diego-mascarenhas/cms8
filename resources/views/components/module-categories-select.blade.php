@@ -94,63 +94,68 @@
             // Obtener el módulo
             $module = $moduleKey ? \App\Models\Module::where('key', $moduleKey)->first() : null;
 
-            // Obtener todas las categorías activas para este módulo (grupos y subcategorías)
-            if ($module) {
-                $query = \App\Models\Category::where('module_id', $module->id)
-                    ->where('status', 1)
-                    ->where(function($query) {
-                        $query->whereNull('team_id')
-                            ->orWhere('team_id', auth()->user()->currentTeam->id);
-                    });
-            } else {
-                // Si no tenemos un módulo, mostramos las categorías sin módulo
-                $query = \App\Models\Category::whereNull('module_id')
-                    ->where('status', 1)
-                    ->where(function($query) {
-                        $query->whereNull('team_id')
-                            ->orWhere('team_id', auth()->user()->currentTeam->id);
-                    });
-            }
+            $teamId = auth()->user()?->currentTeam?->id;
+            $baseQuery = $module
+                ? \App\Models\Category::query()->where('module_id', $module->id)
+                : \App\Models\Category::query()->whereNull('module_id');
 
-            // Obtener los grupos (categorías padre)
-            $parentCategories = $query->whereNull('parent_id')
+            $baseQuery
+                ->where('status', '>', 0)
+                ->where(function ($query) use ($teamId) {
+                    $query->whereNull('team_id');
+                    if ($teamId) {
+                        $query->orWhere('team_id', $teamId);
+                    }
+                });
+
+            $parentCategories = (clone $baseQuery)
+                ->whereNull('parent_id')
                 ->orderBy('order')
                 ->orderBy('name')
                 ->get();
 
-            // Obtener todas las subcategorías para este módulo
-            if ($module) {
-                $allSubcategories = \App\Models\Category::where('module_id', $module->id)
-                    ->whereNotNull('parent_id')
-                    ->where('status', 1)
-                    ->where(function($query) {
-                        $query->whereNull('team_id')
-                            ->orWhere('team_id', auth()->user()->currentTeam->id);
-                    })
-                    ->orderBy('order')
-                    ->orderBy('name')
-                    ->get()
-                    ->groupBy('parent_id');
-            } else {
-                $allSubcategories = \App\Models\Category::whereNull('module_id')
-                    ->whereNotNull('parent_id')
-                    ->where('status', 1)
-                    ->where(function($query) {
-                        $query->whereNull('team_id')
-                            ->orWhere('team_id', auth()->user()->currentTeam->id);
-                    })
-                    ->orderBy('order')
-                    ->orderBy('name')
-                    ->get()
-                    ->groupBy('parent_id');
-            }
+            $allSubcategories = (clone $baseQuery)
+                ->whereNotNull('parent_id')
+                ->orderBy('order')
+                ->orderBy('name')
+                ->get()
+                ->groupBy('parent_id');
 
-            $isContactsModule = ($moduleKey === 'contacts');
+            $parentIds = $parentCategories->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $categoryById = (clone $baseQuery)->get(['id', 'name', 'parent_id'])->keyBy('id');
+
+            $nestedLabel = function ($category) use ($categoryById): string {
+                $parts = [(string) $category->name];
+                $parentId = $category->parent_id ? (int) $category->parent_id : null;
+                $guard = 0;
+                while ($parentId && $guard < 5) {
+                    $parent = $categoryById->get($parentId);
+                    if (! $parent) {
+                        break;
+                    }
+                    // Stop before the root group name (shown as optgroup)
+                    if ($parent->parent_id === null) {
+                        break;
+                    }
+                    array_unshift($parts, (string) $parent->name);
+                    $parentId = $parent->parent_id ? (int) $parent->parent_id : null;
+                    $guard++;
+                }
+
+                return implode(' › ', $parts);
+            };
         @endphp
 
         @foreach($parentCategories as $parentCategory)
             @php
-                $hasSubcategories = isset($allSubcategories[$parentCategory->id]);
+                $directChildren = $allSubcategories[$parentCategory->id] ?? collect();
+                $nestedChildren = collect();
+                foreach ($directChildren as $child) {
+                    foreach (($allSubcategories[$child->id] ?? collect()) as $grandChild) {
+                        $nestedChildren->push($grandChild);
+                    }
+                }
+                $hasSubcategories = $directChildren->isNotEmpty() || $nestedChildren->isNotEmpty();
             @endphp
             @if(!$hasSubcategories)
                 {{-- Parent with no subcategories: make it selectable so user can choose it --}}
@@ -159,13 +164,39 @@
                 </option>
             @else
                 <optgroup label="{{ $parentCategory->name }}">
-                    @foreach($allSubcategories[$parentCategory->id] as $subcategory)
+                    @foreach($directChildren as $subcategory)
                         <option value="{{ $subcategory->id }}" {{ in_array((string) $subcategory->id, $selectedValues, true) ? 'selected' : '' }}>
                             {{ $subcategory->name }}
                         </option>
                     @endforeach
+                    @foreach($nestedChildren as $nestedCategory)
+                        <option value="{{ $nestedCategory->id }}" {{ in_array((string) $nestedCategory->id, $selectedValues, true) ? 'selected' : '' }}>
+                            {{ $nestedLabel($nestedCategory) }}
+                        </option>
+                    @endforeach
                 </optgroup>
             @endif
+        @endforeach
+
+        {{-- Children whose parent is missing/inactive/non-root and not already rendered --}}
+        @foreach($allSubcategories as $parentId => $orphanGroup)
+            @if(in_array((int) $parentId, $parentIds, true))
+                @continue
+            @endif
+            @php
+                $parentCategory = $categoryById->get((int) $parentId);
+                // Skip grandchildren already rendered under a root optgroup
+                $skipAsNested = $parentCategory && $parentCategory->parent_id !== null
+                    && in_array((int) $parentCategory->parent_id, $parentIds, true);
+            @endphp
+            @if($skipAsNested)
+                @continue
+            @endif
+            @foreach($orphanGroup as $orphanCategory)
+                <option value="{{ $orphanCategory->id }}" {{ in_array((string) $orphanCategory->id, $selectedValues, true) ? 'selected' : '' }}>
+                    {{ $nestedLabel($orphanCategory) }}
+                </option>
+            @endforeach
         @endforeach
     </select>
 
@@ -178,13 +209,17 @@
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    $(function() {
         if ($.fn.select2 && $('#{{ $id }}').length) {
             const $moduleCategorySelect = $('#{{ $id }}');
+            if ($moduleCategorySelect.hasClass('select2-hidden-accessible')) {
+                return;
+            }
             $moduleCategorySelect.select2({
                 placeholder: @json($emptyText),
                 allowClear: {{ $enableAllowClear ? 'true' : 'false' }},
                 closeOnSelect: {{ $multiple ? 'false' : 'true' }},
+                dropdownParent: $(document.body),
                 language: {
                     noResults: function () {
                         return '';
@@ -292,6 +327,7 @@
                         placeholder: emptyText,
                         allowClear: allowClear,
                         closeOnSelect: !isMultiple,
+                        dropdownParent: jQuery(document.body),
                         language: {
                             noResults: function () {
                                 return '';

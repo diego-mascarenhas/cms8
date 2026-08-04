@@ -35,6 +35,46 @@
 
 @include('hosting.partials.provisioning-notice')
 
+@if (session('cpanel_password_reset') && session('generated_password'))
+<div class="alert alert-success mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+        <h5 class="alert-heading mb-0">Contraseña cPanel actualizada</h5>
+        <button type="button" class="btn btn-sm btn-label-success copy-access-message" data-target="cpanel-access-message">
+            <i class="ti ti-copy me-1"></i> Copiar texto
+        </button>
+    </div>
+    <p class="mb-2 small">
+        Texto listo para enviar al cliente (guárdalo ahora, no se volverá a mostrar):
+    </p>
+    <textarea
+        id="cpanel-access-message"
+        class="form-control font-monospace small"
+        rows="10"
+        readonly
+    >{{ session('cpanel_access_message') ?: ('Contraseña: '.session('generated_password')) }}</textarea>
+</div>
+@endif
+
+@if (session('mailbox_password_reset') && session('generated_mailbox_password'))
+<div class="alert alert-success mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+        <h5 class="alert-heading mb-0">Contraseña de correo actualizada</h5>
+        <button type="button" class="btn btn-sm btn-label-success copy-access-message" data-target="mailbox-access-message">
+            <i class="ti ti-copy me-1"></i> Copiar texto
+        </button>
+    </div>
+    <p class="mb-2 small">
+        Texto listo para enviar al cliente (guárdalo ahora, no se volverá a mostrar):
+    </p>
+    <textarea
+        id="mailbox-access-message"
+        class="form-control font-monospace small"
+        rows="10"
+        readonly
+    >{{ session('mailbox_access_message') ?: ('Contraseña: '.session('generated_mailbox_password')) }}</textarea>
+</div>
+@endif
+
 @if (session('success'))
     <div class="alert alert-success alert-dismissible mb-4" role="alert">
         {{ session('success') }}
@@ -150,9 +190,28 @@
     <!-- Main domain details -->
     <div class="col-md-8">
         <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between">
-                <h5 class="card-title mb-0">Detalle del dominio</h5>
-                <small class="text-muted">Actualizado: {{ $domain->updated_at->diffForHumans() }}</small>
+            <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Detalle del dominio</h5>
+                    <small class="text-muted">Actualizado: {{ $domain->updated_at->diffForHumans() }}</small>
+                </div>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    @if (! empty($cpanelUrl))
+                        <a href="{{ $cpanelUrl }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-label-secondary">
+                            <i class="ti ti-external-link me-1"></i> Abrir cPanel
+                        </a>
+                    @endif
+                    @if ($canResetCpanelPassword ?? false)
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-primary"
+                            data-bs-toggle="modal"
+                            data-bs-target="#resetCpanelPasswordModal"
+                        >
+                            <i class="ti ti-key me-1"></i> Nueva contraseña
+                        </button>
+                    @endif
+                </div>
             </div>
             <div class="card-body">
                 <div class="row mb-3">
@@ -365,34 +424,64 @@
         </div>
 
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="card-title mb-0">Registros MX</h5>
+                <button type="button" class="btn btn-xs btn-label-secondary" id="add-mx-record">
+                    <i class="ti ti-plus ti-xs me-1"></i>Añadir MX
+                </button>
             </div>
             <div class="card-body">
                 <form action="{{ route('domain.mx-records', $domain->id) }}" method="POST">
                     @csrf
                     <div id="mx-records-list">
                         @forelse($mxRecords as $index => $record)
-                            <div class="row g-2 mb-2 mx-record-row">
-                                <div class="col-4">
-                                    <input type="number" name="mx_records[{{ $index }}][priority]" class="form-control form-control-sm" value="{{ $record['priority'] }}" min="0" required>
+                            <div class="row g-2 mb-2 align-items-center mx-record-row">
+                                <div class="col-auto">
+                                    <input
+                                        type="number"
+                                        name="mx_records[{{ $index }}][priority]"
+                                        class="form-control form-control-sm mx-priority-input"
+                                        value="{{ $record['priority'] }}"
+                                        min="0"
+                                        max="99"
+                                        required
+                                        title="Prioridad"
+                                    >
                                 </div>
-                                <div class="col-8">
+                                <div class="col">
                                     <input type="text" name="mx_records[{{ $index }}][target]" class="form-control form-control-sm" value="{{ $record['target'] }}" required>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-icon btn-sm btn-label-danger remove-mx-record" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
                                 </div>
                             </div>
                         @empty
-                            <div class="row g-2 mb-2 mx-record-row">
-                                <div class="col-4">
-                                    <input type="number" name="mx_records[0][priority]" class="form-control form-control-sm" value="10" min="0" required>
+                            <div class="row g-2 mb-2 align-items-center mx-record-row">
+                                <div class="col-auto">
+                                    <input
+                                        type="number"
+                                        name="mx_records[0][priority]"
+                                        class="form-control form-control-sm mx-priority-input"
+                                        value="10"
+                                        min="0"
+                                        max="99"
+                                        required
+                                        title="Prioridad"
+                                    >
                                 </div>
-                                <div class="col-8">
+                                <div class="col">
                                     <input type="text" name="mx_records[0][target]" class="form-control form-control-sm" placeholder="mail.example.com" required>
+                                </div>
+                                <div class="col-auto">
+                                    <button type="button" class="btn btn-icon btn-sm btn-label-danger remove-mx-record" title="Eliminar">
+                                        <i class="ti ti-trash"></i>
+                                    </button>
                                 </div>
                             </div>
                         @endforelse
                     </div>
-                    <button type="button" class="btn btn-label-secondary btn-sm mb-3" id="add-mx-record">Añadir MX</button>
                     <button type="submit" class="btn btn-primary btn-sm w-100">Guardar registros MX</button>
                 </form>
             </div>
@@ -487,8 +576,9 @@
 <div class="modal fade" id="createEmailModal" tabindex="-1" aria-labelledby="createEmailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="{{ route('domain.emails.store', $domain->id) }}" method="POST">
+            <form action="{{ route('domain.emails.store', $domain->id) }}" method="POST" novalidate>
                 @csrf
+                <input type="hidden" name="form_context" value="create_email">
                 <div class="modal-header">
                     <h5 class="modal-title" id="createEmailModalLabel">Crear cuenta de correo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -496,25 +586,40 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="create_email_local" class="form-label">Nombre de cuenta</label>
-                        <div class="input-group">
-                            <input type="text" name="email" id="create_email_local" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" placeholder="info" pattern="[a-z0-9._-]+" required>
+                        <div class="input-group @error('email') has-validation @enderror">
+                            <input
+                                type="text"
+                                name="email"
+                                id="create_email_local"
+                                class="form-control @error('email') is-invalid @enderror"
+                                value="{{ old('email') }}"
+                                placeholder="info"
+                                autocomplete="off"
+                            >
                             <span class="input-group-text">{{ '@'.$domain->domain }}</span>
+                            @error('email')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
-                        @error('email')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
                     </div>
                     <div class="mb-0">
                         <label for="create_email_password" class="form-label">Contraseña</label>
-                        <div class="input-group">
-                            <input type="password" name="password" id="create_email_password" class="form-control @error('password') is-invalid @enderror" autocomplete="new-password" minlength="12" required>
+                        <div class="input-group @error('password') has-validation @enderror">
+                            <input
+                                type="password"
+                                name="password"
+                                id="create_email_password"
+                                class="form-control @error('password') is-invalid @enderror"
+                                value="{{ old('password') }}"
+                                autocomplete="new-password"
+                            >
                             <button type="button" class="btn btn-outline-secondary" id="generate-email-password" title="Generar contraseña segura">
                                 <i class="ti ti-wand"></i>
                             </button>
+                            @error('password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
                         </div>
-                        @error('password')
-                            <div class="invalid-feedback d-block">{{ $message }}</div>
-                        @enderror
                         <div class="form-text">Mínimo 12 caracteres con mayúsculas, minúsculas, números y símbolos.</div>
                     </div>
                 </div>
@@ -530,32 +635,277 @@
 <div class="modal fade" id="changeEmailPasswordModal" tabindex="-1" aria-labelledby="changeEmailPasswordModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form action="{{ route('domain.email-password', $domain->id) }}" method="POST" id="changeEmailPasswordForm">
+            <form action="{{ route('domain.email-password', $domain->id) }}" method="POST" id="changeEmailPasswordForm" novalidate>
                 @csrf
+                <input type="hidden" name="form_context" value="mailbox_password">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="changeEmailPasswordModalLabel">Cambiar contraseña</h5>
+                    <h5 class="modal-title" id="changeEmailPasswordModalLabel">Nueva contraseña de correo</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="change_email_address" class="form-label">Cuenta</label>
-                        <input type="email" name="email" id="change_email_address" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" readonly required>
+                        <input type="email" name="email" id="change_email_address" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" readonly>
                         @error('email')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
-                    <div class="mb-0">
+                    <div class="mb-3">
                         <label for="change_email_password" class="form-label">Nueva contraseña</label>
-                        <input type="password" name="password" id="change_email_password" class="form-control @error('password') is-invalid @enderror" autocomplete="new-password" minlength="12" required>
-                        @error('password')
+                        <div class="input-group @error('password') has-validation @enderror">
+                            <input
+                                type="text"
+                                name="password"
+                                id="change_email_password"
+                                class="form-control @error('password') is-invalid @enderror"
+                                value="{{ old('password') }}"
+                                autocomplete="new-password"
+                                placeholder="Se genera automáticamente si la dejás vacía"
+                            >
+                            <button type="button" class="btn btn-outline-secondary" id="generate-mailbox-password" title="Generar contraseña segura">
+                                <i class="ti ti-wand"></i>
+                            </button>
+                            @error('password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="form-text">Mínimo 12 caracteres con mayúsculas, minúsculas, números y símbolos. Si queda vacía, Humano la genera.</div>
+                    </div>
+
+                    @php
+                        $mailboxNotifiableContacts = collect($cpanelNotifiableContacts ?? []);
+                        $mailboxHostingPlanEmail = $cpanelHostingPlanEmail ?? null;
+                        $mailboxHasEmailRecipients = filled($mailboxHostingPlanEmail) || $mailboxNotifiableContacts->contains(fn ($c) => $c['can_email']);
+                        $mailboxHasWhatsAppRecipients = $mailboxNotifiableContacts->contains(fn ($c) => $c['can_whatsapp']);
+                        $mailboxDefaultChannel = old(
+                            'notify_channel',
+                            $mailboxHasWhatsAppRecipients ? 'whatsapp' : ($mailboxHasEmailRecipients ? 'email' : 'none')
+                        );
+                        $mailboxDefaultNotifyTo = old(
+                            'notify_to',
+                            $mailboxDefaultChannel === 'email' && ! $mailboxNotifiableContacts->contains(fn ($c) => $c['can_email']) && filled($mailboxHostingPlanEmail)
+                                ? 'hosting'
+                                : (string) ($mailboxNotifiableContacts->first()['id'] ?? '')
+                        );
+                    @endphp
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Enviar datos de acceso</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input mailbox-notify-channel" type="radio" name="notify_channel" id="mailbox_notify_channel_none" value="none" @checked($mailboxDefaultChannel === 'none')>
+                                <label class="form-check-label" for="mailbox_notify_channel_none">No enviar</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input mailbox-notify-channel" type="radio" name="notify_channel" id="mailbox_notify_channel_whatsapp" value="whatsapp" @checked($mailboxDefaultChannel === 'whatsapp') @disabled(! $mailboxHasWhatsAppRecipients)>
+                                <label class="form-check-label" for="mailbox_notify_channel_whatsapp">WhatsApp</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input mailbox-notify-channel" type="radio" name="notify_channel" id="mailbox_notify_channel_email" value="email" @checked($mailboxDefaultChannel === 'email') @disabled(! $mailboxHasEmailRecipients)>
+                                <label class="form-check-label" for="mailbox_notify_channel_email">Email</label>
+                            </div>
+                        </div>
+                        @error('notify_channel')
                             <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
-                        <div class="form-text">Mínimo 12 caracteres con mayúsculas, minúsculas, números y símbolos.</div>
                     </div>
+
+                    @if($mailboxHasEmailRecipients || $mailboxHasWhatsAppRecipients)
+                    <div class="mb-0" id="mailbox-contact-wrap">
+                        <label for="mailbox_notify_to" class="form-label">Destinatario</label>
+                        <select name="notify_to" id="mailbox_notify_to" class="form-select @error('notify_to') is-invalid @enderror">
+                            @if(filled($mailboxHostingPlanEmail))
+                                <option
+                                    value="hosting"
+                                    data-can-whatsapp="0"
+                                    data-can-email="1"
+                                    data-email="{{ $mailboxHostingPlanEmail }}"
+                                    data-name="Email del plan de hosting"
+                                    data-source="hosting"
+                                    @selected($mailboxDefaultNotifyTo === 'hosting')
+                                >
+                                    Email del plan de hosting ({{ $mailboxHostingPlanEmail }})
+                                </option>
+                            @endif
+                            @foreach($mailboxNotifiableContacts as $contact)
+                                <option
+                                    value="{{ $contact['id'] }}"
+                                    data-can-whatsapp="{{ $contact['can_whatsapp'] ? '1' : '0' }}"
+                                    data-can-email="{{ $contact['can_email'] ? '1' : '0' }}"
+                                    data-whatsapp="{{ $contact['whatsapp'] ?? '' }}"
+                                    data-email="{{ $contact['email'] ?? '' }}"
+                                    data-name="{{ $contact['name'] }}"
+                                    data-source="contact"
+                                    @selected((string) $mailboxDefaultNotifyTo === (string) $contact['id'])
+                                >
+                                    {{ $contact['name'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('notify_to')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <div class="alert alert-info mt-2 mb-0 py-2 px-3" id="mailbox-recipient-preview">
+                            <small class="text-muted d-block mb-1">Se enviará a:</small>
+                            <strong id="mailbox-recipient-name">—</strong>
+                            <div id="mailbox-recipient-detail" class="small text-break"></div>
+                            <div id="mailbox-recipient-source" class="small text-muted mt-1"></div>
+                        </div>
+                        <p class="form-text mb-0 mt-2" id="mailbox-whatsapp-chat-hint">
+                            Si enviás por WhatsApp, el mensaje queda en el chat del contacto.
+                        </p>
+                    </div>
+                    @else
+                    <div class="alert alert-warning mb-0">
+                        No hay contactos con WhatsApp/email ni email del plan de hosting. La contraseña se actualizará y se mostrará en pantalla.
+                    </div>
+                    @endif
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">Guardar contraseña</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ti ti-key me-1"></i> <span id="mailbox-submit-label">Generar y aplicar</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetCpanelPasswordModal" tabindex="-1" aria-labelledby="resetCpanelPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form action="{{ route('domain.cpanel-password', $domain->id) }}" method="POST" id="resetCpanelPasswordForm" novalidate>
+                @csrf
+                <input type="hidden" name="form_context" value="cpanel_password">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="resetCpanelPasswordModalLabel">Nueva contraseña cPanel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Se generará una nueva contraseña para <strong>{{ $domain->username }}</strong>
+                        @if (! empty($cpanelUrl))
+                            (<code>{{ $cpanelUrl }}</code>)
+                        @endif
+                        y podrás enviarla al cliente por WhatsApp o email.
+                    </p>
+                    <div class="mb-3">
+                        <label for="cpanel_password" class="form-label">Contraseña</label>
+                        <div class="input-group @error('password') has-validation @enderror">
+                            <input
+                                type="text"
+                                name="password"
+                                id="cpanel_password"
+                                class="form-control @error('password') is-invalid @enderror"
+                                value="{{ old('password') }}"
+                                autocomplete="new-password"
+                                placeholder="Se genera automáticamente si la dejás vacía"
+                            >
+                            <button type="button" class="btn btn-outline-secondary" id="generate-cpanel-password" title="Generar contraseña segura">
+                                <i class="ti ti-wand"></i>
+                            </button>
+                            @error('password')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+                        <div class="form-text">Mínimo 12 caracteres con mayúsculas, minúsculas, números y símbolos. Si queda vacía, Humano la genera.</div>
+                    </div>
+
+                    @php
+                        $notifiableContacts = collect($cpanelNotifiableContacts ?? []);
+                        $hostingPlanEmail = $cpanelHostingPlanEmail ?? null;
+                        $hasEmailRecipients = filled($hostingPlanEmail) || $notifiableContacts->contains(fn ($c) => $c['can_email']);
+                        $hasWhatsAppRecipients = $notifiableContacts->contains(fn ($c) => $c['can_whatsapp']);
+                        $defaultChannel = old(
+                            'notify_channel',
+                            $hasWhatsAppRecipients ? 'whatsapp' : ($hasEmailRecipients ? 'email' : 'none')
+                        );
+                        $defaultNotifyTo = old(
+                            'notify_to',
+                            $defaultChannel === 'email' && ! $notifiableContacts->contains(fn ($c) => $c['can_email']) && filled($hostingPlanEmail)
+                                ? 'hosting'
+                                : (string) ($notifiableContacts->first()['id'] ?? '')
+                        );
+                    @endphp
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">Enviar datos de acceso</label>
+                        <div class="d-flex flex-wrap gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_none" value="none" @checked($defaultChannel === 'none')>
+                                <label class="form-check-label" for="notify_channel_none">No enviar</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_whatsapp" value="whatsapp" @checked($defaultChannel === 'whatsapp') @disabled(! $hasWhatsAppRecipients)>
+                                <label class="form-check-label" for="notify_channel_whatsapp">WhatsApp</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input cpanel-notify-channel" type="radio" name="notify_channel" id="notify_channel_email" value="email" @checked($defaultChannel === 'email') @disabled(! $hasEmailRecipients)>
+                                <label class="form-check-label" for="notify_channel_email">Email</label>
+                            </div>
+                        </div>
+                        @error('notify_channel')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    @if($hasEmailRecipients || $hasWhatsAppRecipients)
+                    <div class="mb-3" id="cpanel-contact-wrap">
+                        <label for="cpanel_notify_to" class="form-label">Destinatario</label>
+                        <select name="notify_to" id="cpanel_notify_to" class="form-select @error('notify_to') is-invalid @enderror">
+                            @if(filled($hostingPlanEmail))
+                                <option
+                                    value="hosting"
+                                    data-can-whatsapp="0"
+                                    data-can-email="1"
+                                    data-email="{{ $hostingPlanEmail }}"
+                                    data-name="Email del plan de hosting"
+                                    data-source="hosting"
+                                    @selected($defaultNotifyTo === 'hosting')
+                                >
+                                    Email del plan de hosting ({{ $hostingPlanEmail }})
+                                </option>
+                            @endif
+                            @foreach($notifiableContacts as $contact)
+                                <option
+                                    value="{{ $contact['id'] }}"
+                                    data-can-whatsapp="{{ $contact['can_whatsapp'] ? '1' : '0' }}"
+                                    data-can-email="{{ $contact['can_email'] ? '1' : '0' }}"
+                                    data-whatsapp="{{ $contact['whatsapp'] ?? '' }}"
+                                    data-email="{{ $contact['email'] ?? '' }}"
+                                    data-name="{{ $contact['name'] }}"
+                                    data-source="contact"
+                                    @selected((string) $defaultNotifyTo === (string) $contact['id'])
+                                >
+                                    {{ $contact['name'] }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @error('notify_to')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+                        <div class="alert alert-info mt-2 mb-0 py-2 px-3" id="cpanel-recipient-preview">
+                            <small class="text-muted d-block mb-1">Se enviará a:</small>
+                            <strong id="cpanel-recipient-name">—</strong>
+                            <div id="cpanel-recipient-detail" class="small text-break"></div>
+                            <div id="cpanel-recipient-source" class="small text-muted mt-1"></div>
+                        </div>
+                        <p class="form-text mb-0 mt-2" id="cpanel-whatsapp-chat-hint">
+                            Si enviás por WhatsApp, el mensaje queda en el chat del contacto.
+                        </p>
+                    </div>
+                    @else
+                    <div class="alert alert-warning mb-0">
+                        No hay contactos con WhatsApp/email ni email del plan de hosting. La contraseña se actualizará y se mostrará en pantalla.
+                    </div>
+                    @endif
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="cpanel-submit-btn">
+                        <i class="ti ti-key me-1"></i> <span id="cpanel-submit-label">Generar y aplicar</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -567,6 +917,254 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('.copy-access-message').forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const targetId = button.dataset.target;
+            const textarea = targetId ? document.getElementById(targetId) : null;
+
+            if (!textarea)
+            {
+                return;
+            }
+
+            const text = textarea.value;
+
+            try
+            {
+                if (navigator.clipboard && navigator.clipboard.writeText)
+                {
+                    await navigator.clipboard.writeText(text);
+                }
+                else
+                {
+                    textarea.focus();
+                    textarea.select();
+                    document.execCommand('copy');
+                }
+
+                button.innerHTML = '<i class="ti ti-check me-1"></i> Copiado';
+                setTimeout(function () {
+                    button.innerHTML = '<i class="ti ti-copy me-1"></i> Copiar texto';
+                }, 2000);
+            }
+            catch (error)
+            {
+                textarea.focus();
+                textarea.select();
+            }
+        });
+    });
+
+    @if($errors->has('email') || $errors->has('password') || $errors->has('contact_id') || $errors->has('notify_channel') || $errors->has('notify_to'))
+        @if(old('form_context') === 'create_email' || (old('email') && !str_contains((string) old('email'), '@') && old('form_context') !== 'mailbox_password' && old('form_context') !== 'cpanel_password'))
+            const createModal = document.getElementById('createEmailModal');
+
+            if (createModal)
+            {
+                bootstrap.Modal.getOrCreateInstance(createModal).show();
+            }
+        @elseif(old('form_context') === 'mailbox_password' || (old('email') && str_contains((string) old('email'), '@')))
+            const mailboxPasswordModal = document.getElementById('changeEmailPasswordModal');
+
+            if (mailboxPasswordModal)
+            {
+                bootstrap.Modal.getOrCreateInstance(mailboxPasswordModal).show();
+            }
+        @elseif(old('form_context') === 'cpanel_password' || old('notify_channel') !== null || old('notify_to') !== null)
+            const cpanelPasswordModal = document.getElementById('resetCpanelPasswordModal');
+
+            if (cpanelPasswordModal)
+            {
+                bootstrap.Modal.getOrCreateInstance(cpanelPasswordModal).show();
+            }
+        @endif
+    @endif
+
+    function generateSecurePassword() {
+        const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+        const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        const numbers = '0123456789';
+        const symbols = '!@#$%^&*()-_=+';
+        const all = lowercase + uppercase + numbers + symbols;
+        const length = 16;
+        let password = [
+            lowercase[Math.floor(Math.random() * lowercase.length)],
+            uppercase[Math.floor(Math.random() * uppercase.length)],
+            numbers[Math.floor(Math.random() * numbers.length)],
+            symbols[Math.floor(Math.random() * symbols.length)],
+        ];
+
+        for (let i = password.length; i < length; i++)
+        {
+            password.push(all[Math.floor(Math.random() * all.length)]);
+        }
+
+        return password.sort(function () {
+            return Math.random() - 0.5;
+        }).join('');
+    }
+
+    function bindRecipientPreview(config) {
+        const channelInputs = document.querySelectorAll(config.channelSelector);
+        const select = document.getElementById(config.selectId);
+        const wrap = document.getElementById(config.wrapId);
+        const nameEl = document.getElementById(config.nameId);
+        const detailEl = document.getElementById(config.detailId);
+        const sourceEl = document.getElementById(config.sourceId);
+        const hintEl = document.getElementById(config.hintId);
+        const submitLabel = document.getElementById(config.submitLabelId);
+
+        function selectedChannel() {
+            const checked = document.querySelector(config.channelSelector + ':checked');
+
+            return checked ? checked.value : 'none';
+        }
+
+        function refresh() {
+            if (!select || !wrap)
+            {
+                return;
+            }
+
+            const channel = selectedChannel();
+            const shouldSend = channel === 'whatsapp' || channel === 'email';
+
+            wrap.classList.toggle('d-none', !shouldSend);
+            select.disabled = !shouldSend;
+
+            Array.from(select.options).forEach(function (option) {
+                const canWhatsapp = option.dataset.canWhatsapp === '1';
+                const canEmail = option.dataset.canEmail === '1';
+                const visible = channel === 'whatsapp' ? canWhatsapp : (channel === 'email' ? canEmail : true);
+                option.hidden = !visible;
+                option.disabled = !visible;
+            });
+
+            const visibleOptions = Array.from(select.options).filter(function (option) {
+                return !option.disabled && !option.hidden;
+            });
+
+            if (shouldSend && visibleOptions.length && (select.selectedOptions[0]?.disabled || select.selectedOptions[0]?.hidden))
+            {
+                select.value = visibleOptions[0].value;
+            }
+
+            const selected = select.selectedOptions[0];
+            if (nameEl && detailEl)
+            {
+                if (!shouldSend || !selected || selected.disabled)
+                {
+                    nameEl.textContent = '—';
+                    detailEl.textContent = '';
+                    if (sourceEl)
+                    {
+                        sourceEl.textContent = '';
+                    }
+                }
+                else
+                {
+                    nameEl.textContent = selected.dataset.name || selected.textContent.trim();
+                    detailEl.textContent = channel === 'email'
+                        ? ('Email: ' + (selected.dataset.email || '—'))
+                        : ('WhatsApp: ' + (selected.dataset.whatsapp || '—'));
+                    if (sourceEl)
+                    {
+                        sourceEl.textContent = selected.dataset.source === 'hosting'
+                            ? 'Origen: email del plan de hosting (cPanel)'
+                            : 'Origen: contacto del cliente';
+                    }
+                }
+            }
+
+            if (hintEl)
+            {
+                hintEl.classList.toggle('d-none', channel !== 'whatsapp');
+            }
+
+            if (submitLabel)
+            {
+                if (channel === 'whatsapp')
+                {
+                    submitLabel.textContent = 'Generar y enviar por WhatsApp';
+                }
+                else if (channel === 'email')
+                {
+                    submitLabel.textContent = 'Generar y enviar por email';
+                }
+                else
+                {
+                    submitLabel.textContent = 'Generar y aplicar';
+                }
+            }
+        }
+
+        channelInputs.forEach(function (input) {
+            input.addEventListener('change', refresh);
+        });
+
+        if (select)
+        {
+            select.addEventListener('change', refresh);
+        }
+
+        refresh();
+
+        return refresh;
+    }
+
+    const generateEmailPasswordButton = document.getElementById('generate-email-password');
+    const createEmailPasswordInput = document.getElementById('create_email_password');
+
+    if (generateEmailPasswordButton && createEmailPasswordInput)
+    {
+        generateEmailPasswordButton.addEventListener('click', function () {
+            createEmailPasswordInput.type = 'text';
+            createEmailPasswordInput.value = generateSecurePassword();
+        });
+    }
+
+    const generateCpanelPasswordButton = document.getElementById('generate-cpanel-password');
+    const cpanelPasswordInput = document.getElementById('cpanel_password');
+
+    if (generateCpanelPasswordButton && cpanelPasswordInput)
+    {
+        generateCpanelPasswordButton.addEventListener('click', function () {
+            cpanelPasswordInput.value = generateSecurePassword();
+        });
+    }
+
+    const generateMailboxPasswordButton = document.getElementById('generate-mailbox-password');
+    const mailboxPasswordInput = document.getElementById('change_email_password');
+
+    if (generateMailboxPasswordButton && mailboxPasswordInput)
+    {
+        generateMailboxPasswordButton.addEventListener('click', function () {
+            mailboxPasswordInput.value = generateSecurePassword();
+        });
+    }
+
+    bindRecipientPreview({
+        channelSelector: '.cpanel-notify-channel',
+        selectId: 'cpanel_notify_to',
+        wrapId: 'cpanel-contact-wrap',
+        nameId: 'cpanel-recipient-name',
+        detailId: 'cpanel-recipient-detail',
+        sourceId: 'cpanel-recipient-source',
+        hintId: 'cpanel-whatsapp-chat-hint',
+        submitLabelId: 'cpanel-submit-label',
+    });
+
+    const refreshMailboxRecipientPreview = bindRecipientPreview({
+        channelSelector: '.mailbox-notify-channel',
+        selectId: 'mailbox_notify_to',
+        wrapId: 'mailbox-contact-wrap',
+        nameId: 'mailbox-recipient-name',
+        detailId: 'mailbox-recipient-detail',
+        sourceId: 'mailbox-recipient-source',
+        hintId: 'mailbox-whatsapp-chat-hint',
+        submitLabelId: 'mailbox-submit-label',
+    });
+
     document.querySelectorAll('.change-email-password').forEach(function (button) {
         button.addEventListener('click', function () {
             const emailInput = document.getElementById('change_email_address');
@@ -581,59 +1179,13 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 passwordInput.value = '';
             }
+
+            if (typeof refreshMailboxRecipientPreview === 'function')
+            {
+                refreshMailboxRecipientPreview();
+            }
         });
     });
-
-    @if($errors->has('email') || $errors->has('password'))
-        @if(old('email') && !str_contains(old('email'), '@'))
-            const createModal = document.getElementById('createEmailModal');
-
-            if (createModal)
-            {
-                bootstrap.Modal.getOrCreateInstance(createModal).show();
-            }
-        @else
-            const passwordModal = document.getElementById('changeEmailPasswordModal');
-
-            if (passwordModal)
-            {
-                bootstrap.Modal.getOrCreateInstance(passwordModal).show();
-            }
-        @endif
-    @endif
-
-    const generateEmailPasswordButton = document.getElementById('generate-email-password');
-    const createEmailPasswordInput = document.getElementById('create_email_password');
-
-    if (generateEmailPasswordButton && createEmailPasswordInput)
-    {
-        generateEmailPasswordButton.addEventListener('click', function () {
-            const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-            const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            const numbers = '0123456789';
-            const symbols = '!@#$%^&*()-_=+';
-            const all = lowercase + uppercase + numbers + symbols;
-            const length = 16;
-            let password = [
-                lowercase[Math.floor(Math.random() * lowercase.length)],
-                uppercase[Math.floor(Math.random() * uppercase.length)],
-                numbers[Math.floor(Math.random() * numbers.length)],
-                symbols[Math.floor(Math.random() * symbols.length)],
-            ];
-
-            for (let i = password.length; i < length; i++)
-            {
-                password.push(all[Math.floor(Math.random() * all.length)]);
-            }
-
-            password = password.sort(function () {
-                return Math.random() - 0.5;
-            }).join('');
-
-            createEmailPasswordInput.type = 'text';
-            createEmailPasswordInput.value = password;
-        });
-    }
 
     const list = document.getElementById('mx-records-list');
     const addButton = document.getElementById('add-mx-record');
@@ -642,21 +1194,103 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
     }
 
-    addButton.addEventListener('click', function () {
-        const index = list.querySelectorAll('.mx-record-row').length;
+    function reindexMxRows() {
+        list.querySelectorAll('.mx-record-row').forEach(function (row, index) {
+            const priorityInput = row.querySelector('input[name*="[priority]"]');
+            const targetInput = row.querySelector('input[name*="[target]"]');
+
+            if (priorityInput)
+            {
+                priorityInput.name = 'mx_records[' + index + '][priority]';
+            }
+
+            if (targetInput)
+            {
+                targetInput.name = 'mx_records[' + index + '][target]';
+            }
+        });
+    }
+
+    function createMxRow(index, priority, target) {
         const row = document.createElement('div');
-        row.className = 'row g-2 mb-2 mx-record-row';
+        row.className = 'row g-2 mb-2 align-items-center mx-record-row';
         row.innerHTML = `
-            <div class="col-4">
-                <input type="number" name="mx_records[${index}][priority]" class="form-control form-control-sm" value="10" min="0" required>
+            <div class="col-auto">
+                <input
+                    type="number"
+                    name="mx_records[${index}][priority]"
+                    class="form-control form-control-sm mx-priority-input"
+                    value="${priority}"
+                    min="0"
+                    max="99"
+                    required
+                    title="Prioridad"
+                >
             </div>
-            <div class="col-8">
-                <input type="text" name="mx_records[${index}][target]" class="form-control form-control-sm" placeholder="mail.example.com" required>
+            <div class="col">
+                <input type="text" name="mx_records[${index}][target]" class="form-control form-control-sm" value="${target}" placeholder="mail.example.com" required>
+            </div>
+            <div class="col-auto">
+                <button type="button" class="btn btn-icon btn-sm btn-label-danger remove-mx-record" title="Eliminar">
+                    <i class="ti ti-trash"></i>
+                </button>
             </div>
         `;
-        list.appendChild(row);
+
+        return row;
+    }
+
+    addButton.addEventListener('click', function () {
+        const index = list.querySelectorAll('.mx-record-row').length;
+        list.appendChild(createMxRow(index, 10, ''));
+    });
+
+    list.addEventListener('click', function (event) {
+        const removeButton = event.target.closest('.remove-mx-record');
+
+        if (!removeButton)
+        {
+            return;
+        }
+
+        const row = removeButton.closest('.mx-record-row');
+
+        if (!row)
+        {
+            return;
+        }
+
+        if (list.querySelectorAll('.mx-record-row').length === 1)
+        {
+            const priorityInput = row.querySelector('input[name*="[priority]"]');
+            const targetInput = row.querySelector('input[name*="[target]"]');
+
+            if (priorityInput)
+            {
+                priorityInput.value = '10';
+            }
+
+            if (targetInput)
+            {
+                targetInput.value = '';
+            }
+
+            return;
+        }
+
+        row.remove();
+        reindexMxRows();
     });
 });
 </script>
+<style>
+.mx-priority-input {
+    width: 3.25rem;
+    min-width: 3.25rem;
+    padding-left: 0.35rem;
+    padding-right: 0.15rem;
+    text-align: center;
+}
+</style>
 @endpush
 @endsection

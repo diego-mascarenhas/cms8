@@ -119,33 +119,55 @@ PROMPT;
      */
     public function createSupplier(int $teamId, array $supplierData): Enterprise
     {
-        if ($this->matchesOwnBusiness($supplierData, $teamId))
+        return $this->createCounterparty($teamId, $supplierData, 2, 'proveedor');
+    }
+
+    /**
+     * @param  array<string, mixed>  $clientData
+     */
+    public function createClient(int $teamId, array $clientData): Enterprise
+    {
+        return $this->createCounterparty($teamId, $clientData, 1, 'cliente');
+    }
+
+    /**
+     * @param  array<string, mixed>  $counterpartyData
+     */
+    private function createCounterparty(
+        int $teamId,
+        array $counterpartyData,
+        int $typeId,
+        string $counterpartyLabel,
+    ): Enterprise {
+        if ($this->matchesOwnBusiness($counterpartyData, $teamId))
         {
-            throw new \InvalidArgumentException('Los datos corresponden a la configuración de tu negocio. Indica los del proveedor que emitió la factura.');
+            throw new \InvalidArgumentException(
+                "Los datos corresponden a la configuración de tu negocio. Indica los del {$counterpartyLabel}.",
+            );
         }
 
-        $name = trim((string) ($supplierData['name'] ?? ''));
+        $name = trim((string) ($counterpartyData['name'] ?? ''));
         if ($name === '')
         {
-            throw new \InvalidArgumentException('El nombre del proveedor es obligatorio.');
+            throw new \InvalidArgumentException("El nombre del {$counterpartyLabel} es obligatorio.");
         }
 
         $enterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $teamId,
-            'type_id' => 2,
+            'type_id' => $typeId,
             'status_id' => 2,
             'name' => Str::limit($name, 75, ''),
-            'email' => filled($supplierData['email'] ?? null) ? trim((string) $supplierData['email']) : null,
-            'phone' => filled($supplierData['phone'] ?? null) ? trim((string) $supplierData['phone']) : null,
-            'website' => filled($supplierData['website'] ?? null) ? trim((string) $supplierData['website']) : null,
-            'address' => filled($supplierData['address'] ?? null) ? trim((string) $supplierData['address']) : null,
-            'postal_code' => filled($supplierData['postal_code'] ?? null) ? trim((string) $supplierData['postal_code']) : null,
-            'locality' => filled($supplierData['locality'] ?? null) ? trim((string) $supplierData['locality']) : null,
-            'province' => filled($supplierData['province'] ?? null) ? trim((string) $supplierData['province']) : null,
-            'country' => strtoupper(trim((string) ($supplierData['country'] ?? 'ES'))) ?: 'ES',
+            'email' => filled($counterpartyData['email'] ?? null) ? trim((string) $counterpartyData['email']) : null,
+            'phone' => filled($counterpartyData['phone'] ?? null) ? trim((string) $counterpartyData['phone']) : null,
+            'website' => filled($counterpartyData['website'] ?? null) ? trim((string) $counterpartyData['website']) : null,
+            'address' => filled($counterpartyData['address'] ?? null) ? trim((string) $counterpartyData['address']) : null,
+            'postal_code' => filled($counterpartyData['postal_code'] ?? null) ? trim((string) $counterpartyData['postal_code']) : null,
+            'locality' => filled($counterpartyData['locality'] ?? null) ? trim((string) $counterpartyData['locality']) : null,
+            'province' => filled($counterpartyData['province'] ?? null) ? trim((string) $counterpartyData['province']) : null,
+            'country' => strtoupper(trim((string) ($counterpartyData['country'] ?? 'ES'))) ?: 'ES',
         ]);
 
-        $taxId = $this->normalizeTaxId((string) ($supplierData['identification_number'] ?? ''));
+        $taxId = $this->normalizeTaxId((string) ($counterpartyData['identification_number'] ?? ''));
         if ($taxId !== '')
         {
             EnterpriseBillingAddress::query()->create([

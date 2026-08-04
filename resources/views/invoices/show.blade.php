@@ -26,13 +26,43 @@
 @section('content')
 @php
     $currencyCode = $invoice->currency_code;
+    $reportingCurrency = app(\App\Services\Finance\PaymentReportingCurrencyService::class)->reportingCurrencyForCurrentTeam();
+    $invoiceDate = $invoice->date ? \Carbon\Carbon::parse($invoice->date) : now();
     $formatAmount = fn (float|int|null $amount): string => \App\Helpers\Helpers::formatDecimal($amount).' '.$currencyCode;
+    $formatAmountWithReporting = fn (float|int|null $amount, string $toneClass = 'fw-medium'): string => \App\Support\InvoiceTableAmountFormatter::formatWithReporting(
+        (float) $amount,
+        $currencyCode,
+        $reportingCurrency,
+        $invoiceDate,
+        $toneClass,
+    );
     $formatPaymentAmount = fn (float $amount, string $code): string => \App\Helpers\Helpers::formatDecimal($amount).' '.strtoupper($code);
     $invoicePrintUrl = $invoice->stripeHostedInvoiceUrl();
     $invoiceDownloadUrl = $invoice->stripeInvoicePdfUrl();
     $invoiceStripeDashboardUrl = $invoice->stripeDashboardUrl();
     $showPendingBalance = round((float) $invoice->balance, 2) > 0
         && round((float) $invoice->balance, 2) < round((float) $invoice->total_amount, 2);
+    $exchangeRateNote = \App\Support\InvoiceTableAmountFormatter::reportingConversionNote(
+        (string) $currencyCode,
+        (string) $reportingCurrency,
+        $invoiceDate,
+    );
+    $billingAddress = $invoice->billingAddress
+        ?? $invoice->enterprise?->enterpriseBillingAddresses?->firstWhere('status', 1)
+        ?? $invoice->enterprise?->enterpriseBillingAddresses?->first();
+    $clientTaxId = trim((string) ($billingAddress?->identification_number
+        ?? $invoice->stripeInvoiceSync?->customer_tax_id
+        ?? ''));
+    $clientFiscalCondition = $billingAddress?->taxStatusType?->name;
+    $displayDueDate = $invoice->due_date
+        ?? optional($invoice->stripeInvoiceSync?->invoice_due_date)->toDateString()
+        ?? (round((float) $invoice->balance, 2) <= 0 ? $invoice->date : null);
+    $paymentMethodLabel = collect($paymentDetails ?? [])
+        ->pluck('method')
+        ->filter(fn ($method) => filled($method))
+        ->unique()
+        ->values()
+        ->implode(', ');
     $originalInvoice = $originalInvoice ?? null;
     $existingCreditNote = $existingCreditNote ?? null;
 @endphp
@@ -63,30 +93,60 @@
               <span>{{ __('Date') }}:</span>
               <span class="fw-medium">{{ \Carbon\Carbon::parse($invoice->date)->format('d-m-Y') }}</span>
             </div>
-            @if($invoice->due_date)
+            @if($displayDueDate)
             <div class="mb-2 pt-1">
               <span>{{ __('Due Date') }}:</span>
-              <span class="fw-medium">{{ \Carbon\Carbon::parse($invoice->due_date)->format('d-m-Y') }}</span>
+              <span class="fw-medium">{{ \Carbon\Carbon::parse($displayDueDate)->format('d-m-Y') }}</span>
             </div>
             @endif
-            <div class="pt-1">
+            <div @class(['pt-1', 'mb-2' => filled($paymentMethodLabel)])>
               <span>{{ __('Operation') }}:</span>
               <span class="fw-medium">{{ $invoice->operation === 'sell' ? __('Sale') : __('Purchase') }}</span>
             </div>
+            @if(filled($paymentMethodLabel))
+            <div class="pt-1">
+              <span>{{ __('invoice_payment.type') }}:</span>
+              <span class="fw-medium">{{ $paymentMethodLabel }}</span>
+            </div>
+            @endif
           </div>
         </div>
 
         <hr class="my-4 mx-n4" />
 
         <div class="row p-sm-3 p-0">
-          <div class="col-12 mb-xl-0 mb-md-4 mb-sm-0 mb-4">
-            @if($invoice->enterprise)
-            <p class="mb-1 fw-medium">{{ $invoice->enterprise->name }}</p>
-            @if($invoice->enterprise->address)
-            <p class="mb-1">{{ $invoice->enterprise->address }}</p>
-            @if($invoice->enterprise->locality || $invoice->enterprise->postal_code)
-            <p class="mb-1">{{ $invoice->enterprise->locality }} {{ $invoice->enterprise->postal_code }}</p>
+          @if($invoice->enterprise)
+          @php
+            $clientLocality = $billingAddress?->locality ?: $invoice->enterprise->locality;
+            $clientPostalCode = $billingAddress?->postal_code ?: $invoice->enterprise->postal_code;
+            $clientAddress = $billingAddress?->address ?: $invoice->enterprise->address;
+            $hasClientContact = filled($clientAddress) || filled($clientLocality) || filled($clientPostalCode)
+              || filled($invoice->enterprise->phone) || filled($invoice->enterprise->email);
+          @endphp
+          <div class="col-12 mb-2">
+            <p class="mb-0 fw-medium">{{ $billingAddress?->name ?: $invoice->enterprise->name }}</p>
+          </div>
+          <div class="col-xl-6 col-md-6 col-12 mb-xl-0 mb-md-0 mb-3">
+            @if($clientTaxId !== '')
+            <p class="mb-1">
+              <span class="text-muted">{{ __('CUIT') }}:</span>
+              <span class="fw-medium">{{ $clientTaxId }}</span>
+            </p>
             @endif
+            @if(filled($clientFiscalCondition))
+            <p class="mb-0">
+              <span class="text-muted">{{ __('Fiscal condition') }}:</span>
+              <span class="fw-medium">{{ $clientFiscalCondition }}</span>
+            </p>
+            @endif
+          </div>
+          @if($hasClientContact)
+          <div class="col-xl-6 col-md-6 col-12">
+            @if(filled($clientAddress))
+            <p class="mb-1">{{ $clientAddress }}</p>
+            @endif
+            @if($clientLocality || $clientPostalCode)
+            <p class="mb-1">{{ $clientLocality }} {{ $clientPostalCode }}</p>
             @endif
             @if($invoice->enterprise->phone)
             <p class="mb-1">{{ $invoice->enterprise->phone }}</p>
@@ -94,10 +154,13 @@
             @if($invoice->enterprise->email)
             <p class="mb-0">{{ $invoice->enterprise->email }}</p>
             @endif
-            @else
-            <p class="mb-0 text-muted">{{ __('No enterprise assigned') }}</p>
-            @endif
           </div>
+          @endif
+          @else
+          <div class="col-12">
+            <p class="mb-0 text-muted">{{ __('No enterprise assigned') }}</p>
+          </div>
+          @endif
         </div>
 
         <hr class="my-4 mx-n4" />
@@ -157,14 +220,14 @@
                 <td colspan="2" class="border-0 text-end pe-3">{{ __('Balance') }}:</td>
                 <td class="border-0"></td>
                 <td class="border-0"></td>
-                <td class="text-end border-0 text-danger fw-medium text-nowrap">{{ $formatAmount($invoice->balance) }}</td>
+                <td class="text-end border-0 text-nowrap">{!! $formatAmountWithReporting($invoice->balance, 'text-danger fw-medium') !!}</td>
               </tr>
               @endif
               <tr>
                 <td colspan="2" class="border-0 text-end pe-3 pb-2 fw-medium">{{ __('Total') }}:</td>
                 <td class="border-0 pb-2"></td>
                 <td class="border-0 pb-2"></td>
-                <td class="text-end border-0 pb-2 h6 fw-medium text-nowrap">{{ $formatAmount($invoice->total_amount) }}</td>
+                <td class="text-end border-0 pb-2 text-nowrap">{!! $formatAmountWithReporting($invoice->total_amount, 'h6 fw-medium') !!}</td>
               </tr>
             </tbody>
           </table>
@@ -206,14 +269,14 @@
                 <td colspan="2" class="border-0 text-end pe-3">{{ __('Balance') }}:</td>
                 <td class="border-0"></td>
                 <td class="border-0"></td>
-                <td class="text-end border-0 text-danger fw-medium text-nowrap">{{ $formatAmount($invoice->balance) }}</td>
+                <td class="text-end border-0 text-nowrap">{!! $formatAmountWithReporting($invoice->balance, 'text-danger fw-medium') !!}</td>
               </tr>
               @endif
               <tr>
                 <td colspan="2" class="border-0 text-end pe-3 pb-2 fw-medium">{{ __('Total') }}:</td>
                 <td class="border-0 pb-2"></td>
                 <td class="border-0 pb-2"></td>
-                <td class="text-end border-0 pb-2 h6 fw-medium text-nowrap">{{ $formatAmount($invoice->total_amount) }}</td>
+                <td class="text-end border-0 pb-2 text-nowrap">{!! $formatAmountWithReporting($invoice->total_amount, 'h6 fw-medium') !!}</td>
               </tr>
             </tbody>
           </table>
@@ -225,7 +288,11 @@
         <div class="row">
           <div class="col-12">
             <span class="fw-medium">{{ __('Note') }}:</span>
-            <span>{{ __('Invoice auto-generated from imported data') }}</span>
+            @if($exchangeRateNote)
+              <span>{{ $exchangeRateNote }}</span>
+            @else
+              <span>{{ __('Invoice auto-generated from imported data') }}</span>
+            @endif
           </div>
         </div>
       </div>
@@ -259,6 +326,14 @@
           <i class="ti ti-arrow-left ti-xs me-2"></i>
           {{ __('Back to List') }}
         </a>
+        @if ($invoice->enterprise)
+          @can('view', $invoice->enterprise)
+          <a class="btn btn-label-secondary d-grid w-100 mb-2" href="{{ route('client.show', $invoice->enterprise->id) }}">
+            <i class="ti ti-building ti-xs me-2"></i>
+            {{ __('Ver empresa') }}
+          </a>
+          @endcan
+        @endif
         @if ($invoicePrintUrl)
         <a class="btn btn-label-secondary d-grid w-100 mb-2" target="_blank" rel="noopener noreferrer" href="{{ $invoicePrintUrl }}">
           <i class="ti ti-printer ti-xs me-2"></i>

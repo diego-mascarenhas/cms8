@@ -85,9 +85,13 @@ class StoreExpenseSupplierRequest extends FormRequest
 
             if ($service->matchesOwnBusiness($this->all(), $teamId))
             {
+                $counterpartyLabel = $this->routeIs('invoice.create-client')
+                    ? 'cliente'
+                    : 'proveedor que emitió la factura';
+
                 $validator->errors()->add(
                     'name',
-                    'Estos datos corresponden a la configuración de tu negocio. Indica los del proveedor que emitió la factura.',
+                    'Estos datos corresponden a la configuración de tu negocio. Indica los del '.$counterpartyLabel.'.',
                 );
             }
         });

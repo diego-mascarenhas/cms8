@@ -43,6 +43,7 @@ use App\Http\Controllers\HostingController;
 use App\Http\Controllers\HumanoConfigTransferController;
 use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\InvoiceItemCategoryController;
 use App\Http\Controllers\KanbanController;
 use App\Http\Controllers\language\LanguageController;
 use App\Http\Controllers\laravel_example\UserManagement;
@@ -913,10 +914,13 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 
-    // Legacy invoice routes already defined above
     Route::prefix('invoice')->group(function ()
     {
-        Route::get('/create', [App\Http\Controllers\apps\InvoiceAdd::class, 'index'])->name('invoice.create');
+        Route::get('/create', [InvoiceController::class, 'create'])->name('invoice.create');
+        Route::post('/', [InvoiceController::class, 'store'])->name('invoice.store');
+        Route::post('/create-client', [InvoiceController::class, 'createClient'])->name('invoice.create-client');
+        Route::post('/check-document-duplicate', [InvoiceController::class, 'checkDocumentDuplicate'])->name('invoice.check-document-duplicate');
+        Route::get('/suggested-categories', [InvoiceController::class, 'suggestedCategories'])->name('invoice.suggested-categories');
 
         Route::delete('/destroy/{id}', function ($id)
         {
@@ -965,6 +969,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/payment-account/create', [PaymentAccountController::class, 'create'])->name('payment-account.create');
     Route::post('/payment-account', [PaymentAccountController::class, 'store'])->name('payment-account.store');
     Route::get('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'show'])->name('payment-account.show');
+    Route::post('/payment-account/{paymentAccount}/statements', [PaymentAccountController::class, 'storeStatements'])->name('payment-account.statements.store');
+    Route::get('/payment-account/{paymentAccount}/statements/{statement}/download', [PaymentAccountController::class, 'downloadStatement'])->name('payment-account.statements.download');
     Route::get('/payment-account/{paymentAccount}/edit', [PaymentAccountController::class, 'edit'])->name('payment-account.edit');
     Route::put('/payment-account/{paymentAccount}', [PaymentAccountController::class, 'update'])->name('payment-account.update');
 
@@ -972,6 +978,7 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');
     Route::get('/finance-dashboard/projection', [FinancialDashboardController::class, 'projection'])->name('finance-dashboard.projection');
     Route::get('/finance-dashboard/invoiced-lines', [FinancialDashboardController::class, 'invoicedLines'])->name('finance-dashboard.invoiced-lines');
+    Route::patch('/invoice-items/{invoiceItem}/category', [InvoiceItemCategoryController::class, 'update'])->name('invoice-items.category.update');
 
     Route::prefix('payment')->group(function ()
     {
@@ -991,6 +998,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/domain/{domain}/change-plan', [DomainController::class, 'changePlan'])->name('domain.change-plan');
     Route::post('/domain/{domain}/ensure-spf', [DomainController::class, 'ensureSpf'])->name('domain.ensure-spf');
     Route::post('/domain/{domain}/email-password', [DomainController::class, 'updateEmailPassword'])->name('domain.email-password');
+    Route::post('/domain/{domain}/cpanel-password', [DomainController::class, 'resetCpanelPassword'])->name('domain.cpanel-password');
     Route::post('/domain/{domain}/emails', [DomainController::class, 'storeEmailAccount'])->name('domain.emails.store');
     Route::post('/domain/{domain}/mx-records', [DomainController::class, 'updateMxRecords'])->name('domain.mx-records');
 
@@ -1174,6 +1182,8 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/subscription', [SubscriptionController::class, 'index'])->name('subscription.index');
     Route::get('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClientForm'])->name('subscription.stripe-link-client');
     Route::post('/subscription/stripe/{stripeSubscription}/link-client', [SubscriptionController::class, 'linkClient'])->name('subscription.stripe-link-client.store');
+    Route::patch('/subscription/stripe/{stripeSubscription}/service-category', [SubscriptionController::class, 'updateServiceCategory'])->name('subscription.stripe-service-category.update');
+    Route::post('/subscription/stripe/{stripeSubscription}/create-service', [SubscriptionController::class, 'createService'])->name('subscription.stripe-create-service');
     Route::post('/subscription/sync', [SubscriptionController::class, 'syncFromStripe'])->name('subscription.sync');
     Route::get('/subscription/billing-info', [SubscriptionController::class, 'billingInfo'])->name('subscription.billing-info');
     Route::post('/subscription/save-billing-info', [SubscriptionController::class, 'saveBillingInfo'])->name('subscription.save-billing-info');

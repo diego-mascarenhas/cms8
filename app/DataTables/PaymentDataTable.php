@@ -156,7 +156,7 @@ class PaymentDataTable extends DataTable
             ->setTableId($tableId)
             ->columns($this->getColumns())
             ->dom('frtip')
-            ->orderBy($this->accountId !== null ? 1 : 2, 'desc')
+            ->orderBy(2, 'desc')
             ->responsive(true)
             ->processing(true)
             ->serverSide(true)

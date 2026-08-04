@@ -3,30 +3,48 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\InvoiceDataTable;
+use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
+use App\Http\Requests\StoreExpenseRequest;
+use App\Http\Requests\StoreExpenseSupplierRequest;
 use App\Http\Requests\StoreInvoiceCreditNoteRequest;
 use App\Http\Requests\StoreInvoiceElectronicPaymentRequest;
 use App\Http\Requests\StoreInvoicePaymentRequest;
+use App\Http\Requests\SuggestExpenseCategoriesRequest;
+use App\Models\Country;
+use App\Models\Currency;
 use App\Models\Enterprise;
 use App\Models\ExchangeRate;
 use App\Models\FiscalExport;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Payment;
+use App\Models\PaymentAccount;
+use App\Models\PaymentType;
 use App\Services\Billing\InvoiceInboundSyncService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
+use App\Services\ExpenseDuplicateDocumentService;
+use App\Services\ExpenseSupplierService;
 use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
 use App\Services\Finance\InvoiceElectronicPaymentLinkService;
 use App\Services\Finance\InvoicePaymentDetailService;
 use App\Services\Finance\InvoicePaymentRegistrationService;
 use App\Services\Finance\InvoiceSummaryService;
+use App\Services\Finance\ManualInvoiceDocumentService;
+use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentStatusUpdateService;
+use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\Fiscal\FiscalExportRouter;
 use App\Services\Fiscal\FiscalExportService;
 use App\Services\Fiscal\NullFiscalExportAdapter;
+use App\Support\ExpenseDocumentTypes;
+use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -77,6 +95,227 @@ class InvoiceController extends Controller
             'initialSummaryFilter',
             'invoiceSyncProviders',
         ));
+    }
+
+    public function create(): View
+    {
+        $this->authorize('create', Invoice::class);
+
+        $teamId = (int) auth()->user()->currentTeam->id;
+        $enterprises = Enterprise::query()
+            ->where('type_id', 1)
+            ->orderBy('name')
+            ->get(['id', 'name', 'type_id']);
+
+        $paymentAccounts = PaymentAccount::withoutGlobalScopes()
+            ->with(['currency', 'paymentTypes'])
+            ->where('team_id', $teamId)
+            ->where('status', 1)
+            ->orderBy('name')
+            ->get();
+
+        $paymentTypesQuery = PaymentType::query()->orderBy('name');
+        if (Schema::hasColumn('payment_types', 'is_active'))
+        {
+            $paymentTypesQuery->where('is_active', true);
+        }
+        $paymentTypes = $paymentTypesQuery->get(['id', 'name']);
+        $preferredTypeId = $paymentTypes->firstWhere('id', 2)?->id
+            ?? $paymentTypes->first()?->id;
+        [$defaultPaymentAccountId, $defaultPaymentTypeId] = app(PaymentAccountCompatibilityService::class)
+            ->resolveDefaults($paymentAccounts, $paymentTypes, $preferredTypeId);
+        $paymentAccountOptions = app(PaymentAccountCompatibilityService::class)
+            ->mapAccountsForFrontend($paymentAccounts);
+
+        $currencies = Currency::query()
+            ->active()
+            ->orderBy('code')
+            ->get(['id', 'code', 'name', 'symbol']);
+        $countries = Country::query()
+            ->orderBy('name')
+            ->get(['id', 'code', 'name']);
+        $documentTypes = ExpenseDocumentTypes::LABELS;
+        $disabledDocumentTypes = ExpenseDocumentTypes::DISABLED;
+        $statusOptions = [
+            1 => 'En proceso',
+            2 => 'Aprobado',
+            3 => 'Pendiente',
+            4 => 'Rechazado',
+        ];
+        $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForTeam($teamId);
+        $documentFlow = [
+            'mode' => 'sell',
+            'page_title' => 'Crear factura',
+            'breadcrumb' => 'Facturas',
+            'subtitle' => 'Registrar una nueva factura',
+            'back_route' => route('invoice.index'),
+            'store_route' => route('invoice.store'),
+            'party_label' => 'Cliente (*)',
+            'party_placeholder' => 'Selecciona un cliente',
+            'create_party_label' => 'Crear cliente',
+            'create_party_modal_title' => 'Crear cliente',
+            'create_party_help' => 'Los datos fiscales se guardarán en el cliente para futuras facturas.',
+            'save_party_label' => 'Guardar cliente',
+            'remarks_label' => 'Comentario personal de la factura',
+            'submit_label' => 'Guardar factura',
+            'account_hint' => 'antes de registrar la factura.',
+            'payments_section_title' => 'Cobros',
+            'add_payment_label' => 'Añadir cobro',
+            'payment_date_label' => 'Fecha del cobro (*)',
+            'remove_payment_title' => 'Eliminar cobro',
+            'payments_empty_message' => 'Sin cobros registrados. La factura quedará pendiente de cobro. Usa «Añadir cobro» si quieres registrar uno.',
+            'payments_empty_summary' => 'Sin cobros registrados. Pendiente de cobro:',
+            'paid_label' => 'Cobrado',
+            'payments_overflow_prefix' => 'La suma de cobros supera el',
+            'payments_overflow_suffix' => 'total de la factura.',
+            'duplicate_message' => 'Este número de comprobante ya fue registrado para este cliente.',
+            'detect_document_url' => null,
+            'check_duplicate_url' => route('invoice.check-document-duplicate'),
+            'create_party_url' => route('invoice.create-client'),
+            'suggested_categories_url' => route('invoice.suggested-categories'),
+            'livewire_key' => 'invoice-line-cat-mgr-services',
+        ];
+
+        return view('expense.create', compact(
+            'enterprises',
+            'paymentAccounts',
+            'paymentAccountOptions',
+            'paymentTypes',
+            'defaultPaymentTypeId',
+            'defaultPaymentAccountId',
+            'currencies',
+            'countries',
+            'documentTypes',
+            'disabledDocumentTypes',
+            'statusOptions',
+            'expenseCategoryOptions',
+            'documentFlow',
+        ));
+    }
+
+    public function store(
+        StoreExpenseRequest $request,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
+    ): RedirectResponse {
+        $this->authorize('create', Invoice::class);
+
+        $result = $manualInvoiceDocumentService->store(
+            $request->validated(),
+            (int) $request->user()->currentTeam->id,
+            $request->file('document_file'),
+            'sell',
+        );
+
+        $message = $result['is_draft']
+            ? 'Borrador de factura guardado correctamente.'
+            : 'Factura guardada correctamente.';
+
+        return redirect()->route('invoice.index')->with('success', $message);
+    }
+
+    public function createClient(
+        StoreExpenseSupplierRequest $request,
+        ExpenseSupplierService $expenseSupplierService,
+    ): JsonResponse {
+        $this->authorize('create', Enterprise::class);
+
+        $enterprise = $expenseSupplierService->createClient(
+            (int) $request->user()->currentTeam->id,
+            $request->validated(),
+        );
+
+        return response()->json([
+            'success' => true,
+            'enterprise' => [
+                'id' => $enterprise->id,
+                'name' => $enterprise->name,
+                'type_id' => $enterprise->type_id,
+            ],
+        ]);
+    }
+
+    public function checkDocumentDuplicate(
+        CheckExpenseDocumentDuplicateRequest $request,
+        ExpenseDuplicateDocumentService $duplicateDocumentService,
+    ): JsonResponse {
+        $this->authorize('create', Invoice::class);
+
+        $validated = $request->validated();
+        $duplicateInvoice = $duplicateDocumentService->findDuplicate(
+            (int) $request->user()->currentTeam->id,
+            (int) $validated['enterprise_id'],
+            (string) $validated['document_number'],
+            'sell',
+        );
+
+        if (! $duplicateInvoice instanceof Invoice)
+        {
+            return response()->json(['duplicate' => false]);
+        }
+
+        return response()->json([
+            'duplicate' => true,
+            'invoice' => [
+                'id' => $duplicateInvoice->id,
+                'number' => $duplicateInvoice->number,
+                'date' => filled($duplicateInvoice->date)
+                    ? Carbon::parse($duplicateInvoice->date)->format('Y-m-d')
+                    : null,
+                'total_amount' => number_format((float) $duplicateInvoice->total_amount, 2, '.', ''),
+            ],
+            'message' => 'Este número de comprobante ya fue registrado para este cliente.',
+        ]);
+    }
+
+    public function suggestedCategories(SuggestExpenseCategoriesRequest $request): JsonResponse
+    {
+        $this->authorize('create', Invoice::class);
+
+        $previousInvoice = Invoice::withoutGlobalScopes()
+            ->where('team_id', (int) $request->user()->currentTeam->id)
+            ->where('enterprise_id', (int) $request->validated('enterprise_id'))
+            ->where('operation', 'sell')
+            ->whereHas('items', fn ($query) => $query->whereNotNull('category_id'))
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first(['id', 'number', 'date']);
+
+        if (! $previousInvoice instanceof Invoice)
+        {
+            return response()->json([
+                'success' => true,
+                'invoice' => null,
+                'items' => [],
+            ]);
+        }
+
+        $items = InvoiceItem::query()
+            ->with('category:id,name')
+            ->where('invoice_id', $previousInvoice->id)
+            ->orderBy('id')
+            ->get(['id', 'invoice_id', 'category_id', 'description'])
+            ->map(function (InvoiceItem $item): array
+            {
+                return [
+                    'category_id' => $item->category_id ? (int) $item->category_id : null,
+                    'category_name' => $item->category?->name,
+                    'description' => (string) $item->description,
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'invoice' => [
+                'id' => $previousInvoice->id,
+                'number' => $previousInvoice->number,
+                'date' => filled($previousInvoice->date)
+                    ? Carbon::parse($previousInvoice->date)->format('Y-m-d')
+                    : null,
+            ],
+            'items' => $items,
+        ]);
     }
 
     /**
@@ -219,7 +458,8 @@ class InvoiceController extends Controller
     public function show($id): View
     {
         $invoice = Invoice::with([
-            'enterprise',
+            'enterprise.enterpriseBillingAddresses.taxStatusType',
+            'billingAddress.taxStatusType',
             'items.category',
             'type',
             'stripeInvoiceSync',

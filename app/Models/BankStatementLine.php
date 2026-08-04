@@ -19,6 +19,8 @@ class BankStatementLine extends Model
         'payer_id_number',
         'description',
         'payment_sync_id',
+        'payment_id',
+        'match_status',
         'reconcile_dismissed_at',
         'raw',
     ];
@@ -38,6 +40,11 @@ class BankStatementLine extends Model
     public function paymentSync(): BelongsTo
     {
         return $this->belongsTo(PaymentSync::class);
+    }
+
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 
     public function isDismissed(): bool

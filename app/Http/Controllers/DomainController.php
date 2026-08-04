@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\DataTables\DomainDataTable;
 use App\Helpers\DnsHelper;
+use App\Http\Requests\ResetDomainCpanelPasswordRequest;
 use App\Http\Requests\StoreDomainEmailRequest;
 use App\Http\Requests\UpdateDomainEmailPasswordRequest;
 use App\Jobs\RefreshDomainDataJob;
 use App\Models\Domain;
 use App\Models\Server;
 use App\Services\ControlPanel\ControlPanelManager;
+use App\Services\Hosting\DomainCpanelPasswordService;
+use App\Services\Hosting\DomainMailboxPasswordService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -19,6 +22,8 @@ class DomainController extends Controller
 {
     public function __construct(
         private ControlPanelManager $controlPanelManager,
+        private DomainCpanelPasswordService $domainCpanelPasswordService,
+        private DomainMailboxPasswordService $domainMailboxPasswordService,
     ) {
         $this->middleware('can:access-infrastructure-modules');
     }
@@ -65,7 +70,7 @@ class DomainController extends Controller
 
     public function show(Domain $domain): View
     {
-        $domain->load('server');
+        $domain->load(['server', 'service.enterprise.contacts']);
 
         $controlPanelType = $domain->server?->control_panel;
         $accountIsSuspended = $domain->suspended;
@@ -78,11 +83,18 @@ class DomainController extends Controller
         $currentNameservers = $displayInfo['nameservers'] ?? [];
         $nameserversMatch = $this->nameserversMatch($currentNameservers, $requiredNameservers);
         $webmailUrl = $domain->server?->getWebmailUrl();
+        $cpanelUrl = $domain->server?->getCpanelUrl();
         $emailAccounts = $domain->getCachedEmailAccounts();
         $mxRecords = $domain->getCachedMxRecords();
         $availablePlans = $domain->getCachedAvailablePlans();
         $accountDisk = $domain->getCachedAccountDisk();
         $controlPanelError = $domain->getCachedControlPanelError();
+        $cpanelNotifiableContacts = $this->domainCpanelPasswordService->notifiableContactsForDomain($domain);
+        $cpanelHostingPlanEmail = $this->domainCpanelPasswordService->hostingPlanEmail($domain);
+        $canResetCpanelPassword = ($controlPanelType === 'cpanel')
+            && $domain->server?->hasToken()
+            && ! $accountIsSuspended
+            && filled($domain->username);
 
         if ($domain->server && $this->controlPanelManager->supports($domain->server))
         {
@@ -111,6 +123,10 @@ class DomainController extends Controller
             'currentNameservers',
             'nameserversMatch',
             'webmailUrl',
+            'cpanelUrl',
+            'cpanelNotifiableContacts',
+            'cpanelHostingPlanEmail',
+            'canResetCpanelPassword',
         ));
     }
 
@@ -310,27 +326,98 @@ class DomainController extends Controller
     {
         $validated = $request->validated();
 
-        $domain->load('server');
+        $result = $this->domainMailboxPasswordService->resetAndOptionallyNotify(
+            $request->user(),
+            $domain,
+            (string) $validated['email'],
+            isset($validated['notify_to']) ? (string) $validated['notify_to'] : null,
+            (string) ($validated['notify_channel'] ?? 'none'),
+            $validated['password'] ?? null,
+        );
 
-        if (! $domain->server || $domain->server->control_panel !== 'cpanel' || ! $domain->server->hasToken())
+        if (! ($result['success'] ?? false))
         {
             return redirect()->route('domain.show', $domain->id)
-                ->with('error', 'El servidor no tiene credenciales configuradas para cambiar contraseñas de correo.');
+                ->with('error', $result['error'] ?? 'No se pudo actualizar la contraseña de correo.');
         }
 
-        $result = $this->controlPanelManager
-            ->forServer($domain->server)
-            ->changeEmailPassword($domain->server, $domain, $validated['email'], $validated['password']);
+        $this->queueDomainRefresh($domain);
 
-        if ($result['success'] ?? false)
+        $redirect = redirect()->route('domain.show', $domain->id)
+            ->with('generated_mailbox_password', $result['password'] ?? null)
+            ->with('mailbox_access_message', $result['access_message'] ?? null)
+            ->with('mailbox_password_reset', true)
+            ->with('mailbox_email', $result['email'] ?? $validated['email']);
+
+        if (! empty($result['warning']))
         {
-            $this->queueDomainRefresh($domain);
+            return $redirect->with('warning', $result['warning']);
         }
 
-        return redirect()->route('domain.show', $domain->id)
-            ->with($result['success'] ? 'success' : 'error', $result['success']
-                ? 'Contraseña de correo actualizada correctamente.'
-                : ($result['error'] ?? 'No se pudo actualizar la contraseña de correo.'));
+        if (! empty($result['notified']))
+        {
+            $channelLabel = ($result['channel'] ?? '') === 'email' ? 'email' : 'WhatsApp';
+            $recipient = $result['recipient'] ?? '';
+            $sourceNote = ($result['recipient_source'] ?? '') === 'hosting'
+                ? ' (email del plan de hosting)'
+                : '';
+
+            return $redirect->with(
+                'success',
+                'Contraseña de correo actualizada y enviada por '.$channelLabel
+                    .($recipient !== '' ? ' a '.$recipient : '')
+                    .$sourceNote.'.',
+            );
+        }
+
+        return $redirect->with('success', 'Contraseña de correo actualizada correctamente.');
+    }
+
+    public function resetCpanelPassword(ResetDomainCpanelPasswordRequest $request, Domain $domain): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        $result = $this->domainCpanelPasswordService->resetAndOptionallyNotify(
+            $request->user(),
+            $domain,
+            isset($validated['notify_to']) ? (string) $validated['notify_to'] : null,
+            (string) ($validated['notify_channel'] ?? 'none'),
+            $validated['password'] ?? null,
+        );
+
+        if (! ($result['success'] ?? false))
+        {
+            return redirect()->route('domain.show', $domain->id)
+                ->with('error', $result['error'] ?? 'No se pudo actualizar la contraseña de cPanel.');
+        }
+
+        $redirect = redirect()->route('domain.show', $domain->id)
+            ->with('generated_password', $result['password'] ?? null)
+            ->with('cpanel_access_message', $result['access_message'] ?? null)
+            ->with('cpanel_password_reset', true);
+
+        if (! empty($result['warning']))
+        {
+            return $redirect->with('warning', $result['warning']);
+        }
+
+        if (! empty($result['notified']))
+        {
+            $channelLabel = ($result['channel'] ?? '') === 'email' ? 'email' : 'WhatsApp';
+            $recipient = $result['recipient'] ?? '';
+            $sourceNote = ($result['recipient_source'] ?? '') === 'hosting'
+                ? ' (email del plan de hosting)'
+                : '';
+
+            return $redirect->with(
+                'success',
+                'Contraseña de cPanel actualizada y enviada por '.$channelLabel
+                    .($recipient !== '' ? ' a '.$recipient : '')
+                    .$sourceNote.'.',
+            );
+        }
+
+        return $redirect->with('success', 'Contraseña de cPanel actualizada correctamente.');
     }
 
     public function storeEmailAccount(StoreDomainEmailRequest $request, Domain $domain): RedirectResponse
@@ -356,6 +443,34 @@ class DomainController extends Controller
 
         if ($result['success'] ?? false)
         {
+            $mailbox = strtolower((string) $validated['email']).'@'.$domain->domain;
+            $connector = $this->controlPanelManager->forServer($domain->server);
+            $emailsResult = $connector->listEmailAccounts($domain->server, $domain);
+            $listedAccounts = (($emailsResult['success'] ?? false) ? ($emailsResult['emails'] ?? []) : []);
+            $emailAccounts = collect($listedAccounts !== [] ? $listedAccounts : ($domain->data['email_accounts'] ?? []));
+
+            if (! $emailAccounts->contains(fn ($account): bool => strtolower((string) (is_array($account) ? ($account['email'] ?? '') : '')) === $mailbox))
+            {
+                $emailAccounts->push([
+                    'email' => $mailbox,
+                    'diskused' => '0',
+                    'diskquota' => 'unlimited',
+                    'diskused_mb' => 0.0,
+                    'diskquota_mb' => null,
+                    'unlimited' => true,
+                    'usage_percent' => null,
+                ]);
+            }
+
+            $domain->update([
+                'data' => array_merge($domain->data ?? [], [
+                    'email_accounts' => $emailAccounts
+                        ->sortBy(fn ($account): string => strtolower((string) (is_array($account) ? ($account['email'] ?? '') : '')))
+                        ->values()
+                        ->all(),
+                ]),
+            ]);
+
             $this->queueDomainRefresh($domain);
         }
 

@@ -2,13 +2,11 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Category;
-use App\Models\Currency;
-use App\Models\Enterprise;
-use App\Models\Service;
 use App\Models\ServiceSync;
+use App\Services\Billing\ServiceSyncImporter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 
 class ImportServiceSyncsCommand extends Command
 {
@@ -22,7 +20,7 @@ class ImportServiceSyncsCommand extends Command
 
     protected $description = 'Map service_syncs rows into core services table (create-only idempotent by subscription_id)';
 
-    public function handle(): int
+    public function handle(ServiceSyncImporter $importer): int
     {
         if (! Schema::hasTable('service_syncs'))
         {
@@ -50,7 +48,6 @@ class ImportServiceSyncsCommand extends Command
             $query->where('team_id', $teamId);
         }
 
-        // Create-only idempotency: only sync rows not linked yet to a service.
         $query->whereNotExists(function ($q)
         {
             $q->from('services')
@@ -59,14 +56,6 @@ class ImportServiceSyncsCommand extends Command
         });
 
         $rows = $query->limit($limit)->get();
-
-        $defaultCategoryId = Category::query()->orderBy('id')->value('id');
-        if ($defaultCategoryId === null)
-        {
-            $this->error('No categories found. Import legacy categories first.');
-
-            return self::FAILURE;
-        }
 
         $processed = 0;
         $created = 0;
@@ -81,58 +70,44 @@ class ImportServiceSyncsCommand extends Command
 
             $processed++;
 
-            [$enterpriseId, $resolutionMode] = $this->resolveEnterpriseId(
-                $row,
-                $fallbackEmail,
-                $linkCodeOnEmailMatch,
-                $dryRun,
-            );
-
-            if (! $enterpriseId)
-            {
-                $skipped++;
-                $reason = $fallbackEmail ? 'customer_id/code or unique email' : 'customer_id/code';
-                $this->warn("Skip {$row->id}: enterprise not found by {$reason} for team {$row->team_id}");
-
-                continue;
-            }
-
-            $currencyId = $this->resolveCurrencyId((string) ($row->price_currency ?? ''));
-            $serviceStatus = $this->mapServiceStatus((string) ($row->status ?? ''));
-            $description = trim((string) ($row->plan_name ?? ''));
-            if ($description === '')
-            {
-                $description = 'Sync '.$provider.' '.$row->stripe_id.($resolutionMode !== 'none' ? " ({$resolutionMode})" : '');
-            }
-
-            $payload = [
-                'enterprise_id' => $enterpriseId,
-                'subscription_id' => $row->id,
-                'category_id' => (int) $defaultCategoryId,
-                'operation' => 'sell',
-                'description' => $description,
-                // Keep only provider metadata payload for service detail visualization.
-                'data' => is_array($row->data) ? $row->data : [],
-                'currency_id' => $currencyId,
-                'price' => $row->amount_total ?? $row->unit_amount,
-                'discount' => 0,
-                'frequency' => 1,
-                'next_billing' => $row->current_period_end,
-                'expires_at' => $row->current_period_end,
-                'responsible_id' => null,
-                'status' => $serviceStatus,
-            ];
-
             if ($dryRun)
             {
+                [$enterpriseId] = $importer->resolveEnterpriseId(
+                    $row,
+                    $fallbackEmail,
+                    $linkCodeOnEmailMatch,
+                    dryRun: true,
+                );
+
+                if (! $enterpriseId)
+                {
+                    $skipped++;
+                    $reason = $fallbackEmail ? 'customer_id/code or unique email' : 'customer_id/code';
+                    $this->warn("Skip {$row->id}: enterprise not found by {$reason} for team {$row->team_id}");
+
+                    continue;
+                }
+
                 $this->line("[dry-run] create service from sync_id={$row->id} team={$row->team_id} enterprise={$enterpriseId}");
                 $created++;
 
                 continue;
             }
 
-            Service::withoutGlobalScopes()->create($payload);
-            $created++;
+            try
+            {
+                $importer->createServiceFromSync(
+                    $row,
+                    categoryId: null,
+                    fallbackEmail: $fallbackEmail,
+                    linkCodeOnEmailMatch: $linkCodeOnEmailMatch,
+                );
+                $created++;
+            } catch (RuntimeException $e)
+            {
+                $skipped++;
+                $this->warn("Skip {$row->id}: ".$e->getMessage());
+            }
         }
 
         $this->info(
@@ -141,88 +116,5 @@ class ImportServiceSyncsCommand extends Command
         );
 
         return self::SUCCESS;
-    }
-
-    /**
-     * @return array{0:int|null,1:string}
-     */
-    private function resolveEnterpriseId(
-        ServiceSync $row,
-        bool $fallbackEmail,
-        bool $linkCodeOnEmailMatch,
-        bool $dryRun,
-    ): array {
-        $customerId = trim((string) ($row->customer_id ?? ''));
-        if ($customerId !== '')
-        {
-            $enterprise = Enterprise::query()
-                ->where('team_id', $row->team_id)
-                ->where('type_id', 1)
-                ->where('code', $customerId)
-                ->first();
-
-            if ($enterprise)
-            {
-                return [$enterprise->id, 'code'];
-            }
-        }
-
-        if (! $fallbackEmail)
-        {
-            return [null, 'none'];
-        }
-
-        $email = strtolower(trim((string) ($row->customer_email ?? '')));
-        if ($email === '')
-        {
-            return [null, 'none'];
-        }
-
-        $emailMatches = Enterprise::query()
-            ->where('team_id', $row->team_id)
-            ->where('type_id', 1)
-            ->whereRaw('LOWER(email) = ?', [$email])
-            ->get();
-
-        if ($emailMatches->count() !== 1)
-        {
-            return [null, 'none'];
-        }
-
-        /** @var Enterprise $matched */
-        $matched = $emailMatches->first();
-
-        if ($linkCodeOnEmailMatch && $customerId !== '' && blank($matched->code))
-        {
-            if (! $dryRun)
-            {
-                $matched->code = $customerId;
-                $matched->save();
-            }
-        }
-
-        return [$matched->id, 'email'];
-    }
-
-    private function resolveCurrencyId(string $code): ?int
-    {
-        $normalized = strtoupper(trim($code));
-        if ($normalized === '')
-        {
-            return null;
-        }
-
-        return Currency::query()->where('code', $normalized)->value('id');
-    }
-
-    private function mapServiceStatus(string $providerStatus): int
-    {
-        return match (strtolower(trim($providerStatus)))
-        {
-            'active', 'trialing' => 4,
-            'past_due', 'unpaid', 'incomplete' => 2,
-            'canceled', 'incomplete_expired', 'paused' => 1,
-            default => 1,
-        };
     }
 }

@@ -259,4 +259,14 @@ class Server extends Model
 
         return $url;
     }
+
+    public function getCpanelUrl(): ?string
+    {
+        if ($this->hostname === null || $this->hostname === '')
+        {
+            return null;
+        }
+
+        return 'https://'.$this->hostname.':2083/';
+    }
 }

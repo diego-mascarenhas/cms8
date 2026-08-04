@@ -22,6 +22,8 @@ return new class extends Migration
             $table->string('payer_id_number', 64)->nullable();
             $table->text('description')->nullable();
             $table->foreignId('payment_sync_id')->nullable()->constrained('payment_syncs')->nullOnDelete();
+            $table->foreignId('payment_id')->nullable()->constrained('payments')->nullOnDelete();
+            $table->string('match_status', 32)->nullable();
             $table->timestamp('reconcile_dismissed_at')->nullable();
             $table->json('raw')->nullable();
             $table->timestamps();
@@ -31,6 +33,7 @@ return new class extends Migration
                 'bank_statement_lines_statement_external_unique',
             );
             $table->index(['payment_sync_id']);
+            $table->index(['payment_id']);
             $table->index(['payer_name']);
         });
     }

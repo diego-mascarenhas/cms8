@@ -181,7 +181,7 @@
                         <h3 class="mb-0 me-2 text-muted">—</h3>
                     @endif
                 </div>
-                <p class="mb-0 text-muted">{{ __('Months with billing activity in :year', ['year' => $selectedYear]) }}</p>
+                <p class="mb-0 text-muted text-nowrap">{{ __('Active months in :year', ['year' => $selectedYear]) }}</p>
             </div>
         </div>
     </div>

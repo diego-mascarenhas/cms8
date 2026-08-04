@@ -74,6 +74,11 @@ class PleskConnector implements ControlPanelConnector
         return $this->notImplemented();
     }
 
+    public function changeAccountPassword(Server $server, Domain $domain, string $password): array
+    {
+        return $this->notImplemented();
+    }
+
     public function changeEmailPassword(Server $server, Domain $domain, string $email, string $password): array
     {
         return $this->notImplemented();

@@ -6,11 +6,13 @@
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
 <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/select2/select2.css') }}" />
 @endsection
 
 @section('vendor-script')
 <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
 <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/select2/select2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -93,6 +95,142 @@
         {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
     </div>
 </div>
+
+@if (! empty($canEditCategory))
+    @include('partials.line-category-modal', [
+        'categoryOptions' => $categoryOptions ?? [],
+        'showSuggestion' => false,
+        'livewireKey' => 'subscription-cat-mgr-services',
+    ])
+@endif
+@endsection
+
+@section('page-script')
+@if (! empty($canEditCategory))
+<script>
+$(function () {
+    var updateUrlTemplate = @json(url('/subscription/stripe/__ID__/service-category'));
+    var createUrlTemplate = @json(url('/subscription/stripe/__ID__/create-service'));
+    var uncategorizedLabel = @json(__('Uncategorized'));
+    var csrfToken = $('meta[name="csrf-token"]').attr('content');
+    var $modal = $('#lineCategoryModal');
+    var $select = $('#line_category_modal_select');
+    var mode = 'update';
+    var subscriptionId = null;
+
+    function updateUrl(id) {
+        return updateUrlTemplate.replace('__ID__', String(id));
+    }
+
+    function createUrl(id) {
+        return createUrlTemplate.replace('__ID__', String(id));
+    }
+
+    function initSelect() {
+        if (! $select.length) {
+            return;
+        }
+
+        if ($select.hasClass('select2-hidden-accessible')) {
+            $select.select2('destroy');
+        }
+
+        $select.select2({
+            dropdownParent: $modal,
+            width: '100%',
+            allowClear: true,
+            placeholder: uncategorizedLabel,
+        });
+    }
+
+    function reloadTable() {
+        if ($.fn.DataTable && $.fn.DataTable.isDataTable('#stripe-subscription-table')) {
+            $('#stripe-subscription-table').DataTable().ajax.reload(null, false);
+        }
+    }
+
+    function persistCategory(categoryId) {
+        if (! subscriptionId) {
+            return;
+        }
+
+        var $saveBtn = $('#save-line-category');
+        var $clearBtn = $('#clear-line-category');
+        $saveBtn.prop('disabled', true);
+        $clearBtn.prop('disabled', true);
+
+        var isCreate = mode === 'create';
+        var payload = {
+            _token: csrfToken,
+            category_id: categoryId === '' || categoryId === null ? null : categoryId,
+        };
+
+        if (! isCreate) {
+            payload._method = 'PATCH';
+        }
+
+        $.ajax({
+            url: isCreate ? createUrl(subscriptionId) : updateUrl(subscriptionId),
+            type: 'POST',
+            data: payload,
+            success: function () {
+                bootstrap.Modal.getOrCreateInstance($modal.get(0)).hide();
+                reloadTable();
+            },
+            error: function (xhr) {
+                var message = (xhr.responseJSON && xhr.responseJSON.message)
+                    ? xhr.responseJSON.message
+                    : @json(__('Could not update category.'));
+                alert(message);
+            },
+            complete: function () {
+                $saveBtn.prop('disabled', false);
+                $clearBtn.prop('disabled', false);
+            },
+        });
+    }
+
+    $(document).on('click', '.subscription-category-badge', function () {
+        mode = 'update';
+        subscriptionId = $(this).data('subscription-id');
+        var currentId = $.trim(String($(this).data('category-id') || ''));
+        initSelect();
+        $select.val(currentId).trigger('change');
+        bootstrap.Modal.getOrCreateInstance($modal.get(0)).show();
+    });
+
+    $(document).on('click', '.create-subscription-service', function (e) {
+        e.preventDefault();
+        mode = 'create';
+        subscriptionId = $(this).data('subscription-id');
+        initSelect();
+        $select.val('').trigger('change');
+        bootstrap.Modal.getOrCreateInstance($modal.get(0)).show();
+    });
+
+    if ($modal.length) {
+        initSelect();
+        $modal.on('shown.bs.modal', function () {
+            initSelect();
+        });
+
+        $('#save-line-category').on('click', function () {
+            persistCategory($.trim(String($select.val() || '')));
+        });
+
+        $('#clear-line-category').on('click', function () {
+            persistCategory(null);
+        });
+
+        if (typeof Livewire !== 'undefined' && typeof Livewire.on === 'function') {
+            Livewire.on('module-categories-refreshed', function () {
+                initSelect();
+            });
+        }
+    }
+});
+</script>
+@endif
 @endsection
 
 @push('scripts')
