@@ -6,7 +6,9 @@ use App\Enums\EmailPlan;
 use App\Jobs\ProcessStripeInvoiceWebhookJob;
 use App\Models\Team;
 use App\Services\AffiliateCommissionRecorder;
+use App\Services\Stripe\SlaAcceptanceFromStripeSubscriptionPersister;
 use Laravel\Cashier\Http\Controllers\WebhookController as CashierController;
+use Symfony\Component\HttpFoundation\Response;
 
 class StripeWebhookController extends CashierController
 {
@@ -16,6 +18,24 @@ class StripeWebhookController extends CashierController
     public function handleInvoicePaid(array $payload): void
     {
         $this->dispatchInvoiceSyncJob($payload, 'invoice.paid');
+    }
+
+    /**
+     * When a subscription is created from a Payment Link / Checkout that carries
+     * sla_acceptance_token, persist acceptance (token + date) locally and as Stripe metadata.
+     */
+    protected function handleCustomerSubscriptionCreated(array $payload): Response
+    {
+        $response = parent::handleCustomerSubscriptionCreated($payload);
+
+        $subscription = $payload['data']['object'] ?? null;
+        if (is_array($subscription))
+        {
+            app(SlaAcceptanceFromStripeSubscriptionPersister::class)
+                ->persistFromStripeSubscription($subscription);
+        }
+
+        return $response;
     }
 
     /**
@@ -119,6 +139,12 @@ class StripeWebhookController extends CashierController
     {
         $subscription = $payload['data']['object'];
         $customerId = $subscription['customer'];
+
+        if (is_array($subscription))
+        {
+            app(SlaAcceptanceFromStripeSubscriptionPersister::class)
+                ->persistFromStripeSubscription($subscription);
+        }
 
         $team = Team::findByStripeCustomerId($customerId);
 
