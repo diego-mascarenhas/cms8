@@ -93,9 +93,11 @@ Route::prefix('projects/funnel')->middleware('throttle:20,1')->group(function ()
 {
     Route::post('lead', [ProjectFunnelController::class, 'lead'])->name('api.projects.funnel.lead');
     Route::get('requirements', [ProjectFunnelController::class, 'requirements'])->name('api.projects.funnel.requirements');
+    Route::get('strategy-tips', [ProjectFunnelController::class, 'strategyTips'])->name('api.projects.funnel.strategy-tips');
     Route::post('chat', [ProjectFunnelController::class, 'chat'])->name('api.projects.funnel.chat');
     Route::post('guide', [ProjectFunnelController::class, 'guide'])->name('api.projects.funnel.guide');
     Route::post('quote', [ProjectFunnelController::class, 'quote'])->name('api.projects.funnel.quote');
+    Route::get('quote/status', [ProjectFunnelController::class, 'quoteStatus'])->name('api.projects.funnel.quote.status');
     Route::post('submit', [ProjectFunnelController::class, 'submit'])->name('api.projects.funnel.submit');
 });
 

@@ -118,6 +118,7 @@ class ProjectFunnelTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('success', true)
+            ->assertJsonPath('status', 'ready')
             ->assertJsonPath('data.suggested_tasks.0.title', 'Discovery')
             ->assertJsonPath('data.suggested_tasks.0.estimated_hours', 8)
             ->assertJsonPath('data.suggested_tasks.0.resource_level', 'Senior')
@@ -136,6 +137,7 @@ class ProjectFunnelTest extends TestCase
         $this->assertSame($enterprise->id, (int) $project->enterprise_id);
         $this->assertSame('Hotel bookings', $project->name);
         $this->assertSame('Web app for bookings', $project->data['ai_interpretation'] ?? null);
+        $this->assertSame('ready', $project->data['funnel']['quote_status'] ?? null);
     }
 
     public function test_requirements_endpoint_returns_tech_checklist(): void
@@ -154,6 +156,22 @@ class ProjectFunnelTest extends TestCase
             ['objetivo', 'negocio', 'usuarios', 'funcionalidades', 'plataforma', 'urls', 'diseno', 'alcance'],
             $keys,
         );
+    }
+
+    public function test_strategy_tips_endpoint_returns_growth_framework(): void
+    {
+        $this->createFunnelTeam();
+
+        $response = $this->getJson('/api/projects/funnel/strategy-tips');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.title', 'Strategic Growth Framework')
+            ->assertJsonPath('data.steps.0.number', 1)
+            ->assertJsonPath('data.steps.0.title', 'tu dossier comercial.');
+
+        $this->assertCount(12, $response->json('data.steps'));
+        $this->assertNotEmpty($response->json('data.steps.0.tip'));
     }
 
     public function test_guide_endpoint_returns_evaluated_requirements(): void

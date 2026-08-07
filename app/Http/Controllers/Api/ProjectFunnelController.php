@@ -8,6 +8,7 @@ use App\Http\Requests\Api\ChatProjectFunnelRequest;
 use App\Http\Requests\Api\GuideProjectFunnelRequest;
 use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
+use App\Jobs\GenerateProjectFunnelQuoteJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
@@ -17,6 +18,7 @@ use App\Models\TaskBoard;
 use App\Models\Team;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -125,6 +127,37 @@ class ProjectFunnelController extends Controller
     }
 
     /**
+     * Strategic growth tips shown while the AI quote is generating.
+     */
+    public function strategyTips(): JsonResponse
+    {
+        $team = $this->resolveFunnelTeam();
+        if (! $team)
+        {
+            return $this->funnelNotConfiguredResponse();
+        }
+
+        $steps = collect(config('strategy.steps', []))
+            ->map(fn (array $step): array => [
+                'number' => (int) ($step['number'] ?? 0),
+                'title' => (string) ($step['title'] ?? ''),
+                'points' => array_values(array_map('strval', $step['points'] ?? [])),
+                'tip' => (string) ($step['tip'] ?? ''),
+                'group' => (string) ($step['group'] ?? ''),
+            ])
+            ->values()
+            ->all();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'title' => (string) config('strategy.title', 'Strategic Growth Framework'),
+                'steps' => $steps,
+            ],
+        ]);
+    }
+
+    /**
      * Checklist definitions for the guided Necesidad step (no AI).
      */
     public function requirements(): JsonResponse
@@ -154,7 +187,7 @@ class ProjectFunnelController extends Controller
 
     /**
      * Public AI quote for the client funnel (tasks + times only, no prices).
-     * Persists enterprise + BUDGET project before calling the AI so progress is not lost.
+     * Persists enterprise + BUDGET project first, then queues AI generation (poll via quoteStatus).
      */
     public function quote(QuoteProjectFunnelRequest $request): JsonResponse
     {
@@ -190,46 +223,82 @@ class ProjectFunnelController extends Controller
             ], 500);
         }
 
+        GenerateProjectFunnelQuoteJob::dispatch($project->id, $team->id, $contact->id, $brief);
+
+        $project->refresh();
+
+        $pollToken = $this->encryptPollToken([
+            'team_id' => $team->id,
+            'project_id' => $project->id,
+            'enterprise_id' => $enterprise->id,
+            'contact_id' => $contact->id,
+            'brief' => $brief,
+            'project_name' => $projectName,
+        ]);
+
+        return $this->quoteStatusResponse($project, $pollToken, $brief, $projectName, $contact->id, $enterprise->id);
+    }
+
+    /**
+     * Poll AI quote generation status for a previously started funnel quote.
+     */
+    public function quoteStatus(Request $request): JsonResponse
+    {
+        $team = $this->resolveFunnelTeam();
+        if (! $team)
+        {
+            return $this->funnelNotConfiguredResponse();
+        }
+
+        $pollToken = trim((string) $request->query('poll_token', $request->input('poll_token', '')));
+        if ($pollToken === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid or expired quote. Please generate a new estimate.'),
+            ], 422);
+        }
+
         try
         {
-            $spec = $this->budgetSpecService->generate($brief, $team);
+            $payload = $this->decryptPollToken($pollToken);
         } catch (RuntimeException $e)
         {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
-                'data' => [
-                    'project_id' => $project->id,
-                    'enterprise_id' => $enterprise->id,
-                    'contact_id' => $contact->id,
-                ],
             ], 422);
         }
 
-        $this->applySpecToProject($project, $contact, $brief, $spec);
+        if ((int) ($payload['team_id'] ?? 0) !== (int) $team->id)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid quote token.'),
+            ], 422);
+        }
 
-        $quoteToken = Crypt::encryptString(json_encode([
-            'team_id' => $team->id,
-            'brief' => $brief,
-            'project_name' => $projectName,
-            'project_id' => $project->id,
-            'enterprise_id' => $enterprise->id,
-            'contact_id' => $contact->id,
-            'spec' => $spec,
-            'created_at' => now()->toIso8601String(),
-        ], JSON_THROW_ON_ERROR));
+        $project = Project::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('id', (int) ($payload['project_id'] ?? 0))
+            ->first();
 
-        $safe = $this->budgetSpecService->toClientSafe($spec);
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid or expired quote. Please generate a new estimate.'),
+            ], 422);
+        }
 
-        return response()->json([
-            'success' => true,
-            'quote_token' => $quoteToken,
-            'data' => array_merge($safe, [
-                'project_id' => $project->id,
-                'enterprise_id' => $enterprise->id,
-                'contact_id' => $contact->id,
-            ]),
-        ]);
+        return $this->quoteStatusResponse(
+            $project,
+            $pollToken,
+            (string) ($payload['brief'] ?? ''),
+            (string) ($payload['project_name'] ?? $project->name),
+            (int) ($payload['contact_id'] ?? 0),
+            (int) ($payload['enterprise_id'] ?? 0),
+        );
     }
 
     /**
@@ -444,6 +513,8 @@ class ProjectFunnelController extends Controller
                     'source' => 'projects_funnel',
                     'contact_id' => $contact->id,
                     'drafted_at' => now()->toIso8601String(),
+                    'quote_status' => 'queued',
+                    'quote_error' => null,
                 ],
             ],
             'price' => null,
@@ -453,29 +524,103 @@ class ProjectFunnelController extends Controller
     }
 
     /**
-     * @param  array<string, mixed>  $spec
+     * @param  array{team_id: int, project_id: int, enterprise_id: int, contact_id: int, brief: string, project_name: string}  $payload
      */
-    private function applySpecToProject(Project $project, Contact $contact, string $brief, array $spec): void
+    private function encryptPollToken(array $payload): string
     {
+        return Crypt::encryptString(json_encode([
+            ...$payload,
+            'created_at' => now()->toIso8601String(),
+        ], JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function decryptPollToken(string $token): array
+    {
+        try
+        {
+            $decoded = json_decode(Crypt::decryptString($token), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Throwable)
+        {
+            throw new RuntimeException(__('Invalid or expired quote. Please generate a new estimate.'));
+        }
+
+        if (! is_array($decoded) || empty($decoded['project_id']))
+        {
+            throw new RuntimeException(__('Invalid or expired quote. Please generate a new estimate.'));
+        }
+
+        return $decoded;
+    }
+
+    private function quoteStatusResponse(
+        Project $project,
+        string $pollToken,
+        string $brief,
+        string $projectName,
+        int $contactId,
+        int $enterpriseId,
+    ): JsonResponse {
         $data = (array) ($project->data ?? []);
         $funnel = is_array($data['funnel'] ?? null) ? $data['funnel'] : [];
+        $status = (string) ($funnel['quote_status'] ?? 'queued');
 
-        $project->fill([
-            'description' => (string) ($spec['ai_interpretation'] ?? $brief),
-            'data' => array_merge($data, [
-                'budget_given' => $brief,
-                'ai_interpretation' => $spec['ai_interpretation'] ?? '',
-                'dimension' => $spec['dimension'] ?? '',
-                'estimated_times' => $spec['estimated_times'] ?? '',
-                'resources' => $spec['resources'] ?? '',
-                'suggested_tasks' => is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [],
-                'funnel' => array_merge($funnel, [
-                    'source' => 'projects_funnel',
-                    'contact_id' => $contact->id,
-                    'quoted_at' => now()->toIso8601String(),
+        if ($status === 'failed')
+        {
+            return response()->json([
+                'success' => false,
+                'status' => 'failed',
+                'message' => (string) ($funnel['quote_error'] ?? __('Could not generate the estimate. Please try again.')),
+                'poll_token' => $pollToken,
+                'data' => [
+                    'project_id' => $project->id,
+                    'enterprise_id' => $enterpriseId,
+                    'contact_id' => $contactId,
+                ],
+            ], 422);
+        }
+
+        if ($status === 'ready' && is_array($data['funnel_spec'] ?? null))
+        {
+            $spec = $data['funnel_spec'];
+            $quoteToken = Crypt::encryptString(json_encode([
+                'team_id' => $project->team_id,
+                'brief' => $brief !== '' ? $brief : (string) ($data['budget_given'] ?? ''),
+                'project_name' => $projectName,
+                'project_id' => $project->id,
+                'enterprise_id' => $enterpriseId,
+                'contact_id' => $contactId,
+                'spec' => $spec,
+                'created_at' => now()->toIso8601String(),
+            ], JSON_THROW_ON_ERROR));
+
+            $safe = $this->budgetSpecService->toClientSafe($spec);
+
+            return response()->json([
+                'success' => true,
+                'status' => 'ready',
+                'quote_token' => $quoteToken,
+                'poll_token' => $pollToken,
+                'data' => array_merge($safe, [
+                    'project_id' => $project->id,
+                    'enterprise_id' => $enterpriseId,
+                    'contact_id' => $contactId,
                 ]),
-            ]),
-        ])->save();
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'status' => 'processing',
+            'poll_token' => $pollToken,
+            'data' => [
+                'project_id' => $project->id,
+                'enterprise_id' => $enterpriseId,
+                'contact_id' => $contactId,
+            ],
+        ]);
     }
 
     private function upsertLeadContact(Team $team, string $name, string $surname, string $email): Contact
