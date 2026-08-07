@@ -433,14 +433,35 @@ class TaskController extends Controller
     {
         $user = $request->user();
 
-        // Query base: tareas asignadas al usuario
-        $query = Task::where('responsible_id', $user->id)
-            ->with(['status', 'category', 'project', 'responsible']);
+        // Query base: tareas asignadas al usuario (admins can filter by board/project without own-only)
+        $query = Task::with(['status', 'category', 'project', 'responsible']);
+
+        if (! $user->hasRole('admin') || (! $request->filled('board_id') && ! $request->filled('project_id')))
+        {
+            $query->where('responsible_id', $user->id);
+        }
 
         // Filtros opcionales
         if ($request->has('status_id'))
         {
             $query->where('status_id', $request->status_id);
+        }
+
+        if ($request->filled('board_id'))
+        {
+            $query->where('board_id', $request->integer('board_id'));
+        }
+
+        if ($request->filled('project_id'))
+        {
+            $project = Project::find($request->integer('project_id'));
+            if ($project?->board_id)
+            {
+                $query->where('board_id', $project->board_id);
+            } else
+            {
+                $query->whereRaw('1 = 0');
+            }
         }
 
         if ($request->has('pending_only') && $request->pending_only)
@@ -570,22 +591,47 @@ class TaskController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'start_timer' => 'nullable|boolean',
+            'board_id' => 'nullable|integer|exists:task_boards,id',
+            'project_id' => 'nullable|integer|exists:projects,id',
+            'status_id' => 'nullable|integer|exists:task_statuses,id',
+            'responsible_id' => 'nullable|integer|exists:users,id',
+            'estimated_hours' => 'nullable|numeric|min:0',
+            'start_date' => 'nullable|date',
+            'due_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
         $user = $request->user();
 
+        $boardId = $validated['board_id'] ?? null;
+        if (! $boardId && ! empty($validated['project_id']))
+        {
+            $project = Project::find($validated['project_id']);
+            if ($project && $user->can('view', $project))
+            {
+                $boardId = $project->board_id;
+            }
+        }
+
         // Obtener el estado inicial (TO_DO por defecto, o IN_PROGRESS si se inicia el timer)
         $defaultStatus = TaskStatus::where('name', $validated['start_timer'] ?? false ? 'IN_PROGRESS' : 'TO_DO')->first();
+        $statusId = $validated['status_id'] ?? ($defaultStatus?->id ?? 1);
+
+        $nextOrder = $boardId
+            ? ((int) Task::where('board_id', $boardId)->max('order') + 1)
+            : 0;
 
         // Crear la tarea
         $task = Task::create([
             'team_id' => $user->currentTeam->id,
+            'board_id' => $boardId,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
-            'responsible_id' => $user->id,
-            'status_id' => $defaultStatus?->id ?? 1,
-            'start_date' => now()->toDateString(),
-            'due_date' => now()->addDays(7)->toDateString(),
+            'responsible_id' => $validated['responsible_id'] ?? $user->id,
+            'status_id' => $statusId,
+            'estimated_hours' => $validated['estimated_hours'] ?? null,
+            'order' => $nextOrder,
+            'start_date' => $validated['start_date'] ?? now()->toDateString(),
+            'due_date' => $validated['due_date'] ?? now()->addDays(7)->toDateString(),
         ]);
 
         // Si se solicita, iniciar el timer automáticamente
@@ -874,6 +920,93 @@ class TaskController extends Controller
                     'translated_name' => $task->status?->translated_name,
                 ],
             ],
+        ]);
+    }
+
+    /**
+     * Update task fields (title, description, dates, responsible, status, order).
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function update(Request $request, $id)
+    {
+        $task = Task::findOrFail($id);
+
+        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tienes permiso para editar esta tarea.'),
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'title' => 'sometimes|required|string|max:255',
+            'description' => 'sometimes|nullable|string',
+            'status_id' => 'sometimes|required|integer|exists:task_statuses,id',
+            'responsible_id' => 'sometimes|nullable|integer|exists:users,id',
+            'estimated_hours' => 'sometimes|nullable|numeric|min:0',
+            'start_date' => 'sometimes|nullable|date',
+            'due_date' => 'sometimes|nullable|date|after_or_equal:start_date',
+            'order' => 'sometimes|nullable|integer|min:0',
+        ]);
+
+        $task->update($validated);
+        $task->load(['status', 'category', 'project', 'responsible']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tarea actualizada correctamente.'),
+            'data' => [
+                'id' => $task->id,
+                'title' => $task->title,
+                'description' => $task->description,
+                'order' => $task->order,
+                'estimated_hours' => $task->estimated_hours,
+                'start_date' => $task->start_date?->format('Y-m-d'),
+                'due_date' => $task->due_date?->format('Y-m-d'),
+                'status' => [
+                    'id' => $task->status?->id,
+                    'name' => $task->status?->name,
+                    'translated_name' => $task->status?->translated_name,
+                ],
+                'responsible' => [
+                    'id' => $task->responsible?->id,
+                    'name' => $task->responsible?->name,
+                    'email' => $task->responsible?->email,
+                ],
+                'project' => $task->project ? [
+                    'id' => $task->project->id,
+                    'name' => $task->project->name,
+                ] : null,
+            ],
+        ]);
+    }
+
+    /**
+     * Soft-delete a task.
+     *
+     * @param  int  $id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function destroy(Request $request, $id)
+    {
+        $task = Task::findOrFail($id);
+
+        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tienes permiso para eliminar esta tarea.'),
+            ], 403);
+        }
+
+        $task->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Tarea eliminada correctamente.'),
         ]);
     }
 }
