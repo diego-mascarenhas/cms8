@@ -8,6 +8,13 @@ class ProjectStatus extends Model
 {
     public $timestamps = false;
 
+    /**
+     * @var list<string>
+     */
+    protected $appends = [
+        'translated_name',
+    ];
+
     public static function getOptions()
     {
         $query = self::query();
@@ -24,7 +31,7 @@ class ProjectStatus extends Model
     /**
      * Get the translated status name
      */
-    public function getTranslatedNameAttribute()
+    public function getTranslatedNameAttribute(): string
     {
         if ($this->name === null || $this->name === '')
         {
