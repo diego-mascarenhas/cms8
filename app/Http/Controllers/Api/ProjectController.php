@@ -612,6 +612,7 @@ class ProjectController extends Controller
             'start_date' => $task->start_date?->format('Y-m-d'),
             'due_date' => $task->due_date?->format('Y-m-d'),
             'status_id' => $task->status_id,
+            'responsible_id' => $task->responsible_id,
             'status' => [
                 'id' => $task->status?->id,
                 'name' => $task->status?->name,
