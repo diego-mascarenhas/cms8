@@ -470,6 +470,8 @@ Route::middleware('auth:sanctum')->group(function ()
         Route::get('/', [TaskController::class, 'index']);
         Route::post('/', [TaskController::class, 'store']);
         Route::get('/{id}', [TaskController::class, 'show']);
+        Route::put('/{id}', [TaskController::class, 'update']);
+        Route::delete('/{id}', [TaskController::class, 'destroy']);
         Route::post('/{id}/start', [TaskController::class, 'start']);
         Route::post('/{id}/stop', [TaskController::class, 'stop']);
         Route::put('/{id}/status', [TaskController::class, 'updateStatus']);
@@ -508,9 +510,17 @@ Route::middleware('auth:sanctum')->group(function ()
 
     // Payments, Products, Orders - moved to team.token middleware (see below)
 
-    // Projects - for user-based authentication (Sanctum tokens)
+    // Projects - for user-based authentication (Sanctum tokens) / idoneo-projects SPA
+    Route::get('project-statuses', [ProjectController::class, 'statuses']);
+    Route::get('projects/stats', [ProjectController::class, 'stats']);
     Route::get('projects', [ProjectController::class, 'index']);
+    Route::post('projects', [ProjectController::class, 'store']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);
+    Route::put('projects/{id}', [ProjectController::class, 'update']);
+    Route::patch('projects/{id}', [ProjectController::class, 'update']);
+    Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
+    Route::get('projects/{id}/board', [ProjectController::class, 'board']);
+    Route::put('projects/{id}/board/reorder', [ProjectController::class, 'reorderBoard']);
 
     // Services - for user-based authentication (Sanctum tokens)
     Route::get('services', [ServiceController::class, 'index']);

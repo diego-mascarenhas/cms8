@@ -287,6 +287,77 @@ class Project extends Model
     }
 
     /**
+     * Stats for project list summary cards.
+     *
+     * @return array{
+     *     totalProjects: int,
+     *     totalBudget: int,
+     *     budgetPercentage: float|int,
+     *     totalBudgeted: int,
+     *     budgetedPercentage: float|int,
+     *     totalInProgress: int,
+     *     inProgressPercentage: float|int,
+     *     totalToInvoice: int,
+     *     toInvoicePercentage: float|int
+     * }
+     */
+    public static function getProjectStats(int $teamId): array
+    {
+        $groups = [
+            'Budget' => [1],
+            'Budgeted' => [2],
+            'InProgress' => [3, 7, 8, 9],
+            'ToInvoice' => [10, 11],
+        ];
+
+        $statusCounts = static::query()
+            ->where('team_id', $teamId)
+            ->selectRaw('status_id, COUNT(*) as count')
+            ->groupBy('status_id')
+            ->pluck('count', 'status_id');
+
+        $totalProjects = (int) $statusCounts->sum();
+
+        $data = ['totalProjects' => $totalProjects];
+        $groupCounts = [];
+
+        foreach ($groups as $label => $statusIds)
+        {
+            $count = 0;
+            foreach ($statusIds as $statusId)
+            {
+                $count += (int) ($statusCounts[$statusId] ?? 0);
+            }
+
+            $groupCounts[$label] = $count;
+            $data['total'.$label] = $count;
+        }
+
+        // Percentages relative to the summary-card panel (not all team projects).
+        $panelTotal = array_sum($groupCounts);
+
+        foreach ($groups as $label => $statusIds)
+        {
+            $count = $groupCounts[$label];
+            $data[lcfirst($label).'Percentage'] = $panelTotal > 0
+                ? round(($count / $panelTotal) * 100, 2)
+                : 0;
+        }
+
+        return array_merge([
+            'totalProjects' => 0,
+            'totalBudget' => 0,
+            'budgetPercentage' => 0,
+            'totalBudgeted' => 0,
+            'budgetedPercentage' => 0,
+            'totalInProgress' => 0,
+            'inProgressPercentage' => 0,
+            'totalToInvoice' => 0,
+            'toInvoicePercentage' => 0,
+        ], $data);
+    }
+
+    /**
      * Configure activity log options
      */
     public function getActivitylogOptions(): LogOptions

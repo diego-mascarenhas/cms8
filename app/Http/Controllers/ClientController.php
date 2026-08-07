@@ -242,9 +242,11 @@ class ClientController extends Controller
             {
                 $query->with(['status', 'user.roles']);
             },
-            'projects.responsible',
-            'projects.status',
-            'projects.category',
+            'projects' => function ($query)
+            {
+                $query->with(['responsible', 'status', 'category'])
+                    ->orderByDesc('id');
+            },
             'services.currency',
             'services.category',
             'invoices.billingAddress',
@@ -260,12 +262,12 @@ class ClientController extends Controller
         $activeProjects = $client->projects->filter(function ($project) use ($pastProjectStatuses)
         {
             return ! in_array($project->status_id, $pastProjectStatuses);
-        });
+        })->sortByDesc('id')->values();
 
         $pastProjects = $client->projects->filter(function ($project) use ($pastProjectStatuses)
         {
             return in_array($project->status_id, $pastProjectStatuses);
-        });
+        })->sortByDesc('id')->values();
 
         // Get services (relation; keep ordering stable for tables)
         $services = $client->services->sortBy('id')->values();

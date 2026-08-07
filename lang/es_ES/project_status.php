@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'BUDGET' => 'Presupuesto',
+    'BUDGET' => 'Presupuestar',
     'BUDGETED' => 'Presupuestado',
     'AUTHORIZED' => 'Autorizado',
     'SENT' => 'Enviado',

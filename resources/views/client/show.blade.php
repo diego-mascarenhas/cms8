@@ -26,11 +26,6 @@
                     <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
                 </a>
             @endcan
-            @can('project.create')
-                <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-success waves-effect waves-light">
-                    <i class="ti ti-folder-plus me-1"></i>{{ __('Create') }} {{ __('Project') }}
-                </a>
-            @endcan
         </div>
     </div>
 
@@ -420,7 +415,7 @@
                         </div>
                     @endif
                     <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
-                        @can('project.create')
+                        @can('create', App\Models\Project::class)
                             <a href="{{ route('project.create') }}?enterprise_id={{ $client->id }}" class="btn btn-sm btn-primary text-nowrap">
                                 <i class="ti ti-plus me-1"></i>Ingresar proyecto
                             </a>

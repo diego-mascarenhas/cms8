@@ -11,6 +11,18 @@
             0 0.25rem 0.5rem rgba(0, 0, 0, 0.18),
             0 0.125rem 0.25rem rgba(0, 0, 0, 0.08) !important;
     }
+    /* Keep list tables inside their card and clear of the floating assistant button */
+    body:has(.assistant-fab-host) .layout-page .container-p-y {
+        padding-bottom: 4.5rem;
+    }
+    body:has(.assistant-fab-host) .card:has(table.dataTable) {
+        overflow: hidden;
+    }
+    body:has(.assistant-fab-host) .card:has(table.dataTable) > .card-body,
+    body:has(.assistant-fab-host) .card > .card-datatable {
+        overflow-x: auto;
+        padding-right: 4.5rem;
+    }
     /* Debugbar is position:fixed bottom:0 with z-index ~1e10 — FAB would sit underneath and disappear */
     body:has(div.phpdebugbar) .assistant-fab-host {
         bottom: 5.5rem;

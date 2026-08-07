@@ -3,40 +3,47 @@
 @section('title', __('Projects'))
 
 @section('vendor-style')
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css')}}">
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/select2/select2.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/@form-validation/umd/styles/index.min.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.css')}}" />
-
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/toastr/toastr.css')}}" />
-<link rel="stylesheet" href="{{asset('assets/vendor/libs/animate-css/animate.css')}}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/libs/toastr/toastr.css') }}" />
 @endsection
 
 @section('vendor-script')
-<script src="{{asset('assets/vendor/libs/moment/moment.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/select2/select2.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/@form-validation/umd/bundle/popular.min.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/@form-validation/umd/plugin-bootstrap5/index.min.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/@form-validation/umd/plugin-auto-focus/index.min.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/cleavejs/cleave.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/cleavejs/cleave-phone.js')}}"></script>
-<script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
-
-<script src="{{asset('assets/vendor/libs/toastr/toastr.js')}}"></script>
+<script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
+<script src="{{ asset('assets/vendor/libs/toastr/toastr.js') }}"></script>
 @endsection
 
 @section('page-script')
-<script src="{{asset('assets/js/ui-toasts.js')}}"></script>
+<script src="{{ asset('assets/js/ui-toasts.js') }}"></script>
 @endsection
 
 <style>
     .fade-out {
         opacity: 0;
         transition: opacity 0.5s ease-out;
+    }
+
+    .project-list-card {
+        overflow: hidden;
+    }
+
+    .project-list-card > .card-body {
+        overflow-x: auto;
+    }
+
+    #project-table_wrapper,
+    #project-table {
+        width: 100% !important;
+        max-width: 100%;
+    }
+
+    #project-table td,
+    #project-table th {
+        white-space: normal;
+        vertical-align: middle;
     }
 </style>
 
@@ -73,9 +80,96 @@
 </script>
 @endif
 
-<div class="card">
+<div class="row g-4 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('project_status.BUDGET') }}</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $totalBudget ?? 0 }}</h3>
+                            <p class="text-secondary mb-0">({{ $budgetPercentage ?? 0 }}%)</p>
+                        </div>
+                        <p class="mb-0">{{ __('Projects') }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-secondary filter-status" data-status="1">
+                            <i class="ti ti-pencil-plus ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('project_status.BUDGETED') }}</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $totalBudgeted ?? 0 }}</h3>
+                            <p class="text-warning mb-0">({{ $budgetedPercentage ?? 0 }}%)</p>
+                        </div>
+                        <p class="mb-0">{{ __('Projects') }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-status="2">
+                            <i class="ti ti-file-description ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('project_status.IN_PROGRESS') }}</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $totalInProgress ?? 0 }}</h3>
+                            <p class="text-primary mb-0">({{ $inProgressPercentage ?? 0 }}%)</p>
+                        </div>
+                        <p class="mb-0">{{ __('Projects') }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="3,7,8,9">
+                            <i class="ti ti-player-play ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="content-left">
+                        <span>{{ __('project_status.TO_INVOICE') }}</span>
+                        <div class="d-flex align-items-center my-2">
+                            <h3 class="mb-0 me-2">{{ $totalToInvoice ?? 0 }}</h3>
+                            <p class="text-info mb-0">({{ $toInvoicePercentage ?? 0 }}%)</p>
+                        </div>
+                        <p class="mb-0">{{ __('Projects') }}</p>
+                    </div>
+                    <div class="avatar">
+                        <a href="#" class="avatar-initial rounded bg-label-info filter-status" data-status="10,11">
+                            <i class="ti ti-receipt ti-sm"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card project-list-card">
     <div class="card-body">
-        {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
+        {{ $dataTable->table(['class' => 'table table-hover dt-responsive w-100']) }}
     </div>
 </div>
 
@@ -103,8 +197,6 @@
                     }
                     return response.json();
                 }).then(data => {
-                    console.log('Response data:', data);
-
                     const toastHTML = `
                         <div id="toast-container" class="toast-top-right">
                             <div class="toast toast-success" aria-live="polite" style="display: block;">
@@ -127,8 +219,6 @@
                         row.addEventListener('transitionend', () => {
                             row.remove();
                         });
-                    } else {
-                        console.error('No se encontró la fila correspondiente.');
                     }
                 }).catch(error => {
                     console.error('Error:', error);
@@ -143,12 +233,3 @@
 @push('scripts')
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 @endpush
-
-{{-- vendor scripts --}}
-@section('vendor-script')
-<script src="{{asset('vendors/data-tables/js/jquery.dataTables.min.js')}}"></script>
-<script src="{{asset('vendors/data-tables/extensions/responsive/js/dataTables.responsive.min.js')}}"></script>
-<script src="{{ asset('vendor/datatables/buttons.server-side.js') }}"></script>
-<script src="{{asset('vendors/fullcalendar/lib/moment.min.js')}}"></script>
-<script src="{{asset('js/moment/' . app()->getLocale() . '.js')}}"></script>
-@endsection

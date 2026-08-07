@@ -368,7 +368,7 @@
 				<x-client-select
 					id="enterprise_id"
 					label="{{ __('Client') }} (*)"
-					:selected="old('enterprise_id', $data->enterprise_id ?? '')"
+					:selected="old('enterprise_id', $data->enterprise_id ?? $enterprise_id ?? '')"
 				/>
 				@error('enterprise_id')
     <div class="invalid-feedback">{{ $message }}</div>
