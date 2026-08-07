@@ -153,13 +153,27 @@ class ProjectBoardApiTest extends TestCase
                 'title' => 'Renamed task',
                 'description' => 'Updated from SPA',
                 'estimated_hours' => 2.5,
+                'responsible_id' => $user->id,
             ]);
 
         $update->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.title', 'Renamed task');
+            ->assertJsonPath('data.title', 'Renamed task')
+            ->assertJsonPath('data.responsible.id', $user->id);
 
         $this->assertEquals(2.5, (float) $update->json('data.estimated_hours'));
+
+        $board = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/board');
+
+        $board->assertOk();
+        $boardTask = collect($board->json('data.columns'))
+            ->flatMap(fn ($column) => $column['tasks'])
+            ->firstWhere('id', $task->id);
+
+        $this->assertNotNull($boardTask);
+        $this->assertSame($user->id, $boardTask['responsible_id']);
+        $this->assertEquals(2.5, (float) $boardTask['estimated_hours']);
 
         $createOnBoard = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/tasks', [

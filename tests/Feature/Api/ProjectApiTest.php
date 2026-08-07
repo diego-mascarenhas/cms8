@@ -136,7 +136,20 @@ class ProjectApiTest extends TestCase
         $update->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.name', 'SPA Project Updated')
-            ->assertJsonPath('data.status_id', 2);
+            ->assertJsonPath('data.status_id', 2)
+            ->assertJsonPath('data.status.id', 2)
+            ->assertJsonPath('data.status.name', 'BUDGETED');
+
+        $this->assertNotEmpty($update->json('data.status.translated_name'));
+
+        $showAfterUpdate = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$projectId);
+
+        $showAfterUpdate->assertOk()
+            ->assertJsonPath('data.status_id', 2)
+            ->assertJsonPath('data.status.id', 2);
+
+        $this->assertNotEmpty($showAfterUpdate->json('data.status.translated_name'));
 
         $delete = $this->withHeader('Authorization', 'Bearer '.$token)
             ->deleteJson('/api/projects/'.$projectId);
@@ -173,10 +186,71 @@ class ProjectApiTest extends TestCase
         $this->assertNull(Project::withoutGlobalScopes()->find($project->id)?->deleted_at);
     }
 
+    public function test_collaborator_cannot_change_project_status(): void
+    {
+        [, $team, , $client] = $this->adminWithToken();
+
+        $collaborator = User::factory()->create();
+        $team->users()->attach($collaborator, ['role' => 'editor']);
+        $collaborator->forceFill(['current_team_id' => $team->id])->save();
+        $collaborator->assignRole('collaborator');
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Status locked project',
+            'responsible_id' => $collaborator->id,
+            'status_id' => 1,
+        ]);
+
+        $token = $collaborator->createToken('collab-status-test')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/'.$project->id, [
+                'status_id' => 2,
+            ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('success', false);
+
+        $this->assertSame(1, Project::withoutGlobalScopes()->find($project->id)?->status_id);
+    }
+
     public function test_unauthenticated_cannot_access_projects(): void
     {
         $this->getJson('/api/projects')->assertUnauthorized();
         $this->postJson('/api/projects', [])->assertUnauthorized();
+    }
+
+    public function test_projects_list_defaults_to_newest_first(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        $older = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'AAA Older Project',
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $newer = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'ZZZ Newer Project',
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data.data'))->pluck('id')->all();
+
+        $this->assertSame($newer->id, $ids[0]);
+        $this->assertTrue(array_search($newer->id, $ids, true) < array_search($older->id, $ids, true));
     }
 
     public function test_project_stats_cards_match_backend_groups(): void

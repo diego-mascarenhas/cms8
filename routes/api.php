@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationInboxController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
@@ -85,6 +86,27 @@ Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function
 {
     Route::get('posts', [PublicPostController::class, 'index'])->name('api.public.posts.index');
     Route::get('posts/{postType}/{slug}', [PublicPostController::class, 'show'])->name('api.public.posts.show');
+});
+
+// Public projects quote funnel (idoneo-projects SPA) — no prices exposed to client
+// Status polling needs a higher ceiling than mutating/AI endpoints.
+Route::prefix('projects/funnel')->group(function ()
+{
+    Route::middleware('throttle:60,1')->group(function ()
+    {
+        Route::get('requirements', [ProjectFunnelController::class, 'requirements'])->name('api.projects.funnel.requirements');
+        Route::get('strategy-tips', [ProjectFunnelController::class, 'strategyTips'])->name('api.projects.funnel.strategy-tips');
+        Route::get('quote/status', [ProjectFunnelController::class, 'quoteStatus'])->name('api.projects.funnel.quote.status');
+    });
+
+    Route::middleware('throttle:30,1')->group(function ()
+    {
+        Route::post('lead', [ProjectFunnelController::class, 'lead'])->name('api.projects.funnel.lead');
+        Route::post('chat', [ProjectFunnelController::class, 'chat'])->name('api.projects.funnel.chat');
+        Route::post('guide', [ProjectFunnelController::class, 'guide'])->name('api.projects.funnel.guide');
+        Route::post('quote', [ProjectFunnelController::class, 'quote'])->name('api.projects.funnel.quote');
+        Route::post('submit', [ProjectFunnelController::class, 'submit'])->name('api.projects.funnel.submit');
+    });
 });
 
 // WordPress CMS sync webhook (authenticated by per-team shared secret)
@@ -467,6 +489,7 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::prefix('tasks')->group(function ()
     {
         Route::get('/statuses', [TaskController::class, 'statuses']);
+        Route::get('/summary', [TaskController::class, 'summary']);
         Route::get('/', [TaskController::class, 'index']);
         Route::post('/', [TaskController::class, 'store']);
         Route::get('/{id}', [TaskController::class, 'show']);

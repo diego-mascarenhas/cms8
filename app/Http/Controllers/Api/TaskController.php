@@ -425,6 +425,32 @@ class TaskController extends Controller
     }
 
     /**
+     * Counts of pending tasks for the current team: all vs assigned to the user.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function summary(Request $request)
+    {
+        $user = $request->user();
+
+        $pendingQuery = Task::query()->whereHas('status', function ($query)
+        {
+            $query->whereNotIn('name', ['DONE', 'CANCELLED']);
+        });
+
+        $total = (clone $pendingQuery)->count();
+        $mine = (clone $pendingQuery)->where('responsible_id', $user->id)->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total' => $total,
+                'mine' => $mine,
+            ],
+        ]);
+    }
+
+    /**
      * Lista las tareas asignadas al usuario autenticado.
      *
      * @return \Illuminate\Http\JsonResponse

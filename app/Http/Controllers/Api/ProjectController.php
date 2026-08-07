@@ -84,7 +84,7 @@ class ProjectController extends Controller
                 $query->where('status_id', $request->integer('status_id'));
             }
 
-            $query->orderBy('name');
+            $query->orderByDesc('id');
 
             $projects = $query->paginate($request->get('per_page', 20));
 
@@ -287,7 +287,17 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
 
-        $project->update($request->validated());
+        $validated = $request->validated();
+
+        if (array_key_exists('status_id', $validated) && ! $user->hasRole('admin'))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Only admins can change the project status.',
+            ], 403);
+        }
+
+        $project->update($validated);
         $project->load(['client', 'responsible', 'status', 'board']);
 
         return response()->json([
@@ -602,6 +612,7 @@ class ProjectController extends Controller
             'start_date' => $task->start_date?->format('Y-m-d'),
             'due_date' => $task->due_date?->format('Y-m-d'),
             'status_id' => $task->status_id,
+            'responsible_id' => $task->responsible_id,
             'status' => [
                 'id' => $task->status?->id,
                 'name' => $task->status?->name,
