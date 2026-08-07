@@ -416,7 +416,7 @@ class ProjectController extends Controller
             ],
         ];
 
-        $cards = array_map(function (array $card) use ($statusCounts, $totalProjects)
+        $cards = array_map(function (array $card) use ($statusCounts)
         {
             $count = 0;
             foreach ($card['status_ids'] as $statusId)
@@ -425,7 +425,19 @@ class ProjectController extends Controller
             }
 
             $card['count'] = $count;
-            $card['percentage'] = $totalProjects > 0 ? round(($count / $totalProjects) * 100, 2) : 0;
+
+            return $card;
+        }, $cards);
+
+        // Percentages are relative to the projects shown in these cards,
+        // not every project in the team (other statuses would dilute the panel).
+        $panelTotal = array_sum(array_column($cards, 'count'));
+
+        $cards = array_map(function (array $card) use ($panelTotal)
+        {
+            $card['percentage'] = $panelTotal > 0
+                ? round(($card['count'] / $panelTotal) * 100, 2)
+                : 0;
 
             return $card;
         }, $cards);
@@ -434,6 +446,7 @@ class ProjectController extends Controller
             'success' => true,
             'data' => [
                 'total_projects' => $totalProjects,
+                'panel_total' => $panelTotal,
                 'cards' => $cards,
             ],
         ]);

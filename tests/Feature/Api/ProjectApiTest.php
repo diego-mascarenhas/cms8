@@ -211,23 +211,36 @@ class ProjectApiTest extends TestCase
             'responsible_id' => $user->id,
             'status_id' => 11,
         ]);
+        // Outside the summary panel — must not dilute card percentages.
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Invoiced',
+            'responsible_id' => $user->id,
+            'status_id' => 12,
+        ]);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/projects/stats');
 
         $response->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.total_projects', 4)
+            ->assertJsonPath('data.total_projects', 5)
+            ->assertJsonPath('data.panel_total', 4)
             ->assertJsonPath('data.cards.0.key', 'budget')
             ->assertJsonPath('data.cards.0.count', 1)
+            ->assertJsonPath('data.cards.0.percentage', 25)
             ->assertJsonPath('data.cards.0.status_ids', [1])
             ->assertJsonPath('data.cards.1.key', 'budgeted')
             ->assertJsonPath('data.cards.1.count', 1)
+            ->assertJsonPath('data.cards.1.percentage', 25)
             ->assertJsonPath('data.cards.2.key', 'in_progress')
             ->assertJsonPath('data.cards.2.count', 1)
+            ->assertJsonPath('data.cards.2.percentage', 25)
             ->assertJsonPath('data.cards.2.status_ids', [3, 7, 8, 9])
             ->assertJsonPath('data.cards.3.key', 'to_invoice')
             ->assertJsonPath('data.cards.3.count', 1)
+            ->assertJsonPath('data.cards.3.percentage', 25)
             ->assertJsonPath('data.cards.3.status_ids', [10, 11]);
 
         $filtered = $this->withHeader('Authorization', 'Bearer '.$token)

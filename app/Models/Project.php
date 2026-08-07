@@ -319,6 +319,7 @@ class Project extends Model
         $totalProjects = (int) $statusCounts->sum();
 
         $data = ['totalProjects' => $totalProjects];
+        $groupCounts = [];
 
         foreach ($groups as $label => $statusIds)
         {
@@ -328,9 +329,19 @@ class Project extends Model
                 $count += (int) ($statusCounts[$statusId] ?? 0);
             }
 
-            $percentage = $totalProjects > 0 ? round(($count / $totalProjects) * 100, 2) : 0;
+            $groupCounts[$label] = $count;
             $data['total'.$label] = $count;
-            $data[lcfirst($label).'Percentage'] = $percentage;
+        }
+
+        // Percentages relative to the summary-card panel (not all team projects).
+        $panelTotal = array_sum($groupCounts);
+
+        foreach ($groups as $label => $statusIds)
+        {
+            $count = $groupCounts[$label];
+            $data[lcfirst($label).'Percentage'] = $panelTotal > 0
+                ? round(($count / $panelTotal) * 100, 2)
+                : 0;
         }
 
         return array_merge([

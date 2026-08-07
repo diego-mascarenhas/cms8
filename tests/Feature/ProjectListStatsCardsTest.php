@@ -82,6 +82,10 @@ class ProjectListStatsCardsTest extends TestCase
         $this->assertSame(1, $stats['totalBudgeted']);
         $this->assertSame(1, $stats['totalInProgress']);
         $this->assertSame(1, $stats['totalToInvoice']);
+        $this->assertSame(25.0, (float) $stats['budgetPercentage']);
+        $this->assertSame(25.0, (float) $stats['budgetedPercentage']);
+        $this->assertSame(25.0, (float) $stats['inProgressPercentage']);
+        $this->assertSame(25.0, (float) $stats['toInvoicePercentage']);
         $this->assertArrayNotHasKey('totalInvoiced', $stats);
 
         $response = $this->actingAs($user)->get(route('project-list'));
