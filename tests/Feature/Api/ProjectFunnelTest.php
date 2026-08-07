@@ -109,6 +109,9 @@ class ProjectFunnelTest extends TestCase
         });
 
         $response = $this->postJson('/api/projects/funnel/quote', [
+            'name' => 'Ana',
+            'surname' => 'García',
+            'email' => 'ana.quote@example.com',
             'brief' => 'Necesito una web de reservas para un hotel con calendario y pagos.',
             'project_name' => 'Hotel bookings',
         ]);
@@ -123,6 +126,16 @@ class ProjectFunnelTest extends TestCase
 
         $this->assertNotEmpty($response->json('quote_token'));
         $this->assertSame($team->id, (int) config('projects.funnel_team_id'));
+
+        $enterprise = Enterprise::withoutGlobalScopes()->where('email', 'ana.quote@example.com')->first();
+        $this->assertNotNull($enterprise);
+
+        $project = Project::withoutGlobalScopes()->find($response->json('data.project_id'));
+        $this->assertNotNull($project);
+        $this->assertSame(1, (int) $project->status_id);
+        $this->assertSame($enterprise->id, (int) $project->enterprise_id);
+        $this->assertSame('Hotel bookings', $project->name);
+        $this->assertSame('Web app for bookings', $project->data['ai_interpretation'] ?? null);
     }
 
     public function test_requirements_endpoint_returns_tech_checklist(): void
@@ -337,8 +350,45 @@ class ProjectFunnelTest extends TestCase
         config(['projects.funnel_team_id' => null]);
 
         $this->postJson('/api/projects/funnel/quote', [
+            'name' => 'Ana',
+            'surname' => 'García',
+            'email' => 'ana@example.com',
             'brief' => 'Necesito una web de reservas para un hotel con calendario y pagos.',
         ])->assertStatus(503);
+    }
+
+    public function test_quote_persists_draft_project_even_when_ai_fails(): void
+    {
+        $team = $this->createFunnelTeam();
+
+        $this->mock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andThrow(new \RuntimeException('AI unavailable'));
+        });
+
+        $response = $this->postJson('/api/projects/funnel/quote', [
+            'name' => 'Luis',
+            'surname' => 'Pérez',
+            'email' => 'luis.draft@example.com',
+            'brief' => 'Necesito una web corporativa responsive para mi negocio.',
+            'project_name' => 'Web Luis',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'AI unavailable');
+
+        $projectId = (int) $response->json('data.project_id');
+        $this->assertGreaterThan(0, $projectId);
+
+        $project = Project::withoutGlobalScopes()->find($projectId);
+        $this->assertNotNull($project);
+        $this->assertSame($team->id, (int) $project->team_id);
+        $this->assertSame(1, (int) $project->status_id);
+        $this->assertSame('Web Luis', $project->name);
+        $this->assertStringContainsString('web corporativa', (string) ($project->data['budget_given'] ?? ''));
     }
 
     private function createFunnelTeam(): \App\Models\Team

@@ -154,6 +154,7 @@ class ProjectFunnelController extends Controller
 
     /**
      * Public AI quote for the client funnel (tasks + times only, no prices).
+     * Persists enterprise + BUDGET project before calling the AI so progress is not lost.
      */
     public function quote(QuoteProjectFunnelRequest $request): JsonResponse
     {
@@ -163,24 +164,57 @@ class ProjectFunnelController extends Controller
             return $this->funnelNotConfiguredResponse();
         }
 
+        $name = trim((string) $request->validated('name'));
+        $surname = trim((string) $request->validated('surname'));
+        $email = strtolower(trim((string) $request->validated('email')));
+        $brief = (string) $request->validated('brief');
+        $projectName = trim((string) ($request->validated('project_name') ?: ($name.' '.$surname.' — proyecto')));
+
         try
         {
-            $spec = $this->budgetSpecService->generate(
-                (string) $request->validated('brief'),
-                $team,
-            );
+            [$contact, $enterprise, $project] = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName)
+            {
+                $contact = $this->upsertLeadContact($team, $name, $surname, $email);
+                $enterprise = $this->ensureEnterpriseForLead($team, $contact, $name, $surname, $email);
+                $project = $this->createDraftBudgetProject($team, $enterprise, $contact, $projectName, $brief);
+
+                return [$contact, $enterprise, $project];
+            });
+        } catch (\Throwable $e)
+        {
+            Log::error('Project funnel draft save failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'success' => false,
+                'message' => __('Could not save your request. Please try again.'),
+            ], 500);
+        }
+
+        try
+        {
+            $spec = $this->budgetSpecService->generate($brief, $team);
         } catch (RuntimeException $e)
         {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
+                'data' => [
+                    'project_id' => $project->id,
+                    'enterprise_id' => $enterprise->id,
+                    'contact_id' => $contact->id,
+                ],
             ], 422);
         }
 
+        $this->applySpecToProject($project, $contact, $brief, $spec);
+
         $quoteToken = Crypt::encryptString(json_encode([
             'team_id' => $team->id,
-            'brief' => (string) $request->validated('brief'),
-            'project_name' => $request->validated('project_name'),
+            'brief' => $brief,
+            'project_name' => $projectName,
+            'project_id' => $project->id,
+            'enterprise_id' => $enterprise->id,
+            'contact_id' => $contact->id,
             'spec' => $spec,
             'created_at' => now()->toIso8601String(),
         ], JSON_THROW_ON_ERROR));
@@ -190,7 +224,11 @@ class ProjectFunnelController extends Controller
         return response()->json([
             'success' => true,
             'quote_token' => $quoteToken,
-            'data' => $safe,
+            'data' => array_merge($safe, [
+                'project_id' => $project->id,
+                'enterprise_id' => $enterprise->id,
+                'contact_id' => $contact->id,
+            ]),
         ]);
     }
 
@@ -237,39 +275,14 @@ class ProjectFunnelController extends Controller
             ?: ($payload['project_name'] ?? '')
             ?: ($name.' '.$surname.' — proyecto')));
 
+        $existingProjectId = (int) ($payload['project_id'] ?? 0);
+
         try
         {
-            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $spec)
+            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $spec, $existingProjectId)
             {
                 $contact = $this->upsertLeadContact($team, $name, $surname, $email);
-
-                $enterprise = Enterprise::withoutGlobalScopes()
-                    ->where('team_id', $team->id)
-                    ->whereRaw('LOWER(email) = ?', [$email])
-                    ->first();
-
-                if (! $enterprise)
-                {
-                    $enterprise = Enterprise::withoutGlobalScopes()->create([
-                        'team_id' => $team->id,
-                        'name' => trim($name.' '.$surname),
-                        'email' => $email,
-                        'type_id' => 1,
-                        'status_id' => 1,
-                        'creator_id' => $team->user_id,
-                        'responsible_id' => $team->user_id,
-                    ]);
-                }
-
-                if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
-                {
-                    $contact->enterprises()->attach($enterprise->id, ['position' => 'Contact']);
-                }
-
-                if (! $contact->current_enterprise_id)
-                {
-                    $contact->forceFill(['current_enterprise_id' => $enterprise->id])->save();
-                }
+                $enterprise = $this->ensureEnterpriseForLead($team, $contact, $name, $surname, $email);
 
                 $includedTasks = collect($spec['suggested_tasks'] ?? [])
                     ->filter(fn ($t) => is_array($t) && ($t['included'] ?? true))
@@ -279,42 +292,68 @@ class ProjectFunnelController extends Controller
                 $price = collect($includedTasks)
                     ->sum(fn ($t) => is_numeric($t['unit_price'] ?? null) ? (float) $t['unit_price'] : 0);
 
-                $projectData = [
+                $project = null;
+                if ($existingProjectId > 0)
+                {
+                    $project = Project::withoutGlobalScopes()
+                        ->where('team_id', $team->id)
+                        ->where('id', $existingProjectId)
+                        ->first();
+                }
+
+                if (! $project)
+                {
+                    $project = Project::withoutGlobalScopes()->create([
+                        'team_id' => $team->id,
+                        'enterprise_id' => $enterprise->id,
+                        'name' => $projectName,
+                        'real_name' => $projectName,
+                        'description' => $spec['ai_interpretation'] ?? $brief,
+                        'data' => [],
+                        'price' => null,
+                        'responsible_id' => $team->user_id,
+                        'status_id' => 1, // BUDGET
+                    ]);
+                }
+
+                $projectData = (array) ($project->data ?? []);
+                $funnel = is_array($projectData['funnel'] ?? null) ? $projectData['funnel'] : [];
+                $projectData = array_merge($projectData, [
                     'budget_given' => $brief,
                     'ai_interpretation' => $spec['ai_interpretation'] ?? '',
                     'dimension' => $spec['dimension'] ?? '',
                     'estimated_times' => $spec['estimated_times'] ?? '',
                     'resources' => $spec['resources'] ?? '',
                     'suggested_tasks' => $includedTasks,
-                    'budget_preview_token' => Str::random(48),
-                    'funnel' => [
+                    'budget_preview_token' => $projectData['budget_preview_token'] ?? Str::random(48),
+                    'funnel' => array_merge($funnel, [
                         'source' => 'projects_funnel',
                         'contact_id' => $contact->id,
                         'submitted_at' => now()->toIso8601String(),
-                    ],
-                ];
+                    ]),
+                ]);
 
-                $project = Project::withoutGlobalScopes()->create([
-                    'team_id' => $team->id,
+                $project->fill([
                     'enterprise_id' => $enterprise->id,
                     'name' => $projectName,
                     'real_name' => $projectName,
                     'description' => $spec['ai_interpretation'] ?? $brief,
                     'data' => $projectData,
                     'price' => $price > 0 ? $price : null,
-                    'responsible_id' => $team->user_id,
                     'status_id' => 1, // BUDGET
-                ]);
+                ])->save();
 
-                $board = TaskBoard::withoutGlobalScopes()->create([
-                    'team_id' => $team->id,
-                    'name' => "Project: {$project->name}",
-                    'description' => "Task board for project: {$project->name}",
-                    'is_default' => false,
-                    'order' => 0,
-                ]);
-
-                $project->update(['board_id' => $board->id]);
+                if (! $project->board_id)
+                {
+                    $board = TaskBoard::withoutGlobalScopes()->create([
+                        'team_id' => $team->id,
+                        'name' => "Project: {$project->name}",
+                        'description' => "Task board for project: {$project->name}",
+                        'is_default' => false,
+                        'order' => 0,
+                    ]);
+                    $project->update(['board_id' => $board->id]);
+                }
 
                 return [
                     'contact_id' => $contact->id,
@@ -340,6 +379,103 @@ class ProjectFunnelController extends Controller
             'message' => __('Thanks! We received your scope and will get back to you shortly.'),
             'data' => $result,
         ], 201);
+    }
+
+    private function ensureEnterpriseForLead(
+        Team $team,
+        Contact $contact,
+        string $name,
+        string $surname,
+        string $email,
+    ): Enterprise {
+        $enterprise = Enterprise::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
+
+        if (! $enterprise)
+        {
+            $enterprise = Enterprise::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'name' => trim($name.' '.$surname),
+                'email' => $email,
+                'type_id' => 1,
+                'status_id' => 1,
+                'creator_id' => $team->user_id,
+                'responsible_id' => $team->user_id,
+            ]);
+        }
+
+        if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            $contact->enterprises()->attach($enterprise->id, ['position' => 'Contact']);
+        }
+
+        if (! $contact->current_enterprise_id)
+        {
+            $contact->forceFill(['current_enterprise_id' => $enterprise->id])->save();
+        }
+
+        return $enterprise;
+    }
+
+    private function createDraftBudgetProject(
+        Team $team,
+        Enterprise $enterprise,
+        Contact $contact,
+        string $projectName,
+        string $brief,
+    ): Project {
+        return Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => $projectName,
+            'real_name' => $projectName,
+            'description' => $brief,
+            'data' => [
+                'budget_given' => $brief,
+                'ai_interpretation' => '',
+                'dimension' => '',
+                'estimated_times' => '',
+                'resources' => '',
+                'suggested_tasks' => [],
+                'budget_preview_token' => Str::random(48),
+                'funnel' => [
+                    'source' => 'projects_funnel',
+                    'contact_id' => $contact->id,
+                    'drafted_at' => now()->toIso8601String(),
+                ],
+            ],
+            'price' => null,
+            'responsible_id' => $team->user_id,
+            'status_id' => 1, // BUDGET
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $spec
+     */
+    private function applySpecToProject(Project $project, Contact $contact, string $brief, array $spec): void
+    {
+        $data = (array) ($project->data ?? []);
+        $funnel = is_array($data['funnel'] ?? null) ? $data['funnel'] : [];
+
+        $project->fill([
+            'description' => (string) ($spec['ai_interpretation'] ?? $brief),
+            'data' => array_merge($data, [
+                'budget_given' => $brief,
+                'ai_interpretation' => $spec['ai_interpretation'] ?? '',
+                'dimension' => $spec['dimension'] ?? '',
+                'estimated_times' => $spec['estimated_times'] ?? '',
+                'resources' => $spec['resources'] ?? '',
+                'suggested_tasks' => is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [],
+                'funnel' => array_merge($funnel, [
+                    'source' => 'projects_funnel',
+                    'contact_id' => $contact->id,
+                    'quoted_at' => now()->toIso8601String(),
+                ]),
+            ]),
+        ])->save();
     }
 
     private function upsertLeadContact(Team $team, string $name, string $surname, string $email): Contact
