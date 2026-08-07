@@ -22,6 +22,7 @@ class SubmitProjectFunnelRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'brief' => ['required', 'string', 'min:20', 'max:16000'],
             'project_name' => ['nullable', 'string', 'max:255'],
+            'business_name' => ['nullable', 'string', 'max:255'],
             'quote_token' => ['required', 'string'],
             'suggested_tasks' => ['nullable', 'array', 'max:20'],
             'suggested_tasks.*.title' => ['required_with:suggested_tasks', 'string', 'max:255'],

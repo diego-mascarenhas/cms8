@@ -114,6 +114,7 @@ class ProjectFunnelTest extends TestCase
             'email' => 'ana.quote@example.com',
             'brief' => 'Necesito una web de reservas para un hotel con calendario y pagos.',
             'project_name' => 'Hotel bookings',
+            'business_name' => 'Hotel Costa Azul',
         ]);
 
         $response->assertOk()
@@ -130,6 +131,7 @@ class ProjectFunnelTest extends TestCase
 
         $enterprise = Enterprise::withoutGlobalScopes()->where('email', 'ana.quote@example.com')->first();
         $this->assertNotNull($enterprise);
+        $this->assertSame('Hotel Costa Azul', $enterprise->name);
 
         $project = Project::withoutGlobalScopes()->find($response->json('data.project_id'));
         $this->assertNotNull($project);
@@ -230,6 +232,7 @@ class ProjectFunnelTest extends TestCase
                     ],
                     'brief' => 'Web de reservas para hotel',
                     'project_name' => 'Reservas hotel',
+                    'business_name' => 'Hotel Costa Azul',
                     'all_met' => false,
                 ]);
         });

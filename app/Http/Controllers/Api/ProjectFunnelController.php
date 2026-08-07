@@ -201,14 +201,23 @@ class ProjectFunnelController extends Controller
         $surname = trim((string) $request->validated('surname'));
         $email = strtolower(trim((string) $request->validated('email')));
         $brief = (string) $request->validated('brief');
-        $projectName = trim((string) ($request->validated('project_name') ?: ($name.' '.$surname.' — proyecto')));
+        $businessName = trim((string) ($request->validated('business_name') ?? ''));
+        $projectName = trim((string) ($request->validated('project_name')
+            ?: ($businessName !== '' ? $businessName : ($name.' '.$surname.' — proyecto'))));
 
         try
         {
-            [$contact, $enterprise, $project] = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName)
+            [$contact, $enterprise, $project] = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName)
             {
                 $contact = $this->upsertLeadContact($team, $name, $surname, $email);
-                $enterprise = $this->ensureEnterpriseForLead($team, $contact, $name, $surname, $email);
+                $enterprise = $this->ensureEnterpriseForLead(
+                    $team,
+                    $contact,
+                    $name,
+                    $surname,
+                    $email,
+                    $businessName !== '' ? $businessName : null,
+                );
                 $project = $this->createDraftBudgetProject($team, $enterprise, $contact, $projectName, $brief);
 
                 return [$contact, $enterprise, $project];
@@ -340,18 +349,26 @@ class ProjectFunnelController extends Controller
         $surname = trim((string) $request->validated('surname'));
         $email = strtolower(trim((string) $request->validated('email')));
         $brief = (string) $request->validated('brief');
+        $businessName = trim((string) ($request->validated('business_name') ?? ''));
         $projectName = trim((string) ($request->validated('project_name')
             ?: ($payload['project_name'] ?? '')
-            ?: ($name.' '.$surname.' — proyecto')));
+            ?: ($businessName !== '' ? $businessName : ($name.' '.$surname.' — proyecto'))));
 
         $existingProjectId = (int) ($payload['project_id'] ?? 0);
 
         try
         {
-            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $spec, $existingProjectId)
+            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName, $spec, $existingProjectId)
             {
                 $contact = $this->upsertLeadContact($team, $name, $surname, $email);
-                $enterprise = $this->ensureEnterpriseForLead($team, $contact, $name, $surname, $email);
+                $enterprise = $this->ensureEnterpriseForLead(
+                    $team,
+                    $contact,
+                    $name,
+                    $surname,
+                    $email,
+                    $businessName !== '' ? $businessName : null,
+                );
 
                 $includedTasks = collect($spec['suggested_tasks'] ?? [])
                     ->filter(fn ($t) => is_array($t) && ($t['included'] ?? true))
@@ -456,7 +473,13 @@ class ProjectFunnelController extends Controller
         string $name,
         string $surname,
         string $email,
+        ?string $businessName = null,
     ): Enterprise {
+        $personName = trim($name.' '.$surname);
+        $enterpriseName = ($businessName !== null && trim($businessName) !== '')
+            ? trim($businessName)
+            : $personName;
+
         $enterprise = Enterprise::withoutGlobalScopes()
             ->where('team_id', $team->id)
             ->whereRaw('LOWER(email) = ?', [$email])
@@ -466,13 +489,20 @@ class ProjectFunnelController extends Controller
         {
             $enterprise = Enterprise::withoutGlobalScopes()->create([
                 'team_id' => $team->id,
-                'name' => trim($name.' '.$surname),
+                'name' => $enterpriseName,
                 'email' => $email,
                 'type_id' => 1,
                 'status_id' => 1,
                 'creator_id' => $team->user_id,
                 'responsible_id' => $team->user_id,
             ]);
+        } elseif (
+            $businessName !== null
+            && trim($businessName) !== ''
+            && in_array(trim((string) $enterprise->name), [$personName, $name, trim($name)], true)
+        ) {
+            // Upgrade placeholder person-name enterprise when the chat later provides a business name.
+            $enterprise->forceFill(['name' => trim($businessName)])->save();
         }
 
         if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())

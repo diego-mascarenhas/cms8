@@ -124,6 +124,7 @@ class ProjectBudgetSpecService
      *   requirements: array<int, array{key: string, name: string, hint: string, met: bool, feedback: string}>,
      *   brief: string,
      *   project_name: string|null,
+     *   business_name: string|null,
      *   all_met: bool
      * }
      */
@@ -169,6 +170,7 @@ class ProjectBudgetSpecService
                 ),
                 'brief' => '',
                 'project_name' => $projectName,
+                'business_name' => null,
                 'all_met' => false,
             ];
         }
@@ -202,7 +204,8 @@ class ProjectBudgetSpecService
             ."- \"assistant_message\": tu siguiente mensaje al cliente (pregunta o confirmación breve).\n"
             ."- \"requirements\": array con un objeto por cada requisito; cada uno con \"key\", \"met\" (boolean), \"feedback\" (frase corta).\n"
             ."- \"brief\": síntesis acumulada del proyecto con TODO lo que el cliente ya dijo (negocio, URLs, diseño, alcance…), sin inventar. Debe tener al menos 2-3 frases útiles para presupuestar.\n"
-            ."- \"project_name\": nombre corto sugerido (mejor el del negocio si lo hay) o null.\n"
+            ."- \"business_name\": nombre del negocio o marca si el cliente lo dijo (solo el nombre, sin inventar), o null.\n"
+            ."- \"project_name\": nombre corto del proyecto (usa business_name si existe) o null.\n"
             .'Si aún faltan requisitos, pregunta por el primero que falte. Si ya están todos, confirma que puedes estimar el alcance y no hagas más preguntas.';
 
         $userMessage = $instructions
@@ -256,14 +259,22 @@ class ProjectBudgetSpecService
                 ->implode("\n\n");
         }
 
+        $businessName = $decoded['business_name'] ?? null;
+        $businessName = is_string($businessName) && trim($businessName) !== '' ? trim($businessName) : null;
+
         $suggestedName = $decoded['project_name'] ?? null;
         $suggestedName = is_string($suggestedName) && trim($suggestedName) !== '' ? trim($suggestedName) : null;
+        if ($suggestedName === null && $businessName !== null)
+        {
+            $suggestedName = $businessName;
+        }
 
         return [
             'assistant_message' => $assistantMessage,
             'requirements' => $evaluated,
             'brief' => $brief,
             'project_name' => $suggestedName,
+            'business_name' => $businessName,
             'all_met' => $allMet,
         ];
     }

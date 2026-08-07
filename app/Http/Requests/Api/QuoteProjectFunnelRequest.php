@@ -22,6 +22,7 @@ class QuoteProjectFunnelRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'brief' => ['required', 'string', 'min:10', 'max:16000'],
             'project_name' => ['nullable', 'string', 'max:255'],
+            'business_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 
