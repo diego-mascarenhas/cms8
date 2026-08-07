@@ -66,7 +66,20 @@ class ProjectController extends Controller
                 });
             }
 
-            if ($request->filled('status_id'))
+            if ($request->filled('status_ids'))
+            {
+                $statusIds = collect(preg_split('/[|,]/', (string) $request->get('status_ids')) ?: [])
+                    ->map(fn ($id) => (int) trim((string) $id))
+                    ->filter(fn (int $id) => $id > 0)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if ($statusIds !== [])
+                {
+                    $query->whereIn('status_id', $statusIds);
+                }
+            } elseif ($request->filled('status_id'))
             {
                 $query->where('status_id', $request->integer('status_id'));
             }
@@ -331,6 +344,98 @@ class ProjectController extends Controller
         return response()->json([
             'success' => true,
             'data' => $statuses,
+        ]);
+    }
+
+    /**
+     * Summary cards for project list (same groups as web backend).
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        if (! $user->can('viewAny', Project::class))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver proyectos',
+            ], 403);
+        }
+
+        $query = Project::query();
+        $filterCallback = \App\Policies\ProjectPolicy::getQueryFilter($user);
+        $query = $filterCallback($query);
+
+        $statusCounts = $query
+            ->selectRaw('status_id, COUNT(*) as count')
+            ->groupBy('status_id')
+            ->pluck('count', 'status_id');
+
+        $totalProjects = (int) $statusCounts->sum();
+
+        $cards = [
+            [
+                'key' => 'budget',
+                'label_key' => 'BUDGET',
+                'label' => __('project_status.BUDGET'),
+                'status_ids' => [1],
+                'tone' => 'secondary',
+                'icon' => 'pencil-plus',
+            ],
+            [
+                'key' => 'budgeted',
+                'label_key' => 'BUDGETED',
+                'label' => __('project_status.BUDGETED'),
+                'status_ids' => [2],
+                'tone' => 'warning',
+                'icon' => 'file-description',
+            ],
+            [
+                'key' => 'in_progress',
+                'label_key' => 'IN_PROGRESS',
+                'label' => __('project_status.IN_PROGRESS'),
+                'status_ids' => [3, 7, 8, 9],
+                'tone' => 'primary',
+                'icon' => 'player-play',
+            ],
+            [
+                'key' => 'to_invoice',
+                'label_key' => 'TO_INVOICE',
+                'label' => __('project_status.TO_INVOICE'),
+                'status_ids' => [10, 11],
+                'tone' => 'info',
+                'icon' => 'receipt',
+            ],
+        ];
+
+        $cards = array_map(function (array $card) use ($statusCounts, $totalProjects)
+        {
+            $count = 0;
+            foreach ($card['status_ids'] as $statusId)
+            {
+                $count += (int) ($statusCounts[$statusId] ?? 0);
+            }
+
+            $card['count'] = $count;
+            $card['percentage'] = $totalProjects > 0 ? round(($count / $totalProjects) * 100, 2) : 0;
+
+            return $card;
+        }, $cards);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'total_projects' => $totalProjects,
+                'cards' => $cards,
+            ],
         ]);
     }
 

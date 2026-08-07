@@ -512,6 +512,7 @@ Route::middleware('auth:sanctum')->group(function ()
 
     // Projects - for user-based authentication (Sanctum tokens) / idoneo-projects SPA
     Route::get('project-statuses', [ProjectController::class, 'statuses']);
+    Route::get('projects/stats', [ProjectController::class, 'stats']);
     Route::get('projects', [ProjectController::class, 'index']);
     Route::post('projects', [ProjectController::class, 'store']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);

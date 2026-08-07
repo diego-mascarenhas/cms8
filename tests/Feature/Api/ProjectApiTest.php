@@ -178,4 +178,64 @@ class ProjectApiTest extends TestCase
         $this->getJson('/api/projects')->assertUnauthorized();
         $this->postJson('/api/projects', [])->assertUnauthorized();
     }
+
+    public function test_project_stats_cards_match_backend_groups(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Budget',
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Budgeted',
+            'responsible_id' => $user->id,
+            'status_id' => 2,
+        ]);
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'In Progress',
+            'responsible_id' => $user->id,
+            'status_id' => 9,
+        ]);
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'To Invoice',
+            'responsible_id' => $user->id,
+            'status_id' => 11,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/stats');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_projects', 4)
+            ->assertJsonPath('data.cards.0.key', 'budget')
+            ->assertJsonPath('data.cards.0.count', 1)
+            ->assertJsonPath('data.cards.0.status_ids', [1])
+            ->assertJsonPath('data.cards.1.key', 'budgeted')
+            ->assertJsonPath('data.cards.1.count', 1)
+            ->assertJsonPath('data.cards.2.key', 'in_progress')
+            ->assertJsonPath('data.cards.2.count', 1)
+            ->assertJsonPath('data.cards.2.status_ids', [3, 7, 8, 9])
+            ->assertJsonPath('data.cards.3.key', 'to_invoice')
+            ->assertJsonPath('data.cards.3.count', 1)
+            ->assertJsonPath('data.cards.3.status_ids', [10, 11]);
+
+        $filtered = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects?status_ids=3,7,8,9');
+
+        $filtered->assertOk();
+        $names = collect($filtered->json('data.data'))->pluck('name');
+        $this->assertTrue($names->contains('In Progress'));
+        $this->assertFalse($names->contains('Budget'));
+    }
 }
