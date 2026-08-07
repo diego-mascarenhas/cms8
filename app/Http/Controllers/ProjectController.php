@@ -13,19 +13,15 @@ use App\Models\Language;
 use App\Models\Module;
 use App\Models\Project;
 use App\Models\ProjectStatus;
-use App\Models\Prompt;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
-use App\Models\TokenUsageLog;
-use App\Support\AiTasks;
+use App\Services\ProjectBudgetSpecService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
-use function Laravel\Ai\agent;
+use RuntimeException;
 
 class ProjectController extends Controller
 {
@@ -141,7 +137,7 @@ class ProjectController extends Controller
      * Generate budget spec (dimension, times, resources) from budget text via Laravel AI.
      * Used when creating/editing a project presupuesto.
      */
-    public function generateBudgetSpec(Request $request): \Illuminate\Http\JsonResponse
+    public function generateBudgetSpec(Request $request, ProjectBudgetSpecService $budgetSpecService): \Illuminate\Http\JsonResponse
     {
         $this->authorize('access-billing-modules');
         $this->authorize('create', Project::class);
@@ -150,91 +146,24 @@ class ProjectController extends Controller
             'budget_given' => 'required|string|max:16000',
         ]);
 
-        $instructions = Prompt::forModule('projects')
-            ->where('section_key', 'budget_spec')
-            ->active()
-            ->first()?->prompt_instruction ?? $this->getDefaultBudgetSpecPrompt();
-
-        $taskCategoriesContext = $this->getTaskCategoriesContextForAi();
-        if ($taskCategoriesContext !== '')
-        {
-            $instructions .= "\n\n".$taskCategoriesContext;
-        }
-
-        $userMessage = $instructions."\n\n---\n\nEntrada del usuario:\n\n".trim($request->input('budget_given'));
-
         try
         {
-            $agent = agent(
-                instructions: $instructions,
-                messages: [],
-                tools: [],
+            $spec = $budgetSpecService->generate(
+                (string) $request->input('budget_given'),
+                auth()->user()?->currentTeam,
+                auth()->user(),
             );
-            $response = $agent->prompt($userMessage, [], AiTasks::provider('assistant'));
-            $text = $response->text ?: '';
-        } catch (\Throwable $e)
+        } catch (RuntimeException $e)
         {
-            Log::error('Project generateBudgetSpec failed', ['error' => $e->getMessage()]);
-
             return response()->json([
                 'success' => false,
-                'message' => __('Error al comunicar con la IA: ').$e->getMessage(),
+                'message' => $e->getMessage(),
             ], 422);
         }
-
-        if (isset($response->usage) && auth()->check() && auth()->user()->currentTeam)
-        {
-            $usage = $response->usage;
-            $totalTokens = $usage->promptTokens + $usage->completionTokens;
-            try
-            {
-                TokenUsageLog::create([
-                    'team_id' => auth()->user()->currentTeam->id,
-                    'module_id' => TokenUsageLog::inferModuleId(),
-                    'service' => 'ProjectController::generateBudgetSpec',
-                    'json_size' => strlen($userMessage),
-                    'toon_size' => 0,
-                    'json_tokens' => $totalTokens,
-                    'toon_tokens' => 0,
-                    'savings_percentage' => 0,
-                    'used_toon' => false,
-                ]);
-            } catch (\Exception $logEx)
-            {
-                Log::warning('TokenUsageLog failed', ['error' => $logEx->getMessage()]);
-            }
-        }
-
-        if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $text, $m))
-        {
-            $text = trim($m[1]);
-        }
-
-        $decoded = json_decode($text, true);
-        if (! is_array($decoded))
-        {
-            Log::warning('generateBudgetSpec invalid JSON', ['text' => substr($text, 0, 500)]);
-
-            return response()->json([
-                'success' => false,
-                'message' => __('La respuesta no es un JSON válido.'),
-            ], 422);
-        }
-
-        $clientItems = is_array($decoded['client_items'] ?? null) ? $decoded['client_items'] : [];
-        $resourceBreakdown = is_array($decoded['resource_breakdown'] ?? null) ? $decoded['resource_breakdown'] : [];
-        $suggestedTasks = is_array($decoded['suggested_tasks'] ?? null) ? $decoded['suggested_tasks'] : [];
-        $suggestedTasks = $this->normalizeSuggestedTasksForFrontend($suggestedTasks);
 
         return response()->json([
             'success' => true,
-            'ai_interpretation' => $decoded['ai_interpretation'] ?? '',
-            'dimension' => $decoded['dimension'] ?? '',
-            'estimated_times' => $decoded['estimated_times'] ?? '',
-            'resources' => $decoded['resources'] ?? '',
-            'client_items' => $clientItems,
-            'resource_breakdown' => $resourceBreakdown,
-            'suggested_tasks' => $suggestedTasks,
+            ...$spec,
         ]);
     }
 
@@ -253,106 +182,6 @@ class ProjectController extends Controller
             'project' => $project,
             'suggestedTasks' => $suggestedTasks,
         ]);
-    }
-
-    /**
-     * Normalize suggested_tasks so unit_price is numeric and resource_level is string for the frontend.
-     */
-    private function normalizeSuggestedTasksForFrontend(array $tasks): array
-    {
-        return array_map(function (array $t): array
-        {
-            if (isset($t['unit_price']))
-            {
-                $v = $t['unit_price'];
-                if (is_numeric($v))
-                {
-                    $t['unit_price'] = (float) $v;
-                } elseif (is_string($v))
-                {
-                    $normalized = preg_replace('/[\s\x{00A0}]/u', '', $v);
-                    if (preg_match('/^\d{1,3}(?:\.\d{3})*,\d+$/', $normalized))
-                    {
-                        $normalized = str_replace('.', '', $normalized);
-                        $normalized = str_replace(',', '.', $normalized);
-                    } else
-                    {
-                        $normalized = str_replace(',', '.', $normalized);
-                    }
-                    if (is_numeric($normalized))
-                    {
-                        $t['unit_price'] = (float) $normalized;
-                    }
-                }
-            }
-            if (! isset($t['resource_level']) || $t['resource_level'] === null)
-            {
-                $t['resource_level'] = '';
-            } else
-            {
-                $t['resource_level'] = (string) $t['resource_level'];
-            }
-            if (! array_key_exists('included', $t))
-            {
-                $t['included'] = true;
-            } else
-            {
-                $t['included'] = (bool) $t['included'];
-            }
-
-            return $t;
-        }, $tasks);
-    }
-
-    /**
-     * Build context for the AI with task categories and suggested_tasks format.
-     * So the AI suggests tasks using only backend category names and decimal estimated_hours.
-     */
-    private function getTaskCategoriesContextForAi(): string
-    {
-        $tasksModule = Module::where('key', 'tasks')->first();
-        if (! $tasksModule)
-        {
-            return '';
-        }
-
-        $teamId = auth()->check() && auth()->user()->currentTeam
-            ? auth()->user()->currentTeam->id
-            : null;
-
-        $categories = Category::where('module_id', $tasksModule->id)
-            ->where('status', 1)
-            ->where(function ($q) use ($teamId)
-            {
-                $q->whereNull('team_id');
-                if ($teamId)
-                {
-                    $q->orWhere('team_id', $teamId);
-                }
-            })
-            ->orderBy('order')
-            ->orderBy('name')
-            ->get(['id', 'name', 'parent_id']);
-
-        if ($categories->isEmpty())
-        {
-            return '';
-        }
-
-        $names = $categories->pluck('name')->unique()->values()->all();
-        $namesList = implode(', ', $names);
-
-        return "TASK SUGGESTIONS (use only when the budget describes concrete tasks or work packages):\n"
-            .'- Available task categories in the system (use ONLY these exact names for category_name): '.$namesList."\n"
-            ."- Add a key \"suggested_tasks\" to your JSON: an array of objects, each with \"title\", \"category_name\" (one of the names above), \"estimated_hours\" (decimal), \"resource_level\", and \"unit_price\".\n"
-            ."- **resource_level** (string): You MUST suggest a level for every task. Use typical roles: Senior (architecture, lead, complex work), Junior (routine implementation, support), Consultor (analysis, advice, audits). Infer from the type of work and complexity.\n"
-            ."- **unit_price** (number): You MUST suggest a monetary value for every task. (1) If the budget explicitly states a price for that line/module, use it (plain number, e.g. 1500 or 1250.50, no currency or thousands separator). (2) If the budget does NOT give per-line prices, estimate unit_price using: (a) typical market rates for that type of work (e.g. development, consulting) and region (e.g. EU/Spain), (b) the scope/quantity (estimated_hours × reasonable hourly rate, or a realistic fixed price for that module). Always output a number so the user gets a suggested quote; the user can adjust later.\n"
-            .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] only if the budget does not describe concrete tasks. Every suggested task must have resource_level and unit_price.';
-    }
-
-    private function getDefaultBudgetSpecPrompt(): string
-    {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (always suggest: Senior/Junior/Consultor based on work type and complexity), \"unit_price\" (always suggest: use client price if given, otherwise estimate from market rates and scope/quantity so every line has a value). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include resource_level and unit_price based on market prices and quantity/scope when the budget does not specify them.";
     }
 
     /**

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationInboxController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
@@ -85,6 +86,14 @@ Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function
 {
     Route::get('posts', [PublicPostController::class, 'index'])->name('api.public.posts.index');
     Route::get('posts/{postType}/{slug}', [PublicPostController::class, 'show'])->name('api.public.posts.show');
+});
+
+// Public projects quote funnel (idoneo-projects SPA) — no prices exposed to client
+Route::prefix('projects/funnel')->middleware('throttle:20,1')->group(function ()
+{
+    Route::post('lead', [ProjectFunnelController::class, 'lead'])->name('api.projects.funnel.lead');
+    Route::post('quote', [ProjectFunnelController::class, 'quote'])->name('api.projects.funnel.quote');
+    Route::post('submit', [ProjectFunnelController::class, 'submit'])->name('api.projects.funnel.submit');
 });
 
 // WordPress CMS sync webhook (authenticated by per-team shared secret)
