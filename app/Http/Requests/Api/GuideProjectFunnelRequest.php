@@ -4,7 +4,7 @@ namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class QuoteProjectFunnelRequest extends FormRequest
+class GuideProjectFunnelRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -18,7 +18,6 @@ class QuoteProjectFunnelRequest extends FormRequest
     {
         return [
             'brief' => ['required', 'string', 'min:10', 'max:16000'],
-            'project_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -29,7 +28,7 @@ class QuoteProjectFunnelRequest extends FormRequest
     {
         return [
             'brief.required' => __('Describe what you need.'),
-            'brief.min' => __('Please add a bit more detail so we can estimate the work.'),
+            'brief.min' => __('Write at least 10 characters to evaluate.'),
         ];
     }
 }

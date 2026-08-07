@@ -98,8 +98,10 @@ class ProjectFunnelTest extends TestCase
                     'suggested_tasks' => [
                         [
                             'title' => 'Discovery',
+                            'description' => 'Análisis funcional y mapa de reservas',
                             'category_name' => 'Análisis',
                             'estimated_hours' => 8,
+                            'resource_level' => 'Senior',
                             'included' => true,
                         ],
                     ],
@@ -115,10 +117,121 @@ class ProjectFunnelTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.suggested_tasks.0.title', 'Discovery')
             ->assertJsonPath('data.suggested_tasks.0.estimated_hours', 8)
+            ->assertJsonPath('data.suggested_tasks.0.resource_level', 'Senior')
+            ->assertJsonPath('data.suggested_tasks.0.description', 'Análisis funcional y mapa de reservas')
             ->assertJsonMissingPath('data.suggested_tasks.0.unit_price');
 
         $this->assertNotEmpty($response->json('quote_token'));
         $this->assertSame($team->id, (int) config('projects.funnel_team_id'));
+    }
+
+    public function test_requirements_endpoint_returns_tech_checklist(): void
+    {
+        $this->createFunnelTeam();
+
+        $response = $this->getJson('/api/projects/funnel/requirements');
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.requirements.0.key', 'objetivo')
+            ->assertJsonPath('data.requirements.0.met', false);
+
+        $keys = collect($response->json('data.requirements'))->pluck('key')->all();
+        $this->assertSame(
+            ['objetivo', 'negocio', 'usuarios', 'funcionalidades', 'plataforma', 'urls', 'diseno', 'alcance'],
+            $keys,
+        );
+    }
+
+    public function test_guide_endpoint_returns_evaluated_requirements(): void
+    {
+        $this->createFunnelTeam();
+
+        $this->mock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('guideBrief')
+                ->once()
+                ->andReturn([
+                    'requirements' => [
+                        [
+                            'key' => 'objetivo',
+                            'name' => 'Objetivo',
+                            'hint' => 'Qué problema resuelve',
+                            'met' => true,
+                            'feedback' => 'Cubierto',
+                        ],
+                    ],
+                    'summary' => 'Buen punto de partida',
+                    'suggested_additions' => 'Añade plataforma',
+                    'improved_brief' => 'Necesito una web…',
+                    'all_met' => false,
+                ]);
+        });
+
+        $response = $this->postJson('/api/projects/funnel/guide', [
+            'brief' => 'Necesito una web de reservas para un hotel.',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.requirements.0.met', true)
+            ->assertJsonPath('data.summary', 'Buen punto de partida');
+    }
+
+    public function test_chat_endpoint_returns_assistant_turn_and_checklist(): void
+    {
+        $this->createFunnelTeam();
+
+        $this->mock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('chatTurn')
+                ->once()
+                ->andReturn([
+                    'assistant_message' => '¿Para quiénes sería esta plataforma?',
+                    'requirements' => [
+                        [
+                            'key' => 'objetivo',
+                            'name' => 'Objetivo',
+                            'hint' => 'Qué problema resuelve',
+                            'met' => true,
+                            'feedback' => 'Cubierto',
+                        ],
+                    ],
+                    'brief' => 'Web de reservas para hotel',
+                    'project_name' => 'Reservas hotel',
+                    'all_met' => false,
+                ]);
+        });
+
+        $response = $this->postJson('/api/projects/funnel/chat', [
+            'messages' => [
+                ['role' => 'user', 'content' => 'Necesito una web de reservas para un hotel'],
+            ],
+            'lead_name' => 'Ana',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.assistant_message', '¿Para quiénes sería esta plataforma?')
+            ->assertJsonPath('data.requirements.0.met', true)
+            ->assertJsonPath('data.brief', 'Web de reservas para hotel');
+    }
+
+    public function test_chat_welcome_without_messages_uses_lead_name(): void
+    {
+        $this->createFunnelTeam();
+
+        $response = $this->postJson('/api/projects/funnel/chat', [
+            'messages' => [],
+            'lead_name' => 'Ana',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.all_met', false);
+
+        $this->assertStringContainsString('Ana', (string) $response->json('data.assistant_message'));
+        $this->assertNotEmpty($response->json('data.requirements'));
     }
 
     public function test_submit_creates_contact_enterprise_and_project_with_internal_prices(): void

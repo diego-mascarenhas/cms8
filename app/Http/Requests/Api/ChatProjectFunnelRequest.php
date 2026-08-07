@@ -4,7 +4,7 @@ namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class QuoteProjectFunnelRequest extends FormRequest
+class ChatProjectFunnelRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,19 +17,11 @@ class QuoteProjectFunnelRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'brief' => ['required', 'string', 'min:10', 'max:16000'],
+            'messages' => ['nullable', 'array', 'max:40'],
+            'messages.*.role' => ['required_with:messages', 'in:user,assistant'],
+            'messages.*.content' => ['required_with:messages', 'string', 'max:4000'],
             'project_name' => ['nullable', 'string', 'max:255'],
-        ];
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'brief.required' => __('Describe what you need.'),
-            'brief.min' => __('Please add a bit more detail so we can estimate the work.'),
+            'lead_name' => ['nullable', 'string', 'max:120'],
         ];
     }
 }

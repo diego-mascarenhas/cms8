@@ -25,8 +25,10 @@ class SubmitProjectFunnelRequest extends FormRequest
             'quote_token' => ['required', 'string'],
             'suggested_tasks' => ['nullable', 'array', 'max:20'],
             'suggested_tasks.*.title' => ['required_with:suggested_tasks', 'string', 'max:255'],
+            'suggested_tasks.*.description' => ['nullable', 'string', 'max:2000'],
             'suggested_tasks.*.category_name' => ['nullable', 'string', 'max:255'],
             'suggested_tasks.*.estimated_hours' => ['nullable', 'numeric', 'min:0', 'max:10000'],
+            'suggested_tasks.*.resource_level' => ['nullable', 'string', 'max:80'],
             'suggested_tasks.*.included' => ['nullable', 'boolean'],
         ];
     }

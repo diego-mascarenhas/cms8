@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CaptureProjectFunnelLeadRequest;
+use App\Http\Requests\Api\ChatProjectFunnelRequest;
+use App\Http\Requests\Api\GuideProjectFunnelRequest;
 use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
 use App\Models\Category;
@@ -60,6 +62,94 @@ class ProjectFunnelController extends Controller
                 'contact_id' => $contact->id,
             ],
         ], 201);
+    }
+
+    /**
+     * Conversational fundamentación: bot asks what is needed and ticks checklist items.
+     */
+    public function chat(ChatProjectFunnelRequest $request): JsonResponse
+    {
+        $team = $this->resolveFunnelTeam();
+        if (! $team)
+        {
+            return $this->funnelNotConfiguredResponse();
+        }
+
+        try
+        {
+            $turn = $this->budgetSpecService->chatTurn(
+                is_array($request->validated('messages')) ? $request->validated('messages') : [],
+                $request->validated('project_name'),
+                $request->validated('lead_name'),
+            );
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $turn,
+        ]);
+    }
+
+    /**
+     * Guided tech fundamentación: evaluate brief against checklist and suggest gaps.
+     */
+    public function guide(GuideProjectFunnelRequest $request): JsonResponse
+    {
+        $team = $this->resolveFunnelTeam();
+        if (! $team)
+        {
+            return $this->funnelNotConfiguredResponse();
+        }
+
+        try
+        {
+            $guide = $this->budgetSpecService->guideBrief((string) $request->validated('brief'));
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $guide,
+        ]);
+    }
+
+    /**
+     * Checklist definitions for the guided Necesidad step (no AI).
+     */
+    public function requirements(): JsonResponse
+    {
+        $team = $this->resolveFunnelTeam();
+        if (! $team)
+        {
+            return $this->funnelNotConfiguredResponse();
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'requirements' => array_map(
+                    fn (array $r): array => [
+                        'key' => $r['key'],
+                        'name' => $r['name'],
+                        'hint' => $r['hint'],
+                        'met' => false,
+                        'feedback' => '',
+                    ],
+                    $this->budgetSpecService->techGuideRequirements(),
+                ),
+            ],
+        ]);
     }
 
     /**
