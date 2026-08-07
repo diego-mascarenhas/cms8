@@ -7,6 +7,7 @@ use App\Http\Requests\StoreProjectRequest;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactProject;
+use App\Models\Enterprise;
 use App\Models\Fare;
 use App\Models\Language;
 use App\Models\Module;
@@ -38,7 +39,14 @@ class ProjectController extends Controller
     {
         $this->authorize('viewAny', Project::class);
 
-        return $dataTable->render('project.index');
+        if (! auth()->user()->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        $stats = Project::getProjectStats((int) auth()->user()->current_team_id);
+
+        return $dataTable->render('project.index', $stats);
     }
 
     /**
@@ -47,9 +55,20 @@ class ProjectController extends Controller
     public function create()
     {
         $this->authorize('create', Project::class);
-        $enterprise_id = request('enterprise_id');
+
         $statuses = ProjectStatus::getOptions();
         $data = new Project;
+        $enterpriseId = (int) request('enterprise_id');
+
+        if ($enterpriseId > 0 && Enterprise::query()
+            ->where('id', $enterpriseId)
+            ->where('team_id', auth()->user()->current_team_id)
+            ->exists())
+        {
+            $data->enterprise_id = $enterpriseId;
+        }
+
+        $enterprise_id = $data->enterprise_id;
 
         return view('project.form', compact('enterprise_id', 'statuses', 'data'));
     }

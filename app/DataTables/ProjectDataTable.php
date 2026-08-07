@@ -26,12 +26,20 @@ class ProjectDataTable extends DataTable
             ->editColumn('name', function ($data)
             {
                 $label = $data->real_name ?: $data->name;
+                $link = DataTableFormatter::showLink($data, 'project.show', $label, 'view', [$data->id]);
 
-                return DataTableFormatter::showLink($data, 'project.show', $label, 'view', [$data->id]);
+                return '<div class="text-truncate" style="max-width: 180px;">'.$link.'</div>';
             })
             ->editColumn('enterprise_id', function ($data)
             {
-                return $data->client?->name ?? '<span class="text-muted">Sin cliente</span>';
+                $name = $data->client?->name;
+
+                if (! $name)
+                {
+                    return '<span class="text-muted">Sin cliente</span>';
+                }
+
+                return '<span class="text-truncate d-inline-block" style="max-width: 140px;">'.e($name).'</span>';
             })
             ->filterColumn('enterprise_id', function ($query, $keyword)
             {
@@ -42,7 +50,7 @@ class ProjectDataTable extends DataTable
             })
             ->editColumn('category_id', function ($data)
             {
-                return $data->category ? $data->category->name : '<span class="text-muted">Sin categoría</span>';
+                return $data->category ? e($data->category->name) : '<span class="text-muted">Sin categoría</span>';
             })
             ->filterColumn('category_id', function ($query, $keyword)
             {
@@ -74,6 +82,24 @@ class ProjectDataTable extends DataTable
             {
                 return $row->status_label;
             })
+            ->filterColumn('status_id', function ($query, $keyword)
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $statusIds = array_values(array_filter(array_map('intval', preg_split('/[|,]/', $keyword) ?: [])));
+
+                if ($statusIds === [])
+                {
+                    return;
+                }
+
+                $query->whereIn('status_id', $statusIds);
+            })
             ->rawColumns(['action', 'name', 'status_id', 'enterprise_id', 'category_id', 'responsible_name']);
     }
 
@@ -82,8 +108,8 @@ class ProjectDataTable extends DataTable
         $query = $model->newQuery()->with([
             'client',
             'responsible:id,name',
-            'category',  // Fix N+1: Needed for category name in dataTable()
-            'status',    // Fix N+1: Needed for status_label in dataTable()
+            'category',
+            'status',
         ]);
 
         $user = Auth::user();
@@ -103,30 +129,19 @@ class ProjectDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->dom('frtip')
-            ->orderBy(1, 'desc')
+            ->orderBy(0, 'desc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters([
+                'autoWidth' => false,
                 'initComplete' => "function() {
 					var api = this.api();
-					api.columns('.select-filter').every(function() {
-						var column = this;
-						\$('#EmotionalState').on('change', function() {
-							var val = \$.fn.dataTable.util.escapeRegex(\$(this).val());
-							column.search(val ? val : '', true, false).draw();
-						});
 
-						\$('.filter-status').on('click', function(e) {
-							e.preventDefault();
-							var status = \$(this).data('status');
-							api.column('status_id:name').search(status).draw();
-						});
-					});
-				}",
-                'drawCallback' => "function() {
-					\$('#EmotionalState').off('change').on('change', function() {
-						\$('#contact-table').DataTable().columns('.select-filter').search(\$(this).val()).draw();
+					\$('.filter-status').off('click.projectFilter').on('click.projectFilter', function(e) {
+						e.preventDefault();
+						var status = \$(this).data('status');
+						api.column('status_id:name').search(status ? status : '').draw();
 					});
 				}",
             ]);
@@ -147,10 +162,10 @@ class ProjectDataTable extends DataTable
             Column::make('category_id')
                 ->title(__('Category'))
                 ->className('text-center')
-                ->addClass('min-phone')
+                ->addClass('none')
                 ->searchable(true)
                 ->orderable(false)
-                ->width(150),
+                ->visible(false),
             Column::make('responsible_name')
                 ->title(__('Responsible'))
                 ->className('text-center')
@@ -166,15 +181,17 @@ class ProjectDataTable extends DataTable
             Column::make('status_id')
                 ->title(__('Status'))
                 ->className('text-center')
-                ->addClass('min-tablet'),
+                ->addClass('all')
+                ->name('status_id'),
             Column::computed('action')
                 ->title(__('Actions'))
-                ->width(20)
                 ->className('text-center')
-                ->addClass('min-desktop')
+                ->addClass('all')
+                ->orderable(false)
+                ->searchable(false)
                 ->exportable(false)
                 ->printable(false)
-                ->width(30),
+                ->width(90),
         ];
     }
 

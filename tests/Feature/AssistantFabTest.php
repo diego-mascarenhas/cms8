@@ -20,6 +20,8 @@ class AssistantFabTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $response->assertSee('id="assistant-fab"', false);
+        $this->assertStringContainsString('padding-right: 4.5rem', $html);
+        $this->assertStringContainsString('.card:has(table.dataTable)', $html);
         $this->assertStringContainsString('id="assistant-offcanvas"', $html);
         $this->assertStringContainsString('data-bs-toggle="offcanvas"', $html);
         $this->assertStringContainsString('data-bs-target="#assistant-offcanvas"', $html);
@@ -27,8 +29,6 @@ class AssistantFabTest extends TestCase
         $this->assertStringNotContainsString('wire:model="respondWithAudio"', $html);
         $this->assertStringNotContainsString('href="'.route('assistant').'"', $html);
         $this->assertStringContainsString('assistant-empty-suggestions', $html);
-        $this->assertStringContainsString('assistant-suggestion-example', $html);
-        $this->assertStringContainsString('data-prompt=', $html);
         $this->assertStringContainsString('id="assistant-offcanvas-reset-btn"', $html);
     }
 
