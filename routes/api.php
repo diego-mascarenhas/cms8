@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BillingController as ApiBillingController;
 use App\Http\Controllers\Api\CategoryController;
@@ -525,6 +526,11 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::put('templates/{id}', [TemplateController::class, 'update'])->whereNumber('id');
     Route::delete('templates/{id}', [TemplateController::class, 'destroy'])->whereNumber('id');
     Route::post('templates/{id}/duplicate', [TemplateController::class, 'duplicate'])->whereNumber('id');
+
+    // Affiliates (idoneo-affiliates SPA)
+    Route::get('affiliates/dashboard', [AffiliateController::class, 'dashboard']);
+    Route::post('affiliates/setup-stripe', [AffiliateController::class, 'setupStripe']);
+    Route::post('affiliates/invitations', [AffiliateController::class, 'invite']);
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);
