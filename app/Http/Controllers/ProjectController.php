@@ -18,6 +18,7 @@ use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
 use App\Services\ProjectBudgetSpecService;
+use App\Support\AssignableTeamUsers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -677,7 +678,10 @@ class ProjectController extends Controller
             }
         }
 
-        $teamUsers = auth()->user()->currentTeam ? auth()->user()->currentTeam->allUsers()->pluck('name', 'id') : collect();
+        $team = auth()->user()->currentTeam;
+        $teamUsers = $team
+            ? AssignableTeamUsers::optionsForTeam($team)
+            : collect();
 
         return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));
     }

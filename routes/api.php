@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BillingController as ApiBillingController;
 use App\Http\Controllers\Api\CategoryController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
+use App\Http\Controllers\Api\MailerLookupController;
 use App\Http\Controllers\Api\MailInboxController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
@@ -35,6 +37,7 @@ use App\Http\Controllers\Api\TeamProductController;
 use App\Http\Controllers\Api\TeamProjectController;
 use App\Http\Controllers\Api\TeamPromptController;
 use App\Http\Controllers\Api\TeamWhatsAppController;
+use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TemplateImportController;
 use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\TodayController;
@@ -504,9 +507,30 @@ Route::middleware('auth:sanctum')->group(function ()
     // Category
     Route::get('category', [CategoryController::class, 'index']);
 
-    // Message
+    // Message / Mailer (idoneo-mailer SPA)
     Route::get('message', [MessageController::class, 'index']);
-    Route::get('message/{id}', [MessageController::class, 'show']);
+    Route::post('message', [MessageController::class, 'store']);
+    Route::get('message/{id}', [MessageController::class, 'show'])->whereNumber('id');
+    Route::put('message/{id}', [MessageController::class, 'update'])->whereNumber('id');
+    Route::delete('message/{id}', [MessageController::class, 'destroy'])->whereNumber('id');
+    Route::post('message/{id}/start', [MessageController::class, 'start'])->whereNumber('id');
+    Route::post('message/{id}/pause', [MessageController::class, 'pause'])->whereNumber('id');
+    Route::post('message/{id}/test', [MessageController::class, 'test'])->whereNumber('id');
+    Route::get('message/{id}/preview', [MessageController::class, 'preview'])->whereNumber('id');
+    Route::get('mailer/lookups', [MailerLookupController::class, 'index']);
+
+    // Templates (idoneo-mailer SPA)
+    Route::get('templates', [TemplateController::class, 'index']);
+    Route::post('templates', [TemplateController::class, 'store']);
+    Route::get('templates/{id}', [TemplateController::class, 'show'])->whereNumber('id');
+    Route::put('templates/{id}', [TemplateController::class, 'update'])->whereNumber('id');
+    Route::delete('templates/{id}', [TemplateController::class, 'destroy'])->whereNumber('id');
+    Route::post('templates/{id}/duplicate', [TemplateController::class, 'duplicate'])->whereNumber('id');
+
+    // Affiliates (idoneo-affiliates SPA)
+    Route::get('affiliates/dashboard', [AffiliateController::class, 'dashboard']);
+    Route::post('affiliates/setup-stripe', [AffiliateController::class, 'setupStripe']);
+    Route::post('affiliates/invitations', [AffiliateController::class, 'invite']);
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);

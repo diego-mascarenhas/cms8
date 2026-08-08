@@ -255,12 +255,17 @@
 									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
 									<input type="hidden" name="category_name" value="{{ $t['category_name'] ?? '' }}">
 									<input type="hidden" name="estimated_hours" value="{{ $t['estimated_hours'] ?? '' }}">
-									<select name="responsible_id" class="form-select form-select-sm" {{ $suggestedIncluded ? '' : 'disabled' }} required>
-										<option value="">{{ __('Select') }}</option>
-										@foreach($teamUsers ?? [] as $userId => $userName)
-											<option value="{{ $userId }}" @selected((int) $userId === (int) ($t['responsible_id'] ?? auth()->id()))>{{ $userName }}</option>
-										@endforeach
-									</select>
+									<div class="flex-grow-1" style="min-width: 180px;">
+										<x-team-users-select
+											:id="'suggested_responsible_'.$idx"
+											name="responsible_id"
+											:label="__('Responsible')"
+											:selected="$t['responsible_id'] ?? auth()->id()"
+											:compact="true"
+											:showNull="true"
+											:disabled="! $suggestedIncluded"
+										/>
+									</div>
 									<button type="submit" class="btn btn-sm btn-primary" {{ $suggestedIncluded ? '' : 'disabled' }}>
 										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
 									</button>

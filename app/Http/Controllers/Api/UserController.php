@@ -4,26 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\AssignableTeamUsers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class UserController extends Controller
 {
-    /**
-     * Staff-like Spatie roles that can be assigned as project/task responsible.
-     *
-     * @var list<string>
-     */
-    private const ASSIGNABLE_ROLES = [
-        'root',
-        'admin',
-        'collaborator',
-        'editor',
-        'developer',
-        'technical',
-        'employee',
-    ];
-
     /**
      * List users of the authenticated user's current team (for IDONEO app).
      *
@@ -47,24 +33,9 @@ class UserController extends Controller
         }
 
         /** @var Collection<int, User> $teamUsers */
-        $teamUsers = $team->allUsers()->load('roles')->sortBy('name')->values();
-
-        if ($request->boolean('assignable'))
-        {
-            $ownerId = (int) $team->user_id;
-
-            $teamUsers = $teamUsers
-                ->filter(function (User $teamUser) use ($ownerId)
-                {
-                    if ($ownerId > 0 && (int) $teamUser->id === $ownerId)
-                    {
-                        return true;
-                    }
-
-                    return $teamUser->hasAnyRole(self::ASSIGNABLE_ROLES);
-                })
-                ->values();
-        }
+        $teamUsers = $request->boolean('assignable')
+            ? AssignableTeamUsers::forTeam($team)
+            : $team->allUsers()->load('roles')->sortBy('name')->values();
 
         $users = $teamUsers
             ->map(function (User $teamUser)

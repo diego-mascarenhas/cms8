@@ -141,6 +141,56 @@ class Template extends Model implements Editable
         return is_string($value) ? $value : '';
     }
 
+    public function getEditorJsonAttribute(): mixed
+    {
+        return $this->gjs_data['editor_json'] ?? null;
+    }
+
+    /**
+     * Merge html/css/editor_json into gjs_data while preserving other keys.
+     *
+     * @param  array{html?: string|null, css?: string|null, editor_json?: mixed}  $payload
+     */
+    public function mergeGjsData(array $payload): void
+    {
+        $gjs = is_array($this->gjs_data) ? $this->gjs_data : [];
+
+        if (array_key_exists('html', $payload) && $payload['html'] !== null)
+        {
+            $gjs['html'] = (string) $payload['html'];
+        }
+
+        if (array_key_exists('css', $payload) && $payload['css'] !== null)
+        {
+            $gjs['css'] = (string) $payload['css'];
+        }
+
+        if (array_key_exists('editor_json', $payload) && $payload['editor_json'] !== null)
+        {
+            $gjs['editor_json'] = $payload['editor_json'];
+        }
+
+        $this->gjs_data = $gjs;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toApiArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'status_id' => (bool) $this->status_id,
+            'html' => $this->html,
+            'css' => $this->css,
+            'editor_json' => $this->editor_json,
+            'hashed_id' => $this->getHashedId(),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
+        ];
+    }
+
     private function normalizeArrayValue(mixed $value): array
     {
         if (is_array($value))
