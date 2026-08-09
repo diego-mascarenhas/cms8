@@ -53,9 +53,11 @@ These tools help companies **scale operations** and **innovate with structure**:
 
 **CMS8 (Simplicity)** is the modular multi-tenant platform that powers that journey. Built by **IDONEO**, it is the shared backend for Humano-style operations and the foundation other IDONEO products connect to.
 
-### Connected applications (Next.js)
+### Connected applications
 
-Specialized frontends built with **Next.js** connect to CMS8 through its API (Sanctum / team context). They share the same multi-tenant core while focusing on one job each:
+Specialized clients connect to CMS8 through its API (Sanctum / team context). They share the same multi-tenant core while focusing on one job each.
+
+**Web apps (Next.js)**
 
 | App | URL | Role |
 | --- | --- | --- |
@@ -63,6 +65,10 @@ Specialized frontends built with **Next.js** connect to CMS8 through its API (Sa
 | **Projects** | [projects.idoneo.dev](https://projects.idoneo.dev/) | Project and quote workflows |
 | **Ads** | [ads.idoneo.dev](https://ads.idoneo.dev) | Paid campaigns across Google, Meta, LinkedIn, TikTok, and X |
 | **Affiliates** | [affiliates.idoneo.dev](https://affiliates.idoneo.dev) | Referral network, commissions, and partner accounts |
+
+**Mobile app**
+
+There is also a **Humano mobile app** (iOS and Android) that connects to the same CMS8 API, so teams can access core operations on the go.
 
 ## Development
 
