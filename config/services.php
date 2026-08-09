@@ -164,6 +164,10 @@ return [
         'redirect' => env('X_ADS_REDIRECT_URI', rtrim((string) config('app.url'), '/').'/integrations/ad-platforms/x/callback'),
     ],
 
+    'paid_ads' => [
+        'spa_url' => env('PAID_ADS_SPA_URL', 'http://localhost:3003'),
+    ],
+
     'apollo' => [
         'api_key' => env('APOLLO_API_KEY', ''),
     ],

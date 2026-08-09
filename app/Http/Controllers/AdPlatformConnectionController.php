@@ -6,6 +6,7 @@ use App\Enums\AdConnectionStatus;
 use App\Enums\AdPlatform;
 use App\Models\AdPlatformConnection;
 use App\Models\PaidAdCampaign;
+use App\Models\User;
 use App\Services\Ads\AdPlatformGatewayFactory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -75,12 +76,10 @@ class AdPlatformConnectionController extends Controller
 
     public function callback(string $platform, Request $request): RedirectResponse
     {
-        $this->ensureModule();
-
         $adPlatform = AdPlatform::tryFrom($platform);
         if ($adPlatform === null)
         {
-            return redirect()->route('paid-ads.connections')->with('warning', __('Unknown platform.'));
+            return $this->callbackRedirect($adPlatform, null, __('Unknown platform.'), true);
         }
 
         $validated = $request->validate([
@@ -88,18 +87,70 @@ class AdPlatformConnectionController extends Controller
             'state' => ['nullable', 'string'],
         ]);
 
+        $user = auth()->user();
+
         try
         {
-            $connection = $this->gateways->make($adPlatform)->exchangeCode(auth()->user(), $validated['code']);
+            $gateway = $this->gateways->make($adPlatform);
+
+            if ($user === null && ! empty($validated['state']))
+            {
+                $state = $gateway->parseState($validated['state']);
+                $user = User::query()->find($state['user_id']);
+
+                if ($user !== null && $state['team_id'])
+                {
+                    $user->forceFill(['current_team_id' => $state['team_id']])->save();
+                }
+            }
+
+            if ($user === null || ! $user->currentTeam?->hasModule('paid_ads'))
+            {
+                return $this->callbackRedirect($adPlatform, null, __('Could not complete the connection. Sign in and try again.'), true);
+            }
+
+            $connection = $gateway->forTeam($user->currentTeam)->exchangeCode($user, $validated['code']);
         } catch (Throwable $e)
         {
-            return redirect()->route('paid-ads.connections')
-                ->with('warning', __('Could not connect :platform: :error', ['platform' => $adPlatform->label(), 'error' => $e->getMessage()]));
+            return $this->callbackRedirect(
+                $adPlatform,
+                null,
+                __('Could not connect :platform: :error', ['platform' => $adPlatform->label(), 'error' => $e->getMessage()]),
+                true,
+            );
         }
 
-        return redirect()->route('paid-ads.connections')
-            ->with('success', __(':platform connected. Select the ad account to finish.', ['platform' => $adPlatform->label()]))
-            ->with('select_account_connection', $connection->id);
+        return $this->callbackRedirect(
+            $adPlatform,
+            $connection,
+            __(':platform connected. Select the ad account to finish.', ['platform' => $adPlatform->label()]),
+            false,
+        );
+    }
+
+    private function callbackRedirect(?AdPlatform $platform, ?AdPlatformConnection $connection, string $message, bool $isError): RedirectResponse
+    {
+        $spaUrl = rtrim((string) config('services.paid_ads.spa_url', ''), '/');
+        if ($spaUrl !== '' && $platform !== null)
+        {
+            $query = http_build_query(array_filter([
+                $isError ? 'error' : 'connected' => $platform->value,
+                'connection_id' => $connection?->id,
+                'message' => $isError ? $message : null,
+            ]));
+
+            return redirect()->away($spaUrl.'/connections?'.$query);
+        }
+
+        $flashKey = $isError ? 'warning' : 'success';
+        $redirect = redirect()->route('paid-ads.connections')->with($flashKey, $message);
+
+        if ($connection !== null && ! $isError)
+        {
+            $redirect->with('select_account_connection', $connection->id);
+        }
+
+        return $redirect;
     }
 
     public function selectAccount(string $connection, Request $request): RedirectResponse

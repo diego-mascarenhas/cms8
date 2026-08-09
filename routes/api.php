@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BillingController as ApiBillingController;
@@ -18,6 +19,9 @@ use App\Http\Controllers\Api\MailInboxController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationInboxController;
+use App\Http\Controllers\Api\PaidAdAudienceController as ApiPaidAdAudienceController;
+use App\Http\Controllers\Api\PaidAdCampaignController as ApiPaidAdCampaignController;
+use App\Http\Controllers\Api\PaidAdDashboardController as ApiPaidAdDashboardController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
@@ -531,6 +535,28 @@ Route::middleware('auth:sanctum')->group(function ()
     Route::get('affiliates/dashboard', [AffiliateController::class, 'dashboard']);
     Route::post('affiliates/setup-stripe', [AffiliateController::class, 'setupStripe']);
     Route::post('affiliates/invitations', [AffiliateController::class, 'invite']);
+
+    // Paid Ads (idoneo-ads SPA)
+    Route::get('paid-ads/dashboard', [ApiPaidAdDashboardController::class, 'index']);
+    Route::get('paid-ads/lookups', [ApiPaidAdCampaignController::class, 'lookups']);
+    Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
+    Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
+    Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');
+    Route::delete('paid-ads/connections/{id}', [ApiAdPlatformConnectionController::class, 'destroy'])->whereNumber('id');
+    Route::get('paid-ads/audiences', [ApiPaidAdAudienceController::class, 'index']);
+    Route::post('paid-ads/audiences', [ApiPaidAdAudienceController::class, 'store']);
+    Route::get('paid-ads/audiences/{id}', [ApiPaidAdAudienceController::class, 'show'])->whereNumber('id');
+    Route::put('paid-ads/audiences/{id}', [ApiPaidAdAudienceController::class, 'update'])->whereNumber('id');
+    Route::delete('paid-ads/audiences/{id}', [ApiPaidAdAudienceController::class, 'destroy'])->whereNumber('id');
+    Route::get('paid-ads', [ApiPaidAdCampaignController::class, 'index']);
+    Route::post('paid-ads', [ApiPaidAdCampaignController::class, 'store']);
+    Route::get('paid-ads/{id}', [ApiPaidAdCampaignController::class, 'show'])->whereNumber('id');
+    Route::put('paid-ads/{id}', [ApiPaidAdCampaignController::class, 'update'])->whereNumber('id');
+    Route::delete('paid-ads/{id}', [ApiPaidAdCampaignController::class, 'destroy'])->whereNumber('id');
+    Route::post('paid-ads/{id}/publish', [ApiPaidAdCampaignController::class, 'publish'])->whereNumber('id');
+    Route::post('paid-ads/{id}/pause', [ApiPaidAdCampaignController::class, 'pause'])->whereNumber('id');
+    Route::post('paid-ads/{id}/resume', [ApiPaidAdCampaignController::class, 'resume'])->whereNumber('id');
+    Route::post('paid-ads/{id}/sync-metrics', [ApiPaidAdCampaignController::class, 'syncMetrics'])->whereNumber('id');
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);

@@ -254,4 +254,24 @@ abstract class AbstractAdPlatformGateway implements AdPlatformGateway
             'nonce' => (string) str()->uuid(),
         ]));
     }
+
+    /**
+     * @return array{user_id: int, team_id: int|null, platform: string, nonce: string}
+     */
+    public function parseState(string $state): array
+    {
+        $decoded = json_decode(decrypt($state), true);
+
+        if (! is_array($decoded) || ! isset($decoded['user_id']))
+        {
+            throw new RuntimeException('Invalid OAuth state.');
+        }
+
+        return [
+            'user_id' => (int) $decoded['user_id'],
+            'team_id' => isset($decoded['team_id']) ? (int) $decoded['team_id'] : null,
+            'platform' => (string) ($decoded['platform'] ?? $this->platform()->value),
+            'nonce' => (string) ($decoded['nonce'] ?? ''),
+        ];
+    }
 }
