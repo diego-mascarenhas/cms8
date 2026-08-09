@@ -1,65 +1,110 @@
 ## About CMS8 (Simplicity)
 
-CMS8, also known as "Simplicity", is designed to provide an intuitive and streamlined content management experience. It focuses on ease of use and efficiency, making it ideal for users who require a powerful yet straightforward platform for managing their digital content.
+CMS8 started as a CMS and hosting toolkit. It has evolved into **Simplicity**: a modular, multi-tenant platform for running sales, billing, marketing, and operations in one place.
 
-- [The PHP Framework for Web Artisans](https://laravel.com).
-- [Build Scalable, High-Performance Web Applications](https://pixinvent.com/vuexy-bootstrap-html-admin-template).
-- [Spatie Roles and Permissions](https://spatie.be/docs/laravel-permission/v5/introduction) for robust role and permission management.
-- [GrapesJS, Web Builder Framework](https://grapesjs.com).
-- [Twilio Messaging](https://www.twilio.com/docs/sms) for integrating SMS and messaging services.
-- [WHM/cPanel Management](https://documentation.cpanel.net) for managing hosting services and server configurations.
-- [vCenter (VMware)](https://www.vmware.com/products/cloud-infrastructure/vcenter) Integration for managing virtualized environments and resources.
-- [Laravel Sail & Docker](https://demos.pixinvent.com/vuexy-html-admin-template/documentation/laravel-sail-docker.html).
+**What defines the product today**
 
-CMS8 is accessible, powerful, and provides tools required for large, robust applications.
+- **Multi-tenant** — Jetstream teams with isolation and shared workspaces
+- **Operations / CRM** — contacts, clients, projects, opportunities, and tasks
+- **Billing** — Stripe / Cashier for subscriptions, invoices, and payments
+- **Marketing & ads** — campaigns plus Meta and Google Ads integrations
+- **Automation + AI** — prompts, funnels, and Laravel AI-powered workflows
+- **Lightweight web** — landing pages and CMS with GrapesJS
+- **Communications** — Twilio / WhatsApp and mailer
+
+CMS8 is accessible, powerful, and built for teams that need CRM, billing, marketing, and automation in a single application.
+
+## Built by IDONEO
+
+**[IDONEO](https://www.idoneo.dev)** is the software studio behind CMS8 / Simplicity — the team that designed and developed this platform.
+
+<p align="center">
+  <a href="https://www.idoneo.dev">
+    <img src="public/assets/idoneo-logo.svg" alt="IDONEO" width="180">
+  </a>
+</p>
+
+These tools help companies **scale operations** and **innovate with structure**: run the business day to day, then turn innovation into a repeatable system.
+
+<p align="center">
+  <a href="https://humano.app">
+    <img src="public/assets/humano-logo.png" alt="Humano" height="56">
+  </a>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <a href="https://www.fanyion.com">
+    <img src="public/assets/fanyion-logo.svg" alt="Fanyion" height="56">
+  </a>
+</p>
+
+### Humano
+
+**[Humano](https://humano.app)** is the technology consulting brand and the operating layer for growing companies. It brings together CRM, billing, marketing, and automation so teams can run day-to-day work in one place: contacts and opportunities, subscriptions and invoices, campaigns and messaging, plus workflows that keep operations moving as the business scales.
+
+### Fanyion
+
+**[Fanyion](https://www.fanyion.com)** is the organizational innovation system. It turns innovation from isolated initiatives into a managed practice—with clear roles, decision flows, and cross-functional participation—so ideas can be captured, evaluated, and driven to impact across the company.
+
+### CMS8 (Simplicity)
+
+**CMS8 (Simplicity)** is the modular multi-tenant platform that powers that journey. Built by **IDONEO**, it is the shared backend for Humano-style operations and the foundation other IDONEO products connect to.
+
+### Connected applications (Next.js)
+
+Specialized frontends built with **Next.js** connect to CMS8 through its API (Sanctum / team context). They share the same multi-tenant core while focusing on one job each:
+
+| App | URL | Role |
+| --- | --- | --- |
+| **Mailer** | [mailer.idoneo.dev](https://mailer.idoneo.dev) | Write, launch, and track outbound messages |
+| **Projects** | [projects.idoneo.dev](https://projects.idoneo.dev/) | Project and quote workflows |
+| **Ads** | [ads.idoneo.dev](https://ads.idoneo.dev) | Paid campaigns across Google, Meta, LinkedIn, TikTok, and X |
+| **Affiliates** | [affiliates.idoneo.dev](https://affiliates.idoneo.dev) | Referral network, commissions, and partner accounts |
 
 ## Development
 
-Clone the repository
+### Local setup
 
 ```sh
 git clone git@github.com:diego-mascarenhas/cms8.git
 cd cms8
 composer install
-```
-
-Configure environment variables
-
-```sh
 cp .env.example .env
-vi .env
-```
-
-Generating Application Key and Running Migrations
-
-```sh
 php artisan key:generate
 php artisan migrate
-```
-
-Install all the necessary dependencies (`yarn` is highly recommended)
-
-```sh
-rm -rf node_modules
-rm -rf package-lock.json
-rm -rf yarn.lock
-
-npm cache clean --force
-
-npm install --legacy-peer-deps
-
-yarn
-
+npm install
 npm run dev
 ```
 
-Start the dev server
+Serve the app with [Laravel Herd](https://herd.laravel.com) (recommended) or:
 
 ```sh
 php artisan serve
 ```
 
-Once the development server is started you should be able to reach the demo page (eg. `http://localhost:8080`)
+### Production deployment (Laravel Forge)
+
+Production deploys run on **Laravel Forge** with zero-downtime releases (`$CREATE_RELEASE` / `$ACTIVATE_RELEASE`):
+
+1. Create a new release and install PHP dependencies (`composer install --no-dev`)
+2. Build frontend assets (`npm ci && npm run build`)
+3. Optimize Laravel, link storage, and run migrations
+4. Activate the release (atomic symlink switch)
+5. Restart queue workers (and WhatsApp/PM2 when applicable)
+
+Full script and notes: [`docs/FORGE-DEPLOYMENT.md`](docs/FORGE-DEPLOYMENT.md).
+
+### Recommended hosting
+
+You can run automatic Forge deployments on a VPS from **REVISION ALPHA**:
+
+<p align="center">
+  <a href="https://revisionalpha.com/servidores-dedicados">
+    <img src="public/assets/revision-alpha-logo.svg" alt="REVISION ALPHA" width="220">
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://revisionalpha.com/servidores-dedicados">Dedicated servers &amp; VPS — REVISION ALPHA</a>
+</p>
 
 ## API Documentation
 
