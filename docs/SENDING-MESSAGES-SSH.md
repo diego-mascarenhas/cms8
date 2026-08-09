@@ -430,8 +430,8 @@ sudo supervisorctl start laravel-worker:*
 ## Related Documentation
 
 - [Email Team Settings](EMAIL-TEAM-SETTINGS.md)
-- [Queue Configuration](../README-queues.md)
-- [Message System](Newsletter_Sistema_Optimizado.md)
+- [Queue Configuration](QUEUES.md)
+- [Message System](NEWSLETTER-OPTIMIZED-SYSTEM.md)
 
 ---
 

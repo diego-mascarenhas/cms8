@@ -1,37 +1,39 @@
 # SEO & Meta Tags - Social Media Previews
 
-## 📋 Resumen de Cambios
+## Change summary
 
-Se han actualizado todas las meta descripciones del proyecto para mejorar la presentación en redes sociales (WhatsApp, Facebook, Twitter, LinkedIn, etc.) y SEO.
+All project meta descriptions were updated to improve presentation on social networks (WhatsApp, Facebook, Twitter, LinkedIn, etc.) and SEO.
 
 ---
 
-## ✅ Descripción Principal del Sitio
+## Main site description
 
-**Archivo**: `config/variables.php`
+**File**: `config/variables.php`
 
-### Antes:
+### Before:
 ```
 'templateDescription' => 'Start your development with a Dashboard for Bootstrap 5'
 ```
 
-### Ahora:
+### Now:
+*(Spanish locale app string example — English equivalent: "Complete professional CRM. Manage contacts, projects, billing, and communications on one platform.")*
 ```
 'templateDescription' => 'Sistema de gestión de relaciones con clientes (CRM) completo y profesional. Gestiona contactos, proyectos, facturación y comunicaciones en una sola plataforma.'
 ```
 
-**Keywords Actualizados:**
+**Updated keywords:**
+*(Spanish locale app string example — English equivalent: "crm, customer management, contacts, projects, billing, laravel, dashboard")*
 ```
 'templateKeyword' => 'crm, gestión de clientes, contactos, proyectos, facturación, laravel, dashboard'
 ```
 
 ---
 
-## 🌐 Meta Tags Open Graph (WhatsApp, Facebook)
+## Open Graph meta tags (WhatsApp, Facebook)
 
-**Archivo**: `resources/views/layouts/commonMaster.blade.php`
+**File**: `resources/views/layouts/commonMaster.blade.php`
 
-Se agregaron las siguientes meta tags para mejorar las previsualizaciones al compartir URLs:
+The following meta tags were added to improve previews when sharing URLs:
 
 ```html
 <!-- Open Graph / Facebook / WhatsApp -->
@@ -43,19 +45,19 @@ Se agregaron las siguientes meta tags para mejorar las previsualizaciones al com
 <meta property="og:site_name" content="{{ config('variables.templateName') }}" />
 ```
 
-**¿Qué hace cada tag?**
-- `og:type`: Define el tipo de contenido (website)
-- `og:url`: URL actual de la página
-- `og:title`: Título que aparecerá en el preview
-- `og:description`: Descripción que aparecerá en el preview
-- `og:image`: Imagen/logo que aparecerá en el preview
-- `og:site_name`: Nombre del sitio
+**What each tag does:**
+- `og:type`: Content type (website)
+- `og:url`: Current page URL
+- `og:title`: Title shown in the preview
+- `og:description`: Description shown in the preview
+- `og:image`: Image/logo shown in the preview
+- `og:site_name`: Site name
 
 ---
 
-## 🐦 Twitter Card
+## Twitter Card
 
-Se agregaron meta tags específicas para Twitter:
+Twitter-specific meta tags were added:
 
 ```html
 <!-- Twitter Card -->
@@ -69,116 +71,128 @@ Se agregaron meta tags específicas para Twitter:
 
 ---
 
-## 🚨 Páginas de Error
+## Error pages
 
-### 404 - Página No Encontrada
-**Archivo**: `resources/views/errors/404.blade.php`
+*(The "Before" / "Now" strings below are Spanish locale app content as stored in the views.)*
 
-**Antes**: `"Estamos trabajando en esta funcionalidad"`
-**Ahora**: `"Página no encontrada - La página que buscas no existe o ha sido movida."`
+### 404 - Page not found
+**File**: `resources/views/errors/404.blade.php`
 
-### 403 - Acceso Denegado
-**Archivo**: `resources/views/errors/403.blade.php`
+**Before**: `"Estamos trabajando en esta funcionalidad"`  
+*(English: "We are working on this feature")*
 
-**Antes**: `"No tienes permisos para acceder a esta página"`
-**Ahora**: `"Acceso no autorizado - No tienes los permisos necesarios para acceder a esta página."`
+**Now**: `"Página no encontrada - La página que buscas no existe o ha sido movida."`  
+*(English: "Page not found - The page you are looking for does not exist or has been moved.")*
 
-### 503 - Mantenimiento
-**Archivo**: `resources/views/errors/503.blade.php`
+### 403 - Access denied
+**File**: `resources/views/errors/403.blade.php`
 
-**Antes**: `"Sitio en mantenimiento"`
-**Ahora**: `"Mantenimiento programado - Estamos mejorando nuestros servicios. Volveremos pronto."`
+**Before**: `"No tienes permisos para acceder a esta página"`  
+*(English: "You do not have permission to access this page")*
+
+**Now**: `"Acceso no autorizado - No tienes los permisos necesarios para acceder a esta página."`  
+*(English: "Unauthorized access - You do not have the required permissions to access this page.")*
+
+### 503 - Maintenance
+**File**: `resources/views/errors/503.blade.php`
+
+**Before**: `"Sitio en mantenimiento"`  
+*(English: "Site under maintenance")*
+
+**Now**: `"Mantenimiento programado - Estamos mejorando nuestros servicios. Volveremos pronto."`  
+*(English: "Scheduled maintenance - We are improving our services. We will be back soon.")*
 
 ---
 
-## 🖼️ Imagen para Previsualizaciones
+## Preview image
 
-**Actual**: `assets/logo.png`
+**Current**: `assets/logo.png`
 
-### Recomendaciones:
-Para mejorar las previsualizaciones en redes sociales, considera crear una imagen específica:
+### Recommendations:
+To improve social media previews, consider creating a dedicated image:
 
-**Dimensiones recomendadas:**
+**Recommended dimensions:**
 - **WhatsApp/Facebook**: 1200 x 630 px
 - **Twitter**: 1200 x 675 px (16:9)
 - **LinkedIn**: 1200 x 627 px
 
-**Ubicación sugerida**: `public/assets/img/og-image.png`
+**Suggested location**: `public/assets/img/og-image.png`
 
-**Actualizar en**: `config/variables.php`
+**Update in**: `config/variables.php`
 ```php
 'ogImage' => 'assets/img/og-image.png',
 ```
 
-Y en `commonMaster.blade.php`:
+And in `commonMaster.blade.php`:
 ```html
 <meta property="og:image" content="{{ asset(config('variables.ogImage', 'assets/logo.png')) }}" />
 ```
 
 ---
 
-## 🧪 Cómo Probar las Previsualizaciones
+## How to test previews
 
-### 1. **WhatsApp**
-- Copia la URL de tu sitio
-- Pégala en un chat de WhatsApp
-- Verás el preview antes de enviar
+### 1. WhatsApp
+- Copy your site URL
+- Paste it into a WhatsApp chat
+- You will see the preview before sending
 
-### 2. **Facebook Debugger**
+### 2. Facebook Debugger
 https://developers.facebook.com/tools/debug/
 
-### 3. **Twitter Card Validator**
+### 3. Twitter Card Validator
 https://cards-dev.twitter.com/validator
 
-### 4. **LinkedIn Post Inspector**
+### 4. LinkedIn Post Inspector
 https://www.linkedin.com/post-inspector/
 
 ---
 
-## 📝 Estructura SEO Completa
+## Full SEO structure
 
-Cada página ahora incluye:
+Each page now includes:
 
-✅ **Title**: Dinámico según la página
-✅ **Description**: Descripción del CRM
-✅ **Keywords**: Palabras clave relevantes
-✅ **Canonical**: URL canónica
-✅ **Favicon**: Logo del proyecto
-✅ **Open Graph**: Para redes sociales
-✅ **Twitter Card**: Para Twitter
-✅ **CSRF Token**: Seguridad Laravel
+- **Title**: Dynamic per page
+- **Description**: CRM description
+- **Keywords**: Relevant keywords
+- **Canonical**: Canonical URL
+- **Favicon**: Project logo
+- **Open Graph**: For social networks
+- **Twitter Card**: For Twitter
+- **CSRF Token**: Laravel security
 
 ---
 
-## 🎯 Resultado Esperado
+## Expected result
 
-Cuando compartas una URL de tu aplicación por WhatsApp, ahora verás:
+When you share an application URL on WhatsApp, you will now see:
+
+*(Preview text below reflects Spanish locale content; English equivalent: "Page Title | HUMANO" and the CRM description.)*
 
 ```
 ┌────────────────────────────────────┐
 │  [LOGO]                            │
 │                                    │
-│  Título de la Página | HUMANO     │
+│  Page Title | HUMANO               │
 │                                    │
-│  Sistema de gestión de relaciones │
-│  con clientes (CRM) completo y    │
-│  profesional. Gestiona contactos, │
-│  proyectos, facturación y...      │
+│  Complete professional CRM.        │
+│  Manage contacts, projects,        │
+│  billing, and communications...    │
 │                                    │
 │  humano.test                       │
 └────────────────────────────────────┘
 ```
 
-En lugar de:
+Instead of:
 ```
 "Start your development with a Dashboard for Bootstrap 5"
 ```
 
 ---
 
-## 🔄 Caché
+## Cache
 
-Después de estos cambios, ejecuta:
+After these changes, run:
 
 ```bash
 php artisan config:clear
@@ -186,36 +200,36 @@ php artisan view:clear
 php artisan cache:clear
 ```
 
-**Nota importante**: Las redes sociales cachean las previsualizaciones. Si compartes una URL antes de estos cambios, usa los debuggers mencionados arriba para forzar la actualización del caché.
+**Important note**: Social networks cache previews. If you shared a URL before these changes, use the debuggers listed above to force a cache refresh.
 
 ---
 
-## 📊 Beneficios
+## Benefits
 
-✅ **Mejor SEO**: Descripciones claras y keywords relevantes
-✅ **Previsualizaciones profesionales**: En WhatsApp, Facebook, Twitter, LinkedIn
-✅ **Mayor CTR**: Previews atractivos generan más clics
-✅ **Branding consistente**: Logo y descripción unificados
-✅ **Experiencia de usuario mejorada**: Información clara desde el preview
+- **Better SEO**: Clear descriptions and relevant keywords
+- **Professional previews**: On WhatsApp, Facebook, Twitter, LinkedIn
+- **Higher CTR**: Attractive previews drive more clicks
+- **Consistent branding**: Unified logo and description
+- **Improved user experience**: Clear information from the preview
 
 ---
 
-## 🔧 Mantenimiento
+## Maintenance
 
-### Para actualizar la descripción general:
-Edita: `config/variables.php` → `templateDescription`
+### To update the general description:
+Edit: `config/variables.php` → `templateDescription`
 
-### Para actualizar la imagen de preview:
-Reemplaza: `public/assets/logo.png`
-O usa una imagen dedicada en `public/assets/img/og-image.png`
+### To update the preview image:
+Replace: `public/assets/logo.png`
+Or use a dedicated image at `public/assets/img/og-image.png`
 
-### Para páginas específicas con descripción personalizada:
-En tu blade, antes del `@extends`:
+### For pages with a custom description:
+In your Blade view, before `@extends`:
 ```blade
-@section('metaDescription', 'Descripción personalizada para esta página')
+@section('metaDescription', 'Custom description for this page')
 ```
 
-Y actualiza `commonMaster.blade.php` para soportarlo:
+And update `commonMaster.blade.php` to support it:
 ```html
 <meta name="description" content="@yield('metaDescription', config('variables.templateDescription'))" />
 ```
