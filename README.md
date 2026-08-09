@@ -30,7 +30,7 @@ These tools help companies **scale operations** and **innovate with structure**:
 
 <p align="center">
   <a href="https://humano.app">
-    <img src="public/assets/humano-logo.png" alt="Humano" height="56">
+    <img src="public/assets/humano-logo.png" alt="Humano" width="173">
   </a>
 </p>
 
@@ -42,7 +42,7 @@ These tools help companies **scale operations** and **innovate with structure**:
   <a href="https://www.fanyion.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="public/assets/fanyion-logo-dark.svg">
-      <img src="public/assets/fanyion-logo.svg" alt="Fanyion" height="56">
+      <img src="public/assets/fanyion-logo.svg" alt="Fanyion" width="217">
     </picture>
   </a>
 </p>
