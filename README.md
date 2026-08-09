@@ -42,7 +42,7 @@ These tools help companies **scale operations** and **innovate with structure**:
   <a href="https://www.fanyion.com">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="public/assets/fanyion-logo-dark.svg">
-      <img src="public/assets/fanyion-logo.svg" alt="Fanyion" width="217">
+      <img src="public/assets/fanyion-logo.svg" alt="Fanyion" width="190">
     </picture>
   </a>
 </p>
