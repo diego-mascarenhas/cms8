@@ -1,25 +1,25 @@
-# Colas (Queues) de Humano
+# Humano Queues
 
-Guía de colas, `.env`, workers en desarrollo/producción y recuperación de fallos.
+Guide to queues, `.env` settings, workers in development/production, and failure recovery.
 
-## 1) Colas por tipo
+## 1) Queues by type
 
-### Correo (worker dedicado)
+### Email (dedicated worker)
 
-| Cola | Job | Uso |
+| Queue | Job | Usage |
 |------|-----|-----|
-| `task-communications` | `SendTaskCommunication` | Emails desde el Kanban |
-| `notifications` | `SendNotificationJob` | Notificaciones a contactos |
-| `mailer` | `SendMessageCampaignJob` | Mensajes, reenvíos, pruebas |
-| `campaign` | `SendMessageCampaignJob` | Envíos masivos de campaña |
+| `task-communications` | `SendTaskCommunication` | Emails from the Kanban |
+| `notifications` | `SendNotificationJob` | Notifications to contacts |
+| `mailer` | `SendMessageCampaignJob` | Messages, resends, tests |
+| `campaign` | `SendMessageCampaignJob` | Bulk campaign sends |
 
-Configuración de colas de campaña: `config/message_delivery_dispatch.php`.
+Campaign queue configuration: `config/message_delivery_dispatch.php`.
 
-### General (otro worker)
+### General (separate worker)
 
-| Cola | Job / uso |
+| Queue | Job / usage |
 |------|-----------|
-| `default` | Jobs sin cola explícita |
+| `default` | Jobs without an explicit queue |
 | `domain-info` | `UpdateDomainInfo`, `UpdateServerDomainInfo` |
 | `domain-updates` | `UpdateDomainSiteType` |
 | `domain-version` | `UpdateDomainPhpVersion` |
@@ -27,11 +27,11 @@ Configuración de colas de campaña: `config/message_delivery_dispatch.php`.
 | `whm-tests` | `WhmServerTest` |
 | `ovh-sync` | `OvhServiceSync` |
 
-## 2) Requisitos previos
+## 2) Prerequisites
 
-Migraciones `jobs` y `failed_jobs` ejecutadas.
+`jobs` and `failed_jobs` migrations must have been run.
 
-## 3) Configuración `.env`
+## 3) `.env` configuration
 
 ```env
 QUEUE_CONNECTION=redis
@@ -49,25 +49,25 @@ MAIL_FROM_NAME="Humano"
 
 ## 4) Workers
 
-### Desarrollo (dos terminales)
+### Development (two terminals)
 
 ```bash
-# Correo
+# Email
 php artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120
 
-# Resto
+# Everything else
 php artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120
 ```
 
-### Producción / Forge (dos daemons)
+### Production / Forge (two daemons)
 
-Ejemplos listos para copiar en Forge:
+Ready-to-copy examples for Forge:
 
 - `deploy/supervisor/forge-queue-email.conf.example`
 - `deploy/supervisor/forge-queue-general.conf.example`
 - `deploy/supervisor/README.md`
 
-**Daemon 1 — general** (el que ya tienes, actualizado):
+**Daemon 1 — general** (the one you already have, updated):
 
 ```ini
 command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
@@ -75,7 +75,7 @@ directory=/home/forge/staging.humano.app
 numprocs=2
 ```
 
-**Daemon 2 — email** (nuevo en Forge → Queue → New Worker):
+**Daemon 2 — email** (new in Forge → Queue → New Worker):
 
 ```ini
 command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
@@ -83,17 +83,17 @@ directory=/home/forge/staging.humano.app
 numprocs=1
 ```
 
-Quita `--daemon` y `--quiet` si los tenías; Supervisor ya mantiene el proceso vivo.
+Remove `--daemon` and `--quiet` if you had them; Supervisor already keeps the process alive.
 
-Tras cada deploy: `php artisan queue:restart`.
+After every deploy: `php artisan queue:restart`.
 
-## 5) Despliegue (checklist)
+## 5) Deployment checklist
 
-1. `.env` con `QUEUE_CONNECTION=redis` y mail configurado.
-2. Dos daemons activos (general + email).
-3. `php artisan queue:restart` en el deploy script.
+1. `.env` with `QUEUE_CONNECTION=redis` and mail configured.
+2. Two active daemons (general + email).
+3. `php artisan queue:restart` in the deploy script.
 
-## 6) Monitoreo y recuperación
+## 6) Monitoring and recovery
 
 ```bash
 php artisan queue:failed
@@ -104,10 +104,10 @@ tail -f storage/logs/queue-email.log
 tail -f storage/logs/laravel.log
 ```
 
-## 7) Prueba rápida
+## 7) Quick test
 
-1. Envía una comunicación desde una tarea (cola `task-communications`).
-2. O encola campaña: `php artisan messages:send-pending`.
-3. Comprueba `queue-email.log` o logs de Laravel.
+1. Send a communication from a task (`task-communications` queue).
+2. Or queue a campaign: `php artisan messages:send-pending`.
+3. Check `queue-email.log` or Laravel logs.
 
-Para envíos masivos con rate limit, mantén `numprocs=1` en el worker de email; el jitter al encolar está en `MessageDeliveryDispatcher`.
+For bulk sends with rate limiting, keep `numprocs=1` on the email worker; enqueue jitter is handled in `MessageDeliveryDispatcher`.

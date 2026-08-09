@@ -1,321 +1,321 @@
-# 📧 Newsletter System - Sistema Optimizado de Envío Masivo
+# Newsletter System — Optimized Bulk Sending
 
-## 🎯 **Resumen Ejecutivo**
+## Executive summary
 
-Sistema de Newsletter completamente optimizado que permite envío masivo eficiente con control granular por campañas. Incluye comandos personalizados para envío inmediato y recálculo de programación.
+Fully optimized newsletter system for efficient bulk sending with granular campaign control. Includes custom commands for immediate sending and schedule recalculation.
 
-### **Mejoras Implementadas:**
-- ✅ **60x más velocidad**: De 250 emails/12h a 1,200+ emails/hora
-- ✅ **Envío inmediato**: Comando para limpiar cola sin delays
-- ✅ **Control granular**: Filtro por mensaje específico
-- ✅ **Recálculo automático**: Reprogramación con nueva configuración
-- ✅ **Queue asíncrona**: Redis en lugar de sync
+### Implemented improvements:
+- **60x faster**: From 250 emails/12h to 1,200+ emails/hour
+- **Immediate send**: Command to clear the queue without delays
+- **Granular control**: Filter by specific message
+- **Automatic recalculation**: Reschedule with the new configuration
+- **Async queue**: Redis instead of sync
 
 ---
 
-## 🚀 **Comandos Principales**
+## Main commands
 
-### **1. Envío Inmediato (`emails:send-all-now`)**
+### 1. Immediate send (`emails:send-all-now`)
 
-Envía todos los emails pendientes inmediatamente sin delays.
+Sends all pending emails immediately without delays.
 
-#### **Sintaxis:**
+#### Syntax:
 ```bash
 php artisan emails:send-all-now [--dry-run] [--limit=X] [--message-id=X]
 ```
 
-#### **Opciones:**
-- `--dry-run`: Muestra qué se enviaría sin enviar
-- `--limit=X`: Máximo número de emails (default: 1000)
-- `--message-id=X`: Solo emails de una campaña específica
+#### Options:
+- `--dry-run`: Shows what would be sent without sending
+- `--limit=X`: Maximum number of emails (default: 1000)
+- `--message-id=X`: Only emails from a specific campaign
 
-#### **Ejemplos de Uso:**
+#### Usage examples:
 ```bash
-# Ver qué hay pendiente (sin enviar)
+# See what is pending (without sending)
 php artisan emails:send-all-now --dry-run
 
-# Ver solo emails del Mensaje ID 3
+# See only emails for Message ID 3
 php artisan emails:send-all-now --message-id=3 --dry-run
 
-# Enviar TODOS los emails pendientes INMEDIATAMENTE
+# Send ALL pending emails IMMEDIATELY
 php artisan emails:send-all-now
 
-# Enviar solo emails del Mensaje ID 3
+# Send only emails for Message ID 3
 php artisan emails:send-all-now --message-id=3
 
-# Enviar máximo 100 emails por vez
+# Send a maximum of 100 emails at a time
 php artisan emails:send-all-now --limit=100
 ```
 
-### **2. Recálculo de Programación (`emails:recalculate-times`)**
+### 2. Schedule recalculation (`emails:recalculate-times`)
 
-Recalcula los tiempos de envío usando la configuración optimizada actual.
+Recalculates send times using the current optimized configuration.
 
-#### **Sintaxis:**
+#### Syntax:
 ```bash
 php artisan emails:recalculate-times [--dry-run] [--limit=X] [--message-id=X]
 ```
 
-#### **Ejemplos de Uso:**
+#### Usage examples:
 ```bash
-# Ver qué se recalcularía (sin cambios)
+# See what would be recalculated (no changes)
 php artisan emails:recalculate-times --dry-run
 
-# Recalcular solo Mensaje ID 3
+# Recalculate only Message ID 3
 php artisan emails:recalculate-times --message-id=3
 
-# Recalcular TODOS los deliveries pendientes
+# Recalculate ALL pending deliveries
 php artisan emails:recalculate-times
 
-# Recalcular por lotes (100 por vez)
+# Recalculate in batches (100 at a time)
 php artisan emails:recalculate-times --limit=100
 ```
 
 ---
 
-## ⚙️ **Configuración Optimizada**
+## Optimized configuration
 
-### **Variables de Entorno (.env):**
+### Environment variables (.env):
 ```env
-# Queue System (CRÍTICO para velocidad)
-QUEUE_CONNECTION=redis              # ❌ Antes: sync
+# Queue System (CRITICAL for speed)
+QUEUE_CONNECTION=redis              # ❌ Before: sync
 
-# Email Delays (Optimizado)
-EMAIL_DELAY_BASE_MINUTES=1          # ❌ Antes: 5 minutos
-EMAIL_DELAY_RANDOM_SECONDS=30       # ❌ Antes: 60 segundos
+# Email Delays (Optimized)
+EMAIL_DELAY_BASE_MINUTES=1          # ❌ Before: 5 minutes
+EMAIL_DELAY_RANDOM_SECONDS=30       # ❌ Before: 60 seconds
 
-# Batch Processing (Aumentado)
-EMAIL_DELIVERIES_PER_CAMPAIGN_RUN=200   # ❌ Antes: 50
-EMAIL_DELIVERIES_PER_SEND_RUN=500       # ❌ Antes: 100
+# Batch Processing (Increased)
+EMAIL_DELIVERIES_PER_CAMPAIGN_RUN=200   # ❌ Before: 50
+EMAIL_DELIVERIES_PER_SEND_RUN=500       # ❌ Before: 100
 ```
 
-### **Impacto de la Configuración:**
-| Métrica | Configuración Anterior | Configuración Optimizada | Mejora |
-|---------|----------------------|--------------------------|--------|
-| **Queue** | `sync` (bloqueante) | `redis` (asíncrono) | **∞x faster** |
-| **Delay base** | 5 minutos | 1 minuto | **5x faster** |
-| **Random delay** | 0-60 segundos | 0-30 segundos | **2x faster** |
+### Configuration impact:
+| Metric | Previous configuration | Optimized configuration | Improvement |
+|--------|------------------------|-------------------------|-------------|
+| **Queue** | `sync` (blocking) | `redis` (async) | **∞x faster** |
+| **Base delay** | 5 minutes | 1 minute | **5x faster** |
+| **Random delay** | 0–60 seconds | 0–30 seconds | **2x faster** |
 | **Batch size** | 50 emails/run | 200 emails/run | **4x bigger** |
 | **Send limit** | 100 emails/run | 500 emails/run | **5x bigger** |
-| **Throughput** | ~21 emails/hora | **~1,200+ emails/hora** | **60x faster** |
+| **Throughput** | ~21 emails/hour | **~1,200+ emails/hour** | **60x faster** |
 
 ---
 
-## 🔄 **Flujo de Trabajo Recomendado**
+## Recommended workflow
 
-### **Escenario 1: Nueva Campaña**
+### Scenario 1: New campaign
 ```bash
-# 1. Crear campaña en la UI
-# 2. Verificar deliveries creados
+# 1. Create the campaign in the UI
+# 2. Verify created deliveries
 php artisan emails:send-all-now --message-id=3 --dry-run
 
-# 3. Enviar toda la campaña
+# 3. Send the full campaign
 php artisan emails:send-all-now --message-id=3
 ```
 
-### **Escenario 2: Campaña con Delays Antiguos**
+### Scenario 2: Campaign with old delays
 ```bash
-# 1. Verificar deliveries programados para el futuro
+# 1. Verify deliveries scheduled for the future
 php artisan emails:recalculate-times --message-id=3 --dry-run
 
-# 2. Recalcular con nueva configuración
+# 2. Recalculate with the new configuration
 php artisan emails:recalculate-times --message-id=3
 
-# 3. Los emails se enviarán automáticamente con el worker
+# 3. Emails will send automatically with the worker
 ```
 
-### **Escenario 3: Limpiar Cola Completa**
+### Scenario 3: Clear the full queue
 ```bash
-# 1. Ver cuántos hay pendientes
+# 1. See how many are pending
 php artisan emails:send-all-now --dry-run
 
-# 2. Enviar todos inmediatamente
+# 2. Send all immediately
 php artisan emails:send-all-now
 ```
 
 ---
 
-## 📊 **Monitoreo y Diagnóstico**
+## Monitoring and diagnostics
 
-### **Verificar Estado del Sistema:**
+### Check system status:
 ```bash
-# Ver deliveries pendientes
+# View pending deliveries
 php artisan tinker --execute="echo App\Models\MessageDelivery::whereNull('sent_at')->where('status_id', 1)->count();"
 
-# Ver deliveries programados para futuro
+# View deliveries scheduled for the future
 php artisan tinker --execute="echo App\Models\MessageDelivery::where('sent_at', '>', now())->where('status_id', 1)->count();"
 
-# Ver estado de queue workers
+# View queue worker status
 ps aux | grep 'queue:work'
 
-# Verificar Redis
+# Verify Redis
 redis-cli ping
 ```
 
-### **Comandos de Diagnóstico:**
+### Diagnostic commands:
 ```bash
-# Ver jobs fallidos
+# View failed jobs
 php artisan queue:failed
 
-# Limpiar cache de configuración
+# Clear configuration cache
 php artisan config:clear
 
-# Procesar cola manualmente (una vez)
+# Process the queue manually (once)
 php artisan queue:work --once
 ```
 
 ---
 
-## 🚨 **Solución de Problemas**
+## Troubleshooting
 
-### **Problema: Emails No Se Envían**
-**Causas Posibles:**
-1. Queue worker detenido
-2. Deliveries programados para el futuro
-3. Configuración de Redis incorrecta
+### Problem: Emails are not sending
+**Possible causes:**
+1. Queue worker stopped
+2. Deliveries scheduled for the future
+3. Incorrect Redis configuration
 
-**Solución:**
+**Solution:**
 ```bash
-# Verificar workers
+# Verify workers
 ps aux | grep queue:work
 
-# Recalcular tiempos si están en el futuro
+# Recalculate times if they are in the future
 php artisan emails:recalculate-times
 
-# Envío inmediato como último recurso
+# Immediate send as a last resort
 php artisan emails:send-all-now
 ```
 
-### **Problema: Velocidad Lenta**
-**Verificar:**
-1. `QUEUE_CONNECTION=redis` (no sync)
-2. Configuración de delays optimizada
-3. Worker funcionando correctamente
+### Problem: Slow speed
+**Check:**
+1. `QUEUE_CONNECTION=redis` (not sync)
+2. Optimized delay configuration
+3. Worker running correctly
 
-### **Problema: Deliveries Programados Incorrectamente**
-**Solución:**
+### Problem: Deliveries scheduled incorrectly
+**Solution:**
 ```bash
-# Siempre recalcular después de cambiar configuración
+# Always recalculate after changing configuration
 php artisan emails:recalculate-times
 ```
 
 ---
 
-## 🎯 **Casos de Uso Específicos**
+## Specific use cases
 
-### **Envío Masivo Inmediato:**
+### Immediate bulk send:
 ```bash
-# Para emergencias o campañas urgentes
+# For emergencies or urgent campaigns
 php artisan emails:send-all-now --message-id=3
 ```
 
-### **Envío Controlado por Lotes:**
+### Controlled batch sending:
 ```bash
-# Enviar de a 100 para no saturar
+# Send 100 at a time to avoid overload
 php artisan emails:send-all-now --limit=100
 ```
 
-### **Recálculo Después de Optimización:**
+### Recalculation after optimization:
 ```bash
-# Siempre hacer esto después de cambiar delays
+# Always do this after changing delays
 php artisan emails:recalculate-times
 ```
 
-### **Testing y Validación:**
+### Testing and validation:
 ```bash
-# Siempre usar dry-run primero
+# Always use dry-run first
 php artisan emails:send-all-now --message-id=3 --dry-run
 php artisan emails:recalculate-times --message-id=3 --dry-run
 ```
 
 ---
 
-## 🔧 **Configuración de Producción**
+## Production configuration
 
-### **Servidor: mi.revisionalpha.com**
+### Server: mi.revisionalpha.com
 ```bash
-# Ruta de comandos
+# Command path
 cd /home/forge/mi.revisionalpha.com
 
-# Worker activo (verificar)
+# Active worker (verify)
 ps aux | grep queue:work
-# Debe mostrar: php8.2 artisan queue:work redis --queue=mailer
+# Should show: php8.2 artisan queue:work redis --queue=mailer
 ```
 
-### **Ejemplos de Producción:**
+### Production examples:
 ```bash
-# SSH al servidor
+# SSH to the server
 ssh forge@54.36.163.228
 
-# Ir al directorio correcto
+# Go to the correct directory
 cd /home/forge/mi.revisionalpha.com
 
-# Ejecutar comandos
+# Run commands
 php artisan emails:send-all-now --message-id=3 --dry-run
 ```
 
 ---
 
-## 📈 **Métricas de Rendimiento**
+## Performance metrics
 
-### **Antes de la Optimización:**
-- **Throughput**: 21 emails/hora
-- **Velocidad**: 250 emails en 12 horas
-- **Queue**: Síncrona (bloqueante)
-- **Delays**: 5 minutos + 60s random
+### Before optimization:
+- **Throughput**: 21 emails/hour
+- **Speed**: 250 emails in 12 hours
+- **Queue**: Synchronous (blocking)
+- **Delays**: 5 minutes + 60s random
 
-### **Después de la Optimización:**
-- **Throughput**: 1,200+ emails/hora
-- **Velocidad**: 1,000-1,500 emails en 1-2 horas
-- **Queue**: Redis asíncrona
-- **Delays**: 1 minuto + 30s random
+### After optimization:
+- **Throughput**: 1,200+ emails/hour
+- **Speed**: 1,000–1,500 emails in 1–2 hours
+- **Queue**: Async Redis
+- **Delays**: 1 minute + 30s random
 
-### **Mejora Total: 60x más rápido** 🚀
-
----
-
-## 🔐 **Características de Seguridad**
-
-### **Confirmaciones:**
-- Todos los comandos de envío piden confirmación
-- Dry-run mode para validar antes de ejecutar
-- Límites configurables para evitar sobrecarga
-
-### **Validaciones:**
-- Verificación de contactos válidos
-- Verificación de mensajes activos
-- Verificación de teams existentes
-- Manejo de errores y logging completo
-
-### **Control de Acceso:**
-- Comandos solo ejecutables por usuarios con acceso SSH
-- Validaciones en cada paso del proceso
+### Total improvement: 60x faster
 
 ---
 
-## 📝 **Notas de Desarrollo**
+## Security features
 
-### **Archivos Creados/Modificados:**
-- `app/Console/Commands/SendAllPendingNow.php` - Envío inmediato
-- `app/Console/Commands/RecalculateDeliveryTimes.php` - Recálculo
-- Configuración `.env` optimizada
-- Documentación completa
+### Confirmations:
+- All send commands ask for confirmation
+- Dry-run mode to validate before executing
+- Configurable limits to avoid overload
 
-### **Dependencias:**
-- Redis (para queue asíncrona)
+### Validations:
+- Valid contact verification
+- Active message verification
+- Existing team verification
+- Full error handling and logging
+
+### Access control:
+- Commands executable only by users with SSH access
+- Validations at each step of the process
+
+---
+
+## Development notes
+
+### Files created/modified:
+- `app/Console/Commands/SendAllPendingNow.php` — Immediate send
+- `app/Console/Commands/RecalculateDeliveryTimes.php` — Recalculation
+- Optimized `.env` configuration
+- Complete documentation
+
+### Dependencies:
+- Redis (for async queue)
 - Laravel Queue Workers
-- Configuración SMTP correcta
+- Correct SMTP configuration
 
 ---
 
-## 🎉 **Resultado Final**
+## Final result
 
-**Sistema de Newsletter completamente optimizado y operativo:**
+**Fully optimized and operational newsletter system:**
 
-✅ **Velocidad**: 60x más rápido que antes
-✅ **Control**: Granular por campaña específica
-✅ **Flexibilidad**: Envío inmediato o programado
-✅ **Confiabilidad**: Queue asíncrona con retry
-✅ **Monitoreo**: Comandos de diagnóstico completos
+- **Speed**: 60x faster than before
+- **Control**: Granular per specific campaign
+- **Flexibility**: Immediate or scheduled sending
+- **Reliability**: Async queue with retry
+- **Monitoring**: Complete diagnostic commands
 
-**¡Tu sistema está listo para envío masivo profesional!** 🚀📧
+Your system is ready for professional bulk email sending.

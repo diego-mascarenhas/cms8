@@ -1,40 +1,40 @@
 # Service Syncs V1
 
-## Objetivo
+## Goal
 
-Implementar flujo gemelo para servicios:
+Implement a twin flow for services:
 
-1. `stripe:sync-service-syncs` -> staging en `service_syncs`
-2. `service-syncs:import` -> proyeccion create-only en `services`
+1. `stripe:sync-service-syncs` -> staging in `service_syncs`
+2. `service-syncs:import` -> create-only projection into `services`
 
-## Comandos
+## Commands
 
 ```bash
 php artisan stripe:sync-service-syncs --team_id=1
 php artisan service-syncs:import --provider=stripe --team_id=1 --fallback-email --link-code-on-email-match
 ```
 
-Opciones utiles:
+Useful options:
 
-- `--dry-run`: previsualiza resultados sin escribir.
-- `--limit`: limita filas a importar por corrida.
+- `--dry-run`: preview results without writing.
+- `--limit`: limit rows imported per run.
 
-## SQL de verificacion
+## Verification SQL
 
 ```sql
--- 1) Conteo staging por estado/proveedor
+-- 1) Staging counts by status/provider
 SELECT provider, status, COUNT(*) AS total
 FROM service_syncs
 GROUP BY provider, status
 ORDER BY provider, status;
 
--- 2) Filas importadas create-only
+-- 2) Create-only imported rows
 SELECT COUNT(*) AS linked_services
 FROM services
 WHERE subscription_id IS NOT NULL
   AND deleted_at IS NULL;
 
--- 3) service_syncs pendientes de importar
+-- 3) service_syncs pending import
 SELECT COUNT(*) AS pending_syncs
 FROM service_syncs ss
 WHERE NOT EXISTS (
@@ -45,10 +45,10 @@ WHERE NOT EXISTS (
 );
 ```
 
-## Checklist de despliegue
+## Deployment checklist
 
-1. Ejecutar migraciones.
-2. Correr `stripe:sync-service-syncs` y validar conteos en `service_syncs`.
-3. Correr `service-syncs:import` en `--dry-run` y revisar `skipped`.
-4. Ejecutar import real y validar relaciones `services.subscription_id`.
-5. Revisar pantallas `/subscription` y `/service/list`.
+1. Run migrations.
+2. Run `stripe:sync-service-syncs` and validate counts in `service_syncs`.
+3. Run `service-syncs:import` with `--dry-run` and review `skipped`.
+4. Run the real import and validate `services.subscription_id` relations.
+5. Review the `/subscription` and `/service/list` screens.

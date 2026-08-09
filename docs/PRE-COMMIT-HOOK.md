@@ -1,58 +1,58 @@
 # Pre-commit Hook - Auto-formatting
 
-## 🎯 ¿Por qué se reformatean mis archivos al hacer commit?
+## Why do my files get reformatted on commit?
 
-Tu proyecto tiene un **hook de pre-commit** que ejecuta **Laravel Pint** automáticamente antes de cada commit. Esto garantiza que todo el código siga el mismo estilo de formato.
+This project has a **pre-commit hook** that runs **Laravel Pint** automatically before every commit. This ensures all code follows the same formatting style.
 
 ---
 
-## 🔧 **Ubicación del Hook**
+## Hook location
 
 ```
 .hooks/pre-commit
 ```
 
-Este script se ejecuta automáticamente cuando haces `git commit`.
+This script runs automatically when you run `git commit`.
 
 ---
 
-## ⚙️ **Configuraciones de Formato**
+## Formatting configuration
 
-### 1. **EditorConfig** (`.editorconfig`)
-Define reglas básicas de indentación:
-- PHP: 4 espacios (antes tabs)
-- JavaScript: 2 espacios
-- Blade: 4 espacios (antes tabs)
+### 1. EditorConfig (`.editorconfig`)
+Defines basic indentation rules:
+- PHP: 4 spaces (previously tabs)
+- JavaScript: 2 spaces
+- Blade: 4 spaces (previously tabs)
 
-### 2. **Prettier** (`.prettierrc`)
-Define reglas de formato para todos los archivos:
-- PHP: 4 espacios (antes tabs)
-- JS/TS: 4 espacios (antes tabs)
-- JSON: 4 espacios (antes tabs)
-- CSS/SCSS: 4 espacios (antes tabs)
+### 2. Prettier (`.prettierrc`)
+Defines formatting rules for all files:
+- PHP: 4 spaces (previously tabs)
+- JS/TS: 4 spaces (previously tabs)
+- JSON: 4 spaces (previously tabs)
+- CSS/SCSS: 4 spaces (previously tabs)
 
-### 3. **Laravel Pint** (`pint.json`)
-Formateador PHP específico de Laravel. Respeta las reglas de `.editorconfig`.
+### 3. Laravel Pint (`pint.json`)
+Laravel-specific PHP formatter. Respects `.editorconfig` rules.
 
 ---
 
-## 🚫 **Opción 1: Desactivar el Hook** (No recomendado)
+## Option 1: Disable the hook (not recommended)
 
-### Desactivar permanentemente:
+### Disable permanently:
 ```bash
 mv .hooks/pre-commit .hooks/pre-commit.disabled
 ```
 
-### Desactivar solo para un commit:
+### Disable for a single commit:
 ```bash
-git commit --no-verify -m "tu mensaje"
+git commit --no-verify -m "your message"
 ```
 
 ---
 
-## ✅ **Opción 2: Trabajar con el Hook** (Recomendado)
+## Option 2: Work with the hook (recommended)
 
-### Paso 1: Configurar tu editor
+### Step 1: Configure your editor
 
 **VSCode/Cursor** (`.vscode/settings.json`):
 ```json
@@ -76,93 +76,93 @@ git commit --no-verify -m "tu mensaje"
 }
 ```
 
-### Paso 2: Instalar extensión EditorConfig
+### Step 2: Install the EditorConfig extension
 - VSCode: `editorconfig.editorconfig`
-- Esta extensión lee automáticamente `.editorconfig`
+- This extension reads `.editorconfig` automatically
 
-### Paso 3: Formatear antes de commit (opcional)
+### Step 3: Format before commit (optional)
 ```bash
-# Formatear todos los archivos PHP modificados
+# Format all modified PHP files
 vendor/bin/pint
 
-# Formatear archivo específico
+# Format a specific file
 vendor/bin/pint path/to/file.php
 
-# Ver qué cambiaría sin aplicar
+# Preview changes without applying them
 vendor/bin/pint --test
 ```
 
 ---
 
-## 🔄 **Cómo Funciona el Hook**
+## How the hook works
 
-1. Haces `git add` y `git commit`
-2. El hook detecta archivos PHP en staging
-3. Ejecuta Laravel Pint en esos archivos
-4. Reformatea según `.editorconfig` + `pint.json`
-5. Vuelve a agregar los archivos formateados
-6. Continúa con el commit
+1. You run `git add` and `git commit`
+2. The hook detects staged PHP files
+3. It runs Laravel Pint on those files
+4. It reformats according to `.editorconfig` + `pint.json`
+5. It re-stages the formatted files
+6. The commit continues
 
-**Resultado**: Todos los commits tienen código consistentemente formateado.
+**Result**: Every commit has consistently formatted code.
 
 ---
 
-## 📋 **Comandos Útiles**
+## Useful commands
 
 ```bash
-# Ver qué archivos serían formateados
+# List files that would be formatted
 git diff --cached --name-only --diff-filter=ACM -- '*.php'
 
-# Formatear manualmente antes de commit
+# Format manually before commit
 vendor/bin/pint $(git diff --cached --name-only --diff-filter=ACM -- '*.php')
 
-# Commit sin ejecutar hook (emergencias)
-git commit --no-verify -m "mensaje"
+# Commit without running the hook (emergencies)
+git commit --no-verify -m "message"
 
-# Ver logs del hook (si falla)
+# Inspect the hook (if it fails)
 cat .git/hooks/pre-commit
 ```
 
 ---
 
-## 🎨 **Beneficios del Auto-formatting**
+## Benefits of auto-formatting
 
-✅ **Código consistente**: Todo el equipo usa el mismo estilo
-✅ **Menos conflictos**: No hay cambios de formato en PRs
-✅ **Sin discusiones**: Las herramientas deciden el formato
-✅ **Mejor legibilidad**: Código estandarizado es más fácil de leer
-✅ **CI/CD feliz**: Los tests de formato siempre pasan
+- **Consistent code**: The whole team uses the same style
+- **Fewer conflicts**: No formatting-only changes in PRs
+- **No debates**: Tools decide the format
+- **Better readability**: Standardized code is easier to read
+- **Happier CI/CD**: Formatting checks always pass
 
 ---
 
-## 🛠️ **Personalizar Reglas de Formato**
+## Customize formatting rules
 
-### Cambiar de espacios a tabs:
+### Switch from spaces to tabs:
 ```bash
 # .editorconfig
 [*.php]
-indent_style = tab  # space o tab
+indent_style = tab  # space or tab
 indent_size = 4
 ```
 
-### Ajustar Prettier:
+### Adjust Prettier:
 ```json
 // .prettierrc
 {
-  "useTabs": false,  // true para tabs
+  "useTabs": false,  // true for tabs
   "tabWidth": 4,
   "printWidth": 120
 }
 ```
 
-### Ajustar Pint:
+### Adjust Pint:
 ```json
 // pint.json
 {
   "preset": "laravel",
   "rules": {
     "indentation_type": {
-      "type": "space"  // o "tab"
+      "type": "space"  // or "tab"
     }
   }
 }
@@ -170,45 +170,45 @@ indent_size = 4
 
 ---
 
-## 🐛 **Troubleshooting**
+## Troubleshooting
 
-### El hook no se ejecuta:
+### The hook does not run:
 ```bash
-# Verificar que el hook existe y es ejecutable
+# Verify the hook exists and is executable
 ls -la .hooks/pre-commit
 chmod +x .hooks/pre-commit
 
-# Verificar configuración de Git
+# Verify Git configuration
 git config --local core.hooksPath .hooks
 ```
 
-### Pint no está instalado:
+### Pint is not installed:
 ```bash
 composer require laravel/pint --dev
 ```
 
-### Hook falla y no puedo hacer commit:
+### The hook fails and I cannot commit:
 ```bash
-# Commit sin hook (temporal)
-git commit --no-verify -m "mensaje"
+# Commit without the hook (temporary)
+git commit --no-verify -m "message"
 
-# Ver error del hook
+# Run the hook to see the error
 .hooks/pre-commit
 ```
 
-### Diferentes formatos en diferentes ramas:
+### Different formatting across branches:
 ```bash
-# Reformatear toda la base de código
+# Reformat the entire codebase
 vendor/bin/pint
 
-# Commit el cambio masivo
+# Commit the bulk change
 git add .
 git commit -m "style: apply consistent formatting"
 ```
 
 ---
 
-## 📚 **Más Información**
+## More information
 
 - **Laravel Pint**: https://laravel.com/docs/10.x/pint
 - **EditorConfig**: https://editorconfig.org/
@@ -217,15 +217,15 @@ git commit -m "style: apply consistent formatting"
 
 ---
 
-## 🎯 **TL;DR**
+## TL;DR
 
-**Problema**: Los archivos se reformatean automáticamente al hacer commit.
+**Problem**: Files are reformatted automatically on commit.
 
-**Causa**: Hook de pre-commit ejecuta Laravel Pint.
+**Cause**: The pre-commit hook runs Laravel Pint.
 
-**Solución**:
-1. ✅ **Recomendado**: Configurar tu editor para usar espacios (4) en PHP
-2. ⚠️ **Alternativa**: Desactivar el hook con `git commit --no-verify`
-3. ❌ **No recomendado**: Eliminar `.hooks/pre-commit`
+**Solution**:
+1. **Recommended**: Configure your editor to use 4 spaces for PHP
+2. **Alternative**: Skip the hook with `git commit --no-verify`
+3. **Not recommended**: Delete `.hooks/pre-commit`
 
-**Cambio reciente**: Se cambió de **tabs** a **espacios** en toda la configuración para evitar reformateos constantes.
+**Recent change**: Configuration moved from **tabs** to **spaces** to avoid constant reformatting.

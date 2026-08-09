@@ -1,73 +1,73 @@
 # Team Configuration Monitoring
 
-Este sistema permite monitorear automáticamente las configuraciones de cada team y reportar problemas proactivamente.
+This system automatically monitors each team's configurations and reports problems proactively.
 
-## 🎯 **Características Principales**
+## Main features
 
-### 📊 **Comando de Monitoreo**
+### Monitoring command
 ```bash
 php artisan team:test-configurations
 ```
 
-### 🔧 **Opciones Disponibles**
+### Available options
 
-| Opción | Descripción |
+| Option | Description |
 |--------|-------------|
-| `--team=ID` | Probar solo un team específico |
-| `--report-email=email` | Enviar reporte a email específico (sobrescribe emails de owners) |
-| `--no-email` | No enviar reporte por email |
-| `--failures-only` | Solo reportar fallos |
-| `--admin-summary` | Enviar resumen administrativo a notification_email |
+| `--team=ID` | Test only a specific team |
+| `--report-email=email` | Send the report to a specific email (overrides owner emails) |
+| `--no-email` | Do not send an email report |
+| `--failures-only` | Report failures only |
+| `--admin-summary` | Send an administrative summary to notification_email |
 
-### 🧪 **Servicios Monitoreados**
+### Monitored services
 
-1. **📤 SMTP** - Envío de emails
-2. **📥 IMAP** - Recepción de emails
-3. **💳 Stripe** - Procesamiento de pagos
-4. **📱 Twilio** - SMS y WhatsApp
+1. **SMTP** - Outbound email
+2. **IMAP** - Inbound email
+3. **Stripe** - Payment processing
+4. **Twilio** - SMS and WhatsApp
 
-## 📋 **Validaciones Específicas**
+## Specific validations
 
 ### SMTP
-- ✅ Configuración completa (host, username)
-- ✅ Conectividad de socket
-- ❌ Credenciales inválidas
-- ❌ Host no accesible
+- Complete configuration (host, username)
+- Socket connectivity
+- Invalid credentials
+- Host unreachable
 
 ### IMAP
-- ✅ Configuración completa (host, username)
-- ✅ Autenticación exitosa
-- ❌ Credenciales inválidas
-- ❌ Servidor no accesible
+- Complete configuration (host, username)
+- Successful authentication
+- Invalid credentials
+- Server unreachable
 
 ### Stripe
-- ✅ Formato de claves (pk_, sk_)
-- ✅ Autenticación con API
-- ✅ Permisos de cuenta
-- ❌ Claves inválidas/expiradas
+- Key format (pk_, sk_)
+- API authentication
+- Account permissions
+- Invalid/expired keys
 
 ### Twilio
-- ✅ Formato de SID (AC...)
-- ✅ Autenticación con API
-- ✅ Estado de cuenta activo
-- ❌ Credenciales inválidas
-- ❌ Cuenta suspendida
+- SID format (AC...)
+- API authentication
+- Active account status
+- Invalid credentials
+- Suspended account
 
-## 🚀 **Scheduling Automático**
+## Automatic scheduling
 
-### 📅 **Ejecución Diaria**
+### Daily run
 ```bash
-# Diario a las 8:00 AM - Solo fallos a team owners individuales
+# Daily at 8:00 AM - Failures only to individual team owners
 php artisan team:test-configurations --failures-only
 ```
 
-### 📅 **Reporte Semanal**
+### Weekly report
 ```bash
-# Lunes a las 9:00 AM - Reporte completo + resumen administrativo
+# Mondays at 9:00 AM - Full report + administrative summary
 php artisan team:test-configurations --admin-summary
 ```
 
-## 📖 **Configuración en Kernel**
+## Kernel configuration
 
 ```php
 // Team configuration monitoring - daily at 8:00 AM
@@ -90,7 +90,7 @@ $schedule->command('team:test-configurations --admin-summary')
     ->runInBackground();
 ```
 
-## 📊 **Ejemplo de Salida**
+## Sample output
 
 ```
 🔍 Starting Team Configuration Test...
@@ -118,166 +118,166 @@ Total tests: 4
 📧 Admin summary would be sent to: no-reply@idoneo.dev
 ```
 
-## 📝 **Logging y Reportes**
+## Logging and reports
 
-### 📋 **Logs Automáticos**
-- ✅ Resultados completos en canal 'daily'
-- ❌ Fallos específicos con detalles
-- 📧 Intentos de envío de reportes
+### Automatic logs
+- Full results in the 'daily' channel
+- Specific failures with details
+- Report send attempts
 
-### 📧 **Reportes por Email**
+### Email reports
 
-#### 🏢 **Reportes Individuales a Team Owners**
-- 📧 **Por defecto**: Cada team owner recibe SOLO su reporte
-- 🎯 **Con `--failures-only`**: Solo reciben si hay fallos en su team
-- 📤 **Destinatario**: `team.owner.email` automáticamente
-- 🔧 **Override**: Usar `--report-email=email` para cambiar destinatario
+#### Individual reports to team owners
+- **By default**: Each team owner receives ONLY their report
+- **With `--failures-only`**: They receive it only if their team has failures
+- **Recipient**: `team.owner.email` automatically
+- **Override**: Use `--report-email=email` to change the recipient
 
-#### 👑 **Resumen Administrativo (Opcional)**
-- 📤 **Solo con `--admin-summary`**: Enviado a `config('app.notification_email')`
-- 📊 **Contenido**: Estadísticas globales + lista de teams con problemas
-- 🎯 **Propósito**: Visión general para administradores
+#### Administrative summary (optional)
+- **Only with `--admin-summary`**: Sent to `config('app.notification_email')`
+- **Content**: Global statistics + list of teams with problems
+- **Purpose**: Overview for administrators
 
-## 🧪 **Tests Unitarios**
+## Unit tests
 
 ```bash
-# Ejecutar todos los tests de configuración
+# Run all configuration tests
 php artisan test tests/Unit/TeamConfigurationTest.php
 
-# Tests específicos
+# Specific tests
 php artisan test --filter="it_can_set_and_get_settings"
 php artisan test --filter="it_encrypts_sensitive_settings"
 php artisan test --filter="it_generates_consistent_team_hash"
 ```
 
-### 🧪 **Cobertura de Tests**
+### Test coverage
 
-- ✅ **20 tests** cubriendo toda la funcionalidad
-- ✅ Configuración y obtención de settings
-- ✅ Encriptación de datos sensibles
-- ✅ Generación de hashes determinísticos
-- ✅ URLs de webhooks de Twilio
-- ✅ Configuraciones de todos los servicios
-- ✅ Validación de tipos de datos
-- ✅ Compatibilidad con métodos deprecated
-- ✅ Manejo de valores nulos/vacíos
-- ✅ Eliminación en cascada
-- ✅ Restricciones únicas
+- **20 tests** covering the full functionality
+- Setting and getting settings
+- Encryption of sensitive data
+- Deterministic hash generation
+- Twilio webhook URLs
+- Configurations for all services
+- Data type validation
+- Compatibility with deprecated methods
+- Null/empty value handling
+- Cascade deletion
+- Unique constraints
 
-## ⚙️ **Configuración de Variables**
+## Variable configuration
 
-### 📧 **Email de Notificaciones**
+### Notification email
 ```bash
 # .env
-NOTIFICATION_EMAIL=no-reply@idoneo.dev  # (valor por defecto)
-# o personalizar:
+NOTIFICATION_EMAIL=no-reply@idoneo.dev  # (default value)
+# or customize:
 NOTIFICATION_EMAIL=admin@yourcompany.com
 ```
 
-### 🔐 **Configuraciones Team-Específicas**
+### Team-specific settings
 ```php
-// Ejemplo de configuración programática
+// Example of programmatic configuration
 $team->setSetting('mail_host', 'smtp.gmail.com');
 $team->setSetting('mail_username', 'team@company.com');
 $team->setSetting('mail_password', 'password', ['is_encrypted' => true]);
 ```
 
-## 🚨 **Alertas y Notificaciones**
+## Alerts and notifications
 
-### ❌ **Fallos Detectados**
-- 🔥 Log de error inmediato
-- 📧 Email de alerta (si configurado)
-- 📊 Detalles específicos del problema
-- 🔍 Sugerencias de resolución
+### Failures detected
+- Immediate error log
+- Alert email (if configured)
+- Specific problem details
+- Resolution suggestions
 
-### ✅ **Estado Saludable**
-- ℹ️ Log informativo
-- 📊 Estadísticas de rendimiento
-- 📈 Tendencias históricas
+### Healthy status
+- Informational log
+- Performance statistics
+- Historical trends
 
-## 🔧 **Troubleshooting**
+## Troubleshooting
 
-### 🚫 **"No teams found to test"**
-- Verificar que existan teams en la base de datos
-- Revisar filtros de team específico
+### "No teams found to test"
+- Verify that teams exist in the database
+- Review filters for a specific team
 
-### 📧 **"No report email configured"**
-- Configurar `NOTIFICATION_EMAIL` en `.env` (por defecto: no-reply@idoneo.dev)
-- O usar `--report-email=email@domain.com`
+### "No report email configured"
+- Configure `NOTIFICATION_EMAIL` in `.env` (default: no-reply@idoneo.dev)
+- Or use `--report-email=email@domain.com`
 
-### 🔌 **Fallos de Conexión**
-- Verificar configuraciones de red
-- Revisar credenciales de servicios
-- Comprobar estado de servicios externos
+### Connection failures
+- Verify network configuration
+- Review service credentials
+- Check the status of external services
 
-## 📈 **Beneficios**
+## Benefits
 
-- 🔍 **Detección Proactiva** de problemas
-- 📊 **Monitoreo Automático** 24/7
-- 📧 **Alertas Inmediatas** por fallos
-- 📈 **Visibilidad Completa** del estado del sistema
-- 🛡️ **Prevención** de interrupciones del servicio
-- 📋 **Auditoría** completa de configuraciones
+- **Proactive detection** of problems
+- **Automatic monitoring** 24/7
+- **Immediate alerts** for failures
+- **Full visibility** of system status
+- **Prevention** of service interruptions
+- **Complete audit** of configurations
 
 ---
 
-## 📝 **Guía de Uso por Casos**
+## Usage guide by scenario
 
-### 🔄 **Monitoreo Diario (Recomendado)**
+### Daily monitoring (recommended)
 ```bash
-# Solo envía emails a team owners que tengan fallos
+# Only sends emails to team owners that have failures
 php artisan team:test-configurations --failures-only
 ```
-**✅ Ideal para**: Alertas automáticas diarias sin spam
+**Ideal for**: Automatic daily alerts without spam
 
-### 📊 **Reporte Semanal Completo**
+### Full weekly report
 ```bash
-# Envía reporte individual a cada owner + resumen a admin
+# Sends an individual report to each owner + summary to admin
 php artisan team:test-configurations --admin-summary
 ```
-**✅ Ideal para**: Revisión semanal completa + visión administrativa
+**Ideal for**: Full weekly review + administrative overview
 
-### 🎯 **Team Específico**
+### Specific team
 ```bash
-# Solo un team específico (útil para debugging)
+# Only one specific team (useful for debugging)
 php artisan team:test-configurations --team=1
 ```
-**✅ Ideal para**: Debugging de problemas específicos
+**Ideal for**: Debugging specific problems
 
-### 📧 **Override de Email**
+### Email override
 ```bash
-# Envía TODOS los reportes a un email específico (ignora owners)
+# Sends ALL reports to a specific email (ignores owners)
 php artisan team:test-configurations --report-email=admin@empresa.com
 ```
-**✅ Ideal para**: Testing o cuando quieres centralizar reportes temporalmente
+**Ideal for**: Testing or temporarily centralizing reports
 
-### 🚫 **Sin Emails (Testing)**
+### No emails (testing)
 ```bash
-# Solo testing/debugging local (no envía emails)
+# Local testing/debugging only (does not send emails)
 php artisan team:test-configurations --no-email
 ```
-**✅ Ideal para**: Desarrollo y testing local
+**Ideal for**: Local development and testing
 
-### 👑 **Solo Resumen Administrativo**
+### Admin summary only
 ```bash
-# Solo resumen global, sin reportes individuales
+# Global summary only, without individual reports
 php artisan team:test-configurations --admin-summary --failures-only --report-email=admin@empresa.com
 ```
-**✅ Ideal para**: Administradores que solo quieren vista global
+**Ideal for**: Administrators who only want a global view
 
 ---
 
-## 🏢 **Sistema de Privacidad y Escalabilidad**
+## Privacy and scalability system
 
-### ✅ **Ventajas del Nuevo Sistema**
-- 🔒 **Privacidad**: Cada team owner solo ve SU información
-- 📈 **Escalabilidad**: Sin saturación del email administrativo
-- 🎯 **Relevancia**: Solo reciben lo que les corresponde
-- ⚡ **Acción directa**: Los owners pueden actuar inmediatamente
-- 📊 **Visión administrativa**: Resumen opcional para admins
+### Advantages of the new system
+- **Privacy**: Each team owner only sees THEIR information
+- **Scalability**: No saturation of the administrative inbox
+- **Relevance**: Owners only receive what concerns them
+- **Direct action**: Owners can act immediately
+- **Administrative overview**: Optional summary for admins
 
-### 📧 **Flujo de Emails**
-1. **Fallos detectados** → Email automático al team owner
-2. **Todo OK** → Sin email (reduce spam)
-3. **Resumen semanal** → Reporte individual + resumen admin (opcional)
-4. **Override disponible** → Admin puede recibir todo si es necesario
+### Email flow
+1. **Failures detected** → Automatic email to the team owner
+2. **All OK** → No email (reduces spam)
+3. **Weekly summary** → Individual report + admin summary (optional)
+4. **Override available** → Admin can receive everything if needed

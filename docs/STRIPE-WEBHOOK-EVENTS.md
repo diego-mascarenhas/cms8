@@ -1,82 +1,82 @@
-# Eventos de Stripe Configurados
+# Configured Stripe Events
 
-## 📋 Eventos que Debe Escuchar el Webhook
+## Events the webhook should listen for
 
-Estos son los eventos que tu aplicación está preparada para manejar:
+These are the events your application is prepared to handle:
 
-### ✅ Eventos Implementados en `StripeWebhookController`
+### Events implemented in `StripeWebhookController`
 
-| Evento | Método | Descripción |
+| Event | Method | Description |
 |--------|--------|-------------|
-| `invoice.paid` | `handleInvoicePaid()` | Factura marcada como pagada en Stripe (incluye transferencias externas) |
-| `invoice.payment_succeeded` | `handleInvoicePaymentSucceeded()` | Pago registrado; sincroniza factura + plan de email + afiliados |
-| `invoice.updated` | `handleInvoiceUpdated()` | Refresca factura cuando pasa a paid/void/uncollectible |
-| `customer.subscription.deleted` | `handleCustomerSubscriptionDeleted()` | Cuando se cancela/elimina una suscripción |
-| `customer.subscription.updated` | `handleCustomerSubscriptionUpdated()` | Cuando cambia el estado de una suscripción |
+| `invoice.paid` | `handleInvoicePaid()` | Invoice marked as paid in Stripe (includes external transfers) |
+| `invoice.payment_succeeded` | `handleInvoicePaymentSucceeded()` | Payment recorded; syncs invoice + email plan + affiliates |
+| `invoice.updated` | `handleInvoiceUpdated()` | Refreshes invoice when it becomes paid/void/uncollectible |
+| `customer.subscription.deleted` | `handleCustomerSubscriptionDeleted()` | When a subscription is canceled/deleted |
+| `customer.subscription.updated` | `handleCustomerSubscriptionUpdated()` | When a subscription status changes |
 
-Los eventos de factura encolan `ProcessStripeInvoiceWebhookJob`: upsert en `invoice_syncs`, import a `invoices` y reconciliación de pago si falta.
+Invoice events enqueue `ProcessStripeInvoiceWebhookJob`: upsert into `invoice_syncs`, import into `invoices`, and payment reconciliation if missing.
 
-### ⏱ Respaldo programado (si el webhook no llega)
+### Scheduled backup (if the webhook does not arrive)
 
-| Comando | Frecuencia | Función |
+| Command | Frequency | Purpose |
 |---------|------------|---------|
-| `stripe:sync-invoices` | Cada 10 min | Refresca `invoice_syncs` desde API (incluye `open` obsoletas) |
-| `invoice-syncs:import-stripe --reconcile` | Cada 10 min | Importa estado/balance al core |
-| `stripe:sync-payments` + `payment-syncs:import-stripe` | Cada ~15 min | Cargos `ch_` → pagos |
-| `invoices:reconcile-stripe-collected-payments` | :20 y :50 | Actualiza core desde sync pagado + crea pagos faltantes |
+| `stripe:sync-invoices` | Every 10 min | Refresh `invoice_syncs` from API (includes stale `open` invoices) |
+| `invoice-syncs:import-stripe --reconcile` | Every 10 min | Import status/balance into the core |
+| `stripe:sync-payments` + `payment-syncs:import-stripe` | Every ~15 min | `ch_` charges → payments |
+| `invoices:reconcile-stripe-collected-payments` | :20 and :50 | Update core from paid sync + create missing payments |
 
-### 📌 Eventos Adicionales Recomendados
+### Additional recommended events
 
-Considera agregar estos eventos en el Dashboard de Stripe:
+Consider adding these events in the Stripe Dashboard:
 
-| Evento | Para qué sirve |
+| Event | Purpose |
 |--------|----------------|
-| `customer.subscription.created` | Detectar nuevas suscripciones |
-| `invoice.payment_failed` | Alertar cuando falla un pago |
-| `customer.updated` | Sincronizar datos del cliente |
-| `payment_method.attached` | Actualizar método de pago |
+| `customer.subscription.created` | Detect new subscriptions |
+| `invoice.payment_failed` | Alert when a payment fails |
+| `customer.updated` | Sync customer data |
+| `payment_method.attached` | Update payment method |
 
 ---
 
-## 📍 Añadir eventos en el Dashboard (producción)
+## Add events in the Dashboard (production)
 
-Si tu webhook solo tiene suscripciones e `invoice.payment_succeeded`, **faltan eventos críticos**. Pasos en modo **Live**:
+If your webhook only has subscriptions and `invoice.payment_succeeded`, **critical events are missing**. Steps in **Live** mode:
 
-1. Ir a [https://dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks)
-2. Confirmar selector **Live** (no Test)
-3. Abrir el endpoint `POST /stripe/webhook` de producción
+1. Go to [https://dashboard.stripe.com/webhooks](https://dashboard.stripe.com/webhooks)
+2. Confirm the **Live** selector (not Test)
+3. Open the production `POST /stripe/webhook` endpoint
 4. **Edit destination** / **Update details** → **Add events**
-5. Categoría **Invoice** → marcar **`invoice.paid`** e **`invoice.updated`**
-6. Guardar
+5. **Invoice** category → select **`invoice.paid`** and **`invoice.updated`**
+6. Save
 
-### Lista mínima recomendada
+### Recommended minimum list
 
 **Customer:** `customer.subscription.created`, `.updated`, `.deleted`
 
-**Invoice:** `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` (opcional)
+**Invoice:** `invoice.paid`, `invoice.payment_succeeded`, `invoice.updated`, `invoice.payment_failed` (optional)
 
-### Por qué `invoice.paid`
+### Why `invoice.paid`
 
-| Tipo de cobro | `payment_succeeded` | `paid` |
+| Charge type | `payment_succeeded` | `paid` |
 |---------------|---------------------|--------|
-| Tarjeta / cargo (`ch_`) | Sí | Sí |
-| Transferencia externa en Stripe | A veces no | **Sí** |
+| Card / charge (`ch_`) | Yes | Yes |
+| External transfer in Stripe | Sometimes no | **Yes** |
 
-`invoice.updated` refresca la factura cuando pasa a paid, void o uncollectible.
+`invoice.updated` refreshes the invoice when it becomes paid, void, or uncollectible.
 
-### Verificar
+### Verify
 
-- Pestaña **Event deliveries** → respuesta **200** en `invoice.paid`
+- **Event deliveries** tab → **200** response for `invoice.paid`
 - **Send test webhook** → `invoice.paid` → **200 OK**
-- Worker de colas activo (job `ProcessStripeInvoiceWebhookJob`)
+- Queue worker active (`ProcessStripeInvoiceWebhookJob` job)
 
-Documentación en la app: ruta **`/help/stripe-webhook`**.
+In-app documentation: route **`/help/stripe-webhook`**.
 
 ---
 
-## 🔧 Configuración en Stripe Dashboard
+## Configuration in Stripe Dashboard
 
-### Opción 1: Eventos Específicos (Recomendado)
+### Option 1: Specific events (recommended)
 
 ```
 ✅ customer.subscription.created
@@ -89,7 +89,7 @@ Documentación en la app: ruta **`/help/stripe-webhook`**.
 ✅ customer.updated
 ```
 
-### Opción 2: Todos los Eventos de Subscripción
+### Option 2: All subscription events
 
 ```
 ✅ Select all customer.subscription events
@@ -98,94 +98,93 @@ Documentación en la app: ruta **`/help/stripe-webhook`**.
 
 ---
 
-## 🧪 Probar Eventos
+## Test events
 
-### Desde Stripe Dashboard
+### From Stripe Dashboard
 
-1. Ir a: https://dashboard.stripe.com/test/webhooks
-2. Click en tu webhook
+1. Go to: https://dashboard.stripe.com/test/webhooks
+2. Click your webhook
 3. Click "Send test webhook"
-4. Seleccionar evento a probar
-5. Verificar que retorne **200 OK**
+4. Select the event to test
+5. Verify it returns **200 OK**
 
-### Desde Stripe CLI (Local)
+### From Stripe CLI (local)
 
 ```bash
-# Instalar Stripe CLI
+# Install Stripe CLI
 brew install stripe/stripe-cli/stripe
 
 # Login
 stripe login
 
-# Escuchar webhooks localmente
+# Listen for webhooks locally
 stripe listen --forward-to https://humano.test/stripe/webhook
 
-# En otra terminal, enviar evento de prueba
+# In another terminal, send a test event
 stripe trigger customer.subscription.updated
 ```
 
 ---
 
-## 📊 Verificar Logs
+## Check logs
 
-### En Producción
+### In production
 
 ```bash
 tail -f storage/logs/laravel.log | grep -i "stripe\|webhook"
 ```
 
-### Logs Esperados
+### Expected logs
 
-**✅ Evento recibido correctamente:**
+**Event received successfully:**
 ```
 [2025-01-03 18:00:00] local.INFO: Invoice payment succeeded for team 2
 [2025-01-03 18:00:00] local.INFO: Updated team 2 to basic plan
 ```
 
-**❌ Error - Team no encontrado:**
+**Error - Team not found:**
 ```
 [2025-01-03 18:00:00] local.WARNING: Stripe webhook: Team not found for customer cus_XXX
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
-### Webhook retorna 500
+### Webhook returns 500
 
-**Posibles causas:**
-1. Team no tiene `stripe_id` configurado
-2. Error en `getEmailPlanFromProductId()`
-3. Error en `assignEmailPlan()`
+**Possible causes:**
+1. Team does not have `stripe_id` configured
+2. Error in `getEmailPlanFromProductId()`
+3. Error in `assignEmailPlan()`
 
-**Solución:**
+**Solution:**
 ```bash
-# Ver último error en logs
+# View the latest error in logs
 tail -100 storage/logs/laravel.log | grep ERROR
 
-# Sincronizar manualmente
+# Sync manually
 php artisan stripe:sync-subscription
 ```
 
-### Webhook retorna 404
+### Webhook returns 404
 
-**Causa:** Ruta no registrada
+**Cause:** Route not registered
 
-**Solución:**
+**Solution:**
 ```bash
 php artisan route:clear
 php artisan route:cache
 php artisan route:list --path=stripe
 ```
 
-### Webhook retorna 419 (CSRF)
+### Webhook returns 419 (CSRF)
 
-**Causa:** Ruta no está en `$except` de `VerifyCsrfToken`
+**Cause:** Route is not in `$except` of `VerifyCsrfToken`
 
-**Solución:** Verificar que existe:
+**Solution:** Verify that this exists:
 ```php
 protected $except = [
     'stripe/webhook',
 ];
 ```
-

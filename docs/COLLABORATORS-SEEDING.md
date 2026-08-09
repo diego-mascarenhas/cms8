@@ -1,94 +1,94 @@
 # Collaborators Seeding Guide
 
-Esta guía explica cómo ejecutar el proceso de importación de colaboradores desde cero.
+This guide explains how to run the collaborator import process from scratch.
 
-## 📋 Requisitos Previos
+## Prerequisites
 
-1. **Archivo SQL de colaboradores**: Debes tener el archivo SQL con los datos de los colaboradores en `/Users/magoo/Downloads/inserts_colaboradoras.sql`
-2. **Base de datos configurada**: Laravel debe estar configurado con acceso a la base de datos
-3. **Permisos**: El usuario de la base de datos debe tener permisos para crear/modificar tablas
+1. **Collaborators SQL file**: You must have the SQL file with collaborator data at `/Users/magoo/Downloads/inserts_colaboradoras.sql`
+2. **Configured database**: Laravel must be configured with database access
+3. **Permissions**: The database user must have permission to create and modify tables
 
-## 🚀 Opciones de Ejecución
+## Execution options
 
-### Opción 1: Ejecutar Todo desde Cero (Recomendado)
+### Option 1: Run everything from scratch (recommended)
 
-Para ejecutar todos los seeders desde cero (incluyendo colaboradores):
+To run all seeders from scratch (including collaborators):
 
 ```bash
-# Resetear y ejecutar todos los seeders
+# Reset and run all seeders
 php artisan migrate:fresh --seed
 ```
 
-Este comando:
-- ✅ Recreará todas las tablas
-- ✅ Ejecutará todos los seeders en orden correcto
-- ✅ Incluirá automáticamente los colaboradores al final
+This command:
+- Recreates all tables
+- Runs all seeders in the correct order
+- Automatically includes collaborators at the end
 
-### Opción 2: Solo Colaboradores
+### Option 2: Collaborators only
 
-Si ya tienes la base de datos configurada y solo quieres ejecutar la parte de colaboradores:
+If the database is already configured and you only want to run the collaborators portion:
 
 ```bash
-# Ejecutar solo colaboradores (sin borrar datos existentes)
+# Run collaborators only (without deleting existing data)
 php artisan seed:collaborators
 
-# Ejecutar colaboradores desde cero (borrando datos existentes)
+# Run collaborators from scratch (deleting existing data)
 php artisan seed:collaborators --fresh
 ```
 
-### Opción 3: Seeders Individuales
+### Option 3: Individual seeders
 
-Para ejecutar seeders específicos en orden:
+To run specific seeders in order:
 
 ```bash
-# 1. Idiomas base
+# 1. Base languages
 php artisan db:seed --class=LanguageSeeder
 
-# 2. Variantes de idiomas
+# 2. Language variants
 php artisan db:seed --class=LanguageVariantSeeder
 
-# 3. Colaboradores
+# 3. Collaborators
 php artisan db:seed --class=CollaboratorsSeeder
 ```
 
-## 📊 Orden de Ejecución
+## Execution order
 
-El `DatabaseSeeder` ejecuta los seeders en este orden:
+`DatabaseSeeder` runs seeders in this order:
 
-1. **Datos básicos**: Monedas, países, roles, etc.
-2. **LanguageSeeder**: Idiomas base (es, en, fr, de, it, pt, ca, zh, ja, ko, ru, ar, etc.)
-3. **LanguageVariantSeeder**: Variantes de idiomas (es-ES, en-US, fr-FR, etc.)
-4. **ContactSeeder**: Contactos básicos
-5. **CollaboratorsSeeder**: Colaboradores importados del SQL
+1. **Basic data**: Currencies, countries, roles, and related base data
+2. **LanguageSeeder**: Base languages (es, en, fr, de, it, pt, ca, zh, ja, ko, ru, ar, etc.)
+3. **LanguageVariantSeeder**: Language variants (es-ES, en-US, fr-FR, etc.)
+4. **ContactSeeder**: Basic contacts
+5. **CollaboratorsSeeder**: Collaborators imported from SQL
 
-## 🔧 Configuración del CollaboratorsSeeder
+## CollaboratorsSeeder configuration
 
-El `CollaboratorsSeeder` está configurado para:
+`CollaboratorsSeeder` is configured to:
 
-- **Archivo SQL**: Lee `/Users/magoo/Downloads/inserts_colaboradoras.sql`
-- **Equipo por defecto**: Usa el equipo con ID 1
-- **Roles**: Asigna el rol "collaborator" a los usuarios creados
-- **Combinaciones**: Procesa automáticamente las combinaciones de idiomas
-- **Duplicados**: Previene la creación de contactos/usuarios duplicados
+- **SQL file**: Read `/Users/magoo/Downloads/inserts_colaboradoras.sql`
+- **Default team**: Use the team with ID 1
+- **Roles**: Assign the "collaborator" role to created users
+- **Combinations**: Automatically process language combinations
+- **Duplicates**: Prevent creation of duplicate contacts/users
 
-## 🎯 Datos Procesados
+## Processed data
 
-### Idiomas Base Soportados
-- Spanish (es) - Español
-- English (en) - Inglés
-- French (fr) - Francés
-- German (de) - Alemán
-- Italian (it) - Italiano
-- Portuguese (pt) - Português
-- Catalan (ca) - Català
-- Chinese (zh) - 中文
-- Japanese (ja) - 日本語
-- Korean (ko) - 한국어
-- Russian (ru) - Русский
-- Arabic (ar) - العربية
-- Y muchos más...
+### Supported base languages
+- Spanish (es)
+- English (en)
+- French (fr)
+- German (de)
+- Italian (it)
+- Portuguese (pt)
+- Catalan (ca)
+- Chinese (zh)
+- Japanese (ja)
+- Korean (ko)
+- Russian (ru)
+- Arabic (ar)
+- And many more...
 
-### Variantes de Idiomas Soportadas
+### Supported language variants
 - **Spanish**: es-ES, es-MX, es-AR, es-CO, es-CL, es-PE, es-VE
 - **English**: en-US, en-GB, en-CA, en-AU
 - **French**: fr-FR, fr-CA, fr-BE, fr-CH
@@ -96,25 +96,25 @@ El `CollaboratorsSeeder` está configurado para:
 - **Italian**: it-IT, it-CH
 - **Portuguese**: pt-PT, pt-BR
 - **Catalan**: ca-ES, ca-AD
-- Y muchas más...
+- And many more...
 
-## 📈 Resultados Esperados
+## Expected results
 
-Después de ejecutar el seeding completo, deberías tener:
+After a full seeding run, you should have:
 
-- **~40 idiomas base** en la tabla `languages`
-- **~50+ variantes de idiomas** en la tabla `language_variants`
-- **~1400+ contactos colaboradores** en la tabla `contacts`
-- **~300+ combinaciones de idiomas** en la tabla `contact_language_variants`
-- **~1000+ usuarios colaboradores** en la tabla `users`
+- **~40 base languages** in the `languages` table
+- **~50+ language variants** in the `language_variants` table
+- **~1400+ collaborator contacts** in the `contacts` table
+- **~300+ language combinations** in the `contact_language_variants` table
+- **~1000+ collaborator users** in the `users` table
 
-## 🐛 Solución de Problemas
+## Troubleshooting
 
 ### Error: "Cannot add or update a child row: a foreign key constraint fails"
 
-**Causa**: Faltan idiomas base o variantes en la base de datos.
+**Cause**: Missing base languages or variants in the database.
 
-**Solución**: Ejecutar primero los seeders de idiomas:
+**Solution**: Run the language seeders first:
 ```bash
 php artisan db:seed --class=LanguageSeeder
 php artisan db:seed --class=LanguageVariantSeeder
@@ -122,25 +122,25 @@ php artisan db:seed --class=LanguageVariantSeeder
 
 ### Error: "File not found"
 
-**Causa**: El archivo SQL no está en la ruta esperada.
+**Cause**: The SQL file is not at the expected path.
 
-**Solución**: Verificar que el archivo esté en `/Users/magoo/Downloads/inserts_colaboradoras.sql`
+**Solution**: Confirm the file is at `/Users/magoo/Downloads/inserts_colaboradoras.sql`
 
 ### Error: "Duplicate entry"
 
-**Causa**: Los datos ya existen en la base de datos.
+**Cause**: The data already exists in the database.
 
-**Solución**: Usar la opción `--fresh` para limpiar datos existentes:
+**Solution**: Use the `--fresh` option to clear existing data:
 ```bash
 php artisan seed:collaborators --fresh
 ```
 
-## 🔍 Verificación
+## Verification
 
-Para verificar que todo se ejecutó correctamente:
+To verify that everything ran correctly:
 
 ```bash
-# Verificar conteos
+# Verify counts
 php artisan tinker --execute="
 echo 'Languages: ' . App\Models\Language::count() . PHP_EOL;
 echo 'Language Variants: ' . App\Models\LanguageVariant::count() . PHP_EOL;
@@ -149,6 +149,6 @@ echo 'Language Combinations: ' . App\Models\ContactLanguageVariant::count() . PH
 "
 ```
 
-## 🎉 ¡Listo!
+## Done
 
-Una vez completado el proceso, tendrás todos los colaboradores importados con sus combinaciones de idiomas procesadas y listas para usar en el sistema. 
+Once the process is complete, all collaborators are imported with their language combinations processed and ready for use in the system.

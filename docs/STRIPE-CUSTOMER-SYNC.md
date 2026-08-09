@@ -1,39 +1,39 @@
-# Sincronización de Clientes con Stripe
+# Stripe Customer Synchronization
 
-Esta documentación explica el sistema de sincronización entre Stripe Customers y la aplicación Laravel, incluyendo la gestión de usuarios, teams y nombres de contacto.
+This documentation explains the synchronization system between Stripe Customers and the Laravel application, including user, team, and contact name management.
 
-## 📋 Tabla de Contenidos
+## Table of contents
 
-- [Comandos Disponibles](#comandos-disponibles)
-- [Estructura de Datos](#estructura-de-datos)
-- [Flujo de Sincronización](#flujo-de-sincronización)
-- [Casos de Uso](#casos-de-uso)
+- [Available commands](#available-commands)
+- [Data structure](#data-structure)
+- [Synchronization flow](#synchronization-flow)
+- [Use cases](#use-cases)
 - [Troubleshooting](#troubleshooting)
 
 ---
 
-## 🚀 Comandos Disponibles
+## Available commands
 
 ### 1. `stripe:customer-report`
 
-Genera un reporte completo de los clientes en Stripe vs los teams locales.
+Generates a full report of Stripe customers vs local teams.
 
-**Uso:**
+**Usage:**
 ```bash
 php artisan stripe:customer-report
 ```
 
 **Output:**
-- Lista de clientes en Stripe con:
+- List of Stripe customers with:
   - Customer ID
-  - Business Name (razón social)
-  - Contact Name (nombre del contacto particular)
+  - Business Name (legal/business name)
+  - Contact Name (individual contact name)
   - Email
-  - Fecha de creación
-- Lista de teams locales con su estado de sincronización
-- Resumen de sincronización
+  - Creation date
+- List of local teams with their sync status
+- Synchronization summary
 
-**Ejemplo de salida:**
+**Sample output:**
 ```
 ┌──────────────────┬────────────────┬─────────────────┬──────────────────────┬────────────┐
 │ Customer ID      │ Business Name  │ Contact Name    │ Email                │ Created    │
@@ -51,41 +51,41 @@ php artisan stripe:customer-report
 
 ### 2. `stripe:sync-customers`
 
-Sincroniza los clientes de Stripe con los teams y usuarios locales.
+Synchronizes Stripe customers with local teams and users.
 
-**Uso:**
+**Usage:**
 ```bash
-# Ver qué se sincronizaría sin hacer cambios
+# Preview what would be synced without making changes
 php artisan stripe:sync-customers --dry-run
 
-# Ver qué se crearía sin hacer cambios
+# Preview what would be created without making changes
 php artisan stripe:sync-customers --create --dry-run
 
-# Sincronizar solo teams existentes
+# Sync existing teams only
 php artisan stripe:sync-customers
 
-# Sincronizar y crear teams/usuarios para nuevos customers
+# Sync and create teams/users for new customers
 php artisan stripe:sync-customers --create
 ```
 
-**Opciones:**
-- `--create`: Crea teams y usuarios para customers que no existen localmente
-- `--dry-run`: Muestra qué cambios se harían sin aplicarlos
+**Options:**
+- `--create`: Create teams and users for customers that do not exist locally
+- `--dry-run`: Show what changes would be made without applying them
 
-**Lógica de Sincronización:**
+**Synchronization logic:**
 
-1. **Crea/recupera el usuario** usando `User::firstOrCreate` por email
-2. **Busca team existente** por `stripe_id`
-3. **Si existe el team:**
-   - Actualiza el `user_id` al usuario correcto
-   - Adjunta el usuario al team si no está conectado
-   - Establece como `current_team_id` si es necesario
-4. **Si NO existe el team:**
-   - Verifica si el usuario ya tiene un team
-   - Si tiene team, le asigna el `stripe_id`
-   - Si no tiene team, crea uno nuevo
+1. **Create/retrieve the user** using `User::firstOrCreate` by email
+2. **Find an existing team** by `stripe_id`
+3. **If the team exists:**
+   - Update `user_id` to the correct user
+   - Attach the user to the team if not already connected
+   - Set as `current_team_id` if needed
+4. **If the team does NOT exist:**
+   - Check whether the user already has a team
+   - If they have a team, assign the `stripe_id`
+   - If they do not have a team, create a new one
 
-**Ejemplo de salida:**
+**Sample output:**
 ```
 Processing customer: cus_TgOXIFdhxq1gat (tester@revisionalpha.com)
   ✅ Updated team owner to user: tester@revisionalpha.com
@@ -108,34 +108,34 @@ Processing customer: cus_TgOXIFdhxq1gat (tester@revisionalpha.com)
 
 ### 3. `stripe:sync-customer-names`
 
-Sincroniza los nombres de contacto desde Stripe a la tabla `users`.
+Synchronizes contact names from Stripe to the `users` table.
 
-**Uso:**
+**Usage:**
 ```bash
-# Ver qué nombres se actualizarían sin hacer cambios
+# Preview which names would be updated without making changes
 php artisan stripe:sync-customer-names --dry-run
 
-# Aplicar la sincronización de nombres
+# Apply name synchronization
 php artisan stripe:sync-customer-names
 ```
 
-**Opciones:**
-- `--dry-run`: Muestra qué cambios se harían sin aplicarlos
+**Options:**
+- `--dry-run`: Show what changes would be made without applying them
 
-**Lógica de Nombres:**
+**Name logic:**
 
-Prioriza `individual_name` sobre `name` (business name):
+Prioritizes `individual_name` over `name` (business name):
 
 ```php
-// Estrategia de fallback
+// Fallback strategy
 $newName = $customer->individual_name ?? $customer->name;
 ```
 
-1. **Si existe `individual_name`** → Lo usa (nombre del contacto particular)
-2. **Si NO existe `individual_name`** → Usa `name` (razón social)
-3. **Si ninguno existe** → Salta ese customer
+1. **If `individual_name` exists** → Use it (individual contact name)
+2. **If `individual_name` does NOT exist** → Use `name` (business name)
+3. **If neither exists** → Skip that customer
 
-**Ejemplo de salida:**
+**Sample output:**
 ```
 🔄 Syncing Stripe customer names to users...
 
@@ -159,55 +159,55 @@ Found 3 teams with Stripe ID
 
 ---
 
-## 📊 Estructura de Datos
+## Data structure
 
-### Tabla `subscription_items`
+### `subscription_items` table
 
-Esta tabla es parte de **Laravel Cashier** y gestiona suscripciones con múltiples productos o precios.
+This table is part of **Laravel Cashier** and manages subscriptions with multiple products or prices.
 
-**Propósito:**
-- Almacena los **elementos individuales** que componen una suscripción
-- Permite suscripciones con uno o múltiples items (productos/servicios)
-- Maneja cantidades variables por item
+**Purpose:**
+- Stores the **individual items** that make up a subscription
+- Supports subscriptions with one or multiple items (products/services)
+- Handles variable quantities per item
 
-**Campos principales:**
-- `subscription_id`: Relaciona con la suscripción padre
-- `stripe_id`: ID del item en Stripe (ej: `si_xxx`)
-- `stripe_product`: ID del producto en Stripe (ej: `prod_xxx`)
-- `stripe_price`: ID del precio en Stripe (ej: `price_xxx`)
-- `quantity`: Cantidad de unidades del item
+**Main fields:**
+- `subscription_id`: Relates to the parent subscription
+- `stripe_id`: Item ID in Stripe (e.g. `si_xxx`)
+- `stripe_product`: Product ID in Stripe (e.g. `prod_xxx`)
+- `stripe_price`: Price ID in Stripe (e.g. `price_xxx`)
+- `quantity`: Number of units for the item
 
-**Ejemplos de uso:**
+**Usage examples:**
 
-**Suscripción Simple (1 item):**
+**Simple subscription (1 item):**
 ```
-Usuario paga $10/mes por "Plan Básico"
-→ 1 registro en subscriptions
-→ 1 registro en subscription_items
-```
-
-**Suscripción Múltiple (varios items):**
-```
-Usuario paga:
-  - $10/mes por "Plan Básico"
-  - $5/mes por "Feature Extra"
-  - $3/mes por "Soporte Prioritario"
-→ 1 registro en subscriptions
-→ 3 registros en subscription_items
+User pays $10/month for "Basic Plan"
+→ 1 record in subscriptions
+→ 1 record in subscription_items
 ```
 
-**Suscripciones con cantidad variable:**
+**Multi-item subscription:**
 ```
-Usuario paga $5/mes por cada "seat" o usuario
-Si tiene 10 usuarios: quantity = 10
+User pays:
+  - $10/month for "Basic Plan"
+  - $5/month for "Extra Feature"
+  - $3/month for "Priority Support"
+→ 1 record in subscriptions
+→ 3 records in subscription_items
 ```
 
-### Relación entre Modelos
+**Subscriptions with variable quantity:**
+```
+User pays $5/month per "seat" or user
+If they have 10 users: quantity = 10
+```
+
+### Model relationships
 
 ```
 Stripe Customer
-├── name → Team.name (razón social / nombre empresa)
-├── individual_name → User.name (nombre contacto particular)
+├── name → Team.name (legal / business name)
+├── individual_name → User.name (individual contact name)
 ├── email → User.email
 └── id → Team.stripe_id
 
@@ -216,33 +216,33 @@ Team (teams)
 ├── user_id → User.id (owner)
 ├── name (business name)
 ├── stripe_id → Stripe Customer ID
-└── Relación: belongsTo(User), belongsToMany(User) via team_user
+└── Relation: belongsTo(User), belongsToMany(User) via team_user
 
 User (users)
 ├── id
 ├── name (contact name from Stripe)
 ├── email
 ├── current_team_id → Team.id
-└── Relación: hasMany(Team), belongsToMany(Team) via team_user
+└── Relation: hasMany(Team), belongsToMany(Team) via team_user
 ```
 
 ---
 
-## 🔄 Flujo de Sincronización
+## Synchronization flow
 
-### Escenario 1: Cliente Nuevo en Stripe
+### Scenario 1: New customer in Stripe
 
 ```bash
 php artisan stripe:sync-customers --create
 ```
 
-**Flujo:**
-1. ✅ Crea usuario con email del customer
-2. ✅ Crea team con `stripe_id`
-3. ✅ Adjunta usuario al team como admin
-4. ✅ Establece como `current_team_id`
+**Flow:**
+1. Creates a user with the customer email
+2. Creates a team with `stripe_id`
+3. Attaches the user to the team as admin
+4. Sets it as `current_team_id`
 
-**Resultado:**
+**Result:**
 ```sql
 INSERT INTO users (email, name, ...) VALUES ('john@acme.com', 'Acme Corp', ...);
 INSERT INTO teams (user_id, name, stripe_id, ...) VALUES (1, 'Acme Corp', 'cus_123...', ...);
@@ -252,207 +252,207 @@ UPDATE users SET current_team_id = 1 WHERE id = 1;
 
 ---
 
-### Escenario 2: Usuario Eliminado, Team Existe
+### Scenario 2: User deleted, team exists
 
-**Situación inicial:**
-- Usuario (id: 6) → **ELIMINADO** ❌
-- Team (id: 4, stripe_id: 'cus_TgOX...') → **EXISTE** ✅
+**Initial situation:**
+- User (id: 6) → **DELETED**
+- Team (id: 4, stripe_id: 'cus_TgOX...') → **EXISTS**
 
-**Comando:**
+**Command:**
 ```bash
 php artisan stripe:sync-customers --create
 ```
 
-**Flujo:**
-1. ✅ Crea nuevo usuario (id: 7) con mismo email
-2. ✅ Encuentra team existente por `stripe_id`
-3. ✅ Actualiza `team.user_id` → 7 (nuevo usuario)
-4. ✅ Adjunta usuario al team
-5. ✅ Establece como `current_team_id`
+**Flow:**
+1. Creates a new user (id: 7) with the same email
+2. Finds the existing team by `stripe_id`
+3. Updates `team.user_id` → 7 (new user)
+4. Attaches the user to the team
+5. Sets it as `current_team_id`
 
-**Resultado:**
+**Result:**
 ```sql
--- Crea nuevo usuario
+-- Creates new user
 INSERT INTO users (email, name, ...) VALUES ('tester@revisionalpha.com', 'Tester INC.', ...);
 
--- NO crea team duplicado, actualiza el existente
+-- Does NOT create a duplicate team; updates the existing one
 UPDATE teams SET user_id = 7 WHERE id = 4;
 
--- Adjunta usuario al team
+-- Attaches user to the team
 INSERT INTO team_user (team_id, user_id, role) VALUES (4, 7, 'admin');
 
--- Establece como current team
+-- Sets as current team
 UPDATE users SET current_team_id = 4 WHERE id = 7;
 ```
 
-**✅ Ventaja:** No se crean teams duplicados
+**Advantage:** Duplicate teams are not created
 
 ---
 
-### Escenario 3: Sincronizar Nombres de Contacto
+### Scenario 3: Sync contact names
 
-**Situación inicial:**
-- Customer en Stripe:
+**Initial situation:**
+- Customer in Stripe:
   - `name`: "Tester INC." (business name)
   - `individual_name`: "Diego Testing" (contact name)
-- Usuario local:
+- Local user:
   - `name`: "Tester INC."
 
-**Comando:**
+**Command:**
 ```bash
 php artisan stripe:sync-customer-names
 ```
 
-**Flujo:**
-1. ✅ Lee `individual_name` de Stripe
-2. ✅ Si existe, lo usa para `users.name`
-3. ✅ Si NO existe, usa `name` (business name)
+**Flow:**
+1. Reads `individual_name` from Stripe
+2. If it exists, uses it for `users.name`
+3. If it does NOT exist, uses `name` (business name)
 
-**Resultado:**
+**Result:**
 ```sql
 UPDATE users SET name = 'Diego Testing' WHERE email = 'tester@revisionalpha.com';
 ```
 
 ---
 
-### Escenario 4: Customer sin `individual_name`
+### Scenario 4: Customer without `individual_name`
 
-**Situación inicial:**
-- Customer en Stripe:
+**Initial situation:**
+- Customer in Stripe:
   - `name`: "Acme Corporation"
-  - `individual_name`: **null** ❌
-- Usuario local:
+  - `individual_name`: **null**
+- Local user:
   - `name`: "Admin User"
 
-**Comando:**
+**Command:**
 ```bash
 php artisan stripe:sync-customer-names
 ```
 
-**Flujo:**
-1. ✅ Lee `individual_name` → **null**
-2. ✅ **Fallback:** Usa `name` (business name)
-3. ✅ Actualiza `users.name` con "Acme Corporation"
+**Flow:**
+1. Reads `individual_name` → **null**
+2. **Fallback:** Uses `name` (business name)
+3. Updates `users.name` with "Acme Corporation"
 
-**Resultado:**
+**Result:**
 ```sql
 UPDATE users SET name = 'Acme Corporation' WHERE email = 'admin@acme.com';
 ```
 
-**Output del comando:**
+**Command output:**
 ```
 ✅ admin@acme.com:
    Old: Admin User
    New: Acme Corporation
-   Source: Business Name  ← Indica que usó el business name
+   Source: Business Name  ← Indicates that business name was used
 ```
 
 ---
 
-## 💡 Casos de Uso
+## Use cases
 
-### Caso 1: Migración Inicial desde Stripe
+### Case 1: Initial migration from Stripe
 
-Tienes clientes en Stripe y quieres importarlos a tu aplicación:
+You have customers in Stripe and want to import them into your application:
 
 ```bash
-# 1. Ver qué se importaría
+# 1. See what would be imported
 php artisan stripe:customer-report
 
-# 2. Hacer un dry-run de la sincronización
+# 2. Dry-run the synchronization
 php artisan stripe:sync-customers --create --dry-run
 
-# 3. Aplicar la importación
+# 3. Apply the import
 php artisan stripe:sync-customers --create
 
-# 4. Sincronizar nombres de contacto
+# 4. Sync contact names
 php artisan stripe:sync-customer-names
 
-# 5. Verificar resultado
+# 5. Verify the result
 php artisan stripe:customer-report
 ```
 
 ---
 
-### Caso 2: Actualización Regular de Datos
+### Case 2: Regular data updates
 
-Sincronización periódica para mantener datos actualizados:
+Periodic sync to keep data up to date:
 
 ```bash
-# Sincronizar teams existentes (sin crear nuevos)
+# Sync existing teams (without creating new ones)
 php artisan stripe:sync-customers
 
-# Actualizar nombres desde Stripe
+# Update names from Stripe
 php artisan stripe:sync-customer-names
 ```
 
-**Recomendación:** Agregar a scheduler en `app/Console/Kernel.php`:
+**Recommendation:** Add to the scheduler in `app/Console/Kernel.php`:
 
 ```php
 protected function schedule(Schedule $schedule)
 {
-    // Sincronizar diariamente a las 2 AM
+    // Sync daily at 2 AM
     $schedule->command('stripe:sync-customers')->dailyAt('02:00');
 
-    // Actualizar nombres semanalmente
+    // Update names weekly
     $schedule->command('stripe:sync-customer-names')->weekly();
 }
 ```
 
 ---
 
-### Caso 3: Recuperación de Usuario Eliminado
+### Case 3: Recover a deleted user
 
-Un usuario fue eliminado accidentalmente pero su team y datos en Stripe siguen existiendo:
+A user was deleted accidentally, but their team and Stripe data still exist:
 
 ```bash
-# 1. Verificar estado actual
+# 1. Check current state
 php artisan stripe:customer-report
 
-# 2. Recrear usuario y reconectar con team
+# 2. Recreate user and reconnect with team
 php artisan stripe:sync-customers --create
 
-# 3. Restaurar nombre correcto
+# 3. Restore the correct name
 php artisan stripe:sync-customer-names
 ```
 
-El sistema:
-- ✅ Recrea el usuario con mismo email
-- ✅ Reutiliza el team existente (no crea duplicado)
-- ✅ Restaura todas las relaciones
-- ✅ Mantiene el `stripe_id` y datos de suscripción
+The system:
+- Recreates the user with the same email
+- Reuses the existing team (does not create a duplicate)
+- Restores all relationships
+- Keeps the `stripe_id` and subscription data
 
 ---
 
-### Caso 4: Limpiar Datos Inconsistentes
+### Case 4: Clean up inconsistent data
 
-Tienes teams sin `stripe_id` pero los customers existen en Stripe:
+You have teams without `stripe_id`, but the customers exist in Stripe:
 
 ```bash
-# 1. Identificar problemas
+# 1. Identify problems
 php artisan stripe:customer-report
 
-# 2. Sincronizar para asignar stripe_id
+# 2. Sync to assign stripe_id
 php artisan stripe:sync-customers
 
-# 3. Verificar que todo esté sincronizado
+# 3. Verify everything is synced
 php artisan stripe:customer-report
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Error: "No API key provided"
 
-**Causa:** La API key de Stripe no está configurada.
+**Cause:** The Stripe API key is not configured.
 
-**Solución:**
+**Solution:**
 ```bash
-# Verificar .env
+# Check .env
 grep STRIPE .env
 
-# Debe tener:
+# Must have:
 STRIPE_KEY=pk_test_xxxxx
 STRIPE_SECRET=sk_test_xxxxx
 ```
@@ -461,43 +461,43 @@ STRIPE_SECRET=sk_test_xxxxx
 
 ### Error: "Team already has different stripe_id"
 
-**Causa:** El team ya tiene un `stripe_id` diferente al del customer en Stripe.
+**Cause:** The team already has a `stripe_id` different from the Stripe customer.
 
-**Solución:**
+**Solution:**
 
-1. **Verificar en la base de datos:**
+1. **Check the database:**
 ```sql
 SELECT id, name, stripe_id FROM teams WHERE stripe_id IS NOT NULL;
 ```
 
-2. **Verificar en Stripe:**
+2. **Check Stripe:**
 ```bash
 php artisan stripe:customer-report
 ```
 
-3. **Corregir manualmente si es necesario:**
+3. **Fix manually if needed:**
 ```sql
--- Si el stripe_id es incorrecto
+-- If the stripe_id is incorrect
 UPDATE teams SET stripe_id = 'cus_correcto' WHERE id = X;
 
--- O eliminar para que se reasigne
+-- Or clear it so it can be reassigned
 UPDATE teams SET stripe_id = NULL WHERE id = X;
 ```
 
-4. **Volver a sincronizar:**
+4. **Sync again:**
 ```bash
 php artisan stripe:sync-customers
 ```
 
 ---
 
-### Teams Duplicados
+### Duplicate teams
 
-**Causa:** Se crearon múltiples teams para el mismo customer antes de la corrección.
+**Cause:** Multiple teams were created for the same customer before the fix.
 
-**Solución:**
+**Solution:**
 
-1. **Identificar duplicados:**
+1. **Identify duplicates:**
 ```sql
 SELECT stripe_id, COUNT(*) as count
 FROM teams
@@ -506,32 +506,32 @@ GROUP BY stripe_id
 HAVING count > 1;
 ```
 
-2. **Eliminar duplicados (mantener el más reciente):**
+2. **Delete duplicates (keep the most recent):**
 ```sql
--- Ejemplo: Eliminar team duplicado con id 5, mantener el 4
+-- Example: Delete duplicate team with id 5, keep 4
 DELETE FROM team_user WHERE team_id = 5;
 DELETE FROM teams WHERE id = 5;
 ```
 
-3. **Sincronizar de nuevo:**
+3. **Sync again:**
 ```bash
 php artisan stripe:sync-customers --create
 ```
 
 ---
 
-### Usuario sin `current_team_id`
+### User without `current_team_id`
 
-**Causa:** El usuario no tiene asignado un team como actual.
+**Cause:** The user does not have a current team assigned.
 
-**Solución:**
+**Solution:**
 
 ```bash
-# El comando de sincronización lo corrige automáticamente
+# The sync command fixes this automatically
 php artisan stripe:sync-customers
 ```
 
-O manualmente:
+Or manually:
 ```sql
 UPDATE users u
 SET current_team_id = (
@@ -544,97 +544,97 @@ WHERE current_team_id IS NULL;
 
 ---
 
-### Nombre Incorrecto en Usuario
+### Incorrect user name
 
-**Causa:** El campo `individual_name` no está configurado en Stripe o está desactualizado.
+**Cause:** The `individual_name` field is not set in Stripe or is outdated.
 
-**Solución:**
+**Solution:**
 
-1. **Actualizar en Stripe Dashboard:**
-   - Ir al customer en Stripe
-   - Agregar/actualizar el campo `individual_name`
+1. **Update in Stripe Dashboard:**
+   - Open the customer in Stripe
+   - Add/update the `individual_name` field
 
-2. **Sincronizar:**
+2. **Sync:**
 ```bash
 php artisan stripe:sync-customer-names
 ```
 
-**Nota:** Si el customer no tiene `individual_name`, el comando usará automáticamente el `name` (business name) como fallback.
+**Note:** If the customer has no `individual_name`, the command automatically falls back to `name` (business name).
 
 ---
 
-## 🔧 Configuración
+## Configuration
 
-### Variables de Entorno
+### Environment variables
 
 ```env
 # Stripe Keys
 STRIPE_KEY=pk_test_xxxxxxxxxxxxx
 STRIPE_SECRET=sk_test_xxxxxxxxxxxxx
 
-# Webhook (opcional, para sincronización automática)
+# Webhook (optional, for automatic sync)
 STRIPE_WEBHOOK_SECRET=whsec_xxxxxxxxxxxxx
 ```
 
-### Webhooks de Stripe (Opcional)
+### Stripe webhooks (optional)
 
-Para sincronización automática cuando se actualiza un customer en Stripe:
+For automatic sync when a customer is updated in Stripe:
 
-1. **Configurar webhook en Stripe Dashboard:**
+1. **Configure the webhook in Stripe Dashboard:**
    - URL: `https://tu-app.test/stripe/webhook`
-   - Eventos:
+   - Events:
      - `customer.created`
      - `customer.updated`
      - `customer.deleted`
 
-2. **El webhook de Cashier ya maneja estos eventos automáticamente**
+2. **The Cashier webhook already handles these events automatically**
 
 ---
 
-## 📝 Notas Importantes
+## Important notes
 
-### Diferencia entre `name` e `individual_name` en Stripe
+### Difference between `name` and `individual_name` in Stripe
 
-- **`name`**: Nombre de la empresa / Razón social
-  - Usado para: Facturas, documentos legales, team name
-  - Ejemplo: "Acme Corporation", "Tech Solutions SA"
+- **`name`**: Company name / legal name
+  - Used for: Invoices, legal documents, team name
+  - Example: "Acme Corporation", "Tech Solutions SA"
 
-- **`individual_name`**: Nombre del contacto / Persona particular
-  - Usado para: Comunicación personal, notificaciones, user name
-  - Ejemplo: "John Doe", "María García"
+- **`individual_name`**: Contact / individual person name
+  - Used for: Personal communication, notifications, user name
+  - Example: "John Doe", "María García"
 
-### Estrategia de Nombres
+### Naming strategy
 
 ```php
-// Para Team
+// For Team
 $team->name = $customer->name; // Business name
 
-// Para User (con fallback)
+// For User (with fallback)
 $user->name = $customer->individual_name ?? $customer->name;
 ```
 
-### Prevención de Duplicados
+### Duplicate prevention
 
-El sistema previene duplicados verificando en este orden:
+The system prevents duplicates by checking in this order:
 
-1. **Por `stripe_id`** en la tabla `teams`
-2. **Por `email`** en la tabla `users`
-3. **Por relación usuario-team** existente
-
----
-
-## 🚀 Mejores Prácticas
-
-1. **Siempre usar `--dry-run` primero** para ver qué cambios se harán
-2. **Hacer backup de la BD** antes de sincronizaciones masivas
-3. **Ejecutar reporte después** de cada sincronización para verificar
-4. **Configurar scheduler** para mantener datos actualizados automáticamente
-5. **Configurar webhooks** de Stripe para sincronización en tiempo real
-6. **Mantener `individual_name` actualizado** en Stripe para mejores resultados
+1. **By `stripe_id`** in the `teams` table
+2. **By `email`** in the `users` table
+3. **By existing user-team relationship**
 
 ---
 
-## 📚 Referencias
+## Best practices
+
+1. **Always use `--dry-run` first** to see what changes will be made
+2. **Back up the database** before large synchronizations
+3. **Run the report afterward** to verify each sync
+4. **Configure the scheduler** to keep data updated automatically
+5. **Configure Stripe webhooks** for real-time sync
+6. **Keep `individual_name` updated** in Stripe for best results
+
+---
+
+## References
 
 - [Laravel Cashier Documentation](https://laravel.com/docs/10.x/billing)
 - [Stripe API - Customers](https://stripe.com/docs/api/customers)
@@ -643,7 +643,6 @@ El sistema previene duplicados verificando en este orden:
 
 ---
 
-**Última actualización:** 2025-12-27
-**Versión de Laravel:** 10.x
-**Versión de Cashier:** 15.x
-
+**Last updated:** 2025-12-27
+**Laravel version:** 10.x
+**Cashier version:** 15.x

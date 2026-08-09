@@ -1,42 +1,42 @@
-# Sistema de Productos para WhatsApp
+# WhatsApp Product System
 
-Este documento describe la implementación del sistema de productos consultable por WhatsApp en el proyecto Humano.
+This document describes the WhatsApp-queryable product system implemented in the Humano project.
 
-## 🚀 Características Implementadas
+## Implemented features
 
-### ✅ Funcionalidades Básicas
-- **Catálogo de productos** consultable por WhatsApp
-- **Búsqueda por palabras clave** (productos, servicios, hosting, dominio, etc.)
-- **Agrupación por categorías** para mejor organización
-- **Información detallada** de cada producto (nombre, precio, descripción)
-- **Integración con Twilio** para respuestas automáticas
-- **Asistente IA** (Respuestas del Asistente Humano): puede listar catálogo por categoría, buscar por nombre o **código/SKU**, y usar `add_to_whatsapp_cart` para el número que escribe por WhatsApp (o el destinatario en el chat web). El cliente sigue pudiendo usar *carrito* y *checkout*.
+### Core functionality
+- **Product catalog** queryable via WhatsApp
+- **Keyword search** (products, services, hosting, domain, etc.)
+- **Category grouping** for clearer organization
+- **Detailed product information** (name, price, description)
+- **Twilio integration** for automatic replies
+- **AI assistant** (Humano Assistant replies): can list the catalog by category, search by name or **code/SKU**, and use `add_to_whatsapp_cart` for the number writing via WhatsApp (or the recipient in the web chat). The customer can still use *cart* and *checkout*.
 
-### 🛍️ Comandos Disponibles
-- `productos` - Ver catálogo completo
-- `servicios` - Ver lista de servicios
-- `catalogo` - Ver catálogo organizado
-- `precios` - Ver información de precios
-- `hosting` - Consultar servicios de hosting
-- `dominio` - Consultar servicios de dominios
-- `desarrollo` - Consultar servicios de desarrollo
+### Available commands
+- `productos` - View full catalog
+- `servicios` - View service list
+- `catalogo` - View organized catalog
+- `precios` - View pricing information
+- `hosting` - Query hosting services
+- `dominio` - Query domain services
+- `desarrollo` - Query development services
 
-## 📁 Archivos Creados/Modificados
+## Created/modified files
 
-### Nuevos Archivos
-- `app/Models/Product.php` - Modelo de productos
-- `database/migrations/xxxx_create_products_table.php` - Migración de productos
-- `database/factories/ProductFactory.php` - Factory para productos de prueba
-- `database/seeders/ProductSeeder.php` - Seeder para Team Demo
-- `app/Console/Commands/TestProductSystem.php` - Comando de prueba
-- `config/shopping_cart.php` - Configuración del carrito
+### New files
+- `app/Models/Product.php` - Product model
+- `database/migrations/xxxx_create_products_table.php` - Products migration
+- `database/factories/ProductFactory.php` - Factory for test products
+- `database/seeders/ProductSeeder.php` - Seeder for Team Demo
+- `app/Console/Commands/TestProductSystem.php` - Test command
+- `config/shopping_cart.php` - Cart configuration
 
-### Archivos Modificados
-- `app/Services/TwilioService.php` - Agregada funcionalidad de productos
+### Modified files
+- `app/Services/TwilioService.php` - Added product functionality
 
-## 🗄️ Estructura de la Base de Datos
+## Database structure
 
-### Tabla `products`
+### `products` table
 ```sql
 CREATE TABLE products (
     id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
@@ -57,146 +57,149 @@ CREATE TABLE products (
 );
 ```
 
-## 🔧 Instalación y Configuración
+## Installation and configuration
 
-### 1. Instalar Dependencias
+### 1. Install dependencies
 ```bash
 composer require "darryldecode/cart"
 ```
 
-### 2. Publicar Configuración
+### 2. Publish configuration
 ```bash
 php artisan vendor:publish --provider="Darryldecode\Cart\CartServiceProvider" --tag="config"
 ```
 
-### 3. Ejecutar Migraciones
+### 3. Run migrations
 ```bash
 php artisan migrate
 ```
 
-### 4. Ejecutar Seeders
+### 4. Run seeders
 ```bash
 php artisan db:seed --class=ProductSeeder
 ```
 
-## 🧪 Pruebas del Sistema
+## System testing
 
-### Comando de Prueba
+### Test command
 ```bash
 php artisan test:products 5491112345678
 ```
 
-### Pruebas Manuales
-Enviar mensajes de WhatsApp con:
+### Manual tests
+Send WhatsApp messages with:
 - "productos"
 - "servicios"
 - "catalogo"
 - "hosting"
 
-## 📱 Flujo de WhatsApp
+## WhatsApp flow
 
-### 1. Usuario Envía Mensaje
+### 1. User sends a message
 ```
-Usuario: "productos"
+User: "productos"
 ```
 
-### 2. Sistema Detecta Comando
-- Analiza palabras clave
-- Identifica comando de productos
-- Ejecuta `processProductCommands()`
+### 2. System detects the command
+- Analyzes keywords
+- Identifies the product command
+- Runs `processProductCommands()`
 
-### 3. Sistema Responde
-- Obtiene productos activos
-- Agrupa por categorías
-- Formatea respuesta con emojis
-- Envía catálogo completo
+### 3. System responds
+- Fetches active products
+- Groups by category
+- Formats the reply with emojis
+- Sends the full catalog
 
-### 4. Respuesta Ejemplo
+### 4. Sample response
 ```
-🛍️ Catálogo de Productos y Servicios
+🛍️ Product & Service Catalog
 
 📂 Hosting
-• Hosting Web Básico
+• Basic Web Hosting
   💰 $29.99
-  📝 Hosting web con 10GB de espacio SSD...
+  📝 Web hosting with 10GB SSD storage...
 
-• Hosting Web Premium
+• Premium Web Hosting
   💰 $59.99
-  📝 Hosting web premium con 50GB de espacio...
+  📝 Premium web hosting with 50GB storage...
 
-💡 Para comprar:
-• comprar [nombre] o comprar [código]
-• O contacta soporte: https://revisionalpha.com/contactenos
+💡 To purchase:
+• buy [name] or buy [code]
+• Or contact support: https://revisionalpha.com/contactenos
 
-🛒 Tu carrito: Escribe carrito para ver tus productos seleccionados
+🛒 Your cart: Type cart to view your selected products
 ```
 
-## 🎯 Productos del Team Demo
+## Team Demo products
 
-### Hosting y Dominios
-- **Hosting Web Básico** - $29.99/mes
-- **Hosting Web Premium** - $59.99/mes
-- **Dominio .com** - $19.99/año
-- **Dominio .net** - $24.99/año
+### Hosting and domains
+- **Basic Web Hosting** - $29.99/month
+- **Premium Web Hosting** - $59.99/month
+- **.com Domain** - $19.99/year
+- **.net Domain** - $24.99/year
 
-### Seguridad y Certificados
-- **Certificado SSL Básico** - $49.99/año
-- **Certificado SSL Wildcard** - $199.99/año
-- **Backup Automático** - $15.99/mes
+### Security and certificates
+- **Basic SSL Certificate** - $49.99/year
+- **Wildcard SSL Certificate** - $199.99/year
+- **Automatic Backup** - $15.99/month
 
-### Desarrollo y Consultoría
-- **Desarrollo Web Básico** - $999.99
-- **Desarrollo Web Premium** - $2,499.99
-- **App Móvil Básica** - $1,499.99
-- **Consultoría IT** - $199.99/sesión
+### Development and consulting
+- **Basic Web Development** - $999.99
+- **Premium Web Development** - $2,499.99
+- **Basic Mobile App** - $1,499.99
+- **IT Consulting** - $199.99/session
 
-### Soporte y Servicios
-- **Soporte Técnico Básico** - $79.99/mes
-- **Soporte Técnico Premium** - $149.99/mes
-- **Migración de Servidor** - $299.99
-- **Optimización SEO** - $399.99
+### Support and services
+- **Basic Technical Support** - $79.99/month
+- **Premium Technical Support** - $149.99/month
+- **Server Migration** - $299.99
+- **SEO Optimization** - $399.99
 
-## 🔮 Próximos Pasos
+## Next steps
 
-### Funcionalidades Pendientes
-- [ ] **Sistema de carrito** con Laravel Shopping Cart
-- [ ] **Comando "contratar"** para agregar productos al carrito
-- [ ] **Comando "carrito"** para ver productos seleccionados
-- [ ] **Proceso de checkout** por WhatsApp
-- [ ] **Integración con pasarelas de pago**
-- [ ] **Notificaciones de pedidos** a administradores
+### Pending features
+- [ ] **Cart system** with Laravel Shopping Cart
+- [ ] **"contratar" command** to add products to the cart
+- [ ] **"carrito" command** to view selected products
+- [ ] **Checkout process** via WhatsApp
+- [ ] **Payment gateway integration**
+- [ ] **Order notifications** to administrators
 
-### Mejoras Técnicas
-- [ ] **Cache de productos** para mejor rendimiento
-- [ ] **Búsqueda avanzada** por nombre o descripción
-- [ ] **Filtros por precio** y categoría
-- [ ] **Imágenes de productos** en respuestas
-- [ ] **Sistema de inventario** y disponibilidad
+### Technical improvements
+- [ ] **Product cache** for better performance
+- [ ] **Advanced search** by name or description
+- [ ] **Price and category filters**
+- [ ] **Product images** in replies
+- [ ] **Inventory and availability system**
 
-## 🐛 Solución de Problemas
+## Troubleshooting
 
 ### Error: "No hay productos disponibles"
-- Verificar que existan productos en la base de datos
-- Ejecutar `php artisan db:seed --class=ProductSeeder`
-- Verificar que `status = true` y `whatsapp_enabled = true`
+*(Spanish locale app message: "No products available")*
+- Verify that products exist in the database
+- Run `php artisan db:seed --class=ProductSeeder`
+- Verify that `status = true` and `whatsapp_enabled = true`
 
 ### Error: "No hay categorías disponibles"
-- Ejecutar `php artisan db:seed --class=CategorySeeder`
-- Verificar que existan categorías en la base de datos
+*(Spanish locale app message: "No categories available")*
+- Run `php artisan db:seed --class=CategorySeeder`
+- Verify that categories exist in the database
 
 ### Error: "No hay monedas disponibles"
-- Ejecutar `php artisan db:seed --class=CurrencySeeder`
-- Verificar que existan monedas en la base de datos
+*(Spanish locale app message: "No currencies available")*
+- Run `php artisan db:seed --class=CurrencySeeder`
+- Verify that currencies exist in the database
 
-## 📞 Soporte
+## Support
 
-Para problemas técnicos o consultas sobre el sistema de productos:
+For technical issues or questions about the product system:
 - **Email**: soporte@revisionalpha.com
 - **WhatsApp**: +54 9 11 1234-5678
-- **Sitio Web**: https://revisionalpha.com/contactenos
+- **Website**: https://revisionalpha.com/contactenos
 
 ---
 
-**Desarrollado por:** Equipo de Desarrollo Humano  
-**Última actualización:** Agosto 2025  
-**Versión:** 1.0.0
+**Developed by:** Humano Development Team  
+**Last updated:** August 2025  
+**Version:** 1.0.0

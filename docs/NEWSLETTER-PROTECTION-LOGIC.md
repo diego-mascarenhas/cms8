@@ -1,66 +1,66 @@
-# Newsletter - Lógica de Protección de Clientes
+# Newsletter — Client Protection Logic
 
-## Descripción General
+## Overview
 
-Este documento describe la lógica implementada para proteger a los contactos que ya son **clientes** (status_id 5) de cambios automáticos de estado cuando interactúan con newsletters o se desuscriben.
+This document describes the logic implemented to protect contacts who are already **clients** (status_id 5) from automatic status changes when they interact with newsletters or unsubscribe.
 
-## Problema Resuelto
+## Problem solved
 
-Anteriormente, cuando un cliente hacía click en un enlace del newsletter o se desuscribía, su estado cambiaba automáticamente:
-- **Click en enlace** → Cambiaba a "Conversión" (ID 3)
-- **Unsubscribe** → Cambiaba a "Perdido" (ID 4)
+Previously, when a client clicked a newsletter link or unsubscribed, their status changed automatically:
+- **Link click** → Changed to "Conversión" (ID 3)
+- **Unsubscribe** → Changed to "Perdido" (ID 4)
 
-Esto causaba que se "degradara" el estado de clientes establecidos, perdiendo información valiosa sobre la relación comercial.
+This degraded the status of established clients and lost valuable information about the commercial relationship.
 
-## Lógica de Protección Implementada
+## Protection logic implemented
 
-### 🎯 Tabla de Estados y Acciones
+### Status and action table
 
-| Acción | Estado Actual | Resultado | ¿Cambia Estado? | Archivo Afectado |
-|--------|---------------|-----------|-----------------|------------------|
-| **Click** | Cliente (5) | Mantiene estado 5 | ❌ NO | `MessageTrackingController.php` |
-| **Click** | Prospect (1) | Cambia a Conversión (3) | ✅ SÍ | `MessageTrackingController.php` |
-| **Click** | Conversión (3) | Mantiene estado 3 | ❌ NO | `MessageTrackingController.php` |
-| **Unsubscribe** | Cliente (5) | Mantiene estado 5 | ❌ NO | `MessageController.php` |
-| **Unsubscribe** | Prospect (1) | Cambia a Perdido (4) | ✅ SÍ | `MessageController.php` |
-| **Unsubscribe** | Conversión (3) | Cambia a Perdido (4) | ✅ SÍ | `MessageController.php` |
+| Action | Current status | Result | Status changes? | Affected file |
+|--------|----------------|--------|-----------------|---------------|
+| **Click** | Cliente (5) | Keeps status 5 | NO | `MessageTrackingController.php` |
+| **Click** | Prospect (1) | Changes to Conversión (3) | YES | `MessageTrackingController.php` |
+| **Click** | Conversión (3) | Keeps status 3 | NO | `MessageTrackingController.php` |
+| **Unsubscribe** | Cliente (5) | Keeps status 5 | NO | `MessageController.php` |
+| **Unsubscribe** | Prospect (1) | Changes to Perdido (4) | YES | `MessageController.php` |
+| **Unsubscribe** | Conversión (3) | Changes to Perdido (4) | YES | `MessageController.php` |
 
-### 🔒 Condiciones de Protección
+### Protection conditions
 
-#### Para Clicks (Conversión)
+#### For clicks (Conversión)
 ```php
-// Solo cambia si NO es conversión (3) Y NO es cliente (5)
+// Only changes if NOT conversion (3) AND NOT client (5)
 if ($contact->status_id != 3 && $contact->status_id != 5) {
     $contact->update(['status_id' => 3]);
 }
 ```
 
-#### Para Unsubscribe (Perdido)
+#### For unsubscribe (Perdido)
 ```php
-// Solo cambia si NO es cliente (5)
+// Only changes if NOT client (5)
 if ($contact->status_id != 5) {
     $contact->update(['status_id' => 4]);
 }
 ```
 
-## Archivos Modificados
+## Modified files
 
 ### 1. `app/Console/Commands/ProcessActiveCampaigns.php`
-**Método**: `getContactsForMessage()`
-**Cambio**: Corregido el nombre de columna de `contact_status_id` a `status_id` en las consultas a la tabla `contacts`.
+**Method**: `getContactsForMessage()`
+**Change**: Corrected the column name from `contact_status_id` to `status_id` in queries against the `contacts` table.
 
 ```php
 // Filter by contact status if specified in message
 if ($message->contact_status_id) {
-    $query->where('status_id', $message->contact_status_id); // Corregido: era 'contact_status_id'
+    $query->where('status_id', $message->contact_status_id); // Fixed: was 'contact_status_id'
 }
 ```
 
-**Problema resuelto**: Error en producción `SQLSTATE[42S22]: Column not found: 1054 Unknown column 'contact_status_id' in 'where clause'`
+**Problem resolved**: Production error `SQLSTATE[42S22]: Column not found: 1054 Unknown column 'contact_status_id' in 'where clause'`
 
 ### 2. `app/Http/Controllers/MessageTrackingController.php`
-**Método**: `trackClick()`
-**Cambio**: Agregada condición para no cambiar estado de clientes cuando hacen click.
+**Method**: `trackClick()`
+**Change**: Added a condition so client status is not changed on click.
 
 ```php
 // Update contact status to "Conversión" (ID 3) when they click any link
@@ -86,8 +86,8 @@ if ($delivery->contact && $delivery->contact->status_id != 3 && $delivery->conta
 ```
 
 ### 3. `app/Http/Controllers/MessageController.php`
-**Método**: `unsubscribe()`
-**Cambio**: Agregada condición para no cambiar estado de clientes cuando se desuscriben.
+**Method**: `unsubscribe()`
+**Change**: Added a condition so client status is not changed on unsubscribe.
 
 ```php
 public function unsubscribe($email)
@@ -121,59 +121,59 @@ public function unsubscribe($email)
 }
 ```
 
-## 📝 Logging y Auditoría
+## Logging and auditing
 
-### Eventos Registrados
+### Logged events
 
-1. **Cliente hace click**: Se registra la acción pero se indica que no se cambió el estado
-2. **Cliente se desuscribe**: Se registra el intento pero se preserva el estado
-3. **Otros contactos**: Se registra el cambio de estado con valores anterior y nuevo
+1. **Client clicks**: Action is logged and status is reported as unchanged
+2. **Client unsubscribes**: Attempt is logged and status is preserved
+3. **Other contacts**: Status change is logged with previous and new values
 
-### Información en Logs
+### Information in logs
 
-- **contact_id**: ID del contacto
-- **contact_email**: Email del contacto
-- **delivery_id**: ID de la entrega (solo para clicks)
-- **clicked_url**: URL clickeada (solo para clicks)
-- **previous_status**: Estado anterior (cuando hay cambio)
-- **new_status**: Nuevo estado (cuando hay cambio)
-- **current_status**: Estado actual (cuando no hay cambio)
-- **action**: Tipo de acción realizada
+- **contact_id**: Contact ID
+- **contact_email**: Contact email
+- **delivery_id**: Delivery ID (clicks only)
+- **clicked_url**: Clicked URL (clicks only)
+- **previous_status**: Previous status (when changed)
+- **new_status**: New status (when changed)
+- **current_status**: Current status (when unchanged)
+- **action**: Type of action performed
 
-## ✅ Beneficios
+## Benefits
 
-1. **Preserva relaciones comerciales**: Los clientes siguen siendo clientes
-2. **Evita confusión**: No se "degradan" clientes por acciones de marketing
-3. **Mantiene integridad**: El estado de cliente es permanente y valioso
-4. **Auditoría completa**: Todas las acciones se registran para seguimiento
-5. **Flexibilidad**: Otros estados siguen funcionando normalmente
+1. **Preserves commercial relationships**: Clients remain clients
+2. **Avoids confusion**: Clients are not "downgraded" by marketing actions
+3. **Maintains integrity**: Client status is permanent and valuable
+4. **Full audit trail**: All actions are logged for follow-up
+5. **Flexibility**: Other statuses continue to work normally
 
-## 🧪 Testing
+## Testing
 
-Para verificar que la lógica funciona correctamente:
+To verify the logic works correctly:
 
 ```php
-// Verificar lógica de protección
+// Verify protection logic
 $contact_status_id = 5; // Cliente
 $should_update_to_conversion = $contact_status_id != 3 && $contact_status_id != 5;
 $should_update_to_lost = $contact_status_id != 5;
 
-echo 'Cliente hace click → NO cambia estado: ' . (!$should_update_to_conversion ? '✅' : '❌');
-echo 'Cliente se desuscribe → NO cambia estado: ' . (!$should_update_to_lost ? '✅' : '❌');
+echo 'Client clicks → status does NOT change: ' . (!$should_update_to_conversion ? '✅' : '❌');
+echo 'Client unsubscribes → status does NOT change: ' . (!$should_update_to_lost ? '✅' : '❌');
 ```
 
-## Estados de Contactos
+## Contact statuses
 
-| ID | Nombre | Descripción |
-|----|--------|-------------|
-| 1 | Activo/Prospect | Contacto activo, potencial cliente |
-| 2 | Inactivo | Contacto inactivo |
-| 3 | Conversión | Ha mostrado interés (hizo click) |
-| 4 | Perdido | Se desuscribió o perdió interés |
-| 5 | **Cliente** | **Estado protegido** - Cliente establecido |
+| ID | Name | Description |
+|----|------|-------------|
+| 1 | Activo/Prospect | Active contact, potential client |
+| 2 | Inactivo | Inactive contact |
+| 3 | Conversión | Showed interest (clicked) |
+| 4 | Perdido | Unsubscribed or lost interest |
+| 5 | **Cliente** | **Protected status** — Established client |
 
 ---
 
-**Fecha de implementación**: Agosto 2024
-**Versión**: 1.0
-**Autor**: Sistema de Newsletter Humano
+**Implementation date**: August 2024
+**Version**: 1.0
+**Author**: Humano Newsletter System

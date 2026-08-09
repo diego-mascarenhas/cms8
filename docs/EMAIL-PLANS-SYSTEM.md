@@ -1,24 +1,24 @@
-# 📧 Sistema de Planes de Email - Control de Límites por Team
+# Email Plans System — Per-Team Limit Control
 
-## 🎯 **Resumen del Sistema**
+## System overview
 
-Sistema completo de gestión de planes de email que permite asignar límites específicos a cada team basado en tres niveles de servicio: **BASIC**, **FOUNDATION** y **SCALE**. Solo usuarios con rol **admin** pueden asignar y modificar planes.
+Complete email plan management system that assigns specific limits to each team based on three service levels: **BASIC**, **FOUNDATION**, and **SCALE**. Only users with the **admin** role can assign and modify plans.
 
-### **📊 Planes Disponibles:**
+### Available plans:
 
-| Plan | Descripción | Emails/Mes | Emails/Día | Contactos | Ideal Para |
-|------|-------------|------------|------------|-----------|------------|
-| **BASIC** | Ideal para comenzar | 10,000 | 500 | 3,000 | Pequeñas empresas |
-| **FOUNDATION** | Para empresas en crecimiento | 50,000 | 2,000 | 20,000 | Empresas medianas |
-| **SCALE** | Para grandes empresas | 100,000 | Sin límite | 50,000 | Grandes empresas |
+| Plan | Description | Emails/Month | Emails/Day | Contacts | Ideal for |
+|------|-------------|--------------|------------|----------|-----------|
+| **BASIC** | Ideal to get started | 10,000 | 500 | 3,000 | Small businesses |
+| **FOUNDATION** | For growing companies | 50,000 | 2,000 | 20,000 | Mid-size companies |
+| **SCALE** | For large organizations | 100,000 | Unlimited | 50,000 | Large enterprises |
 
 ---
 
-## 🏗️ **Arquitectura del Sistema**
+## System architecture
 
-### **1. Base de Datos (Migración)**
+### 1. Database (migration)
 ```sql
--- Campos agregados a tabla teams
+-- Columns added to the teams table
 ALTER TABLE teams ADD COLUMN email_plan VARCHAR(255) DEFAULT 'basic';
 ALTER TABLE teams ADD COLUMN email_monthly_limit INT DEFAULT 10000;
 ALTER TABLE teams ADD COLUMN email_monthly_used INT DEFAULT 0;
@@ -31,102 +31,102 @@ ALTER TABLE teams ADD COLUMN email_plan_assigned_at TIMESTAMP NULL;
 ALTER TABLE teams ADD COLUMN email_plan_assigned_by BIGINT UNSIGNED NULL;
 ```
 
-### **2. Archivos del Sistema**
+### 2. System files
 
-#### **Enum de Planes:**
-- `app/Enums/EmailPlan.php` - Define los 3 planes y sus límites
+#### Plan enum:
+- `app/Enums/EmailPlan.php` — Defines the 3 plans and their limits
 
-#### **Trait de Funcionalidad:**
-- `app/Traits/HasEmailLimits.php` - Lógica de límites para Teams
+#### Functionality trait:
+- `app/Traits/HasEmailLimits.php` — Limit logic for Teams
 
-#### **Comandos de Consola:**
-- `app/Console/Commands/AssignEmailPlan.php` - Asignar planes
-- `app/Console/Commands/CheckEmailLimits.php` - Verificar estado
+#### Console commands:
+- `app/Console/Commands/AssignEmailPlan.php` — Assign plans
+- `app/Console/Commands/CheckEmailLimits.php` — Check status
 
-#### **Modelo Actualizado:**
-- `app/Models/Team.php` - Incluye trait HasEmailLimits
+#### Updated model:
+- `app/Models/Team.php` — Includes the HasEmailLimits trait
 
-#### **Seeder:**
-- `database/seeders/EmailPlansSeeder.php` - Inicializa teams existentes
+#### Seeder:
+- `database/seeders/EmailPlansSeeder.php` — Initializes existing teams
 
-#### **Migración:**
+#### Migration:
 - `database/migrations/2025_08_25_220000_add_email_limits_to_teams_table.php`
 
 ---
 
-## 🚀 **Comandos Principales**
+## Main commands
 
-### **1. Asignar Plan a Team**
+### 1. Assign a plan to a team
 ```bash
-# Sintaxis
+# Syntax
 php artisan email-plans:assign {team_id} {plan} [--admin-id=X]
 
-# Ejemplos
+# Examples
 php artisan email-plans:assign 1 basic
 php artisan email-plans:assign 2 foundation --admin-id=1
 php artisan email-plans:assign 3 scale
 
-# Ver todos los teams
+# List all teams
 php artisan email-plans:assign 0 basic --list-teams
 ```
 
-### **2. Verificar Estado de Límites**
+### 2. Check limit status
 ```bash
-# Ver estado de todos los teams
+# View status for all teams
 php artisan email-plans:check
 
-# Ver team específico
+# View a specific team
 php artisan email-plans:check --team-id=1
 
-# Ver solo teams con problemas
+# View only teams with problems
 php artisan email-plans:check --over-limits
 
-# Resetear límites automáticamente
+# Reset limits automatically
 php artisan email-plans:check --reset-limits
 
-# Salida en JSON
+# JSON output
 php artisan email-plans:check --format=json
 ```
 
-### **3. Inicializar Sistema**
+### 3. Initialize the system
 ```bash
-# Ejecutar migración
+# Run migration
 php artisan migrate
 
-# Inicializar teams existentes con plan BASIC
+# Initialize existing teams with the BASIC plan
 php artisan db:seed --class=EmailPlansSeeder
 ```
 
 ---
 
-## 🔒 **Control de Acceso y Validaciones**
+## Access control and validations
 
-### **Solo Admin Puede Asignar Planes:**
+### Only admin can assign plans:
 ```php
-// En HasEmailLimits trait
+// In HasEmailLimits trait
 public function assignEmailPlan(EmailPlan $plan, int $assignedByUserId): bool
 {
     $assignedBy = User::find($assignedByUserId);
     if (!$assignedBy || !$assignedBy->hasRole('admin')) {
         throw new Exception('Only admin users can assign email plans');
     }
-    // ... resto de la lógica
+    // ... rest of the logic
 }
 ```
 
-### **Validaciones Automáticas:**
-- ✅ Verificar límites antes de enviar
-- ✅ Incrementar contadores después del envío
-- ✅ Reset automático diario/mensual
-- ✅ Validación de contactos por team
+### Automatic validations:
+- Check limits before sending
+- Increment counters after sending
+- Automatic daily/monthly reset
+- Contact limit validation per team
 
 ---
 
-## 📈 **Funcionamiento del Sistema**
+## How the system works
 
-### **1. Verificación de Límites (Antes del Envío)**
+### 1. Limit check (before sending)
 ```php
-// En SendAllPendingNow.php
+// In SendAllPendingNow.php
 if (!$delivery->team->canSendEmails(1)) {
     $remaining = $delivery->team->getRemainingEmails();
     $this->warn("Team '{$delivery->team->name}' has reached email limits:");
@@ -135,70 +135,70 @@ if (!$delivery->team->canSendEmails(1)) {
 }
 ```
 
-### **2. Incremento de Contadores (Después del Envío)**
+### 2. Counter increment (after sending)
 ```php
-// Después del dispatch exitoso
+// After successful dispatch
 $delivery->team->incrementEmailUsage(1);
 ```
 
-### **3. Reset Automático de Límites**
+### 3. Automatic limit reset
 ```php
-// Reset mensual: primer día del mes
-// Reset diario: cada día a las 00:00
-$team->resetLimitsIfNeeded(); // Se ejecuta automáticamente
+// Monthly reset: first day of the month
+// Daily reset: every day at 00:00
+$team->resetLimitsIfNeeded(); // Runs automatically
 ```
 
 ---
 
-## 💡 **Casos de Uso**
+## Use cases
 
-### **Escenario 1: Asignar Plan FOUNDATION a Team**
+### Scenario 1: Assign FOUNDATION plan to a team
 ```bash
-# 1. Ver teams disponibles
+# 1. List available teams
 php artisan email-plans:assign 0 basic --list-teams
 
-# 2. Asignar plan
+# 2. Assign plan
 php artisan email-plans:assign 2 foundation
 
-# 3. Verificar asignación
+# 3. Verify assignment
 php artisan email-plans:check --team-id=2
 ```
 
-### **Escenario 2: Verificar Teams con Problemas**
+### Scenario 2: Check teams with problems
 ```bash
-# Ver solo teams que superaron límites
+# View only teams that exceeded limits
 php artisan email-plans:check --over-limits
 
-# Resultado esperado:
+# Expected result:
 # ⚠️  Teams over limits need attention:
-#   • Mi Empresa: Over monthly emails, contacts
+#   • My Company: Over monthly emails, contacts
 ```
 
-### **Escenario 3: Envío Masivo con Límites**
+### Scenario 3: Bulk send with limits
 ```bash
-# El comando respeta automáticamente los límites
+# The command automatically respects limits
 php artisan emails:send-all-now --message-id=3
 
-# Resultado:
-# ⚠️  Team 'Mi Empresa' has reached email limits:
+# Result:
+# ⚠️  Team 'My Company' has reached email limits:
 #     Monthly: 9950/10000
 #     Daily: 450/500
 ```
 
 ---
 
-## 📊 **Métricas y Monitoreo**
+## Metrics and monitoring
 
-### **Estados de los Teams:**
-- 🟢 **Verde**: < 80% del límite
-- 🟡 **Amarillo**: 80-99% del límite
-- 🔴 **Rojo**: 100%+ del límite
+### Team status indicators:
+- Green: < 80% of the limit
+- Yellow: 80–99% of the limit
+- Red: 100%+ of the limit
 
-### **Información Disponible:**
+### Available information:
 ```php
 $team = Team::find(1);
 
-// Estado actual
+// Current status
 $remaining = $team->getRemainingEmails();
 // [
 //     'monthly_remaining' => 5000,
@@ -209,7 +209,7 @@ $remaining = $team->getRemainingEmails();
 //     'daily_limit' => 500,
 // ]
 
-// Configuración del plan
+// Plan configuration
 $config = $team->getEmailPlanConfig();
 // [
 //     'name' => 'Foundation',
@@ -217,38 +217,38 @@ $config = $team->getEmailPlanConfig();
 //     'daily_limit' => 2000,
 //     'contact_limit' => 20000,
 //     'assigned_by' => 'Admin User',
-//     // ... más info
+//     // ... more info
 // ]
 ```
 
 ---
 
-## 🔧 **Integración con Sistema Existente**
+## Integration with the existing system
 
-### **Modificaciones en Comandos Existentes:**
+### Changes in existing commands:
 
-#### **SendAllPendingNow.php:**
+#### SendAllPendingNow.php:
 ```php
-// ✅ Agregado: Verificación de límites antes del envío
+// ✅ Added: Limit check before sending
 if (!$delivery->team->canSendEmails(1)) {
-    // Skip este delivery
+    // Skip this delivery
 }
 
-// ✅ Agregado: Incremento de contador después del envío exitoso
+// ✅ Added: Counter increment after successful send
 $delivery->team->incrementEmailUsage(1);
 ```
 
-#### **Team.php Model:**
+#### Team.php model:
 ```php
-// ✅ Agregado: Trait para funcionalidad de límites
+// ✅ Added: Trait for limit functionality
 use HasEmailLimits;
 
-// ✅ Agregado: Campos fillable para planes
+// ✅ Added: Fillable fields for plans
 protected $fillable = [
     'email_plan', 'email_monthly_limit', // ...
 ];
 
-// ✅ Agregado: Relación con contactos
+// ✅ Added: Relationship with contacts
 public function contacts() {
     return $this->hasMany(Contact::class);
 }
@@ -256,91 +256,91 @@ public function contacts() {
 
 ---
 
-## ⚠️ **Consideraciones y Limitaciones**
+## Considerations and limitations
 
-### **Limitaciones Actuales:**
-1. **Solo Admin puede asignar**: Requiere rol 'admin'
-2. **Reset automático**: No manual (solo por tiempo)
-3. **Un plan por team**: No planes múltiples o personalizados
+### Current limitations:
+1. **Admin-only assignment**: Requires the `admin` role
+2. **Automatic reset only**: No manual reset outside time-based rules
+3. **One plan per team**: No multiple or custom plans
 
-### **Extensiones Futuras:**
-1. **Planes personalizados**: Límites custom por team
-2. **Notificaciones**: Alertas automáticas al 80% del límite
-3. **Billing integration**: Cobros automáticos por upgrade
-4. **API REST**: Endpoints para gestión externa
+### Future extensions:
+1. **Custom plans**: Per-team custom limits
+2. **Notifications**: Automatic alerts at 80% of the limit
+3. **Billing integration**: Automatic charges on upgrade
+4. **REST API**: Endpoints for external management
 
 ---
 
-## 🚨 **Solución de Problemas**
+## Troubleshooting
 
-### **Error: "Only admin users can assign email plans"**
-**Solución:**
+### Error: "Only admin users can assign email plans"
+**Solution:**
 ```bash
-# Verificar roles del usuario
+# Verify user roles
 php artisan tinker
 >>> User::find(1)->getRoleNames();
 
-# Asignar rol admin si es necesario
+# Assign admin role if needed
 >>> User::find(1)->assignRole('admin');
 ```
 
-### **Error: Team no puede enviar emails**
-**Solución:**
+### Error: Team cannot send emails
+**Solution:**
 ```bash
-# Verificar límites
+# Verify limits
 php artisan email-plans:check --team-id=1
 
-# Asignar plan superior
+# Assign a higher plan
 php artisan email-plans:assign 1 foundation
 
-# O resetear límites manualmente (solo para testing)
+# Or reset limits manually (testing only)
 php artisan email-plans:check --team-id=1 --reset-limits
 ```
 
-### **Deliveries no respetan límites**
-**Verificar:**
-1. ✅ Migración ejecutada
-2. ✅ Team model usa HasEmailLimits trait
-3. ✅ Comando modificado correctamente
+### Deliveries do not respect limits
+**Verify:**
+1. Migration has been run
+2. Team model uses the HasEmailLimits trait
+3. Command was modified correctly
 
 ---
 
-## 📝 **Instalación Completa**
+## Full installation
 
-### **1. Ejecutar Migraciones:**
+### 1. Run migrations:
 ```bash
 php artisan migrate
 ```
 
-### **2. Inicializar Teams Existentes:**
+### 2. Initialize existing teams:
 ```bash
 php artisan db:seed --class=EmailPlansSeeder
 ```
 
-### **3. Verificar Instalación:**
+### 3. Verify installation:
 ```bash
 php artisan email-plans:check
 ```
 
-### **4. Asignar Planes Específicos:**
+### 4. Assign specific plans:
 ```bash
-# Ejemplo: Team 1 = Foundation, Team 2 = Scale
+# Example: Team 1 = Foundation, Team 2 = Scale
 php artisan email-plans:assign 1 foundation
 php artisan email-plans:assign 2 scale
 ```
 
 ---
 
-## 🎉 **Resultado Final**
+## Final result
 
-**Sistema de Planes de Email completamente funcional:**
+**Fully functional email plans system:**
 
-✅ **3 Planes predefinidos** con límites claros
-✅ **Control de acceso** solo para admins
-✅ **Validación automática** antes de envío
-✅ **Contadores automáticos** después de envío
-✅ **Reset automático** diario y mensual
-✅ **Comandos completos** para gestión
-✅ **Integración perfecta** con sistema existente
+- **3 predefined plans** with clear limits
+- **Access control** for admins only
+- **Automatic validation** before sending
+- **Automatic counters** after sending
+- **Automatic daily and monthly reset**
+- **Complete management commands**
+- **Clean integration** with the existing system
 
-**¡Tu sistema está listo para manejar planes de email profesionales por team!** 🚀📧
+Your system is ready to manage professional per-team email plans.

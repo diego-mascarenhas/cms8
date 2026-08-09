@@ -1,72 +1,72 @@
 # Module Management Commands
 
-Sistema de gestión de módulos para Humano con instalación automática de migraciones.
+Module management system for Humano with automatic migration installation.
 
-## 📦 Comandos Disponibles
+## Available commands
 
-### 1. Listar Módulos
+### 1. List modules
 
-Muestra todos los módulos disponibles, su estado de instalación y estadísticas.
+Shows all available modules, their installation status, and statistics.
 
 ```bash
-# Listar todos los módulos
+# List all modules
 php artisan module:list
 
-# Listar módulos de un equipo específico
+# List modules for a specific team
 php artisan module:list --team=1
 
-# Mostrar solo módulos disponibles (no instalados)
+# Show only available modules (not installed)
 php artisan module:list --available
 
-# Mostrar solo módulos instalados
+# Show only installed modules
 php artisan module:list --installed
 ```
 
-**Salida:**
+**Output:**
 
--   ✅ Installed: Módulo instalado y activo
--   ⬜ Available: Módulo disponible pero no instalado
--   ✓/✗: Indica si el módulo tiene tablas en la base de datos
--   Teams: Número de equipos que tienen el módulo activo
+- Installed: Module installed and active
+- Available: Module available but not installed
+- ✓/✗: Indicates whether the module has tables in the database
+- Teams: Number of teams that have the module active
 
 ---
 
-### 2. Instalar Módulo
+### 2. Install module
 
-Instala un módulo ejecutando automáticamente:
+Installs a module and automatically runs:
 
--   ✅ Migraciones de base de datos
--   ✅ Publicación de assets (config, views, migrations)
--   ✅ Activación para equipos
--   ✅ Seeders (datos iniciales)
+- Database migrations
+- Asset publishing (config, views, migrations)
+- Activation for teams
+- Seeders (initial data)
 
 ```bash
-# Instalar para todos los equipos
+# Install for all teams
 php artisan module:install billing
 
-# Instalar para un equipo específico
+# Install for a specific team
 php artisan module:install billing --team=1
 
-# Instalar sin ejecutar migraciones
+# Install without running migrations
 php artisan module:install billing --skip-migrations
 
-# Instalar sin ejecutar seeders
+# Install without running seeders
 php artisan module:install billing --skip-seeders
 
-# Forzar reinstalación
+# Force reinstallation
 php artisan module:install billing --force
 ```
 
-**Proceso de instalación:**
+**Installation process:**
 
-1. **Verificación**: Comprueba que el módulo existe
-2. **Migraciones**: Ejecuta `php artisan migrate` para crear tablas
-3. **Assets**: Publica configuraciones, vistas y migraciones del paquete
-4. **Activación**: Habilita el módulo para los equipos especificados
-5. **Seeders**: Ejecuta seeders para datos iniciales (tipos de pago, etc.)
-6. **Resumen**: Muestra estadísticas de la instalación
+1. **Verification**: Confirms the module exists
+2. **Migrations**: Runs `php artisan migrate` to create tables
+3. **Assets**: Publishes package configs, views, and migrations
+4. **Activation**: Enables the module for the specified teams
+5. **Seeders**: Runs seeders for initial data (payment types, etc.)
+6. **Summary**: Shows installation statistics
 
-**Ejemplo de salida:**
+**Example output:**
 
 ```
 🚀 Installing module: billing
@@ -113,130 +113,130 @@ Installed for:  All teams (2 teams)
 
 ---
 
-### 3. Desinstalar Módulo
+### 3. Uninstall module
 
-Desactiva un módulo para equipos sin eliminar datos de la base de datos.
+Deactivates a module for teams without deleting database data.
 
 ```bash
-# Desinstalar para todos los equipos
+# Uninstall for all teams
 php artisan module:uninstall billing
 
-# Desinstalar para un equipo específico
+# Uninstall for a specific team
 php artisan module:uninstall billing --team=1
 
-# Desinstalar sin confirmación
+# Uninstall without confirmation
 php artisan module:uninstall billing --force
 ```
 
-**⚠️ Importante:**
+**Important:**
 
--   NO elimina tablas ni datos de la base de datos
--   Solo desactiva el módulo en el sistema
--   Los datos permanecen intactos y seguros
--   Puedes reinstalar en cualquier momento con `module:install`
+- Does NOT delete tables or database data
+- Only deactivates the module in the system
+- Data remains intact and safe
+- You can reinstall at any time with `module:install`
 
 ---
 
-## 🎯 Casos de Uso Comunes
+## Common use cases
 
-### Instalación Inicial de Proyecto
+### Initial project installation
 
 ```bash
-# Instalar módulos core para todos los equipos
+# Install core modules for all teams
 php artisan module:install billing
 php artisan module:install ecommerce
 php artisan module:install tickets
 ```
 
-### Activar Módulo para Nuevo Equipo
+### Enable a module for a new team
 
 ```bash
-# Cuando creas un equipo nuevo, activa los módulos necesarios
+# When you create a new team, enable the required modules
 php artisan module:install billing --team=3
 php artisan module:install projects --team=3
 ```
 
-### Verificar Estado de Módulos
+### Check module status
 
 ```bash
-# Ver qué módulos tiene instalados un equipo
+# See which modules a team has installed
 php artisan module:list --team=1
 
-# Ver qué módulos están disponibles pero no instalados
+# See which modules are available but not installed
 php artisan module:list --available
 ```
 
-### Reinstalar Módulo (con --force)
+### Reinstall a module (with --force)
 
 ```bash
-# Si hubo un problema en la instalación
+# If there was a problem during installation
 php artisan module:install billing --force
 ```
 
 ---
 
-## 📋 Módulos Disponibles
+## Available modules
 
-### Core Modules (Siempre instalados)
+### Core modules (always installed)
 
--   `dashboard` - Panel principal y analytics
--   `users` - Gestión de usuarios
--   `settings` - Configuración del sistema
--   `contacts` - Gestión de contactos
--   `tasks` - Gestión de tareas
--   `campaigns` - Campañas de marketing
--   `templates` - Plantillas de email
--   `messages` - Mensajería y email
+- `dashboard` — Main panel and analytics
+- `users` — User management
+- `settings` — System configuration
+- `contacts` — Contact management
+- `tasks` — Task management
+- `campaigns` — Marketing campaigns
+- `templates` — Email templates
+- `messages` — Messaging and email
 
-### Add-on Modules (Instalación opcional)
+### Add-on modules (optional installation)
 
--   `billing` - Facturas y pagos
--   `ecommerce` - Tienda online
--   `tickets` - Sistema de tickets
--   `academy` - Cursos y contenido educativo
--   `mailbox` - Buzón de correo del equipo
--   `chat` - Chat en vivo
--   `infrastructure` - Gestión de hosting y servidores
--   `projects` - Gestión de proyectos
--   `services` - Gestión de servicios
--   `enterprises` - Gestión de empresas
+- `billing` — Invoices and payments
+- `ecommerce` — Online store
+- `tickets` — Ticket system
+- `academy` — Courses and educational content
+- `mailbox` — Team mailbox
+- `chat` — Live chat
+- `infrastructure` — Hosting and server management
+- `projects` — Project management
+- `services` — Service management
+- `enterprises` — Company management
 
 ---
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Error: "Module not found"
 
 ```bash
-# Verifica que el módulo existe
+# Verify that the module exists
 php artisan module:list
 
-# Si no existe, ejecuta el seeder de módulos
+# If it does not exist, run the module seeder
 php artisan db:seed --class=ModuleSeeder
 ```
 
 ### Error: "Team not found"
 
 ```bash
-# Verifica los IDs de equipos disponibles
+# Verify available team IDs
 php artisan tinker
 >>> App\Models\Team::all(['id', 'name'])
 ```
 
-### Migraciones no se ejecutan
+### Migrations do not run
 
 ```bash
-# Ejecuta manualmente las migraciones
+# Run migrations manually
 php artisan migrate
 
-# O reinstala el módulo sin skip
+# Or reinstall the module without skip
 php artisan module:install billing --force
 ```
 
-### Módulo instalado pero no aparece
+### Module installed but does not appear
 
 ```bash
-# Limpia la caché de Laravel
+# Clear Laravel cache
 php artisan cache:clear
 php artisan config:clear
 php artisan route:clear
@@ -244,16 +244,16 @@ php artisan route:clear
 
 ---
 
-## 🛠️ Para Desarrolladores
+## For developers
 
-### Crear un Nuevo Módulo
+### Create a new module
 
-1. Registra el módulo en `ModuleSeeder.php`
-2. Crea el paquete siguiendo la estructura de `humano-billing`
-3. Registra el paquete en `ModuleInstall::$modulePackages`
-4. Si tiene seeders, añádelos a `ModuleInstall::runModuleSeeders()`
+1. Register the module in `ModuleSeeder.php`
+2. Create the package following the `humano-billing` structure
+3. Register the package in `ModuleInstall::$modulePackages`
+4. If it has seeders, add them to `ModuleInstall::runModuleSeeders()`
 
-### Estructura de Package
+### Package structure
 
 ```
 packages/humano-{module}/
@@ -270,7 +270,7 @@ packages/humano-{module}/
     └── Http/
 ```
 
-### Service Provider del Módulo
+### Module service provider
 
 ```php
 public function configurePackage(Package $package): void
@@ -289,55 +289,55 @@ public function configurePackage(Package $package): void
 
 ---
 
-## 📝 Notas Importantes
+## Important notes
 
-1. **Migraciones automáticas**: El comando `module:install` ejecuta automáticamente las migraciones pendientes
-2. **Seeders opcionales**: Puedes omitir seeders con `--skip-seeders` si no quieres datos iniciales
-3. **Instalación por equipo**: Los módulos se pueden instalar globalmente o para equipos específicos
-4. **Datos persistentes**: Desinstalar un módulo NO elimina datos de la base de datos
-5. **Reinstalación segura**: Puedes ejecutar `module:install` múltiples veces sin problemas
+1. **Automatic migrations**: The `module:install` command automatically runs pending migrations
+2. **Optional seeders**: You can skip seeders with `--skip-seeders` if you do not want initial data
+3. **Per-team installation**: Modules can be installed globally or for specific teams
+4. **Persistent data**: Uninstalling a module does NOT delete database data
+5. **Safe reinstallation**: You can run `module:install` multiple times without issues
 
 ---
 
-## 🎓 Ejemplos Prácticos
+## Practical examples
 
-### Ejemplo 1: Setup Inicial de Revision Alpha
+### Example 1: Initial setup for Revision Alpha
 
 ```bash
-# Crear el equipo y sus módulos
+# Create the team and its modules
 php artisan db:seed --class=TeamRevisionAlphaSeeder
 
-# Instalar módulos adicionales
+# Install additional modules
 php artisan module:install billing --team=2
 php artisan module:install infrastructure --team=2
 
-# Verificar instalación
+# Verify installation
 php artisan module:list --team=2
 ```
 
-### Ejemplo 2: Activar E-commerce para Cliente
+### Example 2: Enable e-commerce for a client
 
 ```bash
-# Cliente nuevo necesita tienda online
+# New client needs an online store
 php artisan module:install ecommerce --team=5
 php artisan module:install billing --team=5
 
-# Verificar que todo está OK
+# Verify everything is OK
 php artisan module:list --team=5 --installed
 ```
 
-### Ejemplo 3: Mantenimiento de Módulos
+### Example 3: Module maintenance
 
 ```bash
-# Ver módulos con problemas (sin tablas pero instalados)
+# Find modules with problems (no tables but installed)
 php artisan module:list | grep "✅.*✗"
 
-# Reinstalar módulos con problemas
+# Reinstall modules with problems
 php artisan module:install billing --force
 ```
 
 ---
 
-**Creado:** 2025-10-05
-**Versión:** 1.0.0
-**Autor:** Humano Development Team
+**Created:** 2025-10-05
+**Version:** 1.0.0
+**Author:** Humano Development Team

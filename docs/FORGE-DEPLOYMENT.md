@@ -1,10 +1,10 @@
-# 🚀 Forge Deployment Script (Zero Downtime)
+# Forge Deployment Script (Zero Downtime)
 
-## Script para Laravel Forge con Zero Downtime
+## Script for Laravel Forge with zero downtime
 
-Usa **release directories** y cambio atómico del symlink (`$CREATE_RELEASE` / `$ACTIVATE_RELEASE`). La app sigue sirviendo desde el release anterior hasta que el nuevo está listo.
+Uses **release directories** and an atomic symlink switch (`$CREATE_RELEASE` / `$ACTIVATE_RELEASE`). The app keeps serving from the previous release until the new one is ready.
 
-### 📋 Script para Forge Deploy (Zero Downtime)
+### Forge deploy script (zero downtime)
 
 ```bash
 $CREATE_RELEASE()
@@ -53,53 +53,53 @@ if [ -d "$WHATSAPP_DIR" ] && [ -f "$WHATSAPP_DIR/package.json" ]; then
 fi
 ```
 
-### Staging y producción en el mismo servidor
+### Staging and production on the same server
 
-Si staging y producción están en el mismo servidor, **cada sitio debe usar**:
+If staging and production share the same server, **each site must use**:
 
-| Concepto | Staging | Producción |
-|----------|---------|------------|
-| **Nombre PM2** | Distinto (ej. `whatsapp-service-staging`) | Distinto (ej. `whatsapp-service-production`) |
-| **Puerto Node** | Distinto (ej. `3001`) | Distinto (ej. `3000`) |
+| Concept | Staging | Production |
+|---------|---------|------------|
+| **PM2 name** | Distinct (e.g. `whatsapp-service-staging`) | Distinct (e.g. `whatsapp-service-production`) |
+| **Node port** | Distinct (e.g. `3001`) | Distinct (e.g. `3000`) |
 
-- **Nombre PM2**: El script usa `WHATSAPP_PM2_NAME` si está definido, si no `whatsapp-service-${APP_ENV}`. En Forge → Site → Environment, define por sitio:
-  - Staging: `WHATSAPP_PM2_NAME=whatsapp-service-staging` (o `APP_ENV=staging`).
-  - Producción: `WHATSAPP_PM2_NAME=whatsapp-service-production` (o `APP_ENV=production`).
-- **Puerto**: En cada sitio, en `whatsapp-service/.env` pon un `PORT` distinto (ej. staging `3001`, producción `3000`). En el `.env` de Laravel de cada sitio, `WHATSAPP_LOCAL_BASE_URL` debe apuntar a la URL/puerto correcto (ej. staging `https://staging.humano.com:3001` o `http://127.0.0.1:3001` según cómo expongas el servicio).
+- **PM2 name**: The script uses `WHATSAPP_PM2_NAME` if defined; otherwise `whatsapp-service-${APP_ENV}`. In Forge → Site → Environment, set per site:
+  - Staging: `WHATSAPP_PM2_NAME=whatsapp-service-staging` (or `APP_ENV=staging`).
+  - Production: `WHATSAPP_PM2_NAME=whatsapp-service-production` (or `APP_ENV=production`).
+- **Port**: In each site's `whatsapp-service/.env`, set a distinct `PORT` (e.g. staging `3001`, production `3000`). In each site's Laravel `.env`, `WHATSAPP_LOCAL_BASE_URL` must point to the correct URL/port (e.g. staging `https://staging.humano.com:3001` or `http://127.0.0.1:3001`, depending on how you expose the service).
 
-Si no separas nombre y puerto, los dos entornos compiten por el mismo proceso PM2 y el mismo puerto y uno falla o pisa al otro.
+If you do not separate name and port, both environments compete for the same PM2 process and port, and one will fail or overwrite the other.
 
-## 🔧 Cómo funciona el Zero Downtime
+## How zero downtime works
 
-1. **`$CREATE_RELEASE()`** – Crea un nuevo directorio de release y clona el repo ahí.
-2. **Todo el build** (composer, npm, optimize, migrate) se hace **dentro de ese release**; el tráfico sigue yendo al release anterior.
-3. **`$ACTIVATE_RELEASE()`** – Cambia el symlink `current` al nuevo release de forma atómica. A partir de ahí el tráfico usa la nueva versión.
-4. **`$RESTART_QUEUES()`** – Reinicia workers para que ejecuten el código del release recién activado.
-5. **WhatsApp (PM2)** – Se usa `$FORGE_RELEASE_DIRECTORY/whatsapp-service` (el release que acabamos de activar) y `pm2 reload` para recargar sin caída.
+1. **`$CREATE_RELEASE()`** — Creates a new release directory and clones the repo there.
+2. **The full build** (composer, npm, optimize, migrate) runs **inside that release**; traffic continues to the previous release.
+3. **`$ACTIVATE_RELEASE()`** — Atomically switches the `current` symlink to the new release. From that point, traffic uses the new version.
+4. **`$RESTART_QUEUES()`** — Restarts workers so they run code from the newly activated release.
+5. **WhatsApp (PM2)** — Uses `$FORGE_RELEASE_DIRECTORY/whatsapp-service` (the release just activated) and `pm2 reload` for a no-downtime reload.
 
-### ✅ Ventajas
+### Advantages
 
-- **Sin maintenance mode** – No hace falta `artisan down` / `artisan up`.
-- **Cambio atómico** – Un solo cambio de symlink; no ventana en la que la app esté “a medias”.
-- **Migraciones antes de activar** – El nuevo código ve el esquema ya actualizado cuando pasa a ser el activo.
+- **No maintenance mode** — No need for `artisan down` / `artisan up`.
+- **Atomic switch** — A single symlink change; no half-deployed window.
+- **Migrations before activation** — New code sees the updated schema when it becomes active.
 
-### ✅ Seguridad en producción
+### Production safety
 
-- **`migrate --force`** (nunca `migrate:fresh` en producción).
-- Seeders e importaciones comentados; descomentar solo cuando haga falta.
+- **`migrate --force`** (never `migrate:fresh` in production).
+- Seeders and imports remain commented; uncomment only when needed.
 
-## 🧪 Health check (opcional)
+## Health check (optional)
 
-Si quieres un chequeo después del deploy, puedes añadirlo **antes** de `$ACTIVATE_RELEASE()`:
+If you want a check after deploy, you can add it **before** `$ACTIVATE_RELEASE()`:
 
 ```bash
 # Optional: run before $ACTIVATE_RELEASE()
 # $FORGE_PHP artisan test --testsuite=Unit --filter=ProductionHealthTest || echo "Health check warnings"
 ```
 
-## 📝 Notas
+## Notes
 
-- **No usar `migrate:fresh`** en producción (borra datos).
-- **WhatsApp**: La ruta usa `$FORGE_RELEASE_DIRECTORY` para que PM2 ejecute siempre el código del release activo.
-- **Mismo servidor (staging + prod)**: Definir `WHATSAPP_PM2_NAME` (o `APP_ENV`) y `PORT` en `whatsapp-service/.env` distintos por sitio.
-- En Forge, el rollback se hace desde el panel (volver a un release anterior); no hace falta script de rollback manual con `git reset`.
+- **Do not use `migrate:fresh`** in production (it deletes data).
+- **WhatsApp**: The path uses `$FORGE_RELEASE_DIRECTORY` so PM2 always runs code from the active release.
+- **Same server (staging + prod)**: Define distinct `WHATSAPP_PM2_NAME` (or `APP_ENV`) and `PORT` in `whatsapp-service/.env` per site.
+- In Forge, rollback is done from the panel (return to a previous release); no manual rollback script with `git reset` is required.

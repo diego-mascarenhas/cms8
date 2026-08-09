@@ -1,69 +1,69 @@
-# Uso de Toon en Humano
+# Using Toon in Humano
 
-## ¿Qué es Toon?
+## What is Toon?
 
-Toon es un paquete que optimiza el envío de datos estructurados a APIs de IA (como Claude de Anthropic) reduciendo significativamente el tamaño de los payloads y, por lo tanto, los costos de tokens.
+Toon is a package that optimizes sending structured data to AI APIs (such as Anthropic's Claude) by significantly reducing payload size and, therefore, token costs.
 
-## Servicios con Logging Implementado
+## Services with logging implemented
 
-Actualmente, los siguientes servicios ya tienen el logging de tokens configurado:
+The following services already have token logging configured:
 
-1. **AstralChartService** - Generación de perfiles astrológicos
-   - Registra cada llamada a Claude para generar interpretaciones
-   - Localización: `app/Services/AstralChartService.php`
+1. **AstralChartService** - Astrological profile generation
+   - Logs every Claude call used to generate interpretations
+   - Location: `app/Services/AstralChartService.php`
 
-2. **ClaudeService** - Servicio general de chat con Claude
-   - Registra todas las conversaciones con Claude
-   - Localización: `app/Services/ClaudeService.php`
+2. **ClaudeService** - General Claude chat service
+   - Logs all conversations with Claude
+   - Location: `app/Services/ClaudeService.php`
 
-Cada vez que estos servicios hacen una llamada a Claude, se registra automáticamente en la tabla `token_usage_logs`.
+Every time these services call Claude, usage is automatically recorded in the `token_usage_logs` table.
 
-## Instalación
+## Installation
 
-El paquete ya está instalado en el proyecto:
+The package is already installed in the project:
 
 ```bash
 composer require sbsaga/toon:^1.2
 ```
 
-## Cómo usar Toon
+## How to use Toon
 
-### 1. Importar la Facade
+### 1. Import the facade
 
 ```php
 use Sbsaga\Toon\Facades\Toon;
 ```
 
-### 2. Codificar datos con Toon
+### 2. Encode data with Toon
 
-En lugar de enviar JSON directamente, usa Toon para comprimir los datos:
+Instead of sending JSON directly, use Toon to compress the data:
 
 ```php
-// Sin Toon (JSON normal)
+// Without Toon (plain JSON)
 $jsonData = json_encode($data);
 $jsonSize = strlen($jsonData);
-$jsonTokens = round($jsonSize / 4); // Estimación de tokens
+$jsonTokens = round($jsonSize / 4); // Token estimate
 
-// Con Toon (Optimizado)
+// With Toon (optimized)
 $toonData = Toon::encode($data);
 $toonSize = strlen($toonData);
-$toonTokens = round($toonSize / 4); // Estimación de tokens
+$toonTokens = round($toonSize / 4); // Token estimate
 
-// Calcular ahorro
+// Calculate savings
 $savings = round((($jsonSize - $toonSize) / $jsonSize) * 100, 2);
 ```
 
-### 3. Decodificar respuestas con Toon
+### 3. Decode Toon responses
 
-Si la API responde con formato Toon, puedes decodificarlo:
+If the API responds in Toon format, you can decode it:
 
 ```php
 $decodedData = Toon::decode($toonResponse);
 ```
 
-## Logging de uso
+## Usage logging
 
-El sistema registra automáticamente el uso de tokens en la tabla `token_usage_logs`:
+The system automatically logs token usage in the `token_usage_logs` table:
 
 ```php
 use App\Models\TokenUsageLog;
@@ -79,7 +79,7 @@ TokenUsageLog::create([
 ]);
 ```
 
-## Ejemplo completo de uso
+## Complete usage example
 
 ```php
 <?php
@@ -94,20 +94,20 @@ class ExampleAIService
 {
     public function sendToAI(array $data): string
     {
-        // Preparar datos
+        // Prepare data
         $jsonData = json_encode($data);
         $jsonSize = strlen($jsonData);
 
-        // Comprimir con Toon
+        // Compress with Toon
         $toonData = Toon::encode($data);
         $toonSize = strlen($toonData);
 
-        // Calcular métricas
+        // Calculate metrics
         $jsonTokens = round($jsonSize / 4);
         $toonTokens = round($toonSize / 4);
         $savings = round((($jsonSize - $toonSize) / $jsonSize) * 100, 2);
 
-        // Registrar uso
+        // Log usage
         TokenUsageLog::create([
             'service' => 'ExampleAIService',
             'json_size' => $jsonSize,
@@ -118,7 +118,7 @@ class ExampleAIService
             'used_toon' => true,
         ]);
 
-        // Enviar a la API (usar toonData en lugar de jsonData)
+        // Send to the API (use toonData instead of jsonData)
         $response = Http::post('https://api.example.com/endpoint', [
             'data' => $toonData,
         ]);
@@ -128,48 +128,48 @@ class ExampleAIService
 }
 ```
 
-## Dashboard Widget
+## Dashboard widget
 
-El widget de "Uso de API & Ahorro" en el dashboard muestra:
+The "API Usage & Savings" dashboard widget shows:
 
-- **Llamadas**: Total de llamadas a APIs de IA
-- **Ahorro**: Total de tokens ahorrados usando Toon
-- **Porcentaje de ahorro**: Promedio de ahorro en todas las llamadas
-- **Tokens usados**: Total de tokens utilizados (con Toon)
-- **Sin Toon**: Total de tokens que se habrían usado sin Toon
+- **Calls**: Total AI API calls
+- **Savings**: Total tokens saved using Toon
+- **Savings percentage**: Average savings across all calls
+- **Tokens used**: Total tokens used (with Toon)
+- **Without Toon**: Total tokens that would have been used without Toon
 
-## Estadísticas disponibles
+## Available statistics
 
-El modelo `TokenUsageLog` proporciona métodos útiles:
+The `TokenUsageLog` model provides useful methods:
 
 ```php
-// Total de llamadas a APIs
+// Total API calls
 TokenUsageLog::getTotalCalls();
 
-// Total de tokens ahorrados
+// Total tokens saved
 TokenUsageLog::getTotalTokensSaved();
 
-// Porcentaje promedio de ahorro
+// Average savings percentage
 TokenUsageLog::getAverageSavingsPercentage();
 
-// Total de tokens usados (optimizado con Toon)
+// Total tokens used (optimized with Toon)
 TokenUsageLog::getTotalTokensUsed();
 
-// Total de tokens sin optimización
+// Total tokens without optimization
 TokenUsageLog::getTotalTokensWithoutToon();
 
-// Llamadas por servicio
+// Calls by service
 TokenUsageLog::getCallsByService();
 ```
 
-## Mejores prácticas
+## Best practices
 
-1. **Siempre registra el uso**: Esto te permite medir el ahorro real
-2. **Usa Toon para datos estructurados grandes**: Funciona mejor con arrays y objetos complejos
-3. **No uses Toon para textos simples**: Para strings pequeños, JSON es suficiente
-4. **Monitorea el dashboard**: Revisa regularmente el widget de ahorro para optimizar servicios
+1. **Always log usage**: This lets you measure real savings
+2. **Use Toon for large structured data**: It works best with complex arrays and objects
+3. **Do not use Toon for simple text**: For small strings, JSON is enough
+4. **Monitor the dashboard**: Regularly review the savings widget to optimize services
 
-## Referencias
+## References
 
-- Repositorio de Toon: [sbsaga/toon](https://github.com/sbsaga/toon)
-- Proyecto de referencia: `../app.fanyion/`
+- Toon repository: [sbsaga/toon](https://github.com/sbsaga/toon)
+- Reference project: `../app.fanyion/`
