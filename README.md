@@ -26,21 +26,26 @@ CMS8 is accessible, powerful, and built for teams that need CRM, billing, market
 
 These tools help companies **scale operations** and **innovate with structure**: run the business day to day, then turn innovation into a repeatable system.
 
+### Humano
+
 <p align="center">
   <a href="https://humano.app">
     <img src="public/assets/humano-logo.png" alt="Humano" height="56">
   </a>
-  &nbsp;&nbsp;&nbsp;&nbsp;
-  <a href="https://www.fanyion.com">
-    <img src="public/assets/fanyion-logo.svg" alt="Fanyion" height="56">
-  </a>
 </p>
-
-### Humano
 
 **[Humano](https://humano.app)** is the technology consulting brand and the operating layer for growing companies. It brings together CRM, billing, marketing, and automation so teams can run day-to-day work in one place: contacts and opportunities, subscriptions and invoices, campaigns and messaging, plus workflows that keep operations moving as the business scales.
 
 ### Fanyion
+
+<p align="center">
+  <a href="https://www.fanyion.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="public/assets/fanyion-logo-dark.svg">
+      <img src="public/assets/fanyion-logo.svg" alt="Fanyion" height="56">
+    </picture>
+  </a>
+</p>
 
 **[Fanyion](https://www.fanyion.com)** is the organizational innovation system. It turns innovation from isolated initiatives into a managed practice—with clear roles, decision flows, and cross-functional participation—so ideas can be captured, evaluated, and driven to impact across the company.
 
@@ -126,4 +131,4 @@ The CMS8 admin is open-sourced software licensed under the [GNU Affero General P
 
 ### Additional Terms
 
-By deploying this software, you agree to notify the original author at [diego.mascarenhas@icloud.com](mailto:diego.mascarenhas@icloud.com). or by visiting [http://linkedin.com/in/diego-mascarenhas/](http://linkedin.com/in/diego-mascarenhas/) Any modifications or enhancements must be shared with the original author.
+By deploying this software, you agree to notify the original author at [diego.mascarenhas@icloud.com](mailto:diego.mascarenhas@icloud.com) or by visiting [https://www.linkedin.com/in/diego-mascarenhas/](https://www.linkedin.com/in/diego-mascarenhas/). Any modifications or enhancements must be shared with the original author.
