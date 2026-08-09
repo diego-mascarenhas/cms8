@@ -156,6 +156,9 @@ Route::get('/homes/humano/presentations/{slug}.html', function (string $slug)
 })->where('slug', \App\Support\GuidePresentation::slugPattern());
 Route::get('/homes/humano/presentations/embed/chat-whatsapp', [HumanoLandingController::class, 'chatWhatsappEmbed'])
     ->name('humano.presentation.chat-whatsapp-embed');
+Route::get('/integrations/ad-platforms/{platform}/callback', [AdPlatformConnectionController::class, 'callback'])
+    ->name('integrations.ad-platforms.callback');
+
 Route::get('/home', [PageController::class, 'home'])->name('home');
 
 Route::get('/stack', function ()
@@ -364,7 +367,6 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/integrations/google/sync-calendar', [GoogleSyncedPreviewController::class, 'queueCalendarSync'])->name('integrations.google.sync-calendar');
 
     Route::get('/integrations/ad-platforms/{platform}/connect', [AdPlatformConnectionController::class, 'connect'])->name('integrations.ad-platforms.connect');
-    Route::get('/integrations/ad-platforms/{platform}/callback', [AdPlatformConnectionController::class, 'callback'])->name('integrations.ad-platforms.callback');
     Route::post('/integrations/ad-platforms/{connection}/select-account', [AdPlatformConnectionController::class, 'selectAccount'])->name('integrations.ad-platforms.select-account');
     Route::delete('/integrations/ad-platforms/{connection}/disconnect', [AdPlatformConnectionController::class, 'disconnect'])->name('integrations.ad-platforms.disconnect');
 

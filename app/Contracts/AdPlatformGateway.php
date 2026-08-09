@@ -34,6 +34,13 @@ interface AdPlatformGateway
     public function buildAuthorizationUrl(User $user): string;
 
     /**
+     * Decode the encrypted OAuth state payload.
+     *
+     * @return array{user_id: int, team_id: int|null, platform: string, nonce: string}
+     */
+    public function parseState(string $state): array;
+
+    /**
      * Exchange the OAuth authorization code for tokens and persist a connection.
      */
     public function exchangeCode(User $user, string $authCode): AdPlatformConnection;
