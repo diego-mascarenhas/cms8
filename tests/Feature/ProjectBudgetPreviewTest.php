@@ -51,6 +51,7 @@ class ProjectBudgetPreviewTest extends TestCase
             'status_id' => $status->id,
             'name' => 'Store publish',
             'real_name' => 'Store publish project',
+            'discount' => 30,
             'data' => [
                 'budget_preview_token' => $token,
                 'ai_usage_percent' => 70,
@@ -83,6 +84,8 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee('report-header', false);
         $response->assertSee('highlight', false);
         $response->assertSee('idoneo-logo.svg', false);
+        $response->assertSee(__('Discount'), false);
+        $response->assertSee('30%', false);
         $response->assertDontSee('layout-wrapper', false);
     }
 }

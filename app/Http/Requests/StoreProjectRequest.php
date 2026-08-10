@@ -32,6 +32,7 @@ class StoreProjectRequest extends FormRequest
             'responsible_id' => 'required|exists:users,id',
             'date_material' => 'nullable|date',
             'description' => 'nullable|string',
+            'discount' => 'nullable|numeric|min:0|max:100',
             'data' => 'nullable|array',
             'data.budget_given' => 'nullable|string',
             'data.ai_interpretation' => 'nullable|string',

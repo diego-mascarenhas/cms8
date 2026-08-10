@@ -78,6 +78,9 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
 
         $data = $request->validated();
+        $existing = $request->id
+            ? Project::withoutGlobalScopes()->find($request->id)
+            : null;
 
         if (isset($data['data']['suggested_tasks']))
         {
@@ -97,6 +100,10 @@ class ProjectController extends Controller
             }
         }
 
+        $discount = array_key_exists('discount', $data)
+            ? (($data['discount'] === '' || $data['discount'] === null) ? null : $data['discount'])
+            : $existing?->discount;
+
         $project = Project::updateOrCreate(
             ['id' => $request->id],
             [
@@ -108,9 +115,9 @@ class ProjectController extends Controller
                 'description' => $data['description'] ?? null,
                 'data' => $data['data'] ?? null,
                 'responsible_id' => $data['responsible_id'],
-                'price' => $data['price'] ?? null,
-                'discount' => $data['discount'] ?? null,
-                'cost' => $data['cost'] ?? null,
+                'price' => $data['price'] ?? $existing?->price,
+                'discount' => $discount,
+                'cost' => $data['cost'] ?? $existing?->cost,
                 'status_id' => $data['status_id'] ?? 1,
                 'date_material' => $data['date_material'] ?? null,
                 'date_start' => $data['date_start'] ?? null,

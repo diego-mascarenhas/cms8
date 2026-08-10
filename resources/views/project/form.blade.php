@@ -515,9 +515,21 @@
         if (taskItems) {
             html += '<h3>{{ __("Summary of requested quote and values") }}</h3>' + taskItems;
             var grandTotal = Math.round(totalLabor + totalTokenBillable);
+            var discount = parseFloat($('#discount').val());
+            if (isNaN(discount) || discount < 0) discount = 0;
+            if (discount > 100) discount = 100;
+            var discountedTotal = Math.round(grandTotal * (1 - (discount / 100)));
             var totalFormatted = grandTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            html += '<p><strong>{{ __("Total") }}:</strong> ' + totalFormatted + '€ + {{ __("I.V.A.") }}'
-                + ' <em>({{ __("labor") }} ' + formatEuros(totalLabor) + ' + {{ __("Tokens") }} ' + formatEuros(totalTokenBillable) + ')</em></p>';
+            var discountedFormatted = discountedTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            if (discount > 0) {
+                html += '<p><strong>{{ __("Total") }}:</strong> <s>' + totalFormatted + '€</s> '
+                    + discountedFormatted + '€ + {{ __("I.V.A.") }}'
+                    + ' <em>(−' + String(discount).replace('.', ',') + '% · {{ __("labor") }} ' + formatEuros(totalLabor)
+                    + ' + {{ __("Tokens") }} ' + formatEuros(totalTokenBillable) + ')</em></p>';
+            } else {
+                html += '<p><strong>{{ __("Total") }}:</strong> ' + totalFormatted + '€ + {{ __("I.V.A.") }}'
+                    + ' <em>({{ __("labor") }} ' + formatEuros(totalLabor) + ' + {{ __("Tokens") }} ' + formatEuros(totalTokenBillable) + ')</em></p>';
+            }
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
             html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
             var moneySaved = Math.max(0, totalBaseTokenBillable - totalTokenCost);
@@ -532,6 +544,10 @@
 
         setBudgetPreviewHtml(html);
     }
+
+    $(document).on('change input', '#discount', function() {
+        refreshBudgetPreview();
+    });
 
     $(document).on('change', '.suggested-task-included', function() {
         var idx = parseInt($(this).data('index'), 10);
@@ -746,32 +762,7 @@
 
 			<!-- Additional fields for admins -->
 			@if(auth()->user()->hasRole('admin'))
-			{{-- Hidden: Price, discount and cost fields --}}
-			{{--
-			<div class="col-md-4">
-				<label for="price" class="form-label">{{ __('Price') }}</label>
-				<div class="input-group">
-					<span class="input-group-text">€</span>
-					<input type="number" class="form-control" id="price" name="price"
-						   step="0.01" min="0" value="{{ old('price', $data->price ?? '') }}">
-				</div>
-			</div>
-
-			<div class="col-md-4">
-				<label for="discount" class="form-label">{{ __('Discount') }} (%)</label>
-				<input type="number" class="form-control" id="discount" name="discount"
-					   step="0.01" min="0" max="100" value="{{ old('discount', $data->discount ?? '') }}">
-			</div>
-
-			<div class="col-md-4">
-				<label for="cost" class="form-label">{{ __('Cost') }}</label>
-				<div class="input-group">
-					<span class="input-group-text">€</span>
-					<input type="number" class="form-control" id="cost" name="cost"
-						   step="0.01" min="0" value="{{ old('cost', $data->cost ?? '') }}">
-				</div>
-			</div>
-			--}}
+			{{-- Price and cost remain hidden; discount is edited in Budget data (AI). --}}
 
 			{{-- Hidden: Start date field --}}
 			{{--
@@ -882,7 +873,17 @@
 				</label>
 				<div id="ai-usage-balance-slider" class="noUi-primary my-3"></div>
 				<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
-				<p class="text-muted small mb-0">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
+				<p class="text-muted small mb-3">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
+				<div class="row g-3 mt-1">
+					<div class="col-md-4 col-12">
+						<label for="discount" class="form-label">{{ __('Discount') }} (%)</label>
+						<input type="number" class="form-control" id="discount" name="discount"
+							step="1" min="0" max="100"
+							value="{{ old('discount', $data->discount ?? '') }}"
+							placeholder="0">
+						<p class="text-muted small mb-0 mt-1">{{ __('Shown on the client budget preview.') }}</p>
+					</div>
+				</div>
 			</div>
 			<div class="col-12">
 				<label for="data_ai_interpretation" class="form-label">{{ __('AI interpretation') }}</label>

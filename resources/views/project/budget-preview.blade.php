@@ -89,6 +89,8 @@
     $grandTotal = (int) round($totalLabor + $totalTokenBillable);
     $weeks = $totalHours > 0 ? (int) ceil($totalHours / 40) : 0;
     $hasContent = $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
+    $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
+    $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -251,9 +253,19 @@
             </table>
 
             <div class="highlight">
-                <strong>{{ __('Total') }}: {{ number_format($grandTotal, 0, '', '.') }}€ + {{ __('I.V.A.') }}</strong><br>
-                {{ __('labor') }} {{ $formatEuros($totalLabor) }}
-                · {{ __('Tokens') }} {{ $formatEuros($totalTokenBillable) }}
+                @if ($discountPercent > 0)
+                    <strong>{{ __('Total') }}:
+                        <s>{{ number_format($grandTotal, 0, '', '.') }}€</s>
+                        {{ number_format($discountedTotal, 0, '', '.') }}€ + {{ __('I.V.A.') }}
+                    </strong><br>
+                    {{ __('Discount') }}: {{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%
+                    · {{ __('labor') }} {{ $formatEuros($totalLabor) }}
+                    · {{ __('Tokens') }} {{ $formatEuros($totalTokenBillable) }}
+                @else
+                    <strong>{{ __('Total') }}: {{ number_format($grandTotal, 0, '', '.') }}€ + {{ __('I.V.A.') }}</strong><br>
+                    {{ __('labor') }} {{ $formatEuros($totalLabor) }}
+                    · {{ __('Tokens') }} {{ $formatEuros($totalTokenBillable) }}
+                @endif
             </div>
 
             @if ($weeks > 0)
