@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ProjectDataTable;
+use App\Http\Requests\AcceptProjectBudgetPreviewRequest;
+use App\Http\Requests\ReformulateProjectBudgetPreviewRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Models\Category;
 use App\Models\Contact;
@@ -78,6 +80,9 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
 
         $data = $request->validated();
+        $existing = $request->id
+            ? Project::withoutGlobalScopes()->find($request->id)
+            : null;
 
         if (isset($data['data']['suggested_tasks']))
         {
@@ -85,11 +90,21 @@ class ProjectController extends Controller
             $data['data']['suggested_tasks'] = is_string($raw)
                 ? (json_decode($raw, true) ?? [])
                 : (is_array($raw) ? $raw : []);
+            $budgetSpecService = app(ProjectBudgetSpecService::class);
+            $data['data']['suggested_tasks'] = $budgetSpecService->normalizeSuggestedTasks($data['data']['suggested_tasks']);
+            $data['data']['token_consumption'] = $budgetSpecService->normalizeTokenConsumption(
+                $data['data']['token_consumption'] ?? null,
+                $data['data']['suggested_tasks'],
+            );
             if (! empty($data['data']['suggested_tasks']) && empty($data['data']['budget_preview_token']))
             {
                 $data['data']['budget_preview_token'] = Str::random(48);
             }
         }
+
+        $discount = array_key_exists('discount', $data)
+            ? (($data['discount'] === '' || $data['discount'] === null) ? null : $data['discount'])
+            : $existing?->discount;
 
         $project = Project::updateOrCreate(
             ['id' => $request->id],
@@ -102,9 +117,9 @@ class ProjectController extends Controller
                 'description' => $data['description'] ?? null,
                 'data' => $data['data'] ?? null,
                 'responsible_id' => $data['responsible_id'],
-                'price' => $data['price'] ?? null,
-                'discount' => $data['discount'] ?? null,
-                'cost' => $data['cost'] ?? null,
+                'price' => $data['price'] ?? $existing?->price,
+                'discount' => $discount,
+                'cost' => $data['cost'] ?? $existing?->cost,
                 'status_id' => $data['status_id'] ?? 1,
                 'date_material' => $data['date_material'] ?? null,
                 'date_start' => $data['date_start'] ?? null,
@@ -135,7 +150,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Generate budget spec (dimension, times, resources) from budget text via Laravel AI.
+     * Generate budget spec (dimension, times, resources, token consumption) from budget text via Laravel AI.
      * Used when creating/editing a project presupuesto.
      */
     public function generateBudgetSpec(Request $request, ProjectBudgetSpecService $budgetSpecService): \Illuminate\Http\JsonResponse
@@ -146,6 +161,9 @@ class ProjectController extends Controller
         $request->validate([
             'budget_given' => 'required|string|max:16000',
         ]);
+
+        $timeout = max(60, (int) config('ai.budget_spec_timeout', 180));
+        set_time_limit($timeout + 30);
 
         try
         {
@@ -173,16 +191,86 @@ class ProjectController extends Controller
      */
     public function budgetPreview(string $token)
     {
-        $project = Project::withoutGlobalScopes()
-            ->where('data->budget_preview_token', $token)
-            ->firstOrFail();
+        $project = $this->findProjectByBudgetPreviewToken($token);
 
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
 
         return view('project.budget-preview', [
             'project' => $project,
             'suggestedTasks' => $suggestedTasks,
+            'budgetToken' => $token,
+            'clientResponse' => is_array(data_get($project->data, 'budget_client_response'))
+                ? data_get($project->data, 'budget_client_response')
+                : null,
         ]);
+    }
+
+    /**
+     * Public: client accepts the budget quote.
+     */
+    public function acceptBudgetPreview(AcceptProjectBudgetPreviewRequest $request, string $token)
+    {
+        $project = $this->findProjectByBudgetPreviewToken($token);
+        $existing = data_get($project->data, 'budget_client_response.status');
+        if (in_array($existing, ['accepted', 'reformulation_requested'], true))
+        {
+            return redirect()
+                ->route('project.budget-preview', $token)
+                ->with('budget_response_error', __('This quote was already answered.'));
+        }
+
+        $data = $project->data ?? [];
+        $data['budget_client_response'] = [
+            'status' => 'accepted',
+            'accepted_by_name' => $request->validated('accepted_by_name'),
+            'message' => null,
+            'responded_at' => now()->toIso8601String(),
+            'ip' => $request->ip(),
+        ];
+        $project->data = $data;
+        $project->save();
+
+        return redirect()
+            ->route('project.budget-preview', $token)
+            ->with('budget_response_success', __('Thank you. The quote was accepted. The project will not start until 30% of the payment is received.'));
+    }
+
+    /**
+     * Public: client requests a reformulation of the budget quote.
+     */
+    public function reformulateBudgetPreview(ReformulateProjectBudgetPreviewRequest $request, string $token)
+    {
+        $project = $this->findProjectByBudgetPreviewToken($token);
+        $existing = data_get($project->data, 'budget_client_response.status');
+        if (in_array($existing, ['accepted', 'reformulation_requested'], true))
+        {
+            return redirect()
+                ->route('project.budget-preview', $token)
+                ->with('budget_response_error', __('This quote was already answered.'));
+        }
+
+        $data = $project->data ?? [];
+        $data['budget_client_response'] = [
+            'status' => 'reformulation_requested',
+            'accepted_by_name' => $request->validated('name'),
+            'message' => $request->validated('message'),
+            'responded_at' => now()->toIso8601String(),
+            'ip' => $request->ip(),
+        ];
+        $project->data = $data;
+        $project->save();
+
+        return redirect()
+            ->route('project.budget-preview', $token)
+            ->with('budget_response_success', __('Thanks. We received your reformulation request and will review it shortly.'));
+    }
+
+    private function findProjectByBudgetPreviewToken(string $token): Project
+    {
+        return Project::withoutGlobalScopes()
+            ->with('enterprise')
+            ->where('data->budget_preview_token', $token)
+            ->firstOrFail();
     }
 
     /**

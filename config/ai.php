@@ -68,6 +68,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Budget Spec Timeout
+    |--------------------------------------------------------------------------
+    |
+    | Generating a project budget (dimension, times, resources, tasks, tokens)
+    | can take longer than a normal assistant reply. Default is 180 seconds
+    | to match GenerateProjectFunnelQuoteJob.
+    |
+    */
+    'budget_spec_timeout' => (int) env('AI_BUDGET_SPEC_TIMEOUT', 180),
+
+    /*
+    |--------------------------------------------------------------------------
     | Caching
     |--------------------------------------------------------------------------
     |
