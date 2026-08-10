@@ -79,11 +79,45 @@
 					<i class="ti ti-file-invoice me-1"></i>{{ __('Preview') }}
 				</a>
 			@endif
+			@php
+				$canAuthorizeBudget = in_array((int) $project->status_id, [
+					\App\Models\ProjectStatus::STATUS_BUDGETED,
+					\App\Models\ProjectStatus::STATUS_AUTHORIZED,
+				], true)
+					&& data_get($project->data, 'budget_preview_token')
+					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
+					&& $project->client?->quoteContact() !== null;
+			@endphp
+			@can('update', $project)
+				@if ($canAuthorizeBudget)
+					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
+						@csrf
+						<button type="submit" class="btn btn-success waves-effect waves-light"
+							onclick="return confirm('{{ __('Authorize this quote and email it to the enterprise contact?') }}')">
+							<i class="ti ti-mail-forward me-1"></i>
+							{{ (int) $project->status_id === \App\Models\ProjectStatus::STATUS_AUTHORIZED ? __('Resend quote email') : __('Authorize and send quote') }}
+						</button>
+					</form>
+				@endif
+			@endcan
 			@role('admin|collaborator|developer|editor|technical')
 				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}</a>
 			@endrole
 		</div>
 	</div>
+
+@if (session('success'))
+	<div class="alert alert-success alert-dismissible" role="alert">
+		{{ session('success') }}
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+@endif
+@if (session('error'))
+	<div class="alert alert-danger alert-dismissible" role="alert">
+		{{ session('error') }}
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+@endif
 
 <!-- Project Details Card - Full Width -->
 <div class="card mb-4">
@@ -123,12 +157,39 @@
 									@endif
 								</dd>
 
-								@if($project->client && $project->client->responsible_id)
+								@php
+									$quoteContact = $project->client?->quoteContact();
+								@endphp
+								@if ($quoteContact)
 								<dt class="col-4 text-truncate">{{ __('Contact') }}:</dt>
 								<dd class="col-8">
-									<a href="{{ route('contact.show', $project->client->responsible_id) }}">
-										{{ $project->client->responsible ? $project->client->responsible->name : 'Contact #' . $project->client->responsible_id }}
+									<a href="{{ route('contact.show', $quoteContact->id) }}">
+										{{ trim($quoteContact->name.' '.(string) ($quoteContact->surname ?? '')) }}
 									</a>
+									@if (filled($quoteContact->email))
+										<br><span class="text-muted small">{{ $quoteContact->email }}</span>
+									@endif
+								</dd>
+								@endif
+
+								@php $budgetEmail = is_array(data_get($project->data, 'budget_email')) ? data_get($project->data, 'budget_email') : null; @endphp
+								@if ($budgetEmail)
+								<dt class="col-4 text-truncate">{{ __('Quote email') }}:</dt>
+								<dd class="col-8">
+									{{ $budgetEmail['to_email'] ?? '—' }}
+									@if (! empty($budgetEmail['sent_at']))
+										<br><span class="text-muted small">{{ __('Sent on') }}: {{ \Carbon\Carbon::parse($budgetEmail['sent_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+									@endif
+									@if (! empty($budgetEmail['opened_at']))
+										<br><span class="badge rounded-pill bg-label-success">{{ __('Email opened') }}</span>
+										<span class="text-muted small">{{ \Carbon\Carbon::parse($budgetEmail['opened_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+									@else
+										<br><span class="badge rounded-pill bg-label-secondary">{{ __('Not opened yet') }}</span>
+									@endif
+									@if (! empty($budgetEmail['clicked_at']))
+										<br><span class="badge rounded-pill bg-label-info">{{ __('Link clicked') }}</span>
+										<span class="text-muted small">{{ \Carbon\Carbon::parse($budgetEmail['clicked_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+									@endif
 								</dd>
 								@endif
 							</dl>

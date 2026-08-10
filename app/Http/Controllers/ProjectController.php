@@ -19,6 +19,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use App\Support\AssignableTeamUsers;
 use Carbon\Carbon;
@@ -267,6 +268,61 @@ class ProjectController extends Controller
         return redirect()
             ->route('project.budget-preview', $token)
             ->with('budget_response_success', __('Thanks. We received your reformulation request and will review it shortly.'));
+    }
+
+    /**
+     * Authorize a budgeted quote and email the public preview to the enterprise contact.
+     */
+    public function authorizeBudgetQuote(string $id, ProjectBudgetQuoteMailService $mailService)
+    {
+        $project = Project::with(['enterprise.responsible', 'team', 'status'])->findOrFail($id);
+        $this->authorize('update', $project);
+
+        try
+        {
+            $mailService->authorizeAndSend($project, auth()->user());
+        } catch (RuntimeException $e)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Quote authorized and emailed to the enterprise contact.'));
+    }
+
+    /**
+     * Public 1x1 GIF open tracking for budget quote emails.
+     */
+    public function trackBudgetEmailOpen(string $token, ProjectBudgetQuoteMailService $mailService)
+    {
+        $mailService->markOpened($token);
+
+        $pixel = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+
+        return response($pixel, 200, [
+            'Content-Type' => 'image/gif',
+            'Content-Length' => (string) strlen($pixel),
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
+    /**
+     * Public click tracking for budget quote emails; redirects to the preview.
+     */
+    public function trackBudgetEmailClick(string $token, ProjectBudgetQuoteMailService $mailService)
+    {
+        $previewUrl = $mailService->markClicked($token);
+        if ($previewUrl === null)
+        {
+            abort(404);
+        }
+
+        return redirect()->away($previewUrl);
     }
 
     private function findProjectByBudgetPreviewToken(string $token): Project
@@ -703,7 +759,7 @@ class ProjectController extends Controller
         $this->authorize('view', $project);
 
         $project = Project::with([
-            'client',
+            'client.contacts',
             'responsible',
             'status',
             'category',

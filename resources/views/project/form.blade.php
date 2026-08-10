@@ -24,6 +24,25 @@
 <script src="{{asset('assets/vendor/libs/nouislider/nouislider.js')}}"></script>
 @endsection
 
+@section('page-style')
+<style>
+	#ai-usage-balance-slider.noUi-sm {
+		height: 8px;
+		margin: 6px 0 4px;
+	}
+	#ai-usage-balance-slider.noUi-sm .noUi-handle {
+		width: 16px;
+		height: 16px;
+		right: -8px;
+		top: -5px;
+	}
+	#ai-usage-balance-slider.noUi-sm .noUi-tooltip {
+		font-size: 0.7rem;
+		padding: 1px 4px;
+	}
+</style>
+@endsection
+
 @section('page-script')
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
@@ -711,7 +730,7 @@
 			<!-- Project status -->
 			<div class="col-md-6">
 				<label for="status_id" class="form-label">{{ __('Project Status') }}</label>
-				<select name="status_id" class="form-control @error('status_id') is-invalid @enderror">
+				<select id="status_id" name="status_id" class="select2 form-select @error('status_id') is-invalid @enderror" data-placeholder="{{ __('Choose an option') }}">
 					@foreach($statuses as $status)
 						<option value="{{ $status['id'] }}" {{ old('status_id', $data->status_id ?? '') == $status['id'] ? 'selected' : '' }}>{{ $status['name'] }}</option>
 					@endforeach
@@ -748,14 +767,24 @@
 @enderror
 			</div>
 
-			<!-- Client -->
-			<div class="col-12">
+			<!-- Client + advisor -->
+			<div class="col-md-8 col-12">
 				<x-client-select
 					id="enterprise_id"
 					label="{{ __('Client') }} (*)"
 					:selected="old('enterprise_id', $data->enterprise_id ?? $enterprise_id ?? '')"
 				/>
 				@error('enterprise_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
+			</div>
+			<div class="col-md-4 col-12">
+				<x-team-users-select
+					id="responsible_id"
+					label="{{ __('Asesor') }} (*)"
+					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
+				/>
+				@error('responsible_id')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
 			</div>
@@ -771,17 +800,6 @@
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
 			</div>
 			--}}
-
-			<div class="col-md-12">
-				<x-team-users-select
-					id="responsible_id"
-					label="{{ __('Asesor') }} (*)"
-					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
-				/>
-				@error('responsible_id')
-    <div class="invalid-feedback">{{ $message }}</div>
-@enderror
-			</div>
 			@else
 			<!-- Simplified view for non-admins -->
 			{{-- Hidden: Start date field --}}
@@ -791,17 +809,6 @@
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
 			</div>
 			--}}
-
-			<div class="col-md-12">
-				<x-team-users-select
-					id="responsible_id"
-					label="{{ __('Asesor') }} (*)"
-					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
-				/>
-				@error('responsible_id')
-    <div class="invalid-feedback">{{ $message }}</div>
-@enderror
-			</div>
 			@endif
 
 			<!-- Notas del proyecto -->
@@ -867,21 +874,22 @@
 						data_get($data, 'data.ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
 					);
 				@endphp
-				<label class="form-label d-flex justify-content-between align-items-center" for="data_ai_usage_percent">
-					<span>{{ __('Hours↔tokens balance (%)') }}</span>
-					<strong id="data_ai_usage_percent_label">{{ (int) $aiUsagePercentDefault }}%</strong>
-				</label>
-				<div id="ai-usage-balance-slider" class="noUi-primary my-3"></div>
-				<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
-				<p class="text-muted small mb-3">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
-				<div class="row g-3 mt-1">
+				<div class="row g-3 align-items-start">
+					<div class="col-md-8 col-12">
+						<label class="form-label d-flex justify-content-between align-items-center mb-1" for="data_ai_usage_percent">
+							<span class="small">{{ __('Hours↔tokens balance (%)') }}</span>
+							<strong class="small" id="data_ai_usage_percent_label">{{ (int) $aiUsagePercentDefault }}%</strong>
+						</label>
+						<div id="ai-usage-balance-slider" class="noUi-primary noUi-sm mb-1"></div>
+						<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
+						<p class="text-muted small mb-0">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
+					</div>
 					<div class="col-md-4 col-12">
-						<label for="discount" class="form-label">{{ __('Discount') }} (%)</label>
-						<input type="number" class="form-control" id="discount" name="discount"
+						<label for="discount" class="form-label mb-1">{{ __('Discount') }} (%)</label>
+						<input type="number" class="form-control form-control-sm" id="discount" name="discount"
 							step="1" min="0" max="100"
 							value="{{ old('discount', $data->discount ?? '') }}"
 							placeholder="0">
-						<p class="text-muted small mb-0 mt-1">{{ __('Shown on the client budget preview.') }}</p>
 					</div>
 				</div>
 			</div>
