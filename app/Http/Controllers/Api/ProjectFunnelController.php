@@ -410,6 +410,9 @@ class ProjectFunnelController extends Controller
                     'dimension' => $spec['dimension'] ?? '',
                     'estimated_times' => $spec['estimated_times'] ?? '',
                     'resources' => $spec['resources'] ?? '',
+                    'token_consumption' => is_array($spec['token_consumption'] ?? null)
+                        ? $spec['token_consumption']
+                        : $this->budgetSpecService->buildTokenConsumption($includedTasks),
                     'suggested_tasks' => $includedTasks,
                     'budget_preview_token' => $projectData['budget_preview_token'] ?? Str::random(48),
                     'funnel' => array_merge($funnel, [
@@ -537,6 +540,16 @@ class ProjectFunnelController extends Controller
                 'dimension' => '',
                 'estimated_times' => '',
                 'resources' => '',
+                'token_consumption' => [
+                    'notes' => '',
+                    'input_tokens' => 0,
+                    'output_tokens' => 0,
+                    'total_tokens' => 0,
+                    'cost_euros' => 0,
+                    'savings_percent' => 57,
+                    'billable_euros' => 0,
+                    'currency' => 'EUR',
+                ],
                 'suggested_tasks' => [],
                 'budget_preview_token' => Str::random(48),
                 'funnel' => [

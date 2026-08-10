@@ -85,6 +85,12 @@ class ProjectController extends Controller
             $data['data']['suggested_tasks'] = is_string($raw)
                 ? (json_decode($raw, true) ?? [])
                 : (is_array($raw) ? $raw : []);
+            $budgetSpecService = app(ProjectBudgetSpecService::class);
+            $data['data']['suggested_tasks'] = $budgetSpecService->normalizeSuggestedTasks($data['data']['suggested_tasks']);
+            $data['data']['token_consumption'] = $budgetSpecService->normalizeTokenConsumption(
+                $data['data']['token_consumption'] ?? null,
+                $data['data']['suggested_tasks'],
+            );
             if (! empty($data['data']['suggested_tasks']) && empty($data['data']['budget_preview_token']))
             {
                 $data['data']['budget_preview_token'] = Str::random(48);
@@ -135,7 +141,7 @@ class ProjectController extends Controller
     }
 
     /**
-     * Generate budget spec (dimension, times, resources) from budget text via Laravel AI.
+     * Generate budget spec (dimension, times, resources, token consumption) from budget text via Laravel AI.
      * Used when creating/editing a project presupuesto.
      */
     public function generateBudgetSpec(Request $request, ProjectBudgetSpecService $budgetSpecService): \Illuminate\Http\JsonResponse
@@ -146,6 +152,9 @@ class ProjectController extends Controller
         $request->validate([
             'budget_given' => 'required|string|max:16000',
         ]);
+
+        $timeout = max(60, (int) config('ai.budget_spec_timeout', 180));
+        set_time_limit($timeout + 30);
 
         try
         {
@@ -174,6 +183,7 @@ class ProjectController extends Controller
     public function budgetPreview(string $token)
     {
         $project = Project::withoutGlobalScopes()
+            ->with('enterprise')
             ->where('data->budget_preview_token', $token)
             ->firstOrFail();
 

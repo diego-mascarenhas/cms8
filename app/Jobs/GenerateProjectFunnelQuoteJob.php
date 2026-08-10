@@ -81,6 +81,11 @@ class GenerateProjectFunnelQuoteJob implements ShouldQueue
                 'dimension' => $spec['dimension'] ?? '',
                 'estimated_times' => $spec['estimated_times'] ?? '',
                 'resources' => $spec['resources'] ?? '',
+                'token_consumption' => is_array($spec['token_consumption'] ?? null)
+                    ? $spec['token_consumption']
+                    : $budgetSpecService->buildTokenConsumption(
+                        is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [],
+                    ),
                 'suggested_tasks' => is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [],
                 'funnel_spec' => $spec,
                 'funnel' => array_merge($funnel, [
