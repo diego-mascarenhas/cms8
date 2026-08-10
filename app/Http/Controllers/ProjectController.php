@@ -228,6 +228,7 @@ class ProjectController extends Controller
             'ip' => $request->ip(),
         ];
         $project->data = $data;
+        $project->status_id = ProjectStatus::STATUS_APPROVED;
         $project->save();
 
         return redirect()
@@ -258,6 +259,7 @@ class ProjectController extends Controller
             'ip' => $request->ip(),
         ];
         $project->data = $data;
+        $project->status_id = ProjectStatus::STATUS_WAITING_FOR_RESPONSE;
         $project->save();
 
         return redirect()

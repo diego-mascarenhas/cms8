@@ -117,6 +117,7 @@ class ProjectBudgetPreviewTest extends TestCase
 
         $this->assertSame('accepted', data_get($project->data, 'budget_client_response.status'));
         $this->assertSame('Jane Client', data_get($project->data, 'budget_client_response.accepted_by_name'));
+        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $project->status_id);
 
         $this->get(route('project.budget-preview', $token))
             ->assertOk()
@@ -178,6 +179,7 @@ class ProjectBudgetPreviewTest extends TestCase
             'Please reduce Senior hours and clarify token costs.',
             data_get($project->data, 'budget_client_response.message'),
         );
+        $this->assertSame(ProjectStatus::STATUS_WAITING_FOR_RESPONSE, (int) $project->status_id);
 
         $this->get(route('project.budget-preview', $token))
             ->assertOk()

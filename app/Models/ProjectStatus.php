@@ -8,6 +8,16 @@ class ProjectStatus extends Model
 {
     public $timestamps = false;
 
+    public const STATUS_BUDGET = 1;
+
+    public const STATUS_BUDGETED = 2;
+
+    public const STATUS_AUTHORIZED = 3;
+
+    public const STATUS_APPROVED = 7;
+
+    public const STATUS_WAITING_FOR_RESPONSE = 8;
+
     /**
      * @var list<string>
      */
