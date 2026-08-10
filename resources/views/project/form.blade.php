@@ -40,6 +40,11 @@
 		font-size: 0.7rem;
 		padding: 1px 4px;
 	}
+	textarea.js-auto-resize {
+		overflow-y: hidden;
+		resize: vertical;
+		min-height: 2.5rem;
+	}
 </style>
 @endsection
 
@@ -47,6 +52,16 @@
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
 <script>
+    function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.max(el.scrollHeight, 40) + 'px';
+    }
+
+    function autoResizeBudgetTextareas() {
+        document.querySelectorAll('textarea.js-auto-resize').forEach(autoResizeTextarea);
+    }
+
     $(function() {
         // Inicializar Select2 si está disponible
         if ($.fn.select2) {
@@ -57,7 +72,10 @@
             // Note: #responsible_id is initialized by the team-users-select component
         }
 
-
+        autoResizeBudgetTextareas();
+        $(document).on('input', 'textarea.js-auto-resize', function() {
+            autoResizeTextarea(this);
+        });
     });
 
     @if(isset($data->id))
@@ -153,6 +171,7 @@
                     $('#data_dimension').val(res.dimension || '');
                     $('#data_estimated_times').val(res.estimated_times || '');
                     $('#data_resources').val(res.resources || '');
+                    autoResizeBudgetTextareas();
                     if (res.suggested_tasks && res.suggested_tasks.length) {
                         res.suggested_tasks.forEach(function(t) {
                             if (t.resource_level === undefined) t.resource_level = '';
@@ -297,6 +316,7 @@
         var notes = tokenConsumptionNotes(tokenConsumption);
         if (!notes) notes = buildTokenConsumptionText(tasks || []);
         $('#data_token_consumption_notes').val(notes);
+        autoResizeTextarea(document.getElementById('data_token_consumption_notes'));
 
         var total = 0;
         (tasks || []).forEach(function(t) {
@@ -895,7 +915,7 @@
 			</div>
 			<div class="col-12">
 				<label for="data_ai_interpretation" class="form-label">{{ __('AI interpretation') }}</label>
-				<textarea id="data_ai_interpretation" name="data[ai_interpretation]" class="form-control" rows="2">{{ old('data.ai_interpretation', data_get($data, 'data.ai_interpretation', '')) }}</textarea>
+				<textarea id="data_ai_interpretation" name="data[ai_interpretation]" class="form-control js-auto-resize" rows="2">{{ old('data.ai_interpretation', data_get($data, 'data.ai_interpretation', '')) }}</textarea>
 			</div>
 			@php
 				$savedSuggested = old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []));
@@ -914,19 +934,19 @@
 			@endphp
 			<div class="col-12">
 				<label for="data_dimension" class="form-label">{{ __('Dimension') }}</label>
-				<textarea id="data_dimension" name="data[dimension]" class="form-control" rows="3">{{ old('data.dimension', data_get($data, 'data.dimension', '')) }}</textarea>
+				<textarea id="data_dimension" name="data[dimension]" class="form-control js-auto-resize" rows="3">{{ old('data.dimension', data_get($data, 'data.dimension', '')) }}</textarea>
 			</div>
 			<div class="col-12">
 				<label for="data_estimated_times" class="form-label">{{ __('Estimated times') }}</label>
-				<textarea id="data_estimated_times" name="data[estimated_times]" class="form-control" rows="3">{{ old('data.estimated_times', data_get($data, 'data.estimated_times', '')) }}</textarea>
+				<textarea id="data_estimated_times" name="data[estimated_times]" class="form-control js-auto-resize" rows="3">{{ old('data.estimated_times', data_get($data, 'data.estimated_times', '')) }}</textarea>
 			</div>
 			<div class="col-12">
 				<label for="data_resources" class="form-label">{{ __('Resources') }}</label>
-				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
+				<textarea id="data_resources" name="data[resources]" class="form-control js-auto-resize" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
 			</div>
 			<div class="col-12">
 				<label for="data_token_consumption_notes" class="form-label">{{ __('Approximate token consumption') }}</label>
-				<textarea id="data_token_consumption_notes" name="data[token_consumption][notes]" class="form-control" rows="3" style="white-space: pre-line;">{{ $tokenConsumptionNotes }}</textarea>
+				<textarea id="data_token_consumption_notes" name="data[token_consumption][notes]" class="form-control js-auto-resize" rows="3" style="white-space: pre-line;">{{ $tokenConsumptionNotes }}</textarea>
 				<input type="hidden" id="data_token_consumption_input" name="data[token_consumption][input_tokens]" value="{{ (int) ($tokenConsumption['input_tokens'] ?? 0) }}">
 				<input type="hidden" id="data_token_consumption_output" name="data[token_consumption][output_tokens]" value="{{ (int) ($tokenConsumption['output_tokens'] ?? 0) }}">
 				<input type="hidden" id="data_token_consumption_total" name="data[token_consumption][total_tokens]" value="{{ (int) ($tokenConsumption['total_tokens'] ?? 0) }}">
