@@ -18,24 +18,26 @@ use App\Services\Finance\InvoiceSummaryService;
 use App\Services\UserDailyPerformanceInsightService;
 use App\Support\DemoTeam;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
-use Stripe\Balance;
-use Stripe\Stripe;
 
 class DashboardController extends Controller
 {
+    private const AGGREGATES_CACHE_SECONDS = 600;
+
+    private const ANALYTICS_CACHE_SECONDS = 3600;
+
+    private const INVOICE_STATS_CACHE_SECONDS = 300;
+
     public function __construct(
         private readonly ContactDailySentimentService $contactDailySentimentService,
     ) {}
 
     public function index()
     {
-        // Get active team
         $activeTeam = auth()->user()->currentTeam ?? auth()->user()->teams->first();
 
-        // Initialize Stripe variables
-        $totalBalance = 0;
         $currentMonthRevenue = 0;
         $lastMonthRevenue = 0;
 
@@ -44,29 +46,33 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'No team assigned');
         }
 
-        // Calculate total team minutes (only positive values)
-        $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
-        {
-            $query->where('team_id', $activeTeam->id);
-        })
-            ->whereNotNull('duration_seconds')
-            ->where('duration_seconds', '>', 0)  // Only count positive durations
-            ->sum('duration_seconds');
+        $aggregates = $this->cachedTeamAggregates($activeTeam);
 
-        // Ensure we never have negative minutes
-        $totalTeamMinutes = max(0, round($totalTeamSeconds / 60));
+        $totalTeamMinutes = $aggregates['totalTeamMinutes'];
+        $sentimentData = $aggregates['sentimentData'];
+        $recentLeadsCount = $aggregates['recentLeadsCount'];
+        $totalContactsCount = $aggregates['totalContactsCount'];
+        $totalClientsCount = $aggregates['totalClientsCount'];
+        $latestContactsThisMonthCount = $aggregates['latestContactsThisMonthCount'];
+        $dashboardContactsCreatedTrend = $aggregates['dashboardContactsCreatedTrend'];
+        $dashboardContactStatusBreakdown = $aggregates['dashboardContactStatusBreakdown'];
+        $dashboardPanelMonthComparisons = $aggregates['dashboardPanelMonthComparisons'];
+        $dashboardContactInteractionsTrend = $aggregates['dashboardContactInteractionsTrend'];
+        $teamInteractionsLast30DaysCount = $aggregates['teamInteractionsLast30DaysCount'];
+        $hasProjects = $aggregates['hasProjects'];
 
-        // Clients to contact today (List of 60) - only when module is enabled
-        $today = Carbon::today();
+        $latestRegisteredContacts = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->where('created_at', '>=', now()->startOfMonth())
+            ->with('status:id,name,label_class')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get(['id', 'name', 'surname', 'status_id', 'created_at']);
+
         $clientsToContactToday = 0;
-        $todayContacts = null;
-        if ($activeTeam && $activeTeam->hasModule('list60'))
+        $todayContacts = collect();
+        if ($activeTeam->hasModule('list60'))
         {
-            $clientsToContactToday = List60::whereHas('contact', function ($query) use ($activeTeam)
-            {
-                $query->where('team_id', $activeTeam->id);
-            })->whereDate('date_next', $today)->count();
-
             $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
                 ->whereHas('contact', function ($query) use ($activeTeam)
                 {
@@ -74,352 +80,31 @@ class DashboardController extends Controller
                 })
                 ->whereDate('date_next', Carbon::today())
                 ->get();
+            $clientsToContactToday = $todayContacts->count();
         }
 
-        $sentimentData = $this->contactDailySentimentService->chartDataForTeam($activeTeam);
-
-        $recentLeadsQuery = Contact::query()
-            ->where('team_id', $activeTeam->id)
-            ->where('status_id', 1)
-            ->where('created_at', '>=', now()->subDays(7));
-        $recentLeadsCount = $recentLeadsQuery->count();
-        $totalContactsCount = Contact::query()
-            ->where('team_id', $activeTeam->id)
-            ->count();
-        $totalClientsCount = $activeTeam->hasModule('clients')
-            ? Enterprise::query()->where('team_id', $activeTeam->id)->count()
-            : 0;
-        $currentMonthStart = now()->startOfMonth();
-        $latestContactsThisMonthQuery = Contact::query()
-            ->where('team_id', $activeTeam->id)
-            ->where('created_at', '>=', $currentMonthStart);
-        $latestContactsThisMonthCount = $latestContactsThisMonthQuery->count();
-
-        $previousMonthStart = $currentMonthStart->copy()->subMonth();
-        $nextMonthStart = $currentMonthStart->copy()->addMonth();
-
-        $interactionChartService = app(ContactInteractionChartDataService::class);
-        $teamInteractionsLast30DaysCount = $interactionChartService->countForTeam(
-            $activeTeam->id,
-            30,
-        );
-        $dashboardContactInteractionsTrend = $interactionChartService->buildDailyTrendByType(
-            $activeTeam->id,
-        );
-        $interactionsPreviousMonthCount = $interactionChartService->countForTeamBetween(
-            $activeTeam->id,
-            $previousMonthStart,
-            $currentMonthStart,
-        );
-        $interactionsThisMonthCount = $interactionChartService->countForTeamBetween(
-            $activeTeam->id,
-            $currentMonthStart,
-            $nextMonthStart,
-        );
-        $contactsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
-            $activeTeam->id,
-            $previousMonthStart,
-            $currentMonthStart,
-        );
-        $leadsCreatedThisMonthCount = $this->countTeamContactsCreatedBetween(
-            $activeTeam->id,
-            $currentMonthStart,
-            $nextMonthStart,
-            statusId: 1,
-        );
-        $leadsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
-            $activeTeam->id,
-            $previousMonthStart,
-            $currentMonthStart,
-            statusId: 1,
-        );
-        $dashboardPanelMonthComparisons = [
-            'contacts-trend' => $this->buildMonthComparison(
-                $leadsCreatedThisMonthCount,
-                $leadsCreatedPreviousMonthCount,
-            ),
-            'status-breakdown' => $this->buildMonthComparison(
-                $latestContactsThisMonthCount,
-                $contactsCreatedPreviousMonthCount,
-            ),
-            'latest-contacts' => $this->buildMonthComparison(
-                $latestContactsThisMonthCount,
-                $contactsCreatedPreviousMonthCount,
-            ),
-            'interactions-breakdown' => $this->buildMonthComparison(
-                $interactionsThisMonthCount,
-                $interactionsPreviousMonthCount,
-            ),
-        ];
-
-        $dashboardContactsCreatedTrend = $this->buildContactsCreatedTrend(
-            $activeTeam->id,
-            30,
-            statusId: 1,
-        );
-
-        $dashboardContactStatusBreakdown = [
-            'labels' => [],
-            'values' => [],
-        ];
-        $statusIdsForChart = [1, 2, 3, 4, 5];
-        $statusCountsById = Contact::query()
-            ->where('team_id', $activeTeam->id)
-            ->whereIn('status_id', $statusIdsForChart)
-            ->selectRaw('status_id, COUNT(*) as aggregate')
-            ->groupBy('status_id')
-            ->pluck('aggregate', 'status_id');
-        $statusLabelsById = ContactStatus::query()
-            ->whereIn('id', $statusIdsForChart)
-            ->orderBy('id')
-            ->pluck('name', 'id');
-        foreach ($statusIdsForChart as $statusId)
-        {
-            $dashboardContactStatusBreakdown['labels'][] = $statusLabelsById[$statusId] ?? (string) $statusId;
-            $dashboardContactStatusBreakdown['values'][] = (int) ($statusCountsById[$statusId] ?? 0);
-        }
-
-        $latestRegisteredContacts = (clone $latestContactsThisMonthQuery)
-            ->with('status:id,name,label_class')
-            ->orderByDesc('created_at')
-            ->limit(50)
-            ->get(['id', 'name', 'surname', 'status_id', 'created_at']);
-
-        // Get contacts to follow up today (filtered by team)
-        $todayContacts = List60::with(['contact.enterprises', 'contact.currentSentiment.sentiment'])
-            ->whereHas('contact', function ($query) use ($activeTeam)
-            {
-                $query->where('team_id', $activeTeam->id);
-            })
-            ->whereDate('date_next', Carbon::today())
-            ->get();
-
-        // Retrieve ongoing projects only if Projects module is enabled for the team
         $ongoingProjects = null;
-        if ($activeTeam && $activeTeam->hasModule('projects'))
+        if ($activeTeam->hasModule('projects'))
         {
-            // Include BUDGET (1), BUDGETED (2), and IN_PROGRESS (9) statuses
-            // Order by status (IN_PROGRESS first), then by updated_at
             $ongoingProjects = Project::with(['client', 'responsible', 'status'])
                 ->where('team_id', $activeTeam->id)
-                ->whereIn('status_id', [1, 2, 9])  // BUDGET, BUDGETED, IN_PROGRESS
+                ->whereIn('status_id', [1, 2, 9])
                 ->orderByRaw('CASE status_id WHEN 9 THEN 1 WHEN 2 THEN 2 WHEN 1 THEN 3 ELSE 4 END')
                 ->orderBy('updated_at', 'desc')
-                ->take(10)  // Limit to 10 projects
+                ->take(10)
                 ->get();
         }
 
-        // Recent activities removed - Activity Log package was removed from the project
         $formattedActivities = collect();
 
-        // Get subscription level
-        $subscriptionLevel = null;
-        $mentoringPlan = null;
-        $mentoringLevelName = null;
-        $mentoringMessage = null;
-        $hasProjects = Project::where('team_id', $activeTeam->id)->exists();
-        $hasMentoringSubscription = false;
+        [
+            'subscriptionLevel' => $subscriptionLevel,
+            'mentoringPlan' => $mentoringPlan,
+            'mentoringLevelName' => $mentoringLevelName,
+            'mentoringMessage' => $mentoringMessage,
+        ] = $this->resolveSubscriptionPresentation($activeTeam, $hasProjects);
 
-        // Get active subscriptions
-        $activeSubscriptions = $activeTeam->subscriptions()
-            ->where('stripe_status', '!=', 'canceled')
-            ->get();
-
-        // Determine subscription level based on active subscriptions
-        foreach ($activeSubscriptions as $subscription)
-        {
-            if (! $subscription->active())
-            {
-                continue;
-            }
-
-            // Get product from subscription - try multiple ways to find it
-            $product = null;
-            if ($subscription->stripe_price)
-            {
-                $product = SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
-            }
-
-            // If not found by price, try to find by subscription metadata or type
-            if (! $product && $subscription->stripe_id)
-            {
-                // Try to get product info from Stripe directly
-                try
-                {
-                    \Stripe\Stripe::setApiKey(config('cashier.secret'));
-                    $stripeSub = \Stripe\Subscription::retrieve($subscription->stripe_id, ['expand' => ['items.data.price.product']]);
-                    if ($stripeSub->items->data[0]->price->product)
-                    {
-                        $stripeProductId = is_string($stripeSub->items->data[0]->price->product)
-                            ? $stripeSub->items->data[0]->price->product
-                            : $stripeSub->items->data[0]->price->product->id;
-
-                        $product = SubscriptionProduct::where('stripe_id', $stripeProductId)
-                            ->orWhere('stripe_product', $stripeProductId)
-                            ->first();
-                    }
-                } catch (\Exception $e)
-                {
-                    // Silently fail, continue with existing logic
-                }
-            }
-
-            if ($product)
-            {
-                $type = $product->type ?? $product->category;
-                $category = $product->category;
-
-                // Update subscription type if it doesn't match the product category
-                if ($subscription->type !== $category && $category)
-                {
-                    $subscription->type = $category;
-                    $subscription->save();
-                }
-
-                if ($type === 'mailer')
-                {
-                    // Mailer subscription
-                    $subscriptionLevel = EmailPlan::fromStripePriceId($subscription->stripe_price);
-                } elseif ($type === 'mentoring' || $category === 'mentoring')
-                {
-                    // Mentoring subscription
-                    $hasMentoringSubscription = true;
-                    // Get the plan from the product
-                    $mentoringPlan = $product->plan ?? null;
-
-                    // If there's a plan, use it; otherwise check if no projects (IDEA plan)
-                    if ($mentoringPlan)
-                    {
-                        // Plan pago activo
-                        $mentoringLevelName = match ($mentoringPlan)
-                        {
-                            'creation' => 'Tu dossier comercial',
-                            'operations' => 'Operaciones',
-                            'bussiness-exit' => 'Business Exit',
-                            'complete' => 'Complete',
-                            default => $mentoringPlan,
-                        };
-                        $mentoringMessage = match ($mentoringPlan)
-                        {
-                            'creation' => 'Estás en la fase de Creación',
-                            'operations' => 'Estás en la fase de Operaciones',
-                            'bussiness-exit' => 'Estás en la fase de Business Exit',
-                            'complete' => 'Tienes el plan completo',
-                            default => '¡Vas viento en popa!',
-                        };
-                    } elseif (! $hasProjects)
-                    {
-                        // Plan gratuito IDEA (dossier comercial) - solo si no hay plan y no hay proyectos
-                        $mentoringPlan = 'IDEA';
-                        $mentoringLevelName = 'Tu dossier comercial';
-                        $mentoringMessage = 'Haz tenido una gran IDEA';
-                    }
-                } elseif ($type === 'hosting' || $category === 'hosting')
-                {
-                    // Hosting subscription
-                    $subscriptionLevel = $product->plan ?? 'Hosting';
-                }
-            }
-        }
-
-        // If no mentoring subscription exists, show IDEA plan (free)
-        if (! $hasMentoringSubscription)
-        {
-            $mentoringPlan = 'IDEA';
-            $mentoringLevelName = 'Tu dossier comercial';
-            $mentoringMessage = 'Haz tenido una gran IDEA';
-        }
-
-        // Stripe revenue calculation - COMMENTED OUT (resource intensive)
-        // if ($activeTeam && $activeTeam->getSetting('stripe_secret'))
-        // {
-        //     try
-        //     {
-        //         Stripe::setApiKey($activeTeam->getSetting('stripe_secret'));
-
-        //         // Get balance
-        //         $balance = Balance::retrieve();
-        //         \Log::info('Stripe Balance:', ['balance' => $balance]);
-        //         $availableBalance = collect($balance->available)->sum('amount') / 100;
-        //         $pendingBalance = collect($balance->pending)->sum('amount') / 100;
-        //         $totalBalance = $availableBalance + $pendingBalance;
-
-        //         // Get current and last month revenue
-        //         $startOfCurrentMonth = Carbon::now()->startOfMonth()->timestamp;
-        //         $startOfLastMonth = Carbon::now()->subMonth()->startOfMonth()->timestamp;
-        //         $endOfLastMonth = Carbon::now()->subMonth()->endOfMonth()->timestamp;
-
-        //         \Log::info('Date ranges:', [
-        //             'current_month_start' => date('Y-m-d H:i:s', $startOfCurrentMonth),
-        //             'last_month_start' => date('Y-m-d H:i:s', $startOfLastMonth),
-        //             'last_month_end' => date('Y-m-d H:i:s', $endOfLastMonth),
-        //         ]);
-
-        //         // Get all paid invoices
-        //         $invoices = \Stripe\Invoice::all([
-        //             'status' => 'paid',
-        //             'limit' => 100,
-        //         ]);
-
-        //         // Filter invoices by payment date
-        //         $currentMonthInvoices = collect($invoices->data)->filter(function ($invoice) use ($startOfCurrentMonth)
-        //         {
-        //             $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
-
-        //             return $paidAt >= $startOfCurrentMonth;
-        //         });
-
-        //         $lastMonthInvoices = collect($invoices->data)->filter(function ($invoice) use ($startOfLastMonth, $endOfLastMonth)
-        //         {
-        //             $paidAt = $invoice->status_transitions->paid_at ?? $invoice->created;
-
-        //             return $paidAt >= $startOfLastMonth && $paidAt <= $endOfLastMonth;
-        //         });
-
-        //         // Use total instead of amount_paid for external payments
-        //         if ($currentMonthInvoices->isNotEmpty())
-        //         {
-        //             $currentMonthRevenue = $currentMonthInvoices->sum('total') / 100;
-        //         }
-
-        //         if ($lastMonthInvoices->isNotEmpty())
-        //         {
-        //             $lastMonthRevenue = $lastMonthInvoices->sum('total') / 100;
-        //         }
-        //     } catch (\Exception $e)
-        //     {
-        //         \Log::error('Error fetching Stripe data: '.$e->getMessage());
-        //     }
-        //         }
-
-        // Google Analytics: fetch chart data only when team has GA4 configured
-        $analyticsChartData = null;
-        if ($activeTeam
-            && $activeTeam->getSetting('analytics_property_id')
-            && $activeTeam->getSetting('analytics_credentials_json')
-        ) {
-            $credentialsJson = $activeTeam->getSetting('analytics_credentials_json');
-            $credentials = is_string($credentialsJson) ? json_decode($credentialsJson, true) : $credentialsJson;
-            if (is_array($credentials))
-            {
-                config([
-                    'analytics.property_id' => $activeTeam->getSetting('analytics_property_id'),
-                    'analytics.service_account_credentials_json' => $credentials,
-                ]);
-                try
-                {
-                    $collection = Analytics::fetchTotalVisitorsAndPageViews(Period::days(7), 7);
-                    $analyticsChartData = [
-                        'dates' => $collection->pluck('date')->map(fn ($d) => $d instanceof \Carbon\Carbon ? $d->format('Y-m-d') : $d)->values()->all(),
-                        'visitors' => $collection->pluck('activeUsers')->values()->all(),
-                        'pageViews' => $collection->pluck('screenPageViews')->values()->all(),
-                    ];
-                } catch (\Throwable $e)
-                {
-                    \Log::warning('Dashboard Google Analytics fetch failed: '.$e->getMessage());
-                }
-            }
-        }
+        $analyticsChartData = $this->cachedAnalyticsChartData($activeTeam);
 
         $dailyPerformanceInsight = null;
         $canShowPerformanceInsight = auth()->user()->hasAnyRole(['admin', 'root'])
@@ -436,7 +121,11 @@ class DashboardController extends Controller
         $invoiceStats = null;
         if ($activeTeam->hasModule('invoices') && auth()->user()->can('viewAny', Invoice::class))
         {
-            $invoiceStats = app(InvoiceSummaryService::class)->buildDashboardStats((int) $activeTeam->id);
+            $invoiceStats = Cache::remember(
+                "dashboard.invoice_stats.{$activeTeam->id}",
+                self::INVOICE_STATS_CACHE_SECONDS,
+                fn () => app(InvoiceSummaryService::class)->buildDashboardStats((int) $activeTeam->id),
+            );
         }
 
         return view('dashboard', compact(
@@ -469,6 +158,323 @@ class DashboardController extends Controller
             'dashboardCalendarData',
             'invoiceStats',
         ));
+    }
+
+    /**
+     * @return array{
+     *     totalTeamMinutes: int|float,
+     *     sentimentData: list<array{label: string, count: int}>,
+     *     recentLeadsCount: int,
+     *     totalContactsCount: int,
+     *     totalClientsCount: int,
+     *     latestContactsThisMonthCount: int,
+     *     dashboardContactsCreatedTrend: array{labels: list<string>, values: list<int>},
+     *     dashboardContactStatusBreakdown: array{labels: list<string>, values: list<int>},
+     *     dashboardPanelMonthComparisons: array<string, array{current: int, previous: int, difference: int, percent_change: float, direction: string}>,
+     *     dashboardContactInteractionsTrend: array{labels: list<string>, series: list<array{name: string, data: list<int>}>, total: int},
+     *     teamInteractionsLast30DaysCount: int,
+     *     hasProjects: bool
+     * }
+     */
+    private function cachedTeamAggregates($activeTeam): array
+    {
+        return Cache::remember(
+            "dashboard.aggregates.{$activeTeam->id}",
+            self::AGGREGATES_CACHE_SECONDS,
+            fn () => $this->buildTeamAggregates($activeTeam),
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildTeamAggregates($activeTeam): array
+    {
+        $totalTeamSeconds = UserContactAction::whereHas('contact', function ($query) use ($activeTeam)
+        {
+            $query->where('team_id', $activeTeam->id);
+        })
+            ->whereNotNull('duration_seconds')
+            ->where('duration_seconds', '>', 0)
+            ->sum('duration_seconds');
+
+        $currentMonthStart = now()->startOfMonth();
+        $previousMonthStart = $currentMonthStart->copy()->subMonth();
+        $nextMonthStart = $currentMonthStart->copy()->addMonth();
+
+        $interactionChartService = app(ContactInteractionChartDataService::class);
+        $dashboardContactInteractionsTrend = $interactionChartService->buildDailyTrendByType(
+            $activeTeam->id,
+        );
+
+        $latestContactsThisMonthCount = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->where('created_at', '>=', $currentMonthStart)
+            ->count();
+
+        $interactionsPreviousMonthCount = $interactionChartService->countForTeamBetween(
+            $activeTeam->id,
+            $previousMonthStart,
+            $currentMonthStart,
+        );
+        $interactionsThisMonthCount = $interactionChartService->countForTeamBetween(
+            $activeTeam->id,
+            $currentMonthStart,
+            $nextMonthStart,
+        );
+        $contactsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
+            $activeTeam->id,
+            $previousMonthStart,
+            $currentMonthStart,
+        );
+        $leadsCreatedThisMonthCount = $this->countTeamContactsCreatedBetween(
+            $activeTeam->id,
+            $currentMonthStart,
+            $nextMonthStart,
+            statusId: 1,
+        );
+        $leadsCreatedPreviousMonthCount = $this->countTeamContactsCreatedBetween(
+            $activeTeam->id,
+            $previousMonthStart,
+            $currentMonthStart,
+            statusId: 1,
+        );
+
+        $statusIdsForChart = [1, 2, 3, 4, 5];
+        $statusCountsById = Contact::query()
+            ->where('team_id', $activeTeam->id)
+            ->whereIn('status_id', $statusIdsForChart)
+            ->selectRaw('status_id, COUNT(*) as aggregate')
+            ->groupBy('status_id')
+            ->pluck('aggregate', 'status_id');
+        $statusLabelsById = ContactStatus::query()
+            ->whereIn('id', $statusIdsForChart)
+            ->orderBy('id')
+            ->pluck('name', 'id');
+
+        $dashboardContactStatusBreakdown = [
+            'labels' => [],
+            'values' => [],
+        ];
+        foreach ($statusIdsForChart as $statusId)
+        {
+            $dashboardContactStatusBreakdown['labels'][] = $statusLabelsById[$statusId] ?? (string) $statusId;
+            $dashboardContactStatusBreakdown['values'][] = (int) ($statusCountsById[$statusId] ?? 0);
+        }
+
+        return [
+            'totalTeamMinutes' => max(0, round($totalTeamSeconds / 60)),
+            'sentimentData' => $this->contactDailySentimentService->chartDataForTeam($activeTeam),
+            'recentLeadsCount' => Contact::query()
+                ->where('team_id', $activeTeam->id)
+                ->where('status_id', 1)
+                ->where('created_at', '>=', now()->subDays(7))
+                ->count(),
+            'totalContactsCount' => Contact::query()
+                ->where('team_id', $activeTeam->id)
+                ->count(),
+            'totalClientsCount' => $activeTeam->hasModule('clients')
+                ? Enterprise::query()->where('team_id', $activeTeam->id)->count()
+                : 0,
+            'latestContactsThisMonthCount' => $latestContactsThisMonthCount,
+            'dashboardContactsCreatedTrend' => $this->buildContactsCreatedTrend(
+                $activeTeam->id,
+                30,
+                statusId: 1,
+            ),
+            'dashboardContactStatusBreakdown' => $dashboardContactStatusBreakdown,
+            'dashboardPanelMonthComparisons' => [
+                'contacts-trend' => $this->buildMonthComparison(
+                    $leadsCreatedThisMonthCount,
+                    $leadsCreatedPreviousMonthCount,
+                ),
+                'status-breakdown' => $this->buildMonthComparison(
+                    $latestContactsThisMonthCount,
+                    $contactsCreatedPreviousMonthCount,
+                ),
+                'latest-contacts' => $this->buildMonthComparison(
+                    $latestContactsThisMonthCount,
+                    $contactsCreatedPreviousMonthCount,
+                ),
+                'interactions-breakdown' => $this->buildMonthComparison(
+                    $interactionsThisMonthCount,
+                    $interactionsPreviousMonthCount,
+                ),
+            ],
+            'dashboardContactInteractionsTrend' => $dashboardContactInteractionsTrend,
+            'teamInteractionsLast30DaysCount' => $dashboardContactInteractionsTrend['total'],
+            'hasProjects' => Project::where('team_id', $activeTeam->id)->exists(),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     subscriptionLevel: mixed,
+     *     mentoringPlan: ?string,
+     *     mentoringLevelName: ?string,
+     *     mentoringMessage: ?string
+     * }
+     */
+    private function resolveSubscriptionPresentation($activeTeam, bool $hasProjects): array
+    {
+        $subscriptionLevel = null;
+        $mentoringPlan = null;
+        $mentoringLevelName = null;
+        $mentoringMessage = null;
+        $hasMentoringSubscription = false;
+
+        $activeSubscriptions = $activeTeam->subscriptions()
+            ->where('stripe_status', '!=', 'canceled')
+            ->get();
+
+        foreach ($activeSubscriptions as $subscription)
+        {
+            if (! $subscription->active())
+            {
+                continue;
+            }
+
+            $product = null;
+            if ($subscription->stripe_price)
+            {
+                $product = SubscriptionProduct::where('stripe_price', $subscription->stripe_price)->first();
+            }
+
+            if (! $product && $subscription->stripe_id)
+            {
+                try
+                {
+                    \Stripe\Stripe::setApiKey(config('cashier.secret'));
+                    $stripeSub = \Stripe\Subscription::retrieve($subscription->stripe_id, ['expand' => ['items.data.price.product']]);
+                    if ($stripeSub->items->data[0]->price->product)
+                    {
+                        $stripeProductId = is_string($stripeSub->items->data[0]->price->product)
+                            ? $stripeSub->items->data[0]->price->product
+                            : $stripeSub->items->data[0]->price->product->id;
+
+                        $product = SubscriptionProduct::where('stripe_id', $stripeProductId)
+                            ->orWhere('stripe_product', $stripeProductId)
+                            ->first();
+                    }
+                } catch (\Exception $e)
+                {
+                    // Continue with existing logic when Stripe lookup fails.
+                }
+            }
+
+            if (! $product)
+            {
+                continue;
+            }
+
+            $type = $product->type ?? $product->category;
+            $category = $product->category;
+
+            if ($subscription->type !== $category && $category)
+            {
+                $subscription->type = $category;
+                $subscription->save();
+            }
+
+            if ($type === 'mailer')
+            {
+                $subscriptionLevel = EmailPlan::fromStripePriceId($subscription->stripe_price);
+            } elseif ($type === 'mentoring' || $category === 'mentoring')
+            {
+                $hasMentoringSubscription = true;
+                $mentoringPlan = $product->plan ?? null;
+
+                if ($mentoringPlan)
+                {
+                    $mentoringLevelName = match ($mentoringPlan)
+                    {
+                        'creation' => 'Tu dossier comercial',
+                        'operations' => 'Operaciones',
+                        'bussiness-exit' => 'Business Exit',
+                        'complete' => 'Complete',
+                        default => $mentoringPlan,
+                    };
+                    $mentoringMessage = match ($mentoringPlan)
+                    {
+                        'creation' => 'Estás en la fase de Creación',
+                        'operations' => 'Estás en la fase de Operaciones',
+                        'bussiness-exit' => 'Estás en la fase de Business Exit',
+                        'complete' => 'Tienes el plan completo',
+                        default => '¡Vas viento en popa!',
+                    };
+                } elseif (! $hasProjects)
+                {
+                    $mentoringPlan = 'IDEA';
+                    $mentoringLevelName = 'Tu dossier comercial';
+                    $mentoringMessage = 'Haz tenido una gran IDEA';
+                }
+            } elseif ($type === 'hosting' || $category === 'hosting')
+            {
+                $subscriptionLevel = $product->plan ?? 'Hosting';
+            }
+        }
+
+        if (! $hasMentoringSubscription)
+        {
+            $mentoringPlan = 'IDEA';
+            $mentoringLevelName = 'Tu dossier comercial';
+            $mentoringMessage = 'Haz tenido una gran IDEA';
+        }
+
+        return [
+            'subscriptionLevel' => $subscriptionLevel,
+            'mentoringPlan' => $mentoringPlan,
+            'mentoringLevelName' => $mentoringLevelName,
+            'mentoringMessage' => $mentoringMessage,
+        ];
+    }
+
+    /**
+     * @return array{dates: list<mixed>, visitors: list<mixed>, pageViews: list<mixed>}|null
+     */
+    private function cachedAnalyticsChartData($activeTeam): ?array
+    {
+        $propertyId = $activeTeam->getSetting('analytics_property_id');
+        $credentialsJson = $activeTeam->getSetting('analytics_credentials_json');
+
+        if (! $propertyId || ! $credentialsJson)
+        {
+            return null;
+        }
+
+        return Cache::remember(
+            "dashboard.analytics.{$activeTeam->id}",
+            self::ANALYTICS_CACHE_SECONDS,
+            function () use ($propertyId, $credentialsJson)
+            {
+                $credentials = is_string($credentialsJson) ? json_decode($credentialsJson, true) : $credentialsJson;
+                if (! is_array($credentials))
+                {
+                    return null;
+                }
+
+                config([
+                    'analytics.property_id' => $propertyId,
+                    'analytics.service_account_credentials_json' => $credentials,
+                ]);
+
+                try
+                {
+                    $collection = Analytics::fetchTotalVisitorsAndPageViews(Period::days(7), 7);
+
+                    return [
+                        'dates' => $collection->pluck('date')->map(fn ($d) => $d instanceof Carbon ? $d->format('Y-m-d') : $d)->values()->all(),
+                        'visitors' => $collection->pluck('activeUsers')->values()->all(),
+                        'pageViews' => $collection->pluck('screenPageViews')->values()->all(),
+                    ];
+                } catch (\Throwable $e)
+                {
+                    \Log::warning('Dashboard Google Analytics fetch failed: '.$e->getMessage());
+
+                    return null;
+                }
+            },
+        );
     }
 
     /**
@@ -630,6 +636,27 @@ class DashboardController extends Controller
         ?int $statusId = null,
         ?int $responsibleId = null,
     ): array {
+        $since = now()->subDays($days - 1)->startOfDay();
+
+        $query = Contact::query()
+            ->where('team_id', $teamId)
+            ->where('created_at', '>=', $since);
+
+        if ($statusId !== null)
+        {
+            $query->where('status_id', $statusId);
+        }
+
+        if ($responsibleId !== null)
+        {
+            $query->where('responsible_id', $responsibleId);
+        }
+
+        $countsByDay = $query
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as aggregate')
+            ->groupByRaw('DATE(created_at)')
+            ->pluck('aggregate', 'day');
+
         $trend = [
             'labels' => [],
             'values' => [],
@@ -638,24 +665,9 @@ class DashboardController extends Controller
         for ($dayOffset = $days - 1; $dayOffset >= 0; $dayOffset--)
         {
             $dayStart = now()->subDays($dayOffset)->startOfDay();
-            $dayEnd = $dayStart->copy()->addDay();
+            $dayKey = $dayStart->toDateString();
             $trend['labels'][] = $dayStart->isoFormat('D MMM');
-            $query = Contact::query()
-                ->where('team_id', $teamId)
-                ->where('created_at', '>=', $dayStart)
-                ->where('created_at', '<', $dayEnd);
-
-            if ($statusId !== null)
-            {
-                $query->where('status_id', $statusId);
-            }
-
-            if ($responsibleId !== null)
-            {
-                $query->where('responsible_id', $responsibleId);
-            }
-
-            $trend['values'][] = $query->count();
+            $trend['values'][] = (int) ($countsByDay[$dayKey] ?? 0);
         }
 
         return $trend;

@@ -626,4 +626,56 @@ class DashboardAnalyticsTest extends TestCase
         $this->assertEquals('987654321', $team->fresh()->getSetting('analytics_property_id'));
         $this->assertNotEmpty($team->fresh()->getSetting('analytics_credentials_json'));
     }
+
+    public function test_dashboard_reuses_cached_aggregates_on_second_request(): void
+    {
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $this->grantContactDashboardPermissions($user);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'CRM contacts',
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('contacts');
+
+        Contact::factory()->count(3)->create([
+            'team_id' => $team->id,
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+            'status_id' => 1,
+            'created_at' => Carbon::now()->subDay(),
+        ]);
+
+        $this->actingAs($user);
+
+        $this->get(route('dashboard'))->assertOk();
+
+        \Illuminate\Support\Facades\DB::flushQueryLog();
+        \Illuminate\Support\Facades\DB::enableQueryLog();
+
+        $this->get(route('dashboard'))->assertOk();
+
+        $contactDateGroupQueries = collect(\Illuminate\Support\Facades\DB::getQueryLog())
+            ->filter(fn (array $query): bool => str_contains(strtolower($query['query']), 'date(created_at)'))
+            ->count();
+
+        $this->assertSame(0, $contactDateGroupQueries);
+        $this->assertTrue(\Illuminate\Support\Facades\Cache::has("dashboard.aggregates.{$team->id}"));
+    }
 }
