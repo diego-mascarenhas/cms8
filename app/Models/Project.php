@@ -279,7 +279,7 @@ class Project extends Model
         $teamId = $teamId ?? (auth()->check() ? auth()->user()->currentTeam->id : 1);
 
         // Active project statuses: AUTHORIZED, APPROVED, WAITING_FOR_RESPONSE, IN_PROGRESS
-        $activeStatuses = [3, 7, 8, 9];
+        $activeStatuses = ProjectStatus::inProgressStatusIds();
 
         return static::where('team_id', $teamId)
             ->whereIn('status_id', $activeStatuses)
@@ -304,9 +304,9 @@ class Project extends Model
     public static function getProjectStats(int $teamId): array
     {
         $groups = [
-            'Budget' => [1],
-            'Budgeted' => [2],
-            'InProgress' => [3, 7, 8, 9],
+            'Budget' => [ProjectStatus::STATUS_BUDGET],
+            'Budgeted' => [ProjectStatus::STATUS_BUDGETED],
+            'InProgress' => ProjectStatus::inProgressStatusIds(),
             'ToInvoice' => [10, 11],
         ];
 

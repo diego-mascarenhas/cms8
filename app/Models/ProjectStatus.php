@@ -20,6 +20,40 @@ class ProjectStatus extends Model
 
     public const STATUS_WAITING_FOR_RESPONSE = 8;
 
+    public const STATUS_IN_PROGRESS = 9;
+
+    /**
+     * Active / "in progress" statuses used by stats and counts.
+     *
+     * @return list<int>
+     */
+    public static function inProgressStatusIds(): array
+    {
+        return [
+            self::STATUS_AUTHORIZED,
+            self::STATUS_APPROVED,
+            self::STATUS_WAITING_FOR_RESPONSE,
+            self::STATUS_IN_PROGRESS,
+        ];
+    }
+
+    /**
+     * Statuses listed under dashboard "Ongoing Projects" (quote pipeline + active work).
+     *
+     * @return list<int>
+     */
+    public static function ongoingDashboardStatusIds(): array
+    {
+        return [
+            self::STATUS_BUDGET,
+            self::STATUS_BUDGETED,
+            self::STATUS_AUTHORIZED,
+            self::STATUS_APPROVED,
+            self::STATUS_WAITING_FOR_RESPONSE,
+            self::STATUS_IN_PROGRESS,
+        ];
+    }
+
     /**
      * @var list<string>
      */

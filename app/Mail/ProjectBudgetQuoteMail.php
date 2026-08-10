@@ -35,6 +35,7 @@ class ProjectBudgetQuoteMail extends Mailable
                 'trackingPixelUrl' => $trackingPixelUrl,
                 'logoUrl' => url(asset($budgetLogoPath)),
                 'appName' => 'IDONEO',
+                'footerBrand' => 'REVISION ALPHA',
             ]);
     }
 }

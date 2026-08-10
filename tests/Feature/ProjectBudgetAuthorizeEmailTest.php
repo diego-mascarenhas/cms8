@@ -67,7 +67,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
 
             return $mail->hasTo($contact->email)
                 && str_contains($html, 'idoneo-logo.svg')
-                && str_contains($html, 'IDONEO')
+                && str_contains($html, 'REVISION ALPHA')
                 && ! str_contains($html, 'humano');
         });
     }

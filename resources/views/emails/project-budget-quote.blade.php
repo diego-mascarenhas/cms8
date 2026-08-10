@@ -37,7 +37,7 @@
             </div>
             <p class="muted">{{ __('The project will not start until 30% of the payment is received.') }}</p>
         </div>
-        <div class="footer">{{ $appName }}</div>
+        <div class="footer">{{ $footerBrand ?? $appName }}</div>
     </div>
     @if (! empty($trackingPixelUrl))
         <img src="{{ $trackingPixelUrl }}" width="1" height="1" alt="" style="display:block;width:1px;height:1px;border:0;">

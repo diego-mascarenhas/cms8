@@ -22,9 +22,10 @@ class HelpersFormatHoursHumanTest extends TestCase
             'one and a half hours' => [1.5, '1 h 30 min'],
             'whole hours' => [2, '2 h'],
             'minutes only' => [0.25, '15 min'],
-            'zero' => [0, '—'],
+            'zero' => [0, '0 min'],
             'null' => [null, '—'],
             'empty string' => ['', '—'],
+            'negative' => [-1, '—'],
         ];
     }
 }
