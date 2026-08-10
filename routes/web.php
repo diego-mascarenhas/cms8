@@ -248,6 +248,8 @@ Route::post('/sla/accept/{token}', [SLAController::class, 'accept'])->name('sla.
 
 // Budget preview (public - no auth, access by token hash)
 Route::get('/p/budget/{token}', [ProjectController::class, 'budgetPreview'])->name('project.budget-preview');
+Route::post('/p/budget/{token}/accept', [ProjectController::class, 'acceptBudgetPreview'])->name('project.budget-preview.accept');
+Route::post('/p/budget/{token}/reformulate', [ProjectController::class, 'reformulateBudgetPreview'])->name('project.budget-preview.reformulate');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');

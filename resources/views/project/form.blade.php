@@ -535,7 +535,7 @@
             var moneySaved = Math.max(0, totalBaseTokenBillable - totalTokenCost);
             if (moneySaved > 0 || totalHoursSaved > 0) {
                 html += '<p style="font-size:0.9em;opacity:0.9;"><em>'
-                    + escapeHtml('{{ __("With our MCP you save :money and about :time.") }}'
+                    + escapeHtml('{{ __("This quote already includes an estimated saving of :money and about :time.") }}'
                         .replace(':money', formatEuros(moneySaved))
                         .replace(':time', formatHoursHuman(totalHoursSaved)))
                     + '</em></p>';

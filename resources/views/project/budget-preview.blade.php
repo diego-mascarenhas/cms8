@@ -91,6 +91,11 @@
     $hasContent = $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
     $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
     $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
+    $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
+    $depositAmount = (int) round($payableTotal * 0.30);
+    $clientResponse = is_array($clientResponse ?? null) ? $clientResponse : null;
+    $responseStatus = is_array($clientResponse) ? ($clientResponse['status'] ?? null) : null;
+    $budgetToken = $budgetToken ?? data_get($project->data, 'budget_preview_token');
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -165,9 +170,82 @@
             font-size: 9.5px;
         }
         .empty { color: #6b7280; margin: 24px 0; }
+        .notice {
+            background: #fff7ed;
+            border-left: 3px solid #ea580c;
+            padding: 12px 14px;
+            margin: 18px 0 12px;
+            color: #9a3412;
+        }
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 14px;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn-primary { background: #4361f7; color: #fff; }
+        .btn-primary:hover { background: #3451e0; }
+        .btn-secondary { background: #e5e7eb; color: #111827; }
+        .btn-secondary:hover { background: #d1d5db; }
+        .field { margin: 10px 0; }
+        .field label { display: block; font-weight: 600; margin-bottom: 4px; color: #111827; }
+        .field input, .field textarea {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font: inherit;
+            color: #111827;
+            background: #fff;
+        }
+        .field textarea { min-height: 120px; resize: vertical; }
+        .check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; color: #374151; }
+        .check input { margin-top: 3px; }
+        .flash-ok {
+            background: #ecfdf5;
+            border-left: 3px solid #059669;
+            color: #065f46;
+            padding: 10px 14px;
+            margin: 14px 0;
+        }
+        .flash-err {
+            background: #fef2f2;
+            border-left: 3px solid #dc2626;
+            color: #991b1b;
+            padding: 10px 14px;
+            margin: 14px 0;
+        }
+        .status-box {
+            background: #f3f4f6;
+            border-left: 3px solid #6b7280;
+            padding: 10px 14px;
+            margin: 14px 0;
+        }
+        dialog {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            max-width: 520px;
+            width: calc(100% - 32px);
+        }
+        dialog::backdrop { background: rgba(17, 24, 39, 0.45); }
+        .dialog-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
         @media print {
             body { background: #fff; padding: 0; max-width: none; }
             .sheet { box-shadow: none; padding: 0; }
+            .actions, .notice, dialog, .flash-ok, .flash-err { display: none !important; }
         }
     </style>
 </head>
@@ -274,16 +352,120 @@
         @endif
     @endunless
 
+    @if (session('budget_response_success'))
+        <div class="flash-ok">{{ session('budget_response_success') }}</div>
+    @endif
+    @if (session('budget_response_error'))
+        <div class="flash-err">{{ session('budget_response_error') }}</div>
+    @endif
+    @if ($errors->any())
+        <div class="flash-err">
+            <ul style="margin:0;padding-left:18px;">
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    @if ($hasContent && $budgetToken)
+        @if ($responseStatus === 'accepted')
+            <div class="status-box">
+                <strong>{{ __('Quote accepted') }}</strong><br>
+                {{ __('The project will not start until 30% of the payment is received.') }}
+                @if (! empty($clientResponse['responded_at']))
+                    <br><span style="color:#6b7280;">{{ __('Recorded on') }}: {{ \Carbon\Carbon::parse($clientResponse['responded_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+                @endif
+            </div>
+        @elseif ($responseStatus === 'reformulation_requested')
+            <div class="status-box">
+                <strong>{{ __('Reformulation requested') }}</strong><br>
+                {{ __('We received your comments and will get back to you.') }}
+                @if (! empty($clientResponse['message']))
+                    <br><em style="display:block;margin-top:6px;">{{ $clientResponse['message'] }}</em>
+                @endif
+            </div>
+        @else
+            <div class="notice">
+                <strong>{{ __('Important before accepting') }}</strong><br>
+                {{ __('The project will not start until 30% of the payment is received (:amount).', [
+                    'amount' => number_format($depositAmount, 0, '', '.').' €',
+                ]) }}
+            </div>
+
+            <form method="POST" action="{{ route('project.budget-preview.accept', $budgetToken) }}" class="accept-form">
+                @csrf
+                <div class="field">
+                    <label for="accepted_by_name">{{ __('Your name') }} ({{ __('optional') }})</label>
+                    <input type="text" id="accepted_by_name" name="accepted_by_name" value="{{ old('accepted_by_name') }}" maxlength="255">
+                </div>
+                <label class="check">
+                    <input type="checkbox" name="accept_deposit_terms" value="1" {{ old('accept_deposit_terms') ? 'checked' : '' }} required>
+                    <span>{{ __('I understand that the project will not start until 30% of the payment is received.') }}</span>
+                </label>
+                <div class="actions">
+                    <button type="submit" class="btn btn-primary">{{ __('Accept quote') }}</button>
+                    <button type="button" class="btn btn-secondary" id="open-reformulate-dialog">{{ __('Request reformulation') }}</button>
+                </div>
+            </form>
+
+            <dialog id="reformulate-dialog">
+                <form method="POST" action="{{ route('project.budget-preview.reformulate', $budgetToken) }}">
+                    @csrf
+                    <h2 style="margin:0 0 8px;font-size:16px;">{{ __('Request reformulation') }}</h2>
+                    <p style="margin:0 0 12px;color:#4b5563;">{{ __('Tell us what you would like to change in this quote.') }}</p>
+                    <div class="field">
+                        <label for="reformulate_name">{{ __('Your name') }} ({{ __('optional') }})</label>
+                        <input type="text" id="reformulate_name" name="name" value="{{ old('name') }}" maxlength="255">
+                    </div>
+                    <div class="field">
+                        <label for="reformulate_message">{{ __('Comments') }} (*)</label>
+                        <textarea id="reformulate_message" name="message" required minlength="10" maxlength="5000">{{ old('message') }}</textarea>
+                    </div>
+                    <div class="dialog-actions">
+                        <button type="button" class="btn btn-secondary" id="close-reformulate-dialog">{{ __('Cancel') }}</button>
+                        <button type="submit" class="btn btn-primary">{{ __('Send request') }}</button>
+                    </div>
+                </form>
+            </dialog>
+        @endif
+    @endif
+
     <p class="footer">
         @if ($moneySaved > 0 || $totalHoursSaved > 0)
-            {{ __('With our MCP you save :money and about :time.', [
+            {{ __('This quote already includes an estimated saving of :money and about :time.', [
                 'money' => $formatEuros($moneySaved),
                 'time' => $formatHoursHuman($totalHoursSaved),
             ]) }}
             ·
         @endif
-        {{ __('Internal draft — not issued in Stripe. Billable reflects cost without MCP/TOON optimization; savings % is the transferred margin.') }}
+        {{ __('Indicative quote. Amounts do not include VAT.') }}
     </p>
 </div>
+@if ($hasContent && $budgetToken && ! in_array($responseStatus, ['accepted', 'reformulation_requested'], true))
+<script>
+    (function () {
+        var dialog = document.getElementById('reformulate-dialog');
+        var openBtn = document.getElementById('open-reformulate-dialog');
+        var closeBtn = document.getElementById('close-reformulate-dialog');
+        if (!dialog || !openBtn) return;
+        openBtn.addEventListener('click', function () {
+            if (typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            }
+        });
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function () {
+                dialog.close();
+            });
+        }
+        @if ($errors->has('message') || $errors->has('name'))
+            if (typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            }
+        @endif
+    })();
+</script>
+@endif
 </body>
 </html>
