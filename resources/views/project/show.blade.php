@@ -80,10 +80,8 @@
 				</a>
 			@endif
 			@php
-				$canAuthorizeBudget = in_array((int) $project->status_id, [
-					\App\Models\ProjectStatus::STATUS_BUDGETED,
-					\App\Models\ProjectStatus::STATUS_AUTHORIZED,
-				], true)
+				$canAuthorizeBudget = auth()->user()->hasRole('admin')
+					&& (int) $project->status_id === \App\Models\ProjectStatus::STATUS_BUDGETED
 					&& data_get($project->data, 'budget_preview_token')
 					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
 					&& $project->client?->quoteContact() !== null;
@@ -93,9 +91,20 @@
 					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
 						@csrf
 						<button type="submit" class="btn btn-success waves-effect waves-light"
-							onclick="return confirm('{{ __('Authorize this quote and email it to the enterprise contact?') }}')">
-							<i class="ti ti-mail-forward me-1"></i>
-							{{ (int) $project->status_id === \App\Models\ProjectStatus::STATUS_AUTHORIZED ? __('Resend quote email') : __('Authorize and send quote') }}
+							onclick="return confirm('{{ __('Mark as authorized and email the quote to the enterprise contact?') }}')">
+							<i class="ti ti-mail-forward me-1"></i>{{ __('Authorize quote') }}
+						</button>
+					</form>
+				@elseif (auth()->user()->hasRole('admin')
+					&& (int) $project->status_id === \App\Models\ProjectStatus::STATUS_AUTHORIZED
+					&& data_get($project->data, 'budget_preview_token')
+					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
+					&& $project->client?->quoteContact() !== null)
+					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
+						@csrf
+						<button type="submit" class="btn btn-outline-success waves-effect waves-light"
+							onclick="return confirm('{{ __('Resend the quote email to the enterprise contact?') }}')">
+							<i class="ti ti-mail-forward me-1"></i>{{ __('Resend quote email') }}
 						</button>
 					</form>
 				@endif

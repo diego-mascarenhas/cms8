@@ -68,6 +68,34 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
     }
 
     #[Test]
+    public function admin_saving_status_as_authorized_sends_quote_email(): void
+    {
+        Mail::fake();
+
+        [$user, $project, $contact] = $this->createBudgetedProject();
+
+        $response = $this->actingAs($user)
+            ->from(route('project.edit', $project->id))
+            ->post(route('project.store'), [
+                'id' => $project->id,
+                'name' => $project->name,
+                'real_name' => $project->real_name,
+                'status_id' => ProjectStatus::STATUS_AUTHORIZED,
+                'enterprise_id' => $project->enterprise_id,
+                'responsible_id' => $project->responsible_id,
+                'data' => $project->data,
+            ]);
+
+        $response->assertRedirect(route('project.show', $project->id));
+        $response->assertSessionHas('success');
+
+        $project->refresh();
+        $this->assertSame(ProjectStatus::STATUS_AUTHORIZED, (int) $project->status_id);
+        $this->assertSame($contact->email, data_get($project->data, 'budget_email.to_email'));
+        Mail::assertSent(ProjectBudgetQuoteMail::class);
+    }
+
+    #[Test]
     public function authorize_requires_budgeted_status(): void
     {
         Mail::fake();

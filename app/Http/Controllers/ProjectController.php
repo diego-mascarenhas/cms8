@@ -107,6 +107,8 @@ class ProjectController extends Controller
             ? (($data['discount'] === '' || $data['discount'] === null) ? null : $data['discount'])
             : $existing?->discount;
 
+        $previousStatusId = $existing ? (int) $existing->status_id : null;
+
         $project = Project::updateOrCreate(
             ['id' => $request->id],
             [
@@ -145,6 +147,27 @@ class ProjectController extends Controller
         if (! $request->id)
         {
             return redirect()->route('project.show', $project->id)->with('success', 'Proyecto creado exitosamente.');
+        }
+
+        $becameAuthorized = $previousStatusId !== ProjectStatus::STATUS_AUTHORIZED
+            && (int) $project->status_id === ProjectStatus::STATUS_AUTHORIZED;
+
+        if ($becameAuthorized && auth()->user()?->hasRole('admin'))
+        {
+            try
+            {
+                app(ProjectBudgetQuoteMailService::class)->sendQuoteEmail($project, auth()->user());
+
+                return redirect()
+                    ->route('project.show', $project->id)
+                    ->with('success', __('Quote authorized and emailed to the enterprise contact.'));
+            } catch (RuntimeException $e)
+            {
+                return redirect()
+                    ->route('project.show', $project->id)
+                    ->with('error', $e->getMessage())
+                    ->with('success', __('Project updated successfully.'));
+            }
         }
 
         return redirect()->route('project.show', $project->id)->with('success', 'Proyecto actualizado exitosamente.');
@@ -271,12 +294,17 @@ class ProjectController extends Controller
     }
 
     /**
-     * Authorize a budgeted quote and email the public preview to the enterprise contact.
+     * Admin shortcut: mark budgeted quote as authorized and email the public preview.
      */
     public function authorizeBudgetQuote(string $id, ProjectBudgetQuoteMailService $mailService)
     {
-        $project = Project::with(['enterprise.responsible', 'team', 'status'])->findOrFail($id);
+        $project = Project::with(['enterprise.contacts', 'team', 'status'])->findOrFail($id);
         $this->authorize('update', $project);
+
+        if (! auth()->user()?->hasRole('admin'))
+        {
+            abort(403);
+        }
 
         try
         {

@@ -449,7 +449,7 @@
             {{ __('This quote already includes estimated token savings.') }}
             ·
         @endif
-        {{ __('Indicative quote. Amounts do not include VAT.') }}
+        {{ __('Amounts do not include VAT.') }}
     </p>
 </div>
 @if ($hasContent && $budgetToken && ! in_array($responseStatus, ['accepted', 'reformulation_requested'], true))

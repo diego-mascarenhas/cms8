@@ -13,18 +13,36 @@ use RuntimeException;
 class ProjectBudgetQuoteMailService
 {
     /**
-     * Authorize a budgeted project and email the public quote link to the enterprise contact.
+     * Mark the project as authorized and email the public quote to the CRM contact.
      *
      * @throws RuntimeException
      */
     public function authorizeAndSend(Project $project, User $sender): Project
     {
-        $project->loadMissing(['enterprise.contacts', 'team']);
-
         if ((int) $project->status_id !== ProjectStatus::STATUS_BUDGETED
             && (int) $project->status_id !== ProjectStatus::STATUS_AUTHORIZED)
         {
-            throw new RuntimeException(__('Only budgeted or authorized projects can send the quote email.'));
+            throw new RuntimeException(__('Only budgeted projects can be authorized to send the quote email.'));
+        }
+
+        $project->status_id = ProjectStatus::STATUS_AUTHORIZED;
+        $project->save();
+
+        return $this->sendQuoteEmail($project->fresh(['enterprise.contacts', 'team']), $sender);
+    }
+
+    /**
+     * Email the public quote link after an admin moves the project to Authorized.
+     *
+     * @throws RuntimeException
+     */
+    public function sendQuoteEmail(Project $project, User $sender): Project
+    {
+        $project->loadMissing(['enterprise.contacts', 'team']);
+
+        if ((int) $project->status_id !== ProjectStatus::STATUS_AUTHORIZED)
+        {
+            throw new RuntimeException(__('Only authorized projects can send the quote email.'));
         }
 
         if (data_get($project->data, 'budget_client_response.status') === 'accepted')
@@ -63,7 +81,6 @@ class ProjectBudgetQuoteMailService
         ];
 
         $project->data = $data;
-        $project->status_id = ProjectStatus::STATUS_AUTHORIZED;
         $project->save();
 
         $mail = new ProjectBudgetQuoteMail(

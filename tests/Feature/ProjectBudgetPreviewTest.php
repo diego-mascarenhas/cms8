@@ -91,7 +91,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee(__('Accept quote'), false);
         $response->assertSee(__('Request reformulation'), false);
         $response->assertSee(__('I understand that the project will not start until 30% of the payment is received.'), false);
-        $response->assertSee(__('Indicative quote. Amounts do not include VAT.'), false);
+        $response->assertSee(__('Amounts do not include VAT.'), false);
         $response->assertSee(__('This quote already includes estimated token savings.'), false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);

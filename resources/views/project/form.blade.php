@@ -834,7 +834,7 @@
 			<!-- Notas del proyecto -->
 			<div class="col-12">
 				<label for="description" class="form-label">{{ __('Project Notes') }}</label>
-				<textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="4">{{ old('description', $data->description ?? '') }}</textarea>
+				<textarea id="description" name="description" class="form-control js-auto-resize @error('description') is-invalid @enderror" rows="4">{{ old('description', $data->description ?? '') }}</textarea>
 				@error('description')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
@@ -844,7 +844,7 @@
 			@can('access-billing-modules')
 			<div class="col-12">
 				<label for="data_budget_given" class="form-label">{{ __('Budget received') }}</label>
-				<textarea id="data_budget_given" name="data[budget_given]" class="form-control" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>
+				<textarea id="data_budget_given" name="data[budget_given]" class="form-control js-auto-resize" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>
 			</div>
 			<!-- Vista previa: resumen HTML editable (cotización) -->
 			<div class="col-12 d-none mt-2" id="budget-preview-container">
