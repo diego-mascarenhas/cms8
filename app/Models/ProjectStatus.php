@@ -54,20 +54,20 @@ class ProjectStatus extends Model
     /**
      * Get the appropriate label class for the status
      */
-    public function getLabelClassAttribute()
+    public function getLabelClassAttribute(): string
     {
-        switch ($this->id)
+        if (! empty($this->attributes['label_class']))
         {
-            case 8: // PENDING
-                return 'bg-label-warning';
-            case 9: // IN_PROGRESS
-                return 'bg-label-info';
-            case 10: // COMPLETED
-                return 'bg-label-success';
-            case 11: // CANCELED
-                return 'bg-label-danger';
-            default:
-                return 'bg-label-secondary';
+            return (string) $this->attributes['label_class'];
         }
+
+        return match ((int) $this->id)
+        {
+            self::STATUS_WAITING_FOR_RESPONSE => 'bg-label-warning',
+            9 => 'bg-label-info',
+            10 => 'bg-label-success',
+            11 => 'bg-label-danger',
+            default => 'bg-label-secondary',
+        };
     }
 }

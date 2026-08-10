@@ -126,6 +126,30 @@ class ProjectBudgetPreviewTest extends TestCase
     }
 
     #[Test]
+    public function accepted_quote_heals_stale_project_status_on_preview(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'budget_client_response' => [
+                'status' => 'accepted',
+                'accepted_by_name' => 'Jane Client',
+                'message' => null,
+                'responded_at' => now()->toIso8601String(),
+                'ip' => '127.0.0.1',
+            ],
+        ]);
+        $token = $created['token'];
+        $created['project']->forceFill(['status_id' => ProjectStatus::STATUS_BUDGET])->save();
+
+        $this->get(route('project.budget-preview', $token))->assertOk();
+
+        $project = Project::withoutGlobalScopes()
+            ->where('data->budget_preview_token', $token)
+            ->firstOrFail();
+
+        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $project->status_id);
+    }
+
+    #[Test]
     public function public_budget_preview_requires_deposit_terms_to_accept(): void
     {
         $token = $this->createBudgetPreviewProject()['token'];

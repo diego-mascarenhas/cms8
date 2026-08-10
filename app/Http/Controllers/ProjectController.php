@@ -195,6 +195,8 @@ class ProjectController extends Controller
 
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
 
+        $this->syncProjectStatusFromBudgetResponse($project);
+
         return view('project.budget-preview', [
             'project' => $project,
             'suggestedTasks' => $suggestedTasks,
@@ -273,6 +275,27 @@ class ProjectController extends Controller
             ->with('enterprise')
             ->where('data->budget_preview_token', $token)
             ->firstOrFail();
+    }
+
+    /**
+     * Align project workflow status with the client quote response when needed.
+     */
+    private function syncProjectStatusFromBudgetResponse(Project $project): void
+    {
+        $targetStatusId = match (data_get($project->data, 'budget_client_response.status'))
+        {
+            'accepted' => ProjectStatus::STATUS_APPROVED,
+            'reformulation_requested' => ProjectStatus::STATUS_WAITING_FOR_RESPONSE,
+            default => null,
+        };
+
+        if ($targetStatusId === null || (int) $project->status_id === $targetStatusId)
+        {
+            return;
+        }
+
+        $project->status_id = $targetStatusId;
+        $project->save();
     }
 
     /**
@@ -693,6 +716,9 @@ class ProjectController extends Controller
             'projectFares.sourceLanguage',
             'projectFares.targetLanguage',
         ])->findOrFail($id);
+
+        $this->syncProjectStatusFromBudgetResponse($project);
+        $project->load('status');
 
         // Collaborators can only view their assigned projects
         $currentUser = auth()->user();

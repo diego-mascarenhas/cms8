@@ -826,19 +826,6 @@
 				@if(isset($data->id) && data_get($data, 'data.budget_preview_token'))
 					<p class="small mb-1">
 						<a href="{{ route('project.budget-preview', data_get($data, 'data.budget_preview_token')) }}" target="_blank" rel="noopener noreferrer">{{ __('Preview') }}</a>
-						@php
-							$budgetClientResponse = is_array(data_get($data, 'data.budget_client_response'))
-								? data_get($data, 'data.budget_client_response')
-								: null;
-							$budgetResponseStatus = $budgetClientResponse['status'] ?? null;
-						@endphp
-						@if ($budgetResponseStatus === 'accepted')
-							· <span class="badge rounded-pill bg-label-success">{{ __('Quote accepted') }}</span>
-						@elseif ($budgetResponseStatus === 'reformulation_requested')
-							· <span class="badge rounded-pill bg-label-warning">{{ __('Reformulation requested') }}</span>
-						@else
-							· <span class="badge rounded-pill bg-label-secondary">{{ __('Pending client response') }}</span>
-						@endif
 					</p>
 				@endif
 				<div id="budget-preview-toolbar">

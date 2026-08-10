@@ -103,26 +103,16 @@
 								<dt class="col-4 text-truncate">{{ __('Responsible') }}:</dt>
 								<dd class="col-8">{{ $project->responsible ? $project->responsible->name : __('Not assigned') }}</dd>
 
-								<dt class="col-4 text-truncate">{{ __('Status') }}:</dt>
-								<dd class="col-8">{!! $project->status_label !!}</dd>
-
 								@php
 									$budgetClientResponse = is_array(data_get($project->data, 'budget_client_response'))
 										? data_get($project->data, 'budget_client_response')
 										: null;
 									$budgetResponseStatus = $budgetClientResponse['status'] ?? null;
 								@endphp
-								@if (data_get($project->data, 'budget_preview_token'))
-								<dt class="col-4 text-truncate">{{ __('Quote response') }}:</dt>
+								<dt class="col-4 text-truncate">{{ __('Status') }}:</dt>
 								<dd class="col-8">
-									@if ($budgetResponseStatus === 'accepted')
-										<span class="badge rounded-pill bg-label-success">{{ __('Quote accepted') }}</span>
-									@elseif ($budgetResponseStatus === 'reformulation_requested')
-										<span class="badge rounded-pill bg-label-warning">{{ __('Reformulation requested') }}</span>
-									@else
-										<span class="badge rounded-pill bg-label-secondary">{{ __('Pending client response') }}</span>
-									@endif
-									@if (! empty($budgetClientResponse['accepted_by_name']))
+									{!! $project->status_label !!}
+									@if ($budgetResponseStatus === 'accepted' && ! empty($budgetClientResponse['accepted_by_name']))
 										<span class="text-muted ms-1">{{ $budgetClientResponse['accepted_by_name'] }}</span>
 									@endif
 									@if (! empty($budgetClientResponse['responded_at']))
@@ -132,7 +122,6 @@
 										<br><em class="small d-inline-block mt-1">{{ $budgetClientResponse['message'] }}</em>
 									@endif
 								</dd>
-								@endif
 
 								@if($project->client && $project->client->responsible_id)
 								<dt class="col-4 text-truncate">{{ __('Contact') }}:</dt>
