@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Models\ContactSentimentHistory;
 use App\Models\Email;
 use App\Models\Team;
 use Carbon\CarbonInterface;
@@ -59,14 +60,16 @@ class ContactDailySentimentService
      */
     public function chartDataForTeam(Team $team): array
     {
-        $sentimentCounts = Contact::query()
-            ->where('team_id', $team->id)
-            ->whereHas('currentSentiment')
-            ->with('currentSentiment')
-            ->get()
-            ->pluck('currentSentiment.sentiment_id')
-            ->filter()
-            ->countBy();
+        $latestSentimentIds = ContactSentimentHistory::query()
+            ->selectRaw('MAX(id) as id')
+            ->whereIn('contact_id', Contact::query()->where('team_id', $team->id)->select('id'))
+            ->groupBy('contact_id');
+
+        $sentimentCounts = ContactSentimentHistory::query()
+            ->whereIn('id', $latestSentimentIds)
+            ->selectRaw('sentiment_id, COUNT(*) as aggregate')
+            ->groupBy('sentiment_id')
+            ->pluck('aggregate', 'sentiment_id');
 
         $sentimentData = [];
 

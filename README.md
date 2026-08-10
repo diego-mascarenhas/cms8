@@ -119,9 +119,9 @@ You can run automatic Forge deployments on a VPS from **REVISION ALPHA**:
 
 ## API Documentation
 
-For comprehensive details on how to interact with CMS8's backend, please refer to our API documentation available on Postman:
+For comprehensive details on how to interact with CMS8's backend, please refer to our API documentation:
 
-- [CMS8 API Documentation](https://www.postman.com/revisionalpha/workspace/simplicity/)
+- [CMS8 API Documentation](https://admin.idoneo.dev/help/api)
 
 ## Contributing
 
