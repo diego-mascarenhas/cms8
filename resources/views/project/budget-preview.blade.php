@@ -213,6 +213,16 @@
         .field textarea { min-height: 120px; resize: vertical; }
         .check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; color: #374151; }
         .check input { margin-top: 3px; }
+        .check.is-invalid { color: #991b1b; }
+        .is-invalid {
+            border-color: #dc2626 !important;
+        }
+        .invalid-feedback {
+            display: block;
+            color: #dc2626;
+            font-size: 12px;
+            margin: 4px 0 8px;
+        }
         .flash-ok {
             background: #ecfdf5;
             border-left: 3px solid #059669;
@@ -358,15 +368,6 @@
     @if (session('budget_response_error'))
         <div class="flash-err">{{ session('budget_response_error') }}</div>
     @endif
-    @if ($errors->any())
-        <div class="flash-err">
-            <ul style="margin:0;padding-left:18px;">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
 
     @if ($hasContent && $budgetToken)
         @if ($responseStatus === 'accepted')
@@ -393,16 +394,22 @@
                 ]) }}
             </div>
 
-            <form method="POST" action="{{ route('project.budget-preview.accept', $budgetToken) }}" class="accept-form">
+            <form method="POST" action="{{ route('project.budget-preview.accept', $budgetToken) }}" class="accept-form" novalidate>
                 @csrf
                 <div class="field">
                     <label for="accepted_by_name">{{ __('Your name') }} ({{ __('optional') }})</label>
-                    <input type="text" id="accepted_by_name" name="accepted_by_name" value="{{ old('accepted_by_name') }}" maxlength="255">
+                    <input type="text" id="accepted_by_name" name="accepted_by_name" value="{{ old('accepted_by_name') }}" maxlength="255" class="@error('accepted_by_name') is-invalid @enderror">
+                    @error('accepted_by_name')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
                 </div>
-                <label class="check">
-                    <input type="checkbox" name="accept_deposit_terms" value="1" {{ old('accept_deposit_terms') ? 'checked' : '' }} required>
+                <label class="check @error('accept_deposit_terms') is-invalid @enderror">
+                    <input type="checkbox" name="accept_deposit_terms" value="1" {{ old('accept_deposit_terms') ? 'checked' : '' }}>
                     <span>{{ __('I understand that the project will not start until 30% of the payment is received.') }}</span>
                 </label>
+                @error('accept_deposit_terms')
+                    <div class="invalid-feedback">{{ $message }}</div>
+                @enderror
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">{{ __('Accept quote') }}</button>
                     <button type="button" class="btn btn-secondary" id="open-reformulate-dialog">{{ __('Request reformulation') }}</button>
@@ -410,17 +417,23 @@
             </form>
 
             <dialog id="reformulate-dialog">
-                <form method="POST" action="{{ route('project.budget-preview.reformulate', $budgetToken) }}">
+                <form method="POST" action="{{ route('project.budget-preview.reformulate', $budgetToken) }}" novalidate>
                     @csrf
                     <h2 style="margin:0 0 8px;font-size:16px;">{{ __('Request reformulation') }}</h2>
                     <p style="margin:0 0 12px;color:#4b5563;">{{ __('Tell us what you would like to change in this quote.') }}</p>
                     <div class="field">
                         <label for="reformulate_name">{{ __('Your name') }} ({{ __('optional') }})</label>
-                        <input type="text" id="reformulate_name" name="name" value="{{ old('name') }}" maxlength="255">
+                        <input type="text" id="reformulate_name" name="name" value="{{ old('name') }}" maxlength="255" class="@error('name') is-invalid @enderror">
+                        @error('name')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="field">
                         <label for="reformulate_message">{{ __('Comments') }} (*)</label>
-                        <textarea id="reformulate_message" name="message" required minlength="10" maxlength="5000">{{ old('message') }}</textarea>
+                        <textarea id="reformulate_message" name="message" maxlength="5000" class="@error('message') is-invalid @enderror">{{ old('message') }}</textarea>
+                        @error('message')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="dialog-actions">
                         <button type="button" class="btn btn-secondary" id="close-reformulate-dialog">{{ __('Cancel') }}</button>
@@ -433,10 +446,7 @@
 
     <p class="footer">
         @if ($moneySaved > 0 || $totalHoursSaved > 0)
-            {{ __('This quote already includes an estimated saving of :money and about :time.', [
-                'money' => $formatEuros($moneySaved),
-                'time' => $formatHoursHuman($totalHoursSaved),
-            ]) }}
+            {{ __('This quote already includes estimated token savings.') }}
             ·
         @endif
         {{ __('Indicative quote. Amounts do not include VAT.') }}

@@ -92,6 +92,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee(__('Request reformulation'), false);
         $response->assertSee(__('I understand that the project will not start until 30% of the payment is received.'), false);
         $response->assertSee(__('Indicative quote. Amounts do not include VAT.'), false);
+        $response->assertSee(__('This quote already includes estimated token savings.'), false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
     }
@@ -141,6 +142,17 @@ class ProjectBudgetPreviewTest extends TestCase
             ->firstOrFail();
 
         $this->assertNull(data_get($project->data, 'budget_client_response'));
+
+        $followUp = $this->followingRedirects()
+            ->from(route('project.budget-preview', $token))
+            ->post(route('project.budget-preview.accept', $token), [
+                'accepted_by_name' => 'Jane Client',
+            ]);
+
+        $followUp->assertOk();
+        $followUp->assertSee(__('You must confirm that the project will not start until 30% of the payment is received.'), false);
+        $followUp->assertDontSee('Select this tickbox', false);
+        $followUp->assertDontSee('Please fill out this field', false);
     }
 
     #[Test]

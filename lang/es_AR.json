@@ -555,6 +555,7 @@
   "labor": "labor",
   "With our MCP you save :money and about :time.": "Con nuestro MCP se ahorran :money y aproximadamente :time.",
   "This quote already includes an estimated saving of :money and about :time.": "Este presupuesto ya incluye un ahorro estimado de :money y aproximadamente :time.",
+  "This quote already includes estimated token savings.": "Este presupuesto ya incluye un ahorro estimado en tokens.",
   "Indicative quote. Amounts do not include VAT.": "Presupuesto orientativo. Importes sin I.V.A.",
   "Tokens": "Tokens",
   "One line per labor": "Una línea por labor",
