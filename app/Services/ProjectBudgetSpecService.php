@@ -16,6 +16,14 @@ use function Laravel\Ai\agent;
 
 class ProjectBudgetSpecService
 {
+    public const DEFAULT_AI_USAGE_PERCENT = 70.0;
+
+    /** Max drop of (labor + tokens) vs original when shifting hours→tokens. */
+    public const MAX_BALANCE_DISCOUNT_PERCENT = 30.0;
+
+    /** Blended AI cost €/M tokens (70% input @ 11 + 30% output @ 55). */
+    public const TOKEN_BLEND_EUR_PER_MILLION = 24.2;
+
     /**
      * Generate a full budget specification (includes prices for internal use).
      *
@@ -835,31 +843,124 @@ class ProjectBudgetSpecService
     }
 
     /**
-     * Reduce labor value by planned AI usage %. Tokens keep full billable price.
-     * Example: 225 € labor with 70% AI → 67.50 € labor charged.
+     * Shift billable hours onto tokens by balance %.
+     * Hours and labor € drop with the slider (seniority rate stays).
+     * Commercial total eases from 100% of original down to (100 − MAX_BALANCE_DISCOUNT)% as balance → 100%,
+     * by topping up token volume (advanced-model justification).
+     *
+     * @return array{
+     *     hours: float,
+     *     labor: ?float,
+     *     tokens: int,
+     *     display_tokens: int,
+     *     cost: float,
+     *     token_billable: float,
+     *     transferred_hours: float,
+     *     original_total: float,
+     *     target_total: float
+     * }
      */
-    public function laborValueAfterAi(float|int|string|null $unitPrice, float|int|string|null $aiUsagePercent): ?float
-    {
-        if ($unitPrice === null || $unitPrice === '' || ! is_numeric($unitPrice))
+    public function applyHoursTokensBalance(
+        float|int|string|null $unitPrice,
+        float|int|string|null $hours,
+        int $baseTokens,
+        float|int|string|null $savingsPercent = 57,
+        float|int|string|null $balancePercent = 0,
+    ): array {
+        $balance = is_numeric($balancePercent)
+            ? max(0.0, min(100.0, (float) $balancePercent))
+            : 0.0;
+        $savings = is_numeric($savingsPercent) ? (float) $savingsPercent : 57.0;
+        $savings = max(0.0, min(99.0, $savings));
+        $remainingFactor = max(0.01, 1 - ($savings / 100));
+
+        $hoursValue = is_numeric($hours) ? max(0.0, (float) $hours) : 0.0;
+        $baseTokens = max(0, $baseTokens);
+
+        $baseInput = (int) round($baseTokens * 0.7);
+        $baseOutput = max(0, $baseTokens - $baseInput);
+        $baseCost = $this->estimateTokenCostEuros($baseInput, $baseOutput);
+        $baseBillable = round($baseCost / $remainingFactor, 2);
+
+        $originalLabor = ($unitPrice !== null && $unitPrice !== '' && is_numeric($unitPrice))
+            ? (float) $unitPrice
+            : 0.0;
+        $originalTotal = round($originalLabor + $baseBillable, 2);
+
+        $transferredHours = round($hoursValue * ($balance / 100), 4);
+        $hoursCharged = round(max(0.0, $hoursValue - $transferredHours), 4);
+
+        $labor = null;
+        if ($unitPrice !== null && $unitPrice !== '' && is_numeric($unitPrice))
         {
-            return null;
+            $labor = round($originalLabor * (1 - ($balance / 100)), 2);
         }
+        $laborCharged = $labor ?? 0.0;
 
-        $price = (float) $unitPrice;
-        $ai = is_numeric($aiUsagePercent) ? (float) $aiUsagePercent : 0.0;
-        $ai = max(0.0, min(100.0, $ai));
+        $extraTokens = (int) round($transferredHours * 20000);
+        $tokens = $baseTokens + $extraTokens;
 
-        return round($price * (1 - ($ai / 100)), 2);
+        // 0% → full original total; 100% → original × (1 − 30%) = 70% of original.
+        $discountFactor = 1 - ((self::MAX_BALANCE_DISCOUNT_PERCENT / 100) * ($balance / 100));
+        $targetTotal = round($originalTotal * $discountFactor, 2);
+        $tokenBillableTarget = max(0.0, round($targetTotal - $laborCharged, 2));
+
+        $tokensForTarget = $this->tokensNeededForBillable($tokenBillableTarget, $remainingFactor);
+        $tokens = max($tokens, $tokensForTarget);
+
+        $input = (int) round($tokens * 0.7);
+        $output = max(0, $tokens - $input);
+        $cost = $this->estimateTokenCostEuros($input, $output);
+        $tokenBillable = round($cost / $remainingFactor, 2);
+        $displayTokens = (int) round($tokens / $remainingFactor);
+
+        return [
+            'hours' => $hoursCharged,
+            'labor' => $labor,
+            'tokens' => $tokens,
+            'display_tokens' => $displayTokens,
+            'cost' => $cost,
+            'token_billable' => $tokenBillable,
+            'transferred_hours' => $transferredHours,
+            'original_total' => $originalTotal,
+            'target_total' => $targetTotal,
+        ];
     }
 
     /**
-     * Normalize planned AI usage percentage for the budget (0–100).
+     * Invert billable euros → raw tokens (before MCP display inflate).
+     */
+    public function tokensNeededForBillable(float $billableEuros, float $remainingFactor): int
+    {
+        if ($billableEuros <= 0)
+        {
+            return 0;
+        }
+
+        $remainingFactor = max(0.01, $remainingFactor);
+        $costNeeded = $billableEuros * $remainingFactor;
+        $blend = self::TOKEN_BLEND_EUR_PER_MILLION;
+
+        return (int) max(0, (int) ceil(($costNeeded * 1_000_000) / $blend));
+    }
+
+    /**
+     * @deprecated Prefer applyHoursTokensBalance(); kept for callers that only need labor euros.
+     */
+    public function laborValueAfterAi(float|int|string|null $unitPrice, float|int|string|null $aiUsagePercent): ?float
+    {
+        return $this->applyHoursTokensBalance($unitPrice, 1, 0, 57, $aiUsagePercent)['labor'];
+    }
+
+    /**
+     * Normalize hours↔tokens balance percentage for the budget (0–100).
+     * Higher values shift hours onto tokens.
      */
     public function normalizeAiUsagePercent(mixed $value): float
     {
         if (! is_numeric($value))
         {
-            return 0.0;
+            return self::DEFAULT_AI_USAGE_PERCENT;
         }
 
         return max(0.0, min(100.0, (float) $value));

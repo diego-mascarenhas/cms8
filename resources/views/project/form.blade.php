@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/typography.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/katex.css')}}" />
 <link rel="stylesheet" href="{{asset('assets/vendor/libs/quill/editor.css')}}" />
+<link rel="stylesheet" href="{{asset('assets/vendor/libs/nouislider/nouislider.css')}}" />
 @endsection
 
 @section('vendor-script')
@@ -20,6 +21,7 @@
 <script src="{{asset('assets/vendor/libs/sweetalert2/sweetalert2.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/quill/katex.js')}}"></script>
 <script src="{{asset('assets/vendor/libs/quill/quill.js')}}"></script>
+<script src="{{asset('assets/vendor/libs/nouislider/nouislider.js')}}"></script>
 @endsection
 
 @section('page-script')
@@ -363,12 +365,69 @@
         return raw;
     }
     function laborValueAfterAi(unitPrice, aiUsagePercent) {
-        var price = parseFloat(unitPrice);
-        if (isNaN(price)) return NaN;
-        var ai = (aiUsagePercent != null && aiUsagePercent !== '') ? parseFloat(aiUsagePercent) : 0;
-        if (isNaN(ai) || ai < 0) ai = 0;
-        if (ai > 100) ai = 100;
-        return Math.round(price * (1 - (ai / 100)) * 100) / 100;
+        var balanced = applyHoursTokensBalance(unitPrice, 1, 0, 57, aiUsagePercent);
+        return balanced.labor;
+    }
+    function applyHoursTokensBalance(unitPrice, hours, baseTokens, savingsPercent, balancePercent) {
+        var balance = (balancePercent != null && balancePercent !== '') ? parseFloat(balancePercent) : 0;
+        if (isNaN(balance) || balance < 0) balance = 0;
+        if (balance > 100) balance = 100;
+        var savings = (savingsPercent != null && savingsPercent !== '') ? parseFloat(savingsPercent) : 57;
+        if (isNaN(savings) || savings < 0) savings = 57;
+        if (savings > 99) savings = 99;
+        var remainingFactor = Math.max(0.01, 1 - (savings / 100));
+        var blendPerMillion = 24.2;
+        var maxDiscount = 30;
+
+        var hoursValue = parseFloat(hours);
+        if (isNaN(hoursValue) || hoursValue < 0) hoursValue = 0;
+        var tokensBase = parseInt(baseTokens, 10);
+        if (isNaN(tokensBase) || tokensBase < 0) tokensBase = 0;
+
+        var baseInput = Math.round(tokensBase * 0.7);
+        var baseOutput = Math.max(0, tokensBase - baseInput);
+        var baseCost = (baseInput / 1000000) * 11 + (baseOutput / 1000000) * 55;
+        var baseBillable = Math.round((baseCost / remainingFactor) * 100) / 100;
+
+        var originalLabor = parseFloat(unitPrice);
+        if (isNaN(originalLabor) || originalLabor < 0) originalLabor = 0;
+        var originalTotal = Math.round((originalLabor + baseBillable) * 100) / 100;
+
+        var transferredHours = Math.round(hoursValue * (balance / 100) * 10000) / 10000;
+        var hoursCharged = Math.round(Math.max(0, hoursValue - transferredHours) * 10000) / 10000;
+        var labor = isNaN(parseFloat(unitPrice))
+            ? NaN
+            : Math.round(originalLabor * (1 - (balance / 100)) * 100) / 100;
+        var laborCharged = isNaN(labor) ? 0 : labor;
+
+        var extraTokens = Math.round(transferredHours * 20000);
+        var tokens = tokensBase + extraTokens;
+
+        // 0% → full original; 100% → original × 70% (30% discount).
+        var discountFactor = 1 - ((maxDiscount / 100) * (balance / 100));
+        var targetTotal = Math.round(originalTotal * discountFactor * 100) / 100;
+        var tokenBillableTarget = Math.max(0, Math.round((targetTotal - laborCharged) * 100) / 100);
+        var costNeeded = tokenBillableTarget * remainingFactor;
+        var tokensForTarget = Math.ceil((costNeeded * 1000000) / blendPerMillion);
+        if (tokensForTarget > tokens) tokens = tokensForTarget;
+
+        var input = Math.round(tokens * 0.7);
+        var output = Math.max(0, tokens - input);
+        var cost = (input / 1000000) * 11 + (output / 1000000) * 55;
+        var tokenBillable = Math.round((cost / remainingFactor) * 100) / 100;
+        var displayTokens = Math.round(tokens / remainingFactor);
+
+        return {
+            hours: hoursCharged,
+            labor: labor,
+            tokens: tokens,
+            displayTokens: displayTokens,
+            cost: cost,
+            tokenBillable: tokenBillable,
+            transferredHours: transferredHours,
+            originalTotal: originalTotal,
+            targetTotal: targetTotal
+        };
     }
     function refreshBudgetPreview() {
         var raw = $('#data_suggested_tasks').val();
@@ -404,6 +463,7 @@
         var totalLabor = 0;
         var totalTokenBillable = 0;
         var totalTokenCost = 0;
+        var totalBaseTokenBillable = 0;
         var totalHours = 0;
         var totalHoursSaved = 0;
         var taskItems = '';
@@ -413,20 +473,22 @@
             var hours = (t.estimated_hours != null && t.estimated_hours !== '') ? parseFloat(t.estimated_hours) : 0;
             var level = (t.resource_level != null && t.resource_level !== '') ? String(t.resource_level) : '—';
             var price = (t.unit_price != null && t.unit_price !== '') ? parseFloat(t.unit_price) : NaN;
-            var laborCharged = laborValueAfterAi(price, aiUsage);
-            var pricing = taskTokenPricing(t, savings);
+            var baseTokens = resolveTaskTokens(t);
+            var basePricing = taskTokenPricing(t, savings);
+            var balanced = applyHoursTokensBalance(price, hours, baseTokens, savings, aiUsage);
+            var laborCharged = balanced.labor;
+            var hoursCharged = balanced.hours;
+            var tokenBillable = balanced.tokenBillable;
+            var displayTokens = balanced.displayTokens;
             var details = [
-                formatHoursHuman(hours),
+                formatHoursHuman(hoursCharged),
                 level,
                 !isNaN(laborCharged) ? formatEuros(laborCharged) : '—'
             ];
-            if (aiUsage > 0) {
-                details.push('AI ' + String(aiUsage).replace('.', ',') + '%');
-            }
-            if (pricing.tokens > 0) {
+            if (balanced.tokens > 0 || tokenBillable > 0) {
                 details.push(
-                    '{{ __("Tokens") }} ' + formatTokenCount(pricing.displayTokens)
-                    + ' · ' + formatEuros(pricing.billable)
+                    '{{ __("Tokens") }} ' + formatTokenCount(displayTokens)
+                    + ' · ' + formatEuros(tokenBillable)
                 );
             }
             var detailText = details.join(' · ');
@@ -438,10 +500,11 @@
             if (included) {
                 taskItems += itemHtml;
                 if (!isNaN(laborCharged)) totalLabor += laborCharged;
-                totalTokenBillable += pricing.billable;
-                totalTokenCost += pricing.cost;
-                totalHours += hours;
-                totalHoursSaved += pricing.hoursSaved;
+                totalTokenBillable += tokenBillable;
+                totalBaseTokenBillable += basePricing.billable;
+                totalTokenCost += balanced.cost;
+                totalHours += hoursCharged;
+                totalHoursSaved += basePricing.hoursSaved;
             } else {
                 taskItems += '<p style="margin:0 0 1.15em 0;"><s>'
                     + '<strong>' + escapeHtml(title) + '</strong><br>'
@@ -451,19 +514,13 @@
         });
         if (taskItems) {
             html += '<h3>{{ __("Summary of requested quote and values") }}</h3>' + taskItems;
-            if (aiUsage > 0) {
-                html += '<p style="font-size:0.9em;opacity:0.9;"><em>'
-                    + escapeHtml('{{ __("Planned AI usage: :percent%. Labor value is reduced accordingly; tokens keep their price.") }}'
-                        .replace(':percent', String(aiUsage).replace('.', ',')))
-                    + '</em></p>';
-            }
             var grandTotal = Math.round(totalLabor + totalTokenBillable);
             var totalFormatted = grandTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             html += '<p><strong>{{ __("Total") }}:</strong> ' + totalFormatted + '€ + {{ __("I.V.A.") }}'
                 + ' <em>({{ __("labor") }} ' + formatEuros(totalLabor) + ' + {{ __("Tokens") }} ' + formatEuros(totalTokenBillable) + ')</em></p>';
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
             html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
-            var moneySaved = Math.max(0, totalTokenBillable - totalTokenCost);
+            var moneySaved = Math.max(0, totalBaseTokenBillable - totalTokenCost);
             if (moneySaved > 0 || totalHoursSaved > 0) {
                 html += '<p style="font-size:0.9em;opacity:0.9;"><em>'
                     + escapeHtml('{{ __("With our MCP you save :money and about :time.") }}'
@@ -557,6 +614,34 @@
         if (!$('#data_token_consumption_notes').val()) {
             syncTokenConsumptionFromTasks();
         }
+
+        var balanceSlider = document.getElementById('ai-usage-balance-slider');
+        var balanceInput = document.getElementById('data_ai_usage_percent');
+        var balanceLabel = document.getElementById('data_ai_usage_percent_label');
+        if (balanceSlider && typeof noUiSlider !== 'undefined') {
+            var startBalance = parseFloat(balanceInput ? balanceInput.value : 0);
+            if (isNaN(startBalance) || startBalance < 0) startBalance = 0;
+            if (startBalance > 100) startBalance = 100;
+            noUiSlider.create(balanceSlider, {
+                start: [startBalance],
+                step: 1,
+                connect: [true, false],
+                tooltips: {
+                    to: function(value) { return Math.round(value) + '%'; }
+                },
+                range: { min: 0, max: 100 },
+                direction: (typeof isRtl !== 'undefined' && isRtl) ? 'rtl' : 'ltr'
+            });
+            balanceSlider.noUiSlider.on('update', function(values) {
+                var pct = Math.round(parseFloat(values[0]));
+                if (balanceInput) balanceInput.value = pct;
+                if (balanceLabel) balanceLabel.textContent = pct + '%';
+            });
+            balanceSlider.noUiSlider.on('change', function() {
+                refreshBudgetPreview();
+            });
+        }
+
         // Rebuild preview so metrics stay under each title (Quill-safe) and AI % applies.
         refreshBudgetPreview();
     });
@@ -784,7 +869,20 @@
 						<i class="ti ti-sparkles me-1"></i>{{ __('Generate from budget text') }}
 					</button>
 				</div>
-				<p class="text-muted small">{{ __('Use "Budget received" above, then click to generate AI interpretation, dimension, timeline, resources and token consumption.') }}</p>
+				<p class="text-muted small mb-3">{{ __('Use "Budget received" above, then click to generate AI interpretation, dimension, timeline, resources and token consumption.') }}</p>
+				@php
+					$aiUsagePercentDefault = (float) old(
+						'data.ai_usage_percent',
+						data_get($data, 'data.ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
+					);
+				@endphp
+				<label class="form-label d-flex justify-content-between align-items-center" for="data_ai_usage_percent">
+					<span>{{ __('Hours↔tokens balance (%)') }}</span>
+					<strong id="data_ai_usage_percent_label">{{ (int) $aiUsagePercentDefault }}%</strong>
+				</label>
+				<div id="ai-usage-balance-slider" class="noUi-primary my-3"></div>
+				<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
+				<p class="text-muted small mb-0">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
 			</div>
 			<div class="col-12">
 				<label for="data_ai_interpretation" class="form-label">{{ __('AI interpretation') }}</label>
@@ -816,11 +914,6 @@
 			<div class="col-12">
 				<label for="data_resources" class="form-label">{{ __('Resources') }}</label>
 				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
-			</div>
-			<div class="col-md-4 col-12">
-				<label for="data_ai_usage_percent" class="form-label">{{ __('Planned AI usage (%)') }}</label>
-				<input type="number" step="1" min="0" max="100" id="data_ai_usage_percent" name="data[ai_usage_percent]" class="form-control" value="{{ old('data.ai_usage_percent', data_get($data, 'data.ai_usage_percent', 0)) }}">
-				<p class="text-muted small mb-0 mt-1">{{ __('Higher AI usage reduces labor value in the quote; token price stays.') }}</p>
 			</div>
 			<div class="col-12">
 				<label for="data_token_consumption_notes" class="form-label">{{ __('Approximate token consumption') }}</label>

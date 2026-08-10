@@ -6,7 +6,9 @@
     $estimatedTimes = trim((string) data_get($project->data, 'estimated_times', ''));
     $resources = trim((string) data_get($project->data, 'resources', ''));
     $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
-    $aiUsage = $budgetService->normalizeAiUsagePercent(data_get($project->data, 'ai_usage_percent', 0));
+    $aiUsage = $budgetService->normalizeAiUsagePercent(
+        data_get($project->data, 'ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
+    );
     $budgetLogoPath = (string) config('variables.logo.budget_path', 'assets/idoneo-logo.svg');
     $logoUrl = asset($budgetLogoPath);
     $isoUrl = \App\Helpers\Helpers::logoAsset('iso');
@@ -43,6 +45,7 @@
     $totalHours = 0.0;
     $totalHoursSaved = 0.0;
     $totalDisplayTokens = 0;
+    $moneySaved = 0.0;
 
     foreach ($suggestedTasks as $t) {
         if (! is_array($t) || (($t['included'] ?? true) === false)) {
@@ -51,37 +54,40 @@
         $hours = isset($t['estimated_hours']) && is_numeric($t['estimated_hours']) ? (float) $t['estimated_hours'] : 0.0;
         $level = trim((string) ($t['resource_level'] ?? '')) ?: '—';
         $price = isset($t['unit_price']) && $t['unit_price'] !== '' && $t['unit_price'] !== null ? (float) $t['unit_price'] : null;
-        $laborCharged = $budgetService->laborValueAfterAi($price, $aiUsage);
-        $tokens = $budgetService->resolveEstimatedTokens($t);
-        $input = (int) round($tokens * 0.7);
-        $output = max(0, $tokens - $input);
-        $cost = $budgetService->estimateTokenCostEuros($input, $output);
-        $remaining = max(0.01, 1 - ($savings / 100));
-        $billable = round($cost / $remaining, 2);
-        $displayTokens = (int) round($tokens / $remaining);
+        $baseTokens = $budgetService->resolveEstimatedTokens($t);
+        $balanced = $budgetService->applyHoursTokensBalance($price, $hours, $baseTokens, $savings, $aiUsage);
+        $laborCharged = $balanced['labor'];
+        $hoursCharged = $balanced['hours'];
+        $billable = $balanced['token_billable'];
+        $displayTokens = $balanced['display_tokens'];
+        $cost = $balanced['cost'];
+        $baseRemaining = max(0.01, 1 - ($savings / 100));
+        $baseCost = $budgetService->estimateTokenCostEuros((int) round($baseTokens * 0.7), max(0, $baseTokens - (int) round($baseTokens * 0.7)));
+        $baseBillable = round($baseCost / $baseRemaining, 2);
+        $baseDisplayTokens = (int) round($baseTokens / $baseRemaining);
 
         if ($laborCharged !== null) {
             $totalLabor += $laborCharged;
         }
         $totalTokenBillable += $billable;
         $totalTokenCost += $cost;
-        $totalHours += $hours;
-        $totalHoursSaved += max(0, ($displayTokens - $tokens) / 20000);
+        $totalHours += $hoursCharged;
+        $totalHoursSaved += max(0, ($baseDisplayTokens - $baseTokens) / 20000);
         $totalDisplayTokens += $displayTokens;
+        $moneySaved += max(0, $baseBillable - $baseCost);
 
         $rows[] = [
             'title' => (string) ($t['title'] ?? '—'),
-            'hours' => $formatHoursHuman($hours),
+            'hours' => $formatHoursHuman($hoursCharged),
             'level' => $level,
             'labor' => $laborCharged !== null ? $formatEuros($laborCharged) : '—',
-            'tokens' => $displayTokens > 0 ? $budgetService->formatTokenCount($displayTokens) : '—',
-            'token_cost' => $displayTokens > 0 ? $formatEuros($billable) : '—',
+            'tokens' => ($displayTokens > 0 || $billable > 0) ? $budgetService->formatTokenCount($displayTokens) : '—',
+            'token_cost' => ($displayTokens > 0 || $billable > 0) ? $formatEuros($billable) : '—',
         ];
     }
 
     $grandTotal = (int) round($totalLabor + $totalTokenBillable);
     $weeks = $totalHours > 0 ? (int) ceil($totalHours / 40) : 0;
-    $moneySaved = max(0, $totalTokenBillable - $totalTokenCost);
     $hasContent = $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
 @endphp
 <!DOCTYPE html>
@@ -178,9 +184,6 @@
         <p class="meta"><strong>{{ __('Client') }}:</strong> {{ $clientName }}</p>
     @endif
     <p class="meta"><strong>{{ __('Report date') }}:</strong> {{ now()->format('d/m/Y') }}</p>
-    @if ($aiUsage > 0)
-        <p class="meta"><strong>{{ __('Planned AI usage (%)') }}:</strong> {{ rtrim(rtrim(number_format($aiUsage, 1, ',', ''), '0'), ',') }}%</p>
-    @endif
 
     <hr>
 
@@ -251,9 +254,6 @@
                 <strong>{{ __('Total') }}: {{ number_format($grandTotal, 0, '', '.') }}€ + {{ __('I.V.A.') }}</strong><br>
                 {{ __('labor') }} {{ $formatEuros($totalLabor) }}
                 · {{ __('Tokens') }} {{ $formatEuros($totalTokenBillable) }}
-                @if ($aiUsage > 0)
-                    · {{ __('Planned AI usage: :percent%. Labor value is reduced accordingly; tokens keep their price.', ['percent' => rtrim(rtrim(number_format($aiUsage, 1, ',', ''), '0'), ',')]) }}
-                @endif
             </div>
 
             @if ($weeks > 0)

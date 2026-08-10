@@ -153,5 +153,49 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(57.0, $service->normalizeAiUsagePercent(57));
         $this->assertSame(0.0, $service->normalizeAiUsagePercent(-10));
         $this->assertSame(100.0, $service->normalizeAiUsagePercent(150));
+        $this->assertSame(ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT, $service->normalizeAiUsagePercent(null));
+        $this->assertSame(70.0, ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
+    }
+
+    #[Test]
+    public function it_shifts_labor_euros_onto_tokens_for_commercial_balance(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        // 3 h Senior @ 225 € total, 60K base tokens, 70% → 0.9 h / 67.50 €
+        // Total target ≈ original × (1 − 0.30×0.70) = original × 0.79
+        $balanced = $service->applyHoursTokensBalance(225, 3, 60000, 57, 70);
+
+        $this->assertSame(0.9, $balanced['hours']);
+        $this->assertSame(2.1, $balanced['transferred_hours']);
+        $this->assertSame(67.5, $balanced['labor']);
+        $expectedTarget = round($balanced['original_total'] * (1 - 0.30 * 0.70), 2);
+        $this->assertEqualsWithDelta($expectedTarget, $balanced['target_total'], 0.01);
+        $this->assertEqualsWithDelta(
+            $balanced['target_total'],
+            ($balanced['labor'] ?? 0) + $balanced['token_billable'],
+            1.5,
+        );
+    }
+
+    #[Test]
+    public function high_token_balance_approaches_thirty_percent_discount_and_cuts_hours(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $atZero = $service->applyHoursTokensBalance(225, 3, 60000, 57, 0);
+        $atFull = $service->applyHoursTokensBalance(225, 3, 60000, 57, 100);
+
+        $this->assertSame(3.0, $atZero['hours']);
+        $this->assertSame(0.0, $atFull['hours']);
+        $this->assertSame(225.0, $atZero['labor']);
+        $this->assertSame(0.0, $atFull['labor']);
+
+        $totalZero = ($atZero['labor'] ?? 0) + $atZero['token_billable'];
+        $totalFull = ($atFull['labor'] ?? 0) + $atFull['token_billable'];
+
+        $this->assertEqualsWithDelta($atZero['original_total'], $totalZero, 1.5);
+        $this->assertEqualsWithDelta($atFull['original_total'] * 0.70, $totalFull, 1.5);
+        $this->assertLessThan($totalZero, $totalFull);
     }
 }
