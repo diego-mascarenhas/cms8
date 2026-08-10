@@ -79,11 +79,54 @@
 					<i class="ti ti-file-invoice me-1"></i>{{ __('Preview') }}
 				</a>
 			@endif
+			@php
+				$canAuthorizeBudget = auth()->user()->hasRole('admin')
+					&& (int) $project->status_id === \App\Models\ProjectStatus::STATUS_BUDGETED
+					&& data_get($project->data, 'budget_preview_token')
+					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
+					&& $project->client?->quoteContact() !== null;
+			@endphp
+			@can('update', $project)
+				@if ($canAuthorizeBudget)
+					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
+						@csrf
+						<button type="submit" class="btn btn-success waves-effect waves-light"
+							onclick="return confirm('{{ __('Mark as authorized and email the quote to the enterprise contact?') }}')">
+							<i class="ti ti-mail-forward me-1"></i>{{ __('Authorize quote') }}
+						</button>
+					</form>
+				@elseif (auth()->user()->hasRole('admin')
+					&& (int) $project->status_id === \App\Models\ProjectStatus::STATUS_AUTHORIZED
+					&& data_get($project->data, 'budget_preview_token')
+					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
+					&& $project->client?->quoteContact() !== null)
+					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
+						@csrf
+						<button type="submit" class="btn btn-outline-success waves-effect waves-light"
+							onclick="return confirm('{{ __('Resend the quote email to the enterprise contact?') }}')">
+							<i class="ti ti-mail-forward me-1"></i>{{ __('Resend quote email') }}
+						</button>
+					</form>
+				@endif
+			@endcan
 			@role('admin|collaborator|developer|editor|technical')
 				<a href="{{ route('project-list') }}" class="btn btn-label-secondary waves-effect waves-light"><i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}</a>
 			@endrole
 		</div>
 	</div>
+
+@if (session('success'))
+	<div class="alert alert-success alert-dismissible" role="alert">
+		{{ session('success') }}
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+@endif
+@if (session('error'))
+	<div class="alert alert-danger alert-dismissible" role="alert">
+		{{ session('error') }}
+		<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+	</div>
+@endif
 
 <!-- Project Details Card - Full Width -->
 <div class="card mb-4">
@@ -103,11 +146,19 @@
 								<dt class="col-4 text-truncate">{{ __('Responsible') }}:</dt>
 								<dd class="col-8">{{ $project->responsible ? $project->responsible->name : __('Not assigned') }}</dd>
 
-								@if($project->client && $project->client->responsible_id)
+								@php
+									$budgetClientResponse = is_array(data_get($project->data, 'budget_client_response'))
+										? data_get($project->data, 'budget_client_response')
+										: null;
+									$budgetResponseStatus = $budgetClientResponse['status'] ?? null;
+									$quoteContact = $project->client?->quoteContact();
+								@endphp
+
+								@if ($quoteContact)
 								<dt class="col-4 text-truncate">{{ __('Contact') }}:</dt>
 								<dd class="col-8">
-									<a href="{{ route('contact.show', $project->client->responsible_id) }}">
-										{{ $project->client->responsible ? $project->client->responsible->name : 'Contact #' . $project->client->responsible_id }}
+									<a href="{{ route('contact.show', $quoteContact->id) }}">
+										{{ trim($quoteContact->name.' '.(string) ($quoteContact->surname ?? '')) }}
 									</a>
 								</dd>
 								@endif
@@ -126,13 +177,81 @@
 								<dt class="col-4 text-truncate">{{ __('End Date') }}:</dt>
 								<dd class="col-8">{{ $project->date_end ? \Carbon\Carbon::parse($project->date_end)->format('d/m/Y') : __('Not set') }}</dd>
 
-								@if(auth()->user()->hasRole('admin') && $project->discount)
+								@if(auth()->user()->hasRole('admin'))
+								@php
+									$quoteTotals = app(\App\Services\ProjectBudgetSpecService::class)->computeQuoteTotals($project);
+									$formatQuoteEuros = fn (int $amount): string => number_format($amount, 0, '', '.').'€';
+								@endphp
+								@if ($quoteTotals['grand_total'] > 0)
+								<dt class="col-4 text-truncate">{{ __('Price') }}:</dt>
+								<dd class="col-8">
+									@if ($quoteTotals['discount_percent'] > 0)
+										<s class="text-muted">{{ $formatQuoteEuros($quoteTotals['grand_total']) }}</s>
+										{{ $formatQuoteEuros($quoteTotals['payable_total']) }}
+										<span class="text-muted small">+ {{ __('I.V.A.') }}</span>
+									@else
+										{{ $formatQuoteEuros($quoteTotals['payable_total']) }}
+										<span class="text-muted small">+ {{ __('I.V.A.') }}</span>
+									@endif
+								</dd>
+								@endif
+								@if($project->discount)
 								<dt class="col-4 text-truncate">{{ __('Discount') }}:</dt>
 								<dd class="col-8">{{ $project->discount }}%</dd>
 								@endif
+								@endif
+
+								<dt class="col-4 text-truncate">{{ __('Status') }}:</dt>
+								<dd class="col-8">
+									{!! $project->status_label !!}
+									@if ($budgetResponseStatus === 'accepted' && ! empty($budgetClientResponse['accepted_by_name']))
+										<span class="text-muted ms-1">{{ $budgetClientResponse['accepted_by_name'] }}</span>
+									@endif
+									@if (! empty($budgetClientResponse['responded_at']))
+										<br><span class="text-muted small">{{ __('Recorded on') }}: {{ \Carbon\Carbon::parse($budgetClientResponse['responded_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+									@endif
+									@if ($budgetResponseStatus === 'reformulation_requested' && ! empty($budgetClientResponse['message']))
+										<br><em class="small d-inline-block mt-1">{{ $budgetClientResponse['message'] }}</em>
+									@endif
+								</dd>
 							</dl>
            </div>
        </div>
+       @php
+           $budgetEmail = is_array(data_get($project->data, 'budget_email')) ? data_get($project->data, 'budget_email') : null;
+           $quoteEmail = filled($budgetEmail['to_email'] ?? null)
+               ? $budgetEmail['to_email']
+               : ($quoteContact?->email);
+       @endphp
+       @if (filled($quoteEmail) || $budgetEmail)
+       <div class="row mt-3">
+           <div class="col-12">
+               <dl class="row mb-0">
+                   <dt class="col-md-2 col-4 text-truncate">Email:</dt>
+                   <dd class="col-md-10 col-8">
+                       <div class="d-flex flex-wrap align-items-center gap-2">
+                           <span>{{ $quoteEmail ?: '—' }}</span>
+                           @if ($budgetEmail)
+                               @if (! empty($budgetEmail['sent_at']))
+                                   <span class="text-muted small">{{ __('Sent on') }}: {{ \Carbon\Carbon::parse($budgetEmail['sent_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+                               @endif
+                               @if (! empty($budgetEmail['opened_at']))
+                                   <span class="badge rounded-pill bg-label-success">{{ __('Email opened') }}</span>
+                                   <span class="text-muted small">{{ \Carbon\Carbon::parse($budgetEmail['opened_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+                               @else
+                                   <span class="badge rounded-pill bg-label-secondary">{{ __('Not opened yet') }}</span>
+                               @endif
+                               @if (! empty($budgetEmail['clicked_at']))
+                                   <span class="badge rounded-pill bg-label-info">{{ __('Link clicked') }}</span>
+                                   <span class="text-muted small">{{ \Carbon\Carbon::parse($budgetEmail['clicked_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+                               @endif
+                           @endif
+                       </div>
+                   </dd>
+               </dl>
+           </div>
+       </div>
+       @endif
        <div class="row mt-2">
            <div class="col-12">
                <dl class="row mb-0">
@@ -167,8 +286,8 @@
 			@endphp
 			<p class="text-muted small mb-3">{{ __('Estimated and actual hours per task.') }}</p>
 			<div class="d-flex gap-2 mb-3">
-				<span class="badge bg-label-primary">{{ __('Estimated') }}: {{ number_format($totalEstimated, 1) }}h</span>
-				<span class="badge bg-label-info">{{ __('Actual') }}: {{ number_format($totalActual, 1) }}h</span>
+				<span class="badge bg-label-primary">{{ __('Estimated') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalEstimated) }}</span>
+				<span class="badge bg-label-info">{{ __('Actual') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalActual) }}</span>
 			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered table-hover">
@@ -195,16 +314,16 @@
 									—
 								@endif
 							</td>
-							<td class="text-end">{{ $task->estimated_hours !== null && $task->estimated_hours !== '' ? number_format((float) $task->estimated_hours, 1) : '—' }}</td>
-							<td class="text-end">{{ number_format($actualHoursByTaskId->get($task->id, 0), 1) }}</td>
+							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($task->estimated_hours) }}</td>
+							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($actualHoursByTaskId->get($task->id, 0)) }}</td>
 						</tr>
 						@endforeach
 					</tbody>
 					<tfoot>
 						<tr class="fw-semibold">
 							<td colspan="3" class="text-end">{{ __('Total') }}</td>
-							<td class="text-end">{{ number_format($totalEstimated, 1) }}h</td>
-							<td class="text-end">{{ number_format($totalActual, 1) }}h</td>
+							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($totalEstimated) }}</td>
+							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($totalActual) }}</td>
 						</tr>
 					</tfoot>
 				</table>
@@ -219,6 +338,9 @@
 			@endphp
 			<hr class="my-4">
 			<p class="text-muted small mb-3">{{ __('Suggested tasks from the budget. Assign who will do each and add them to the board.') }}</p>
+			<div class="d-flex gap-2 mb-3">
+				<span class="badge bg-label-primary">{{ __('Total') }}: {{ \App\Helpers\Helpers::formatHoursHuman($suggestedTotalHours) }}</span>
+			</div>
 			<div class="table-responsive">
 				<table class="table table-bordered table-hover">
 					<thead>
@@ -243,7 +365,7 @@
 						<tr class="{{ $suggestedIncluded ? '' : 'table-secondary' }}">
 							<td>{{ $t['title'] ?? '—' }}</td>
 							<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
-							<td class="text-end">{{ isset($t['estimated_hours']) ? number_format((float) $t['estimated_hours'], 1) : '—' }}</td>
+							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($t['estimated_hours'] ?? null) }}</td>
 							<td class="text-center">{{ $t['resource_level'] ?? '—' }}</td>
 							<td>
 								@if($onBoard)
@@ -278,7 +400,7 @@
 					<tfoot>
 						<tr class="fw-semibold">
 							<td colspan="2" class="text-end">{{ __('Total') }}</td>
-							<td class="text-end">{{ number_format($suggestedTotalHours, 1) }}h</td>
+							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($suggestedTotalHours) }}</td>
 							<td colspan="2"></td>
 						</tr>
 					</tfoot>
@@ -293,7 +415,7 @@
 <div class="card mb-4">
    <div class="card-header d-flex justify-content-between align-items-center">
        <h5 class="mb-0">{{ __('Recent time entries') }}</h5>
-       <span class="badge bg-label-info">{{ __('Total') }}: {{ number_format($totalHours, 1) }}h</span>
+       <span class="badge bg-label-info">{{ __('Total') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
    </div>
    <div class="card-body">
        @if($timeEntries->isEmpty())

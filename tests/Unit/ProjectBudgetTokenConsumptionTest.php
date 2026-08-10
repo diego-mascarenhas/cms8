@@ -198,4 +198,51 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertEqualsWithDelta($atFull['original_total'] * 0.70, $totalFull, 1.5);
         $this->assertLessThan($totalZero, $totalFull);
     }
+
+    #[Test]
+    public function it_computes_quote_totals_with_discount_and_price_fallback(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $project = new \App\Models\Project([
+            'discount' => 10,
+            'price' => null,
+            'data' => [
+                'ai_usage_percent' => 0,
+                'token_consumption' => ['savings_percent' => 57],
+                'suggested_tasks' => [
+                    [
+                        'title' => 'Module A',
+                        'included' => true,
+                        'estimated_hours' => 1,
+                        'unit_price' => 1000,
+                        'estimated_tokens' => 0,
+                    ],
+                    [
+                        'title' => 'Excluded',
+                        'included' => false,
+                        'estimated_hours' => 1,
+                        'unit_price' => 500,
+                        'estimated_tokens' => 0,
+                    ],
+                ],
+            ],
+        ]);
+
+        $totals = $service->computeQuoteTotals($project);
+
+        $this->assertSame(1000, $totals['grand_total']);
+        $this->assertSame(10.0, $totals['discount_percent']);
+        $this->assertSame(900, $totals['discounted_total']);
+        $this->assertSame(900, $totals['payable_total']);
+
+        $fallback = $service->computeQuoteTotals(new \App\Models\Project([
+            'discount' => 0,
+            'price' => 2500,
+            'data' => ['suggested_tasks' => []],
+        ]));
+
+        $this->assertSame(2500, $fallback['grand_total']);
+        $this->assertSame(2500, $fallback['payable_total']);
+    }
 }

@@ -412,7 +412,7 @@ class ProjectController extends Controller
                 'key' => 'in_progress',
                 'label_key' => 'IN_PROGRESS',
                 'label' => __('project_status.IN_PROGRESS'),
-                'status_ids' => [3, 7, 8, 9],
+                'status_ids' => ProjectStatus::inProgressStatusIds(),
                 'tone' => 'primary',
                 'icon' => 'player-play',
             ],

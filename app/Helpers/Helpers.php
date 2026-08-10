@@ -375,4 +375,32 @@ class Helpers
 
         return file_exists($fullPath) ? asset($path) : asset($fallback);
     }
+
+    /**
+     * Format decimal hours as a human-readable duration (e.g. 1.5 → "1 h 30 min").
+     * Zero is "0 min"; missing/invalid values are "—".
+     */
+    public static function formatHoursHuman(mixed $hours): string
+    {
+        if ($hours === null || $hours === '' || ! is_numeric($hours) || (float) $hours < 0)
+        {
+            return '—';
+        }
+
+        $totalMinutes = (int) round(((float) $hours) * 60);
+        $wholeHours = intdiv($totalMinutes, 60);
+        $minutes = $totalMinutes % 60;
+
+        if ($wholeHours > 0 && $minutes > 0)
+        {
+            return $wholeHours.' h '.$minutes.' min';
+        }
+
+        if ($wholeHours > 0)
+        {
+            return $wholeHours.' h';
+        }
+
+        return $minutes.' min';
+    }
 }

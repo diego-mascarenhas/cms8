@@ -24,10 +24,44 @@
 <script src="{{asset('assets/vendor/libs/nouislider/nouislider.js')}}"></script>
 @endsection
 
+@section('page-style')
+<style>
+	#ai-usage-balance-slider.noUi-sm {
+		height: 8px;
+		margin: 6px 0 4px;
+	}
+	#ai-usage-balance-slider.noUi-sm .noUi-handle {
+		width: 16px;
+		height: 16px;
+		right: -8px;
+		top: -5px;
+	}
+	#ai-usage-balance-slider.noUi-sm .noUi-tooltip {
+		font-size: 0.7rem;
+		padding: 1px 4px;
+	}
+	textarea.js-auto-resize {
+		overflow-y: hidden;
+		resize: vertical;
+		min-height: 2.5rem;
+	}
+</style>
+@endsection
+
 @section('page-script')
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
 <script>
+    function autoResizeTextarea(el) {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = Math.max(el.scrollHeight, 40) + 'px';
+    }
+
+    function autoResizeBudgetTextareas() {
+        document.querySelectorAll('textarea.js-auto-resize').forEach(autoResizeTextarea);
+    }
+
     $(function() {
         // Inicializar Select2 si está disponible
         if ($.fn.select2) {
@@ -38,7 +72,10 @@
             // Note: #responsible_id is initialized by the team-users-select component
         }
 
-
+        autoResizeBudgetTextareas();
+        $(document).on('input', 'textarea.js-auto-resize', function() {
+            autoResizeTextarea(this);
+        });
     });
 
     @if(isset($data->id))
@@ -134,6 +171,7 @@
                     $('#data_dimension').val(res.dimension || '');
                     $('#data_estimated_times').val(res.estimated_times || '');
                     $('#data_resources').val(res.resources || '');
+                    autoResizeBudgetTextareas();
                     if (res.suggested_tasks && res.suggested_tasks.length) {
                         res.suggested_tasks.forEach(function(t) {
                             if (t.resource_level === undefined) t.resource_level = '';
@@ -278,6 +316,7 @@
         var notes = tokenConsumptionNotes(tokenConsumption);
         if (!notes) notes = buildTokenConsumptionText(tasks || []);
         $('#data_token_consumption_notes').val(notes);
+        autoResizeTextarea(document.getElementById('data_token_consumption_notes'));
 
         var total = 0;
         (tasks || []).forEach(function(t) {
@@ -711,7 +750,7 @@
 			<!-- Project status -->
 			<div class="col-md-6">
 				<label for="status_id" class="form-label">{{ __('Project Status') }}</label>
-				<select name="status_id" class="form-control @error('status_id') is-invalid @enderror">
+				<select id="status_id" name="status_id" class="select2 form-select @error('status_id') is-invalid @enderror" data-placeholder="{{ __('Choose an option') }}">
 					@foreach($statuses as $status)
 						<option value="{{ $status['id'] }}" {{ old('status_id', $data->status_id ?? '') == $status['id'] ? 'selected' : '' }}>{{ $status['name'] }}</option>
 					@endforeach
@@ -748,14 +787,24 @@
 @enderror
 			</div>
 
-			<!-- Client -->
-			<div class="col-12">
+			<!-- Client + advisor -->
+			<div class="col-md-8 col-12">
 				<x-client-select
 					id="enterprise_id"
 					label="{{ __('Client') }} (*)"
 					:selected="old('enterprise_id', $data->enterprise_id ?? $enterprise_id ?? '')"
 				/>
 				@error('enterprise_id')
+    <div class="invalid-feedback">{{ $message }}</div>
+@enderror
+			</div>
+			<div class="col-md-4 col-12">
+				<x-team-users-select
+					id="responsible_id"
+					label="{{ __('Asesor') }} (*)"
+					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
+				/>
+				@error('responsible_id')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
 			</div>
@@ -771,17 +820,6 @@
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
 			</div>
 			--}}
-
-			<div class="col-md-12">
-				<x-team-users-select
-					id="responsible_id"
-					label="{{ __('Asesor') }} (*)"
-					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
-				/>
-				@error('responsible_id')
-    <div class="invalid-feedback">{{ $message }}</div>
-@enderror
-			</div>
 			@else
 			<!-- Simplified view for non-admins -->
 			{{-- Hidden: Start date field --}}
@@ -791,23 +829,12 @@
 					value="{{ old('date_start', $data->date_start ?? '') }}" />
 			</div>
 			--}}
-
-			<div class="col-md-12">
-				<x-team-users-select
-					id="responsible_id"
-					label="{{ __('Asesor') }} (*)"
-					:selected="old('responsible_id', $data->responsible_id ?? auth()->id())"
-				/>
-				@error('responsible_id')
-    <div class="invalid-feedback">{{ $message }}</div>
-@enderror
-			</div>
 			@endif
 
 			<!-- Notas del proyecto -->
 			<div class="col-12">
 				<label for="description" class="form-label">{{ __('Project Notes') }}</label>
-				<textarea id="description" name="description" class="form-control @error('description') is-invalid @enderror" rows="4">{{ old('description', $data->description ?? '') }}</textarea>
+				<textarea id="description" name="description" class="form-control js-auto-resize @error('description') is-invalid @enderror" rows="4">{{ old('description', $data->description ?? '') }}</textarea>
 				@error('description')
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
@@ -817,7 +844,7 @@
 			@can('access-billing-modules')
 			<div class="col-12">
 				<label for="data_budget_given" class="form-label">{{ __('Budget received') }}</label>
-				<textarea id="data_budget_given" name="data[budget_given]" class="form-control" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>
+				<textarea id="data_budget_given" name="data[budget_given]" class="form-control js-auto-resize" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>
 			</div>
 			<!-- Vista previa: resumen HTML editable (cotización) -->
 			<div class="col-12 d-none mt-2" id="budget-preview-container">
@@ -867,27 +894,28 @@
 						data_get($data, 'data.ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
 					);
 				@endphp
-				<label class="form-label d-flex justify-content-between align-items-center" for="data_ai_usage_percent">
-					<span>{{ __('Hours↔tokens balance (%)') }}</span>
-					<strong id="data_ai_usage_percent_label">{{ (int) $aiUsagePercentDefault }}%</strong>
-				</label>
-				<div id="ai-usage-balance-slider" class="noUi-primary my-3"></div>
-				<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
-				<p class="text-muted small mb-3">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
-				<div class="row g-3 mt-1">
+				<div class="row g-3 align-items-start">
+					<div class="col-md-8 col-12">
+						<label class="form-label d-flex justify-content-between align-items-center mb-1" for="data_ai_usage_percent">
+							<span class="small">{{ __('Hours↔tokens balance (%)') }}</span>
+							<strong class="small" id="data_ai_usage_percent_label">{{ (int) $aiUsagePercentDefault }}%</strong>
+						</label>
+						<div id="ai-usage-balance-slider" class="noUi-primary noUi-sm mb-1"></div>
+						<input type="hidden" id="data_ai_usage_percent" name="data[ai_usage_percent]" value="{{ $aiUsagePercentDefault }}">
+						<p class="text-muted small mb-0">{{ __('Higher values reduce billable hours and move weight to tokens.') }}</p>
+					</div>
 					<div class="col-md-4 col-12">
-						<label for="discount" class="form-label">{{ __('Discount') }} (%)</label>
-						<input type="number" class="form-control" id="discount" name="discount"
+						<label for="discount" class="form-label mb-1">{{ __('Discount') }} (%)</label>
+						<input type="number" class="form-control form-control-sm" id="discount" name="discount"
 							step="1" min="0" max="100"
 							value="{{ old('discount', $data->discount ?? '') }}"
 							placeholder="0">
-						<p class="text-muted small mb-0 mt-1">{{ __('Shown on the client budget preview.') }}</p>
 					</div>
 				</div>
 			</div>
 			<div class="col-12">
 				<label for="data_ai_interpretation" class="form-label">{{ __('AI interpretation') }}</label>
-				<textarea id="data_ai_interpretation" name="data[ai_interpretation]" class="form-control" rows="2">{{ old('data.ai_interpretation', data_get($data, 'data.ai_interpretation', '')) }}</textarea>
+				<textarea id="data_ai_interpretation" name="data[ai_interpretation]" class="form-control js-auto-resize" rows="2">{{ old('data.ai_interpretation', data_get($data, 'data.ai_interpretation', '')) }}</textarea>
 			</div>
 			@php
 				$savedSuggested = old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []));
@@ -906,19 +934,19 @@
 			@endphp
 			<div class="col-12">
 				<label for="data_dimension" class="form-label">{{ __('Dimension') }}</label>
-				<textarea id="data_dimension" name="data[dimension]" class="form-control" rows="3">{{ old('data.dimension', data_get($data, 'data.dimension', '')) }}</textarea>
+				<textarea id="data_dimension" name="data[dimension]" class="form-control js-auto-resize" rows="3">{{ old('data.dimension', data_get($data, 'data.dimension', '')) }}</textarea>
 			</div>
 			<div class="col-12">
 				<label for="data_estimated_times" class="form-label">{{ __('Estimated times') }}</label>
-				<textarea id="data_estimated_times" name="data[estimated_times]" class="form-control" rows="3">{{ old('data.estimated_times', data_get($data, 'data.estimated_times', '')) }}</textarea>
+				<textarea id="data_estimated_times" name="data[estimated_times]" class="form-control js-auto-resize" rows="3">{{ old('data.estimated_times', data_get($data, 'data.estimated_times', '')) }}</textarea>
 			</div>
 			<div class="col-12">
 				<label for="data_resources" class="form-label">{{ __('Resources') }}</label>
-				<textarea id="data_resources" name="data[resources]" class="form-control" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
+				<textarea id="data_resources" name="data[resources]" class="form-control js-auto-resize" rows="3">{{ old('data.resources', data_get($data, 'data.resources', '')) }}</textarea>
 			</div>
 			<div class="col-12">
 				<label for="data_token_consumption_notes" class="form-label">{{ __('Approximate token consumption') }}</label>
-				<textarea id="data_token_consumption_notes" name="data[token_consumption][notes]" class="form-control" rows="3" style="white-space: pre-line;">{{ $tokenConsumptionNotes }}</textarea>
+				<textarea id="data_token_consumption_notes" name="data[token_consumption][notes]" class="form-control js-auto-resize" rows="3" style="white-space: pre-line;">{{ $tokenConsumptionNotes }}</textarea>
 				<input type="hidden" id="data_token_consumption_input" name="data[token_consumption][input_tokens]" value="{{ (int) ($tokenConsumption['input_tokens'] ?? 0) }}">
 				<input type="hidden" id="data_token_consumption_output" name="data[token_consumption][output_tokens]" value="{{ (int) ($tokenConsumption['output_tokens'] ?? 0) }}">
 				<input type="hidden" id="data_token_consumption_total" name="data[token_consumption][total_tokens]" value="{{ (int) ($tokenConsumption['total_tokens'] ?? 0) }}">

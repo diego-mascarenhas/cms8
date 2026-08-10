@@ -236,6 +236,29 @@ class Enterprise extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Preferred client-side contact for quotes and outreach (not the internal account owner).
+     */
+    public function quoteContact(): ?Contact
+    {
+        $this->loadMissing('contacts');
+
+        $withEmail = $this->contacts
+            ->filter(function (Contact $contact): bool
+            {
+                $email = trim((string) ($contact->email ?? ''));
+
+                return $email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL);
+            })
+            ->sortBy(function (Contact $contact): string
+            {
+                return mb_strtolower(trim($contact->name.' '.(string) ($contact->surname ?? '')));
+            })
+            ->values();
+
+        return $withEmail->first();
+    }
+
     public function getStatusLabelAttribute()
     {
         if ($this->status)

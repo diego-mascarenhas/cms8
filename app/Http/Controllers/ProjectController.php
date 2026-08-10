@@ -19,6 +19,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use App\Support\AssignableTeamUsers;
 use Carbon\Carbon;
@@ -106,6 +107,8 @@ class ProjectController extends Controller
             ? (($data['discount'] === '' || $data['discount'] === null) ? null : $data['discount'])
             : $existing?->discount;
 
+        $previousStatusId = $existing ? (int) $existing->status_id : null;
+
         $project = Project::updateOrCreate(
             ['id' => $request->id],
             [
@@ -144,6 +147,27 @@ class ProjectController extends Controller
         if (! $request->id)
         {
             return redirect()->route('project.show', $project->id)->with('success', 'Proyecto creado exitosamente.');
+        }
+
+        $becameAuthorized = $previousStatusId !== ProjectStatus::STATUS_AUTHORIZED
+            && (int) $project->status_id === ProjectStatus::STATUS_AUTHORIZED;
+
+        if ($becameAuthorized && auth()->user()?->hasRole('admin'))
+        {
+            try
+            {
+                app(ProjectBudgetQuoteMailService::class)->sendQuoteEmail($project, auth()->user());
+
+                return redirect()
+                    ->route('project.show', $project->id)
+                    ->with('success', __('Quote authorized and emailed to the enterprise contact.'));
+            } catch (RuntimeException $e)
+            {
+                return redirect()
+                    ->route('project.show', $project->id)
+                    ->with('error', $e->getMessage())
+                    ->with('success', __('Project updated successfully.'));
+            }
         }
 
         return redirect()->route('project.show', $project->id)->with('success', 'Proyecto actualizado exitosamente.');
@@ -195,6 +219,8 @@ class ProjectController extends Controller
 
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
 
+        $this->syncProjectStatusFromBudgetResponse($project);
+
         return view('project.budget-preview', [
             'project' => $project,
             'suggestedTasks' => $suggestedTasks,
@@ -228,6 +254,7 @@ class ProjectController extends Controller
             'ip' => $request->ip(),
         ];
         $project->data = $data;
+        $project->status_id = ProjectStatus::STATUS_APPROVED;
         $project->save();
 
         return redirect()
@@ -258,11 +285,72 @@ class ProjectController extends Controller
             'ip' => $request->ip(),
         ];
         $project->data = $data;
+        $project->status_id = ProjectStatus::STATUS_WAITING_FOR_RESPONSE;
         $project->save();
 
         return redirect()
             ->route('project.budget-preview', $token)
             ->with('budget_response_success', __('Thanks. We received your reformulation request and will review it shortly.'));
+    }
+
+    /**
+     * Admin shortcut: mark budgeted quote as authorized and email the public preview.
+     */
+    public function authorizeBudgetQuote(string $id, ProjectBudgetQuoteMailService $mailService)
+    {
+        $project = Project::with(['enterprise.contacts', 'team', 'status'])->findOrFail($id);
+        $this->authorize('update', $project);
+
+        if (! auth()->user()?->hasRole('admin'))
+        {
+            abort(403);
+        }
+
+        try
+        {
+            $mailService->authorizeAndSend($project, auth()->user());
+        } catch (RuntimeException $e)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Quote authorized and emailed to the enterprise contact.'));
+    }
+
+    /**
+     * Public 1x1 GIF open tracking for budget quote emails.
+     */
+    public function trackBudgetEmailOpen(string $token, ProjectBudgetQuoteMailService $mailService)
+    {
+        $mailService->markOpened($token);
+
+        $pixel = base64_decode('R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==');
+
+        return response($pixel, 200, [
+            'Content-Type' => 'image/gif',
+            'Content-Length' => (string) strlen($pixel),
+            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+        ]);
+    }
+
+    /**
+     * Public click tracking for budget quote emails; redirects to the preview.
+     */
+    public function trackBudgetEmailClick(string $token, ProjectBudgetQuoteMailService $mailService)
+    {
+        $previewUrl = $mailService->markClicked($token);
+        if ($previewUrl === null)
+        {
+            abort(404);
+        }
+
+        return redirect()->away($previewUrl);
     }
 
     private function findProjectByBudgetPreviewToken(string $token): Project
@@ -271,6 +359,27 @@ class ProjectController extends Controller
             ->with('enterprise')
             ->where('data->budget_preview_token', $token)
             ->firstOrFail();
+    }
+
+    /**
+     * Align project workflow status with the client quote response when needed.
+     */
+    private function syncProjectStatusFromBudgetResponse(Project $project): void
+    {
+        $targetStatusId = match (data_get($project->data, 'budget_client_response.status'))
+        {
+            'accepted' => ProjectStatus::STATUS_APPROVED,
+            'reformulation_requested' => ProjectStatus::STATUS_WAITING_FOR_RESPONSE,
+            default => null,
+        };
+
+        if ($targetStatusId === null || (int) $project->status_id === $targetStatusId)
+        {
+            return;
+        }
+
+        $project->status_id = $targetStatusId;
+        $project->save();
     }
 
     /**
@@ -678,7 +787,7 @@ class ProjectController extends Controller
         $this->authorize('view', $project);
 
         $project = Project::with([
-            'client',
+            'client.contacts',
             'responsible',
             'status',
             'category',
@@ -691,6 +800,9 @@ class ProjectController extends Controller
             'projectFares.sourceLanguage',
             'projectFares.targetLanguage',
         ])->findOrFail($id);
+
+        $this->syncProjectStatusFromBudgetResponse($project);
+        $project->load('status');
 
         // Collaborators can only view their assigned projects
         $currentUser = auth()->user();

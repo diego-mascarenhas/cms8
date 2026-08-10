@@ -10,6 +10,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\List60;
 use App\Models\Project;
+use App\Models\ProjectStatus;
 use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
 use App\Services\ContactDailySentimentService;
@@ -88,8 +89,15 @@ class DashboardController extends Controller
         {
             $ongoingProjects = Project::with(['client', 'responsible', 'status'])
                 ->where('team_id', $activeTeam->id)
-                ->whereIn('status_id', [1, 2, 9])
-                ->orderByRaw('CASE status_id WHEN 9 THEN 1 WHEN 2 THEN 2 WHEN 1 THEN 3 ELSE 4 END')
+                ->whereIn('status_id', ProjectStatus::ongoingDashboardStatusIds())
+                ->orderByRaw('CASE status_id WHEN ? THEN 1 WHEN ? THEN 2 WHEN ? THEN 3 WHEN ? THEN 4 WHEN ? THEN 5 WHEN ? THEN 6 ELSE 7 END', [
+                    ProjectStatus::STATUS_IN_PROGRESS,
+                    ProjectStatus::STATUS_APPROVED,
+                    ProjectStatus::STATUS_WAITING_FOR_RESPONSE,
+                    ProjectStatus::STATUS_AUTHORIZED,
+                    ProjectStatus::STATUS_BUDGETED,
+                    ProjectStatus::STATUS_BUDGET,
+                ])
                 ->orderBy('updated_at', 'desc')
                 ->take(10)
                 ->get();

@@ -916,9 +916,9 @@
                                                     $totalHours = $project->total_hours ?? 0;
                                                     $estimatedHours = $project->estimated_hours ?? 0;
                                                 @endphp
-                                                <span class="fw-semibold">{{ $totalHours }}h</span>
+                                                <span class="fw-semibold">{{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
                                                 @if($estimatedHours > 0)
-                                                    <small class="text-muted">/ {{ $estimatedHours }}h</small>
+                                                    <small class="text-muted">/ {{ \App\Helpers\Helpers::formatHoursHuman($estimatedHours) }}</small>
                                                 @endif
                                             </div>
                                         </td>

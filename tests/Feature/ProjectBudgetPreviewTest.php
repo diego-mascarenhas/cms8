@@ -91,7 +91,8 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee(__('Accept quote'), false);
         $response->assertSee(__('Request reformulation'), false);
         $response->assertSee(__('I understand that the project will not start until 30% of the payment is received.'), false);
-        $response->assertSee(__('Indicative quote. Amounts do not include VAT.'), false);
+        $response->assertSee(__('Amounts do not include VAT.'), false);
+        $response->assertSee(__('This quote already includes estimated token savings.'), false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
     }
@@ -116,11 +117,36 @@ class ProjectBudgetPreviewTest extends TestCase
 
         $this->assertSame('accepted', data_get($project->data, 'budget_client_response.status'));
         $this->assertSame('Jane Client', data_get($project->data, 'budget_client_response.accepted_by_name'));
+        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $project->status_id);
 
         $this->get(route('project.budget-preview', $token))
             ->assertOk()
             ->assertSee(__('Quote accepted'), false)
             ->assertDontSee(__('Accept quote'), false);
+    }
+
+    #[Test]
+    public function accepted_quote_heals_stale_project_status_on_preview(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'budget_client_response' => [
+                'status' => 'accepted',
+                'accepted_by_name' => 'Jane Client',
+                'message' => null,
+                'responded_at' => now()->toIso8601String(),
+                'ip' => '127.0.0.1',
+            ],
+        ]);
+        $token = $created['token'];
+        $created['project']->forceFill(['status_id' => ProjectStatus::STATUS_BUDGET])->save();
+
+        $this->get(route('project.budget-preview', $token))->assertOk();
+
+        $project = Project::withoutGlobalScopes()
+            ->where('data->budget_preview_token', $token)
+            ->firstOrFail();
+
+        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $project->status_id);
     }
 
     #[Test]
@@ -141,6 +167,17 @@ class ProjectBudgetPreviewTest extends TestCase
             ->firstOrFail();
 
         $this->assertNull(data_get($project->data, 'budget_client_response'));
+
+        $followUp = $this->followingRedirects()
+            ->from(route('project.budget-preview', $token))
+            ->post(route('project.budget-preview.accept', $token), [
+                'accepted_by_name' => 'Jane Client',
+            ]);
+
+        $followUp->assertOk();
+        $followUp->assertSee(__('You must confirm that the project will not start until 30% of the payment is received.'), false);
+        $followUp->assertDontSee('Select this tickbox', false);
+        $followUp->assertDontSee('Please fill out this field', false);
     }
 
     #[Test]
@@ -166,6 +203,7 @@ class ProjectBudgetPreviewTest extends TestCase
             'Please reduce Senior hours and clarify token costs.',
             data_get($project->data, 'budget_client_response.message'),
         );
+        $this->assertSame(ProjectStatus::STATUS_WAITING_FOR_RESPONSE, (int) $project->status_id);
 
         $this->get(route('project.budget-preview', $token))
             ->assertOk()

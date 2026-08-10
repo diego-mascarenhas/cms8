@@ -250,6 +250,8 @@ Route::post('/sla/accept/{token}', [SLAController::class, 'accept'])->name('sla.
 Route::get('/p/budget/{token}', [ProjectController::class, 'budgetPreview'])->name('project.budget-preview');
 Route::post('/p/budget/{token}/accept', [ProjectController::class, 'acceptBudgetPreview'])->name('project.budget-preview.accept');
 Route::post('/p/budget/{token}/reformulate', [ProjectController::class, 'reformulateBudgetPreview'])->name('project.budget-preview.reformulate');
+Route::get('/p/budget-mail/{token}/open', [ProjectController::class, 'trackBudgetEmailOpen'])->name('project.budget-email.track-open');
+Route::get('/p/budget-mail/{token}/click', [ProjectController::class, 'trackBudgetEmailClick'])->name('project.budget-email.track-click');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
@@ -682,6 +684,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project/generate-budget-spec', [ProjectController::class, 'generateBudgetSpec'])->name('project.generate-budget-spec');
     Route::post('/project', [ProjectController::class, 'store'])->name('project.store');
     Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
+    Route::post('/project/{id}/authorize-budget', [ProjectController::class, 'authorizeBudgetQuote'])->name('project.authorize-budget');
     Route::post('/project/{id}/add-suggested-task', [ProjectController::class, 'addSuggestedTask'])->name('project.add-suggested-task');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
