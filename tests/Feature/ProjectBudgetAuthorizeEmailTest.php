@@ -63,7 +63,12 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
 
         Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact): bool
         {
-            return $mail->hasTo($contact->email);
+            $html = $mail->render();
+
+            return $mail->hasTo($contact->email)
+                && str_contains($html, 'idoneo-logo.svg')
+                && str_contains($html, 'IDONEO')
+                && ! str_contains($html, 'humano');
         });
     }
 

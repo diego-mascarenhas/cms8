@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Category;
 use App\Models\Module;
+use App\Models\Project;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\TokenUsageLog;
@@ -840,6 +841,72 @@ class ProjectBudgetSpecService
         $outputRate = 55.0;
 
         return round(($inputTokens / 1_000_000) * $inputRate + ($outputTokens / 1_000_000) * $outputRate, 2);
+    }
+
+    /**
+     * Quote totals from suggested tasks (same math as the public budget preview), with project.price fallback.
+     *
+     * @return array{
+     *     grand_total: int,
+     *     discount_percent: float,
+     *     discounted_total: int,
+     *     payable_total: int
+     * }
+     */
+    public function computeQuoteTotals(Project $project): array
+    {
+        $data = is_array($project->data) ? $project->data : [];
+        $suggestedTasks = is_array($data['suggested_tasks'] ?? null) ? $data['suggested_tasks'] : [];
+        $savings = (float) data_get($data, 'token_consumption.savings_percent', 57);
+        $aiUsage = $this->normalizeAiUsagePercent(
+            data_get($data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT),
+        );
+
+        $totalLabor = 0.0;
+        $totalTokenBillable = 0.0;
+
+        foreach ($suggestedTasks as $task)
+        {
+            if (! is_array($task) || (($task['included'] ?? true) === false))
+            {
+                continue;
+            }
+
+            $hours = isset($task['estimated_hours']) && is_numeric($task['estimated_hours'])
+                ? (float) $task['estimated_hours']
+                : 0.0;
+            $price = isset($task['unit_price']) && $task['unit_price'] !== '' && $task['unit_price'] !== null
+                ? (float) $task['unit_price']
+                : null;
+            $baseTokens = $this->resolveEstimatedTokens($task);
+            $balanced = $this->applyHoursTokensBalance($price, $hours, $baseTokens, $savings, $aiUsage);
+
+            if ($balanced['labor'] !== null)
+            {
+                $totalLabor += $balanced['labor'];
+            }
+            $totalTokenBillable += $balanced['token_billable'];
+        }
+
+        $grandTotal = (int) round($totalLabor + $totalTokenBillable);
+
+        if ($grandTotal <= 0 && is_numeric($project->price) && (float) $project->price > 0)
+        {
+            $grandTotal = (int) round((float) $project->price);
+        }
+
+        $discountPercent = is_numeric($project->discount)
+            ? max(0.0, min(100.0, (float) $project->discount))
+            : 0.0;
+        $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
+        $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
+
+        return [
+            'grand_total' => $grandTotal,
+            'discount_percent' => $discountPercent,
+            'discounted_total' => $discountedTotal,
+            'payable_total' => $payableTotal,
+        ];
     }
 
     /**
