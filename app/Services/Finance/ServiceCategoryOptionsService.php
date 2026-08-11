@@ -14,7 +14,30 @@ class ServiceCategoryOptionsService
      */
     public function optionsForTeam(int $teamId): array
     {
-        $moduleId = Module::query()->where('key', 'services')->value('id');
+        return $this->optionsForModules($teamId, ['services']);
+    }
+
+    /**
+     * Invoice / expense line pickers: Hosting (services) + Desarrollos (projects).
+     *
+     * @return list<array{id: int, name: string, group: string|null}>
+     */
+    public function optionsForInvoiceLines(int $teamId): array
+    {
+        return $this->optionsForModules($teamId, ['services', 'projects']);
+    }
+
+    /**
+     * @param  list<string>  $moduleKeys
+     * @return list<array{id: int, name: string, group: string|null}>
+     */
+    public function optionsForModules(int $teamId, array $moduleKeys): array
+    {
+        $moduleIds = Module::query()
+            ->whereIn('key', $moduleKeys)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
         $categoriesQuery = Category::query()
             ->where('status', '>', 0)
@@ -24,9 +47,9 @@ class ServiceCategoryOptionsService
                     ->orWhere('team_id', $teamId);
             });
 
-        if ($moduleId)
+        if ($moduleIds !== [])
         {
-            $categoriesQuery->where('module_id', $moduleId);
+            $categoriesQuery->whereIn('module_id', $moduleIds);
         } else
         {
             $categoriesQuery->whereNull('module_id');
@@ -134,7 +157,24 @@ class ServiceCategoryOptionsService
 
     public function belongsToTeamServices(int $teamId, int $categoryId): bool
     {
-        $moduleId = Module::query()->where('key', 'services')->value('id');
+        return $this->belongsToTeamModules($teamId, $categoryId, ['services']);
+    }
+
+    public function belongsToTeamInvoiceLineCategory(int $teamId, int $categoryId): bool
+    {
+        return $this->belongsToTeamModules($teamId, $categoryId, ['services', 'projects']);
+    }
+
+    /**
+     * @param  list<string>  $moduleKeys
+     */
+    public function belongsToTeamModules(int $teamId, int $categoryId, array $moduleKeys): bool
+    {
+        $moduleIds = Module::query()
+            ->whereIn('key', $moduleKeys)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
 
         return Category::query()
             ->whereKey($categoryId)
@@ -145,8 +185,8 @@ class ServiceCategoryOptionsService
                     ->orWhere('team_id', $teamId);
             })
             ->when(
-                $moduleId,
-                fn (Builder $query) => $query->where('module_id', $moduleId),
+                $moduleIds !== [],
+                fn (Builder $query) => $query->whereIn('module_id', $moduleIds),
                 fn (Builder $query) => $query->whereNull('module_id'),
             )
             ->exists();

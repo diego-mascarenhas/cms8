@@ -91,7 +91,6 @@
                             <h3 class="mb-0 me-2">{{ $totalBudget ?? 0 }}</h3>
                             <p class="text-secondary mb-0">({{ $budgetPercentage ?? 0 }}%)</p>
                         </div>
-                        <p class="mb-0">{{ __('Projects') }}</p>
                     </div>
                     <div class="avatar">
                         <a href="#" class="avatar-initial rounded bg-label-secondary filter-status" data-status="1">
@@ -112,7 +111,6 @@
                             <h3 class="mb-0 me-2">{{ $totalBudgeted ?? 0 }}</h3>
                             <p class="text-warning mb-0">({{ $budgetedPercentage ?? 0 }}%)</p>
                         </div>
-                        <p class="mb-0">{{ __('Projects') }}</p>
                     </div>
                     <div class="avatar">
                         <a href="#" class="avatar-initial rounded bg-label-warning filter-status" data-status="2">
@@ -133,7 +131,6 @@
                             <h3 class="mb-0 me-2">{{ $totalInProgress ?? 0 }}</h3>
                             <p class="text-primary mb-0">({{ $inProgressPercentage ?? 0 }}%)</p>
                         </div>
-                        <p class="mb-0">{{ __('Projects') }}</p>
                     </div>
                     <div class="avatar">
                         <a href="#" class="avatar-initial rounded bg-label-primary filter-status" data-status="3,7,8,9">
@@ -154,7 +151,6 @@
                             <h3 class="mb-0 me-2">{{ $totalToInvoice ?? 0 }}</h3>
                             <p class="text-info mb-0">({{ $toInvoicePercentage ?? 0 }}%)</p>
                         </div>
-                        <p class="mb-0">{{ __('Projects') }}</p>
                     </div>
                     <div class="avatar">
                         <a href="#" class="avatar-initial rounded bg-label-info filter-status" data-status="10,11">

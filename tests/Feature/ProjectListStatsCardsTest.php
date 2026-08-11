@@ -97,7 +97,6 @@ class ProjectListStatsCardsTest extends TestCase
             __('project_status.IN_PROGRESS'),
             __('project_status.TO_INVOICE'),
         ]);
-        $response->assertDontSee(__('project_status.INVOICED'), false);
         $response->assertSee('data-status="1"', false);
         $response->assertSee('data-status="2"', false);
         $response->assertSee('data-status="3,7,8,9"', false);
@@ -105,5 +104,6 @@ class ProjectListStatsCardsTest extends TestCase
         $response->assertDontSee('data-status="12"', false);
         $response->assertSee('id="project-table"', false);
         $response->assertSee('project-list-card', false);
+        $response->assertDontSee('<p class="mb-0">'.e(__('Projects')).'</p>', false);
     }
 }

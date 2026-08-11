@@ -4,15 +4,23 @@
 ******************************************************************************/
 
 .light-style .menu .app-brand.demo {
-  height: 64px;
+  height: auto;
+  min-height: 4.5rem;
+  padding-top: 0.875rem;
+  padding-bottom: 0.5rem;
   overflow: visible;
   margin-bottom: 0;
+  align-items: center;
 }
 
 .dark-style .menu .app-brand.demo {
-  height: 64px;
+  height: auto;
+  min-height: 4.5rem;
+  padding-top: 0.875rem;
+  padding-bottom: 0.5rem;
   overflow: visible;
   margin-bottom: 0;
+  align-items: center;
 }
 
 
@@ -104,15 +112,30 @@ html[data-template^="front-"]:not(.layout-navbar-fixed) .first-section-pt {
   display: none !important;
 }
 
-/* Menu brand: show only one logo depending on collapsed state */
+/* Menu brand: show only one logo depending on collapsed state.
+   When collapsed + hover/expanded overlay, keep the full logo (Vuexy layout-menu-hover). */
 html:not(.layout-menu-collapsed) .layout-menu .app-brand-img-collapsed {
   display: none !important;
 }
-html.layout-menu-collapsed .layout-menu .app-brand-img {
+html.layout-menu-collapsed:not(.layout-menu-hover):not(.layout-menu-offcanvas):not(.layout-menu-fixed-offcanvas)
+  .layout-menu
+  .app-brand-img {
   display: none !important;
 }
-html.layout-menu-collapsed .layout-menu .app-brand-img-collapsed {
+html.layout-menu-collapsed:not(.layout-menu-hover):not(.layout-menu-offcanvas):not(.layout-menu-fixed-offcanvas)
+  .layout-menu
+  .app-brand-img-collapsed {
   display: flex !important;
+}
+html.layout-menu-collapsed.layout-menu-hover .layout-menu .app-brand-img,
+html.layout-menu-collapsed.layout-menu-offcanvas .layout-menu .app-brand-img,
+html.layout-menu-collapsed.layout-menu-fixed-offcanvas .layout-menu .app-brand-img {
+  display: flex !important;
+}
+html.layout-menu-collapsed.layout-menu-hover .layout-menu .app-brand-img-collapsed,
+html.layout-menu-collapsed.layout-menu-offcanvas .layout-menu .app-brand-img-collapsed,
+html.layout-menu-collapsed.layout-menu-fixed-offcanvas .layout-menu .app-brand-img-collapsed {
+  display: none !important;
 }
 
 .app-brand-text.demo {

@@ -8,7 +8,14 @@
       <div class="navbar-brand app-brand demo d-flex py-0 py-lg-2 align-items-center ps-1 min-w-0 me-2 flex-shrink-1" style="max-width: min(14rem, calc(100vw - 12rem));">
         <a href="{{ url('/') }}" class="app-brand-link w-100 min-w-0">
           <span class="app-brand-logo demo d-flex align-items-center w-100 min-w-0">
-            <img src="{{ Helper::logoAsset('dark') }}" alt="{{ config('app.name') }}" class="d-block" style="max-height: 3.25rem; width: auto; height: auto; max-width: 100%; object-fit: contain; object-position: left center;">
+            <img
+              src="{{ Helper::logoAsset('light') }}"
+              data-app-light-img="{{ Helper::logoThemeDataImg('light') }}"
+              data-app-dark-img="{{ Helper::logoThemeDataImg('dark') }}"
+              alt="{{ config('app.name') }}"
+              class="d-block"
+              style="max-height: 3.25rem; width: auto; height: auto; max-width: 100%; object-fit: contain; object-position: left center;"
+            >
           </span>
         </a>
       </div>

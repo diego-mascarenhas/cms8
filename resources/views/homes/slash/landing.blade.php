@@ -80,7 +80,7 @@
   <header class="slash-nav">
     <div class="slash-container slash-nav-inner">
       <a href="{{ url('/') }}" class="slash-nav-brand" aria-label="{{ config('app.name') }}">
-        <img src="{{ Helper::logoAsset('light') }}" alt="{{ config('app.name') }}">
+        <img src="{{ Helper::logoAsset('dark') }}" alt="{{ config('app.name') }}">
       </a>
 
       <ul class="slash-nav-links" id="slashNavLinks">
@@ -563,7 +563,7 @@
     <div class="slash-container">
       <div class="slash-footer-top">
         <div class="slash-footer-brand">
-          <img src="{{ Helper::logoAsset('light') }}" alt="{{ config('app.name') }}">
+          <img src="{{ Helper::logoAsset('dark') }}" alt="{{ config('app.name') }}">
           <p>{{ __('slash_landing.footer.tagline') }}</p>
         </div>
         <div>

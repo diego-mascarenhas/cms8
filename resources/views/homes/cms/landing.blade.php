@@ -33,7 +33,7 @@
   <header class="cms-nav">
     <div class="cms-container cms-nav-inner">
       <a href="{{ route('humano') }}" class="cms-nav-brand" aria-label="{{ config('app.name') }}">
-        <img src="{{ Helper::logoAsset('light') }}" alt="{{ config('app.name') }}">
+        <img src="{{ Helper::logoAsset('dark') }}" alt="{{ config('app.name') }}">
       </a>
       <ul class="cms-nav-links">
         <li><a href="#admin">{{ __('cms_landing.nav.admin') }}</a></li>

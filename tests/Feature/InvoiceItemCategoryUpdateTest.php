@@ -156,6 +156,38 @@ class InvoiceItemCategoryUpdateTest extends TestCase
             ->assertSee('Sin categoría');
     }
 
+    public function test_admin_can_assign_projects_module_category_to_invoice_item(): void
+    {
+        [$user, $team, $item, $category] = $this->createTeamWithUncategorizedItem();
+
+        $projectsModule = Module::query()->create([
+            'name' => 'Projects',
+            'key' => 'projects',
+            'icon' => 'ti-folder',
+            'description' => null,
+            'is_core' => true,
+            'status' => 1,
+        ]);
+
+        $desarrollos = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $projectsModule->id,
+            'name' => 'Sitios Webs',
+            'status' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('invoice-items.category.update', $item), [
+                'category_id' => $desarrollos->id,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'category_id' => $desarrollos->id,
+                'category_name' => 'Sitios Webs',
+            ]);
+    }
+
     /**
      * @return array{0: User, 1: \App\Models\Team, 2: InvoiceItem, 3: Category}
      */

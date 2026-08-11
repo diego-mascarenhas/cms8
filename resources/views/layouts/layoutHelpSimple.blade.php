@@ -21,7 +21,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
       <div class="navbar-brand app-brand demo d-flex py-3 px-4 border-bottom">
         <a href="{{ url('/') }}" class="app-brand-link">
           <span class="app-brand-logo demo app-brand-img">
-            <img src="{{ Helper::logoAsset('dark') }}" alt="Wapify" style="height: 44px; width: auto;">
+            <img
+              src="{{ Helper::logoAssetForStyle($configData['style'] ?? 'light') }}"
+              data-app-light-img="{{ Helper::logoThemeDataImg('light') }}"
+              data-app-dark-img="{{ Helper::logoThemeDataImg('dark') }}"
+              alt="{{ config('app.name') }}"
+              style="height: 44px; width: auto;"
+            >
           </span>
         </a>
       </div>

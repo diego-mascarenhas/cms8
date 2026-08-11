@@ -58,7 +58,7 @@ class NewUserNotification extends Mailable
             $displayName = (string) $this->user->email;
         }
         $showBrandLine = $brand !== $appName;
-        $logoUrl = url(Helpers::logoAsset('dark'));
+        $logoUrl = url(Helpers::logoAsset('light'));
 
         return $this->subject('¡Hola, '.$displayName.'! · Activa tu acceso')
             ->view('emails.new-user-notification')

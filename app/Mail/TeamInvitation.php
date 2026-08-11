@@ -25,7 +25,7 @@ class TeamInvitation extends Mailable
                 'acceptUrl' => URL::signedRoute('team-invitations.accept', [
                     'invitation' => $this->invitation,
                 ]),
-                'logoUrl' => url(Helpers::logoAsset('dark')),
+                'logoUrl' => url(Helpers::logoAsset('light')),
                 'appName' => $appName,
             ]);
     }

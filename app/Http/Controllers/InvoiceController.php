@@ -142,7 +142,7 @@ class InvoiceController extends Controller
             3 => 'Pendiente',
             4 => 'Rechazado',
         ];
-        $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForTeam($teamId);
+        $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForInvoiceLines($teamId);
         $documentFlow = [
             'mode' => 'sell',
             'page_title' => 'Crear factura',

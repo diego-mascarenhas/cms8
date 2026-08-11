@@ -47,7 +47,7 @@ class AffiliatePurchaseInvitationMail extends Mailable
             ]))
             ->view('emails.affiliate-purchase-invitation', [
                 'inviterLabel' => $inviterLabel,
-                'logoUrl' => url(Helpers::logoAsset('dark')),
+                'logoUrl' => url(Helpers::logoAsset('light')),
                 'appName' => (string) config('app.name'),
                 'checkoutUrl' => $checkoutUrl,
                 'pricingUrl' => $pricingUrl,

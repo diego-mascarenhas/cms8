@@ -241,7 +241,7 @@ class ExpenseController extends Controller
             4 => 'Rechazado',
         ];
 
-        $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForTeam($teamId);
+        $expenseCategoryOptions = app(ServiceCategoryOptionsService::class)->optionsForInvoiceLines($teamId);
         $documentFlow = [
             'mode' => 'buy',
             'page_title' => 'Añadir gasto',

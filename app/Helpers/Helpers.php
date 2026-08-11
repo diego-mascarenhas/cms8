@@ -346,7 +346,10 @@ class Helpers
 
     /**
      * Return the URL for a logo variant, checking file existence and falling back when missing.
-     * Variants: dark, light (full logo); iso, iso_dark, iso_light (iso/small logo).
+     *
+     * Naming follows the app theme (same as Vuexy light-style / dark-style), not ink color:
+     * - light / iso_light — logo for light backgrounds (typically dark ink)
+     * - dark / iso_dark — logo for dark backgrounds (typically light ink)
      */
     public static function logoAsset(string $variant): string
     {
@@ -374,6 +377,35 @@ class Helpers
         $fullPath = public_path($path);
 
         return file_exists($fullPath) ? asset($path) : asset($fallback);
+    }
+
+    /**
+     * Logo URL for the current (or given) UI style: light|dark.
+     */
+    public static function logoAssetForStyle(?string $style = null): string
+    {
+        $style ??= self::appClasses()['style'] ?? 'light';
+
+        return self::logoAsset($style === 'dark' ? 'dark' : 'light');
+    }
+
+    /**
+     * Path for Vuexy switchImage data-app-*-img attributes (relative to assets/img/).
+     */
+    public static function logoThemeDataImg(string $variant): string
+    {
+        $logo = config('variables.logo');
+        $path = $variant === 'dark'
+            ? ($logo['path_dark'] ?? 'assets/logo-dark.svg')
+            : ($logo['path_light'] ?? 'assets/logo-light.svg');
+        $path = ltrim(str_replace('\\', '/', (string) $path), '/');
+
+        if (str_starts_with($path, 'assets/'))
+        {
+            $path = substr($path, strlen('assets/'));
+        }
+
+        return '../'.$path;
     }
 
     /**

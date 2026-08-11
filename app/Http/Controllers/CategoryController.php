@@ -541,7 +541,7 @@ class CategoryController extends Controller
             'backUrl' => $this->resolveCategoryItemsBackUrl($request),
             'canEditCategory' => $canEditCategory,
             'categoryOptions' => $canEditCategory
-                ? app(ServiceCategoryOptionsService::class)->optionsForTeam((int) $team->id)
+                ? app(ServiceCategoryOptionsService::class)->optionsForInvoiceLines((int) $team->id)
                 : [],
         ]);
     }

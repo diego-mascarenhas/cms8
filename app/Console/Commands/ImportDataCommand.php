@@ -14,6 +14,7 @@ use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Finance\InvoiceItemLegacySyncService;
+use App\Services\ProjectCategoryLegacyImportService;
 use Exception;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -127,17 +128,18 @@ class ImportDataCommand extends Command
             4 => '4. Payment Accounts',
             5 => '5. Enterprises',
             6 => '6. Services',
-            7 => '7. Projects',
-            8 => '8. Invoices',
-            9 => '9. Billing Addresses',
-            10 => '10. Invoice Items',
-            11 => '11. Payments',
-            12 => '12. Notification Types',
-            13 => '13. Communications',
-            14 => '14. Products (CMS7)',
-            15 => '15. Stores (Pedimos Facil -> Teams)',
-            16 => '16. Import All',
-            17 => '17. Exit',
+            7 => '7. Project Categories',
+            8 => '8. Projects',
+            9 => '9. Invoices',
+            10 => '10. Billing Addresses',
+            11 => '11. Invoice Items',
+            12 => '12. Payments',
+            13 => '13. Notification Types',
+            14 => '14. Communications',
+            15 => '15. Products (CMS7)',
+            16 => '16. Stores (Pedimos Facil -> Teams)',
+            17 => '17. Import All',
+            18 => '18. Exit',
         ]);
     }
 
@@ -256,12 +258,20 @@ class ImportDataCommand extends Command
                 ->where('servicios.operacion', 'V')
                 ->select('servicios.*', 'servicios_hosting.*'),
 
-            '7. Projects' => app('db')->connection('mysql_legacy')
+            '7. Project Categories' => app('db')->connection('mysql_legacy')
+                ->table('categorias_generales')
+                ->where('padre', ProjectCategoryLegacyImportService::LEGACY_PARENT_ID)
+                ->where('estado', '>', 0)
+                ->orderBy('orden')
+                ->orderBy('categoria')
+                ->select('id', 'categoria', 'padre', 'orden', 'estado'),
+
+            '8. Projects' => app('db')->connection('mysql_legacy')
                 ->table('proyectos')
                 ->where('grupo', env('CMS_GROUP', 502))
-                ->select('id', 'nombre', 'id_empresa', 'estado'),
+                ->select('id', 'titulo', 'id_empresa', 'id_categoria', 'estado'),
 
-            '8. Invoices' => app('db')->connection('mysql_legacy')
+            '9. Invoices' => app('db')->connection('mysql_legacy')
                 ->table('facturas')
                 ->join('empresas_fiscales', 'facturas.id_empresa_fiscal', '=', 'empresas_fiscales.id')
                 ->where('facturas.grupo', env('CMS_GROUP', 502))
@@ -292,39 +302,39 @@ class ImportDataCommand extends Command
                     'facturas.EXENTO',
                 ),
 
-            '9. Billing Addresses' => app('db')->connection('mysql_legacy')
+            '10. Billing Addresses' => app('db')->connection('mysql_legacy')
                 ->table('empresas_fiscales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->where('estado', 1)
                 ->select('id', 'id_empresa', 'razon_social', 'cuit', 'ingresos_brutos', 'id_condicion_iva', 'domicilio', 'codigo_postal', 'localidad', 'provincia', 'pais', 'estado', 'fecha_alta', 'fecha_modificacion'),
 
-            '10. Invoice Items' => app('db')->connection('mysql_legacy')
+            '11. Invoice Items' => app('db')->connection('mysql_legacy')
                 ->table('facturas_items')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_factura', 'id_categoria', 'descripcion', 'valor', 'descuento', 'fecha_alta', 'fecha_modificacion'),
 
-            '11. Payments' => app('db')->connection('mysql_legacy')
+            '12. Payments' => app('db')->connection('mysql_legacy')
                 ->table('pagos')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_empresa', 'id_forma_pago', 'estado'),
 
-            '12. Notification Types' => app('db')->connection('mysql_legacy')
+            '13. Notification Types' => app('db')->connection('mysql_legacy')
                 ->table('comunicaciones_tipo')
                 ->select('id', 'tipo', 'estado'),
 
-            '13. Communications' => app('db')->connection('mysql_legacy')
+            '14. Communications' => app('db')->connection('mysql_legacy')
                 ->table('comunicaciones')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->select('id', 'id_contacto', 'id_tipo', 'asunto', 'estado'),
 
-            '14. Products (CMS7)' => app('db')->connection('mysql_legacy')
+            '15. Products (CMS7)' => app('db')->connection('mysql_legacy')
                 ->table('categorias_generales')
                 ->where('grupo', env('CMS_GROUP', 502))
                 ->whereNull('padre')
                 ->where('estado', 1)
                 ->select('id', 'categoria', 'descripcion', 'caracteristicas', 'valor', 'id_moneda', 'estado', 'fecha_alta'),
 
-            '15. Stores (Pedimos Facil -> Teams)' => app('db')->connection('mysql_legacy')
+            '16. Stores (Pedimos Facil -> Teams)' => app('db')->connection('mysql_legacy')
                 ->table('tienda_configuracion as tc')
                 ->join('empresas as e', 'e.id', '=', 'tc.id_empresa')
                 ->where('tc.grupo', 513)
@@ -336,7 +346,7 @@ class ImportDataCommand extends Command
 
         if ($id)
         {
-            if ($type === '8. Invoices')
+            if ($type === '9. Invoices')
             {
                 $query->where('facturas.id', $id);
             } elseif ($type === '6. Services')
@@ -388,7 +398,7 @@ class ImportDataCommand extends Command
 
                 $storeTeamId = (int) $storeIdOption;
                 $this->info("Importing only store team_id={$storeTeamId}...");
-                $this->processImport('15. Stores (Pedimos Facil -> Teams)', $storeTeamId);
+                $this->processImport('16. Stores (Pedimos Facil -> Teams)', $storeTeamId);
 
                 return 0;
             }
@@ -396,7 +406,7 @@ class ImportDataCommand extends Command
             if (! $this->input->isInteractive())
             {
                 $this->info('Non-interactive mode detected. Importing all stores.');
-                $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+                $this->processImport('16. Stores (Pedimos Facil -> Teams)');
 
                 return 0;
             }
@@ -422,10 +432,10 @@ class ImportDataCommand extends Command
 
                 $storeTeamId = (int) $storeTeamIdInput;
                 $this->info("Importing only store team_id={$storeTeamId}...");
-                $this->processImport('15. Stores (Pedimos Facil -> Teams)', $storeTeamId);
+                $this->processImport('16. Stores (Pedimos Facil -> Teams)', $storeTeamId);
             } else
             {
-                $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+                $this->processImport('16. Stores (Pedimos Facil -> Teams)');
             }
 
             return 0;
@@ -451,7 +461,7 @@ class ImportDataCommand extends Command
             }
 
             $this->info("Importing only first store team_id={$firstStoreTeamId}...");
-            $this->processImport('15. Stores (Pedimos Facil -> Teams)', (int) $firstStoreTeamId);
+            $this->processImport('16. Stores (Pedimos Facil -> Teams)', (int) $firstStoreTeamId);
 
             return 0;
         }
@@ -462,56 +472,60 @@ class ImportDataCommand extends Command
             $this->newLine();
 
             // Import in order to respect foreign key constraints
-            $this->info('📂 Step 1/13: Importing Categories...');
+            $this->info('📂 Step 1/14: Importing Categories...');
             $this->processImport('2. Categories');
             $this->newLine();
 
-            $this->info('🏢 Step 2/13: Importing Enterprises...');
+            $this->info('🏢 Step 2/14: Importing Enterprises...');
             $this->processImport('5. Enterprises');
             $this->newLine();
 
-            $this->info('🏬 Step 3/13: Importing Stores (Pedimos Facil -> Teams)...');
-            $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+            $this->info('🏬 Step 3/14: Importing Stores (Pedimos Facil -> Teams)...');
+            $this->processImport('16. Stores (Pedimos Facil -> Teams)');
             $this->newLine();
 
-            $this->info('📦 Step 4/13: Importing Services...');
+            $this->info('📦 Step 4/14: Importing Services...');
             $this->processImport('6. Services');
             $this->newLine();
 
-            $this->info('📁 Step 5/13: Importing Projects...');
-            $this->processImport('7. Projects');
+            $this->info('🏷️  Step 5/14: Importing Project Categories...');
+            $this->processImport('7. Project Categories');
             $this->newLine();
 
-            $this->info('📋 Step 6/13: Importing Billing Addresses...');
-            $this->processImport('9. Billing Addresses');
+            $this->info('📁 Step 6/14: Importing Projects...');
+            $this->processImport('8. Projects');
             $this->newLine();
 
-            $this->info('📄 Step 7/13: Importing Invoices...');
-            $this->processImport('8. Invoices');
+            $this->info('📋 Step 7/14: Importing Billing Addresses...');
+            $this->processImport('10. Billing Addresses');
             $this->newLine();
 
-            $this->info('📝 Step 8/13: Importing Invoice Items...');
-            $this->processImport('10. Invoice Items');
+            $this->info('📄 Step 8/14: Importing Invoices...');
+            $this->processImport('9. Invoices');
             $this->newLine();
 
-            $this->info('💳 Step 9/13: Importing Payment Accounts...');
+            $this->info('📝 Step 9/14: Importing Invoice Items...');
+            $this->processImport('11. Invoice Items');
+            $this->newLine();
+
+            $this->info('💳 Step 10/14: Importing Payment Accounts...');
             $this->processImport('4. Payment Accounts');
             $this->newLine();
 
-            $this->info('💰 Step 10/13: Importing Payments (linking enterprises & invoices)...');
-            $this->processImport('11. Payments');
+            $this->info('💰 Step 11/14: Importing Payments (linking enterprises & invoices)...');
+            $this->processImport('12. Payments');
             $this->newLine();
 
-            $this->info('👥 Step 11/13: Importing Users/Contacts...');
+            $this->info('👥 Step 12/14: Importing Users/Contacts...');
             $this->processImport('1. Users');
             $this->newLine();
 
-            $this->info('🔔 Step 12/13: Importing Notification Types...');
-            $this->processImport('12. Notification Types');
+            $this->info('🔔 Step 13/14: Importing Notification Types...');
+            $this->processImport('13. Notification Types');
             $this->newLine();
 
-            $this->info('📞 Step 13/13: Importing Notifications...');
-            $this->processImport('13. Communications');
+            $this->info('📞 Step 14/14: Importing Notifications...');
+            $this->processImport('14. Communications');
             $this->newLine();
 
             $this->info('✅ Automatic import completed successfully!');
@@ -523,13 +537,13 @@ class ImportDataCommand extends Command
         {
             $choice = $this->showMainMenu();
 
-            if ($choice === '17. Exit')
+            if ($choice === '18. Exit')
             {
                 $this->info('Goodbye!');
                 break;
             }
 
-            if ($choice === '16. Import All')
+            if ($choice === '17. Import All')
             {
                 if ($this->confirm('Are you sure you want to import ALL data?'))
                 {
@@ -557,15 +571,16 @@ class ImportDataCommand extends Command
                 '4. Payment Accounts' => $this->importPaymentAccounts($id),
                 '5. Enterprises' => $this->importEnterprises($id),
                 '6. Services' => $this->importServices($id),
-                '7. Projects' => $this->importProjects($id),
-                '8. Invoices' => $this->importInvoices($id),
-                '9. Billing Addresses' => $this->importBillingAddresses($id),
-                '10. Invoice Items' => $this->importInvoiceItems($id),
-                '11. Payments' => $this->importPayments($id),
-                '12. Notification Types' => $this->importNotificationTypes($id),
-                '13. Communications' => $this->importCommunications($id),
-                '14. Products (CMS7)' => $this->importProductsWithTeam($id),
-                '15. Stores (Pedimos Facil -> Teams)' => $this->importStoresToTeams($id),
+                '7. Project Categories' => $this->importProjectCategories($id),
+                '8. Projects' => $this->importProjects($id),
+                '9. Invoices' => $this->importInvoices($id),
+                '10. Billing Addresses' => $this->importBillingAddresses($id),
+                '11. Invoice Items' => $this->importInvoiceItems($id),
+                '12. Payments' => $this->importPayments($id),
+                '13. Notification Types' => $this->importNotificationTypes($id),
+                '14. Communications' => $this->importCommunications($id),
+                '15. Products (CMS7)' => $this->importProductsWithTeam($id),
+                '16. Stores (Pedimos Facil -> Teams)' => $this->importStoresToTeams($id),
                 default => throw new \Exception('Invalid type selected'),
             };
 
@@ -1778,6 +1793,55 @@ class ImportDataCommand extends Command
     }
 
     /**
+     * Import Legacy project categories (categorias_generales padre = 40) into the projects module.
+     */
+    protected function importProjectCategories($id = null)
+    {
+        $this->info('🏷️  Importing Legacy project categories...');
+
+        $stats = [
+            'imported' => 0,
+            'updated' => 0,
+            'message' => null,
+        ];
+
+        try
+        {
+            app('db')->connection('mysql_legacy')->getPdo();
+            $service = app(ProjectCategoryLegacyImportService::class);
+
+            if ($id)
+            {
+                $categoryId = $service->resolveCategoryIdFromLegacy((int) $id);
+                if ($categoryId === null)
+                {
+                    $stats['message'] = 'Legacy project category not found or projects module missing.';
+
+                    return $stats;
+                }
+
+                $stats['imported'] = 1;
+                $this->info("   Resolved Legacy category {$id} → categories.id {$categoryId}");
+
+                return $stats;
+            }
+
+            $result = $service->importAllFromLegacy();
+            $stats['imported'] = $result['imported'];
+            $stats['updated'] = $result['updated'];
+            $stats['message'] = $result['message'];
+
+            $this->info("   Legacy rows: {$result['total_legacy']}; imported: {$result['imported']}; updated: {$result['updated']}; skipped: {$result['skipped']}");
+        } catch (\Exception $e)
+        {
+            $this->newLine();
+            throw new \Exception('Error importing project categories: '.$e->getMessage());
+        }
+
+        return $stats;
+    }
+
+    /**
      * Import projects from remote database
      */
     protected function importProjects($id = null)
@@ -1794,6 +1858,17 @@ class ImportDataCommand extends Command
         {
             // Test connection
             app('db')->connection('mysql_legacy')->getPdo();
+
+            // Ensure Legacy project categories exist under the projects module before mapping.
+            $categoryService = app(ProjectCategoryLegacyImportService::class);
+            $categoryImport = $categoryService->importAllFromLegacy();
+            if ($categoryImport['message'] && $categoryImport['total_legacy'] === 0)
+            {
+                $this->warn('   '.$categoryImport['message']);
+            } else
+            {
+                $this->info("   Project categories ready (imported: {$categoryImport['imported']}, updated: {$categoryImport['updated']})");
+            }
 
             // Get the CMS group
             $cmsGroup = env('CMS_GROUP', 502);
@@ -1841,16 +1916,8 @@ class ImportDataCommand extends Command
                         continue;
                     }
 
-                    // Verificar si la categoría existe en categories, si no, usar NULL
-                    $categoryId = null;
-                    if ($project->id_categoria)
-                    {
-                        $categoryExists = app('db')->table('categories')->where('id', $project->id_categoria)->exists();
-                        if ($categoryExists)
-                        {
-                            $categoryId = $project->id_categoria;
-                        }
-                    }
+                    $legacyCategoryId = ! empty($project->id_categoria) ? (int) $project->id_categoria : null;
+                    $categoryId = $categoryService->resolveCategoryIdFromLegacy($legacyCategoryId);
 
                     $existingProject = \App\Models\Project::where('id', $project->id)->first();
 
@@ -1875,11 +1942,16 @@ class ImportDataCommand extends Command
 
                     if ($existingProject)
                     {
-                        // Preserve local values when legacy is empty
+                        // Preserve local values when legacy is empty; always refresh category when Legacy has one.
+                        $alwaysUpdate = ['status_id', 'enterprise_id', 'responsible_id'];
+                        if ($categoryId !== null)
+                        {
+                            $alwaysUpdate[] = 'category_id';
+                        }
                         $mergedData = $this->mergePreservingLocal(
                             $projectData,
                             $existingProject,
-                            ['status_id', 'enterprise_id', 'responsible_id'], // Always update these fields
+                            $alwaysUpdate,
                         );
                         $existingProject->update($mergedData);
                         $stats['updated']++;
@@ -2823,56 +2895,60 @@ class ImportDataCommand extends Command
         $this->newLine();
 
         // Import in order to respect foreign key constraints
-        $this->info('📂 Step 1/13: Importing Categories...');
+        $this->info('📂 Step 1/14: Importing Categories...');
         $this->processImport('2. Categories');
         $this->newLine();
 
-        $this->info('🏢 Step 2/13: Importing Enterprises...');
+        $this->info('🏢 Step 2/14: Importing Enterprises...');
         $this->processImport('5. Enterprises');
         $this->newLine();
 
-        $this->info('🏬 Step 3/13: Importing Stores (Pedimos Facil -> Teams)...');
-        $this->processImport('15. Stores (Pedimos Facil -> Teams)');
+        $this->info('🏬 Step 3/14: Importing Stores (Pedimos Facil -> Teams)...');
+        $this->processImport('16. Stores (Pedimos Facil -> Teams)');
         $this->newLine();
 
-        $this->info('📦 Step 4/13: Importing Services...');
+        $this->info('📦 Step 4/14: Importing Services...');
         $this->processImport('6. Services');
         $this->newLine();
 
-        $this->info('📁 Step 5/13: Importing Projects...');
-        $this->processImport('7. Projects');
+        $this->info('🏷️  Step 5/14: Importing Project Categories...');
+        $this->processImport('7. Project Categories');
         $this->newLine();
 
-        $this->info('📋 Step 6/13: Importing Billing Addresses...');
-        $this->processImport('9. Billing Addresses');
+        $this->info('📁 Step 6/14: Importing Projects...');
+        $this->processImport('8. Projects');
         $this->newLine();
 
-        $this->info('📄 Step 7/13: Importing Invoices...');
-        $this->processImport('8. Invoices');
+        $this->info('📋 Step 7/14: Importing Billing Addresses...');
+        $this->processImport('10. Billing Addresses');
         $this->newLine();
 
-        $this->info('📝 Step 8/13: Importing Invoice Items...');
-        $this->processImport('10. Invoice Items');
+        $this->info('📄 Step 8/14: Importing Invoices...');
+        $this->processImport('9. Invoices');
         $this->newLine();
 
-        $this->info('💳 Step 9/13: Importing Payment Accounts...');
+        $this->info('📝 Step 9/14: Importing Invoice Items...');
+        $this->processImport('11. Invoice Items');
+        $this->newLine();
+
+        $this->info('💳 Step 10/14: Importing Payment Accounts...');
         $this->processImport('4. Payment Accounts');
         $this->newLine();
 
-        $this->info('💰 Step 10/13: Importing Payments (linking enterprises & invoices)...');
-        $this->processImport('11. Payments');
+        $this->info('💰 Step 11/14: Importing Payments (linking enterprises & invoices)...');
+        $this->processImport('12. Payments');
         $this->newLine();
 
-        $this->info('👥 Step 11/13: Importing Users/Contacts...');
+        $this->info('👥 Step 12/14: Importing Users/Contacts...');
         $this->processImport('1. Users');
         $this->newLine();
 
-        $this->info('🔔 Step 12/13: Importing Notification Types...');
-        $this->processImport('12. Notification Types');
+        $this->info('🔔 Step 13/14: Importing Notification Types...');
+        $this->processImport('13. Notification Types');
         $this->newLine();
 
-        $this->info('📞 Step 13/13: Importing Notifications...');
-        $this->processImport('13. Communications');
+        $this->info('📞 Step 14/14: Importing Notifications...');
+        $this->processImport('14. Communications');
         $this->newLine();
 
         $this->info('✅ Full import completed successfully!');

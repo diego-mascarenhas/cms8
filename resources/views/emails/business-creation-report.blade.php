@@ -38,7 +38,7 @@
     <div class="container">
         <div class="header">
             <a href="{{ config('app.url') }}" class="header-logo" style="display: block; margin-bottom: 16px;">
-                <img src="{{ url(Helper::logoAsset('dark')) }}" alt="{{ config('app.name') }}" height="40" style="height: 40px; width: auto; vertical-align: middle;" />
+                <img src="{{ url(Helper::logoAsset('light')) }}" alt="{{ config('app.name') }}" height="40" style="height: 40px; width: auto; vertical-align: middle;" />
             </a>
             <h1>{{ __('Tu informe de negocio') }}</h1>
             <p>{{ __('Resumen de la configuración y recomendaciones generadas.') }}</p>

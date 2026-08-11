@@ -59,7 +59,7 @@ class SendTaskCommunication implements ShouldQueue
             $recipients = $this->communication->recipients;
             $this->communication->load('user');
 
-            $logoUrl = url(Helpers::logoAsset('dark'));
+            $logoUrl = url(Helpers::logoAsset('light'));
             $appName = config('app.name');
 
             // Send email to responsible when selected
