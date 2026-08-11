@@ -90,6 +90,7 @@ class InvoiceItemLegacySyncService
         }
 
         $serviceModuleId = Module::query()->where('key', 'services')->value('id');
+        $projectsModuleId = Module::query()->where('key', 'projects')->value('id');
 
         $allCategories = DB::connection('mysql_legacy')
             ->table('categorias_generales')
@@ -103,6 +104,8 @@ class InvoiceItemLegacySyncService
         {
             return $stats;
         }
+
+        $legacyById = $allCategories->keyBy(fn (object $row): int => (int) $row->id);
 
         $parentCategories = $allCategories->filter(
             fn (object $row): bool => $row->padre === null || (int) $row->padre === 0,
@@ -125,7 +128,8 @@ class InvoiceItemLegacySyncService
                 continue;
             }
 
-            $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, null);
+            $moduleId = $this->moduleIdForLegacyCategory($row, $legacyById, $serviceModuleId, $projectsModuleId);
+            $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $moduleId, null);
             $this->incrementCategoryUpsertStat($stats, $result, isParent: true);
         }
 
@@ -149,7 +153,8 @@ class InvoiceItemLegacySyncService
                 continue;
             }
 
-            $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, (int) $row->padre);
+            $moduleId = $this->moduleIdForLegacyCategory($row, $legacyById, $serviceModuleId, $projectsModuleId);
+            $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $moduleId, (int) $row->padre);
             $this->incrementCategoryUpsertStat($stats, $result, isParent: false);
         }
 
@@ -193,13 +198,33 @@ class InvoiceItemLegacySyncService
         }
 
         $serviceModuleId = Module::query()->where('key', 'services')->value('id');
+        $projectsModuleId = Module::query()->where('key', 'projects')->value('id');
 
+        $requestedIds = $legacyCategoryIds->unique()->values()->all();
         $legacyRows = DB::connection('mysql_legacy')
             ->table('categorias_generales')
             ->where('grupo', $this->cmsGroup())
-            ->whereIn('id', $legacyCategoryIds->unique()->values()->all())
+            ->whereIn('id', $requestedIds)
             ->get()
             ->keyBy('id');
+
+        // Load ancestors so module resolution can walk to the root (Hosting vs Desarrollos).
+        $parentIdsToLoad = $legacyRows
+            ->map(fn (object $row): int => (int) ($row->padre ?? 0))
+            ->filter(fn (int $id): bool => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
+        if ($parentIdsToLoad !== [])
+        {
+            $ancestors = DB::connection('mysql_legacy')
+                ->table('categorias_generales')
+                ->where('grupo', $this->cmsGroup())
+                ->whereIn('id', $parentIdsToLoad)
+                ->get()
+                ->keyBy('id');
+            $legacyRows = $legacyRows->union($ancestors);
+        }
 
         foreach ($legacyCategoryIds->unique() as $legacyCategoryId)
         {
@@ -218,10 +243,11 @@ class InvoiceItemLegacySyncService
             }
 
             $isParent = $row->padre === null || (int) $row->padre === 0;
+            $moduleId = $this->moduleIdForLegacyCategory($row, $legacyRows, $serviceModuleId, $projectsModuleId);
 
             if ($isParent)
             {
-                $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, null);
+                $result = $this->upsertCategoryFromLegacyRow($row, $teamId, $moduleId, null);
                 $this->incrementCategoryUpsertStat($stats, $result, isParent: true);
             } else
             {
@@ -234,7 +260,8 @@ class InvoiceItemLegacySyncService
 
                 if ($parentRow !== null && ! $this->legacyParentCategoryExists((int) $parentRow->id, $teamId))
                 {
-                    $parentResult = $this->upsertCategoryFromLegacyRow($parentRow, $teamId, $serviceModuleId, null);
+                    $parentModuleId = $this->moduleIdForLegacyCategory($parentRow, $legacyRows, $serviceModuleId, $projectsModuleId);
+                    $parentResult = $this->upsertCategoryFromLegacyRow($parentRow, $teamId, $parentModuleId, null);
                     $this->incrementCategoryUpsertStat($stats, $parentResult, isParent: true);
                 }
 
@@ -243,7 +270,7 @@ class InvoiceItemLegacySyncService
                     continue;
                 }
 
-                $childResult = $this->upsertCategoryFromLegacyRow($row, $teamId, $serviceModuleId, (int) $row->padre);
+                $childResult = $this->upsertCategoryFromLegacyRow($row, $teamId, $moduleId, (int) $row->padre);
                 $this->incrementCategoryUpsertStat($stats, $childResult, isParent: false);
             }
         }
@@ -589,6 +616,51 @@ class InvoiceItemLegacySyncService
         $escapedTable = str_replace('`', '``', $table);
 
         DB::statement("ALTER TABLE `{$escapedTable}` AUTO_INCREMENT = {$next}");
+    }
+
+    /**
+     * Hosting (padre/root 10) → services; Desarrollos (padre/root 40) → projects.
+     *
+     * @param  Collection<int|string, object>  $legacyById
+     */
+    private function moduleIdForLegacyCategory(
+        object $row,
+        Collection $legacyById,
+        mixed $servicesModuleId,
+        mixed $projectsModuleId,
+    ): ?int {
+        $current = $row;
+        $guard = 0;
+
+        while ($current && $guard < 20)
+        {
+            $padre = isset($current->padre) ? (int) $current->padre : 0;
+            if ($padre <= 0)
+            {
+                break;
+            }
+
+            $parent = $legacyById->get($padre);
+            if ($parent === null)
+            {
+                break;
+            }
+
+            $current = $parent;
+            $guard++;
+        }
+
+        $rootId = (int) ($current->id ?? $row->id);
+        $rootName = mb_strtolower(trim((string) ($current->categoria ?? '')));
+
+        if (
+            $rootId === \App\Services\ProjectCategoryLegacyImportService::LEGACY_PARENT_ID
+            || $rootName === 'desarrollos'
+        ) {
+            return $projectsModuleId !== null ? (int) $projectsModuleId : ($servicesModuleId !== null ? (int) $servicesModuleId : null);
+        }
+
+        return $servicesModuleId !== null ? (int) $servicesModuleId : null;
     }
 
     /**

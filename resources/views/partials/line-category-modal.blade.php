@@ -31,7 +31,7 @@
                     </div>
                 @endif
                 <div id="line-category-empty" class="alert alert-warning {{ count($categoryOptions) ? 'd-none' : '' }} mb-3" role="status">
-                    {{ __('No service categories yet. Use the gear to create them, or type a name in the search and press Add.') }}
+                    {{ __('No categories yet. Hosting categories are under Services; Desarrollos under Projects. Use the gear or type a name and press Add.') }}
                 </div>
                 <label for="{{ $selectId }}" class="form-label">{{ __('Select a category') }}</label>
                 <select

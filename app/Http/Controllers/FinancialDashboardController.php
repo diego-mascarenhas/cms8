@@ -195,7 +195,7 @@ class FinancialDashboardController extends Controller
             'uncategorizedOnly' => $uncategorizedOnly,
             'canEditCategory' => $canEditCategory,
             'categoryOptions' => $canEditCategory
-                ? $this->serviceCategoryOptionsService->optionsForTeam($teamId)
+                ? $this->serviceCategoryOptionsService->optionsForInvoiceLines($teamId)
                 : [],
         ]);
     }

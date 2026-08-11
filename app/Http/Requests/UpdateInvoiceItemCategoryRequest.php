@@ -36,7 +36,7 @@ class UpdateInvoiceItemCategoryRequest extends FormRequest
 
             $teamId = (int) auth()->user()->currentTeam->id;
 
-            if (! app(ServiceCategoryOptionsService::class)->belongsToTeamServices($teamId, (int) $categoryId))
+            if (! app(ServiceCategoryOptionsService::class)->belongsToTeamInvoiceLineCategory($teamId, (int) $categoryId))
             {
                 $validator->errors()->add('category_id', __('The selected category is invalid.'));
             }
