@@ -12,7 +12,7 @@
 <body>
 	@php
 		$templateHtml = $page->gjs_data['html'] ?? '';
-		$logoUrl = url(\App\Helpers\Helpers::logoAsset('dark'));
+		$logoUrl = url(\App\Helpers\Helpers::logoAsset('light'));
 		$templateHtml = str_replace(\App\Services\TemplateHtmlGenerationService::LOGO_URL_PLACEHOLDER, $logoUrl, $templateHtml);
 		// Fix existing templates that used external placeholder images (e.g. via.placeholder.com)
 		$templateHtml = preg_replace('#(<img\s[^>]*\ssrc=["\'])https?://[^"\']*placeholder\.com[^"\']*(["\'])#i', '$1' . $logoUrl . '$2', $templateHtml);

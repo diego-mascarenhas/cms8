@@ -39,7 +39,7 @@
   <header class="cms-nav">
     <div class="cms-container cms-nav-inner">
       <a href="{{ route('humano') }}" class="cms-nav-brand" aria-label="{{ config('app.name') }}">
-        <img src="{{ Helper::logoAsset('light') }}" alt="{{ config('app.name') }}">
+        <img src="{{ Helper::logoAsset('dark') }}" alt="{{ config('app.name') }}">
       </a>
       <ul class="cms-nav-links">
         <li><a href="#metricas">{{ __('performance_insight_landing.nav.metrics') }}</a></li>

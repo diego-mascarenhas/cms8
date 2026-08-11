@@ -1,7 +1,7 @@
 @php
   $adminBullets = trans('cms_landing.newsletter.admin_bullets');
   $userBullets = trans('cms_landing.newsletter.user_bullets');
-  $logoUrl = url(Helper::logoAsset('light'));
+  $logoUrl = url(Helper::logoAsset('dark'));
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">

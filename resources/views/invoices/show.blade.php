@@ -75,7 +75,9 @@
           <div class="mb-xl-0 mb-4">
             <div class="mb-4">
               <img
-                src="{{ Helper::logoAsset('dark') }}?v={{ config('variables.templateVersion', '1') }}"
+                src="{{ Helper::logoAssetForStyle() }}?v={{ config('variables.templateVersion', '1') }}"
+                data-app-light-img="{{ Helper::logoThemeDataImg('light') }}"
+                data-app-dark-img="{{ Helper::logoThemeDataImg('dark') }}"
                 alt="{{ config('app.name') }}"
                 class="d-block"
                 style="max-height: 3.25rem; width: auto; height: auto; max-width: 220px; object-fit: contain; object-position: left center;"
