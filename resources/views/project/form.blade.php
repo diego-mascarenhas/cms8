@@ -594,8 +594,8 @@
                     + formatEuros(laborDiscountAmount) + '</p>';
             }
             html += '<p><strong>{{ __("Total") }}: '
-                + payableTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')
-                + '€ + {{ __("I.V.A.") }}</strong></p>';
+                + formatEuros(payableTotal)
+                + ' + {{ __("I.V.A.") }}</strong></p>';
 
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
             html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';

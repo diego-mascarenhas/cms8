@@ -326,13 +326,13 @@
                     <span>{{ __('Tokens') }}</span>
                     <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
                     <span>{{ __('Subtotal') }}</span>
-                    <span style="text-align:right;">{{ number_format($grandTotal, 0, '', '.') }} €</span>
+                    <span style="text-align:right;">{{ $formatEuros($grandTotal) }}</span>
                     @if ($discountPercent > 0)
                         <span>{{ __('Discount on labor') }} (−{{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%)</span>
                         <span style="text-align:right;">−{{ $formatEuros($laborDiscountAmount) }}</span>
                     @endif
                     <strong>{{ __('Total') }}</strong>
-                    <strong style="text-align:right;">{{ number_format($payableTotal, 0, '', '.') }} € + {{ __('I.V.A.') }}</strong>
+                    <strong style="text-align:right;">{{ $formatEuros($payableTotal) }} + {{ __('I.V.A.') }}</strong>
                 </div>
             </div>
 
@@ -370,7 +370,11 @@
             <div class="notice">
                 <strong>{{ __('Important before accepting') }}</strong><br>
                 {{ __('The project will not start until 30% of the payment is received (:amount).', [
-                    'amount' => number_format($depositAmount, 0, '', '.').' €',
+                    'amount' => $formatEuros($depositAmount),
+                ]) }}
+                <br>
+                {{ __('The remaining amount (:remaining): if you authorize the debit, it will be charged when the project is completed; if you pay yourself, payment is due upon completion or within 30 days after the agreed completion date.', [
+                    'remaining' => $formatEuros(max(0, $payableTotal - $depositAmount)),
                 ]) }}
             </div>
 
@@ -383,11 +387,11 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
-                <label class="check @error('accept_deposit_terms') is-invalid @enderror">
-                    <input type="checkbox" name="accept_deposit_terms" value="1" {{ old('accept_deposit_terms') ? 'checked' : '' }}>
-                    <span>{{ __('I understand that the project will not start until 30% of the payment is received.') }}</span>
+                <label class="check @error('accept_debit') is-invalid @enderror">
+                    <input type="checkbox" name="accept_debit" value="1" {{ old('accept_debit') ? 'checked' : '' }}>
+                    <span>{{ __('I authorize the debit of this amount (:amount).', ['amount' => $formatEuros($depositAmount)]) }}</span>
                 </label>
-                @error('accept_deposit_terms')
+                @error('accept_debit')
                     <div class="invalid-feedback">{{ $message }}</div>
                 @enderror
                 <div class="actions">
@@ -423,10 +427,6 @@
             </dialog>
         @endif
     @endif
-
-    <p class="footer">
-        {{ __('Amounts do not include VAT.') }}
-    </p>
 </div>
 @if ($hasContent && $budgetToken && ! in_array($responseStatus, ['accepted', 'reformulation_requested'], true))
 <script>
