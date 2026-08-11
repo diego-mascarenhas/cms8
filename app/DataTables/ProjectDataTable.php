@@ -2,7 +2,10 @@
 
 namespace App\DataTables;
 
+use App\Models\Category;
+use App\Models\Module;
 use App\Models\Project;
+use App\Models\ProjectStatus;
 use App\Support\DataTableFormatter;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
@@ -118,32 +121,106 @@ class ProjectDataTable extends DataTable
             $query->where('responsible_id', $user->id);
         }
 
+        $statusFilter = trim((string) request()->input('status_filter', ''));
+        if ($statusFilter !== '')
+        {
+            $statusIds = array_values(array_filter(array_map('intval', preg_split('/[|,]/', $statusFilter) ?: [])));
+            if ($statusIds !== [])
+            {
+                $query->whereIn('status_id', $statusIds);
+            }
+        }
+
+        $categoryFilter = trim((string) request()->input('category_filter', ''));
+        if ($categoryFilter === 'none')
+        {
+            $query->whereNull('category_id');
+        } elseif ($categoryFilter !== '' && ctype_digit($categoryFilter))
+        {
+            $query->where('category_id', (int) $categoryFilter);
+        }
+
         return $query;
     }
 
     public function html(): HtmlBuilder
     {
+        $statusLabel = e(__('Status'));
+        $categoryLabel = e(__('Category'));
+        $allLabel = e(__('All'));
+        $uncategorizedLabel = e(__('Uncategorized'));
+
+        $statusOptionsHtml = '<option value="">'.$allLabel.'</option>';
+        $statusOptionsHtml .= '<option value="1">'.e(__('project_status.BUDGET')).'</option>';
+        $statusOptionsHtml .= '<option value="2">'.e(__('project_status.BUDGETED')).'</option>';
+        $statusOptionsHtml .= '<option value="3,7,8,9">'.e(__('project_status.IN_PROGRESS')).'</option>';
+        $statusOptionsHtml .= '<option value="10,11">'.e(__('project_status.TO_INVOICE')).'</option>';
+        $statusOptionsHtml .= '<option disabled>──────────</option>';
+
+        foreach (ProjectStatus::getOptions() as $status)
+        {
+            $statusOptionsHtml .= '<option value="'.e((string) $status['id']).'">'.e((string) $status['name']).'</option>';
+        }
+
+        $categoryOptionsHtml = '<option value="">'.$allLabel.'</option>';
+        $categoryOptionsHtml .= '<option value="none">'.$uncategorizedLabel.'</option>';
+
+        foreach ($this->projectCategoryFilterOptions() as $category)
+        {
+            $categoryOptionsHtml .= '<option value="'.e((string) $category['id']).'">'.e((string) $category['name']).'</option>';
+        }
+
+        $initComplete = "function () {
+    var api = this.api();
+    var f = jQuery('#project-table_filter');
+    if (! f.length) { return; }
+    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+    if (! jQuery('#project-filter-status').length) {
+        f.prepend(
+            '<div id=\"project-table-filters\" class=\"d-flex flex-wrap align-items-center gap-2 flex-shrink-1\">' +
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"project-filter-status\" class=\"form-label mb-0 me-1 text-nowrap small\">{$statusLabel}</label>' +
+            '<select id=\"project-filter-status\" class=\"form-select form-select-sm\" style=\"width:10rem;\">{$statusOptionsHtml}</select>' +
+            '</div>' +
+            '<div class=\"d-inline-flex align-items-center flex-shrink-0\">' +
+            '<label for=\"project-filter-category\" class=\"form-label mb-0 me-1 text-nowrap small\">{$categoryLabel}</label>' +
+            '<select id=\"project-filter-category\" class=\"form-select form-select-sm\" style=\"width:12rem;\">{$categoryOptionsHtml}</select>' +
+            '</div></div>'
+        );
+    }
+    f.find('input[type=\"search\"]').closest('label').addClass('ms-auto mb-0 flex-shrink-0 text-nowrap');
+    jQuery('#project-filter-status, #project-filter-category').off('change.projectFilters').on('change.projectFilters', function () {
+        api.ajax.reload();
+    });
+    jQuery('.filter-status').off('click.projectFilter').on('click.projectFilter', function (e) {
+        e.preventDefault();
+        var status = jQuery(this).data('status');
+        jQuery('#project-filter-status').val(status ? String(status) : '').trigger('change');
+    });
+}";
+
         return $this
             ->builder()
             ->setTableId('project-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax(
+                '',
+                "data.status_filter = ($('#project-filter-status').val() || ''); data.category_filter = ($('#project-filter-category').val() || '');",
+            )
             ->dom('frtip')
             ->orderBy(0, 'desc')
             ->responsive(true)
             ->processing(false)
-            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/es.json'])
             ->parameters([
                 'autoWidth' => false,
-                'initComplete' => "function() {
-					var api = this.api();
-
-					\$('.filter-status').off('click.projectFilter').on('click.projectFilter', function(e) {
-						e.preventDefault();
-						var status = \$(this).data('status');
-						api.column('status_id:name').search(status ? status : '').draw();
-					});
-				}",
+                'initComplete' => $initComplete,
+                'drawCallback' => "function () {
+                    var f = jQuery('#project-table_filter');
+                    f.addClass('d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2');
+                    f.find('input[type=\"search\"]').closest('label').addClass('ms-auto mb-0 flex-shrink-0 text-nowrap');
+                }",
             ]);
     }
 
@@ -161,11 +238,9 @@ class ProjectDataTable extends DataTable
                 ->orderable(false),
             Column::make('category_id')
                 ->title(__('Category'))
-                ->className('text-center')
-                ->addClass('none')
+                ->addClass('min-tablet')
                 ->searchable(true)
-                ->orderable(false)
-                ->visible(false),
+                ->orderable(false),
             Column::make('responsible_name')
                 ->title(__('Responsible'))
                 ->className('text-center')
@@ -198,5 +273,40 @@ class ProjectDataTable extends DataTable
     protected function filename(): string
     {
         return 'Project_'.date('YmdHis');
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    private function projectCategoryFilterOptions(): array
+    {
+        $moduleId = Module::query()->where('key', 'projects')->value('id');
+        if (! $moduleId)
+        {
+            return [];
+        }
+
+        $teamId = Auth::user()?->currentTeam?->id;
+
+        return Category::query()
+            ->where('module_id', (int) $moduleId)
+            ->where('status', '>', 0)
+            ->whereNotNull('parent_id')
+            ->where(function ($query) use ($teamId)
+            {
+                $query->whereNull('team_id');
+                if ($teamId)
+                {
+                    $query->orWhere('team_id', $teamId);
+                }
+            })
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Category $category): array => [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+            ])
+            ->all();
     }
 }
