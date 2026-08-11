@@ -249,6 +249,7 @@ class ProjectController extends Controller
         $data['budget_client_response'] = [
             'status' => 'accepted',
             'accepted_by_name' => $request->validated('accepted_by_name'),
+            'accept_debit' => $request->boolean('accept_debit'),
             'message' => null,
             'responded_at' => now()->toIso8601String(),
             'ip' => $request->ip(),

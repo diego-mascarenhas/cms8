@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\Helpers;
 use App\Models\Category;
 use App\Models\Module;
 use App\Models\Project;
@@ -880,25 +881,38 @@ class ProjectBudgetSpecService
                 : null;
             $baseTokens = $this->resolveEstimatedTokens($task);
             $balanced = $this->applyHoursTokensBalance($price, $hours, $baseTokens, $savings, $aiUsage);
+            $rounded = $this->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
 
-            if ($balanced['labor'] !== null)
+            if ($rounded['labor'] !== null)
             {
-                $totalLabor += $balanced['labor'];
+                $totalLabor += $rounded['labor'];
             }
             $totalTokenBillable += $balanced['token_billable'];
         }
 
         $grandTotal = (int) round($totalLabor + $totalTokenBillable);
+        $usedPriceFallback = false;
 
         if ($grandTotal <= 0 && is_numeric($project->price) && (float) $project->price > 0)
         {
             $grandTotal = (int) round((float) $project->price);
+            $usedPriceFallback = true;
         }
 
         $discountPercent = is_numeric($project->discount)
             ? max(0.0, min(100.0, (float) $project->discount))
             : 0.0;
-        $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
+
+        if ($usedPriceFallback)
+        {
+            $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
+        } else
+        {
+            // Commercial discount applies to labor only; tokens stay full price.
+            $discountedLabor = round($totalLabor * (1 - ($discountPercent / 100)), 2);
+            $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
+        }
+
         $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
 
         return [
@@ -991,6 +1005,36 @@ class ProjectBudgetSpecService
             'transferred_hours' => $transferredHours,
             'original_total' => $originalTotal,
             'target_total' => $targetTotal,
+        ];
+    }
+
+    /**
+     * Round billable hours up to 30-minute steps and scale labor euros proportionally.
+     *
+     * @return array{hours: float, labor: ?float}
+     */
+    public function roundLaborToHalfHourSteps(?float $labor, float $hours): array
+    {
+        $roundedHours = Helpers::ceilHoursToHalfHour($hours) ?? 0.0;
+
+        if ($labor === null)
+        {
+            return ['hours' => $roundedHours, 'labor' => null];
+        }
+
+        if ($hours <= 0)
+        {
+            return ['hours' => $roundedHours, 'labor' => round($labor, 2)];
+        }
+
+        if (abs($roundedHours - $hours) < 0.00001)
+        {
+            return ['hours' => $roundedHours, 'labor' => round($labor, 2)];
+        }
+
+        return [
+            'hours' => $roundedHours,
+            'labor' => round($labor * ($roundedHours / $hours), 2),
         ];
     }
 

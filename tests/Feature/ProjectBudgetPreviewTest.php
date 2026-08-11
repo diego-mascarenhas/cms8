@@ -84,15 +84,23 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee('report-header', false);
         $response->assertSee('highlight', false);
         $response->assertSee('idoneo-logo.svg', false);
-        $response->assertSee(__('Discount'), false);
+        $response->assertSee(__('Discount on labor'), false);
         $response->assertSee('30%', false);
         $response->assertDontSee('layout-wrapper', false);
         $response->assertSee(__('Important before accepting'), false);
         $response->assertSee(__('Accept quote'), false);
         $response->assertSee(__('Request reformulation'), false);
-        $response->assertSee(__('I understand that the project will not start until 30% of the payment is received.'), false);
-        $response->assertSee(__('Amounts do not include VAT.'), false);
-        $response->assertSee(__('This quote already includes estimated token savings.'), false);
+        $response->assertSee(
+            explode(':remaining', __('The remaining amount (:remaining): if you authorize the debit, it will be charged when the project is completed; if you pay yourself, payment is due upon completion or within 30 days after the agreed completion date.'))[0],
+            false,
+        );
+        $response->assertSee(
+            explode(':amount', __('I authorize the debit of this amount (:amount).'))[0],
+            false,
+        );
+        $response->assertDontSee(__('Amounts do not include VAT.'), false);
+        $response->assertDontSee('already includes estimated', false);
+        $response->assertDontSee('ahorro estimado', false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
     }
@@ -105,7 +113,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $response = $this->from(route('project.budget-preview', $token))
             ->post(route('project.budget-preview.accept', $token), [
                 'accepted_by_name' => 'Jane Client',
-                'accept_deposit_terms' => '1',
+                'accept_debit' => '1',
             ]);
 
         $response->assertRedirect(route('project.budget-preview', $token));
@@ -117,6 +125,7 @@ class ProjectBudgetPreviewTest extends TestCase
 
         $this->assertSame('accepted', data_get($project->data, 'budget_client_response.status'));
         $this->assertSame('Jane Client', data_get($project->data, 'budget_client_response.accepted_by_name'));
+        $this->assertTrue((bool) data_get($project->data, 'budget_client_response.accept_debit'));
         $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $project->status_id);
 
         $this->get(route('project.budget-preview', $token))
@@ -150,7 +159,7 @@ class ProjectBudgetPreviewTest extends TestCase
     }
 
     #[Test]
-    public function public_budget_preview_requires_deposit_terms_to_accept(): void
+    public function public_budget_preview_accepts_quote_without_debit_authorization(): void
     {
         $token = $this->createBudgetPreviewProject()['token'];
 
@@ -160,24 +169,15 @@ class ProjectBudgetPreviewTest extends TestCase
             ]);
 
         $response->assertRedirect(route('project.budget-preview', $token));
-        $response->assertSessionHasErrors('accept_deposit_terms');
+        $response->assertSessionHas('budget_response_success');
+        $response->assertSessionDoesntHaveErrors('accept_debit');
 
         $project = Project::withoutGlobalScopes()
             ->where('data->budget_preview_token', $token)
             ->firstOrFail();
 
-        $this->assertNull(data_get($project->data, 'budget_client_response'));
-
-        $followUp = $this->followingRedirects()
-            ->from(route('project.budget-preview', $token))
-            ->post(route('project.budget-preview.accept', $token), [
-                'accepted_by_name' => 'Jane Client',
-            ]);
-
-        $followUp->assertOk();
-        $followUp->assertSee(__('You must confirm that the project will not start until 30% of the payment is received.'), false);
-        $followUp->assertDontSee('Select this tickbox', false);
-        $followUp->assertDontSee('Please fill out this field', false);
+        $this->assertSame('accepted', data_get($project->data, 'budget_client_response.status'));
+        $this->assertFalse((bool) data_get($project->data, 'budget_client_response.accept_debit'));
     }
 
     #[Test]

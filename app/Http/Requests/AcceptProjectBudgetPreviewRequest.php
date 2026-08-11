@@ -18,17 +18,15 @@ class AcceptProjectBudgetPreviewRequest extends FormRequest
     {
         return [
             'accepted_by_name' => 'nullable|string|max:255',
-            'accept_deposit_terms' => 'accepted',
+            'accept_debit' => 'nullable|boolean',
         ];
     }
 
-    /**
-     * @return array<string, string>
-     */
-    public function messages(): array
+    protected function prepareForValidation(): void
     {
-        return [
-            'accept_deposit_terms.accepted' => __('You must confirm that the project will not start until 30% of the payment is received.'),
-        ];
+        if (! $this->has('accept_debit'))
+        {
+            $this->merge(['accept_debit' => false]);
+        }
     }
 }

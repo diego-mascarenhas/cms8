@@ -200,6 +200,25 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
     }
 
     #[Test]
+    public function it_scales_labor_euros_when_hours_round_up_to_half_hour(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $scaled = $service->roundLaborToHalfHourSteps(100.80, 1.68);
+
+        $this->assertSame(2.0, $scaled['hours']);
+        $this->assertSame(120.0, $scaled['labor']);
+
+        $exact = $service->roundLaborToHalfHourSteps(100.0, 1.0);
+        $this->assertSame(1.0, $exact['hours']);
+        $this->assertSame(100.0, $exact['labor']);
+
+        $half = $service->roundLaborToHalfHourSteps(50.0, 0.4);
+        $this->assertSame(0.5, $half['hours']);
+        $this->assertSame(62.5, $half['labor']);
+    }
+
+    #[Test]
     public function it_computes_quote_totals_with_discount_and_price_fallback(): void
     {
         $service = new ProjectBudgetSpecService;
@@ -235,6 +254,33 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(10.0, $totals['discount_percent']);
         $this->assertSame(900, $totals['discounted_total']);
         $this->assertSame(900, $totals['payable_total']);
+
+        $withTokens = $service->computeQuoteTotals(new \App\Models\Project([
+            'discount' => 10,
+            'price' => null,
+            'data' => [
+                'ai_usage_percent' => 0,
+                'token_consumption' => ['savings_percent' => 57],
+                'suggested_tasks' => [
+                    [
+                        'title' => 'Module A',
+                        'included' => true,
+                        'estimated_hours' => 1,
+                        'unit_price' => 1000,
+                        // Enough tokens to produce a billable token line
+                        'estimated_tokens' => 1_000_000,
+                    ],
+                ],
+            ],
+        ]));
+
+        $this->assertGreaterThan(1000, $withTokens['grand_total']);
+        $tokenPortion = $withTokens['grand_total'] - 1000;
+        $this->assertSame(
+            (int) round(1000 * 0.9 + $tokenPortion),
+            $withTokens['discounted_total'],
+            'Discount must apply to labor only, not tokens',
+        );
 
         $fallback = $service->computeQuoteTotals(new \App\Models\Project([
             'discount' => 0,

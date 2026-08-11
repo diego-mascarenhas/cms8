@@ -240,9 +240,9 @@
         return String(tokens);
     }
     function formatHoursHuman(hours) {
-        var h = parseFloat(hours);
-        if (isNaN(h) || h <= 0) return '—';
-        var totalMinutes = Math.round(h * 60);
+        var rounded = ceilHoursToHalfHour(hours);
+        if (rounded === null || rounded <= 0) return '—';
+        var totalMinutes = Math.round(rounded * 60);
         var wholeHours = Math.floor(totalMinutes / 60);
         var minutes = totalMinutes % 60;
         if (wholeHours > 0 && minutes > 0) {
@@ -252,6 +252,33 @@
             return wholeHours + ' h';
         }
         return minutes + ' min';
+    }
+    function ceilHoursToHalfHour(hours) {
+        var h = parseFloat(hours);
+        if (isNaN(h) || h < 0) return null;
+        if (h <= 0) return 0;
+        return (Math.ceil((h * 60) / 30) * 30) / 60;
+    }
+    function roundLaborToHalfHourSteps(labor, hours) {
+        var roundedHours = ceilHoursToHalfHour(hours);
+        if (roundedHours === null) {
+            return { hours: 0, labor: labor };
+        }
+        var laborValue = parseFloat(labor);
+        if (isNaN(laborValue)) {
+            return { hours: roundedHours, labor: NaN };
+        }
+        var h = parseFloat(hours);
+        if (isNaN(h) || h <= 0) {
+            return { hours: roundedHours, labor: Math.round(laborValue * 100) / 100 };
+        }
+        if (Math.abs(roundedHours - h) < 0.00001) {
+            return { hours: roundedHours, labor: Math.round(laborValue * 100) / 100 };
+        }
+        return {
+            hours: roundedHours,
+            labor: Math.round(laborValue * (roundedHours / h) * 100) / 100
+        };
     }
     function formatEuros(amount) {
         var n = parseFloat(amount);
@@ -501,10 +528,7 @@
 
         var totalLabor = 0;
         var totalTokenBillable = 0;
-        var totalTokenCost = 0;
-        var totalBaseTokenBillable = 0;
         var totalHours = 0;
-        var totalHoursSaved = 0;
         var taskItems = '';
         tasks.forEach(function(t) {
             var title = (t.title || '—');
@@ -513,10 +537,10 @@
             var level = (t.resource_level != null && t.resource_level !== '') ? String(t.resource_level) : '—';
             var price = (t.unit_price != null && t.unit_price !== '') ? parseFloat(t.unit_price) : NaN;
             var baseTokens = resolveTaskTokens(t);
-            var basePricing = taskTokenPricing(t, savings);
             var balanced = applyHoursTokensBalance(price, hours, baseTokens, savings, aiUsage);
-            var laborCharged = balanced.labor;
-            var hoursCharged = balanced.hours;
+            var rounded = roundLaborToHalfHourSteps(balanced.labor, balanced.hours);
+            var laborCharged = rounded.labor;
+            var hoursCharged = rounded.hours;
             var tokenBillable = balanced.tokenBillable;
             var displayTokens = balanced.displayTokens;
             var details = [
@@ -540,10 +564,7 @@
                 taskItems += itemHtml;
                 if (!isNaN(laborCharged)) totalLabor += laborCharged;
                 totalTokenBillable += tokenBillable;
-                totalBaseTokenBillable += basePricing.billable;
-                totalTokenCost += balanced.cost;
                 totalHours += hoursCharged;
-                totalHoursSaved += basePricing.hoursSaved;
             } else {
                 taskItems += '<p style="margin:0 0 1.15em 0;"><s>'
                     + '<strong>' + escapeHtml(title) + '</strong><br>'
@@ -557,28 +578,27 @@
             var discount = parseFloat($('#discount').val());
             if (isNaN(discount) || discount < 0) discount = 0;
             if (discount > 100) discount = 100;
-            var discountedTotal = Math.round(grandTotal * (1 - (discount / 100)));
-            var totalFormatted = grandTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            var discountedFormatted = discountedTotal.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            // Commercial discount applies to labor only; tokens stay full price.
+            var laborDiscountAmount = Math.round(totalLabor * (discount / 100) * 100) / 100;
+            var discountedLabor = Math.round((totalLabor - laborDiscountAmount) * 100) / 100;
+            var discountedTotal = Math.round(discountedLabor + totalTokenBillable);
+            var payableTotal = discount > 0 ? discountedTotal : grandTotal;
+            var discountLabel = String(discount).replace('.', ',');
+
+            html += '<p><br></p><p><strong>{{ __("Budget") }}</strong></p>';
+            html += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
+            html += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
+            html += '<p>{{ __("Subtotal") }}: ' + formatEuros(grandTotal) + '</p>';
             if (discount > 0) {
-                html += '<p><strong>{{ __("Total") }}:</strong> <s>' + totalFormatted + '€</s> '
-                    + discountedFormatted + '€ + {{ __("I.V.A.") }}'
-                    + ' <em>(−' + String(discount).replace('.', ',') + '% · {{ __("labor") }} ' + formatEuros(totalLabor)
-                    + ' + {{ __("Tokens") }} ' + formatEuros(totalTokenBillable) + ')</em></p>';
-            } else {
-                html += '<p><strong>{{ __("Total") }}:</strong> ' + totalFormatted + '€ + {{ __("I.V.A.") }}'
-                    + ' <em>({{ __("labor") }} ' + formatEuros(totalLabor) + ' + {{ __("Tokens") }} ' + formatEuros(totalTokenBillable) + ')</em></p>';
+                html += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
+                    + formatEuros(laborDiscountAmount) + '</p>';
             }
+            html += '<p><strong>{{ __("Total") }}: '
+                + formatEuros(payableTotal)
+                + ' + {{ __("I.V.A.") }}</strong></p>';
+
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
             html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
-            var moneySaved = Math.max(0, totalBaseTokenBillable - totalTokenCost);
-            if (moneySaved > 0 || totalHoursSaved > 0) {
-                html += '<p style="font-size:0.9em;opacity:0.9;"><em>'
-                    + escapeHtml('{{ __("This quote already includes an estimated saving of :money and about :time.") }}'
-                        .replace(':money', formatEuros(moneySaved))
-                        .replace(':time', formatHoursHuman(totalHoursSaved)))
-                    + '</em></p>';
-            }
         }
 
         setBudgetPreviewHtml(html);
