@@ -749,15 +749,19 @@
 
 			<!-- Project status -->
 			<div class="col-md-6">
-				<label for="status_id" class="form-label">{{ __('Project Status') }}</label>
-				<select id="status_id" name="status_id" class="select2 form-select @error('status_id') is-invalid @enderror" data-placeholder="{{ __('Choose an option') }}">
-					@foreach($statuses as $status)
-						<option value="{{ $status['id'] }}" {{ old('status_id', $data->status_id ?? '') == $status['id'] ? 'selected' : '' }}>{{ $status['name'] }}</option>
-					@endforeach
-				</select>
-				@error('status_id')
-    <div class="invalid-feedback">{{ $message }}</div>
-@enderror
+				<div class="form-group">
+					<div class="d-flex align-items-center justify-content-between flex-nowrap gap-2 mb-1" style="min-height: 2.25rem;">
+						<label for="status_id" class="form-label mb-0">{{ __('Project Status') }}</label>
+					</div>
+					<select id="status_id" name="status_id" class="select2 form-select @error('status_id') is-invalid @enderror" data-placeholder="{{ __('Choose an option') }}">
+						@foreach($statuses as $status)
+							<option value="{{ $status['id'] }}" {{ old('status_id', $data->status_id ?? '') == $status['id'] ? 'selected' : '' }}>{{ $status['name'] }}</option>
+						@endforeach
+					</select>
+					@error('status_id')
+						<div class="invalid-feedback">{{ $message }}</div>
+					@enderror
+				</div>
 			</div>
 
 			<!-- Category -->
@@ -775,16 +779,19 @@
 
 			<!-- Dates -->
 			<div class="col-md-6">
-				<x-input-date id="date_material" name="date_material" label="{{ __('Material Delivery Date') }}"
-					value="{{ old('date_material', $data->date_material ?? '') }}" />
+				<x-input-date id="date_start" name="date_start" label="{{ __('Start Date') }}"
+					value="{{ old('date_start', $data->date_start ?? '') }}" />
+				@error('date_start')
+					<div class="invalid-feedback">{{ $message }}</div>
+				@enderror
 			</div>
 
 			<div class="col-md-6">
-				<x-input-date id="date_end" label="{{ __('Final Delivery Date') }}"
+				<x-input-date id="date_end" name="date_end" label="{{ __('Due date') }}"
 					value="{{ old('date_end', $data->date_end ?? '') }}" />
 				@error('date_end')
-    <div class="invalid-feedback">{{ $message }}</div>
-@enderror
+					<div class="invalid-feedback">{{ $message }}</div>
+				@enderror
 			</div>
 
 			<!-- Client + advisor -->
@@ -808,28 +815,6 @@
     <div class="invalid-feedback">{{ $message }}</div>
 @enderror
 			</div>
-
-			<!-- Additional fields for admins -->
-			@if(auth()->user()->hasRole('admin'))
-			{{-- Price and cost remain hidden; discount is edited in Budget data (AI). --}}
-
-			{{-- Hidden: Start date field --}}
-			{{--
-			<div class="col-md-6">
-				<x-input-date id="date_start" label="{{ __('Start Date') }}"
-					value="{{ old('date_start', $data->date_start ?? '') }}" />
-			</div>
-			--}}
-			@else
-			<!-- Simplified view for non-admins -->
-			{{-- Hidden: Start date field --}}
-			{{--
-			<div class="col-md-6">
-				<x-input-date id="date_start" label="{{ __('Start Date') }}"
-					value="{{ old('date_start', $data->date_start ?? '') }}" />
-			</div>
-			--}}
-			@endif
 
 			<!-- Notas del proyecto -->
 			<div class="col-12">
