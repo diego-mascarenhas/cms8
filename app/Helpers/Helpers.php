@@ -409,11 +409,38 @@ class Helpers
     }
 
     /**
+     * Round hours up to the next 30-minute step (e.g. 0.9 → 1.0, 1.2 → 1.5).
+     */
+    public static function ceilHoursToHalfHour(mixed $hours): ?float
+    {
+        if ($hours === null || $hours === '' || ! is_numeric($hours) || (float) $hours < 0)
+        {
+            return null;
+        }
+
+        $rawMinutes = ((float) $hours) * 60;
+        if ($rawMinutes <= 0)
+        {
+            return 0.0;
+        }
+
+        $ceiledMinutes = (int) (ceil($rawMinutes / 30) * 30);
+
+        return $ceiledMinutes / 60;
+    }
+
+    /**
      * Format decimal hours as a human-readable duration (e.g. 1.5 → "1 h 30 min").
      * Zero is "0 min"; missing/invalid values are "—".
+     * When $ceilToHalfHour is true, minutes are rounded up in 30-minute steps.
      */
-    public static function formatHoursHuman(mixed $hours): string
+    public static function formatHoursHuman(mixed $hours, bool $ceilToHalfHour = false): string
     {
+        if ($ceilToHalfHour)
+        {
+            $hours = self::ceilHoursToHalfHour($hours);
+        }
+
         if ($hours === null || $hours === '' || ! is_numeric($hours) || (float) $hours < 0)
         {
             return '—';

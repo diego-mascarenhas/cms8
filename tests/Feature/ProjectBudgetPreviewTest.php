@@ -84,7 +84,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee('report-header', false);
         $response->assertSee('highlight', false);
         $response->assertSee('idoneo-logo.svg', false);
-        $response->assertSee(__('Discount'), false);
+        $response->assertSee(__('Discount on labor'), false);
         $response->assertSee('30%', false);
         $response->assertDontSee('layout-wrapper', false);
         $response->assertSee(__('Important before accepting'), false);
@@ -92,7 +92,8 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee(__('Request reformulation'), false);
         $response->assertSee(__('I understand that the project will not start until 30% of the payment is received.'), false);
         $response->assertSee(__('Amounts do not include VAT.'), false);
-        $response->assertSee(__('This quote already includes estimated token savings.'), false);
+        $response->assertDontSee('already includes estimated', false);
+        $response->assertDontSee('ahorro estimado', false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
     }

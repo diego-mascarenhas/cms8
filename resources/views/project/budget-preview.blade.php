@@ -14,20 +14,7 @@
     $isoUrl = \App\Helpers\Helpers::logoAsset('iso');
 
     $formatHoursHuman = function ($hours): string {
-        if (! is_numeric($hours) || (float) $hours <= 0) {
-            return '—';
-        }
-        $totalMinutes = (int) round(((float) $hours) * 60);
-        $wholeHours = intdiv($totalMinutes, 60);
-        $minutes = $totalMinutes % 60;
-        if ($wholeHours > 0 && $minutes > 0) {
-            return $wholeHours.' h '.$minutes.' min';
-        }
-        if ($wholeHours > 0) {
-            return $wholeHours.' h';
-        }
-
-        return $minutes.' min';
+        return \App\Helpers\Helpers::formatHoursHuman($hours, true);
     };
 
     $formatEuros = function ($amount): string {
@@ -41,11 +28,8 @@
     $rows = [];
     $totalLabor = 0.0;
     $totalTokenBillable = 0.0;
-    $totalTokenCost = 0.0;
     $totalHours = 0.0;
-    $totalHoursSaved = 0.0;
     $totalDisplayTokens = 0;
-    $moneySaved = 0.0;
 
     foreach ($suggestedTasks as $t) {
         if (! is_array($t) || (($t['included'] ?? true) === false)) {
@@ -56,25 +40,18 @@
         $price = isset($t['unit_price']) && $t['unit_price'] !== '' && $t['unit_price'] !== null ? (float) $t['unit_price'] : null;
         $baseTokens = $budgetService->resolveEstimatedTokens($t);
         $balanced = $budgetService->applyHoursTokensBalance($price, $hours, $baseTokens, $savings, $aiUsage);
-        $laborCharged = $balanced['labor'];
-        $hoursCharged = $balanced['hours'];
+        $rounded = $budgetService->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
+        $laborCharged = $rounded['labor'];
+        $hoursCharged = $rounded['hours'];
         $billable = $balanced['token_billable'];
         $displayTokens = $balanced['display_tokens'];
-        $cost = $balanced['cost'];
-        $baseRemaining = max(0.01, 1 - ($savings / 100));
-        $baseCost = $budgetService->estimateTokenCostEuros((int) round($baseTokens * 0.7), max(0, $baseTokens - (int) round($baseTokens * 0.7)));
-        $baseBillable = round($baseCost / $baseRemaining, 2);
-        $baseDisplayTokens = (int) round($baseTokens / $baseRemaining);
 
         if ($laborCharged !== null) {
             $totalLabor += $laborCharged;
         }
         $totalTokenBillable += $billable;
-        $totalTokenCost += $cost;
         $totalHours += $hoursCharged;
-        $totalHoursSaved += max(0, ($baseDisplayTokens - $baseTokens) / 20000);
         $totalDisplayTokens += $displayTokens;
-        $moneySaved += max(0, $baseBillable - $baseCost);
 
         $rows[] = [
             'title' => (string) ($t['title'] ?? '—'),
@@ -90,7 +67,9 @@
     $weeks = $totalHours > 0 ? (int) ceil($totalHours / 40) : 0;
     $hasContent = $dimension !== '' || $estimatedTimes !== '' || $resources !== '' || count($rows) > 0;
     $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
-    $discountedTotal = (int) round($grandTotal * (1 - ($discountPercent / 100)));
+    $laborDiscountAmount = round($totalLabor * ($discountPercent / 100), 2);
+    $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
+    $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
     $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
     $depositAmount = (int) round($payableTotal * 0.30);
     $clientResponse = is_array($clientResponse ?? null) ? $clientResponse : null;
@@ -341,19 +320,20 @@
             </table>
 
             <div class="highlight">
-                @if ($discountPercent > 0)
-                    <strong>{{ __('Total') }}:
-                        <s>{{ number_format($grandTotal, 0, '', '.') }}€</s>
-                        {{ number_format($discountedTotal, 0, '', '.') }}€ + {{ __('I.V.A.') }}
-                    </strong><br>
-                    {{ __('Discount') }}: {{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%
-                    · {{ __('labor') }} {{ $formatEuros($totalLabor) }}
-                    · {{ __('Tokens') }} {{ $formatEuros($totalTokenBillable) }}
-                @else
-                    <strong>{{ __('Total') }}: {{ number_format($grandTotal, 0, '', '.') }}€ + {{ __('I.V.A.') }}</strong><br>
-                    {{ __('labor') }} {{ $formatEuros($totalLabor) }}
-                    · {{ __('Tokens') }} {{ $formatEuros($totalTokenBillable) }}
-                @endif
+                <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
+                    <span>{{ __('Labor') }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($totalLabor) }}</span>
+                    <span>{{ __('Tokens') }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
+                    <span>{{ __('Subtotal') }}</span>
+                    <span style="text-align:right;">{{ number_format($grandTotal, 0, '', '.') }} €</span>
+                    @if ($discountPercent > 0)
+                        <span>{{ __('Discount on labor') }} (−{{ rtrim(rtrim(number_format($discountPercent, 1, ',', ''), '0'), ',') }}%)</span>
+                        <span style="text-align:right;">−{{ $formatEuros($laborDiscountAmount) }}</span>
+                    @endif
+                    <strong>{{ __('Total') }}</strong>
+                    <strong style="text-align:right;">{{ number_format($payableTotal, 0, '', '.') }} € + {{ __('I.V.A.') }}</strong>
+                </div>
             </div>
 
             @if ($weeks > 0)
@@ -445,10 +425,6 @@
     @endif
 
     <p class="footer">
-        @if ($moneySaved > 0 || $totalHoursSaved > 0)
-            {{ __('This quote already includes estimated token savings.') }}
-            ·
-        @endif
         {{ __('Amounts do not include VAT.') }}
     </p>
 </div>
