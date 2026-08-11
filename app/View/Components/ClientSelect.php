@@ -9,7 +9,14 @@ use Illuminate\View\Component;
 class ClientSelect extends Component
 {
     /**
-     * @var Collection<int, string>
+     * @var Collection<int, array{
+     *     id: int,
+     *     name: string,
+     *     type: string|null,
+     *     responsible: string|null,
+     *     contacts: list<array{label: string, search: string}>,
+     *     keywords: string
+     * }>
      */
     public $options;
 
@@ -31,41 +38,103 @@ class ClientSelect extends Component
     }
 
     /**
-     * @return Collection<int, string>
+     * @return Collection<int, array{
+     *     id: int,
+     *     name: string,
+     *     type: string|null,
+     *     responsible: string|null,
+     *     contacts: list<array{label: string, search: string}>,
+     *     keywords: string
+     * }>
      */
     private function getClients(): Collection
     {
         return Enterprise::query()
-            ->where('type_id', 1)
-            ->where('team_id', auth()->user()->currentTeam->id)
-            ->with(['contacts' => function ($query): void
-            {
-                $query->select('contacts.id', 'contacts.name', 'contacts.surname', 'contacts.email');
-            }])
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->mapWithKeys(function (Enterprise $enterprise): array
-            {
-                $label = trim((string) $enterprise->name);
-                $contact = $enterprise->quoteContact();
-                if ($contact)
+            ->with([
+                'type:id,name',
+                'responsible:id,name,email',
+                'contacts' => function ($query): void
                 {
-                    $contactName = trim($contact->name.' '.(string) ($contact->surname ?? ''));
-                    $contactEmail = trim((string) ($contact->email ?? ''));
-                    if ($contactName !== '' && $contactEmail !== '')
-                    {
-                        $label .= ' ('.$contactName.' · '.$contactEmail.')';
-                    } elseif ($contactEmail !== '')
-                    {
-                        $label .= ' ('.$contactEmail.')';
-                    } elseif ($contactName !== '')
-                    {
-                        $label .= ' ('.$contactName.')';
-                    }
-                }
+                    $query->select('contacts.id', 'contacts.name', 'contacts.surname', 'contacts.email');
+                },
+            ])
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'type_id', 'responsible_id'])
+            ->map(function (Enterprise $enterprise): array
+            {
+                // Prefer quoteContact() first so budget/outreach recipient stays the default secondary line.
+                $quoteContactId = $enterprise->quoteContact()?->id;
 
-                return [(int) $enterprise->id => $label];
+                $contacts = $enterprise->contacts
+                    ->map(function ($contact) use ($quoteContactId): ?array
+                    {
+                        $label = $this->formatPersonLabel(
+                            trim(($contact->name ?? '').' '.($contact->surname ?? '')),
+                            $contact->email,
+                        );
+
+                        if ($label === null)
+                        {
+                            return null;
+                        }
+
+                        return [
+                            'label' => $label,
+                            'search' => $label,
+                            'is_quote' => $quoteContactId !== null && (int) $contact->id === (int) $quoteContactId,
+                        ];
+                    })
+                    ->filter()
+                    ->sortByDesc(fn (array $contact): int => ! empty($contact['is_quote']) ? 1 : 0)
+                    ->values()
+                    ->map(function (array $contact): array
+                    {
+                        unset($contact['is_quote']);
+
+                        return $contact;
+                    })
+                    ->all();
+
+                $typeName = $enterprise->type?->name;
+                $responsibleLabel = $this->formatPersonLabel(
+                    $enterprise->responsible?->name,
+                    $enterprise->responsible?->email,
+                );
+
+                $keywordParts = array_filter([
+                    collect($contacts)->pluck('search')->implode(' '),
+                    $typeName,
+                    $responsibleLabel,
+                ]);
+
+                return [
+                    'id' => (int) $enterprise->id,
+                    'name' => (string) $enterprise->name,
+                    'type' => $typeName,
+                    'responsible' => $responsibleLabel,
+                    'contacts' => $contacts,
+                    'keywords' => trim(implode(' ', $keywordParts)),
+                ];
             });
+    }
+
+    private function formatPersonLabel(?string $name, ?string $email): ?string
+    {
+        $name = trim((string) $name);
+        $email = trim((string) $email);
+
+        if ($name === '' && $email === '')
+        {
+            return null;
+        }
+
+        if ($name !== '' && $email !== '')
+        {
+            return $name.' · '.$email;
+        }
+
+        return $name !== '' ? $name : $email;
     }
 
     public function render()

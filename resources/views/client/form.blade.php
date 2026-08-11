@@ -46,6 +46,16 @@
                         value="{{ old('name', $data->name ?? '') }}" />
                 </div>
                 <div class="col-12 col-md-6">
+                    <x-input-select
+                        id="type_id"
+                        label="Tipo de empresa (*)"
+                        :options="$enterpriseTypeOptions"
+                        value="{{ old('type_id', $data->type_id ?? 1) }}"
+                        :required="true"
+                        :allowClear="false"
+                    />
+                </div>
+                <div class="col-12 col-md-6">
                     <x-input-general id="code" label="Stripe Customer ID (cus_...)"
                         value="{{ old('code', $data->code ?? '') }}" />
                 </div>
@@ -64,6 +74,10 @@
                         value="{{ old('email', $data->email ?? '') }}" />
                 </div>
                 <div class="col-md-6">
+                    <x-input-general id="website" label="{{ __('Website') }}"
+                        value="{{ old('website', $data->website ?? '') }}" />
+                </div>
+                <div class="col-md-6">
                     <x-input-general id="phone" label="{{ __('Phone') }}"
                         value="{{ old('phone', $data->phone ?? '') }}" />
                 </div>
@@ -71,13 +85,9 @@
                     <x-input-general id="whatsapp" label="WhatsApp"
                         value="{{ old('whatsapp', $data->whatsapp ?? '') }}" />
                 </div>
-                <div class="col-12">
-                    <x-input-general id="website" label="{{ __('Website') }}"
-                        value="{{ old('website', $data->website ?? '') }}" />
-                </div>
                 <div class="col-md-6">
                     <x-enterprise-status-select
-                        :enterprise-type-id="\App\Models\EnterpriseStatus::resolveFormEnterpriseTypeId($data->type_id ?? null)"
+                        :enterprise-type-id="\App\Models\EnterpriseStatus::resolveFormEnterpriseTypeId(old('type_id', $data->type_id ?? 1))"
                         :value="old('status_id', $data->status_id ?? '')" />
                 </div>
             </div>
@@ -85,7 +95,7 @@
             <div class="pt-4">
                 <div class="col-12 d-flex">
                     <button type="submit" class="btn btn-primary me-sm-3 me-1">Guardar</button>
-                    <button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ route('client-list') }}'">Cancelar</button>
+                    <button type="reset" class="btn btn-label-secondary" onclick="location.href='{{ isset($data->id) && $data->id ? route('client.show', $data->id) : route('client-list') }}'">Cancelar</button>
                 </div>
             </div>
         </form>

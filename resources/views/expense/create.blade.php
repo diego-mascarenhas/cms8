@@ -179,7 +179,46 @@
                         <select id="enterprise_id" name="enterprise_id" class="form-select select2-enterprise @error('enterprise_id') is-invalid @enderror">
                             <option value="">{{ $documentFlow['party_placeholder'] }}</option>
                             @foreach ($enterprises as $enterprise)
-                                <option value="{{ $enterprise->id }}" {{ old('enterprise_id') == $enterprise->id ? 'selected' : '' }}>
+                                @php
+                                    $enterpriseContacts = $enterprise->contacts
+                                        ->map(function ($contact) {
+                                            $name = trim(($contact->name ?? '').' '.($contact->surname ?? ''));
+                                            $email = trim((string) ($contact->email ?? ''));
+                                            if ($name === '' && $email === '') {
+                                                return null;
+                                            }
+                                            $label = ($name !== '' && $email !== '')
+                                                ? $name.' · '.$email
+                                                : ($name !== '' ? $name : $email);
+
+                                            return ['label' => $label, 'search' => $label];
+                                        })
+                                        ->filter()
+                                        ->values()
+                                        ->all();
+                                    $enterpriseTypeName = $enterprise->type?->name;
+                                    $responsibleName = trim((string) ($enterprise->responsible?->name ?? ''));
+                                    $responsibleEmail = trim((string) ($enterprise->responsible?->email ?? ''));
+                                    $enterpriseResponsible = match (true) {
+                                        $responsibleName !== '' && $responsibleEmail !== '' => $responsibleName.' · '.$responsibleEmail,
+                                        $responsibleName !== '' => $responsibleName,
+                                        $responsibleEmail !== '' => $responsibleEmail,
+                                        default => '',
+                                    };
+                                    $enterpriseKeywords = trim(implode(' ', array_filter([
+                                        collect($enterpriseContacts)->pluck('search')->implode(' '),
+                                        $enterpriseTypeName,
+                                        $enterpriseResponsible,
+                                    ])));
+                                @endphp
+                                <option
+                                    value="{{ $enterprise->id }}"
+                                    data-keywords="{{ $enterpriseKeywords }}"
+                                    data-type="{{ $enterpriseTypeName ?? '' }}"
+                                    data-responsible="{{ $enterpriseResponsible }}"
+                                    data-contacts='@json($enterpriseContacts)'
+                                    {{ old('enterprise_id') == $enterprise->id ? 'selected' : '' }}
+                                >
                                     {{ $enterprise->name }}
                                 </option>
                             @endforeach
@@ -697,6 +736,13 @@
                 $enterpriseSelectInit.wrap('<div class="position-relative"></div>');
             }
 
+            function foldEnterpriseAccent(value) {
+                return String(value || '')
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .toLowerCase();
+            }
+
             $enterpriseSelectInit.select2({
                 dropdownParent: $enterpriseSelectInit.parent(),
                 width: '100%',
@@ -713,6 +759,92 @@
                     searching: function () {
                         return 'Buscando…';
                     }
+                },
+                templateResult: function (data) {
+                    if (! data.id) {
+                        return data.text;
+                    }
+
+                    var $el = $(data.element);
+                    var type = $el.data('type');
+                    var contacts = [];
+                    try {
+                        var rawContacts = $el.attr('data-contacts');
+                        contacts = rawContacts ? JSON.parse(rawContacts) : [];
+                        if (! Array.isArray(contacts)) {
+                            contacts = [];
+                        }
+                    } catch (e) {
+                        contacts = [];
+                    }
+
+                    var term = foldEnterpriseAccent($.trim(String($('.select2-container--open .select2-search__field').val() || '')));
+                    var secondary = '';
+                    if (term !== '' && contacts.length) {
+                        for (var i = 0; i < contacts.length; i++) {
+                            var contactLabel = contacts[i] && contacts[i].label ? String(contacts[i].label) : '';
+                            if (contactLabel && foldEnterpriseAccent(contactLabel).indexOf(term) > -1) {
+                                secondary = contactLabel;
+                                break;
+                            }
+                        }
+                    }
+                    if (! secondary && contacts.length && contacts[0].label) {
+                        secondary = String(contacts[0].label);
+                    }
+                    if (! secondary) {
+                        secondary = $el.data('responsible') ? String($el.data('responsible')) : '';
+                    }
+
+                    var $root = $('<span class="d-block"></span>');
+                    var $title = $('<span></span>').append(document.createTextNode(data.text));
+
+                    if (type) {
+                        $title.append($('<span class="text-muted ms-1"></span>').text('· ' + type));
+                    }
+
+                    $root.append($title);
+
+                    if (secondary) {
+                        $root.append(
+                            $('<span class="d-block text-muted small"></span>').text(secondary)
+                        );
+                    }
+
+                    return $root;
+                },
+                templateSelection: function (data) {
+                    if (! data.id) {
+                        return data.text;
+                    }
+
+                    var type = $(data.element).data('type');
+                    if (! type) {
+                        return data.text;
+                    }
+
+                    return $('<span></span>')
+                        .append(document.createTextNode(data.text))
+                        .append($('<span class="text-muted ms-1"></span>').text('· ' + type));
+                },
+                matcher: function (params, data) {
+                    if ($.trim(params.term) === '') {
+                        return data;
+                    }
+
+                    if (typeof data.text === 'undefined') {
+                        return null;
+                    }
+
+                    var term = foldEnterpriseAccent(params.term);
+                    var text = foldEnterpriseAccent(data.text);
+                    var keywords = foldEnterpriseAccent($(data.element).data('keywords') || '');
+
+                    if (text.indexOf(term) > -1 || keywords.indexOf(term) > -1) {
+                        return data;
+                    }
+
+                    return null;
                 }
             });
 

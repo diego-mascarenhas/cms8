@@ -564,7 +564,7 @@
         'use strict';
 
         // Initialize Select2 (skip fields that init themselves)
-        $('.select2').not('.select2-service-category').not('.select2-subscription').each(function () {
+        $('.select2').not('.select2-service-category').not('.select2-subscription').not('.select2-client-enterprise').each(function () {
             var $this = $(this);
             if ($this.hasClass('select2-hidden-accessible') || $this.attr('data-module-key')) {
                 return;

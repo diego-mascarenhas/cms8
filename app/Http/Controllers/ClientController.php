@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\Enterprise;
 use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
+use App\Models\EnterpriseType;
 use App\Models\StripeSubscription;
 use App\Policies\ContactPolicy;
 use Illuminate\Http\Request;
@@ -54,6 +55,7 @@ class ClientController extends Controller
             'name' => '',
             'email' => '',
             'status_id' => 1,
+            'type_id' => 1,
             'address' => '',
             'postal_code' => '',
             'locality' => '',
@@ -77,8 +79,16 @@ class ClientController extends Controller
             $rawReferredBy,
             $teamId,
         );
+        $enterpriseTypeOptions = $this->enterpriseTypeSelectOptions();
 
-        return view('client.form', compact('enterpriseStatuses', 'data', 'trackingId', 'referrerEnterpriseOptions', 'referredBySelectValue'));
+        return view('client.form', compact(
+            'enterpriseStatuses',
+            'data',
+            'trackingId',
+            'referrerEnterpriseOptions',
+            'referredBySelectValue',
+            'enterpriseTypeOptions',
+        ));
     }
 
     /**
@@ -97,11 +107,13 @@ class ClientController extends Controller
 
             $this->authorize('update', $enterprise);
 
-            $statusFormTypeId = EnterpriseStatus::resolveFormEnterpriseTypeId($enterprise->type_id);
+            $typeId = (int) $request->input('type_id', $enterprise->type_id ?? 1);
+            $statusFormTypeId = EnterpriseStatus::resolveFormEnterpriseTypeId($typeId);
             $allowedStatusIds = EnterpriseStatus::getOptions($statusFormTypeId)->pluck('id')->all();
 
             $request->validate([
                 'name' => 'required|string|min:3|max:75',
+                'type_id' => ['required', 'integer', Rule::exists('enterprise_types', 'id')],
                 'status_id' => ['required', 'integer', Rule::in($allowedStatusIds)],
                 'email' => 'nullable|email',
                 'website' => 'nullable|string|max:255',
@@ -129,6 +141,7 @@ class ClientController extends Controller
 
             $enterprise->update([
                 'name' => $request->name,
+                'type_id' => (int) $request->type_id,
                 'status_id' => (int) $request->status_id,
                 'email' => $request->email,
                 'website' => $request->website,
@@ -149,18 +162,21 @@ class ClientController extends Controller
                 ]),
             ]);
 
-            return redirect()->route('client-list')->with('success', 'Record saved successfully.');
+            return redirect()->route('client.show', $enterprise->id)->with('success', 'Record saved successfully.');
         }
 
         $this->authorize('create', Enterprise::class);
 
-        $allowedStatusIds = EnterpriseStatus::getOptions(1)->pluck('id')->all();
+        $typeId = (int) $request->input('type_id', 1);
+        $statusFormTypeId = EnterpriseStatus::resolveFormEnterpriseTypeId($typeId);
+        $allowedStatusIds = EnterpriseStatus::getOptions($statusFormTypeId)->pluck('id')->all();
 
         $data = $request->except(['id', '_token']);
 
         $request->validate([
             'name' => 'required|string|min:3|max:75',
             'email' => 'required|email',
+            'type_id' => ['required', 'integer', Rule::exists('enterprise_types', 'id')],
             'website' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
             'whatsapp' => 'nullable|string|max:20',
@@ -186,6 +202,7 @@ class ClientController extends Controller
         ]);
 
         $data['team_id'] = $teamId;
+        $data['type_id'] = (int) $request->type_id;
         $data['status_id'] = $request->status_id ?? 1;
         $data['code'] = $request->filled('code') ? trim((string) $request->code) : null;
         $data['referred_by'] = $this->normalizeReferredByFromRequestInput($request->input('referred_by'), $teamId);
@@ -316,7 +333,9 @@ class ClientController extends Controller
         $data = (object) array_merge($row->toArray(), (array) ($row->data ?? new \stdClass));
         $data->id = $id;
 
-        $enterpriseStatuses = EnterpriseStatus::getOptions(1);
+        $enterpriseStatuses = EnterpriseStatus::getOptions(
+            EnterpriseStatus::resolveFormEnterpriseTypeId($row->type_id),
+        );
         $teamId = (int) auth()->user()->current_team_id;
         $rawReferredBy = (string) old('referred_by', $row->referred_by ?? '');
         $referredBySelectValue = $this->canonicalReferredBySelectInput($rawReferredBy, $teamId);
@@ -325,8 +344,15 @@ class ClientController extends Controller
             $rawReferredBy,
             $teamId,
         );
+        $enterpriseTypeOptions = $this->enterpriseTypeSelectOptions();
 
-        return view('client.form', compact('data', 'enterpriseStatuses', 'referrerEnterpriseOptions', 'referredBySelectValue'));
+        return view('client.form', compact(
+            'data',
+            'enterpriseStatuses',
+            'referrerEnterpriseOptions',
+            'referredBySelectValue',
+            'enterpriseTypeOptions',
+        ));
     }
 
     /**
@@ -668,6 +694,16 @@ class ClientController extends Controller
     public function showImportForm()
     {
         return view('client.import');
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int|string, string>
+     */
+    private function enterpriseTypeSelectOptions()
+    {
+        return EnterpriseType::query()
+            ->orderBy('id')
+            ->pluck('name', 'id');
     }
 
     /**
