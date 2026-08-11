@@ -195,8 +195,16 @@ class ExpenseController extends Controller
         $teamId = (int) auth()->user()->currentTeam->id;
 
         $enterprises = Enterprise::query()
+            ->with([
+                'type:id,name',
+                'responsible:id,name,email',
+                'contacts' => function ($query): void
+                {
+                    $query->select('contacts.id', 'contacts.name', 'contacts.surname', 'contacts.email');
+                },
+            ])
             ->orderBy('name')
-            ->get(['id', 'name', 'type_id']);
+            ->get(['id', 'name', 'type_id', 'responsible_id']);
 
         $paymentAccounts = PaymentAccount::withoutGlobalScopes()
             ->with(['currency', 'paymentTypes'])

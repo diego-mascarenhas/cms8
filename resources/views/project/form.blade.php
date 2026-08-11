@@ -63,9 +63,9 @@
     }
 
     $(function() {
-        // Inicializar Select2 si está disponible
+        // ClientSelect owns #enterprise_id (contact/responsible templates).
         if ($.fn.select2) {
-            $('#enterprise_id, #category_id, #status_id').select2({
+            $('#category_id, #status_id').select2({
                 placeholder: "{{ __('Choose an option') }}",
                 allowClear: true
             });

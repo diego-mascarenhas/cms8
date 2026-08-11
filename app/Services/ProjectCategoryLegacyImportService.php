@@ -287,14 +287,7 @@ class ProjectCategoryLegacyImportService
 
     private function syncCategoriesAutoIncrement(): void
     {
-        if (DB::getDriverName() !== 'mysql')
-        {
-            return;
-        }
-
-        $maxValue = (int) DB::table('categories')->max('id');
-        $next = max($maxValue + 1, 1);
-        DB::statement('ALTER TABLE `categories` AUTO_INCREMENT = '.$next);
+        \App\Support\DatabaseSequence::sync('categories');
     }
 
     /**

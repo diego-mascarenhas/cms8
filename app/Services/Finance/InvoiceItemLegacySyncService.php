@@ -606,16 +606,7 @@ class InvoiceItemLegacySyncService
 
     private function syncTableAutoIncrement(string $table, string $column = 'id'): void
     {
-        if (DB::getDriverName() !== 'mysql')
-        {
-            return;
-        }
-
-        $maxValue = (int) DB::table($table)->max($column);
-        $next = max($maxValue + 1, 1);
-        $escapedTable = str_replace('`', '``', $table);
-
-        DB::statement("ALTER TABLE `{$escapedTable}` AUTO_INCREMENT = {$next}");
+        \App\Support\DatabaseSequence::sync($table, $column);
     }
 
     /**
