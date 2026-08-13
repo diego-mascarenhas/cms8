@@ -119,6 +119,7 @@ class TeamDemoSeeder extends Seeder
         $this->createServiceCategoriesAndTypes();
         $this->seedDemoServices();
         $this->createClientContactsWithInvoicesAndPayments();
+        $this->call(DemoElectronicPaymentLinkSeeder::class);
         $this->call(DemoDigestScenariosSeeder::class);
         $this->createFinalizedContacts();
         $this->seedDemoList60();

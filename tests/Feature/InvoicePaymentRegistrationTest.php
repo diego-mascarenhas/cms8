@@ -318,7 +318,9 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($user)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertSee('mp-electronic-1', false);
+            ->assertSee('mp-electronic-1', false)
+            ->assertSee('id="payment_sync_id"', false)
+            ->assertSee('form-control select2', false);
 
         $this->actingAs($user)
             ->post(route('invoice.electronic-payments.store', $invoice), [
@@ -334,5 +336,87 @@ class InvoicePaymentRegistrationTest extends TestCase
             'source_provider' => 'mercadopago',
             'source_reference_id' => 'mp-electronic-1',
         ]);
+    }
+
+    public function test_invoice_show_lists_electronic_payments_newest_first(): void
+    {
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-011',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        \App\Models\PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'mp-old',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 10000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 10000,
+            'charge_created_at' => '2026-03-10 12:00:00',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'settlement_payer' => [
+                    'name' => 'Hygeia Sa',
+                    'id_type' => 'CUIT',
+                    'id_number' => '30712345678',
+                ],
+            ],
+        ]);
+        \App\Models\PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'mp-new',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 10000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 10000,
+            'charge_created_at' => '2026-08-10 12:00:00',
+            'last_synced_at' => now(),
+        ]);
+        \App\Models\PaymentSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'mercadopago',
+            'external_id' => 'mp-mid',
+            'status' => 'approved',
+            'currency' => 'ARS',
+            'amount_cents' => 10000,
+            'amount_refunded_cents' => 0,
+            'amount_net_cents' => 10000,
+            'charge_created_at' => '2026-07-16 12:00:00',
+            'last_synced_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('invoice.show', $invoice->id))
+            ->assertOk()
+            ->assertSeeInOrder(['mp-new', 'mp-mid', 'mp-old'], false);
     }
 }
