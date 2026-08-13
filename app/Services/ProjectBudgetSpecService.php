@@ -12,6 +12,7 @@ use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 use function Laravel\Ai\agent;
@@ -621,6 +622,42 @@ class ProjectBudgetSpecService
 
             return $t;
         }, $tasks));
+    }
+
+    /**
+     * Normalize budget JSON the same way the web project form does.
+     *
+     * @param  array<string, mixed>|null  $data
+     * @return array<string, mixed>|null
+     */
+    public function hydrateProjectBudgetData(?array $data): ?array
+    {
+        if ($data === null)
+        {
+            return null;
+        }
+
+        if (! isset($data['suggested_tasks']))
+        {
+            return $data;
+        }
+
+        $raw = $data['suggested_tasks'];
+        $data['suggested_tasks'] = is_string($raw)
+            ? (json_decode($raw, true) ?? [])
+            : (is_array($raw) ? $raw : []);
+        $data['suggested_tasks'] = $this->normalizeSuggestedTasks($data['suggested_tasks']);
+        $data['token_consumption'] = $this->normalizeTokenConsumption(
+            $data['token_consumption'] ?? null,
+            $data['suggested_tasks'],
+        );
+
+        if ($data['suggested_tasks'] !== [] && empty($data['budget_preview_token']))
+        {
+            $data['budget_preview_token'] = Str::random(48);
+        }
+
+        return $data;
     }
 
     /**
