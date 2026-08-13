@@ -111,6 +111,8 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 9. Configure team shortcuts
         $this->configureTeamShortcuts($team);
 
+        $this->call(DemoElectronicPaymentLinkSeeder::class);
+
         $this->getCommand()->info('✅ REVISION ALPHA setup completed successfully');
     }
 

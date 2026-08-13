@@ -46,15 +46,12 @@ class InvoiceElectronicPaymentLinkService
     }
 
     /**
-     * Approved Mercado Pago syncs not yet imported, preferred by currency / amount closeness.
+     * Approved Mercado Pago syncs not yet imported, newest charge first.
      *
      * @return Collection<int, PaymentSync>
      */
     public function availableSyncs(Invoice $invoice, int $limit = 40): Collection
     {
-        $currency = strtoupper((string) ($invoice->currency_code ?: 'ARS'));
-        $balance = round((float) $invoice->balance, 2);
-
         $syncs = PaymentSync::query()
             ->where('team_id', $invoice->team_id)
             ->where('provider', 'mercadopago')
@@ -68,30 +65,20 @@ class InvoiceElectronicPaymentLinkService
             ->values();
 
         return $syncs
-            ->sortBy(function (PaymentSync $sync) use ($currency, $balance): array
-            {
-                $syncCurrency = strtoupper((string) $sync->currency);
-                $amount = $this->amountMajor($sync);
-                $currencyRank = $syncCurrency === $currency ? 0 : 1;
-                $amountDelta = abs($amount - $balance);
-                // Prefer rows with a real transferor identity (settlement name / third-party payer).
-                $identityRank = $sync->displayPayerIdentity() !== null ? 0 : 1;
-
-                return [$identityRank, $currencyRank, $amountDelta, -1 * (optional($sync->charge_created_at)?->timestamp ?? 0)];
-            })
+            ->sortByDesc(fn (PaymentSync $sync): int => $sync->charge_created_at?->getTimestamp() ?? 0)
             ->take($limit)
             ->values();
     }
 
     /**
-     * @return list<array{id: int, label: string}>
+     * @return list<array{id: int, name: string}>
      */
     public function syncOptions(Invoice $invoice): array
     {
         return $this->availableSyncs($invoice)
             ->map(fn (PaymentSync $sync) => [
                 'id' => (int) $sync->id,
-                'label' => $this->labelForSync($sync),
+                'name' => $this->labelForSync($sync),
             ])
             ->all();
     }

@@ -116,6 +116,7 @@ class DatabaseSeeder extends Seeder
             TextileProductsSeeder::class,  // Demo product catalogue (Ropa, Calzado, Accesorios + stores)
             DemoDataForTimeReportingSeeder::class,  // Projects with tasks (for API / time reporting)
             PostTypeSeeder::class,  // CMS core post types (post, page, attachment) per team
+            DemoElectronicPaymentLinkSeeder::class,  // Unpaid ARS invoice + Mercado Pago syncs to test linking
         ]);
 
         // Activity log was removed from the application

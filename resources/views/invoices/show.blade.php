@@ -553,21 +553,15 @@
           <form action="{{ route('invoice.electronic-payments.store', $invoice) }}" method="POST" class="row g-3">
             @csrf
             <div class="col-12">
-              <label for="payment_sync_id" class="form-label">{{ __('invoice_payment.electronic_sync') }} <span class="text-danger">*</span></label>
-              <select
-                name="payment_sync_id"
+              <x-input-select
                 id="payment_sync_id"
-                class="form-select @error('payment_sync_id') is-invalid @enderror"
+                label="{{ __('invoice_payment.electronic_sync') }}"
+                :options="$electronicPaymentSyncOptions"
+                value="{{ old('payment_sync_id') }}"
+                placeholder="{{ __('invoice_payment.electronic_sync_placeholder') }}"
                 required
-              >
-                <option value="">{{ __('invoice_payment.electronic_sync_placeholder') }}</option>
-                @foreach ($electronicPaymentSyncOptions as $option)
-                  <option value="{{ $option['id'] }}" @selected((string) old('payment_sync_id') === (string) $option['id'])>
-                    {{ $option['label'] }}
-                  </option>
-                @endforeach
-              </select>
-              <div class="form-text">{{ __('invoice_payment.electronic_hint') }}</div>
+                help-text="{{ __('invoice_payment.electronic_hint') }}"
+              />
             </div>
             <div class="col-12">
               <button type="submit" class="btn btn-primary w-100">
