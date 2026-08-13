@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreProjectApiRequest;
 use App\Http\Requests\Api\UpdateProjectApiRequest;
+use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Services\ProjectBudgetSpecService;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
@@ -137,8 +139,18 @@ class ProjectController extends Controller
         $this->authorize('create', Project::class);
 
         $data = $request->validated();
+        $enterpriseError = $this->assertEnterpriseInTeam((int) $data['enterprise_id'], (int) $user->currentTeam->id);
+        if ($enterpriseError !== null)
+        {
+            return $enterpriseError;
+        }
+
+        $budgetService = app(ProjectBudgetSpecService::class);
         $data['team_id'] = $user->currentTeam->id;
         $data['real_name'] = $data['real_name'] ?? $data['name'];
+        $data['responsible_id'] = $data['responsible_id'] ?? $user->id;
+        $data['status_id'] = $data['status_id'] ?? ProjectStatus::STATUS_BUDGET;
+        $data['data'] = $budgetService->hydrateProjectBudgetData($data['data'] ?? null);
 
         $project = Project::create($data);
 
@@ -153,11 +165,7 @@ class ProjectController extends Controller
         $project->update(['board_id' => $board->id]);
         $project->load(['client', 'responsible', 'status', 'board']);
 
-        return response()->json([
-            'success' => true,
-            'data' => $project,
-            'message' => 'Project created successfully',
-        ], 201);
+        return response()->json($this->projectBudgetResponse($project, $budgetService, 'Project created successfully'), 201);
     }
 
     /**
@@ -297,14 +305,27 @@ class ProjectController extends Controller
             ], 403);
         }
 
+        if (array_key_exists('enterprise_id', $validated))
+        {
+            $enterpriseError = $this->assertEnterpriseInTeam((int) $validated['enterprise_id'], (int) $user->currentTeam->id);
+            if ($enterpriseError !== null)
+            {
+                return $enterpriseError;
+            }
+        }
+
+        $budgetService = app(ProjectBudgetSpecService::class);
+        if (array_key_exists('data', $validated))
+        {
+            $validated['data'] = $budgetService->hydrateProjectBudgetData(
+                is_array($validated['data']) ? $validated['data'] : null,
+            );
+        }
+
         $project->update($validated);
         $project->load(['client', 'responsible', 'status', 'board']);
 
-        return response()->json([
-            'success' => true,
-            'data' => $project,
-            'message' => 'Project updated successfully',
-        ]);
+        return response()->json($this->projectBudgetResponse($project, $budgetService, 'Project updated successfully'));
     }
 
     /**
@@ -625,6 +646,42 @@ class ProjectController extends Controller
                 'name' => $task->responsible->name,
                 'email' => $task->responsible->email,
             ] : null,
+        ];
+    }
+
+    private function assertEnterpriseInTeam(int $enterpriseId, int $teamId): ?JsonResponse
+    {
+        $exists = Enterprise::withoutGlobalScopes()
+            ->where('id', $enterpriseId)
+            ->where('team_id', $teamId)
+            ->exists();
+
+        if ($exists)
+        {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'error' => 'The selected client does not belong to the current team.',
+        ], 422);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function projectBudgetResponse(Project $project, ProjectBudgetSpecService $budgetService, string $message): array
+    {
+        $token = data_get($project->data, 'budget_preview_token');
+
+        return [
+            'success' => true,
+            'data' => $project,
+            'message' => $message,
+            'preview_url' => is_string($token) && $token !== ''
+                ? route('project.budget-preview', $token, true)
+                : null,
+            'totals' => $budgetService->computeQuoteTotals($project),
         ];
     }
 }

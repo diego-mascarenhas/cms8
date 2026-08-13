@@ -24,7 +24,6 @@ use App\Services\ProjectBudgetSpecService;
 use App\Support\AssignableTeamUsers;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class ProjectController extends Controller
@@ -85,22 +84,11 @@ class ProjectController extends Controller
             ? Project::withoutGlobalScopes()->find($request->id)
             : null;
 
-        if (isset($data['data']['suggested_tasks']))
+        if (isset($data['data']))
         {
-            $raw = $data['data']['suggested_tasks'];
-            $data['data']['suggested_tasks'] = is_string($raw)
-                ? (json_decode($raw, true) ?? [])
-                : (is_array($raw) ? $raw : []);
-            $budgetSpecService = app(ProjectBudgetSpecService::class);
-            $data['data']['suggested_tasks'] = $budgetSpecService->normalizeSuggestedTasks($data['data']['suggested_tasks']);
-            $data['data']['token_consumption'] = $budgetSpecService->normalizeTokenConsumption(
-                $data['data']['token_consumption'] ?? null,
-                $data['data']['suggested_tasks'],
+            $data['data'] = app(ProjectBudgetSpecService::class)->hydrateProjectBudgetData(
+                is_array($data['data']) ? $data['data'] : null,
             );
-            if (! empty($data['data']['suggested_tasks']) && empty($data['data']['budget_preview_token']))
-            {
-                $data['data']['budget_preview_token'] = Str::random(48);
-            }
         }
 
         $discount = array_key_exists('discount', $data)

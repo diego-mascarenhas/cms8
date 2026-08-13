@@ -160,6 +160,74 @@ class ProjectApiTest extends TestCase
         $this->assertSoftDeleted('projects', ['id' => $projectId]);
     }
 
+    public function test_can_create_project_with_budget_data(): void
+    {
+        [$user, , $token, $client] = $this->adminWithToken();
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects', [
+                'name' => 'Plugins WordPress',
+                'enterprise_id' => $client->id,
+                'description' => 'WooCommerce plugin cleanup',
+                'price' => 1006,
+                'discount' => 0,
+                'data' => [
+                    'dimension' => 'Cleanup, patches and major updates with staging.',
+                    'estimated_times' => '6 hours senior.',
+                    'resources' => 'Senior 120 €/h',
+                    'ai_usage_percent' => 0,
+                    'token_consumption' => [
+                        'input_tokens' => 16000000,
+                        'output_tokens' => 2000000,
+                        'total_tokens' => 18000000,
+                        'cost_euros' => 286,
+                        'billable_euros' => 286,
+                        'savings_percent' => 0,
+                        'currency' => 'EUR',
+                    ],
+                    'suggested_tasks' => [
+                        [
+                            'title' => 'Backup + inventario operativo',
+                            'description' => 'Full backup and risk plan.',
+                            'estimated_hours' => 0.5,
+                            'resource_level' => 'Senior',
+                            'unit_price' => 60,
+                            'estimated_tokens' => 900000,
+                            'included' => true,
+                        ],
+                        [
+                            'title' => 'Parches seguros',
+                            'estimated_hours' => 1,
+                            'resource_level' => 'Senior',
+                            'unit_price' => 120,
+                            'estimated_tokens' => 2700000,
+                            'included' => true,
+                        ],
+                    ],
+                ],
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Plugins WordPress')
+            ->assertJsonPath('data.status_id', 1)
+            ->assertJsonPath('data.responsible_id', $user->id)
+            ->assertJsonPath('data.data.suggested_tasks.0.title', 'Backup + inventario operativo')
+            ->assertJsonPath('data.data.suggested_tasks.0.estimated_hours', 0.5)
+            ->assertJsonPath('data.data.token_consumption.total_tokens', 18000000);
+
+        $this->assertGreaterThan(0, (int) $create->json('totals.grand_total'));
+
+        $previewToken = $create->json('data.data.budget_preview_token');
+        $this->assertIsString($previewToken);
+        $this->assertNotSame('', $previewToken);
+        $this->assertSame(url('/p/budget/'.$previewToken), $create->json('preview_url'));
+
+        $this->get(route('project.budget-preview', $previewToken))
+            ->assertOk()
+            ->assertSee('Backup + inventario operativo', false);
+    }
+
     public function test_collaborator_cannot_delete_project(): void
     {
         [, $team, , $client] = $this->adminWithToken();
