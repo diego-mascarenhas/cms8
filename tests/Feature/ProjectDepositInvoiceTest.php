@@ -101,14 +101,8 @@ class ProjectDepositInvoiceTest extends TestCase
         $project->client->setStripeCustomerId('cus_test_deposit')->save();
         $user->currentTeam->setSetting('stripe_secret', 'sk_test_fake');
 
-        $stripeInvoice = (object) [
-            'id' => 'inv_test_deposit_001',
-            'number' => 'INV-DEP-001',
-            'status' => 'open',
-            'hosted_invoice_url' => 'https://invoice.stripe.com/i/test',
-        ];
-
         $invoiceItems = Mockery::mock();
+        $invoiceItems->shouldReceive('all')->once()->andReturn((object) ['data' => []]);
         $invoiceItems->shouldReceive('create')->once()->andReturn((object) ['id' => 'ii_1']);
 
         $taxRates = Mockery::mock();
@@ -124,12 +118,33 @@ class ProjectDepositInvoiceTest extends TestCase
         $paymentMethods = Mockery::mock();
         $paymentMethods->shouldReceive('all')->once()->andReturn((object) ['data' => []]);
 
+        $draftInvoice = (object) [
+            'id' => 'inv_test_deposit_001',
+            'number' => null,
+            'status' => 'draft',
+            'total' => 0,
+            'amount_paid' => 0,
+            'amount_due' => 0,
+            'hosted_invoice_url' => null,
+        ];
+        $stripeInvoice = (object) [
+            'id' => 'inv_test_deposit_001',
+            'number' => 'INV-DEP-001',
+            'status' => 'open',
+            'total' => 199650,
+            'amount_paid' => 0,
+            'amount_due' => 199650,
+            'hosted_invoice_url' => 'https://invoice.stripe.com/i/test',
+        ];
+
         $invoices = Mockery::mock();
+        $invoices->shouldReceive('all')->once()->andReturn((object) ['data' => []]);
         $invoices->shouldReceive('create')->once()->withArgs(function (array $payload): bool
         {
             return ($payload['collection_method'] ?? null) === 'send_invoice'
-                && ($payload['days_until_due'] ?? null) === 15;
-        })->andReturn($stripeInvoice);
+                && ($payload['days_until_due'] ?? null) === 15
+                && ($payload['pending_invoice_items_behavior'] ?? null) === 'exclude';
+        })->andReturn($draftInvoice);
         $invoices->shouldReceive('finalizeInvoice')->once()->with('inv_test_deposit_001')->andReturn($stripeInvoice);
         $invoices->shouldReceive('pay')->never();
 
@@ -177,16 +192,32 @@ class ProjectDepositInvoiceTest extends TestCase
             'id' => 'inv_test_deposit_002',
             'number' => 'INV-DEP-002',
             'status' => 'open',
+            'total' => 199650,
+            'amount_paid' => 0,
+            'amount_due' => 199650,
             'hosted_invoice_url' => 'https://invoice.stripe.com/i/test2',
         ];
         $paidInvoice = (object) [
             'id' => 'inv_test_deposit_002',
             'number' => 'INV-DEP-002',
             'status' => 'paid',
+            'total' => 199650,
+            'amount_paid' => 199650,
+            'amount_due' => 0,
             'hosted_invoice_url' => 'https://invoice.stripe.com/i/test2',
+        ];
+        $draftInvoice = (object) [
+            'id' => 'inv_test_deposit_002',
+            'number' => null,
+            'status' => 'draft',
+            'total' => 0,
+            'amount_paid' => 0,
+            'amount_due' => 0,
+            'hosted_invoice_url' => null,
         ];
 
         $invoiceItems = Mockery::mock();
+        $invoiceItems->shouldReceive('all')->once()->andReturn((object) ['data' => []]);
         $invoiceItems->shouldReceive('create')->once()->andReturn((object) ['id' => 'ii_2']);
 
         $taxRates = Mockery::mock();
@@ -203,10 +234,12 @@ class ProjectDepositInvoiceTest extends TestCase
         $paymentMethods->shouldReceive('all')->never();
 
         $invoices = Mockery::mock();
+        $invoices->shouldReceive('all')->once()->andReturn((object) ['data' => []]);
         $invoices->shouldReceive('create')->once()->withArgs(function (array $payload): bool
         {
-            return ($payload['collection_method'] ?? null) === 'charge_automatically';
-        })->andReturn($openInvoice);
+            return ($payload['collection_method'] ?? null) === 'charge_automatically'
+                && ($payload['pending_invoice_items_behavior'] ?? null) === 'exclude';
+        })->andReturn($draftInvoice);
         $invoices->shouldReceive('finalizeInvoice')->once()->with('inv_test_deposit_002')->andReturn($openInvoice);
         $invoices->shouldReceive('pay')->once()->with('inv_test_deposit_002')->andReturn($paidInvoice);
 
