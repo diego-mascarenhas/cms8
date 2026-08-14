@@ -297,7 +297,18 @@ class Project extends Model
      */
     public function allowedStatusIdsWhenLocked(): array
     {
-        return ProjectStatus::allowedAfterApprovalStatusIds();
+        $ids = ProjectStatus::allowedAfterApprovalStatusIds();
+
+        // Once work has started (left Approved), do not allow returning to Approved.
+        if ((int) $this->status_id !== ProjectStatus::STATUS_APPROVED)
+        {
+            $ids = array_values(array_filter(
+                $ids,
+                fn (int $id): bool => $id !== ProjectStatus::STATUS_APPROVED,
+            ));
+        }
+
+        return $ids;
     }
 
     public function canTransitionToStatus(int $statusId): bool

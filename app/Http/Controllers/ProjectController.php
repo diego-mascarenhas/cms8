@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ProjectDataTable;
 use App\Http\Requests\AcceptProjectBudgetPreviewRequest;
 use App\Http\Requests\ReformulateProjectBudgetPreviewRequest;
+use App\Http\Requests\StoreProjectDepositInvoiceRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Models\Category;
 use App\Models\Contact;
@@ -19,6 +20,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\Finance\ProjectDepositInvoiceService;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use App\Support\AssignableTeamUsers;
@@ -897,6 +899,15 @@ class ProjectController extends Controller
             ? AssignableTeamUsers::optionsForTeam($team)
             : collect();
 
+        $depositInvoicePreview = null;
+        if (
+            $project->isBudgetApproved()
+            && auth()->user()->can('access-billing-modules')
+        ) {
+            $project->loadMissing(['client.enterpriseBillingAddresses.taxStatusType']);
+            $depositInvoicePreview = app(ProjectDepositInvoiceService::class)->preview($project);
+        }
+
         return view('project.show', compact(
             'project',
             'timeEntries',
@@ -906,6 +917,7 @@ class ProjectController extends Controller
             'suggestedTasks',
             'teamUsers',
             'runningTimer',
+            'depositInvoicePreview',
         ));
     }
 
@@ -1055,6 +1067,38 @@ class ProjectController extends Controller
         return redirect()
             ->route('project.show', $project->id)
             ->with('success', __('Time entry registered successfully.'));
+    }
+
+    /**
+     * Issue a 30% deposit invoice (Stripe + local) for an approved project budget.
+     */
+    public function invoiceDeposit(StoreProjectDepositInvoiceRequest $request, string $id, ProjectDepositInvoiceService $depositInvoiceService)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+        $this->authorize('access-billing-modules');
+
+        $result = $depositInvoiceService->issue(
+            $project,
+            (string) $request->validated('description'),
+            auth()->user()->currentTeam,
+        );
+
+        $message = ! empty($result['charged'])
+            ? __('Deposit invoice created and charged. Project moved to in progress.')
+            : __('Deposit invoice created and sent for payment. Project moved to in progress.');
+
+        if (! empty($result['hosted_invoice_url']) && empty($result['charged']))
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('success', $message)
+                ->with('deposit_invoice_url', $result['hosted_invoice_url']);
+        }
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', $message);
     }
 
     /**

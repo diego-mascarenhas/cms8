@@ -134,6 +134,110 @@
 	</div>
 @endif
 
+@if (! empty($depositInvoicePreview))
+	@php
+		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
+		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
+	@endphp
+	<div class="row mb-4">
+		<div class="col-12">
+			@if ($depositAlreadyInvoiced)
+				<div class="alert alert-success mb-0" role="alert">
+					<div class="d-flex align-items-center flex-wrap gap-2">
+						<i class="ti ti-file-check ti-lg me-2 flex-shrink-0"></i>
+						<div class="flex-grow-1 min-w-0">
+							<span class="fw-medium d-block">{{ __('Deposit invoice already issued') }}</span>
+							<span class="small text-muted d-block mt-1">
+								{{ __('The 30% advance for this approved budget was invoiced.') }}
+								@if (! empty($depositInvoicePreview['existing_stripe_invoice_id']))
+									· {{ $depositInvoicePreview['existing_stripe_invoice_id'] }}
+								@endif
+							</span>
+						</div>
+						@if (! empty($depositInvoicePreview['existing_invoice_id']))
+							<a href="{{ route('invoice.show', $depositInvoicePreview['existing_invoice_id']) }}" class="btn btn-success btn-sm waves-effect waves-light">
+								<i class="ti ti-file-invoice ti-sm me-1"></i>{{ __('View invoice') }}
+							</a>
+						@endif
+					</div>
+				</div>
+			@else
+				<div class="alert alert-warning mb-0" role="alert">
+					<form method="POST" action="{{ route('project.invoice-deposit', $project->id) }}">
+						@csrf
+						<div class="d-flex align-items-start flex-wrap gap-2 mb-2">
+							<i class="ti ti-file-invoice ti-lg me-2 flex-shrink-0 mt-1"></i>
+							<div class="flex-grow-1 min-w-0">
+								<span class="fw-medium d-block">{{ __('Approved budget — invoice the 30% deposit') }}</span>
+								<span class="small text-muted d-block mt-1">
+									{{ __('Deposit') }}: {{ $formatDepositMoney($depositInvoicePreview['deposit_base']) }}
+									· {{ $depositInvoicePreview['vat_label'] }}
+									@if ($depositInvoicePreview['vat_applies'])
+										({{ $formatDepositMoney($depositInvoicePreview['vat_amount']) }})
+									@endif
+									· {{ __('Total') }}: {{ $formatDepositMoney($depositInvoicePreview['total_with_vat']) }}
+									@if (! empty($depositInvoicePreview['stripe_customer_id']))
+										· <code>{{ $depositInvoicePreview['stripe_customer_id'] }}</code>
+									@endif
+								</span>
+								@if (empty($depositInvoicePreview['stripe_customer_id']))
+									<span class="small text-danger d-block mt-1">
+										{{ __('Link a Stripe customer on the client before invoicing the deposit.') }}
+										@if ($project->enterprise_id)
+											<a href="{{ route('client.show', $project->enterprise_id) }}" class="alert-link">{{ __('Open client') }}</a>
+										@endif
+									</span>
+								@endif
+							</div>
+							@can('update', $project)
+								<button type="submit" class="btn btn-warning btn-sm waves-effect waves-light flex-shrink-0"
+									{{ empty($depositInvoicePreview['stripe_customer_id']) ? 'disabled' : '' }}>
+									<i class="ti ti-cash ti-sm me-1"></i>{{ __('Invoice deposit') }}
+								</button>
+							@endcan
+						</div>
+
+						@can('update', $project)
+							<label for="deposit-invoice-description" class="form-label mb-1">{{ __('Invoice description') }}</label>
+							<textarea
+								id="deposit-invoice-description"
+								name="description"
+								class="form-control bg-white @error('description') is-invalid @enderror"
+								rows="2"
+								required
+								maxlength="500"
+								placeholder="{{ __('Invoice description') }}"
+							>{{ old('description', $depositInvoicePreview['default_description']) }}</textarea>
+							@error('description')
+								<div class="invalid-feedback d-block">{{ $message }}</div>
+							@enderror
+						@endcan
+					</form>
+				</div>
+			@endif
+		</div>
+	</div>
+@endif
+
+@if (session('deposit_invoice_url'))
+	<div class="row mb-4">
+		<div class="col-12">
+			<div class="alert alert-info mb-0" role="alert">
+				<div class="d-flex align-items-center flex-wrap gap-2">
+					<i class="ti ti-link ti-lg me-2 flex-shrink-0"></i>
+					<div class="flex-grow-1 min-w-0">
+						<span class="fw-medium d-block">{{ __('Stripe invoice ready') }}</span>
+						<span class="small text-muted">{{ __('Open the hosted Stripe invoice to send or collect payment.') }}</span>
+					</div>
+					<a href="{{ session('deposit_invoice_url') }}" target="_blank" rel="noopener noreferrer" class="btn btn-info btn-sm waves-effect waves-light">
+						<i class="ti ti-external-link ti-sm me-1"></i>{{ __('Open in Stripe') }}
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+@endif
+
 <!-- Project Details Card - Full Width -->
 <div class="card mb-4">
    <div class="card-header">
@@ -143,6 +247,9 @@
        <div class="row">
            <div class="col-md-6">
                <dl class="row mb-0">
+								<dt class="col-4 text-truncate">{{ __('Internal Name for Collaborators') }}:</dt>
+								<dd class="col-8">{{ $project->name ?: __('Not set') }}</dd>
+
 								<dt class="col-4 text-truncate">{{ __('Client') }}:</dt>
 								<dd class="col-8">{{ $project->client ? $project->client->name : __('Not assigned') }}</dd>
 
@@ -186,7 +293,7 @@
 								@if(auth()->user()->hasRole('admin'))
 								@php
 									$quoteTotals = app(\App\Services\ProjectBudgetSpecService::class)->computeQuoteTotals($project);
-									$formatQuoteEuros = fn (int $amount): string => number_format($amount, 0, '', '.').'€';
+									$formatQuoteEuros = fn (int|float $amount): string => number_format((float) $amount, 2, ',', '.').' €';
 								@endphp
 								@if ($quoteTotals['grand_total'] > 0)
 								<dt class="col-4 text-truncate">{{ __('Price') }}:</dt>

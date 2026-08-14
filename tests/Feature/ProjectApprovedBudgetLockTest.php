@@ -77,6 +77,42 @@ class ProjectApprovedBudgetLockTest extends TestCase
     }
 
     #[Test]
+    public function in_progress_project_can_move_to_waiting_for_response_but_not_back_to_approved(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_IN_PROGRESS])->save();
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->patch(route('project.update-status', $project->id), [
+                'status_id' => ProjectStatus::STATUS_WAITING_FOR_RESPONSE,
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('success');
+
+        $this->assertSame(ProjectStatus::STATUS_WAITING_FOR_RESPONSE, (int) $project->fresh()->status_id);
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->patch(route('project.update-status', $project->id), [
+                'status_id' => ProjectStatus::STATUS_APPROVED,
+            ])
+            ->assertSessionHasErrors('status_id');
+
+        $this->assertSame(ProjectStatus::STATUS_WAITING_FOR_RESPONSE, (int) $project->fresh()->status_id);
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->patch(route('project.update-status', $project->id), [
+                'status_id' => ProjectStatus::STATUS_IN_PROGRESS,
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('success');
+
+        $this->assertSame(ProjectStatus::STATUS_IN_PROGRESS, (int) $project->fresh()->status_id);
+    }
+
+    #[Test]
     public function approved_budget_show_page_offers_status_modal_not_edit(): void
     {
         [$user, $project] = $this->createApprovedProject();

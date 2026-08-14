@@ -318,7 +318,18 @@ class Enterprise extends Model
      */
     public function getStripeCustomerId()
     {
-        return $this->code_type === 'stripe_customer' ? $this->code : null;
+        if ($this->code_type === 'stripe_customer' && filled($this->code))
+        {
+            return $this->code;
+        }
+
+        // Legacy rows / schemas without code_type store cus_* in code.
+        if (is_string($this->code) && str_starts_with($this->code, 'cus_'))
+        {
+            return $this->code;
+        }
+
+        return null;
     }
 
     /**
@@ -327,7 +338,10 @@ class Enterprise extends Model
     public function setStripeCustomerId($customerId)
     {
         $this->code = $customerId;
-        $this->code_type = 'stripe_customer';
+        if (\Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'code_type'))
+        {
+            $this->code_type = 'stripe_customer';
+        }
 
         return $this;
     }
