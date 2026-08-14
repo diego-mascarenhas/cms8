@@ -1397,7 +1397,6 @@
   "Allowed sending weekdays": "Días permitidos para enviar",
   "Recipients are only queued during checked days": "Las entregas solo se programa en los días marcados.",
   "Sending time window": "Franja horaria permitida",
-  "optional": "opcional",
   "Sending window start": "Desde las",
   "Sending window end": "Hasta las",
   "Leave both times empty for 24h delivery": "Deja ambas vacías si quieres permitir cualquier hora.",
@@ -1712,7 +1711,6 @@
   "Sync content with assistant": "Sincronizar contenido con el asistente",
   "Last sync": "Última sincronización",
   "The products module is not available.": "El módulo de productos no está disponible.",
-  "The selected category is invalid.": "La categoría seleccionada no es válida.",
   "Enabled": "Activado",
   "Disabled": "Desactivado",
   "Currency": "Moneda",
@@ -1970,5 +1968,7 @@
   "VAT quarter": "I.V.A. del trimestre",
   "Year": "Año",
   "Quarter": "Trimestre",
-  "Period": "Periodo"
+  "Period": "Periodo",
+  "This approved budget is locked. Only the project status can be changed.": "Este presupuesto aprobado está bloqueado. Solo se puede cambiar el estado del proyecto.",
+  "Change status": "Cambiar estado"
 }

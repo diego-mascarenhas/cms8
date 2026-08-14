@@ -239,6 +239,29 @@ class ProjectBudgetPreviewTest extends TestCase
         $this->assertSame('accepted', data_get($project->data, 'budget_client_response.status'));
     }
 
+    #[Test]
+    public function public_budget_preview_hides_accept_form_when_status_already_approved(): void
+    {
+        $created = $this->createBudgetPreviewProject();
+        $token = $created['token'];
+        $created['project']->forceFill(['status_id' => ProjectStatus::STATUS_APPROVED])->save();
+
+        $this->get(route('project.budget-preview', $token))
+            ->assertOk()
+            ->assertSee(__('Quote accepted'), false)
+            ->assertDontSee(__('Accept quote'), false)
+            ->assertDontSee('name="accepted_by_name"', false)
+            ->assertDontSee(route('project.budget-preview.accept', $token), false);
+
+        $this->from(route('project.budget-preview', $token))
+            ->post(route('project.budget-preview.accept', $token), [
+                'accepted_by_name' => 'Should Fail',
+                'accept_debit' => '1',
+            ])
+            ->assertRedirect(route('project.budget-preview', $token))
+            ->assertSessionHas('budget_response_error');
+    }
+
     /**
      * @param  array<string, mixed>  $dataOverrides
      * @return array{token: string, project: Project}

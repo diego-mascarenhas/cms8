@@ -22,6 +22,32 @@ class ProjectStatus extends Model
 
     public const STATUS_IN_PROGRESS = 9;
 
+    public const STATUS_FINISHED = 10;
+
+    public const STATUS_TO_INVOICE = 11;
+
+    public const STATUS_INVOICED = 12;
+
+    public const STATUS_NOT_APPROVED = 13;
+
+    /**
+     * Statuses allowed after a budget is approved (status-only changes).
+     *
+     * @return list<int>
+     */
+    public static function allowedAfterApprovalStatusIds(): array
+    {
+        return [
+            self::STATUS_APPROVED,
+            self::STATUS_WAITING_FOR_RESPONSE,
+            self::STATUS_IN_PROGRESS,
+            self::STATUS_FINISHED,
+            self::STATUS_TO_INVOICE,
+            self::STATUS_INVOICED,
+            self::STATUS_NOT_APPROVED,
+        ];
+    }
+
     /**
      * Active / "in progress" statuses used by stats and counts.
      *

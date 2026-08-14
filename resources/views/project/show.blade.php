@@ -55,9 +55,15 @@
 		</div>
 		<div class="d-flex align-content-center flex-wrap gap-3">
 			@can('update', $project)
-				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
-					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
-				</a>
+				@if ($project->isBudgetContentLocked())
+					<button type="button" class="btn btn-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
+						<i class="ti ti-exchange me-1"></i>{{ __('Change status') }}
+					</button>
+				@else
+					<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
+						<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
+					</a>
+				@endif
 			@endcan
 			@if ($project->enterprise_id)
 			<a href="{{ route('client.show', $project->enterprise_id) }}" class="btn btn-outline-primary waves-effect waves-light">
@@ -580,9 +586,11 @@
    <div class="card-header d-flex justify-content-between align-items-center">
        <h5 class="mb-0">{{ __('Linked services') }}</h5>
        @can('update', $project)
+       @if (! $project->isBudgetContentLocked())
        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
            <i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
        </button>
+       @endif
        @endcan
    </div>
    <div class="card-body">
@@ -669,14 +677,18 @@
 							<td class="col-1 text-center">
                                 <div class="d-flex justify-content-center align-items-center">
                                     @can('update', $project)
+                                    @if (! $project->isBudgetContentLocked())
                                     <a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
                                         <i class="ti ti-edit ti-sm"></i>
                                     </a>
+                                    @endif
                                     @endcan
                                     @can('delete', $project)
+                                    @if (! $project->isBudgetContentLocked())
                                     <a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
                                         <i class="ti ti-trash ti-sm"></i>
                                     </a>
+                                    @endif
                                     @endcan
                                 </div>
 							</td>
@@ -693,14 +705,58 @@
 			<i class="ti ti-settings ti-xl text-muted mb-3"></i>
 			<h6 class="mb-2">{{ __('No linked services') }}</h6>
 			<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
-		@can('update', $project)
+       @can('update', $project)
+       @if (! $project->isBudgetContentLocked())
 		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
 			<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
 		</button>
+       @endif
 		@endcan
 		</div>
 	</div>
 	@endif
+
+@if ($project->isBudgetContentLocked())
+@php
+	$lockedStatusOptions = \App\Models\ProjectStatus::query()
+		->whereIn('id', $project->allowedStatusIdsWhenLocked())
+		->orderBy('id')
+		->get();
+@endphp
+<div class="modal fade" id="projectStatusModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">{{ __('Change status') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="POST" action="{{ route('project.update-status', $project->id) }}">
+				@csrf
+				@method('PATCH')
+				<div class="modal-body">
+					<p class="text-muted small mb-3">
+						{{ __('This approved budget is locked. Only the project status can be changed.') }}
+					</p>
+					<div class="mb-3">
+						<label for="locked-status-id" class="form-label">{{ __('Project Status') }}</label>
+						<select id="locked-status-id" name="status_id" class="select2 form-select" data-placeholder="{{ __('Choose an option') }}" required>
+							@foreach ($lockedStatusOptions as $status)
+								<option value="{{ $status->id }}" @selected((int) $project->status_id === (int) $status->id)>
+									{{ $status->translated_name }}
+								</option>
+							@endforeach
+						</select>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+					<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+@endif
 
 <!-- Modal para agregar/editar servicio -->
 <div class="modal fade" id="serviceModal" tabindex="-1" aria-hidden="true">
@@ -804,6 +860,19 @@
 		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
+
+		var $lockedStatus = $('#locked-status-id');
+		if ($lockedStatus.length && $.fn.select2) {
+			var $statusModal = $('#projectStatusModal');
+			$lockedStatus.select2({
+				dropdownParent: $statusModal,
+				width: '100%',
+				minimumResultsForSearch: Infinity
+			});
+			$statusModal.on('shown.bs.modal', function () {
+				$lockedStatus.trigger('change.select2');
+			});
+		}
 
 		// Service modal functionality
 		initializeServiceModal();

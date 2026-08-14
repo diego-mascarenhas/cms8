@@ -688,6 +688,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project/{id}/add-suggested-task', [ProjectController::class, 'addSuggestedTask'])->name('project.add-suggested-task');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
+    Route::patch('/project/{id}/status', [ProjectController::class, 'updateStatus'])->name('project.update-status');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
     Route::get('/opportunity/list', [OpportunityController::class, 'index'])->name('opportunity.index');
     Route::get('/opportunity/create', [OpportunityController::class, 'create'])->name('opportunity.create');

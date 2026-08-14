@@ -77,12 +77,31 @@ class ProjectController extends Controller
      */
     public function store(StoreProjectRequest $request)
     {
-        $this->authorize('create', Project::class);
+        $projectId = $request->input('id');
+        $projectId = (is_numeric($projectId) && (int) $projectId > 0)
+            ? (int) $projectId
+            : null;
+
+        $existing = $projectId
+            ? Project::withoutGlobalScopes()->find($projectId)
+            : null;
+
+        if ($existing)
+        {
+            $this->authorize('update', $existing);
+
+            if ($existing->isBudgetContentLocked())
+            {
+                return redirect()
+                    ->route('project.show', $existing->id)
+                    ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+            }
+        } else
+        {
+            $this->authorize('create', Project::class);
+        }
 
         $data = $request->validated();
-        $existing = $request->id
-            ? Project::withoutGlobalScopes()->find($request->id)
-            : null;
 
         if (isset($data['data']))
         {
@@ -97,29 +116,35 @@ class ProjectController extends Controller
 
         $previousStatusId = $existing ? (int) $existing->status_id : null;
 
-        $project = Project::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'team_id' => auth()->user()->currentTeam->id,
-                'name' => $data['name'],
-                'real_name' => $data['real_name'] ?? null,
-                'enterprise_id' => $data['enterprise_id'],
-                'category_id' => $data['category_id'] ?? null,
-                'description' => $data['description'] ?? null,
-                'data' => $data['data'] ?? null,
-                'responsible_id' => $data['responsible_id'],
-                'price' => $data['price'] ?? $existing?->price,
-                'discount' => $discount,
-                'cost' => $data['cost'] ?? $existing?->cost,
-                'status_id' => $data['status_id'] ?? 1,
-                'date_material' => $data['date_material'] ?? null,
-                'date_start' => $data['date_start'] ?? null,
-                'date_end' => $data['date_end'] ?? null,
-            ],
-        );
+        $attributes = [
+            'team_id' => auth()->user()->currentTeam->id,
+            'name' => $data['name'],
+            'real_name' => $data['real_name'] ?? null,
+            'enterprise_id' => $data['enterprise_id'],
+            'category_id' => $data['category_id'] ?? null,
+            'description' => $data['description'] ?? null,
+            'data' => $data['data'] ?? null,
+            'responsible_id' => $data['responsible_id'],
+            'price' => $data['price'] ?? $existing?->price,
+            'discount' => $discount,
+            'cost' => $data['cost'] ?? $existing?->cost,
+            'status_id' => $data['status_id'] ?? 1,
+            'date_material' => $data['date_material'] ?? null,
+            'date_start' => $data['date_start'] ?? null,
+            'date_end' => $data['date_end'] ?? null,
+        ];
+
+        if ($existing)
+        {
+            $existing->update($attributes);
+            $project = $existing->fresh();
+        } else
+        {
+            $project = Project::create($attributes);
+        }
 
         // Auto-create TaskBoard for new projects
-        if (! $request->id && ! $project->board_id)
+        if (! $projectId && ! $project->board_id)
         {
             $board = TaskBoard::create([
                 'team_id' => auth()->user()->currentTeam->id,
@@ -132,7 +157,7 @@ class ProjectController extends Controller
             $project->update(['board_id' => $board->id]);
         }
 
-        if (! $request->id)
+        if (! $projectId)
         {
             return redirect()->route('project.show', $project->id)->with('success', 'Proyecto creado exitosamente.');
         }
@@ -226,7 +251,7 @@ class ProjectController extends Controller
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
         $existing = data_get($project->data, 'budget_client_response.status');
-        if (in_array($existing, ['accepted', 'reformulation_requested'], true))
+        if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
         {
             return redirect()
                 ->route('project.budget-preview', $token)
@@ -258,7 +283,7 @@ class ProjectController extends Controller
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
         $existing = data_get($project->data, 'budget_client_response.status');
-        if (in_array($existing, ['accepted', 'reformulation_requested'], true))
+        if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
         {
             return redirect()
                 ->route('project.budget-preview', $token)
@@ -883,6 +908,13 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
 
+        if ($project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+        }
+
         $request->validate([
             'title' => 'required|string|max:500',
             'category_name' => 'nullable|string|max:255',
@@ -952,6 +984,14 @@ class ProjectController extends Controller
     {
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
+
+        if ($project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+        }
+
         $data = Project::with(['projectFares.fare.units', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
             ->findOrFail($id);
         $enterprise_id = $data->enterprise_id;
@@ -961,12 +1001,79 @@ class ProjectController extends Controller
     }
 
     /**
+     * Status-only update for approved (locked) budgets.
+     */
+    public function updateStatus(Request $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+
+        if (! $project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.edit', $project->id)
+                ->with('error', __('Use the project edit form to change status before the budget is approved.'));
+        }
+
+        $allowed = $project->allowedStatusIdsWhenLocked();
+        $validated = $request->validate([
+            'status_id' => ['required', 'integer', 'in:'.implode(',', $allowed)],
+        ]);
+
+        $project->status_id = (int) $validated['status_id'];
+        $project->save();
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Project status updated.'));
+    }
+
+    /**
+     * Update project (blocked when budget is approved).
+     */
+    public function update(StoreProjectRequest $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+
+        if ($project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+        }
+
+        $validated = $request->validated();
+        $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
+
+        if (array_key_exists('data', $validated))
+        {
+            $validated['data'] = $budgetService->hydrateProjectBudgetData(
+                is_array($validated['data']) ? $validated['data'] : null,
+            );
+        }
+
+        $project->update($validated);
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Project updated successfully.'));
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
         $model = Project::findOrFail($id);
         $this->authorize('delete', $model);
+
+        if ($model->isBudgetContentLocked())
+        {
+            return response()->json([
+                'message' => __('This approved budget can no longer be deleted.'),
+            ], 422);
+        }
 
         $model->delete();
 

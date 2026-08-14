@@ -1908,7 +1908,6 @@
   "opportunity_stage.proposal": "Propuesta",
   "opportunity_stage.qualification": "Calificación",
   "opportunity_stage.won": "Ganada",
-  "optional": "opcional",
   "optional — leave empty to keep current": "opcional: déjalo vacío para conservar el actual",
   "or monthly history with": "o el histórico mensual con",
   "per month (holding expenses steady).": "al mes (manteniendo gastos).",
@@ -1951,5 +1950,7 @@
   "VAT quarter": "I.V.A. del trimestre",
   "Year": "Año",
   "Quarter": "Trimestre",
-  "Period": "Periodo"
+  "Period": "Periodo",
+  "This approved budget is locked. Only the project status can be changed.": "Este presupuesto aprobado está bloqueado. Solo se puede cambiar el estado del proyecto.",
+  "Change status": "Cambiar estado"
 }

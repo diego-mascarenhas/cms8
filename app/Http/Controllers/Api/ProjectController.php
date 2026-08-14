@@ -8,11 +8,11 @@ use App\Http\Requests\Api\UpdateProjectApiRequest;
 use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\ProjectStatus;
-use App\Services\ProjectBudgetSpecService;
 use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -296,6 +296,45 @@ class ProjectController extends Controller
         $this->authorize('update', $project);
 
         $validated = $request->validated();
+
+        if ($project->isBudgetContentLocked())
+        {
+            $contentKeys = array_values(array_diff(array_keys($validated), ['status_id']));
+
+            if ($contentKeys !== [])
+            {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This approved budget can no longer be edited. Only status changes are allowed.',
+                ], 422);
+            }
+
+            if (! array_key_exists('status_id', $validated))
+            {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This approved budget can no longer be edited. Only status changes are allowed.',
+                ], 422);
+            }
+
+            $newStatusId = (int) $validated['status_id'];
+            if (! $project->canTransitionToStatus($newStatusId))
+            {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'That status is not allowed after the budget has been approved.',
+                ], 422);
+            }
+
+            $project->update(['status_id' => $newStatusId]);
+            $project->load(['client', 'responsible', 'status', 'board']);
+
+            return response()->json($this->projectBudgetResponse(
+                $project,
+                app(ProjectBudgetSpecService::class),
+                'Project status updated successfully',
+            ));
+        }
 
         if (array_key_exists('status_id', $validated) && ! $user->hasRole('admin'))
         {
