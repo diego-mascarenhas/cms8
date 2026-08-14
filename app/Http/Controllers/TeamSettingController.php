@@ -248,7 +248,7 @@ class TeamSettingController extends Controller
                     $team->setSetting($key, $storedValue, [
                         'group' => $group,
                         'type' => $type,
-                        'is_encrypted' => in_array($key, array_merge(['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'mercadopago_access_token', 'api_token_hash', 'api_token_plain', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json'], \App\Support\AdPlatformCredentials::ENCRYPTED_KEYS)),
+                        'is_encrypted' => in_array($key, array_merge(['stripe_secret', 'stripe_webhook', 'cuentica_api_token', 'mercadopago_access_token', 'api_token_hash', 'api_token_plain', 'api_tokens', 'twilio_token', 'mail_password', 'imap_password', 'woocommerce_consumer_secret', 'wordpress_application_password', 'analytics_credentials_json'], \App\Support\AdPlatformCredentials::ENCRYPTED_KEYS)),
                     ]);
                 }
             }
@@ -1667,13 +1667,9 @@ class TeamSettingController extends Controller
     {
         $this->authorize('update', $team);
 
-        // Get current API token (if exists)
-        $currentToken = $team->getSetting('api_token_hash');
-        $tokenName = $team->getSetting('api_token_name', 'API Access Token');
-        $tokenAbilities = $team->getSetting('api_token_abilities', '*');
-        $tokenCreated = $team->getSetting('api_token_created_at');
+        $apiTokens = $team->getApiTokens();
 
-        return view('team-settings.api-tokens', compact('team', 'currentToken', 'tokenName', 'tokenAbilities', 'tokenCreated'));
+        return view('team-settings.api-tokens', compact('team', 'apiTokens'));
     }
 
     public function passwords(Team $team)
@@ -1738,7 +1734,7 @@ class TeamSettingController extends Controller
     }
 
     /**
-     * Generate a new API token
+     * Generate a new API token (does not revoke existing tokens).
      */
     public function generateApiToken(Request $request, Team $team)
     {
@@ -1749,100 +1745,80 @@ class TeamSettingController extends Controller
             'abilities' => 'required|string',
         ]);
 
-        // Generate a new token
-        $tokenValue = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $tokenValue);
-
-        // Store token settings
-        $team->setSetting('api_token_hash', $tokenHash, [
-            'group' => 'api',
-            'is_encrypted' => true,
-        ]);
-
-        // Store the plain token for display in documentation
-        $team->setSetting('api_token_plain', $tokenValue, [
-            'group' => 'api',
-            'is_encrypted' => true, // Encrypt for security
-        ]);
-
-        $team->setSetting('api_token_name', $request->name, [
-            'group' => 'api',
-            'is_encrypted' => false,
-        ]);
-
-        $team->setSetting('api_token_abilities', $request->abilities, [
-            'group' => 'api',
-            'is_encrypted' => false,
-        ]);
-
-        $team->setSetting('api_token_created_at', now()->toDateTimeString(), [
-            'group' => 'api',
-            'is_encrypted' => false,
-        ]);
+        $created = $team->createApiToken($request->name, $request->abilities);
 
         return redirect()->back()->with([
             'success' => 'API token generated successfully',
-            'new_token' => $tokenValue,
+            'new_token' => $created['plain'],
+            'new_token_name' => $created['token']['name'],
         ]);
     }
 
     /**
-     * Reveal the current API token (plain value) for viewing/copying
+     * Reveal an API token plain value for viewing/copying.
      */
-    public function revealApiToken(Team $team)
+    public function revealApiToken(Request $request, Team $team)
     {
         $this->authorize('update', $team);
 
-        $plainToken = $team->getSetting('api_token_plain');
+        $request->validate([
+            'token_id' => 'required|string',
+        ]);
 
-        if (empty($plainToken))
+        $token = $team->findApiTokenById($request->string('token_id')->toString());
+
+        if (! $token || empty($token['plain']))
         {
             return response()->json(['error' => 'No API token found'], 404);
         }
 
-        return response()->json(['token' => $plainToken]);
+        return response()->json([
+            'token' => $token['plain'],
+            'name' => $token['name'] ?? null,
+        ]);
     }
 
     /**
-     * Update the current API token name and abilities (token value unchanged)
+     * Update an API token name and abilities (token value unchanged).
      */
     public function updateApiToken(Request $request, Team $team)
     {
         $this->authorize('update', $team);
 
-        if (empty($team->getSetting('api_token_hash')))
+        $request->validate([
+            'token_id' => 'required|string',
+            'name' => 'required|string|max:255',
+            'abilities' => 'required|string|max:255',
+        ]);
+
+        if (! $team->updateApiTokenMeta(
+            $request->string('token_id')->toString(),
+            $request->string('name')->toString(),
+            $request->string('abilities')->toString(),
+        ))
         {
             return redirect()->route('team-settings.api-tokens', $team)
                 ->with('error', 'No API token to update.');
         }
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'abilities' => 'required|string|max:255',
-        ]);
-
-        $team->setSetting('api_token_name', $request->name, [
-            'group' => 'api',
-            'is_encrypted' => false,
-        ]);
-
-        $team->setSetting('api_token_abilities', $request->abilities, [
-            'group' => 'api',
-            'is_encrypted' => false,
-        ]);
-
         return redirect()->back()->with('success', 'API token updated successfully.');
     }
 
     /**
-     * Revoke the current API token
+     * Revoke one API token by id.
      */
-    public function revokeApiToken(Team $team)
+    public function revokeApiToken(Request $request, Team $team)
     {
         $this->authorize('update', $team);
 
-        // Remove token settings
-        $team->settings()->where('group', 'api')->delete();
+        $request->validate([
+            'token_id' => 'required|string',
+        ]);
+
+        if (! $team->revokeApiTokenById($request->string('token_id')->toString()))
+        {
+            return redirect()->back()->with('error', 'API token not found.');
+        }
 
         return redirect()->back()->with('success', 'API token revoked successfully');
     }

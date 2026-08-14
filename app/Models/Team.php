@@ -228,6 +228,199 @@ class Team extends JetstreamTeam
         }
     }
 
+    /**
+     * Team API tokens (multiple per team). Migrates legacy single-token settings when needed.
+     *
+     * @return array<int, array{id: string, name: string, hash: string, plain: ?string, abilities: string, created_at: ?string}>
+     */
+    public function getApiTokens(bool $persistMigration = true): array
+    {
+        $tokens = $this->normalizeApiTokensSetting($this->getSetting('api_tokens', []));
+
+        $legacyHash = $this->getSetting('api_token_hash');
+        if (! empty($legacyHash) && $tokens === [])
+        {
+            $tokens[] = [
+                'id' => (string) Str::uuid(),
+                'name' => (string) $this->getSetting('api_token_name', 'API Access Token'),
+                'hash' => (string) $legacyHash,
+                'plain' => $this->getSetting('api_token_plain'),
+                'abilities' => (string) $this->getSetting('api_token_abilities', '*'),
+                'created_at' => $this->getSetting('api_token_created_at') ?: now()->toDateTimeString(),
+            ];
+
+            if ($persistMigration)
+            {
+                $this->persistApiTokens($tokens);
+                $this->clearLegacyApiTokenSettings();
+            }
+        }
+
+        return array_values($tokens);
+    }
+
+    /**
+     * @return array{id: string, name: string, hash: string, plain: ?string, abilities: string, created_at: ?string}|null
+     */
+    public function findApiTokenById(string $tokenId): ?array
+    {
+        foreach ($this->getApiTokens() as $token)
+        {
+            if (($token['id'] ?? null) === $tokenId)
+            {
+                return $token;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{id: string, name: string, hash: string, plain: ?string, abilities: string, created_at: ?string}|null
+     */
+    public function findApiTokenByHash(string $tokenHash): ?array
+    {
+        foreach ($this->getApiTokens(persistMigration: false) as $token)
+        {
+            if (($token['hash'] ?? null) === $tokenHash)
+            {
+                return $token;
+            }
+        }
+
+        $legacyHash = $this->getSetting('api_token_hash');
+        if (! empty($legacyHash) && $legacyHash === $tokenHash)
+        {
+            return [
+                'id' => 'legacy',
+                'name' => (string) $this->getSetting('api_token_name', 'API Access Token'),
+                'hash' => (string) $legacyHash,
+                'plain' => $this->getSetting('api_token_plain'),
+                'abilities' => (string) $this->getSetting('api_token_abilities', '*'),
+                'created_at' => $this->getSetting('api_token_created_at'),
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{token: array{id: string, name: string, hash: string, plain: string, abilities: string, created_at: string}, plain: string}
+     */
+    public function createApiToken(string $name, string $abilities = '*'): array
+    {
+        $plain = bin2hex(random_bytes(32));
+        $token = [
+            'id' => (string) Str::uuid(),
+            'name' => $name,
+            'hash' => hash('sha256', $plain),
+            'plain' => $plain,
+            'abilities' => $abilities,
+            'created_at' => now()->toDateTimeString(),
+        ];
+
+        $tokens = $this->getApiTokens();
+        $tokens[] = $token;
+        $this->persistApiTokens($tokens);
+
+        return ['token' => $token, 'plain' => $plain];
+    }
+
+    public function updateApiTokenMeta(string $tokenId, string $name, string $abilities): bool
+    {
+        $tokens = $this->getApiTokens();
+        $updated = false;
+
+        foreach ($tokens as $index => $token)
+        {
+            if (($token['id'] ?? null) !== $tokenId)
+            {
+                continue;
+            }
+
+            $tokens[$index]['name'] = $name;
+            $tokens[$index]['abilities'] = $abilities;
+            $updated = true;
+            break;
+        }
+
+        if (! $updated)
+        {
+            return false;
+        }
+
+        $this->persistApiTokens($tokens);
+
+        return true;
+    }
+
+    public function revokeApiTokenById(string $tokenId): bool
+    {
+        $tokens = $this->getApiTokens();
+        $filtered = array_values(array_filter(
+            $tokens,
+            fn (array $token): bool => ($token['id'] ?? null) !== $tokenId,
+        ));
+
+        if (count($filtered) === count($tokens))
+        {
+            return false;
+        }
+
+        $this->persistApiTokens($filtered);
+
+        return true;
+    }
+
+    /**
+     * @param  array<int, array{id: string, name: string, hash: string, plain: ?string, abilities: string, created_at: ?string}>  $tokens
+     */
+    public function persistApiTokens(array $tokens): void
+    {
+        $this->setSetting('api_tokens', array_values($tokens), [
+            'group' => 'api',
+            'type' => 'json',
+            'is_encrypted' => true,
+        ]);
+
+        $this->clearLegacyApiTokenSettings();
+
+        if ($this->relationLoaded('settings'))
+        {
+            $this->unsetRelation('settings');
+            $this->load('settings');
+        }
+    }
+
+    public function clearLegacyApiTokenSettings(): void
+    {
+        foreach (['api_token_hash', 'api_token_plain', 'api_token_name', 'api_token_abilities', 'api_token_created_at'] as $key)
+        {
+            $this->removeSetting($key);
+        }
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, hash: string, plain: ?string, abilities: string, created_at: ?string}>
+     */
+    protected function normalizeApiTokensSetting(mixed $tokens): array
+    {
+        if (is_string($tokens))
+        {
+            $tokens = json_decode($tokens, true) ?: [];
+        }
+
+        if (! is_array($tokens))
+        {
+            return [];
+        }
+
+        return array_values(array_filter($tokens, function ($token): bool
+        {
+            return is_array($token) && ! empty($token['hash'] ?? null);
+        }));
+    }
+
     private function syncTeamSettingsSequenceIfNeeded(): void
     {
         if (DB::getDriverName() !== 'pgsql')
