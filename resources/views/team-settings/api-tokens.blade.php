@@ -60,9 +60,10 @@
                         <h6><i class="ti ti-info-circle me-2"></i>API Usage Instructions</h6>
                         <p class="mb-2">Use any active token to authenticate API requests to your team's endpoints:</p>
                         <ul class="mb-0">
-                            <li><strong>Base URL:</strong> <code>{{ url('/api/team') }}</code></li>
+                            <li><strong>Base URL:</strong> <code>{{ url('/api') }}</code> (e.g. <code>/api/enterprises</code>, <code>/api/projects</code>) and <code>{{ url('/api/team') }}</code></li>
                             <li><strong>Authentication:</strong> Include header <code>Authorization: Bearer YOUR_TOKEN</code></li>
-                            <li><strong>Team ID:</strong> <code>{{ $team->id }}</code></li>
+                            <li><strong>Team scope:</strong> Requests are scoped to this team (<code>{{ $team->id }}</code>)</li>
+                            <li><strong>MCP / CMS8_API_TOKEN:</strong> Use a token generated on this page</li>
                         </ul>
                     </div>
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ProjectDataTable;
 use App\Http\Requests\AcceptProjectBudgetPreviewRequest;
 use App\Http\Requests\ReformulateProjectBudgetPreviewRequest;
+use App\Http\Requests\StoreProjectDepositInvoiceRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Models\Category;
 use App\Models\Contact;
@@ -19,6 +20,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\Finance\ProjectDepositInvoiceService;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use App\Support\AssignableTeamUsers;
@@ -77,12 +79,31 @@ class ProjectController extends Controller
      */
     public function store(StoreProjectRequest $request)
     {
-        $this->authorize('create', Project::class);
+        $projectId = $request->input('id');
+        $projectId = (is_numeric($projectId) && (int) $projectId > 0)
+            ? (int) $projectId
+            : null;
+
+        $existing = $projectId
+            ? Project::withoutGlobalScopes()->find($projectId)
+            : null;
+
+        if ($existing)
+        {
+            $this->authorize('update', $existing);
+
+            if ($existing->isBudgetContentLocked())
+            {
+                return redirect()
+                    ->route('project.show', $existing->id)
+                    ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+            }
+        } else
+        {
+            $this->authorize('create', Project::class);
+        }
 
         $data = $request->validated();
-        $existing = $request->id
-            ? Project::withoutGlobalScopes()->find($request->id)
-            : null;
 
         if (isset($data['data']))
         {
@@ -97,29 +118,35 @@ class ProjectController extends Controller
 
         $previousStatusId = $existing ? (int) $existing->status_id : null;
 
-        $project = Project::updateOrCreate(
-            ['id' => $request->id],
-            [
-                'team_id' => auth()->user()->currentTeam->id,
-                'name' => $data['name'],
-                'real_name' => $data['real_name'] ?? null,
-                'enterprise_id' => $data['enterprise_id'],
-                'category_id' => $data['category_id'] ?? null,
-                'description' => $data['description'] ?? null,
-                'data' => $data['data'] ?? null,
-                'responsible_id' => $data['responsible_id'],
-                'price' => $data['price'] ?? $existing?->price,
-                'discount' => $discount,
-                'cost' => $data['cost'] ?? $existing?->cost,
-                'status_id' => $data['status_id'] ?? 1,
-                'date_material' => $data['date_material'] ?? null,
-                'date_start' => $data['date_start'] ?? null,
-                'date_end' => $data['date_end'] ?? null,
-            ],
-        );
+        $attributes = [
+            'team_id' => auth()->user()->currentTeam->id,
+            'name' => $data['name'],
+            'real_name' => $data['real_name'] ?? null,
+            'enterprise_id' => $data['enterprise_id'],
+            'category_id' => $data['category_id'] ?? null,
+            'description' => $data['description'] ?? null,
+            'data' => $data['data'] ?? null,
+            'responsible_id' => $data['responsible_id'],
+            'price' => $data['price'] ?? $existing?->price,
+            'discount' => $discount,
+            'cost' => $data['cost'] ?? $existing?->cost,
+            'status_id' => $data['status_id'] ?? 1,
+            'date_material' => $data['date_material'] ?? null,
+            'date_start' => $data['date_start'] ?? null,
+            'date_end' => $data['date_end'] ?? null,
+        ];
+
+        if ($existing)
+        {
+            $existing->update($attributes);
+            $project = $existing->fresh();
+        } else
+        {
+            $project = Project::create($attributes);
+        }
 
         // Auto-create TaskBoard for new projects
-        if (! $request->id && ! $project->board_id)
+        if (! $projectId && ! $project->board_id)
         {
             $board = TaskBoard::create([
                 'team_id' => auth()->user()->currentTeam->id,
@@ -132,7 +159,7 @@ class ProjectController extends Controller
             $project->update(['board_id' => $board->id]);
         }
 
-        if (! $request->id)
+        if (! $projectId)
         {
             return redirect()->route('project.show', $project->id)->with('success', 'Proyecto creado exitosamente.');
         }
@@ -226,7 +253,7 @@ class ProjectController extends Controller
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
         $existing = data_get($project->data, 'budget_client_response.status');
-        if (in_array($existing, ['accepted', 'reformulation_requested'], true))
+        if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
         {
             return redirect()
                 ->route('project.budget-preview', $token)
@@ -258,7 +285,7 @@ class ProjectController extends Controller
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
         $existing = data_get($project->data, 'budget_client_response.status');
-        if (in_array($existing, ['accepted', 'reformulation_requested'], true))
+        if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
         {
             return redirect()
                 ->route('project.budget-preview', $token)
@@ -805,15 +832,22 @@ class ProjectController extends Controller
         $totalHours = 0;
         $projectTasks = collect();
         $actualHoursByTaskId = collect();
+        $runningTimer = Time::getRunningTimer();
 
         if ($project->board_id)
         {
-            $taskIds = Task::where('board_id', $project->board_id)->pluck('id');
+            $projectTasks = Task::where('board_id', $project->board_id)
+                ->with(['status', 'responsible'])
+                ->orderBy('order')
+                ->orderBy('id')
+                ->get();
+
+            $taskIds = $projectTasks->pluck('id');
 
             if ($taskIds->isNotEmpty())
             {
                 $timeEntries = Time::whereIn('task_id', $taskIds)
-                    ->with('user:id,name')
+                    ->with(['user:id,name', 'task:id,title'])
                     ->orderBy('start_time', 'desc')
                     ->limit(10)
                     ->get();
@@ -821,13 +855,6 @@ class ProjectController extends Controller
                 $totalHours = Time::whereIn('task_id', $taskIds)
                     ->whereNotNull('end_time')
                     ->sum('duration_seconds') / 3600;
-
-                // Task breakdown: tasks with estimated hours and actual hours
-                $projectTasks = Task::where('board_id', $project->board_id)
-                    ->with(['status', 'responsible'])
-                    ->orderBy('order')
-                    ->orderBy('id')
-                    ->get();
 
                 $actualHoursByTaskId = Time::whereIn('task_id', $taskIds)
                     ->selectRaw('task_id, SUM(duration_seconds) as total_seconds')
@@ -872,7 +899,26 @@ class ProjectController extends Controller
             ? AssignableTeamUsers::optionsForTeam($team)
             : collect();
 
-        return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));
+        $depositInvoicePreview = null;
+        if (
+            $project->isBudgetApproved()
+            && auth()->user()->can('access-billing-modules')
+        ) {
+            $project->loadMissing(['client.enterpriseBillingAddresses.taxStatusType']);
+            $depositInvoicePreview = app(ProjectDepositInvoiceService::class)->preview($project);
+        }
+
+        return view('project.show', compact(
+            'project',
+            'timeEntries',
+            'totalHours',
+            'projectTasks',
+            'actualHoursByTaskId',
+            'suggestedTasks',
+            'teamUsers',
+            'runningTimer',
+            'depositInvoicePreview',
+        ));
     }
 
     /**
@@ -946,12 +992,130 @@ class ProjectController extends Controller
     }
 
     /**
+     * Manually register time worked on a project board task (collaborator + task).
+     */
+    public function storeTimeEntry(Request $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('view', $project);
+
+        if (! $project->board_id)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('Add tasks to the project board before registering time.'));
+        }
+
+        $validated = $request->validate([
+            'task_id' => 'required|exists:tasks,id',
+            'user_id' => 'nullable|exists:users,id',
+            'description' => 'nullable|string|max:255',
+            'start_time' => 'required|date',
+            'end_time' => 'nullable|date|after:start_time',
+            'duration_hours' => 'nullable|numeric|min:0.01|max:24',
+        ]);
+
+        $task = Task::query()
+            ->where('id', $validated['task_id'])
+            ->where('board_id', $project->board_id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
+
+        $userId = (int) auth()->id();
+        if (auth()->user()->hasRole('admin') && ! empty($validated['user_id']))
+        {
+            $candidateId = (int) $validated['user_id'];
+            $teamUserIds = auth()->user()->currentTeam->allUsers()->pluck('id')->map(fn ($id) => (int) $id);
+            if (! $teamUserIds->contains($candidateId))
+            {
+                return redirect()
+                    ->route('project.show', $project->id)
+                    ->with('error', __('The selected collaborator does not belong to this team.'));
+            }
+            $userId = $candidateId;
+        }
+
+        $start = Carbon::parse($validated['start_time']);
+        $end = null;
+        if (! empty($validated['end_time']))
+        {
+            $end = Carbon::parse($validated['end_time']);
+        } elseif (! empty($validated['duration_hours']))
+        {
+            $end = $start->copy()->addSeconds((int) round(((float) $validated['duration_hours']) * 3600));
+        }
+
+        if ($end === null)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->withInput()
+                ->with('error', __('Provide an end time or a duration in hours.'));
+        }
+
+        $time = Time::create([
+            'team_id' => auth()->user()->currentTeam->id,
+            'user_id' => $userId,
+            'task_id' => $task->id,
+            'description' => $validated['description'] ?? null,
+            'start_time' => $start,
+            'end_time' => $end,
+            'is_billable' => true,
+        ]);
+        $time->calculateDuration();
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Time entry registered successfully.'));
+    }
+
+    /**
+     * Issue a 30% deposit invoice (Stripe + local) for an approved project budget.
+     */
+    public function invoiceDeposit(StoreProjectDepositInvoiceRequest $request, string $id, ProjectDepositInvoiceService $depositInvoiceService)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+        $this->authorize('access-billing-modules');
+
+        $result = $depositInvoiceService->issue(
+            $project,
+            (string) $request->validated('description'),
+            auth()->user()->currentTeam,
+        );
+
+        $message = ! empty($result['charged'])
+            ? __('Deposit invoice created and charged. Project moved to in progress.')
+            : __('Deposit invoice created and sent for payment. Project moved to in progress.');
+
+        if (! empty($result['hosted_invoice_url']) && empty($result['charged']))
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('success', $message)
+                ->with('deposit_invoice_url', $result['hosted_invoice_url']);
+        }
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', $message);
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(string $id)
     {
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
+
+        if ($project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+        }
+
         $data = Project::with(['projectFares.fare.units', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
             ->findOrFail($id);
         $enterprise_id = $data->enterprise_id;
@@ -961,12 +1125,79 @@ class ProjectController extends Controller
     }
 
     /**
+     * Status-only update for approved (locked) budgets.
+     */
+    public function updateStatus(Request $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+
+        if (! $project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.edit', $project->id)
+                ->with('error', __('Use the project edit form to change status before the budget is approved.'));
+        }
+
+        $allowed = $project->allowedStatusIdsWhenLocked();
+        $validated = $request->validate([
+            'status_id' => ['required', 'integer', 'in:'.implode(',', $allowed)],
+        ]);
+
+        $project->status_id = (int) $validated['status_id'];
+        $project->save();
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Project status updated.'));
+    }
+
+    /**
+     * Update project (blocked when budget is approved).
+     */
+    public function update(StoreProjectRequest $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+
+        if ($project->isBudgetContentLocked())
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
+        }
+
+        $validated = $request->validated();
+        $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
+
+        if (array_key_exists('data', $validated))
+        {
+            $validated['data'] = $budgetService->hydrateProjectBudgetData(
+                is_array($validated['data']) ? $validated['data'] : null,
+            );
+        }
+
+        $project->update($validated);
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Project updated successfully.'));
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(string $id)
     {
         $model = Project::findOrFail($id);
         $this->authorize('delete', $model);
+
+        if ($model->isBudgetContentLocked())
+        {
+            return response()->json([
+                'message' => __('This approved budget can no longer be deleted.'),
+            ], 422);
+        }
 
         $model->delete();
 

@@ -55,9 +55,15 @@
 		</div>
 		<div class="d-flex align-content-center flex-wrap gap-3">
 			@can('update', $project)
-				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
-					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
-				</a>
+				@if ($project->isBudgetContentLocked())
+					<button type="button" class="btn btn-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
+						<i class="ti ti-exchange me-1"></i>{{ __('Change status') }}
+					</button>
+				@else
+					<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
+						<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
+					</a>
+				@endif
 			@endcan
 			@if ($project->enterprise_id)
 			<a href="{{ route('client.show', $project->enterprise_id) }}" class="btn btn-outline-primary waves-effect waves-light">
@@ -128,6 +134,110 @@
 	</div>
 @endif
 
+@if (! empty($depositInvoicePreview))
+	@php
+		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
+		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
+	@endphp
+	<div class="row mb-4">
+		<div class="col-12">
+			@if ($depositAlreadyInvoiced)
+				<div class="alert alert-success mb-0" role="alert">
+					<div class="d-flex align-items-center flex-wrap gap-2">
+						<i class="ti ti-file-check ti-lg me-2 flex-shrink-0"></i>
+						<div class="flex-grow-1 min-w-0">
+							<span class="fw-medium d-block">{{ __('Deposit invoice already issued') }}</span>
+							<span class="small text-muted d-block mt-1">
+								{{ __('The 30% advance for this approved budget was invoiced.') }}
+								@if (! empty($depositInvoicePreview['existing_stripe_invoice_id']))
+									· {{ $depositInvoicePreview['existing_stripe_invoice_id'] }}
+								@endif
+							</span>
+						</div>
+						@if (! empty($depositInvoicePreview['existing_invoice_id']))
+							<a href="{{ route('invoice.show', $depositInvoicePreview['existing_invoice_id']) }}" class="btn btn-success btn-sm waves-effect waves-light">
+								<i class="ti ti-file-invoice ti-sm me-1"></i>{{ __('View invoice') }}
+							</a>
+						@endif
+					</div>
+				</div>
+			@else
+				<div class="alert alert-warning mb-0" role="alert">
+					<form method="POST" action="{{ route('project.invoice-deposit', $project->id) }}">
+						@csrf
+						<div class="d-flex align-items-start flex-wrap gap-2 mb-2">
+							<i class="ti ti-file-invoice ti-lg me-2 flex-shrink-0 mt-1"></i>
+							<div class="flex-grow-1 min-w-0">
+								<span class="fw-medium d-block">{{ __('Approved budget — invoice the 30% deposit') }}</span>
+								<span class="small text-muted d-block mt-1">
+									{{ __('Deposit') }}: {{ $formatDepositMoney($depositInvoicePreview['deposit_base']) }}
+									· {{ $depositInvoicePreview['vat_label'] }}
+									@if ($depositInvoicePreview['vat_applies'])
+										({{ $formatDepositMoney($depositInvoicePreview['vat_amount']) }})
+									@endif
+									· {{ __('Total') }}: {{ $formatDepositMoney($depositInvoicePreview['total_with_vat']) }}
+									@if (! empty($depositInvoicePreview['stripe_customer_id']))
+										· <code>{{ $depositInvoicePreview['stripe_customer_id'] }}</code>
+									@endif
+								</span>
+								@if (empty($depositInvoicePreview['stripe_customer_id']))
+									<span class="small text-danger d-block mt-1">
+										{{ __('Link a Stripe customer on the client before invoicing the deposit.') }}
+										@if ($project->enterprise_id)
+											<a href="{{ route('client.show', $project->enterprise_id) }}" class="alert-link">{{ __('Open client') }}</a>
+										@endif
+									</span>
+								@endif
+							</div>
+							@can('update', $project)
+								<button type="submit" class="btn btn-warning btn-sm waves-effect waves-light flex-shrink-0"
+									{{ empty($depositInvoicePreview['stripe_customer_id']) ? 'disabled' : '' }}>
+									<i class="ti ti-cash ti-sm me-1"></i>{{ __('Invoice deposit') }}
+								</button>
+							@endcan
+						</div>
+
+						@can('update', $project)
+							<label for="deposit-invoice-description" class="form-label mb-1">{{ __('Invoice description') }}</label>
+							<textarea
+								id="deposit-invoice-description"
+								name="description"
+								class="form-control bg-white @error('description') is-invalid @enderror"
+								rows="2"
+								required
+								maxlength="500"
+								placeholder="{{ __('Invoice description') }}"
+							>{{ old('description', $depositInvoicePreview['default_description']) }}</textarea>
+							@error('description')
+								<div class="invalid-feedback d-block">{{ $message }}</div>
+							@enderror
+						@endcan
+					</form>
+				</div>
+			@endif
+		</div>
+	</div>
+@endif
+
+@if (session('deposit_invoice_url'))
+	<div class="row mb-4">
+		<div class="col-12">
+			<div class="alert alert-info mb-0" role="alert">
+				<div class="d-flex align-items-center flex-wrap gap-2">
+					<i class="ti ti-link ti-lg me-2 flex-shrink-0"></i>
+					<div class="flex-grow-1 min-w-0">
+						<span class="fw-medium d-block">{{ __('Stripe invoice ready') }}</span>
+						<span class="small text-muted">{{ __('Open the hosted Stripe invoice to send or collect payment.') }}</span>
+					</div>
+					<a href="{{ session('deposit_invoice_url') }}" target="_blank" rel="noopener noreferrer" class="btn btn-info btn-sm waves-effect waves-light">
+						<i class="ti ti-external-link ti-sm me-1"></i>{{ __('Open in Stripe') }}
+					</a>
+				</div>
+			</div>
+		</div>
+	</div>
+@endif
+
 <!-- Project Details Card - Full Width -->
 <div class="card mb-4">
    <div class="card-header">
@@ -137,6 +247,9 @@
        <div class="row">
            <div class="col-md-6">
                <dl class="row mb-0">
+								<dt class="col-4 text-truncate">{{ __('Internal Name for Collaborators') }}:</dt>
+								<dd class="col-8">{{ $project->name ?: __('Not set') }}</dd>
+
 								<dt class="col-4 text-truncate">{{ __('Client') }}:</dt>
 								<dd class="col-8">{{ $project->client ? $project->client->name : __('Not assigned') }}</dd>
 
@@ -180,7 +293,7 @@
 								@if(auth()->user()->hasRole('admin'))
 								@php
 									$quoteTotals = app(\App\Services\ProjectBudgetSpecService::class)->computeQuoteTotals($project);
-									$formatQuoteEuros = fn (int $amount): string => number_format($amount, 0, '', '.').'€';
+									$formatQuoteEuros = fn (int|float $amount): string => number_format((float) $amount, 2, ',', '.').' €';
 								@endphp
 								@if ($quoteTotals['grand_total'] > 0)
 								<dt class="col-4 text-truncate">{{ __('Price') }}:</dt>
@@ -298,10 +411,14 @@
 							<th class="text-center">{{ __('Status') }}</th>
 							<th class="text-end">{{ __('Hours') }}</th>
 							<th class="text-end">{{ __('Actual') }}</th>
+							<th class="text-center" style="width: 7rem;">{{ __('Timer') }}</th>
 						</tr>
 					</thead>
 					<tbody>
 						@foreach($projectTasks as $task)
+						@php
+							$isRunningThisTask = isset($runningTimer) && $runningTimer && (int) $runningTimer->task_id === (int) $task->id;
+						@endphp
 						<tr>
 							<td>
 								<a href="{{ route('task.show', $task->id) }}">{{ $task->title ?? '—' }}</a>
@@ -316,6 +433,23 @@
 							</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($task->estimated_hours) }}</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($actualHoursByTaskId->get($task->id, 0)) }}</td>
+							<td class="text-center">
+								@if($isRunningThisTask)
+									<button type="button"
+										class="btn btn-sm btn-label-danger project-stop-timer"
+										data-time-id="{{ $runningTimer->id }}"
+										title="{{ __('Stop timer') }}">
+										<i class="ti ti-player-stop"></i>
+									</button>
+								@else
+									<button type="button"
+										class="btn btn-sm btn-label-primary project-start-timer"
+										data-task-id="{{ $task->id }}"
+										title="{{ __('Start timer') }}">
+										<i class="ti ti-player-play"></i>
+									</button>
+								@endif
+							</td>
 						</tr>
 						@endforeach
 					</tbody>
@@ -324,12 +458,13 @@
 							<td colspan="3" class="text-end">{{ __('Total') }}</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($totalEstimated) }}</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($totalActual) }}</td>
+							<td></td>
 						</tr>
 					</tfoot>
 				</table>
 			</div>
 		@else
-			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add tasks in the Kanban to see estimated and actual hours here.') }}</p>
+			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add the suggested tasks below (or in the Kanban) to register time per collaborator and task.') }}</p>
 		@endif
 
 		@if(isset($suggestedTasks) && count($suggestedTasks) > 0 && auth()->user()->can('access-billing-modules'))
@@ -413,19 +548,34 @@
 <!-- Time Tracking for Project Tasks -->
 @if(isset($timeEntries))
 <div class="card mb-4">
-   <div class="card-header d-flex justify-content-between align-items-center">
+   <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
        <h5 class="mb-0">{{ __('Recent time entries') }}</h5>
-       <span class="badge bg-label-info">{{ __('Total') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
+       <div class="d-flex align-items-center gap-2">
+           <span class="badge bg-label-info">{{ __('Total') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
+           @if(isset($projectTasks) && $projectTasks->isNotEmpty())
+               <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#projectTimeModal">
+                   <i class="ti ti-clock-plus me-1"></i>{{ __('Register time') }}
+               </button>
+           @endif
+       </div>
    </div>
    <div class="card-body">
        @if($timeEntries->isEmpty())
-           <p class="text-muted mb-0">{{ __('No time entries for this project') }}</p>
+           <p class="text-muted mb-0">
+               @if(isset($projectTasks) && $projectTasks->isNotEmpty())
+                   {{ __('No time entries for this project yet. Start a timer on a task or register time manually.') }}
+               @else
+                   {{ __('No time entries for this project. Add tasks to the board first, then register time per collaborator and task.') }}
+               @endif
+           </p>
        @else
        <div class="table-responsive">
            <table class="table table-hover">
                <thead>
                    <tr>
-                       <th>{{ __('User') }}</th>
+                       <th>{{ __('Collaborator') }}</th>
+                       <th>{{ __('Task') }}</th>
+                       <th>{{ __('Description') }}</th>
                        <th class="text-center">{{ __('Start') }}</th>
                        <th class="text-center">{{ __('End') }}</th>
                        <th class="text-end">{{ __('Duration') }}</th>
@@ -435,6 +585,14 @@
                    @foreach($timeEntries as $entry)
                    <tr>
                        <td>{{ $entry->user?->name ?? '—' }}</td>
+                       <td>
+                           @if($entry->task)
+                               <a href="{{ route('task.show', $entry->task->id) }}">{{ $entry->task->title }}</a>
+                           @else
+                               —
+                           @endif
+                       </td>
+                       <td>{{ $entry->description ?: '—' }}</td>
                        <td class="text-center">{{ optional($entry->start_time)->format('d/m/Y H:i') }}</td>
                        <td class="text-center">{{ optional($entry->end_time)->format('d/m/Y H:i') ?? '—' }}</td>
                        <td class="text-end">
@@ -452,6 +610,75 @@
        </div>
        @endif
    </div>
+</div>
+@endif
+
+@if(isset($projectTasks) && $projectTasks->isNotEmpty())
+<div class="modal fade" id="projectTimeModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">{{ __('Register time') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="POST" action="{{ route('project.time.store', $project->id) }}">
+				@csrf
+				<div class="modal-body">
+					<p class="text-muted small mb-3">{{ __('Log work against a board task. Admins can assign the entry to another team collaborator.') }}</p>
+					<div class="mb-3">
+						<label for="project-time-task-id" class="form-label">{{ __('Task') }} (*)</label>
+						<select id="project-time-task-id" name="task_id" class="select2 form-select" required data-placeholder="{{ __('Choose an option') }}">
+							<option value=""></option>
+							@foreach($projectTasks as $task)
+								<option value="{{ $task->id }}" @selected((int) old('task_id') === (int) $task->id)>
+									{{ $task->title }}
+								</option>
+							@endforeach
+						</select>
+					</div>
+					@if(auth()->user()->hasRole('admin'))
+					<div class="mb-3">
+						<label for="project-time-user-id" class="form-label">{{ __('Collaborator') }}</label>
+						<select id="project-time-user-id" name="user_id" class="select2 form-select" data-placeholder="{{ __('Choose an option') }}">
+							@foreach(($teamUsers ?? collect()) as $teamUserId => $teamUserName)
+								<option value="{{ $teamUserId }}" @selected((int) old('user_id', auth()->id()) === (int) $teamUserId)>
+									{{ $teamUserName }}
+								</option>
+							@endforeach
+						</select>
+					</div>
+					@endif
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label for="project-time-start" class="form-label">{{ __('Start') }} (*)</label>
+							<input type="datetime-local" id="project-time-start" name="start_time" class="form-control"
+								value="{{ old('start_time', now()->format('Y-m-d\TH:i')) }}" required>
+						</div>
+						<div class="col-md-6">
+							<label for="project-time-end" class="form-label">{{ __('End') }}</label>
+							<input type="datetime-local" id="project-time-end" name="end_time" class="form-control"
+								value="{{ old('end_time') }}">
+						</div>
+						<div class="col-md-6">
+							<label for="project-time-duration" class="form-label">{{ __('Duration (hours)') }}</label>
+							<input type="number" step="0.25" min="0.25" max="24" id="project-time-duration" name="duration_hours"
+								class="form-control" value="{{ old('duration_hours', '1') }}" placeholder="1">
+							<small class="text-muted">{{ __('Used when end time is empty.') }}</small>
+						</div>
+						<div class="col-12">
+							<label for="project-time-description" class="form-label">{{ __('Description') }}</label>
+							<input type="text" id="project-time-description" name="description" class="form-control"
+								value="{{ old('description') }}" maxlength="255">
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+					<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 @endif
 
@@ -580,9 +807,11 @@
    <div class="card-header d-flex justify-content-between align-items-center">
        <h5 class="mb-0">{{ __('Linked services') }}</h5>
        @can('update', $project)
+       @if (! $project->isBudgetContentLocked())
        <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
            <i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
        </button>
+       @endif
        @endcan
    </div>
    <div class="card-body">
@@ -669,14 +898,18 @@
 							<td class="col-1 text-center">
                                 <div class="d-flex justify-content-center align-items-center">
                                     @can('update', $project)
+                                    @if (! $project->isBudgetContentLocked())
                                     <a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
                                         <i class="ti ti-edit ti-sm"></i>
                                     </a>
+                                    @endif
                                     @endcan
                                     @can('delete', $project)
+                                    @if (! $project->isBudgetContentLocked())
                                     <a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
                                         <i class="ti ti-trash ti-sm"></i>
                                     </a>
+                                    @endif
                                     @endcan
                                 </div>
 							</td>
@@ -693,14 +926,58 @@
 			<i class="ti ti-settings ti-xl text-muted mb-3"></i>
 			<h6 class="mb-2">{{ __('No linked services') }}</h6>
 			<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
-		@can('update', $project)
+       @can('update', $project)
+       @if (! $project->isBudgetContentLocked())
 		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
 			<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
 		</button>
+       @endif
 		@endcan
 		</div>
 	</div>
 	@endif
+
+@if ($project->isBudgetContentLocked())
+@php
+	$lockedStatusOptions = \App\Models\ProjectStatus::query()
+		->whereIn('id', $project->allowedStatusIdsWhenLocked())
+		->orderBy('id')
+		->get();
+@endphp
+<div class="modal fade" id="projectStatusModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">{{ __('Change status') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="POST" action="{{ route('project.update-status', $project->id) }}">
+				@csrf
+				@method('PATCH')
+				<div class="modal-body">
+					<p class="text-muted small mb-3">
+						{{ __('This approved budget is locked. Only the project status can be changed.') }}
+					</p>
+					<div class="mb-3">
+						<label for="locked-status-id" class="form-label">{{ __('Project Status') }}</label>
+						<select id="locked-status-id" name="status_id" class="select2 form-select" data-placeholder="{{ __('Choose an option') }}" required>
+							@foreach ($lockedStatusOptions as $status)
+								<option value="{{ $status->id }}" @selected((int) $project->status_id === (int) $status->id)>
+									{{ $status->translated_name }}
+								</option>
+							@endforeach
+						</select>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+					<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+@endif
 
 <!-- Modal para agregar/editar servicio -->
 <div class="modal fade" id="serviceModal" tabindex="-1" aria-hidden="true">
@@ -803,6 +1080,88 @@
 		var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
 		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
+		});
+
+		var $lockedStatus = $('#locked-status-id');
+		if ($lockedStatus.length && $.fn.select2) {
+			var $statusModal = $('#projectStatusModal');
+			$lockedStatus.select2({
+				dropdownParent: $statusModal,
+				width: '100%',
+				minimumResultsForSearch: Infinity
+			});
+			$statusModal.on('shown.bs.modal', function () {
+				$lockedStatus.trigger('change.select2');
+			});
+		}
+
+		var $timeModal = $('#projectTimeModal');
+		if ($timeModal.length && $.fn.select2) {
+			$('#project-time-task-id, #project-time-user-id').each(function () {
+				var $el = $(this);
+				if ($el.length) {
+					$el.select2({
+						dropdownParent: $timeModal,
+						width: '100%',
+						allowClear: ! $el.prop('required'),
+						placeholder: $el.data('placeholder') || ''
+					});
+				}
+			});
+		}
+
+		function projectTimerHeaders() {
+			return {
+				'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+				'Accept': 'application/json'
+			};
+		}
+
+		$(document).on('click', '.project-start-timer', function () {
+			var $btn = $(this);
+			var taskId = $btn.data('task-id');
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: '{{ route("time.start") }}',
+				method: 'POST',
+				headers: projectTimerHeaders(),
+				data: { task_id: taskId },
+				success: function () {
+					window.location.reload();
+				},
+				error: function (xhr) {
+					$btn.prop('disabled', false);
+					var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : '{{ __("Could not start timer.") }}';
+					if (typeof toastr !== 'undefined') {
+						toastr.error(msg);
+					} else {
+						alert(msg);
+					}
+				}
+			});
+		});
+
+		$(document).on('click', '.project-stop-timer', function () {
+			var $btn = $(this);
+			var timeId = $btn.data('time-id');
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: '/time/' + timeId + '/stop',
+				method: 'POST',
+				headers: projectTimerHeaders(),
+				success: function () {
+					window.location.reload();
+				},
+				error: function (xhr) {
+					$btn.prop('disabled', false);
+					var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : '{{ __("Could not stop timer.") }}';
+					if (typeof toastr !== 'undefined') {
+						toastr.error(msg);
+					} else {
+						alert(msg);
+					}
+				}
+			});
 		});
 
 		// Service modal functionality

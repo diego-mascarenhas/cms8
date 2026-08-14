@@ -686,8 +686,11 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/project/{id}', [ProjectController::class, 'show'])->name('project.show');
     Route::post('/project/{id}/authorize-budget', [ProjectController::class, 'authorizeBudgetQuote'])->name('project.authorize-budget');
     Route::post('/project/{id}/add-suggested-task', [ProjectController::class, 'addSuggestedTask'])->name('project.add-suggested-task');
+    Route::post('/project/{id}/time', [ProjectController::class, 'storeTimeEntry'])->name('project.time.store');
+    Route::post('/project/{id}/invoice-deposit', [ProjectController::class, 'invoiceDeposit'])->name('project.invoice-deposit');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
+    Route::patch('/project/{id}/status', [ProjectController::class, 'updateStatus'])->name('project.update-status');
     Route::delete('/project/{id}', [ProjectController::class, 'destroy'])->name('project.destroy');
     Route::get('/opportunity/list', [OpportunityController::class, 'index'])->name('opportunity.index');
     Route::get('/opportunity/create', [OpportunityController::class, 'create'])->name('opportunity.create');

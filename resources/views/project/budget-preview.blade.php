@@ -74,6 +74,9 @@
     $clientResponse = is_array($clientResponse ?? null) ? $clientResponse : null;
     $responseStatus = is_array($clientResponse) ? ($clientResponse['status'] ?? null) : null;
     $budgetToken = $budgetToken ?? data_get($project->data, 'budget_preview_token');
+    $quoteIsClosed = $project->isBudgetApproved()
+        || in_array($responseStatus, ['accepted', 'reformulation_requested'], true);
+    $quoteIsAccepted = $project->isBudgetApproved() || $responseStatus === 'accepted';
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -177,20 +180,42 @@
         .btn-primary:hover { background: #3451e0; }
         .btn-secondary { background: #e5e7eb; color: #111827; }
         .btn-secondary:hover { background: #d1d5db; }
-        .field { margin: 10px 0; }
-        .field label { display: block; font-weight: 600; margin-bottom: 4px; color: #111827; }
-        .field input, .field textarea {
+        .field { margin: 14px 0; }
+        .field label { display: block; font-weight: 600; margin-bottom: 6px; color: #111827; font-size: 13px; }
+        .field input, .field textarea, .accept-form input[type="text"] {
             width: 100%;
-            border: 1px solid #d1d5db;
+            border: 1px solid #d9dee3;
             border-radius: 6px;
-            padding: 8px 10px;
+            padding: 10px 14px;
             font: inherit;
-            color: #111827;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #697a8d;
             background: #fff;
+            transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+        }
+        .field input:focus, .field textarea:focus, .accept-form input[type="text"]:focus {
+            outline: 0;
+            border-color: #4361f7;
+            box-shadow: 0 0 0 .2rem rgba(67, 97, 247, .16);
+            color: #697a8d;
         }
         .field textarea { min-height: 120px; resize: vertical; }
-        .check { display: flex; gap: 8px; align-items: flex-start; margin: 12px 0; color: #374151; }
-        .check input { margin-top: 3px; }
+        .check { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0; color: #374151; font-size: 14px; }
+        .check input {
+            width: 1.05rem;
+            height: 1.05rem;
+            margin-top: 3px;
+            flex-shrink: 0;
+            accent-color: #4361f7;
+        }
+        .accept-form {
+            margin-top: 8px;
+            padding: 16px 18px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fafbfc;
+        }
         .check.is-invalid { color: #991b1b; }
         .is-invalid {
             border-color: #dc2626 !important;
@@ -349,7 +374,7 @@
     @endif
 
     @if ($hasContent && $budgetToken)
-        @if ($responseStatus === 'accepted')
+        @if ($quoteIsAccepted)
             <div class="status-box">
                 <strong>{{ __('Quote accepted') }}</strong><br>
                 {{ __('The project will not start until 30% of the payment is received.') }}
@@ -365,7 +390,7 @@
                     <br><em style="display:block;margin-top:6px;">{{ $clientResponse['message'] }}</em>
                 @endif
             </div>
-        @else
+        @elseif (! $quoteIsClosed)
             <div class="notice">
                 <strong>{{ __('Important before accepting') }}</strong><br>
                 {{ __('The project will not start until 30% of the payment is received (:amount).', [
@@ -381,7 +406,7 @@
                 @csrf
                 <div class="field">
                     <label for="accepted_by_name">{{ __('Your name') }} ({{ __('optional') }})</label>
-                    <input type="text" id="accepted_by_name" name="accepted_by_name" value="{{ old('accepted_by_name') }}" maxlength="255" class="@error('accepted_by_name') is-invalid @enderror">
+                    <input type="text" id="accepted_by_name" name="accepted_by_name" value="{{ old('accepted_by_name') }}" maxlength="255" class="@error('accepted_by_name') is-invalid @enderror" placeholder="{{ __('Your name') }}">
                     @error('accepted_by_name')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -406,14 +431,14 @@
                     <p style="margin:0 0 12px;color:#4b5563;">{{ __('Tell us what you would like to change in this quote.') }}</p>
                     <div class="field">
                         <label for="reformulate_name">{{ __('Your name') }} ({{ __('optional') }})</label>
-                        <input type="text" id="reformulate_name" name="name" value="{{ old('name') }}" maxlength="255" class="@error('name') is-invalid @enderror">
+                        <input type="text" id="reformulate_name" name="name" value="{{ old('name') }}" maxlength="255" class="@error('name') is-invalid @enderror" placeholder="{{ __('Your name') }}">
                         @error('name')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="field">
                         <label for="reformulate_message">{{ __('Comments') }} (*)</label>
-                        <textarea id="reformulate_message" name="message" maxlength="5000" class="@error('message') is-invalid @enderror">{{ old('message') }}</textarea>
+                        <textarea id="reformulate_message" name="message" maxlength="5000" class="@error('message') is-invalid @enderror" placeholder="{{ __('Comments') }}">{{ old('message') }}</textarea>
                         @error('message')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
@@ -427,7 +452,7 @@
         @endif
     @endif
 </div>
-@if ($hasContent && $budgetToken && ! in_array($responseStatus, ['accepted', 'reformulation_requested'], true))
+@if ($hasContent && $budgetToken && ! $quoteIsClosed)
 <script>
     (function () {
         var dialog = document.getElementById('reformulate-dialog');

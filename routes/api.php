@@ -69,7 +69,7 @@ use Illuminate\Support\Facades\Route;
  * |
  */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request)
+Route::middleware('auth.api')->get('/user', function (Request $request)
 {
     return $request->user();
 });
@@ -436,7 +436,7 @@ Route::group(['prefix' => 'auth'], function ()
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
 
-    Route::middleware('auth:sanctum')->group(function ()
+    Route::middleware('auth.api')->group(function ()
     {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
@@ -454,7 +454,7 @@ Route::get('tasks-by-context-key', [TaskController::class, 'tasksByContextKey'])
 Route::post('task-assign-and-start', [TaskController::class, 'taskAssignAndStart']);
 Route::post('task-complete-by-context-key', [TaskController::class, 'taskCompleteByContextKey']);
 
-Route::middleware('auth:sanctum')->group(function ()
+Route::middleware('auth.api')->group(function ()
 {
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);

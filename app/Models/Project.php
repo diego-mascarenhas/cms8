@@ -272,6 +272,56 @@ class Project extends Model
     }
 
     /**
+     * Budget was accepted by the client and/or marked as approved.
+     */
+    public function isBudgetApproved(): bool
+    {
+        if ((int) $this->status_id === ProjectStatus::STATUS_APPROVED)
+        {
+            return true;
+        }
+
+        return data_get($this->data, 'budget_client_response.status') === 'accepted';
+    }
+
+    /**
+     * Approved budgets cannot change content/pricing — only allowed status transitions.
+     */
+    public function isBudgetContentLocked(): bool
+    {
+        return $this->isBudgetApproved();
+    }
+
+    /**
+     * @return list<int>
+     */
+    public function allowedStatusIdsWhenLocked(): array
+    {
+        $ids = ProjectStatus::allowedAfterApprovalStatusIds();
+
+        // Once work has started (left Approved), do not allow returning to Approved.
+        if ((int) $this->status_id !== ProjectStatus::STATUS_APPROVED)
+        {
+            $ids = array_values(array_filter(
+                $ids,
+                fn (int $id): bool => $id !== ProjectStatus::STATUS_APPROVED,
+            ));
+        }
+
+        return $ids;
+    }
+
+    public function canTransitionToStatus(int $statusId): bool
+    {
+        if (! $this->isBudgetContentLocked())
+        {
+            return true;
+        }
+
+        return in_array($statusId, $this->allowedStatusIdsWhenLocked(), true);
+    }
+
+    /**
      * Get count of active projects (projects in progress states)
      */
     public static function getActiveProjectsCount($teamId = null)
