@@ -1865,6 +1865,7 @@
   "Deposit invoice created successfully.": "Deposit invoice created successfully.",
   "Deposit invoice created and charged. Project moved to in progress.": "Deposit invoice created and charged. Project moved to in progress.",
   "Deposit invoice created and sent for payment. Project moved to in progress.": "Deposit invoice created and sent for payment. Project moved to in progress.",
+  "Deposit invoice created and sent for payment. Project stays approved until paid.": "Deposit invoice created and sent for payment. Project stays approved until paid.",
   "Stripe invoice ready": "Stripe invoice ready",
   "Open the hosted Stripe invoice to send or collect payment.": "Open the hosted Stripe invoice to send or collect payment.",
   "Open in Stripe": "Open in Stripe",

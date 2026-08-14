@@ -95,7 +95,7 @@ class ProjectDepositInvoiceTest extends TestCase
     }
 
     #[Test]
-    public function deposit_invoice_is_created_via_stripe_and_moves_project_to_in_progress(): void
+    public function deposit_invoice_is_created_via_stripe_and_stays_approved_until_paid(): void
     {
         [$user, $project] = $this->createApprovedProject();
         $project->client->setStripeCustomerId('cus_test_deposit')->save();
@@ -176,7 +176,7 @@ class ProjectDepositInvoiceTest extends TestCase
         $this->assertSame(21.0, (float) $invoice->items()->first()?->tax_percentage);
 
         $fresh = $project->fresh();
-        $this->assertSame(ProjectStatus::STATUS_IN_PROGRESS, (int) $fresh->status_id);
+        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $fresh->status_id);
         $this->assertSame('inv_test_deposit_001', data_get($fresh->data, 'deposit_invoice.stripe_invoice_id'));
         $this->assertFalse((bool) data_get($fresh->data, 'deposit_invoice.charged'));
     }

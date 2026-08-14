@@ -2003,6 +2003,7 @@
   "Deposit invoice created successfully.": "Factura de adelanto creada correctamente.",
   "Deposit invoice created and charged. Project moved to in progress.": "Factura de adelanto creada y cobrada. Proyecto pasado a en progreso.",
   "Deposit invoice created and sent for payment. Project moved to in progress.": "Factura de adelanto creada y enviada para cobro. Proyecto pasado a en progreso.",
+  "Deposit invoice created and sent for payment. Project stays approved until paid.": "Factura de adelanto creada y enviada para cobro. El proyecto sigue aprobado hasta que se pague.",
   "Stripe invoice ready": "Factura de Stripe lista",
   "Open the hosted Stripe invoice to send or collect payment.": "Abre la factura alojada en Stripe para enviarla o cobrar.",
   "Open in Stripe": "Abrir en Stripe",
