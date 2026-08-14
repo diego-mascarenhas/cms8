@@ -19,7 +19,7 @@ class RegenerateApiToken extends Command
      *
      * @var string
      */
-    protected $description = 'Regenerate API token for a team to include plain token storage';
+    protected $description = 'Create a new API token for a team (keeps existing tokens)';
 
     /**
      * Execute the console command.
@@ -40,10 +40,9 @@ class RegenerateApiToken extends Command
             $this->regenerateTeamToken($team);
         } else
         {
-            // Regenerate for all teams that have tokens
             $teams = Team::whereHas('settings', function ($query)
             {
-                $query->where('key', 'api_token_hash');
+                $query->whereIn('key', ['api_token_hash', 'api_tokens']);
             })->get();
 
             if ($teams->isEmpty())
@@ -62,24 +61,11 @@ class RegenerateApiToken extends Command
         return 0;
     }
 
-    private function regenerateTeamToken(Team $team)
+    private function regenerateTeamToken(Team $team): void
     {
-        // Generate new token
-        $tokenValue = bin2hex(random_bytes(32));
-        $tokenHash = hash('sha256', $tokenValue);
+        $created = $team->createApiToken('API Access Token', '*');
 
-        // Update settings
-        $team->setSetting('api_token_hash', $tokenHash, [
-            'group' => 'api',
-            'is_encrypted' => true,
-        ]);
-
-        $team->setSetting('api_token_plain', $tokenValue, [
-            'group' => 'api',
-            'is_encrypted' => true,
-        ]);
-
-        $this->info("Regenerated API token for team: {$team->name}");
-        $this->line("New token: {$tokenValue}");
+        $this->info("Created API token for team: {$team->name}");
+        $this->line('New token: '.$created['plain']);
     }
 }

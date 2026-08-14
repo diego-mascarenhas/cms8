@@ -83,7 +83,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee(__('Details'), false);
         $response->assertSee('report-header', false);
         $response->assertSee('highlight', false);
-        $response->assertSee('idoneo-logo.svg', false);
+        $response->assertSee('logo-light.svg', false);
         $response->assertSee(__('Discount on labor'), false);
         $response->assertSee('30%', false);
         $response->assertDontSee('layout-wrapper', false);

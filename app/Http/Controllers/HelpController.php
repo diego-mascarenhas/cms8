@@ -21,31 +21,19 @@ class HelpController extends Controller
         }
 
         // Get the plain token if it exists, otherwise show placeholder
-        $plainToken = $team->getSetting('api_token_plain', null);
+        $tokens = $team->getApiTokens();
+        $plainToken = $tokens[0]['plain'] ?? $team->getSetting('api_token_plain', null);
         if ($plainToken)
         {
             return $plainToken;
         }
 
-        // If token exists but no plain version, generate a new one
-        $hasToken = $team->getSetting('api_token_hash');
-        if ($hasToken)
+        // If no token exists, leave placeholder for docs
+        if ($tokens !== [] || $team->getSetting('api_token_hash'))
         {
-            // Generate new token for existing users
-            $tokenValue = bin2hex(random_bytes(32));
-            $tokenHash = hash('sha256', $tokenValue);
+            $created = $team->createApiToken('API Access Token', '*');
 
-            $team->setSetting('api_token_hash', $tokenHash, [
-                'group' => 'api',
-                'is_encrypted' => true,
-            ]);
-
-            $team->setSetting('api_token_plain', $tokenValue, [
-                'group' => 'api',
-                'is_encrypted' => true,
-            ]);
-
-            return $tokenValue;
+            return $created['plain'];
         }
 
         return 'YOUR_API_TOKEN';

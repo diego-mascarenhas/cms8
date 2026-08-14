@@ -23,15 +23,12 @@ class TeamTokenAuth
 
         $tokenHash = hash('sha256', $token);
 
-        // Find team with this token
         $team = Team::whereHas('settings', function ($query)
         {
-            $query->where('key', 'api_token_hash');
-        })->with('settings')->get()->first(function ($team) use ($tokenHash)
+            $query->whereIn('key', ['api_token_hash', 'api_tokens']);
+        })->with('settings')->get()->first(function (Team $team) use ($tokenHash)
         {
-            $tokenSetting = $team->settings->where('key', 'api_token_hash')->first();
-
-            return $tokenSetting && $tokenSetting->value === $tokenHash;
+            return $team->findApiTokenByHash($tokenHash) !== null;
         });
 
         if (! $team)
@@ -39,9 +36,9 @@ class TeamTokenAuth
             return response()->json(['message' => 'Invalid token'], 401);
         }
 
-        // Add team to request
         $request->merge(['team_id' => $team->id]);
         $request->attributes->set('team', $team);
+        $request->attributes->set('team_api_token', $team->findApiTokenByHash($tokenHash));
 
         return $next($request);
     }

@@ -24,8 +24,6 @@ class ProjectBudgetQuoteMail extends Mailable
         $trackedPreviewUrl = route('project.budget-email.track-click', $this->trackingToken);
         $trackingPixelUrl = route('project.budget-email.track-open', $this->trackingToken);
 
-        $budgetLogoPath = ltrim((string) config('variables.logo.budget_path', 'assets/idoneo-logo.svg'), '/');
-
         return $this->subject(__('Your project quote is ready: :project', ['project' => $projectName]))
             ->view('emails.project-budget-quote', [
                 'recipientName' => $this->recipientName,
@@ -33,7 +31,7 @@ class ProjectBudgetQuoteMail extends Mailable
                 'enterpriseName' => trim((string) (optional($this->project->enterprise)->name ?? '')),
                 'previewUrl' => $trackedPreviewUrl,
                 'trackingPixelUrl' => $trackingPixelUrl,
-                'logoUrl' => url(asset($budgetLogoPath)),
+                'logoUrl' => \App\Helpers\Helpers::budgetLogoAsset(),
                 'appName' => 'IDONEO',
                 'footerBrand' => 'REVISION ALPHA',
             ]);
