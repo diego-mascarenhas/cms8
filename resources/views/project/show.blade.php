@@ -304,10 +304,14 @@
 							<th class="text-center">{{ __('Status') }}</th>
 							<th class="text-end">{{ __('Hours') }}</th>
 							<th class="text-end">{{ __('Actual') }}</th>
+							<th class="text-center" style="width: 7rem;">{{ __('Timer') }}</th>
 						</tr>
 					</thead>
 					<tbody>
 						@foreach($projectTasks as $task)
+						@php
+							$isRunningThisTask = isset($runningTimer) && $runningTimer && (int) $runningTimer->task_id === (int) $task->id;
+						@endphp
 						<tr>
 							<td>
 								<a href="{{ route('task.show', $task->id) }}">{{ $task->title ?? '—' }}</a>
@@ -322,6 +326,23 @@
 							</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($task->estimated_hours) }}</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($actualHoursByTaskId->get($task->id, 0)) }}</td>
+							<td class="text-center">
+								@if($isRunningThisTask)
+									<button type="button"
+										class="btn btn-sm btn-label-danger project-stop-timer"
+										data-time-id="{{ $runningTimer->id }}"
+										title="{{ __('Stop timer') }}">
+										<i class="ti ti-player-stop"></i>
+									</button>
+								@else
+									<button type="button"
+										class="btn btn-sm btn-label-primary project-start-timer"
+										data-task-id="{{ $task->id }}"
+										title="{{ __('Start timer') }}">
+										<i class="ti ti-player-play"></i>
+									</button>
+								@endif
+							</td>
 						</tr>
 						@endforeach
 					</tbody>
@@ -330,12 +351,13 @@
 							<td colspan="3" class="text-end">{{ __('Total') }}</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($totalEstimated) }}</td>
 							<td class="text-end">{{ \App\Helpers\Helpers::formatHoursHuman($totalActual) }}</td>
+							<td></td>
 						</tr>
 					</tfoot>
 				</table>
 			</div>
 		@else
-			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add tasks in the Kanban to see estimated and actual hours here.') }}</p>
+			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add the suggested tasks below (or in the Kanban) to register time per collaborator and task.') }}</p>
 		@endif
 
 		@if(isset($suggestedTasks) && count($suggestedTasks) > 0 && auth()->user()->can('access-billing-modules'))
@@ -419,19 +441,34 @@
 <!-- Time Tracking for Project Tasks -->
 @if(isset($timeEntries))
 <div class="card mb-4">
-   <div class="card-header d-flex justify-content-between align-items-center">
+   <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
        <h5 class="mb-0">{{ __('Recent time entries') }}</h5>
-       <span class="badge bg-label-info">{{ __('Total') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
+       <div class="d-flex align-items-center gap-2">
+           <span class="badge bg-label-info">{{ __('Total') }}: {{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
+           @if(isset($projectTasks) && $projectTasks->isNotEmpty())
+               <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#projectTimeModal">
+                   <i class="ti ti-clock-plus me-1"></i>{{ __('Register time') }}
+               </button>
+           @endif
+       </div>
    </div>
    <div class="card-body">
        @if($timeEntries->isEmpty())
-           <p class="text-muted mb-0">{{ __('No time entries for this project') }}</p>
+           <p class="text-muted mb-0">
+               @if(isset($projectTasks) && $projectTasks->isNotEmpty())
+                   {{ __('No time entries for this project yet. Start a timer on a task or register time manually.') }}
+               @else
+                   {{ __('No time entries for this project. Add tasks to the board first, then register time per collaborator and task.') }}
+               @endif
+           </p>
        @else
        <div class="table-responsive">
            <table class="table table-hover">
                <thead>
                    <tr>
-                       <th>{{ __('User') }}</th>
+                       <th>{{ __('Collaborator') }}</th>
+                       <th>{{ __('Task') }}</th>
+                       <th>{{ __('Description') }}</th>
                        <th class="text-center">{{ __('Start') }}</th>
                        <th class="text-center">{{ __('End') }}</th>
                        <th class="text-end">{{ __('Duration') }}</th>
@@ -441,6 +478,14 @@
                    @foreach($timeEntries as $entry)
                    <tr>
                        <td>{{ $entry->user?->name ?? '—' }}</td>
+                       <td>
+                           @if($entry->task)
+                               <a href="{{ route('task.show', $entry->task->id) }}">{{ $entry->task->title }}</a>
+                           @else
+                               —
+                           @endif
+                       </td>
+                       <td>{{ $entry->description ?: '—' }}</td>
                        <td class="text-center">{{ optional($entry->start_time)->format('d/m/Y H:i') }}</td>
                        <td class="text-center">{{ optional($entry->end_time)->format('d/m/Y H:i') ?? '—' }}</td>
                        <td class="text-end">
@@ -458,6 +503,75 @@
        </div>
        @endif
    </div>
+</div>
+@endif
+
+@if(isset($projectTasks) && $projectTasks->isNotEmpty())
+<div class="modal fade" id="projectTimeModal" tabindex="-1" aria-hidden="true">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">{{ __('Register time') }}</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<form method="POST" action="{{ route('project.time.store', $project->id) }}">
+				@csrf
+				<div class="modal-body">
+					<p class="text-muted small mb-3">{{ __('Log work against a board task. Admins can assign the entry to another team collaborator.') }}</p>
+					<div class="mb-3">
+						<label for="project-time-task-id" class="form-label">{{ __('Task') }} (*)</label>
+						<select id="project-time-task-id" name="task_id" class="select2 form-select" required data-placeholder="{{ __('Choose an option') }}">
+							<option value=""></option>
+							@foreach($projectTasks as $task)
+								<option value="{{ $task->id }}" @selected((int) old('task_id') === (int) $task->id)>
+									{{ $task->title }}
+								</option>
+							@endforeach
+						</select>
+					</div>
+					@if(auth()->user()->hasRole('admin'))
+					<div class="mb-3">
+						<label for="project-time-user-id" class="form-label">{{ __('Collaborator') }}</label>
+						<select id="project-time-user-id" name="user_id" class="select2 form-select" data-placeholder="{{ __('Choose an option') }}">
+							@foreach(($teamUsers ?? collect()) as $teamUserId => $teamUserName)
+								<option value="{{ $teamUserId }}" @selected((int) old('user_id', auth()->id()) === (int) $teamUserId)>
+									{{ $teamUserName }}
+								</option>
+							@endforeach
+						</select>
+					</div>
+					@endif
+					<div class="row g-3">
+						<div class="col-md-6">
+							<label for="project-time-start" class="form-label">{{ __('Start') }} (*)</label>
+							<input type="datetime-local" id="project-time-start" name="start_time" class="form-control"
+								value="{{ old('start_time', now()->format('Y-m-d\TH:i')) }}" required>
+						</div>
+						<div class="col-md-6">
+							<label for="project-time-end" class="form-label">{{ __('End') }}</label>
+							<input type="datetime-local" id="project-time-end" name="end_time" class="form-control"
+								value="{{ old('end_time') }}">
+						</div>
+						<div class="col-md-6">
+							<label for="project-time-duration" class="form-label">{{ __('Duration (hours)') }}</label>
+							<input type="number" step="0.25" min="0.25" max="24" id="project-time-duration" name="duration_hours"
+								class="form-control" value="{{ old('duration_hours', '1') }}" placeholder="1">
+							<small class="text-muted">{{ __('Used when end time is empty.') }}</small>
+						</div>
+						<div class="col-12">
+							<label for="project-time-description" class="form-label">{{ __('Description') }}</label>
+							<input type="text" id="project-time-description" name="description" class="form-control"
+								value="{{ old('description') }}" maxlength="255">
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+					<button type="submit" class="btn btn-primary">{{ __('Save') }}</button>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 @endif
 
@@ -873,6 +987,75 @@
 				$lockedStatus.trigger('change.select2');
 			});
 		}
+
+		var $timeModal = $('#projectTimeModal');
+		if ($timeModal.length && $.fn.select2) {
+			$('#project-time-task-id, #project-time-user-id').each(function () {
+				var $el = $(this);
+				if ($el.length) {
+					$el.select2({
+						dropdownParent: $timeModal,
+						width: '100%',
+						allowClear: ! $el.prop('required'),
+						placeholder: $el.data('placeholder') || ''
+					});
+				}
+			});
+		}
+
+		function projectTimerHeaders() {
+			return {
+				'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content'),
+				'Accept': 'application/json'
+			};
+		}
+
+		$(document).on('click', '.project-start-timer', function () {
+			var $btn = $(this);
+			var taskId = $btn.data('task-id');
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: '{{ route("time.start") }}',
+				method: 'POST',
+				headers: projectTimerHeaders(),
+				data: { task_id: taskId },
+				success: function () {
+					window.location.reload();
+				},
+				error: function (xhr) {
+					$btn.prop('disabled', false);
+					var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : '{{ __("Could not start timer.") }}';
+					if (typeof toastr !== 'undefined') {
+						toastr.error(msg);
+					} else {
+						alert(msg);
+					}
+				}
+			});
+		});
+
+		$(document).on('click', '.project-stop-timer', function () {
+			var $btn = $(this);
+			var timeId = $btn.data('time-id');
+			$btn.prop('disabled', true);
+			$.ajax({
+				url: '/time/' + timeId + '/stop',
+				method: 'POST',
+				headers: projectTimerHeaders(),
+				success: function () {
+					window.location.reload();
+				},
+				error: function (xhr) {
+					$btn.prop('disabled', false);
+					var msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : '{{ __("Could not stop timer.") }}';
+					if (typeof toastr !== 'undefined') {
+						toastr.error(msg);
+					} else {
+						alert(msg);
+					}
+				}
+			});
+		});
 
 		// Service modal functionality
 		initializeServiceModal();

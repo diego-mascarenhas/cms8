@@ -1832,5 +1832,20 @@
   "whatsapp.send.error.local_unreachable": "Cannot reach the local WhatsApp service. Start the whatsapp-service project (for example npm start) on the configured port and try again.",
   "whatsapp.send.error.not_connected": "WhatsApp is not connected. Scan the QR code in the chat panel to link your number.",
   "This approved budget is locked. Only the project status can be changed.": "This approved budget is locked. Only the project status can be changed.",
-  "Change status": "Change status"
+  "Change status": "Change status",
+  "Register time": "Register time",
+  "Duration (hours)": "Duration (hours)",
+  "Used when end time is empty.": "Used when end time is empty.",
+  "Log work against a board task. Admins can assign the entry to another team collaborator.": "Log work against a board task. Admins can assign the entry to another team collaborator.",
+  "No time entries for this project yet. Start a timer on a task or register time manually.": "No time entries for this project yet. Start a timer on a task or register time manually.",
+  "No time entries for this project. Add tasks to the board first, then register time per collaborator and task.": "No time entries for this project. Add tasks to the board first, then register time per collaborator and task.",
+  "No tasks on this project board yet. Add the suggested tasks below (or in the Kanban) to register time per collaborator and task.": "No tasks on this project board yet. Add the suggested tasks below (or in the Kanban) to register time per collaborator and task.",
+  "Start timer": "Start timer",
+  "Stop timer": "Stop timer",
+  "Time entry registered successfully.": "Time entry registered successfully.",
+  "Add tasks to the project board before registering time.": "Add tasks to the project board before registering time.",
+  "The selected collaborator does not belong to this team.": "The selected collaborator does not belong to this team.",
+  "Provide an end time or a duration in hours.": "Provide an end time or a duration in hours.",
+  "Could not start timer.": "Could not start timer.",
+  "Could not stop timer.": "Could not stop timer."
 }

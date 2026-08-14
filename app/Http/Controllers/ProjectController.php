@@ -830,15 +830,22 @@ class ProjectController extends Controller
         $totalHours = 0;
         $projectTasks = collect();
         $actualHoursByTaskId = collect();
+        $runningTimer = Time::getRunningTimer();
 
         if ($project->board_id)
         {
-            $taskIds = Task::where('board_id', $project->board_id)->pluck('id');
+            $projectTasks = Task::where('board_id', $project->board_id)
+                ->with(['status', 'responsible'])
+                ->orderBy('order')
+                ->orderBy('id')
+                ->get();
+
+            $taskIds = $projectTasks->pluck('id');
 
             if ($taskIds->isNotEmpty())
             {
                 $timeEntries = Time::whereIn('task_id', $taskIds)
-                    ->with('user:id,name')
+                    ->with(['user:id,name', 'task:id,title'])
                     ->orderBy('start_time', 'desc')
                     ->limit(10)
                     ->get();
@@ -846,13 +853,6 @@ class ProjectController extends Controller
                 $totalHours = Time::whereIn('task_id', $taskIds)
                     ->whereNotNull('end_time')
                     ->sum('duration_seconds') / 3600;
-
-                // Task breakdown: tasks with estimated hours and actual hours
-                $projectTasks = Task::where('board_id', $project->board_id)
-                    ->with(['status', 'responsible'])
-                    ->orderBy('order')
-                    ->orderBy('id')
-                    ->get();
 
                 $actualHoursByTaskId = Time::whereIn('task_id', $taskIds)
                     ->selectRaw('task_id, SUM(duration_seconds) as total_seconds')
@@ -897,7 +897,16 @@ class ProjectController extends Controller
             ? AssignableTeamUsers::optionsForTeam($team)
             : collect();
 
-        return view('project.show', compact('project', 'timeEntries', 'totalHours', 'projectTasks', 'actualHoursByTaskId', 'suggestedTasks', 'teamUsers'));
+        return view('project.show', compact(
+            'project',
+            'timeEntries',
+            'totalHours',
+            'projectTasks',
+            'actualHoursByTaskId',
+            'suggestedTasks',
+            'teamUsers',
+            'runningTimer',
+        ));
     }
 
     /**
@@ -907,13 +916,6 @@ class ProjectController extends Controller
     {
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
-
-        if ($project->isBudgetContentLocked())
-        {
-            return redirect()
-                ->route('project.show', $project->id)
-                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-        }
 
         $request->validate([
             'title' => 'required|string|max:500',
@@ -975,6 +977,84 @@ class ProjectController extends Controller
 
         return redirect()->route('project.show', $project->id)
             ->with('success', __('Task added to board.'));
+    }
+
+    /**
+     * Manually register time worked on a project board task (collaborator + task).
+     */
+    public function storeTimeEntry(Request $request, string $id)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('view', $project);
+
+        if (! $project->board_id)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('Add tasks to the project board before registering time.'));
+        }
+
+        $validated = $request->validate([
+            'task_id' => 'required|exists:tasks,id',
+            'user_id' => 'nullable|exists:users,id',
+            'description' => 'nullable|string|max:255',
+            'start_time' => 'required|date',
+            'end_time' => 'nullable|date|after:start_time',
+            'duration_hours' => 'nullable|numeric|min:0.01|max:24',
+        ]);
+
+        $task = Task::query()
+            ->where('id', $validated['task_id'])
+            ->where('board_id', $project->board_id)
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->firstOrFail();
+
+        $userId = (int) auth()->id();
+        if (auth()->user()->hasRole('admin') && ! empty($validated['user_id']))
+        {
+            $candidateId = (int) $validated['user_id'];
+            $teamUserIds = auth()->user()->currentTeam->allUsers()->pluck('id')->map(fn ($id) => (int) $id);
+            if (! $teamUserIds->contains($candidateId))
+            {
+                return redirect()
+                    ->route('project.show', $project->id)
+                    ->with('error', __('The selected collaborator does not belong to this team.'));
+            }
+            $userId = $candidateId;
+        }
+
+        $start = Carbon::parse($validated['start_time']);
+        $end = null;
+        if (! empty($validated['end_time']))
+        {
+            $end = Carbon::parse($validated['end_time']);
+        } elseif (! empty($validated['duration_hours']))
+        {
+            $end = $start->copy()->addSeconds((int) round(((float) $validated['duration_hours']) * 3600));
+        }
+
+        if ($end === null)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->withInput()
+                ->with('error', __('Provide an end time or a duration in hours.'));
+        }
+
+        $time = Time::create([
+            'team_id' => auth()->user()->currentTeam->id,
+            'user_id' => $userId,
+            'task_id' => $task->id,
+            'description' => $validated['description'] ?? null,
+            'start_time' => $start,
+            'end_time' => $end,
+            'is_billable' => true,
+        ]);
+        $time->calculateDuration();
+
+        return redirect()
+            ->route('project.show', $project->id)
+            ->with('success', __('Time entry registered successfully.'));
     }
 
     /**
