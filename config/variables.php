@@ -40,7 +40,7 @@ return [
         'path_iso_light' => env('APP_LOGO_PATH_ISO_LIGHT', 'assets/logo-iso-light.svg'),
         'fallback' => env('APP_LOGO_FALLBACK', 'assets/logo.svg'),
         'iso_fallback' => env('APP_LOGO_ISO_FALLBACK', 'assets/logo-iso.svg'),
-        // Budget/quote public preview only (does not affect navbar / app chrome).
-        'budget_path' => env('APP_LOGO_BUDGET_PATH', 'assets/idoneo-logo.svg'),
+        // Optional override for budget/quote logos. Empty = use path_light via Helpers::logoAsset('light').
+        'budget_path' => env('APP_LOGO_BUDGET_PATH', ''),
     ],
 ];

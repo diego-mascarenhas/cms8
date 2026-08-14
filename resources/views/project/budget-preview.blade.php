@@ -9,8 +9,7 @@
     $aiUsage = $budgetService->normalizeAiUsagePercent(
         data_get($project->data, 'ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
     );
-    $budgetLogoPath = (string) config('variables.logo.budget_path', 'assets/idoneo-logo.svg');
-    $logoUrl = asset($budgetLogoPath);
+    $logoUrl = \App\Helpers\Helpers::budgetLogoAsset();
     $isoUrl = \App\Helpers\Helpers::logoAsset('iso');
 
     $formatHoursHuman = function ($hours): string {
