@@ -654,15 +654,16 @@ Route::middleware('auth.api')->group(function ()
         'destroy' => 'api.fares.destroy',
     ]);
 
-    // WhatsApp conversation list and thread messages (same handlers as web /chat/list, /chat/messages, /chat/send).
+    // WhatsApp inbox (idoneo-assistant SPA) — same handlers as web /chat/list, /chat/messages, /chat/send, /chat/whatsapp-status.
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');
     Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
     Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
+    Route::get('chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('api.chat.whatsapp-status');
 
-    // Assistant chat (Sanctum): uses authenticated user's current_team_id (e.g. Asperger Guard).
+    // Assistant chat (idoneo-assistant SPA / Sanctum): uses authenticated user's current_team_id.
     Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');
     Route::get('assistant/history', [ChatController::class, 'assistantHistory'])->name('api.assistant.history');
     Route::post('assistant/reset-context', [ChatController::class, 'resetAssistantContext'])->name('api.assistant.reset-context');

@@ -10,6 +10,8 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -205,5 +207,66 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJson(['success' => false]);
+    }
+
+    public function test_whatsapp_status_requires_authentication(): void
+    {
+        $this->getJson('/api/chat/whatsapp-status')->assertStatus(401);
+    }
+
+    public function test_whatsapp_status_returns_json_when_authenticated(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-status')
+            ->assertOk()
+            ->assertJsonStructure([
+                'driver',
+                'status',
+                'number',
+                'numberFormatted',
+                'teamNumber',
+                'teamNumberFormatted',
+                'isTeamConnected',
+            ]);
+    }
+
+    public function test_whatsapp_status_reports_team_connected_for_local_driver(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/status*' => Http::response(['status' => 'connected', 'number' => '34613194131'], 200),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-status')
+            ->assertOk()
+            ->assertJson([
+                'status' => 'connected',
+                'isTeamConnected' => true,
+            ]);
+
+        $this->assertSame('34613194131', $team->fresh()->getWhatsAppFrom());
     }
 }
