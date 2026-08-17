@@ -830,9 +830,7 @@ class ChatController extends Controller
             {
                 if (! empty($message->is_scheduled))
                 {
-                    $sender = $message->user_id
-                        ? ($messageUsers->get($message->user_id) ?? $authUser)
-                        : $authUser;
+                    $fromAssistant = $this->whatsAppMessageIsFromAssistant($message);
 
                     return [
                         'id' => $message->id,
@@ -845,15 +843,18 @@ class ChatController extends Controller
                         'created_at' => $message->scheduled_at?->toIso8601String(),
                         'user_id' => $message->user_id,
                         'media' => [],
-                        'sender_avatar' => ChatMessageAvatar::forUser($sender, 'bg-label-primary'),
+                        'transcribed_audio' => false,
+                        'from_assistant' => $fromAssistant,
+                        'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
                     ];
                 }
 
                 $payload = $message->toArray();
-                $sender = $message->user_id
-                    ? ($messageUsers->get($message->user_id) ?? $authUser)
-                    : $authUser;
-                $payload['sender_avatar'] = ChatMessageAvatar::forUser($sender, 'bg-label-primary');
+                $payload['from_assistant'] = $this->whatsAppMessageIsFromAssistant($message);
+                $payload['sender_avatar'] = $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser);
+                $payload['transcribed_audio'] = $message instanceof Conversation
+                    ? $message->isTranscribedAudio()
+                    : false;
 
                 return $payload;
             })->values()->all(),
@@ -2179,7 +2180,7 @@ class ChatController extends Controller
             }
 
             // Send original message (agent's reply when toggle is OFF)
-            $gateway->sendMessage($request->to, $message);
+            $gateway->sendMessage($request->to, $message, null, auth()->id());
 
             // Persist agent's reply into conversation context so the AI has it for future turns
             $contextUser = $userResolver->resolveUserForConversation($request->to, $request->input('contact_id'));
@@ -2951,6 +2952,31 @@ class ChatController extends Controller
         return $messages->concat($scheduledDisplay)
             ->sortBy(fn ($message) => $this->chatDisplayMessageTimestamp($message))
             ->values();
+    }
+
+    private function whatsAppMessageIsFromAssistant(object $message): bool
+    {
+        $direction = (string) ($message->direction ?? '');
+        $userId = $message->user_id ?? null;
+
+        return $direction === 'outbound' && empty($userId);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, User>  $messageUsers
+     * @return array<string, mixed>
+     */
+    private function whatsAppMessageSenderAvatar(object $message, $messageUsers, ?User $authUser): array
+    {
+        if ($this->whatsAppMessageIsFromAssistant($message))
+        {
+            return ChatMessageAvatar::forAssistant();
+        }
+
+        $userId = $message->user_id ?? null;
+        $sender = $userId ? ($messageUsers->get($userId) ?? $authUser) : $authUser;
+
+        return ChatMessageAvatar::forUser($sender, 'bg-label-primary');
     }
 
     private function scheduledMessageToChatDisplay(ScheduledMessage $scheduled): object

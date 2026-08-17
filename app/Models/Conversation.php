@@ -31,6 +31,32 @@ class Conversation extends Model
         'metadata' => 'array',
     ];
 
+    public function isTranscribedAudio(): bool
+    {
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        if (filter_var($metadata['TranscribedAudio'] ?? $metadata['transcribed_audio'] ?? false, FILTER_VALIDATE_BOOLEAN))
+        {
+            return true;
+        }
+
+        if (preg_match('/^\s*\[audio\]\s*:?\s+\S/iu', (string) $this->body) === 1)
+        {
+            return true;
+        }
+
+        $media = is_array($this->media) ? $this->media : [];
+        foreach ($media as $item)
+        {
+            $type = is_array($item) ? (string) ($item['content_type'] ?? '') : '';
+            if (str_starts_with($type, 'audio/'))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /**
      * Check if a message has been delivered
      */
