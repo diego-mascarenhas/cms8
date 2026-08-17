@@ -138,6 +138,18 @@ class TeamBillingDataService
                 ],
             ]);
 
+            try
+            {
+                $platformCustomerId = $this->customerService->getOrCreateStripeCustomerIdForCategory($team, '');
+                if ($platformCustomerId && $platformCustomerId !== $billingCustomerId)
+                {
+                    $this->syncCustomerFields($platformCustomerId, '', $input, $taxIdNormalized, $customerName, $phone);
+                }
+            } catch (\Exception $e)
+            {
+                Log::warning('Could not sync platform Stripe customer from billing update', StripeErrorMessage::logContext($e));
+            }
+
             $message = __('Datos de facturación actualizados correctamente.');
             if ($taxIdError)
             {
@@ -163,6 +175,34 @@ class TeamBillingDataService
                 ]),
             ];
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function syncCustomerFields(
+        string $customerId,
+        string $category,
+        array $input,
+        string $taxIdNormalized,
+        string $customerName,
+        string $phone,
+    ): void {
+        \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
+
+        \Stripe\Customer::update($customerId, [
+            'name' => $customerName,
+            'phone' => $phone,
+            'address' => [
+                'country' => (string) $input['country'],
+            ],
+            'metadata' => [
+                'individual_name' => (string) $input['individual_name'],
+                'business_name' => (string) ($input['business_name'] ?? ''),
+                'tax_id' => $taxIdNormalized,
+                'country' => (string) $input['country'],
+            ],
+        ]);
     }
 
     /**

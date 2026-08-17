@@ -88,6 +88,10 @@ class BillingController extends Controller
             $response['warning'] = $result['warning'];
         }
 
+        $user->forceFill([
+            'phone' => $validated['phone'],
+        ])->save();
+
         return response()->json($response);
     }
 }

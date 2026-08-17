@@ -61,6 +61,12 @@ class TeamCheckoutSessionSubscriptionSyncer
                 $subscriptionType = $subscriptionProduct->category ?? 'mailer';
             }
 
+            $planSlug = app(HumanoPricingPlanResolver::class)->resolvePlanSlugFromStripeProductId($productId);
+            if ($planSlug !== null)
+            {
+                $subscriptionType = $planSlug;
+            }
+
             $metadata = $subscriptionMetadata;
 
             Log::info('Stripe subscription from checkout - data before save', [
@@ -125,7 +131,6 @@ class TeamCheckoutSessionSubscriptionSyncer
                 }
             }
 
-            $planSlug = app(HumanoPricingPlanResolver::class)->resolvePlanSlugFromStripeProductId($productId);
             if ($planSlug !== null)
             {
                 app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);

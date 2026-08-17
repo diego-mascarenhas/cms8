@@ -151,11 +151,11 @@ class AuthController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'current_password' => ['required', 'string'],
+            'current_password' => ['nullable', 'string'],
             'password' => $this->passwordRules(),
         ]);
 
-        if (! Hash::check($validated['current_password'], $user->password))
+        if (! empty($validated['current_password']) && ! Hash::check($validated['current_password'], $user->password))
         {
             throw ValidationException::withMessages([
                 'current_password' => [__('La contraseña actual no es correcta.')],

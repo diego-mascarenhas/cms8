@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AssistantSubscriptionController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BillingController as ApiBillingController;
 use App\Http\Controllers\Api\CategoryController;
@@ -461,6 +462,9 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
+    Route::get('assistant/subscription', [AssistantSubscriptionController::class, 'show'])->name('api.assistant.subscription.show');
+    Route::post('assistant/checkout', [AssistantSubscriptionController::class, 'checkout'])->name('api.assistant.checkout');
+    Route::post('assistant/checkout/complete', [AssistantSubscriptionController::class, 'complete'])->name('api.assistant.checkout.complete');
 
     // Mobile dashboard summary
     Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');

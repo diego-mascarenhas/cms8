@@ -370,6 +370,24 @@ class MobileAssistantApiTest extends TestCase
         );
     }
 
+    public function test_auth_user_can_update_password_without_current_password(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/auth/password', [
+                'password' => 'new-password-9',
+                'password_confirmation' => 'new-password-9',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+
+        $this->assertTrue(
+            \Illuminate\Support\Facades\Hash::check('new-password-9', $user->fresh()->password),
+        );
+    }
+
     public function test_billing_show_returns_plan_and_usage_for_team(): void
     {
         [$user, $team, $token] = $this->assistantUserWithToken();
