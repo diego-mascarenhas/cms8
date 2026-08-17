@@ -3,14 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Fortify\PasswordValidationRules;
+use App\Actions\Fortify\ResetUserPassword;
 use App\Helpers\TokenHelper;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\AuthIntendedUrlGuard;
 use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -51,13 +54,19 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        NewUserWelcomeEmailNotifier::queue($user, null);
+        $this->createPersonalTeamForApiUser($user);
+        NewUserWelcomeEmailNotifier::queue($user, $user->currentTeam);
 
+        $user->load(['currentTeam', 'roles']);
         $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+        $profile = $this->profilePayload($user);
 
-        $response = ['email' => $user->email, 'token' => $token];
-
-        return response()->json($response, 200);
+        return response()->json([
+            'email' => $user->email,
+            'token' => $token,
+            'user' => $profile,
+            'current_team' => $profile['current_team'],
+        ], 200);
     }
 
     public function login(Request $request)
@@ -167,6 +176,50 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('Contraseña actualizada correctamente.'),
+        ]);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+            'frontend_url' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        Password::sendResetLink($request->only('email'));
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Te enviamos un enlace para restablecer la contraseña si el email existe.'),
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => $this->passwordRules(),
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user) use ($request): void
+            {
+                app(ResetUserPassword::class)->reset($user, $request->only('password', 'password_confirmation'));
+            },
+        );
+
+        if ($status !== Password::PASSWORD_RESET)
+        {
+            return response()->json([
+                'message' => __('No se pudo restablecer la contraseña. El enlace puede haber caducado.'),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Contraseña actualizada. Ya puedes entrar.'),
         ]);
     }
 
@@ -350,5 +403,23 @@ class AuthController extends Controller
         }
 
         return redirect()->route('dashboard');
+    }
+
+    private function createPersonalTeamForApiUser(User $user): void
+    {
+        $team = $user->ownedTeams()->save(Team::forceCreate([
+            'user_id' => $user->id,
+            'name' => explode(' ', $user->name, 2)[0]."'s Team",
+            'personal_team' => true,
+        ]));
+
+        $user->forceFill([
+            'current_team_id' => $team->id,
+        ])->save();
+
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan(
+            $team,
+            (string) config('humano_pricing.registration_team_plan_slug', 'hunter'),
+        );
     }
 }

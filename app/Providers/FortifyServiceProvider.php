@@ -9,6 +9,7 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use App\Http\Responses\FortifyLoginResponse;
 use App\Http\Responses\FortifyTwoFactorLoginResponse;
 use App\Http\Responses\RegistrationRegisterResponse;
+use App\Support\PasswordResetFrontendUrl;
 use App\Support\PendingTeamInvitation;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        PasswordResetFrontendUrl::register();
 
         Fortify::registerView(function ()
         {
