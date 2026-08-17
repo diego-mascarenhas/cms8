@@ -114,6 +114,7 @@ class MobileAssistantApiTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('role', 'Admin');
         $response->assertJsonPath('current_team.is_owner', true);
+        $response->assertJsonPath('current_team.can_manage', true);
     }
 
     public function test_auth_user_marks_non_owner_team_member(): void
@@ -135,7 +136,25 @@ class MobileAssistantApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('id', $member->id)
             ->assertJsonPath('current_team.id', $team->id)
-            ->assertJsonPath('current_team.is_owner', false);
+            ->assertJsonPath('current_team.is_owner', false)
+            ->assertJsonPath('current_team.can_manage', true);
+    }
+
+    public function test_auth_user_marks_collaborator_as_unable_to_manage_team(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'editor']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $member->assignRole('collaborator');
+
+        $this->actingAs($member->fresh(), 'sanctum')
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('current_team.is_owner', false)
+            ->assertJsonPath('current_team.can_manage', false);
     }
 
     public function test_today_endpoint_returns_events_and_tasks(): void

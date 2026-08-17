@@ -62,7 +62,14 @@ class PasswordResetFrontendUrl
     {
         $allowed = [];
 
-        foreach ([config('services.assistant.url')] as $candidate)
+        foreach ([
+            config('services.assistant.url'),
+            config('services.mailer.url'),
+            config('services.affiliates.url'),
+            config('services.ads.url'),
+            config('services.projects.url'),
+            config('services.paid_ads.spa_url'),
+        ] as $candidate)
         {
             $normalized = rtrim((string) $candidate, '/');
             if ($normalized !== '')

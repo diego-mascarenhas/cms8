@@ -55,16 +55,23 @@ class TeamCheckoutSessionSubscriptionSyncer
                 ->orWhere('stripe_id', $productId)
                 ->first();
 
+            $pricingPlan = app(HumanoPricingPlanResolver::class)->planByStripeProductId($productId);
+            $planSlug = is_array($pricingPlan)
+                ? strtolower(trim((string) ($pricingPlan['id'] ?? '')))
+                : '';
+            $planSlug = $planSlug !== '' ? $planSlug : null;
+
             $subscriptionType = 'mailer';
             if ($subscriptionProduct)
             {
                 $subscriptionType = $subscriptionProduct->category ?? 'mailer';
             }
-
-            $planSlug = app(HumanoPricingPlanResolver::class)->resolvePlanSlugFromStripeProductId($productId);
-            if ($planSlug !== null)
+            if (is_array($pricingPlan))
             {
-                $subscriptionType = $planSlug;
+                $configuredType = trim((string) ($pricingPlan['subscription_type'] ?? ''));
+                $subscriptionType = $configuredType !== ''
+                    ? $configuredType
+                    : (string) ($pricingPlan['id'] ?? $subscriptionType);
             }
 
             $metadata = $subscriptionMetadata;
@@ -136,7 +143,9 @@ class TeamCheckoutSessionSubscriptionSyncer
                 app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
             }
 
-            if ($subscriptionType === 'mailer')
+            $isMailer = $subscriptionType === 'mailer'
+                || (is_array($pricingPlan) && ($pricingPlan['catalog'] ?? '') === 'mailer');
+            if ($isMailer)
             {
                 $plan = EmailPlan::tryFromStripeProductId($productId);
                 if ($plan)

@@ -470,4 +470,118 @@ class ApiAssistantSubscriptionTest extends TestCase
             ])
             ->assertStatus(403);
     }
+
+    public function test_platform_catalog_returns_hunter_business_and_mentor_plans(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=platform');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.plan.id', 'hunter');
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.can_checkout', true);
+        $this->assertSame(
+            ['hunter', 'business', 'mentor'],
+            collect($response->json('data.plans'))->pluck('id')->all(),
+        );
+        $this->assertNotEmpty($response->json('data.plans.0.monthly_amount'));
+        $this->assertNotEmpty($response->json('data.plans.1.name'));
+    }
+
+    public function test_platform_catalog_ignores_active_assistant_subscription(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+        $monthlyPrice = collect(config('humano_pricing.plans', []))
+            ->firstWhere('id', 'assistant')['stripe_price_monthly_id'] ?? 'price_assistant_monthly';
+
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_test_assistant_platform_catalog',
+            'stripe_status' => 'active',
+            'stripe_price' => $monthlyPrice,
+            'quantity' => 1,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=platform');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.can_checkout', true);
+        $this->assertSame(
+            ['hunter', 'business', 'mentor'],
+            collect($response->json('data.plans'))->pluck('id')->all(),
+        );
+    }
+
+    public function test_mailer_catalog_returns_basic_foundation_and_scale_plans(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=mailer');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.plan.id', 'mailer_basic');
+        $response->assertJsonPath('data.plan.name', 'Mailer Basic');
+        $response->assertJsonPath('data.plan.monthly_amount', '15.99');
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.can_checkout', true);
+        $this->assertSame(
+            ['mailer_basic', 'mailer_foundation', 'mailer_scale'],
+            collect($response->json('data.plans'))->pluck('id')->all(),
+        );
+        $this->assertSame(
+            ['15.99', '35.99', '119.99'],
+            collect($response->json('data.plans'))->pluck('monthly_amount')->all(),
+        );
+        $this->assertSame('Mailer Scale', $response->json('data.plans.2.name'));
+    }
+
+    public function test_mailer_catalog_ignores_active_assistant_subscription(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+        $monthlyPrice = collect(config('humano_pricing.plans', []))
+            ->firstWhere('id', 'assistant')['stripe_price_monthly_id'] ?? 'price_assistant_monthly';
+
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_test_mailer_catalog_ignores_assistant',
+            'stripe_status' => 'active',
+            'stripe_price' => $monthlyPrice,
+            'quantity' => 1,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=mailer');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.can_checkout', true);
+        $this->assertSame(
+            ['mailer_basic', 'mailer_foundation', 'mailer_scale'],
+            collect($response->json('data.plans'))->pluck('id')->all(),
+        );
+    }
+
+    public function test_checkout_rejects_unknown_plan(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/checkout', [
+                'interval' => 'monthly',
+                'plan' => 'hosting-basic',
+                'success_url' => 'https://mailer.test/profile',
+                'cancel_url' => 'https://mailer.test/profile',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['plan']);
+    }
 }

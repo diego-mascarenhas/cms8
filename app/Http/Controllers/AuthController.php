@@ -240,6 +240,8 @@ class AuthController extends Controller
                 'id' => $user->currentTeam->id,
                 'name' => $user->currentTeam->name,
                 'is_owner' => $user->ownsTeam($user->currentTeam),
+                'can_manage' => $user->ownsTeam($user->currentTeam)
+                    || $user->hasAnyRole(['admin', 'root']),
             ] : null,
         ];
     }

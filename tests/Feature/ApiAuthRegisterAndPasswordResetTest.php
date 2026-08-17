@@ -71,6 +71,32 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
         });
     }
 
+    public function test_forgot_password_sends_reset_link_to_mailer_url(): void
+    {
+        Notification::fake();
+        config([
+            'services.assistant.url' => 'https://idoneo-assistant.test',
+            'services.mailer.url' => 'https://idoneo-mailer.test',
+        ]);
+
+        $user = User::factory()->create(['email' => 'ana@example.com']);
+
+        $this->postJson('/api/auth/forgot-password', [
+            'email' => $user->email,
+            'frontend_url' => 'https://idoneo-mailer.test',
+        ])->assertOk()
+            ->assertJsonPath('success', true);
+
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user)
+        {
+            $mail = $notification->toMail($user);
+
+            return str_contains((string) $mail->actionUrl, 'https://idoneo-mailer.test/reset-password?')
+                && str_contains((string) $mail->actionUrl, 'email='.urlencode($user->email))
+                && str_contains((string) $mail->actionUrl, 'token=');
+        });
+    }
+
     public function test_forgot_password_ignores_unknown_frontend_url(): void
     {
         Notification::fake();

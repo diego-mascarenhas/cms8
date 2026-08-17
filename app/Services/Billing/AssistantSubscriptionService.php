@@ -25,29 +25,34 @@ class AssistantSubscriptionService
     /**
      * @return array<string, mixed>
      */
-    public function summary(Team $team): array
+    public function summary(Team $team, string $catalog = 'assistant'): array
     {
-        $plan = $this->assistantPlanConfig();
-        $subscription = $this->findAssistantSubscription($team);
+        $catalog = $this->normalizeCatalog($catalog);
+        $plans = $this->catalogPlanConfigs($catalog);
+        $currentConfig = $plans[0] ?? [];
+        $subscription = $this->findCatalogSubscription($team, $plans);
+        if ($subscription)
+        {
+            $matched = $this->planConfigForPrice((string) $subscription->stripe_price, $plans);
+            if ($matched !== [])
+            {
+                $currentConfig = $matched;
+            }
+        }
         $stripe = $this->fetchPlatformPaymentData($team, $subscription);
 
         $active = $subscription !== null && $this->subscriptionIsActive($subscription);
+        $canCheckout = $this->catalogHasCheckout($plans) && ! $active;
 
         return [
-            'plan' => [
-                'id' => 'assistant',
-                'name' => __('humano_pricing.plans.assistant.name'),
-                'description' => __('humano_pricing.plans.assistant.description'),
-                'monthly_amount' => (string) ($plan['monthly_amount'] ?? ''),
-                'yearly_amount' => (string) ($plan['yearly_amount'] ?? ''),
-                'currency' => 'EUR',
-                'checkout_available' => (bool) ($plan['checkout_available'] ?? false),
-            ],
+            'plan' => $this->planPayload($currentConfig),
+            'plans' => array_map(fn (array $plan): array => $this->planPayload($plan), $plans),
             'subscription' => $subscription ? [
                 'active' => $active,
                 'status' => (string) $subscription->stripe_status,
                 'interval' => $this->intervalForPrice((string) $subscription->stripe_price),
                 'stripe_price' => (string) $subscription->stripe_price,
+                'plan_id' => (string) ($currentConfig['id'] ?? ''),
                 'ends_at' => $subscription->ends_at?->toIso8601String(),
                 'current_period_start' => $stripe['current_period_start'],
                 'current_period_end' => $stripe['current_period_end'],
@@ -55,7 +60,7 @@ class AssistantSubscriptionService
             'payment_method' => $stripe['payment_method'],
             'payment_methods' => $stripe['payment_methods'],
             'invoices' => $stripe['invoices'],
-            'can_checkout' => (bool) ($plan['checkout_available'] ?? false) && ! $active,
+            'can_checkout' => $canCheckout,
             'token_usage' => $this->tokenUsagePayload($team, $stripe),
         ];
     }
@@ -63,29 +68,38 @@ class AssistantSubscriptionService
     /**
      * @return array{success: bool, message?: string, url?: string}
      */
-    public function createCheckout(Team $team, string $interval, string $successUrl, string $cancelUrl): array
-    {
-        $plan = $this->assistantPlanConfig();
-        if (! ($plan['checkout_available'] ?? false))
+    public function createCheckout(
+        Team $team,
+        string $interval,
+        string $successUrl,
+        string $cancelUrl,
+        string $planId = 'assistant',
+    ): array {
+        $planId = $this->normalizePlanId($planId);
+        $plan = $this->planConfigById($planId);
+        if ($plan === [] || ! ($plan['checkout_available'] ?? false))
         {
             return [
                 'success' => false,
-                'message' => __('El plan Assistant no está disponible para contratar.'),
+                'message' => __('El plan no está disponible para contratar.'),
             ];
         }
 
-        $subscription = $this->findAssistantSubscription($team);
+        $catalog = $this->catalogForPlanId($planId);
+        $subscription = $this->findCatalogSubscription($team, $this->catalogPlanConfigs($catalog));
         if ($subscription && $this->subscriptionIsActive($subscription))
         {
             return [
                 'success' => false,
-                'message' => __('Este equipo ya tiene el plan Assistant activo.'),
+                'message' => __('Este equipo ya tiene un plan activo.'),
             ];
         }
 
-        $priceId = $interval === 'yearly'
-            ? trim((string) ($plan['stripe_price_yearly_id'] ?? ''))
-            : trim((string) ($plan['stripe_price_monthly_id'] ?? ''));
+        $yearlyPriceId = trim((string) ($plan['stripe_price_yearly_id'] ?? ''));
+        $monthlyPriceId = trim((string) ($plan['stripe_price_monthly_id'] ?? ''));
+        $priceId = $interval === 'yearly' && $yearlyPriceId !== ''
+            ? $yearlyPriceId
+            : $monthlyPriceId;
 
         if ($priceId === '')
         {
@@ -123,12 +137,12 @@ class AssistantSubscriptionService
                 'subscription_data' => [
                     'metadata' => [
                         'team_id' => (string) $team->id,
-                        'subscription_type' => 'assistant',
+                        'subscription_type' => (string) ($plan['subscription_type'] ?? $planId),
                     ],
                 ],
                 'metadata' => [
                     'team_id' => (string) $team->id,
-                    'plan' => 'assistant',
+                    'plan' => $planId,
                 ],
             ]);
 
@@ -160,7 +174,7 @@ class AssistantSubscriptionService
     /**
      * @return array{success: bool, message?: string, data?: array<string, mixed>}
      */
-    public function completeCheckout(Team $team, string $sessionId, int $actingUserId): array
+    public function completeCheckout(Team $team, string $sessionId, int $actingUserId, string $catalog = 'assistant'): array
     {
         try
         {
@@ -195,7 +209,7 @@ class AssistantSubscriptionService
                 ];
             }
 
-            return $this->completePaymentMethodSetup($team, $session);
+            return $this->completePaymentMethodSetup($team, $session, $catalog);
         }
 
         if ($session->mode === 'subscription' && ! in_array($session->status, ['complete', 'open'], true))
@@ -219,23 +233,29 @@ class AssistantSubscriptionService
             ];
         }
 
+        $sessionPlan = (string) ($session->metadata->plan ?? '');
+        $resolvedCatalog = $this->normalizeCatalog(
+            $catalog !== 'assistant' ? $catalog : $this->catalogForPlanId($sessionPlan),
+        );
+
         return [
             'success' => true,
-            'data' => $this->summary($team->fresh()),
+            'data' => $this->summary($team->fresh(), $resolvedCatalog),
         ];
     }
 
     /**
      * @return array{success: bool, message?: string, data?: array<string, mixed>}
      */
-    public function cancel(Team $team, string $reason, ?string $comment = null): array
+    public function cancel(Team $team, string $reason, ?string $comment = null, string $catalog = 'assistant'): array
     {
-        $subscription = $this->findAssistantSubscription($team);
+        $catalog = $this->normalizeCatalog($catalog);
+        $subscription = $this->findCatalogSubscription($team, $this->catalogPlanConfigs($catalog));
         if (! $subscription || ! $this->subscriptionIsActive($subscription))
         {
             return [
                 'success' => false,
-                'message' => __('No hay una suscripción Assistant activa.'),
+                'message' => __('No hay una suscripción activa.'),
             ];
         }
 
@@ -289,7 +309,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
-                'data' => $this->summary($team->fresh()),
+                'data' => $this->summary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -307,14 +327,15 @@ class AssistantSubscriptionService
     /**
      * @return array{success: bool, message?: string, data?: array<string, mixed>}
      */
-    public function resume(Team $team): array
+    public function resume(Team $team, string $catalog = 'assistant'): array
     {
-        $subscription = $this->findAssistantSubscription($team);
+        $catalog = $this->normalizeCatalog($catalog);
+        $subscription = $this->findCatalogSubscription($team, $this->catalogPlanConfigs($catalog));
         if (! $subscription || ! $this->subscriptionIsActive($subscription))
         {
             return [
                 'success' => false,
-                'message' => __('No hay una suscripción Assistant activa.'),
+                'message' => __('No hay una suscripción activa.'),
             ];
         }
 
@@ -346,7 +367,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
-                'data' => $this->summary($team->fresh()),
+                'data' => $this->summary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -421,7 +442,7 @@ class AssistantSubscriptionService
     /**
      * @return array{success: bool, message?: string, data?: array<string, mixed>}
      */
-    private function completePaymentMethodSetup(Team $team, object $session): array
+    private function completePaymentMethodSetup(Team $team, object $session, string $catalog = 'assistant'): array
     {
         try
         {
@@ -462,7 +483,8 @@ class AssistantSubscriptionService
                 ]);
             }
 
-            $subscription = $this->findAssistantSubscription($team);
+            $catalog = $this->normalizeCatalog($catalog);
+            $subscription = $this->findCatalogSubscription($team, $this->catalogPlanConfigs($catalog));
             if ($subscription?->stripe_id)
             {
                 \Stripe\Subscription::update($subscription->stripe_id, [
@@ -472,7 +494,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
-                'data' => $this->summary($team->fresh()),
+                'data' => $this->summary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
         {
@@ -553,15 +575,137 @@ class AssistantSubscriptionService
      */
     private function assistantPlanConfig(): array
     {
+        return $this->planConfigById('assistant');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function planConfigById(string $planId): array
+    {
         foreach ($this->planResolver->plansForDisplay() as $plan)
         {
-            if (($plan['id'] ?? '') === 'assistant')
+            if (($plan['id'] ?? '') === $planId)
             {
                 return $plan;
             }
         }
 
         return [];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function catalogPlanConfigs(string $catalog): array
+    {
+        return $this->planResolver->plansForCatalog($this->normalizeCatalog($catalog));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $plans
+     */
+    private function catalogHasCheckout(array $plans): bool
+    {
+        foreach ($plans as $plan)
+        {
+            if ($plan['checkout_available'] ?? false)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return array<string, mixed>
+     */
+    private function planPayload(array $plan): array
+    {
+        $id = (string) ($plan['id'] ?? '');
+        $name = trim((string) ($plan['name'] ?? ''));
+        $description = trim((string) ($plan['description'] ?? ''));
+        if ($name === '' && $id !== '')
+        {
+            $name = (string) __('humano_pricing.plans.'.$id.'.name');
+        }
+        if ($description === '' && $id !== '')
+        {
+            $description = (string) __('humano_pricing.plans.'.$id.'.description');
+        }
+
+        return [
+            'id' => $id,
+            'name' => $name,
+            'description' => $description,
+            'monthly_amount' => (string) ($plan['monthly_amount'] ?? ''),
+            'yearly_amount' => (string) ($plan['yearly_amount'] ?? ''),
+            'currency' => 'EUR',
+            'checkout_available' => (bool) ($plan['checkout_available'] ?? false),
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $plans
+     * @return array<string, mixed>
+     */
+    private function planConfigForPrice(string $priceId, array $plans): array
+    {
+        $priceId = trim($priceId);
+        if ($priceId === '')
+        {
+            return [];
+        }
+
+        foreach ($plans as $plan)
+        {
+            $monthly = trim((string) ($plan['stripe_price_monthly_id'] ?? ''));
+            $yearly = trim((string) ($plan['stripe_price_yearly_id'] ?? ''));
+            if ($priceId === $monthly || $priceId === $yearly)
+            {
+                return $plan;
+            }
+        }
+
+        return [];
+    }
+
+    private function normalizeCatalog(string $catalog): string
+    {
+        return match (strtolower(trim($catalog)))
+        {
+            'platform' => 'platform',
+            'mailer' => 'mailer',
+            default => 'assistant',
+        };
+    }
+
+    private function normalizePlanId(string $planId): string
+    {
+        $planId = strtolower(trim($planId));
+        $planId = match ($planId)
+        {
+            'basic' => 'mailer_basic',
+            'foundation' => 'mailer_foundation',
+            'scale' => 'mailer_scale',
+            default => $planId,
+        };
+
+        $ids = collect(config('humano_pricing.plans', []))
+            ->pluck('id')
+            ->map(fn (mixed $id): string => strtolower(trim((string) $id)))
+            ->all();
+
+        return in_array($planId, $ids, true) ? $planId : 'assistant';
+    }
+
+    private function catalogForPlanId(string $planId): string
+    {
+        $plan = $this->planConfigById($this->normalizePlanId($planId));
+
+        return $this->normalizeCatalog((string) ($plan['catalog'] ?? 'assistant'));
     }
 
     public function isInEffectForTeam(Team $team): bool
@@ -591,17 +735,49 @@ class AssistantSubscriptionService
 
     private function findAssistantSubscription(Team $team): ?Subscription
     {
-        $plan = $this->assistantPlanConfig();
-        $priceIds = array_values(array_filter([
-            trim((string) ($plan['stripe_price_monthly_id'] ?? '')),
-            trim((string) ($plan['stripe_price_yearly_id'] ?? '')),
-        ]));
+        return $this->findCatalogSubscription($team, $this->catalogPlanConfigs('assistant'));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $plans
+     */
+    private function findCatalogSubscription(Team $team, array $plans): ?Subscription
+    {
+        $types = [];
+        $priceIds = [];
+        foreach ($plans as $plan)
+        {
+            $id = trim((string) ($plan['id'] ?? ''));
+            if ($id !== '')
+            {
+                $types[] = $id;
+            }
+            $subscriptionType = trim((string) ($plan['subscription_type'] ?? ''));
+            if ($subscriptionType !== '')
+            {
+                $types[] = $subscriptionType;
+            }
+            foreach (['stripe_price_monthly_id', 'stripe_price_yearly_id'] as $key)
+            {
+                $priceId = trim((string) ($plan[$key] ?? ''));
+                if ($priceId !== '')
+                {
+                    $priceIds[] = $priceId;
+                }
+            }
+        }
+
+        $types = array_values(array_unique($types));
+        $priceIds = array_values(array_unique($priceIds));
 
         return $team->subscriptions()
             ->where('stripe_status', '!=', 'canceled')
-            ->where(function ($query) use ($priceIds)
+            ->where(function ($query) use ($types, $priceIds)
             {
-                $query->where('type', 'assistant');
+                if ($types !== [])
+                {
+                    $query->whereIn('type', $types);
+                }
                 if ($priceIds !== [])
                 {
                     $query->orWhereIn('stripe_price', $priceIds);
@@ -624,14 +800,22 @@ class AssistantSubscriptionService
 
     private function intervalForPrice(string $priceId): ?string
     {
-        $plan = $this->assistantPlanConfig();
-        if ($priceId !== '' && $priceId === trim((string) ($plan['stripe_price_yearly_id'] ?? '')))
+        $priceId = trim($priceId);
+        if ($priceId === '')
         {
-            return 'yearly';
+            return null;
         }
-        if ($priceId !== '' && $priceId === trim((string) ($plan['stripe_price_monthly_id'] ?? '')))
+
+        foreach ($this->planResolver->plansForDisplay() as $plan)
         {
-            return 'monthly';
+            if ($priceId === trim((string) ($plan['stripe_price_yearly_id'] ?? '')))
+            {
+                return 'yearly';
+            }
+            if ($priceId === trim((string) ($plan['stripe_price_monthly_id'] ?? '')))
+            {
+                return 'monthly';
+            }
         }
 
         return null;

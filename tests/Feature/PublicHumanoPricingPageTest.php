@@ -32,6 +32,7 @@ class PublicHumanoPricingPageTest extends TestCase
         $response->assertSee(__('humano_pricing.plans.assistant.name'), false);
         $response->assertSee(__('humano_pricing.plans.hunter.name'), false);
         $response->assertSee(__('humano_pricing.plans.business.name'), false);
+        $response->assertDontSee(__('humano_pricing.plans.mailer_basic.name'), false);
         $response->assertDontSee('id="plan-mentor"', false);
         $response->assertDontSee('id="plan-innovation"', false);
         $response->assertSee('5kQ4gzacZ3Nk9HM0Qd43S07', false);

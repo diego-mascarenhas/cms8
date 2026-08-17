@@ -35,6 +35,7 @@ class CancelAssistantSubscriptionRequest extends FormRequest
     {
         return [
             'reason' => ['required', 'string', Rule::in(self::REASONS)],
+            'catalog' => ['nullable', 'string', Rule::in(['assistant', 'platform', 'mailer'])],
             'comment' => [
                 Rule::requiredIf($this->input('reason') === 'other'),
                 'nullable',

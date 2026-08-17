@@ -78,6 +78,33 @@ return [
                 'Metrics, reports, and the DAGMA method to implement and evolve',
             ],
         ],
+        'mailer_basic' => [
+            'name' => 'Mailer Basic',
+            'description' => 'Best for small businesses getting started with email marketing.',
+            'features' => [
+                'Up to 10,000 emails per month',
+                'Up to 3,000 contacts',
+                'A good starting point',
+            ],
+        ],
+        'mailer_foundation' => [
+            'name' => 'Mailer Foundation',
+            'description' => 'For teams that need to scale email campaigns.',
+            'features' => [
+                'Up to 50,000 emails per month',
+                'Up to 20,000 contacts',
+                'Built for growing companies',
+            ],
+        ],
+        'mailer_scale' => [
+            'name' => 'Mailer Scale',
+            'description' => 'Full email marketing for teams that need more volume and support.',
+            'features' => [
+                'Up to 100,000 emails per month',
+                'Up to 50,000 contacts',
+                'For larger organizations',
+            ],
+        ],
     ],
     'checkout_complete_success' => 'Welcome! Your workspace is ready.',
     'checkout_complete_invalid_session' => 'We could not confirm this payment. Please open the link from your Stripe receipt or contact support.',

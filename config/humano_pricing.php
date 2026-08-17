@@ -244,6 +244,8 @@ return [
     'plans' => [
         [
             'id' => 'assistant',
+            'catalog' => 'assistant',
+            'public' => true,
             'checkout_url' => env(
                 'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL',
                 'https://buy.stripe.com/5kQ4gzacZ3Nk9HM0Qd43S07',
@@ -265,6 +267,8 @@ return [
         ],
         [
             'id' => 'hunter',
+            'catalog' => 'platform',
+            'public' => true,
             'checkout_url' => env(
                 'HUMANO_PRICING_HUNTER_CHECKOUT_URL',
                 'https://buy.stripe.com/6oU14ngBn2Jg7zE0Qd43S08',
@@ -286,6 +290,8 @@ return [
         ],
         [
             'id' => 'business',
+            'catalog' => 'platform',
+            'public' => true,
             'checkout_url' => env(
                 'HUMANO_PRICING_BUSINESS_CHECKOUT_URL',
                 'https://buy.stripe.com/6oU9AT3OB5VsbPUeH343S06',
@@ -307,6 +313,8 @@ return [
         ],
         [
             'id' => 'mentor',
+            'catalog' => 'platform',
+            'public' => true,
             'checkout_url' => env(
                 'HUMANO_PRICING_MENTOR_CHECKOUT_URL',
                 'https://buy.stripe.com/4gM4gz3OB0B82fkcyV43S05',
@@ -328,6 +336,8 @@ return [
         ],
         [
             'id' => 'innovation',
+            'catalog' => 'public',
+            'public' => true,
             'checkout_url' => '',
             'external_url' => env('HUMANO_PRICING_INNOVATION_EXTERNAL_URL', 'https://fanyion.com'),
             'stripe_product_id' => '',
@@ -337,6 +347,60 @@ return [
             'yearly_amount' => '',
             'popular' => false,
             'checkout_available' => false,
+        ],
+        [
+            'id' => 'mailer_basic',
+            'catalog' => 'mailer',
+            'public' => false,
+            'subscription_type' => 'mailer',
+            'checkout_url' => '',
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_MAILER_BASIC_STRIPE_PRODUCT_ID', 'prod_TgFjxc4y8IGwPW'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_MAILER_BASIC_PRICE_MONTHLY_ID', 'price_1SitE6RwN51ygFdeuoV0tTLf'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_MAILER_BASIC_MONTHLY_AMOUNT', '15.99'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_MAILER_BASIC_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'mailer_foundation',
+            'catalog' => 'mailer',
+            'public' => false,
+            'subscription_type' => 'mailer',
+            'checkout_url' => '',
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_MAILER_FOUNDATION_STRIPE_PRODUCT_ID', 'prod_TgFmhp9iYHH3Q4'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_MAILER_FOUNDATION_PRICE_MONTHLY_ID', 'price_1SitGURwN51ygFdeoS4K9YDn'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_MAILER_FOUNDATION_MONTHLY_AMOUNT', '35.99'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_MAILER_FOUNDATION_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'mailer_scale',
+            'catalog' => 'mailer',
+            'public' => false,
+            'subscription_type' => 'mailer',
+            'checkout_url' => '',
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_MAILER_SCALE_STRIPE_PRODUCT_ID', 'prod_TgFmbs3kRkpGxu'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_MAILER_SCALE_PRICE_MONTHLY_ID', 'price_1SitHHRwN51ygFde3eMKuUtU'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_MAILER_SCALE_MONTHLY_AMOUNT', '119.99'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_MAILER_SCALE_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
         ],
     ],
 ];

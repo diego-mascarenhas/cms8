@@ -78,6 +78,33 @@ return [
                 'Métricas, reportes y método DAGMA para implementar y evolucionar',
             ],
         ],
+        'mailer_basic' => [
+            'name' => 'Mailer Basic',
+            'description' => 'Perfecto para pequeñas empresas que están comenzando con email marketing.',
+            'features' => [
+                'Hasta 10.000 emails al mes',
+                'Hasta 3.000 contactos',
+                'Ideal para comenzar',
+            ],
+        ],
+        'mailer_foundation' => [
+            'name' => 'Mailer Foundation',
+            'description' => 'Ideal para empresas que necesitan escalar sus campañas de email marketing.',
+            'features' => [
+                'Hasta 50.000 emails al mes',
+                'Hasta 20.000 contactos',
+                'Para empresas en crecimiento',
+            ],
+        ],
+        'mailer_scale' => [
+            'name' => 'Mailer Scale',
+            'description' => 'Solución completa para empresas que requieren máxima personalización y soporte.',
+            'features' => [
+                'Hasta 100.000 emails al mes',
+                'Hasta 50.000 contactos',
+                'Para grandes empresas',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abrí el enlace del recibo de Stripe o contactá soporte.',

@@ -77,7 +77,7 @@ enum EmailPlan: string
     }
 
     /**
-     * Resolve a paid mailer plan from a Stripe product ID (subscription_products / enum mapping).
+     * Resolve a paid mailer plan from a Stripe product ID (humano_pricing, then subscription_products).
      */
     public static function tryFromStripeProductId(string $productId): ?self
     {
@@ -93,7 +93,7 @@ enum EmailPlan: string
     }
 
     /**
-     * Get the Stripe product ID for this plan (from subscription_products).
+     * Get the Stripe product ID for this plan (humano_pricing, then subscription_products).
      */
     public function getStripeProductId(): ?string
     {
@@ -102,17 +102,29 @@ enum EmailPlan: string
             return null;
         }
 
+        $fromPricing = trim((string) (self::mailerPricingConfig($this)['stripe_product_id'] ?? ''));
+        if ($fromPricing !== '')
+        {
+            return $fromPricing;
+        }
+
         return SubscriptionProduct::getMailerProductId($this->value);
     }
 
     /**
-     * Get the Stripe price ID for this plan (from subscription_products).
+     * Get the Stripe price ID for this plan (humano_pricing, then subscription_products).
      */
     public function getStripePriceId(): ?string
     {
         if ($this === self::FREE)
         {
             return null;
+        }
+
+        $fromPricing = trim((string) (self::mailerPricingConfig($this)['stripe_price_monthly_id'] ?? ''));
+        if ($fromPricing !== '')
+        {
+            return $fromPricing;
         }
 
         return SubscriptionProduct::getMailerPriceId($this->value);
@@ -127,13 +139,32 @@ enum EmailPlan: string
     }
 
     /**
-     * Get EmailPlan from Stripe price ID (from subscription_products, fallback to Stripe API).
+     * Get EmailPlan from Stripe price ID (humano_pricing, then subscription_products).
      */
     public static function fromStripePriceId(?string $priceId): self
     {
         if (! $priceId)
         {
             return self::FREE;
+        }
+
+        foreach (config('humano_pricing.plans', []) as $plan)
+        {
+            if (! is_array($plan) || ($plan['catalog'] ?? '') !== 'mailer')
+            {
+                continue;
+            }
+
+            $monthly = trim((string) ($plan['stripe_price_monthly_id'] ?? ''));
+            $yearly = trim((string) ($plan['stripe_price_yearly_id'] ?? ''));
+            if ($priceId !== $monthly && $priceId !== $yearly)
+            {
+                continue;
+            }
+
+            $slug = str_replace('mailer_', '', strtolower(trim((string) ($plan['id'] ?? ''))));
+
+            return self::tryFrom($slug) ?? self::FREE;
         }
 
         $product = SubscriptionProduct::findByStripePrice($priceId);
@@ -198,5 +229,23 @@ enum EmailPlan: string
             'daily_limit' => $this->getDailyLimit(),
             'contact_limit' => $this->getContactLimit(),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function mailerPricingConfig(self $plan): array
+    {
+        $id = 'mailer_'.$plan->value;
+
+        foreach (config('humano_pricing.plans', []) as $row)
+        {
+            if (is_array($row) && ($row['id'] ?? '') === $id)
+            {
+                return $row;
+            }
+        }
+
+        return [];
     }
 }

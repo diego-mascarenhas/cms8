@@ -31,7 +31,7 @@ class AssistantSubscriptionController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $this->subscriptions->summary($team),
+            'data' => $this->subscriptions->summary($team, $this->requestedCatalog($request)),
         ]);
     }
 
@@ -43,6 +43,7 @@ class AssistantSubscriptionController extends Controller
             (string) $request->validated('interval'),
             (string) $request->validated('success_url'),
             (string) $request->validated('cancel_url'),
+            (string) ($request->validated('plan') ?? 'assistant'),
         );
 
         if (! $result['success'])
@@ -67,6 +68,7 @@ class AssistantSubscriptionController extends Controller
             $team,
             (string) $request->validated('session_id'),
             (int) $user->id,
+            (string) ($request->validated('catalog') ?? 'assistant'),
         );
 
         if (! $result['success'])
@@ -90,6 +92,7 @@ class AssistantSubscriptionController extends Controller
             $request->user()->currentTeam,
             (string) $request->validated('reason'),
             is_string($comment) ? $comment : null,
+            (string) ($request->validated('catalog') ?? 'assistant'),
         );
 
         if (! $result['success'])
@@ -108,7 +111,10 @@ class AssistantSubscriptionController extends Controller
 
     public function resume(ResumeAssistantSubscriptionRequest $request): JsonResponse
     {
-        $result = $this->subscriptions->resume($request->user()->currentTeam);
+        $result = $this->subscriptions->resume(
+            $request->user()->currentTeam,
+            (string) ($request->validated('catalog') ?? 'assistant'),
+        );
 
         if (! $result['success'])
         {
@@ -144,5 +150,12 @@ class AssistantSubscriptionController extends Controller
             'success' => true,
             'url' => $result['url'],
         ]);
+    }
+
+    private function requestedCatalog(Request $request): string
+    {
+        $catalog = strtolower(trim((string) $request->input('catalog', 'assistant')));
+
+        return in_array($catalog, ['platform', 'mailer'], true) ? $catalog : 'assistant';
     }
 }
