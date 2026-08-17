@@ -306,12 +306,18 @@ class ChatController extends Controller
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
-            $contact->assistant_toggle_available = $crmProfile !== null;
             $inboundUser = isset($userData) && $userData instanceof User
                 ? $userData
                 : (isset($contact->user_id) ? User::query()->find($contact->user_id) : null);
-            $contact->assistant_inbound_enabled = app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly);
+            $assistantState = $inboundPolicy->presentWhatsAppAssistantState(
+                $team,
+                $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly),
+                $crmProfile !== null,
+            );
+            $contact->assistant_toggle_available = $assistantState['assistant_toggle_available'];
+            $contact->assistant_inbound_enabled = $assistantState['assistant_inbound_enabled'];
+            $contact->assistant_plan_active = $assistantState['assistant_plan_active'];
+            $contact->assistant_locked_reason = $assistantState['assistant_locked_reason'];
             $contacts->push($contact);
         }
 
@@ -902,54 +908,59 @@ class ChatController extends Controller
         }
 
         $this->authorize('update', $contact);
+
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
+        if (! $inboundPolicy->assistantPlanIsInEffect($team))
+        {
+            return response()->json(array_merge([
+                'success' => false,
+                'message' => __('La IA se activa cuando el plan Assistant está vigente. Los tokens se facturan aparte.'),
+            ], $inboundPolicy->presentWhatsAppAssistantState($team, false, false)), 403);
+        }
+
         $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
         $contact->refresh();
 
         $inboundUser = $contact->user_id ? User::query()->find($contact->user_id) : null;
 
-        return response()->json([
+        return response()->json(array_merge([
             'success' => true,
-            'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
-            'assistant_toggle_available' => true,
-        ]);
+        ], $inboundPolicy->presentWhatsAppAssistantState(
+            $team,
+            $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
+            true,
+        )));
     }
 
     /**
-     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool}
+     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null}
      */
     private function whatsAppThreadAssistantMetaForDigits(string $digits): array
     {
         $team = auth()->user()?->currentTeam;
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
         if (! $team || $digits === '')
         {
             return [
                 'contact_id' => null,
-                'assistant_inbound_enabled' => true,
+                'assistant_inbound_enabled' => false,
                 'assistant_toggle_available' => false,
+                'assistant_plan_active' => false,
+                'assistant_locked_reason' => 'plan',
             ];
         }
 
         $crm = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
-        if (! $crm)
-        {
-            return [
-                'contact_id' => null,
-                'assistant_inbound_enabled' => true,
-                'assistant_toggle_available' => false,
-            ];
-        }
+        $inboundEnabled = $inboundPolicy->allowsWhatsAppAutoReply(
+            $team,
+            $crm?->user_id ? User::query()->find($crm->user_id) : null,
+            (int) $team->id,
+            $digits,
+        );
 
-        return [
-            'contact_id' => (int) $crm->id,
-            'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
-                $team,
-                $crm->user_id ? User::query()->find($crm->user_id) : null,
-                (int) $team->id,
-                $digits,
-            ),
-            'assistant_toggle_available' => true,
-        ];
+        return array_merge([
+            'contact_id' => $crm ? (int) $crm->id : null,
+        ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null));
     }
 
     private function applyContactInboundAssistantEnabled(Contact $contact, bool $on): void
@@ -993,6 +1004,8 @@ class ChatController extends Controller
             }
             $item['assistant_toggle_available'] = (bool) ($c->assistant_toggle_available ?? false);
             $item['assistant_inbound_enabled'] = (bool) ($c->assistant_inbound_enabled ?? true);
+            $item['assistant_plan_active'] = (bool) ($c->assistant_plan_active ?? true);
+            $item['assistant_locked_reason'] = $c->assistant_locked_reason ?? null;
 
             return $item;
         })->values()->all();

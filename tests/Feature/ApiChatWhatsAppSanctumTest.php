@@ -443,4 +443,59 @@ class ApiChatWhatsAppSanctumTest extends TestCase
     {
         $this->postJson('/api/chat/whatsapp-refresh-qr')->assertStatus(401);
     }
+
+    public function test_whatsapp_thread_locks_assistant_without_paid_plan(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $team->setSetting('assistant_auto_respond', '1');
+        $clientPhone = '34600777888';
+        $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => $clientPhone,
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_lock_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone)
+            ->assertOk()
+            ->assertJsonPath('thread_assistant.assistant_plan_active', false)
+            ->assertJsonPath('thread_assistant.assistant_locked_reason', 'plan')
+            ->assertJsonPath('thread_assistant.assistant_inbound_enabled', false)
+            ->assertJsonPath('thread_assistant.assistant_toggle_available', false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'on' => true,
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('assistant_locked_reason', 'plan');
+    }
 }

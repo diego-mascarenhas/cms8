@@ -238,4 +238,46 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(0, $stats['totalCalls']);
         $this->assertSame(0, $stats['totalTokensUsed']);
     }
+
+    public function test_for_team_can_limit_usage_to_a_period(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 80,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $previous = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 500,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $previous->forceFill(['created_at' => now()->subMonth()])->save();
+
+        $stats = TeamApiUsageStatsService::forTeam(
+            (int) $team->id,
+            now()->startOfMonth(),
+            now()->endOfMonth(),
+        );
+
+        $this->assertSame(1, $stats['totalCalls']);
+        $this->assertSame(80, $stats['totalTokensUsed']);
+    }
 }

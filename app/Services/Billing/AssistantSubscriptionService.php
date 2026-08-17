@@ -5,6 +5,7 @@ namespace App\Services\Billing;
 use App\Models\Team;
 use App\Services\HumanoPricingPlanResolver;
 use App\Services\StripeAccountResolver;
+use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
@@ -55,6 +56,7 @@ class AssistantSubscriptionService
             'payment_methods' => $stripe['payment_methods'],
             'invoices' => $stripe['invoices'],
             'can_checkout' => (bool) ($plan['checkout_available'] ?? false) && ! $active,
+            'token_usage' => $this->tokenUsagePayload($team, $stripe),
         ];
     }
 
@@ -484,6 +486,69 @@ class AssistantSubscriptionService
     }
 
     /**
+     * @param  array<string, mixed>  $stripe
+     * @return array<string, mixed>
+     */
+    private function tokenUsagePayload(Team $team, array $stripe): array
+    {
+        [$from, $to] = $this->tokenUsagePeriod($stripe);
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
+        $byModule = [];
+
+        foreach ($stats['byModule'] as $row)
+        {
+            $byModule[] = [
+                'module_name' => (string) ($row['module_name'] ?? ''),
+                'count' => (int) ($row['count'] ?? 0),
+                'tokens_used' => (int) ($row['tokens_used'] ?? 0),
+                'tokens_saved' => (int) ($row['tokens_saved'] ?? 0),
+            ];
+        }
+
+        $tokensUsed = (int) $stats['totalTokensUsed'];
+        $rate = $this->tokenSellRatePerMillion();
+        $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
+
+        return [
+            'total_calls' => (int) $stats['totalCalls'],
+            'total_tokens_saved' => (int) $stats['totalTokensSaved'],
+            'average_savings' => (float) $stats['averageSavings'],
+            'total_tokens_used' => $tokensUsed,
+            'total_tokens_without_toon' => (int) $stats['totalTokensWithoutToon'],
+            'by_module' => $byModule,
+            'period_start' => $from->toIso8601String(),
+            'period_end' => $to->toIso8601String(),
+            'amount_due_cents' => (int) round(($tokensUsed / 1_000_000) * $rate * 100),
+            'currency' => $currency,
+            'rate_per_million' => $rate,
+        ];
+    }
+
+    private function tokenSellRatePerMillion(): float
+    {
+        $cost = (float) config('humano_pricing.token_billing.amount_per_million', 6);
+        $markup = max(0, (float) config('humano_pricing.token_billing.markup_percent', 50));
+
+        return round($cost * (1 + ($markup / 100)), 4);
+    }
+
+    /**
+     * @param  array<string, mixed>  $stripe
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function tokenUsagePeriod(array $stripe): array
+    {
+        $from = ! empty($stripe['current_period_start'])
+            ? Carbon::parse($stripe['current_period_start'])
+            : now()->startOfMonth();
+        $to = ! empty($stripe['current_period_end'])
+            ? Carbon::parse($stripe['current_period_end'])
+            : now()->endOfMonth();
+
+        return [$from, $to];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function assistantPlanConfig(): array
@@ -497,6 +562,31 @@ class AssistantSubscriptionService
         }
 
         return [];
+    }
+
+    public function isInEffectForTeam(Team $team): bool
+    {
+        $subscription = $this->findAssistantSubscription($team);
+
+        return $subscription !== null && $this->subscriptionIsActive($subscription);
+    }
+
+    public function teamHasPaidAccessForAi(Team $team): bool
+    {
+        if ($this->isInEffectForTeam($team))
+        {
+            return true;
+        }
+
+        foreach ($team->subscriptions()->where('stripe_status', '!=', 'canceled')->get() as $subscription)
+        {
+            if ($this->subscriptionIsActive($subscription))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function findAssistantSubscription(Team $team): ?Subscription

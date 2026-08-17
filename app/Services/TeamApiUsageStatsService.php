@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\AgentConversationMessage;
 use App\Models\Module;
 use App\Models\TokenUsageLog;
+use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 
 final class TeamApiUsageStatsService
 {
@@ -21,27 +23,27 @@ final class TeamApiUsageStatsService
      *     byModule: array<string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>
      * }
      */
-    public static function forTeam(int $teamId): array
+    public static function forTeam(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
-        $conversationStats = self::aggregateAssistantConversationUsage($teamId);
+        $conversationStats = self::aggregateAssistantConversationUsage($teamId, $from, $to);
 
-        $totalCalls = self::nonChatLogQuery($teamId)->count() + $conversationStats['calls'];
+        $totalCalls = self::nonChatLogQuery($teamId, $from, $to)->count() + $conversationStats['calls'];
 
-        $totalTokensSaved = (int) (self::nonChatLogQuery($teamId)
+        $totalTokensSaved = (int) (self::nonChatLogQuery($teamId, $from, $to)
             ->where('used_toon', true)
             ->selectRaw('COALESCE(SUM(json_tokens - toon_tokens), 0) as aggregate')
             ->value('aggregate') ?? 0);
 
-        $totalTokensUsed = self::sumTokensUsedFromNonChatLogs($teamId) + $conversationStats['tokens_used'];
+        $totalTokensUsed = self::sumTokensUsedFromNonChatLogs($teamId, $from, $to) + $conversationStats['tokens_used'];
 
-        $totalTokensWithoutToon = (int) self::nonChatLogQuery($teamId)->sum('json_tokens')
+        $totalTokensWithoutToon = (int) self::nonChatLogQuery($teamId, $from, $to)->sum('json_tokens')
             + $conversationStats['tokens_used'];
 
         $averageSavings = $totalTokensWithoutToon > 0
             ? round(min(100, ($totalTokensSaved / $totalTokensWithoutToon) * 100), 2)
             : 0.0;
 
-        $byModule = self::callsByModuleFromNonChatLogs($teamId);
+        $byModule = self::callsByModuleFromNonChatLogs($teamId, $from, $to);
 
         if ($conversationStats['tokens_used'] > 0 || $conversationStats['calls'] > 0)
         {
@@ -64,19 +66,40 @@ final class TeamApiUsageStatsService
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\TokenUsageLog>
+     * @return Builder<\App\Models\TokenUsageLog>
      */
-    private static function nonChatLogQuery(int $teamId)
+    private static function nonChatLogQuery(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): Builder
     {
-        return TokenUsageLog::withoutGlobalScopes()
+        $query = TokenUsageLog::withoutGlobalScopes()
             ->where('team_id', $teamId)
             ->where('service', '!=', 'AssistantChatService');
+
+        return self::constrainPeriod($query, $from, $to);
     }
 
-    private static function sumTokensUsedFromNonChatLogs(int $teamId): int
+    /**
+     * @param  Builder<\App\Models\TokenUsageLog|\App\Models\AgentConversationMessage>  $query
+     * @return Builder<\App\Models\TokenUsageLog|\App\Models\AgentConversationMessage>
+     */
+    private static function constrainPeriod(Builder $query, ?CarbonInterface $from, ?CarbonInterface $to): Builder
     {
-        $toonSum = (int) self::nonChatLogQuery($teamId)->where('used_toon', true)->sum('toon_tokens');
-        $jsonSum = (int) self::nonChatLogQuery($teamId)->where('used_toon', false)->sum('json_tokens');
+        if ($from !== null)
+        {
+            $query->where('created_at', '>=', $from);
+        }
+
+        if ($to !== null)
+        {
+            $query->where('created_at', '<=', $to);
+        }
+
+        return $query;
+    }
+
+    private static function sumTokensUsedFromNonChatLogs(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): int
+    {
+        $toonSum = (int) self::nonChatLogQuery($teamId, $from, $to)->where('used_toon', true)->sum('toon_tokens');
+        $jsonSum = (int) self::nonChatLogQuery($teamId, $from, $to)->where('used_toon', false)->sum('json_tokens');
 
         return $toonSum + $jsonSum;
     }
@@ -84,15 +107,16 @@ final class TeamApiUsageStatsService
     /**
      * @return array{calls: int, tokens_used: int}
      */
-    private static function aggregateAssistantConversationUsage(int $teamId): array
+    private static function aggregateAssistantConversationUsage(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
-        $messages = AgentConversationMessage::query()
+        $query = AgentConversationMessage::query()
             ->where('role', 'assistant')
             ->whereHas('conversation', function ($query) use ($teamId)
             {
                 $query->where('team_id', $teamId);
-            })
-            ->get(['usage']);
+            });
+
+        $messages = self::constrainPeriod($query, $from, $to)->get(['usage']);
 
         $calls = 0;
         $tokensUsed = 0;
@@ -127,9 +151,9 @@ final class TeamApiUsageStatsService
     /**
      * @return array<string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>
      */
-    private static function callsByModuleFromNonChatLogs(int $teamId): array
+    private static function callsByModuleFromNonChatLogs(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
-        $rows = self::nonChatLogQuery($teamId)
+        $rows = self::nonChatLogQuery($teamId, $from, $to)
             ->whereNotNull('module_id')
             ->with('module:id,name')
             ->get();

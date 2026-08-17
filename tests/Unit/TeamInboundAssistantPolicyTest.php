@@ -115,4 +115,62 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '+34 611 222 333'));
         $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '34699999999'));
     }
+
+    public function test_missing_paid_plan_blocks_auto_reply_when_required(): void
+    {
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+
+        $team = Team::factory()->create();
+        $team->setSetting('assistant_auto_respond', '1');
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null));
+        $this->assertSame('plan', $policy->lockedReason($team));
+        $this->assertFalse($policy->presentWhatsAppAssistantState($team, true, true)['assistant_toggle_available']);
+    }
+
+    public function test_active_assistant_subscription_unlocks_auto_reply(): void
+    {
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_ai_gate_active',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+        ]);
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null));
+        $this->assertNull($policy->lockedReason($team));
+    }
+
+    public function test_trialing_assistant_subscription_unlocks_auto_reply(): void
+    {
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_ai_gate_trial',
+            'stripe_status' => 'trialing',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+        ]);
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null));
+        $this->assertTrue($policy->presentWhatsAppAssistantState($team, true, true)['assistant_plan_active']);
+    }
 }

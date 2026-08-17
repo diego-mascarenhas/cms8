@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamBillingDataService;
@@ -58,6 +59,57 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.can_checkout', true);
         $this->assertSame($team->id, $team->fresh()->id);
         $this->assertIsArray($response->json('data.invoices'));
+        $response->assertJsonPath('data.token_usage.total_calls', 0);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 0);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.token_usage.currency', 'EUR');
+        $response->assertJsonPath('data.token_usage.rate_per_million', 9);
+        $this->assertNotEmpty($response->json('data.token_usage.period_start'));
+        $this->assertNotEmpty($response->json('data.token_usage.period_end'));
+        $this->assertIsArray($response->json('data.token_usage.by_module'));
+    }
+
+    public function test_subscription_token_usage_bills_tokens_used_in_current_period(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        config([
+            'humano_pricing.token_billing.amount_per_million' => 6,
+            'humano_pricing.token_billing.markup_percent' => 50,
+        ]);
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $previousPeriod = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $previousPeriod->forceFill(['created_at' => now()->subMonth()])->save();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 1_000_000);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 900);
+        $response->assertJsonPath('data.token_usage.currency', 'EUR');
+        $response->assertJsonPath('data.token_usage.rate_per_million', 9);
     }
 
     public function test_subscription_summary_includes_active_assistant_subscription(): void
