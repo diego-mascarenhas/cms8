@@ -1086,7 +1086,7 @@ class ProjectController extends Controller
 
         $message = ! empty($result['charged'])
             ? __('Deposit invoice created and charged. Project moved to in progress.')
-            : __('Deposit invoice created and sent for payment. Project moved to in progress.');
+            : __('Deposit invoice created and sent for payment. Project stays approved until paid.');
 
         if (! empty($result['hosted_invoice_url']) && empty($result['charged']))
         {

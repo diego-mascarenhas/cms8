@@ -168,6 +168,26 @@ return [
         'spa_url' => env('PAID_ADS_SPA_URL', 'http://localhost:3003'),
     ],
 
+    'assistant' => [
+        'url' => env('ASSISTANT_APP_URL', 'https://idoneo-assistant.test'),
+    ],
+
+    'mailer' => [
+        'url' => env('MAILER_APP_URL', 'https://idoneo-mailer.test'),
+    ],
+
+    'affiliates' => [
+        'url' => env('AFFILIATES_APP_URL', 'https://idoneo-affiliates.test'),
+    ],
+
+    'ads' => [
+        'url' => env('ADS_APP_URL', 'https://idoneo-ads.test'),
+    ],
+
+    'projects' => [
+        'url' => env('PROJECTS_APP_URL', 'https://idoneo-projects.test'),
+    ],
+
     'apollo' => [
         'api_key' => env('APOLLO_API_KEY', ''),
     ],

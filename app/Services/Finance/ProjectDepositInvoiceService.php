@@ -87,7 +87,7 @@ class ProjectDepositInvoiceService
     /**
      * Create Stripe + local sell invoice for the 30% project deposit.
      * Charges automatically when the Stripe customer has a payment method.
-     * Moves the project to In progress after issuing.
+     * Moves the project to In progress only after a successful paid charge.
      *
      * @return array{
      *     invoice: Invoice,
@@ -286,7 +286,10 @@ class ProjectDepositInvoiceService
         if ($existingLocal)
         {
             $this->attachDepositInvoiceToProject($project, $existingLocal, $stripeInvoice, $charged, $preview, $description);
-            $project->status_id = ProjectStatus::STATUS_IN_PROGRESS;
+            if ($charged)
+            {
+                $project->status_id = ProjectStatus::STATUS_IN_PROGRESS;
+            }
             $project->save();
 
             return [
@@ -294,7 +297,7 @@ class ProjectDepositInvoiceService
                 'stripe_invoice_id' => $stripeInvoiceId,
                 'hosted_invoice_url' => $stripeInvoice->hosted_invoice_url ?? null,
                 'charged' => $charged,
-                'project_status_id' => ProjectStatus::STATUS_IN_PROGRESS,
+                'project_status_id' => (int) $project->status_id,
             ];
         }
 
@@ -314,7 +317,7 @@ class ProjectDepositInvoiceService
             'stripe_invoice_id' => $stripeInvoiceId,
             'hosted_invoice_url' => $stripeInvoice->hosted_invoice_url ?? null,
             'charged' => $charged,
-            'project_status_id' => ProjectStatus::STATUS_IN_PROGRESS,
+            'project_status_id' => (int) $project->fresh()->status_id,
         ];
     }
 
@@ -401,7 +404,10 @@ class ProjectDepositInvoiceService
                         $preview,
                         $description,
                     );
-                    $project->status_id = ProjectStatus::STATUS_IN_PROGRESS;
+                    if ($charged)
+                    {
+                        $project->status_id = ProjectStatus::STATUS_IN_PROGRESS;
+                    }
                     $project->save();
 
                     return $invoice;

@@ -29,7 +29,9 @@ class SendAffiliateInvitationRequest extends FormRequest
 
                 $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
 
-                return $checkoutUrl !== '' && (bool) ($plan['checkout_available'] ?? false);
+                return $checkoutUrl !== ''
+                    && (bool) ($plan['checkout_available'] ?? false)
+                    && (bool) ($plan['public'] ?? true);
             })
             ->pluck('id')
             ->map(fn (mixed $id): string => (string) $id)

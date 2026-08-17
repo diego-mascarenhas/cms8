@@ -56,7 +56,8 @@ class WhatsAppLocalWebhookController extends Controller
             );
             if ($transcript !== null && $transcript !== '')
             {
-                $payload['body'] = $transcript;
+                $payload['body'] = '[Audio]: '.$transcript;
+                $payload['transcribed_audio'] = true;
             }
         }
 
@@ -163,6 +164,11 @@ class WhatsAppLocalWebhookController extends Controller
             'Body' => $body,
             'NumMedia' => $payload['numMedia'] ?? $payload['hasMedia'] ?? 0,
         ];
+
+        if (! empty($payload['transcribed_audio']) || preg_match('/^\s*\[audio\]\s*:?\s+\S/iu', $body) === 1)
+        {
+            $normalized['TranscribedAudio'] = '1';
+        }
 
         $mediaEntries = $this->extractMediaEntries($payload);
         if ($mediaEntries !== [])

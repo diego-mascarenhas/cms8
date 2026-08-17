@@ -66,4 +66,52 @@ class HumanoPricingPlanResolverTest extends TestCase
         $this->assertCount(1, $plans);
         $this->assertSame('assistant', $plans[0]['id']);
     }
+
+    public function test_public_display_excludes_spa_only_mailer_plans(): void
+    {
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'assistant',
+                    'catalog' => 'assistant',
+                    'public' => true,
+                    'checkout_available' => true,
+                ],
+                [
+                    'id' => 'mailer_basic',
+                    'catalog' => 'mailer',
+                    'public' => false,
+                    'checkout_available' => true,
+                ],
+            ],
+        ]);
+
+        $resolver = app(HumanoPricingPlanResolver::class);
+
+        $this->assertSame(['assistant'], collect($resolver->plansForPublicDisplay())->pluck('id')->all());
+        $this->assertSame(['mailer_basic'], collect($resolver->plansForCatalog('mailer'))->pluck('id')->all());
+        $this->assertSame(['assistant'], collect($resolver->plansWithCheckoutAvailable())->pluck('id')->all());
+    }
+
+    public function test_plan_by_stripe_product_id_returns_mailer_config(): void
+    {
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'mailer_basic',
+                    'catalog' => 'mailer',
+                    'public' => false,
+                    'subscription_type' => 'mailer',
+                    'stripe_product_id' => 'prod_mailer_basic',
+                    'checkout_available' => true,
+                ],
+            ],
+        ]);
+
+        $plan = app(HumanoPricingPlanResolver::class)->planByStripeProductId('prod_mailer_basic');
+
+        $this->assertSame('mailer_basic', $plan['id'] ?? null);
+        $this->assertSame('mailer', $plan['subscription_type'] ?? null);
+        $this->assertSame('mailer_basic', app(HumanoPricingPlanResolver::class)->resolvePlanSlugFromStripeProductId('prod_mailer_basic'));
+    }
 }

@@ -10,6 +10,8 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -114,7 +116,119 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         ]);
         $this->assertCount(1, $response->json('messages'));
         $this->assertSame('First', $response->json('messages.0.body'));
+        $this->assertFalse($response->json('messages.0.transcribed_audio'));
+        $this->assertFalse($response->json('messages.0.from_assistant'));
         $this->assertFalse($response->json('thread_assistant.assistant_toggle_available'));
+    }
+
+    public function test_whatsapp_messages_uses_assistant_avatar_for_unattributed_outbound(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $clientPhone = '34600888999';
+        Conversation::create([
+            'message_sid' => 'SM_api_chat_assistant_out_1',
+            'channel' => 'whatsapp',
+            'from' => $teamWa,
+            'to' => $clientPhone,
+            'body' => 'Respuesta automática',
+            'status' => 'sent',
+            'direction' => 'outbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone);
+
+        $response->assertOk();
+        $this->assertTrue($response->json('messages.0.from_assistant'));
+        $this->assertSame('robot', $response->json('messages.0.sender_avatar.icon'));
+    }
+
+    public function test_whatsapp_messages_uses_agent_avatar_for_attributed_outbound(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create(['name' => 'Diego Perez']);
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $clientPhone = '34600999000';
+        Conversation::create([
+            'message_sid' => 'SM_api_chat_agent_out_1',
+            'channel' => 'whatsapp',
+            'from' => $teamWa,
+            'to' => $clientPhone,
+            'body' => 'Perfecto!',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'user_id' => $user->id,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone);
+
+        $response->assertOk();
+        $this->assertFalse($response->json('messages.0.from_assistant'));
+        $this->assertSame('DP', $response->json('messages.0.sender_avatar.initials'));
+    }
+
+    public function test_whatsapp_messages_marks_transcribed_audio(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $clientPhone = '34600777888';
+        Conversation::create([
+            'message_sid' => 'SM_api_chat_audio_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => '[Audio]: Hola.',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'metadata' => ['TranscribedAudio' => '1'],
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone);
+
+        $response->assertOk();
+        $this->assertTrue($response->json('messages.0.transcribed_audio'));
+        $this->assertSame('[Audio]: Hola.', $response->json('messages.0.body'));
     }
 
     public function test_whatsapp_contact_assistant_patch_updates_contact_when_crm_exists(): void
@@ -205,5 +319,183 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJson(['success' => false]);
+    }
+
+    public function test_whatsapp_status_requires_authentication(): void
+    {
+        $this->getJson('/api/chat/whatsapp-status')->assertStatus(401);
+    }
+
+    public function test_whatsapp_status_returns_json_when_authenticated(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-status')
+            ->assertOk()
+            ->assertJsonStructure([
+                'driver',
+                'status',
+                'number',
+                'numberFormatted',
+                'teamNumber',
+                'teamNumberFormatted',
+                'isTeamConnected',
+            ]);
+    }
+
+    public function test_whatsapp_status_reports_team_connected_for_local_driver(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/status*' => Http::response(['status' => 'connected', 'number' => '34613194131'], 200),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-status')
+            ->assertOk()
+            ->assertJson([
+                'status' => 'connected',
+                'isTeamConnected' => true,
+            ]);
+
+        $this->assertSame('34613194131', $team->fresh()->getWhatsAppFrom());
+    }
+
+    public function test_whatsapp_qr_image_requires_authentication(): void
+    {
+        $this->getJson('/api/chat/whatsapp-qr-image')->assertStatus(401);
+    }
+
+    public function test_whatsapp_qr_image_returns_204_when_node_has_no_qr_yet(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/qr.png*' => Http::response('', 404),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/chat/whatsapp-qr-image')
+            ->assertNoContent();
+    }
+
+    public function test_whatsapp_qr_image_returns_png_when_node_serves_qr(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+        $body = str_repeat($png, 40);
+
+        Http::fake([
+            'wa.test/qr.png*' => Http::response($body, 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/chat/whatsapp-qr-image')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+    }
+
+    public function test_whatsapp_refresh_qr_requires_authentication(): void
+    {
+        $this->postJson('/api/chat/whatsapp-refresh-qr')->assertStatus(401);
+    }
+
+    public function test_whatsapp_thread_locks_assistant_without_paid_plan(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $team->setSetting('assistant_auto_respond', '1');
+        $clientPhone = '34600777888';
+        $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => $clientPhone,
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_lock_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone)
+            ->assertOk()
+            ->assertJsonPath('thread_assistant.assistant_plan_active', false)
+            ->assertJsonPath('thread_assistant.assistant_locked_reason', 'plan')
+            ->assertJsonPath('thread_assistant.assistant_inbound_enabled', false)
+            ->assertJsonPath('thread_assistant.assistant_toggle_available', false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'on' => true,
+            ])
+            ->assertStatus(403)
+            ->assertJsonPath('assistant_locked_reason', 'plan');
     }
 }

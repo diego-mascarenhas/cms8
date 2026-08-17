@@ -4,12 +4,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Stripe credentials per product category
+    | Legacy per-category Stripe credentials
     |--------------------------------------------------------------------------
     |
-    | Each category (mentoring, mailer, prospecting, hosting) can use a
-    | different Stripe account. If secret/key are null, the default
-    | config('cashier.secret') and config('cashier.key') are used.
+    | All products now use the default Cashier account (STRIPE_KEY,
+    | STRIPE_SECRET, STRIPE_WEBHOOK_SECRET). These entries are kept so
+    | existing .env keys do not break config load; StripeAccountResolver
+    | ignores them.
     |
     */
 

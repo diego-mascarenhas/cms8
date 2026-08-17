@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AssistantSubscriptionController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BillingController as ApiBillingController;
 use App\Http\Controllers\Api\CategoryController;
@@ -435,6 +436,8 @@ Route::group(['prefix' => 'auth'], function ()
 {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:6,1');
+    Route::post('reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:6,1');
 
     Route::middleware('auth.api')->group(function ()
     {
@@ -461,6 +464,12 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
+    Route::get('assistant/subscription', [AssistantSubscriptionController::class, 'show'])->name('api.assistant.subscription.show');
+    Route::post('assistant/subscription/cancel', [AssistantSubscriptionController::class, 'cancel'])->name('api.assistant.subscription.cancel');
+    Route::post('assistant/subscription/resume', [AssistantSubscriptionController::class, 'resume'])->name('api.assistant.subscription.resume');
+    Route::post('assistant/checkout', [AssistantSubscriptionController::class, 'checkout'])->name('api.assistant.checkout');
+    Route::post('assistant/checkout/complete', [AssistantSubscriptionController::class, 'complete'])->name('api.assistant.checkout.complete');
+    Route::post('assistant/payment-method', [AssistantSubscriptionController::class, 'paymentMethod'])->name('api.assistant.payment-method');
 
     // Mobile dashboard summary
     Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');
@@ -470,6 +479,8 @@ Route::middleware('auth.api')->group(function ()
 
     // Users of current team (for IDONEO app)
     Route::get('users', [ApiUserController::class, 'index']);
+    Route::post('users', [ApiUserController::class, 'store']);
+    Route::delete('users/{user}', [ApiUserController::class, 'destroy']);
 
     // Time tracking / Fichaje
     Route::prefix('time')->group(function ()
@@ -654,15 +665,19 @@ Route::middleware('auth.api')->group(function ()
         'destroy' => 'api.fares.destroy',
     ]);
 
-    // WhatsApp conversation list and thread messages (same handlers as web /chat/list, /chat/messages, /chat/send).
+    // WhatsApp inbox (idoneo-assistant SPA) — same handlers as web /chat/list, /chat/messages, /chat/send, /chat/whatsapp-status.
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');
     Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
     Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
+    Route::get('chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('api.chat.whatsapp-status');
+    Route::get('chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('api.chat.whatsapp-qr-image');
+    Route::post('chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('api.chat.whatsapp-refresh-qr');
+    Route::post('chat/whatsapp-warmup-qr', [ChatController::class, 'whatsappWarmupQr'])->name('api.chat.whatsapp-warmup-qr');
 
-    // Assistant chat (Sanctum): uses authenticated user's current_team_id (e.g. Asperger Guard).
+    // Assistant chat (idoneo-assistant SPA / Sanctum): uses authenticated user's current_team_id.
     Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');
     Route::get('assistant/history', [ChatController::class, 'assistantHistory'])->name('api.assistant.history');
     Route::post('assistant/reset-context', [ChatController::class, 'resetAssistantContext'])->name('api.assistant.reset-context');

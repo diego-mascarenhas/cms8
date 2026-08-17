@@ -113,6 +113,48 @@ class MobileAssistantApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('role', 'Admin');
+        $response->assertJsonPath('current_team.is_owner', true);
+        $response->assertJsonPath('current_team.can_manage', true);
+    }
+
+    public function test_auth_user_marks_non_owner_team_member(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $member->assignRole('admin');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('current_team.is_owner', true);
+
+        $this->actingAs($member->fresh(), 'sanctum')
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('id', $member->id)
+            ->assertJsonPath('current_team.id', $team->id)
+            ->assertJsonPath('current_team.is_owner', false)
+            ->assertJsonPath('current_team.can_manage', true);
+    }
+
+    public function test_auth_user_marks_collaborator_as_unable_to_manage_team(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'editor']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $member->assignRole('collaborator');
+
+        $this->actingAs($member->fresh(), 'sanctum')
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('current_team.is_owner', false)
+            ->assertJsonPath('current_team.can_manage', false);
     }
 
     public function test_today_endpoint_returns_events_and_tasks(): void
@@ -358,6 +400,24 @@ class MobileAssistantApiTest extends TestCase
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->putJson('/api/auth/password', [
                 'current_password' => 'password',
+                'password' => 'new-password-9',
+                'password_confirmation' => 'new-password-9',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+
+        $this->assertTrue(
+            \Illuminate\Support\Facades\Hash::check('new-password-9', $user->fresh()->password),
+        );
+    }
+
+    public function test_auth_user_can_update_password_without_current_password(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/auth/password', [
                 'password' => 'new-password-9',
                 'password_confirmation' => 'new-password-9',
             ]);

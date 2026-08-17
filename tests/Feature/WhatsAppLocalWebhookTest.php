@@ -204,6 +204,7 @@ class WhatsAppLocalWebhookTest extends TestCase
             'classification_status' => 'classified',
         ]);
         $this->assertGreaterThan(0, DocumentIngestion::query()->count());
+        $this->assertSame(0, $this->documentIngestionAcknowledgementCount());
     }
 
     public function test_webhook_creates_document_ingestion_from_media_base64_payload(): void
@@ -241,6 +242,78 @@ class WhatsAppLocalWebhookTest extends TestCase
             'conversation_id' => $conversation->id,
         ]);
         $this->assertGreaterThan(0, DocumentIngestion::query()->count());
+        $this->assertSame(0, $this->documentIngestionAcknowledgementCount());
+    }
+
+    public function test_webhook_skips_document_ingestion_reply_when_contact_disables_assistant(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000000',
+            'name' => 'Test',
+            'surname' => 'Client',
+            'email' => 'test.client.media@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'ack_should_not_send'], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => '[Image]',
+            'id' => 'msg_media_contact_opt_out_1',
+            'mediaUrl' => 'https://cdn.example.com/card.png',
+            'mediaContentType' => 'image/png',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+            'document_ingestion' => true,
+        ]);
+        $this->assertSame(0, $this->documentIngestionAcknowledgementCount());
+        Http::assertNotSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message')
+                && str_contains((string) $request['body'], 'Recibi tu documento');
+        });
+    }
+
+    public function test_webhook_sends_document_ingestion_reply_when_assistant_is_enabled(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'ack_media_1'], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000099',
+            'to' => '34600000001',
+            'body' => '[Image]',
+            'id' => 'msg_media_assistant_on_1',
+            'mediaUrl' => 'https://cdn.example.com/card.png',
+            'mediaContentType' => 'image/png',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+            'document_ingestion' => true,
+        ]);
+        $this->assertSame(1, $this->documentIngestionAcknowledgementCount());
     }
 
     public function test_webhook_skips_auto_ai_when_contact_disables_assistant_even_if_team_enabled(): void
@@ -446,5 +519,13 @@ class WhatsAppLocalWebhookTest extends TestCase
         $this->assertDatabaseMissing('conversations', [
             'message_sid' => 'msg_blacklist_skip_1',
         ]);
+    }
+
+    private function documentIngestionAcknowledgementCount(): int
+    {
+        return Conversation::query()
+            ->where('direction', 'outbound')
+            ->where('body', 'like', 'Recibi tu documento%')
+            ->count();
     }
 }

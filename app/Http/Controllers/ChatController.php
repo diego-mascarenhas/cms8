@@ -306,12 +306,18 @@ class ChatController extends Controller
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
-            $contact->assistant_toggle_available = $crmProfile !== null;
             $inboundUser = isset($userData) && $userData instanceof User
                 ? $userData
                 : (isset($contact->user_id) ? User::query()->find($contact->user_id) : null);
-            $contact->assistant_inbound_enabled = app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly);
+            $assistantState = $inboundPolicy->presentWhatsAppAssistantState(
+                $team,
+                $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly),
+                $crmProfile !== null,
+            );
+            $contact->assistant_toggle_available = $assistantState['assistant_toggle_available'];
+            $contact->assistant_inbound_enabled = $assistantState['assistant_inbound_enabled'];
+            $contact->assistant_plan_active = $assistantState['assistant_plan_active'];
+            $contact->assistant_locked_reason = $assistantState['assistant_locked_reason'];
             $contacts->push($contact);
         }
 
@@ -830,9 +836,7 @@ class ChatController extends Controller
             {
                 if (! empty($message->is_scheduled))
                 {
-                    $sender = $message->user_id
-                        ? ($messageUsers->get($message->user_id) ?? $authUser)
-                        : $authUser;
+                    $fromAssistant = $this->whatsAppMessageIsFromAssistant($message);
 
                     return [
                         'id' => $message->id,
@@ -845,15 +849,18 @@ class ChatController extends Controller
                         'created_at' => $message->scheduled_at?->toIso8601String(),
                         'user_id' => $message->user_id,
                         'media' => [],
-                        'sender_avatar' => ChatMessageAvatar::forUser($sender, 'bg-label-primary'),
+                        'transcribed_audio' => false,
+                        'from_assistant' => $fromAssistant,
+                        'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
                     ];
                 }
 
                 $payload = $message->toArray();
-                $sender = $message->user_id
-                    ? ($messageUsers->get($message->user_id) ?? $authUser)
-                    : $authUser;
-                $payload['sender_avatar'] = ChatMessageAvatar::forUser($sender, 'bg-label-primary');
+                $payload['from_assistant'] = $this->whatsAppMessageIsFromAssistant($message);
+                $payload['sender_avatar'] = $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser);
+                $payload['transcribed_audio'] = $message instanceof Conversation
+                    ? $message->isTranscribedAudio()
+                    : false;
 
                 return $payload;
             })->values()->all(),
@@ -901,54 +908,59 @@ class ChatController extends Controller
         }
 
         $this->authorize('update', $contact);
+
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
+        if (! $inboundPolicy->assistantPlanIsInEffect($team))
+        {
+            return response()->json(array_merge([
+                'success' => false,
+                'message' => __('La IA se activa cuando el plan Assistant está vigente. Los tokens se facturan aparte.'),
+            ], $inboundPolicy->presentWhatsAppAssistantState($team, false, false)), 403);
+        }
+
         $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
         $contact->refresh();
 
         $inboundUser = $contact->user_id ? User::query()->find($contact->user_id) : null;
 
-        return response()->json([
+        return response()->json(array_merge([
             'success' => true,
-            'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)
-                ->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
-            'assistant_toggle_available' => true,
-        ]);
+        ], $inboundPolicy->presentWhatsAppAssistantState(
+            $team,
+            $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
+            true,
+        )));
     }
 
     /**
-     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool}
+     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null}
      */
     private function whatsAppThreadAssistantMetaForDigits(string $digits): array
     {
         $team = auth()->user()?->currentTeam;
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
         if (! $team || $digits === '')
         {
             return [
                 'contact_id' => null,
-                'assistant_inbound_enabled' => true,
+                'assistant_inbound_enabled' => false,
                 'assistant_toggle_available' => false,
+                'assistant_plan_active' => false,
+                'assistant_locked_reason' => 'plan',
             ];
         }
 
         $crm = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
-        if (! $crm)
-        {
-            return [
-                'contact_id' => null,
-                'assistant_inbound_enabled' => true,
-                'assistant_toggle_available' => false,
-            ];
-        }
+        $inboundEnabled = $inboundPolicy->allowsWhatsAppAutoReply(
+            $team,
+            $crm?->user_id ? User::query()->find($crm->user_id) : null,
+            (int) $team->id,
+            $digits,
+        );
 
-        return [
-            'contact_id' => (int) $crm->id,
-            'assistant_inbound_enabled' => app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
-                $team,
-                $crm->user_id ? User::query()->find($crm->user_id) : null,
-                (int) $team->id,
-                $digits,
-            ),
-            'assistant_toggle_available' => true,
-        ];
+        return array_merge([
+            'contact_id' => $crm ? (int) $crm->id : null,
+        ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null));
     }
 
     private function applyContactInboundAssistantEnabled(Contact $contact, bool $on): void
@@ -992,6 +1004,8 @@ class ChatController extends Controller
             }
             $item['assistant_toggle_available'] = (bool) ($c->assistant_toggle_available ?? false);
             $item['assistant_inbound_enabled'] = (bool) ($c->assistant_inbound_enabled ?? true);
+            $item['assistant_plan_active'] = (bool) ($c->assistant_plan_active ?? true);
+            $item['assistant_locked_reason'] = $c->assistant_locked_reason ?? null;
 
             return $item;
         })->values()->all();
@@ -2043,7 +2057,13 @@ class ChatController extends Controller
             {
                 $gateway = $teamGateway;
                 $connectionStatus = $teamGateway->getConnectionStatus();
-                if (($connectionStatus['status'] ?? '') !== 'connected')
+                $team = auth()->user()?->currentTeam;
+                if ($team && is_array($connectionStatus))
+                {
+                    TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $connectionStatus);
+                }
+                $status = is_array($connectionStatus) ? (string) ($connectionStatus['status'] ?? '') : '';
+                if (! in_array($status, ['connected', 'open'], true))
                 {
                     return response()->json([
                         'success' => false,
@@ -2173,7 +2193,7 @@ class ChatController extends Controller
             }
 
             // Send original message (agent's reply when toggle is OFF)
-            $gateway->sendMessage($request->to, $message);
+            $gateway->sendMessage($request->to, $message, null, auth()->id());
 
             // Persist agent's reply into conversation context so the AI has it for future turns
             $contextUser = $userResolver->resolveUserForConversation($request->to, $request->input('contact_id'));
@@ -2945,6 +2965,31 @@ class ChatController extends Controller
         return $messages->concat($scheduledDisplay)
             ->sortBy(fn ($message) => $this->chatDisplayMessageTimestamp($message))
             ->values();
+    }
+
+    private function whatsAppMessageIsFromAssistant(object $message): bool
+    {
+        $direction = (string) ($message->direction ?? '');
+        $userId = $message->user_id ?? null;
+
+        return $direction === 'outbound' && empty($userId);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, User>  $messageUsers
+     * @return array<string, mixed>
+     */
+    private function whatsAppMessageSenderAvatar(object $message, $messageUsers, ?User $authUser): array
+    {
+        if ($this->whatsAppMessageIsFromAssistant($message))
+        {
+            return ChatMessageAvatar::forAssistant();
+        }
+
+        $userId = $message->user_id ?? null;
+        $sender = $userId ? ($messageUsers->get($userId) ?? $authUser) : $authUser;
+
+        return ChatMessageAvatar::forUser($sender, 'bg-label-primary');
     }
 
     private function scheduledMessageToChatDisplay(ScheduledMessage $scheduled): object

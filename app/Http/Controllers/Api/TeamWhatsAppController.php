@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Team;
+use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Support\WhatsAppSendExceptionPresenter;
@@ -50,7 +51,12 @@ class TeamWhatsAppController extends Controller
                     $team->id,
                 );
                 $connectionStatus = $gateway->getConnectionStatus();
-                if (($connectionStatus['status'] ?? '') !== 'connected')
+                if (is_array($connectionStatus))
+                {
+                    TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $connectionStatus);
+                }
+                $status = is_array($connectionStatus) ? (string) ($connectionStatus['status'] ?? '') : '';
+                if (! in_array($status, ['connected', 'open'], true))
                 {
                     return response()->json([
                         'success' => false,

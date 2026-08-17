@@ -4,17 +4,53 @@ namespace App\Services;
 
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 
 /**
  * Inbound WhatsApp assistant rules.
  *
- * Precedence: blacklist → team global auto-respond (master) → per-contact opt-out → admins-when-off exception.
+ * Precedence: paid plan → blacklist → team global auto-respond (master) → per-contact opt-out → admins-when-off exception.
  * The header contact toggle cannot override a disabled team global setting.
  */
 class TeamInboundAssistantPolicy
 {
+    public function assistantPlanIsInEffect(Team $team): bool
+    {
+        if (! config('humano_pricing.require_paid_plan_for_ai', true))
+        {
+            return true;
+        }
+
+        return app(AssistantSubscriptionService::class)->teamHasPaidAccessForAi($team);
+    }
+
+    public function lockedReason(Team $team): ?string
+    {
+        return $this->assistantPlanIsInEffect($team) ? null : 'plan';
+    }
+
+    /**
+     * @return array{assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null}
+     */
+    public function presentWhatsAppAssistantState(Team $team, bool $inboundEnabled, bool $toggleAvailable): array
+    {
+        $planActive = $this->assistantPlanIsInEffect($team);
+
+        return [
+            'assistant_inbound_enabled' => $planActive && $inboundEnabled,
+            'assistant_toggle_available' => $planActive && $toggleAvailable,
+            'assistant_plan_active' => $planActive,
+            'assistant_locked_reason' => $planActive ? null : 'plan',
+        ];
+    }
+
     public function allowsWhatsAppAutoReply(Team $team, ?User $inboundSender = null, ?int $membershipTeamId = null, ?string $inboundSenderPhone = null): bool
     {
+        if (! $this->assistantPlanIsInEffect($team))
+        {
+            return false;
+        }
+
         if ($this->isBlacklistedWhatsAppPhone($team, $inboundSenderPhone))
         {
             return false;

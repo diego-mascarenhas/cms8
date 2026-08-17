@@ -61,4 +61,29 @@ class ChatSendWhatsAppConnectionTest extends TestCase
         $response->assertJsonPath('success', false);
         $response->assertJsonPath('error', __('whatsapp.send.error.not_connected'));
     }
+
+    public function test_chat_send_proceeds_when_local_whatsapp_is_connected(): void
+    {
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '5491111223344'], 200),
+            'http://127.0.0.1:3000/send-message' => Http::response(['id' => 'wa-test-1', 'success' => true], 200),
+        ]);
+
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+        $this->assertInstanceOf(Team::class, $team);
+        $team->setSetting('whatsapp_from', '5491111223344');
+
+        $response = $this->actingAs($user)->postJson(route('chat.send'), [
+            'to' => '5491199988877',
+            'message' => 'Hola desde Humano',
+            'use_ai' => false,
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+    }
 }

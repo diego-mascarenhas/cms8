@@ -25,11 +25,37 @@ class HumanoPricingPlanResolver
                 $plan['checkout_href_yearly'] = $checkoutAvailable ? $yearlyCheckoutUrl : '';
                 $plan['checkout_href'] = $plan['checkout_href_monthly'];
                 $plan['external_url'] = trim((string) ($plan['external_url'] ?? ''));
+                $plan['catalog'] = trim((string) ($plan['catalog'] ?? 'assistant')) ?: 'assistant';
+                $plan['public'] = (bool) ($plan['public'] ?? true);
 
                 return $plan;
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function plansForPublicDisplay(): array
+    {
+        return array_values(array_filter(
+            $this->plansForDisplay(),
+            static fn (array $plan): bool => (bool) ($plan['public'] ?? true),
+        ));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function plansForCatalog(string $catalog): array
+    {
+        $catalog = strtolower(trim($catalog));
+
+        return array_values(array_filter(
+            $this->plansForDisplay(),
+            static fn (array $plan): bool => ($plan['catalog'] ?? 'assistant') === $catalog,
+        ));
     }
 
     /**
@@ -40,7 +66,7 @@ class HumanoPricingPlanResolver
     public function plansWithCheckoutAvailable(?string $referralCode = null): array
     {
         $plans = array_values(array_filter(
-            $this->plansForDisplay(),
+            $this->plansForPublicDisplay(),
             static fn (array $plan): bool => (bool) ($plan['checkout_available'] ?? true),
         ));
 
@@ -68,9 +94,11 @@ class HumanoPricingPlanResolver
     }
 
     /**
-     * Match a Stripe product id to a `humano_pricing.plans` entry (`assistant`, `business`, `mentor`).
+     * Match a Stripe product id to a `humano_pricing.plans` entry.
+     *
+     * @return array<string, mixed>|null
      */
-    public function resolvePlanSlugFromStripeProductId(string $stripeProductId): ?string
+    public function planByStripeProductId(string $stripeProductId): ?array
     {
         $stripeProductId = trim($stripeProductId);
         if ($stripeProductId === '')
@@ -78,17 +106,26 @@ class HumanoPricingPlanResolver
             return null;
         }
 
-        foreach (config('humano_pricing.plans', []) as $plan)
+        foreach ($this->plansForDisplay() as $plan)
         {
             $configured = trim((string) ($plan['stripe_product_id'] ?? ''));
             if ($configured !== '' && $configured === $stripeProductId)
             {
-                $id = strtolower(trim((string) ($plan['id'] ?? '')));
-
-                return $id !== '' ? $id : null;
+                return $plan;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Match a Stripe product id to a `humano_pricing.plans` entry (`assistant`, `business`, `mentor`).
+     */
+    public function resolvePlanSlugFromStripeProductId(string $stripeProductId): ?string
+    {
+        $plan = $this->planByStripeProductId($stripeProductId);
+        $id = strtolower(trim((string) ($plan['id'] ?? '')));
+
+        return $id !== '' ? $id : null;
     }
 }

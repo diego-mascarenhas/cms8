@@ -28,7 +28,7 @@ class HumanoLandingController extends Controller
         return view('homes.humano.landing', [
             'pageConfigs' => ['myLayout' => 'front'],
             'guidePresentations' => self::guidePresentations(),
-            'landingPlans' => app(HumanoPricingPlanResolver::class)->plansForDisplay(),
+            'landingPlans' => app(HumanoPricingPlanResolver::class)->plansForPublicDisplay(),
         ]);
     }
 

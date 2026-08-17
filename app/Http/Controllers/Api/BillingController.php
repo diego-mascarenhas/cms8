@@ -88,6 +88,10 @@ class BillingController extends Controller
             $response['warning'] = $result['warning'];
         }
 
+        $user->forceFill([
+            'phone' => preg_replace('/\D+/', '', $validated['phone']) ?: null,
+        ])->save();
+
         return response()->json($response);
     }
 }

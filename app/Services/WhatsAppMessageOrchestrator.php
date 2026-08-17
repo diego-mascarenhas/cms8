@@ -826,7 +826,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     ]);
                 }
 
-                if ($channel === 'whatsapp')
+                if ($channel === 'whatsapp' && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
                 {
                     try
                     {
@@ -923,22 +923,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             // Automatic AI response: team global setting is master; contact opt-out and blacklist also block.
-            $shouldProcessAutoAi = false;
-            if ($channel === 'whatsapp' && $this->team)
-            {
-                $assistantTeamIdEarly = Team::resolveInboundWebhookTeamId($this->team->id, $cleanTo);
-                $earlyUser = app(UserResolverService::class)->resolveUserForConversation(
-                    $cleanFrom,
-                    null,
-                    $assistantTeamIdEarly,
-                );
-                $shouldProcessAutoAi = app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
-                    $this->team,
-                    $earlyUser,
-                    $assistantTeamIdEarly,
-                    $cleanFrom,
-                );
-            }
+            $shouldProcessAutoAi = $channel === 'whatsapp' && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo);
 
             if ($shouldHandleRegistration && $chatController !== null)
             {
@@ -1329,6 +1314,28 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             $this->sendingGateway = null;
         }
+    }
+
+    private function inboundAssistantMayAutoReply(string $fromPhone, ?string $toPhone = null): bool
+    {
+        if ($this->team === null)
+        {
+            return false;
+        }
+
+        $assistantTeamId = Team::resolveInboundWebhookTeamId($this->team->id, $toPhone);
+        $inboundUser = app(UserResolverService::class)->resolveUserForConversation(
+            $fromPhone,
+            null,
+            $assistantTeamId,
+        );
+
+        return app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
+            $this->team,
+            $inboundUser,
+            $assistantTeamId,
+            $fromPhone,
+        );
     }
 
     /**

@@ -17,7 +17,7 @@ class CategoryStripeWebhookController extends Controller
     public function handleWebhook(Request $request, string $category): Response
     {
         $category = StripeAccountResolver::normalizeCategory($category);
-        $secret = config("stripe_accounts.{$category}.webhook_secret") ?: config('cashier.webhook.secret');
+        $secret = StripeAccountResolver::webhookSecretForCategory($category);
 
         if (empty($secret))
         {

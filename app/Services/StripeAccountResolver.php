@@ -5,56 +5,39 @@ namespace App\Services;
 class StripeAccountResolver
 {
     /**
-     * Whether this category uses a dedicated key from config/stripe_accounts.php (not Cashier defaults).
+     * All products share the default Cashier account (STRIPE_SECRET / STRIPE_KEY).
      */
     public static function hasDedicatedCredentials(string $category): bool
     {
-        $category = trim($category);
-        if ($category === '')
-        {
-            return false;
-        }
-
-        $normalized = self::normalizeCategory($category);
-
-        return ! empty(config("stripe_accounts.{$normalized}.secret"));
+        return false;
     }
 
     /**
-     * Return the Stripe secret key for the given category.
-     * Empty category uses config('cashier.secret') (default .env STRIPE_SECRET).
-     * Otherwise falls back to Cashier when the category has no dedicated credentials.
+     * Return the platform Stripe secret. Category is ignored: one account for every product.
      */
     public static function secretForCategory(string $category): string
     {
-        if (trim($category) === '')
-        {
-            return (string) config('cashier.secret');
-        }
-
-        $secret = config('stripe_accounts.'.self::normalizeCategory($category).'.secret');
-
-        return $secret ?: (string) config('cashier.secret');
+        return (string) config('cashier.secret');
     }
 
     /**
-     * Return the Stripe publishable key for the given category.
-     * Empty category uses config('cashier.key'). Otherwise falls back to Cashier when no dedicated key.
+     * Return the platform Stripe publishable key. Category is ignored.
      */
     public static function keyForCategory(string $category): ?string
     {
-        if (trim($category) === '')
-        {
-            return config('cashier.key');
-        }
-
-        $key = config('stripe_accounts.'.self::normalizeCategory($category).'.key');
-
-        return $key ?: config('cashier.key');
+        return config('cashier.key');
     }
 
     /**
-     * Normalize category for config lookup (e.g. 'support' uses same credentials as 'hosting').
+     * Return the platform webhook signing secret. Category is ignored.
+     */
+    public static function webhookSecretForCategory(string $category): ?string
+    {
+        return config('cashier.webhook.secret');
+    }
+
+    /**
+     * Normalize product category names (e.g. support subscriptions use hosting plans).
      */
     public static function normalizeCategory(string $category): string
     {
