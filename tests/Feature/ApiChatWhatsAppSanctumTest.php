@@ -269,4 +269,66 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         $this->assertSame('34613194131', $team->fresh()->getWhatsAppFrom());
     }
+
+    public function test_whatsapp_qr_image_requires_authentication(): void
+    {
+        $this->getJson('/api/chat/whatsapp-qr-image')->assertStatus(401);
+    }
+
+    public function test_whatsapp_qr_image_returns_204_when_node_has_no_qr_yet(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/qr.png*' => Http::response('', 404),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/chat/whatsapp-qr-image')
+            ->assertNoContent();
+    }
+
+    public function test_whatsapp_qr_image_returns_png_when_node_serves_qr(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        $png = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true);
+        $body = str_repeat($png, 40);
+
+        Http::fake([
+            'wa.test/qr.png*' => Http::response($body, 200, ['Content-Type' => 'image/png']),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $token = $user->createToken('idoneo-assistant-test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/chat/whatsapp-qr-image')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'image/png');
+    }
+
+    public function test_whatsapp_refresh_qr_requires_authentication(): void
+    {
+        $this->postJson('/api/chat/whatsapp-refresh-qr')->assertStatus(401);
+    }
 }
