@@ -54,6 +54,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.plan.id', 'assistant');
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.payment_method', null);
+        $response->assertJsonPath('data.payment_methods', []);
         $response->assertJsonPath('data.can_checkout', true);
         $this->assertSame($team->id, $team->fresh()->id);
         $this->assertIsArray($response->json('data.invoices'));
@@ -80,6 +81,8 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.subscription.active', true);
         $response->assertJsonPath('data.subscription.interval', 'monthly');
+        $response->assertJsonPath('data.subscription.current_period_start', null);
+        $response->assertJsonPath('data.subscription.current_period_end', null);
         $response->assertJsonPath('data.can_checkout', false);
     }
 
@@ -178,7 +181,7 @@ class ApiAssistantSubscriptionTest extends TestCase
                         'individual_name' => 'Diego Mascarenhas',
                         'business_name' => '',
                         'country' => 'US',
-                        'phone' => '+12025550100',
+                        'phone' => '+54 34722372858',
                         'tax_id' => '123456789',
                     ],
                 ]);
@@ -188,11 +191,11 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->putJson('/api/billing', [
                 'individual_name' => 'Diego Mascarenhas',
                 'country' => 'US',
-                'phone' => '+12025550100',
+                'phone' => '+54 34722372858',
                 'tax_id' => '123456789',
             ]);
 
         $response->assertOk();
-        $this->assertSame('12025550100', (string) $user->fresh()->phone);
+        $this->assertSame('5434722372858', (string) $user->fresh()->phone);
     }
 }

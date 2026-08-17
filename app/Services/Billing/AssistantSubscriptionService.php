@@ -8,6 +8,7 @@ use App\Services\StripeAccountResolver;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Subscription;
 
@@ -26,7 +27,7 @@ class AssistantSubscriptionService
     {
         $plan = $this->assistantPlanConfig();
         $subscription = $this->findAssistantSubscription($team);
-        $stripe = $this->fetchPlatformPaymentData($team);
+        $stripe = $this->fetchPlatformPaymentData($team, $subscription);
 
         $active = $subscription !== null && $this->subscriptionIsActive($subscription);
 
@@ -46,8 +47,11 @@ class AssistantSubscriptionService
                 'interval' => $this->intervalForPrice((string) $subscription->stripe_price),
                 'stripe_price' => (string) $subscription->stripe_price,
                 'ends_at' => $subscription->ends_at?->toIso8601String(),
+                'current_period_start' => $stripe['current_period_start'],
+                'current_period_end' => $stripe['current_period_end'],
             ] : null,
             'payment_method' => $stripe['payment_method'],
+            'payment_methods' => $stripe['payment_methods'],
             'invoices' => $stripe['invoices'],
             'can_checkout' => (bool) ($plan['checkout_available'] ?? false) && ! $active,
         ];
@@ -270,13 +274,91 @@ class AssistantSubscriptionService
     }
 
     /**
-     * @return array{payment_method: ?array<string, mixed>, invoices: list<array<string, mixed>>}
+     * @param  object|array<string, mixed>  $stripeSubscription
+     * @return array{0: ?int, 1: ?int}
      */
-    private function fetchPlatformPaymentData(Team $team): array
+    public static function periodTimestampsFromStripeSubscription(object|array $stripeSubscription): array
+    {
+        $payload = is_array($stripeSubscription)
+            ? $stripeSubscription
+            : json_decode(json_encode($stripeSubscription), true);
+
+        if (! is_array($payload))
+        {
+            return [null, null];
+        }
+
+        $item = Arr::get($payload, 'items.data.0', []);
+        $start = Arr::get($payload, 'current_period_start')
+            ?? Arr::get($item, 'current_period_start')
+            ?? Arr::get($payload, 'billing_cycle_anchor');
+        $end = Arr::get($payload, 'current_period_end')
+            ?? Arr::get($item, 'current_period_end');
+
+        return [
+            $start !== null && $start !== '' ? (int) $start : null,
+            $end !== null && $end !== '' ? (int) $end : null,
+        ];
+    }
+
+    /**
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function periodFromLocalSubscription(?Subscription $subscription): array
+    {
+        if (! $subscription?->stripe_id)
+        {
+            return [null, null];
+        }
+
+        try
+        {
+            $stripeSubscription = \Stripe\Subscription::retrieve([
+                'id' => $subscription->stripe_id,
+                'expand' => ['items.data'],
+            ]);
+
+            return self::periodTimestampsFromStripeSubscription($stripeSubscription);
+        } catch (\Exception $e)
+        {
+            Log::warning('Could not load Assistant Stripe subscription period', array_merge([
+                'stripe_subscription_id' => $subscription->stripe_id,
+            ], StripeErrorMessage::logContext($e)));
+
+            return [null, null];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function mapCardPaymentMethod(object $method, bool $isDefault): ?array
+    {
+        if (! $method->card)
+        {
+            return null;
+        }
+
+        return [
+            'brand' => (string) $method->card->brand,
+            'last4' => (string) $method->card->last4,
+            'exp_month' => (int) $method->card->exp_month,
+            'exp_year' => (int) $method->card->exp_year,
+            'is_default' => $isDefault,
+        ];
+    }
+
+    /**
+     * @return array{payment_method: ?array<string, mixed>, payment_methods: list<array<string, mixed>>, invoices: list<array<string, mixed>>, current_period_start: ?string, current_period_end: ?string}
+     */
+    private function fetchPlatformPaymentData(Team $team, ?Subscription $subscription = null): array
     {
         $empty = [
             'payment_method' => null,
+            'payment_methods' => [],
             'invoices' => [],
+            'current_period_start' => null,
+            'current_period_end' => null,
         ];
 
         $customerId = $this->customerService->getStripeCustomerIdForCategory($team, '');
@@ -306,24 +388,32 @@ class AssistantSubscriptionService
             ]);
 
             $defaultId = $customer->invoice_settings->default_payment_method ?? null;
-            $card = null;
-            foreach ($paymentMethods->data as $method)
+            $cards = collect($paymentMethods->data)
+                ->map(fn ($method) => $this->mapCardPaymentMethod(
+                    $method,
+                    $defaultId !== null && $method->id === $defaultId,
+                ))
+                ->filter()
+                ->values()
+                ->all();
+            $card = collect($cards)->firstWhere('is_default') ?? ($cards[0] ?? null);
+            [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
+            if (! $periodStart || ! $periodEnd)
             {
-                if ($defaultId && $method->id === $defaultId)
-                {
-                    $card = $method;
-                    break;
-                }
+                $latestInvoice = $invoices->data[0] ?? null;
+                $periodStart ??= $latestInvoice?->period_start
+                    ?? $latestInvoice?->lines?->data[0]?->period?->start
+                    ?? null;
+                $periodEnd ??= $latestInvoice?->period_end
+                    ?? $latestInvoice?->lines?->data[0]?->period?->end
+                    ?? null;
             }
-            $card ??= $paymentMethods->data[0] ?? null;
 
             return [
-                'payment_method' => $card && $card->card ? [
-                    'brand' => (string) $card->card->brand,
-                    'last4' => (string) $card->card->last4,
-                    'exp_month' => (int) $card->card->exp_month,
-                    'exp_year' => (int) $card->card->exp_year,
-                ] : null,
+                'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
+                'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
+                'payment_method' => $card,
+                'payment_methods' => $cards,
                 'invoices' => collect($invoices->data)->map(function ($invoice): array
                 {
                     return [

@@ -74,81 +74,12 @@ class TeamBillingDataService
 
         try
         {
-            $billingCustomerId = $this->customerService->getOrCreateStripeCustomerIdForCategory($team, 'mailer');
-            if (! $billingCustomerId)
-            {
-                return [
-                    'success' => false,
-                    'message' => __('No se pudo crear el cliente de facturación.'),
-                ];
-            }
-
-            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
-
             $customerName = ! empty($input['business_name'])
                 ? (string) $input['business_name']
                 : (string) $input['individual_name'];
             $phone = $this->normalizePhoneNumber((string) $input['phone'], (string) $input['country']);
-            $taxIdError = null;
 
-            \Stripe\Customer::update($billingCustomerId, [
-                'name' => $customerName,
-                'phone' => $phone,
-                'address' => [
-                    'country' => (string) $input['country'],
-                ],
-            ]);
-
-            try
-            {
-                $taxIds = \Stripe\Customer::allTaxIds($billingCustomerId, ['limit' => 100]);
-                foreach ($taxIds->data as $taxId)
-                {
-                    \Stripe\Customer::deleteTaxId($billingCustomerId, $taxId->id);
-                }
-
-                $taxIdType = $this->taxIdentifierService->resolveStripeTaxIdType(
-                    (string) $input['country'],
-                    $taxIdNormalized,
-                );
-
-                if ($taxIdType !== null)
-                {
-                    \Stripe\Customer::createTaxId($billingCustomerId, [
-                        'type' => $taxIdType,
-                        'value' => $taxIdNormalized,
-                    ]);
-                }
-            } catch (\Exception $e)
-            {
-                Log::error('Could not update tax ID', array_merge([
-                    'customer' => $billingCustomerId,
-                    'country' => $input['country'],
-                    'tax_id' => $taxIdNormalized,
-                ], StripeErrorMessage::logContext($e)));
-                $taxIdError = StripeErrorMessage::display($e);
-            }
-
-            \Stripe\Customer::update($billingCustomerId, [
-                'metadata' => [
-                    'individual_name' => (string) $input['individual_name'],
-                    'business_name' => (string) ($input['business_name'] ?? ''),
-                    'tax_id' => $taxIdNormalized,
-                    'country' => (string) $input['country'],
-                ],
-            ]);
-
-            try
-            {
-                $platformCustomerId = $this->customerService->getOrCreateStripeCustomerIdForCategory($team, '');
-                if ($platformCustomerId && $platformCustomerId !== $billingCustomerId)
-                {
-                    $this->syncCustomerFields($platformCustomerId, '', $input, $taxIdNormalized, $customerName, $phone);
-                }
-            } catch (\Exception $e)
-            {
-                Log::warning('Could not sync platform Stripe customer from billing update', StripeErrorMessage::logContext($e));
-            }
+            $taxIdError = $this->pushBillingToStripe($team, $input, $taxIdNormalized, $customerName, $phone);
 
             $message = __('Datos de facturación actualizados correctamente.');
             if ($taxIdError)
@@ -180,29 +111,81 @@ class TeamBillingDataService
     /**
      * @param  array<string, mixed>  $input
      */
-    private function syncCustomerFields(
-        string $customerId,
-        string $category,
+    private function pushBillingToStripe(
+        Team $team,
         array $input,
         string $taxIdNormalized,
         string $customerName,
         string $phone,
-    ): void {
-        \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
+        bool $retried = false,
+    ): ?string {
+        $customerId = $this->customerService->getOrCreateStripeCustomerIdForCategory($team, '');
+        if (! $customerId)
+        {
+            throw new \RuntimeException(__('No se pudo crear el cliente de facturación.'));
+        }
 
-        \Stripe\Customer::update($customerId, [
-            'name' => $customerName,
-            'phone' => $phone,
-            'address' => [
-                'country' => (string) $input['country'],
-            ],
-            'metadata' => [
-                'individual_name' => (string) $input['individual_name'],
-                'business_name' => (string) ($input['business_name'] ?? ''),
+        \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
+
+        try
+        {
+            \Stripe\Customer::update($customerId, [
+                'name' => $customerName,
+                'phone' => $phone,
+                'address' => [
+                    'country' => (string) $input['country'],
+                ],
+                'metadata' => [
+                    'individual_name' => (string) $input['individual_name'],
+                    'business_name' => (string) ($input['business_name'] ?? ''),
+                    'tax_id' => $taxIdNormalized,
+                    'country' => (string) $input['country'],
+                ],
+            ]);
+        } catch (\Exception $e)
+        {
+            if (! $retried && StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return $this->pushBillingToStripe($team, $input, $taxIdNormalized, $customerName, $phone, true);
+            }
+
+            throw $e;
+        }
+
+        try
+        {
+            $taxIds = \Stripe\Customer::allTaxIds($customerId, ['limit' => 100]);
+            foreach ($taxIds->data as $taxId)
+            {
+                \Stripe\Customer::deleteTaxId($customerId, $taxId->id);
+            }
+
+            $taxIdType = $this->taxIdentifierService->resolveStripeTaxIdType(
+                (string) $input['country'],
+                $taxIdNormalized,
+            );
+
+            if ($taxIdType !== null)
+            {
+                \Stripe\Customer::createTaxId($customerId, [
+                    'type' => $taxIdType,
+                    'value' => $taxIdNormalized,
+                ]);
+            }
+        } catch (\Exception $e)
+        {
+            Log::error('Could not update tax ID', array_merge([
+                'customer' => $customerId,
+                'country' => $input['country'],
                 'tax_id' => $taxIdNormalized,
-                'country' => (string) $input['country'],
-            ],
-        ]);
+            ], StripeErrorMessage::logContext($e)));
+
+            return StripeErrorMessage::display($e);
+        }
+
+        return null;
     }
 
     /**
@@ -221,13 +204,13 @@ class TeamBillingDataService
 
         try
         {
-            $customerId = $team->stripe_id ?: $this->customerService->getStripeCustomerIdForCategory($team, 'mailer');
+            $customerId = $this->customerService->getStripeCustomerIdForCategory($team, '');
             if (! $customerId)
             {
                 return $defaults;
             }
 
-            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory('mailer'));
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
             $customer = \Stripe\Customer::retrieve($customerId);
 
             $customerTeamId = $customer->metadata->team_id ?? null;

@@ -76,4 +76,23 @@ class StripeErrorMessage
             'http_status' => $e->getHttpStatus(),
         ], fn ($v) => $v !== null && $v !== '');
     }
+
+    public static function isMissingCustomer(\Throwable $e): bool
+    {
+        if (! $e instanceof ApiErrorException)
+        {
+            return false;
+        }
+
+        $err = $e->getError();
+        $code = $err?->code ?? $e->getStripeCode();
+        if ($code !== 'resource_missing')
+        {
+            return false;
+        }
+
+        $message = strtolower((string) ($err?->message ?? $e->getMessage()));
+
+        return $err?->param === 'id' || str_contains($message, 'no such customer');
+    }
 }

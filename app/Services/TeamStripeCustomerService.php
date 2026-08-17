@@ -3,44 +3,23 @@
 namespace App\Services;
 
 use App\Models\Team;
-use Stripe\Customer;
-use Stripe\Stripe;
 
 class TeamStripeCustomerService
 {
     /**
-     * Setting key prefix for per-category Stripe customer IDs (e.g. stripe_id_mentoring).
+     * Legacy setting key prefix. New writes always go to teams.stripe_id.
      */
     public const SETTING_PREFIX = 'stripe_id_';
 
     /**
-     * Get or create the Stripe customer ID for the team in the Stripe account used by the given category.
-     * When the category uses the default Cashier account, returns team->stripe_id (and ensures it exists).
-     * When the category has its own account, uses team setting stripe_id_{category} or creates a new customer.
+     * Get or create the single Stripe customer for the team.
+     * Category is ignored: every product uses teams.stripe_id on the Cashier account.
      */
     public function getOrCreateStripeCustomerIdForCategory(Team $team, string $category): ?string
     {
-        $category = StripeAccountResolver::normalizeCategory($category);
-        $hasDedicatedAccount = StripeAccountResolver::hasDedicatedCredentials($category);
-
-        if (! $hasDedicatedAccount)
+        if ($team->stripe_id)
         {
-            if (! $team->stripe_id)
-            {
-                $team->createAsStripeCustomer([
-                    'email' => $team->owner?->email ?? auth()->user()?->email,
-                ]);
-            }
-
             return $team->stripe_id;
-        }
-
-        $settingKey = self::SETTING_PREFIX.$category;
-        $customerId = $team->getSetting($settingKey);
-
-        if ($customerId)
-        {
-            return $customerId;
         }
 
         $email = $team->owner?->email ?? auth()->user()?->email;
@@ -49,67 +28,51 @@ class TeamStripeCustomerService
             return null;
         }
 
-        Stripe::setApiKey(StripeAccountResolver::secretForCategory($category));
-        $customer = Customer::create([
+        $team->createAsStripeCustomer([
             'email' => $email,
             'metadata' => [
                 'team_id' => (string) $team->id,
             ],
         ]);
-        $team->setSetting($settingKey, $customer->id);
 
-        return $customer->id;
+        return $team->stripe_id;
     }
 
     /**
-     * Return the Stripe customer ID for the team and category, without creating one.
-     * For default account returns team->stripe_id; for dedicated account returns team setting.
+     * Return the team's Stripe customer ID without creating one.
      */
     public function getStripeCustomerIdForCategory(Team $team, string $category): ?string
     {
-        $category = StripeAccountResolver::normalizeCategory($category);
-        $hasDedicatedAccount = StripeAccountResolver::hasDedicatedCredentials($category);
-
-        if (! $hasDedicatedAccount)
-        {
-            return $team->stripe_id;
-        }
-
-        return $team->getSetting(self::SETTING_PREFIX.$category);
+        return $team->stripe_id;
     }
 
     /**
-     * Persist a known Stripe customer ID for the team/category without creating a new customer.
-     * Useful when checkout succeeds but local linkage is still missing.
+     * Persist a known Stripe customer ID on the team.
      */
     public function persistStripeCustomerIdForCategory(Team $team, string $category, string $customerId): void
     {
-        $category = StripeAccountResolver::normalizeCategory($category);
         $customerId = trim($customerId);
         if ($customerId === '')
         {
             return;
         }
 
-        $hasDedicatedAccount = StripeAccountResolver::hasDedicatedCredentials($category);
-        if (! $hasDedicatedAccount)
+        if ($team->stripe_id !== $customerId)
         {
-            if ($team->stripe_id !== $customerId)
-            {
-                $team->forceFill(['stripe_id' => $customerId])->save();
-            }
+            $team->forceFill(['stripe_id' => $customerId])->save();
+        }
+    }
 
+    /**
+     * Drop a stale local customer ID so the next getOrCreate can make a new one.
+     */
+    public function forgetPersistedCustomerId(Team $team): void
+    {
+        if ($team->stripe_id === null)
+        {
             return;
         }
 
-        $settingKey = self::SETTING_PREFIX.$category;
-        if ($team->getSetting($settingKey) !== $customerId)
-        {
-            $team->setSetting($settingKey, $customerId, [
-                'group' => 'billing',
-                'type' => 'string',
-                'is_encrypted' => false,
-            ]);
-        }
+        $team->forceFill(['stripe_id' => null])->save();
     }
 }

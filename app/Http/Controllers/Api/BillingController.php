@@ -89,7 +89,7 @@ class BillingController extends Controller
         }
 
         $user->forceFill([
-            'phone' => $validated['phone'],
+            'phone' => preg_replace('/\D+/', '', $validated['phone']) ?: null,
         ])->save();
 
         return response()->json($response);

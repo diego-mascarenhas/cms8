@@ -7,35 +7,39 @@ use Tests\TestCase;
 
 class StripeAccountResolverTest extends TestCase
 {
-    public function test_secret_for_empty_category_uses_cashier_secret(): void
+    public function test_secret_for_any_category_uses_cashier_secret(): void
     {
-        config(['cashier.secret' => 'sk_env_default']);
+        config([
+            'cashier.secret' => 'sk_env_default',
+            'stripe_accounts.mailer.secret' => 'sk_mailer',
+            'stripe_accounts.mentoring.secret' => 'sk_mentoring',
+        ]);
 
         $this->assertSame('sk_env_default', StripeAccountResolver::secretForCategory(''));
         $this->assertSame('sk_env_default', StripeAccountResolver::secretForCategory('   '));
+        $this->assertSame('sk_env_default', StripeAccountResolver::secretForCategory('mailer'));
+        $this->assertSame('sk_env_default', StripeAccountResolver::secretForCategory('mentoring'));
     }
 
-    public function test_has_dedicated_credentials_false_for_empty_category(): void
+    public function test_has_dedicated_credentials_is_always_false(): void
     {
         config(['stripe_accounts.mailer.secret' => 'sk_mailer']);
 
         $this->assertFalse(StripeAccountResolver::hasDedicatedCredentials(''));
+        $this->assertFalse(StripeAccountResolver::hasDedicatedCredentials('mailer'));
+        $this->assertFalse(StripeAccountResolver::hasDedicatedCredentials('mentoring'));
     }
 
-    public function test_has_dedicated_credentials_true_when_secret_set(): void
-    {
-        config(['stripe_accounts.mailer.secret' => 'sk_mailer']);
-
-        $this->assertTrue(StripeAccountResolver::hasDedicatedCredentials('mailer'));
-    }
-
-    public function test_secret_for_category_without_dedicated_config_falls_back_to_cashier(): void
+    public function test_key_and_webhook_secret_use_cashier(): void
     {
         config([
-            'stripe_accounts.mailer.secret' => null,
-            'cashier.secret' => 'sk_default',
+            'cashier.key' => 'pk_env_default',
+            'cashier.webhook.secret' => 'whsec_env_default',
+            'stripe_accounts.mailer.key' => 'pk_mailer',
+            'stripe_accounts.mailer.webhook_secret' => 'whsec_mailer',
         ]);
 
-        $this->assertSame('sk_default', StripeAccountResolver::secretForCategory('mailer'));
+        $this->assertSame('pk_env_default', StripeAccountResolver::keyForCategory('mailer'));
+        $this->assertSame('whsec_env_default', StripeAccountResolver::webhookSecretForCategory('mailer'));
     }
 }
