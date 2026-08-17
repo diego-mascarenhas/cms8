@@ -86,15 +86,13 @@ class AuthController extends Controller
 
             $user->load(['currentTeam', 'roles']);
             $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+            $profile = $this->profilePayload($user);
 
             $response = [
                 'email' => $user->email,
                 'token' => $token,
-                'user' => $this->profilePayload($user),
-                'current_team' => $user->currentTeam ? [
-                    'id' => $user->currentTeam->id,
-                    'name' => $user->currentTeam->name,
-                ] : null,
+                'user' => $profile,
+                'current_team' => $profile['current_team'],
             ];
 
             return response()->json($response, 200);
@@ -188,6 +186,7 @@ class AuthController extends Controller
             'current_team' => $user->currentTeam ? [
                 'id' => $user->currentTeam->id,
                 'name' => $user->currentTeam->name,
+                'is_owner' => $user->ownsTeam($user->currentTeam),
             ] : null,
         ];
     }

@@ -474,6 +474,8 @@ Route::middleware('auth.api')->group(function ()
 
     // Users of current team (for IDONEO app)
     Route::get('users', [ApiUserController::class, 'index']);
+    Route::post('users', [ApiUserController::class, 'store']);
+    Route::delete('users/{user}', [ApiUserController::class, 'destroy']);
 
     // Time tracking / Fichaje
     Route::prefix('time')->group(function ()

@@ -113,6 +113,29 @@ class MobileAssistantApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('role', 'Admin');
+        $response->assertJsonPath('current_team.is_owner', true);
+    }
+
+    public function test_auth_user_marks_non_owner_team_member(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $member->assignRole('admin');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('current_team.is_owner', true);
+
+        $this->actingAs($member->fresh(), 'sanctum')
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('id', $member->id)
+            ->assertJsonPath('current_team.id', $team->id)
+            ->assertJsonPath('current_team.is_owner', false);
     }
 
     public function test_today_endpoint_returns_events_and_tasks(): void
