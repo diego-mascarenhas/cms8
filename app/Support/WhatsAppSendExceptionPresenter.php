@@ -39,6 +39,13 @@ class WhatsAppSendExceptionPresenter
         }
 
         if (
+            str_contains($lower, 'not ready to send')
+            || str_contains($lower, 'connection settling')
+        ) {
+            return __('whatsapp.send.error.not_ready');
+        }
+
+        if (
             str_contains($lower, 'not connected')
             || str_contains($lower, 'scan qr')
         ) {

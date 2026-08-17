@@ -2043,7 +2043,13 @@ class ChatController extends Controller
             {
                 $gateway = $teamGateway;
                 $connectionStatus = $teamGateway->getConnectionStatus();
-                if (($connectionStatus['status'] ?? '') !== 'connected')
+                $team = auth()->user()?->currentTeam;
+                if ($team && is_array($connectionStatus))
+                {
+                    TeamWhatsAppConnectionSync::syncLinkedNumberFromGatewayStatus($team, $connectionStatus);
+                }
+                $status = is_array($connectionStatus) ? (string) ($connectionStatus['status'] ?? '') : '';
+                if (! in_array($status, ['connected', 'open'], true))
                 {
                     return response()->json([
                         'success' => false,

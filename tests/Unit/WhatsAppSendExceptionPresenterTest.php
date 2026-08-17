@@ -45,6 +45,12 @@ class WhatsAppSendExceptionPresenterTest extends TestCase
         $this->assertSame(__('whatsapp.send.error.not_connected'), WhatsAppSendExceptionPresenter::messageForUser($e));
     }
 
+    public function test_maps_connected_but_not_ready_without_asking_to_scan_qr(): void
+    {
+        $e = new \RuntimeException('Local WhatsApp send failed: {"error":"WhatsApp not ready to send. Wait for connection or scan QR first."}');
+        $this->assertSame(__('whatsapp.send.error.not_ready'), WhatsAppSendExceptionPresenter::messageForUser($e));
+    }
+
     public function test_generic_fallback(): void
     {
         $e = new \RuntimeException('Some unknown upstream failure');
