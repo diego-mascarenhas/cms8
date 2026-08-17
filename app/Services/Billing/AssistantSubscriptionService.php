@@ -8,6 +8,7 @@ use App\Services\StripeAccountResolver;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Support\StripeErrorMessage;
+use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Subscription;
@@ -182,6 +183,19 @@ class AssistantSubscriptionService
             ];
         }
 
+        if ($session->mode === 'setup')
+        {
+            if ($session->status !== 'complete')
+            {
+                return [
+                    'success' => false,
+                    'message' => __('Todavía no se guardó el medio de pago.'),
+                ];
+            }
+
+            return $this->completePaymentMethodSetup($team, $session);
+        }
+
         if ($session->mode === 'subscription' && ! in_array($session->status, ['complete', 'open'], true))
         {
             return [
@@ -207,6 +221,266 @@ class AssistantSubscriptionService
             'success' => true,
             'data' => $this->summary($team->fresh()),
         ];
+    }
+
+    /**
+     * @return array{success: bool, message?: string, data?: array<string, mixed>}
+     */
+    public function cancel(Team $team, string $reason, ?string $comment = null): array
+    {
+        $subscription = $this->findAssistantSubscription($team);
+        if (! $subscription || ! $this->subscriptionIsActive($subscription))
+        {
+            return [
+                'success' => false,
+                'message' => __('No hay una suscripción Assistant activa.'),
+            ];
+        }
+
+        if ($subscription->ends_at)
+        {
+            return [
+                'success' => false,
+                'message' => __('La suscripción ya está programada para cancelarse.'),
+            ];
+        }
+
+        if (! $subscription->stripe_id)
+        {
+            return [
+                'success' => false,
+                'message' => __('No se encontró la suscripción en Stripe.'),
+            ];
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
+            $cancellationDetails = ['feedback' => $reason];
+            $trimmedComment = is_string($comment) ? trim($comment) : '';
+            if ($trimmedComment !== '')
+            {
+                $cancellationDetails['comment'] = $trimmedComment;
+            }
+
+            \Stripe\Subscription::update($subscription->stripe_id, [
+                'cancel_at_period_end' => true,
+                'cancellation_details' => $cancellationDetails,
+            ]);
+
+            Log::info('Assistant subscription cancel requested', [
+                'team_id' => $team->id,
+                'subscription_id' => $subscription->id,
+                'reason' => $reason,
+            ]);
+
+            $stripeSubscription = \Stripe\Subscription::retrieve([
+                'id' => $subscription->stripe_id,
+                'expand' => ['items.data'],
+            ]);
+            [, $periodEnd] = self::periodTimestampsFromStripeSubscription($stripeSubscription);
+            if ($periodEnd)
+            {
+                $subscription->ends_at = Carbon::createFromTimestamp($periodEnd);
+                $subscription->save();
+            }
+
+            return [
+                'success' => true,
+                'data' => $this->summary($team->fresh()),
+            ];
+        } catch (\Exception $e)
+        {
+            Log::error('Assistant subscription cancel failed', StripeErrorMessage::logContext($e));
+
+            return [
+                'success' => false,
+                'message' => __('Error al cancelar la suscripción: :error', [
+                    'error' => StripeErrorMessage::display($e),
+                ]),
+            ];
+        }
+    }
+
+    /**
+     * @return array{success: bool, message?: string, data?: array<string, mixed>}
+     */
+    public function resume(Team $team): array
+    {
+        $subscription = $this->findAssistantSubscription($team);
+        if (! $subscription || ! $this->subscriptionIsActive($subscription))
+        {
+            return [
+                'success' => false,
+                'message' => __('No hay una suscripción Assistant activa.'),
+            ];
+        }
+
+        if (! $subscription->ends_at)
+        {
+            return [
+                'success' => false,
+                'message' => __('La suscripción no está programada para cancelarse.'),
+            ];
+        }
+
+        if (! $subscription->stripe_id)
+        {
+            return [
+                'success' => false,
+                'message' => __('No se encontró la suscripción en Stripe.'),
+            ];
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
+            \Stripe\Subscription::update($subscription->stripe_id, [
+                'cancel_at_period_end' => false,
+            ]);
+
+            $subscription->ends_at = null;
+            $subscription->save();
+
+            return [
+                'success' => true,
+                'data' => $this->summary($team->fresh()),
+            ];
+        } catch (\Exception $e)
+        {
+            Log::error('Assistant subscription resume failed', StripeErrorMessage::logContext($e));
+
+            return [
+                'success' => false,
+                'message' => __('Error al reanudar la suscripción: :error', [
+                    'error' => StripeErrorMessage::display($e),
+                ]),
+            ];
+        }
+    }
+
+    /**
+     * @return array{success: bool, message?: string, url?: string}
+     */
+    public function createPaymentMethodUpdate(Team $team, string $successUrl, string $cancelUrl): array
+    {
+        $customerId = $this->customerService->getOrCreateStripeCustomerIdForCategory($team, '');
+        if (! $customerId)
+        {
+            return [
+                'success' => false,
+                'message' => __('No se pudo crear el cliente de facturación en Stripe.'),
+            ];
+        }
+
+        try
+        {
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
+
+            $session = \Stripe\Checkout\Session::create([
+                'customer' => $customerId,
+                'mode' => 'setup',
+                'locale' => 'es',
+                'currency' => 'eur',
+                'success_url' => $this->urlWithSessionId($successUrl),
+                'cancel_url' => $cancelUrl,
+                'client_reference_id' => (string) $team->id,
+                'metadata' => [
+                    'team_id' => (string) $team->id,
+                    'purpose' => 'payment_method',
+                ],
+            ]);
+
+            if (! $session->url)
+            {
+                return [
+                    'success' => false,
+                    'message' => __('Stripe no devolvió una URL de checkout.'),
+                ];
+            }
+
+            return [
+                'success' => true,
+                'url' => $session->url,
+            ];
+        } catch (\Exception $e)
+        {
+            Log::error('Assistant payment method session failed', StripeErrorMessage::logContext($e));
+
+            return [
+                'success' => false,
+                'message' => __('Error al abrir el cambio de medio de pago: :error', [
+                    'error' => StripeErrorMessage::display($e),
+                ]),
+            ];
+        }
+    }
+
+    /**
+     * @return array{success: bool, message?: string, data?: array<string, mixed>}
+     */
+    private function completePaymentMethodSetup(Team $team, object $session): array
+    {
+        try
+        {
+            $setupIntentRef = $session->setup_intent ?? null;
+            $setupIntentId = is_string($setupIntentRef)
+                ? $setupIntentRef
+                : (is_object($setupIntentRef) ? ($setupIntentRef->id ?? null) : null);
+
+            if (! $setupIntentId)
+            {
+                return [
+                    'success' => false,
+                    'message' => __('Stripe no devolvió el medio de pago.'),
+                ];
+            }
+
+            $setupIntent = \Stripe\SetupIntent::retrieve($setupIntentId);
+            $paymentMethodRef = $setupIntent->payment_method ?? null;
+            $paymentMethodId = is_string($paymentMethodRef)
+                ? $paymentMethodRef
+                : (is_object($paymentMethodRef) ? ($paymentMethodRef->id ?? null) : null);
+
+            if (! $paymentMethodId)
+            {
+                return [
+                    'success' => false,
+                    'message' => __('Todavía no se guardó el medio de pago.'),
+                ];
+            }
+
+            $customerId = $this->customerService->getStripeCustomerIdForCategory($team, '');
+            if ($customerId)
+            {
+                \Stripe\Customer::update($customerId, [
+                    'invoice_settings' => [
+                        'default_payment_method' => $paymentMethodId,
+                    ],
+                ]);
+            }
+
+            $subscription = $this->findAssistantSubscription($team);
+            if ($subscription?->stripe_id)
+            {
+                \Stripe\Subscription::update($subscription->stripe_id, [
+                    'default_payment_method' => $paymentMethodId,
+                ]);
+            }
+
+            return [
+                'success' => true,
+                'data' => $this->summary($team->fresh()),
+            ];
+        } catch (\Exception $e)
+        {
+            Log::error('Assistant payment method setup failed', StripeErrorMessage::logContext($e));
+
+            return [
+                'success' => false,
+                'message' => __('El medio de pago se recibió, pero no se pudo guardar como predeterminado.'),
+            ];
+        }
     }
 
     /**
@@ -428,6 +702,9 @@ class AssistantSubscriptionService
                             : null,
                         'hosted_invoice_url' => $invoice->hosted_invoice_url
                             ? (string) $invoice->hosted_invoice_url
+                            : null,
+                        'invoice_pdf' => $invoice->invoice_pdf
+                            ? (string) $invoice->invoice_pdf
                             : null,
                     ];
                 })->values()->all(),

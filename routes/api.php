@@ -463,8 +463,11 @@ Route::middleware('auth.api')->group(function ()
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
     Route::get('assistant/subscription', [AssistantSubscriptionController::class, 'show'])->name('api.assistant.subscription.show');
+    Route::post('assistant/subscription/cancel', [AssistantSubscriptionController::class, 'cancel'])->name('api.assistant.subscription.cancel');
+    Route::post('assistant/subscription/resume', [AssistantSubscriptionController::class, 'resume'])->name('api.assistant.subscription.resume');
     Route::post('assistant/checkout', [AssistantSubscriptionController::class, 'checkout'])->name('api.assistant.checkout');
     Route::post('assistant/checkout/complete', [AssistantSubscriptionController::class, 'complete'])->name('api.assistant.checkout.complete');
+    Route::post('assistant/payment-method', [AssistantSubscriptionController::class, 'paymentMethod'])->name('api.assistant.payment-method');
 
     // Mobile dashboard summary
     Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');

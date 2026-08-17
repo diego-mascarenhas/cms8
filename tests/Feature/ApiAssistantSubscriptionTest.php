@@ -198,4 +198,224 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertOk();
         $this->assertSame('5434722372858', (string) $user->fresh()->phone);
     }
+
+    /**
+     * @return array{reason: string, comment?: string}
+     */
+    private function cancelPayload(string $reason = 'too_expensive', ?string $comment = null): array
+    {
+        $payload = ['reason' => $reason];
+        if ($comment !== null)
+        {
+            $payload['comment'] = $comment;
+        }
+
+        return $payload;
+    }
+
+    public function test_cancel_requires_a_reason(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/cancel', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['reason']);
+    }
+
+    public function test_cancel_requires_comment_when_reason_is_other(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/cancel', ['reason' => 'other'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['comment']);
+    }
+
+    public function test_cancel_requires_an_active_assistant_subscription(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/cancel', $this->cancelPayload())
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_cancel_rejects_already_scheduled_cancellation(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_test_assistant_cancel_scheduled',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+            'ends_at' => now()->addDays(10),
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/cancel', $this->cancelPayload())
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_cancel_returns_updated_summary_when_service_succeeds(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('cancel')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'data' => [
+                        'plan' => ['id' => 'assistant'],
+                        'subscription' => [
+                            'active' => true,
+                            'ends_at' => now()->addDays(20)->toIso8601String(),
+                        ],
+                        'can_checkout' => false,
+                        'invoices' => [],
+                    ],
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/cancel', $this->cancelPayload('missing_features', 'Falta un reporte'))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.plan.id', 'assistant');
+    }
+
+    public function test_cancel_is_forbidden_for_non_owners(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $memberToken = $member->createToken('assistant-billing-member')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$memberToken)
+            ->postJson('/api/assistant/subscription/cancel')
+            ->assertStatus(403);
+    }
+
+    public function test_resume_requires_a_scheduled_cancellation(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_test_assistant_resume_active',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/resume')
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_resume_returns_updated_summary_when_service_succeeds(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('resume')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'data' => [
+                        'plan' => ['id' => 'assistant'],
+                        'subscription' => [
+                            'active' => true,
+                            'ends_at' => null,
+                        ],
+                        'can_checkout' => false,
+                        'invoices' => [],
+                    ],
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/subscription/resume')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.subscription.ends_at', null);
+    }
+
+    public function test_resume_is_forbidden_for_non_owners(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $memberToken = $member->createToken('assistant-billing-member')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$memberToken)
+            ->postJson('/api/assistant/subscription/resume')
+            ->assertStatus(403);
+    }
+
+    public function test_payment_method_requires_return_urls(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/payment-method', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['success_url', 'cancel_url']);
+    }
+
+    public function test_payment_method_returns_stripe_url_when_service_succeeds(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('createPaymentMethodUpdate')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'url' => 'https://checkout.stripe.com/c/pay/cs_test_payment_method',
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/payment-method', [
+                'success_url' => 'https://assistant.test/profile?updated=payment-method',
+                'cancel_url' => 'https://assistant.test/profile?checkout=cancel&updated=payment-method',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/cs_test_payment_method');
+    }
+
+    public function test_payment_method_is_forbidden_for_non_owners(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'admin']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $memberToken = $member->createToken('assistant-billing-member')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$memberToken)
+            ->postJson('/api/assistant/payment-method', [
+                'success_url' => 'https://assistant.test/profile',
+                'cancel_url' => 'https://assistant.test/profile',
+            ])
+            ->assertStatus(403);
+    }
 }
