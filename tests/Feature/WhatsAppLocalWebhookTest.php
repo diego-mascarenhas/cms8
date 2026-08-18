@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class WhatsAppLocalWebhookTest extends TestCase
@@ -169,6 +170,33 @@ class WhatsAppLocalWebhookTest extends TestCase
         $this->assertNull($contact->user_id);
         $this->assertSame('María WhatsApp', $contact->name);
         $this->assertSame(34600000099, (int) $contact->phone);
+    }
+
+    public function test_webhook_stores_whatsapp_profile_photo(): void
+    {
+        Storage::fake('public');
+
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000099',
+            'to' => '34600000001',
+            'body' => 'Hello',
+            'id' => 'msg_profile_pic_1',
+            'profile_pic_base64' => $png,
+            'profile_pic_content_type' => 'image/png',
+        ]);
+
+        $response->assertStatus(200);
+        Storage::disk('public')->assertExists('whatsapp/avatars/'.$team->id.'/34600000099.jpg');
     }
 
     public function test_webhook_creates_document_ingestion_for_incoming_media(): void

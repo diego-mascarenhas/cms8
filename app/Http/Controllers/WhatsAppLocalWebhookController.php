@@ -7,6 +7,7 @@ use App\Models\Prospect;
 use App\Models\Team;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppInboundMessageService;
+use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -85,6 +86,7 @@ class WhatsAppLocalWebhookController extends Controller
         if (strlen($cleanFrom) >= 8 && $team)
         {
             Prospect::captureFromWhatsApp($cleanFrom, $team->id);
+            $this->persistWhatsAppProfilePhoto($team, $cleanFrom, $payload);
         }
 
         $inboundMessageService = new WhatsAppInboundMessageService($team);
@@ -348,6 +350,33 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         return $rawBody;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function persistWhatsAppProfilePhoto(Team $team, string $phone, array $payload): void
+    {
+        $store = app(WhatsAppProfilePhotoStore::class);
+        $base64 = $payload['profile_pic_base64'] ?? $payload['profilePicBase64'] ?? null;
+        if (is_string($base64) && trim($base64) !== '')
+        {
+            $contentType = $payload['profile_pic_content_type'] ?? $payload['profilePicContentType'] ?? 'image/jpeg';
+            $store->storeFromBase64(
+                (int) $team->id,
+                $phone,
+                $base64,
+                is_string($contentType) ? $contentType : 'image/jpeg',
+            );
+
+            return;
+        }
+
+        $url = $payload['profile_pic_url'] ?? $payload['profilePicUrl'] ?? null;
+        if (is_string($url) && trim($url) !== '')
+        {
+            $store->storeFromUrl((int) $team->id, $phone, $url);
+        }
     }
 
     private function resolveTeam(Request $request): ?Team

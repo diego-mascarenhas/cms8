@@ -188,4 +188,36 @@ class LocalWhatsAppGateway implements WhatsAppGateway
 
         return $response->json();
     }
+
+    /**
+     * @param  array<int, string>  $phones
+     * @return array<string, array{profile_pic_base64?: string, profile_pic_content_type?: string, profile_pic_url?: string}>
+     */
+    public function fetchProfilePictures(array $phones): array
+    {
+        if (! $this->isConfigured() || $phones === [])
+        {
+            return [];
+        }
+
+        try
+        {
+            $response = Http::timeout(8)
+                ->post(rtrim($this->baseUrl, '/').'/profile-pictures', $this->sendBody([
+                    'phones' => array_values($phones),
+                ]));
+        } catch (\Throwable)
+        {
+            return [];
+        }
+
+        if (! $response->successful())
+        {
+            return [];
+        }
+
+        $pictures = $response->json('pictures');
+
+        return is_array($pictures) ? $pictures : [];
+    }
 }

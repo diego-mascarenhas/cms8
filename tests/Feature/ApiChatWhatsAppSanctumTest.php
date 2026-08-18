@@ -59,6 +59,10 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             'direction' => 'inbound',
         ]);
 
+        Http::fake([
+            '*' => Http::response(['pictures' => []], 200),
+        ]);
+
         $token = $user->createToken('test')->plainTextToken;
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-list');
@@ -74,6 +78,49 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertArrayHasKey('unread_count', $first);
         $this->assertArrayHasKey('assistant_toggle_available', $first);
         $this->assertArrayHasKey('assistant_inbound_enabled', $first);
+    }
+
+    public function test_whatsapp_list_returns_stored_whatsapp_profile_photo(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Storage::fake('public');
+        Http::fake([
+            '*' => Http::response(['pictures' => []], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $clientPhone = '34600111222';
+        Storage::disk('public')->put('whatsapp/avatars/'.$team->id.'/'.$clientPhone.'.jpg', 'avatar');
+        Conversation::create([
+            'message_sid' => 'SM_api_chat_list_photo_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list');
+
+        $response->assertOk();
+        $first = $response->json('contacts.0');
+        $this->assertIsArray($first);
+        $this->assertStringContainsString('whatsapp/avatars/'.$team->id.'/'.$clientPhone.'.jpg', (string) $first['user_photo']);
     }
 
     public function test_whatsapp_messages_returns_messages_when_authenticated(): void
@@ -604,11 +651,14 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertGreaterThanOrEqual(2, Conversation::query()->where('direction', 'outbound')->where('to', $clientPhone)->count());
-        $this->assertDatabaseHas('conversations', [
-            'to' => $clientPhone,
-            'direction' => 'outbound',
-            'body' => 'Documento adjunto',
-        ]);
+        $attachment = Conversation::query()
+            ->where('to', $clientPhone)
+            ->where('direction', 'outbound')
+            ->where('metadata->source', 'chat_attachments')
+            ->first();
+        $this->assertNotNull($attachment);
+        $this->assertSame('', (string) $attachment->body);
+        $this->assertNotEmpty($attachment->media);
         $this->assertTrue(
             Conversation::query()
                 ->where('direction', 'outbound')

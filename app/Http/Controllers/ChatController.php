@@ -31,6 +31,7 @@ use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
+use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
@@ -328,10 +329,71 @@ class ChatController extends Controller
             $this->resolveLeadContactStatusId(),
         );
 
+        $this->attachWhatsAppProfilePhotos($contacts);
+
         return $contacts->sortByDesc(function ($c)
         {
             return $c->last_message_at ? $c->last_message_at->timestamp : 0;
         })->values();
+    }
+
+    private function attachWhatsAppProfilePhotos(Collection $contacts): void
+    {
+        $team = auth()->user()?->currentTeam;
+        if ($team === null || $contacts->isEmpty())
+        {
+            return;
+        }
+
+        $store = app(WhatsAppProfilePhotoStore::class);
+        $teamId = (int) $team->id;
+        $missing = $contacts
+            ->pluck('from')
+            ->filter(fn ($phone) => is_string($phone) && $phone !== '' && ! $store->isFresh($teamId, $phone))
+            ->values()
+            ->all();
+
+        $gateway = $this->getLocalGatewayForCurrentTeam();
+        if ($missing !== [] && $gateway instanceof LocalWhatsAppGateway)
+        {
+            $store->hydrateFromGateway($gateway, $teamId, $missing);
+        }
+
+        foreach ($contacts as $contact)
+        {
+            $url = $store->publicUrl($teamId, (string) ($contact->from ?? ''));
+            if ($url === null)
+            {
+                continue;
+            }
+
+            $contact->whatsapp_photo_url = $url;
+            if (empty($contact->user_photo))
+            {
+                $contact->user_photo = $store->relativePath($teamId, (string) $contact->from);
+            }
+        }
+    }
+
+    private function chatListPhotoUrl(object $contact): ?string
+    {
+        if (! empty($contact->whatsapp_photo_url) && is_string($contact->whatsapp_photo_url))
+        {
+            return $contact->whatsapp_photo_url;
+        }
+
+        $path = $contact->user_photo ?? null;
+        if (! is_string($path) || $path === '')
+        {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://'))
+        {
+            return $path;
+        }
+
+        return asset('storage/'.$path);
     }
 
     /**
@@ -994,9 +1056,10 @@ class ChatController extends Controller
             {
                 $item['user_name'] = $c->user_name;
             }
-            if (! empty($c->user_photo))
+            $photoUrl = $this->chatListPhotoUrl($c);
+            if ($photoUrl !== null)
             {
-                $item['user_photo'] = Storage::url($c->user_photo);
+                $item['user_photo'] = $photoUrl;
             }
             if (isset($c->contact_id) && $c->contact_id !== null)
             {
@@ -2266,7 +2329,7 @@ class ChatController extends Controller
             'channel' => 'whatsapp',
             'from' => $cleanFrom !== '' ? $cleanFrom : (string) (auth()->id() ?? '0'),
             'to' => $cleanTo,
-            'body' => $message !== '' ? $message : __('Documento adjunto'),
+            'body' => $message,
             'status' => 'sent',
             'direction' => 'outbound',
             'media' => $media,
