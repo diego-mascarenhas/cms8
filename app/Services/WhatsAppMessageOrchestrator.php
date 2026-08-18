@@ -893,7 +893,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
-            if ($channel == 'whatsapp' && ! $shouldHandleRegistration)
+            if ($channel == 'whatsapp' && ! $shouldHandleRegistration && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
             {
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)

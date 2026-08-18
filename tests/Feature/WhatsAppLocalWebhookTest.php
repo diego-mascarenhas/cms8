@@ -354,6 +354,64 @@ class WhatsAppLocalWebhookTest extends TestCase
         $response->assertJson([
             'status' => 'success',
         ]);
+        $this->assertSame(0, Conversation::query()->where('direction', 'outbound')->count());
+        Http::assertNotSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && (str_contains($body, '¡Hola') || str_contains($body, 'Hola'));
+        });
+    }
+
+    public function test_webhook_skips_auto_greeting_when_contact_disables_assistant(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34722372858',
+            'name' => 'Usuario 34722372858',
+            'surname' => '',
+            'email' => 'usuario.34722372858@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'greet_should_not_send'], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372858',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_greeting_opt_out_1',
+        ]);
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('conversations', [
+            'message_sid' => 'msg_greeting_opt_out_1',
+            'direction' => 'inbound',
+            'body' => 'Hola',
+        ]);
+        $this->assertDatabaseMissing('conversations', [
+            'direction' => 'outbound',
+            'to' => '34722372858',
+        ]);
+        Http::assertNotSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message');
+        });
     }
 
     public function test_webhook_skips_auto_ai_when_team_disabled_even_if_contact_enables_assistant(): void

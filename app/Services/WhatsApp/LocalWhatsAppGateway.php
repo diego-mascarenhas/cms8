@@ -8,6 +8,7 @@ use App\Models\Conversation;
 use App\Models\Team;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class LocalWhatsAppGateway implements WhatsAppGateway
 {
@@ -100,15 +101,54 @@ class LocalWhatsAppGateway implements WhatsAppGateway
 
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
         $url = str_starts_with($mediaPath, 'http') ? $mediaPath : url($mediaPath);
+        $payload = [
+            'to' => $cleanTo,
+            'mediaUrl' => $url,
+            'caption' => $caption,
+        ];
+
+        $absolutePath = $this->absolutePathForMedia($mediaPath);
+        if ($absolutePath !== null)
+        {
+            $payload['media_base64'] = base64_encode((string) file_get_contents($absolutePath));
+            $payload['media_content_type'] = mime_content_type($absolutePath) ?: '';
+            $payload['media_file_name'] = basename($absolutePath);
+        }
 
         $response = Http::timeout(30)
-            ->post(rtrim($this->baseUrl, '/').'/send-media', $this->sendBody([
+            ->post(rtrim($this->baseUrl, '/').'/send-media', $this->sendBody($payload));
+
+        if (! $response->successful())
+        {
+            Log::error('Local WhatsApp send-media failed', [
                 'to' => $cleanTo,
-                'mediaUrl' => $url,
-                'caption' => $caption,
-            ]));
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+        }
 
         return $response->successful();
+    }
+
+    private function absolutePathForMedia(string $mediaPath): ?string
+    {
+        if (str_starts_with($mediaPath, 'http://') || str_starts_with($mediaPath, 'https://'))
+        {
+            return null;
+        }
+
+        $relative = str_starts_with($mediaPath, 'storage/')
+            ? substr($mediaPath, strlen('storage/'))
+            : $mediaPath;
+
+        if (Storage::disk('public')->exists($relative))
+        {
+            return Storage::disk('public')->path($relative);
+        }
+
+        $publicPath = public_path($mediaPath);
+
+        return is_file($publicPath) ? $publicPath : null;
     }
 
     public function isConfigured(): bool
