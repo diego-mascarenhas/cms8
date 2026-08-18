@@ -183,6 +183,12 @@ class WhatsAppLocalWebhookController extends Controller
             }
         }
 
+        $peerTeamId = $payload['peer_linked_team_id'] ?? $payload['peer_team_id'] ?? null;
+        if (is_numeric($peerTeamId) && (int) $peerTeamId > 0)
+        {
+            $normalized['peer_linked_team_id'] = (int) $peerTeamId;
+        }
+
         $profileKeys = ['push_name', 'pushName', 'profile_name'];
         foreach ($profileKeys as $key)
         {

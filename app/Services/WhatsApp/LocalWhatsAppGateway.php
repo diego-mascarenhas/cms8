@@ -66,6 +66,11 @@ class LocalWhatsAppGateway implements WhatsAppGateway
         }
 
         $data = $response->json() ?? [];
+        if (filter_var($data['skipped'] ?? false, FILTER_VALIDATE_BOOLEAN))
+        {
+            return $data;
+        }
+
         $messageId = $data['id'] ?? $data['messageId'] ?? null;
         // message_sid is unique: use a fallback so we never insert duplicate null
         $messageSid = $messageId !== null && $messageId !== '' ? (string) $messageId : 'wa_'.uniqid('', true);

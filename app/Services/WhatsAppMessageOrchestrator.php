@@ -826,7 +826,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     ]);
                 }
 
-                if ($channel === 'whatsapp' && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
+                if ($channel === 'whatsapp' && ! $this->inboundIsLinkedPeer($request) && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
                 {
                     try
                     {
@@ -886,14 +886,15 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             $chatController = null;
             $shouldHandleRegistration = false;
-            if ($channel === 'whatsapp' && $this->team)
+            $linkedPeer = $this->inboundIsLinkedPeer($request);
+            if ($channel === 'whatsapp' && $this->team && ! $linkedPeer)
             {
                 $chatController = app(\App\Http\Controllers\ChatController::class);
                 $shouldHandleRegistration = $chatController->shouldHandleWhatsAppRegistration($cleanFrom, $this->team);
             }
 
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
-            if ($channel == 'whatsapp' && ! $shouldHandleRegistration && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
+            if ($channel == 'whatsapp' && ! $shouldHandleRegistration && ! $linkedPeer && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
             {
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)
@@ -923,7 +924,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             // Automatic AI response: team global setting is master; contact opt-out and blacklist also block.
-            $shouldProcessAutoAi = $channel === 'whatsapp' && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo);
+            $shouldProcessAutoAi = $channel === 'whatsapp' && ! $linkedPeer && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo);
 
             if ($shouldHandleRegistration && $chatController !== null)
             {
@@ -1314,6 +1315,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             $this->sendingGateway = null;
         }
+    }
+
+    private function inboundIsLinkedPeer($request): bool
+    {
+        $peerTeamId = $request->input('peer_linked_team_id');
+
+        return is_numeric($peerTeamId) && (int) $peerTeamId > 0;
     }
 
     private function inboundAssistantMayAutoReply(string $fromPhone, ?string $toPhone = null): bool

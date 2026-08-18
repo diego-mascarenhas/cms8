@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
+use App\Http\Requests\StartWhatsAppChatContactRequest;
 use App\Jobs\SendScheduledMessageJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -29,6 +30,7 @@ use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
+use App\Services\WhatsApp\WhatsAppInboxContactStarter;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
@@ -928,6 +930,46 @@ class ChatController extends Controller
             })->values()->all(),
             'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone),
         ]);
+    }
+
+    public function searchWhatsAppContacts(Request $request, WhatsAppInboxContactStarter $starter)
+    {
+        $user = auth()->user();
+        $team = $user?->currentTeam;
+        if ($user === null || $team === null)
+        {
+            return response()->json(['contacts' => []], 401);
+        }
+
+        return response()->json([
+            'contacts' => $starter->search((int) $team->id, (string) $request->query('q', '')),
+        ]);
+    }
+
+    public function startWhatsAppContact(StartWhatsAppChatContactRequest $request, WhatsAppInboxContactStarter $starter)
+    {
+        $user = auth()->user();
+        $team = $user?->currentTeam;
+        if ($user === null || $team === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No team selected.'),
+            ], 401);
+        }
+
+        $result = $starter->start(
+            $user,
+            $team,
+            (string) $request->validated('name'),
+            (string) $request->validated('phone'),
+        );
+
+        return response()->json([
+            'success' => true,
+            'created' => $result['created'],
+            'contact' => $result['contact'],
+        ], $result['created'] ? 201 : 200);
     }
 
     /**
@@ -2159,17 +2201,6 @@ class ChatController extends Controller
 
         try
         {
-            // Check if this number needs registration
-            $registrationResponse = $this->processRegistration($request->to, $message);
-            if ($registrationResponse)
-            {
-                return response()->json([
-                    'success' => true,
-                    'registration' => true,
-                    'message' => $registrationResponse['message'],
-                ]);
-            }
-
             // Send as media (audio) when audio file is provided
             if ($hasAudio)
             {

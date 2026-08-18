@@ -548,6 +548,64 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertJsonPath('assistant_locked_reason', 'plan');
     }
 
+    public function test_whatsapp_send_does_not_start_registration_for_new_named_contact(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+            'http://127.0.0.1:3000/send-message' => Http::response(['success' => true, 'id' => 'wa-manual-1'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34999000111');
+        $clientPhone = '34600111333';
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'name' => 'Ana',
+            'surname' => 'Pérez',
+            'phone' => $clientPhone,
+            'email' => null,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-send', [
+                'to' => $clientPhone,
+                'message' => 'Hola Ana',
+            ])
+            ->assertOk()
+            ->assertJsonMissing(['registration' => true]);
+
+        $this->assertDatabaseHas('conversations', [
+            'channel' => 'whatsapp',
+            'to' => $clientPhone,
+            'direction' => 'outbound',
+            'body' => 'Hola Ana',
+        ]);
+        Http::assertSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message')
+                && ($request->data()['body'] ?? '') === 'Hola Ana';
+        });
+    }
+
     public function test_whatsapp_send_uploads_attachment_and_keeps_it_on_the_thread(): void
     {
         if (! Features::hasTeamFeatures())
