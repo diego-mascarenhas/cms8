@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
+use App\Http\Requests\StartWhatsAppChatContactRequest;
 use App\Jobs\SendScheduledMessageJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -29,8 +30,10 @@ use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
+use App\Services\WhatsApp\WhatsAppInboxContactStarter;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
+use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
@@ -328,10 +331,71 @@ class ChatController extends Controller
             $this->resolveLeadContactStatusId(),
         );
 
+        $this->attachWhatsAppProfilePhotos($contacts);
+
         return $contacts->sortByDesc(function ($c)
         {
             return $c->last_message_at ? $c->last_message_at->timestamp : 0;
         })->values();
+    }
+
+    private function attachWhatsAppProfilePhotos(Collection $contacts): void
+    {
+        $team = auth()->user()?->currentTeam;
+        if ($team === null || $contacts->isEmpty())
+        {
+            return;
+        }
+
+        $store = app(WhatsAppProfilePhotoStore::class);
+        $teamId = (int) $team->id;
+        $missing = $contacts
+            ->pluck('from')
+            ->filter(fn ($phone) => is_string($phone) && $phone !== '' && ! $store->isFresh($teamId, $phone))
+            ->values()
+            ->all();
+
+        $gateway = $this->getLocalGatewayForCurrentTeam();
+        if ($missing !== [] && $gateway instanceof LocalWhatsAppGateway)
+        {
+            $store->hydrateFromGateway($gateway, $teamId, $missing);
+        }
+
+        foreach ($contacts as $contact)
+        {
+            $url = $store->publicUrl($teamId, (string) ($contact->from ?? ''));
+            if ($url === null)
+            {
+                continue;
+            }
+
+            $contact->whatsapp_photo_url = $url;
+            if (empty($contact->user_photo))
+            {
+                $contact->user_photo = $store->relativePath($teamId, (string) $contact->from);
+            }
+        }
+    }
+
+    private function chatListPhotoUrl(object $contact): ?string
+    {
+        if (! empty($contact->whatsapp_photo_url) && is_string($contact->whatsapp_photo_url))
+        {
+            return $contact->whatsapp_photo_url;
+        }
+
+        $path = $contact->user_photo ?? null;
+        if (! is_string($path) || $path === '')
+        {
+            return null;
+        }
+
+        if (str_starts_with($path, 'http://') || str_starts_with($path, 'https://'))
+        {
+            return $path;
+        }
+
+        return asset('storage/'.$path);
     }
 
     /**
@@ -868,6 +932,46 @@ class ChatController extends Controller
         ]);
     }
 
+    public function searchWhatsAppContacts(Request $request, WhatsAppInboxContactStarter $starter)
+    {
+        $user = auth()->user();
+        $team = $user?->currentTeam;
+        if ($user === null || $team === null)
+        {
+            return response()->json(['contacts' => []], 401);
+        }
+
+        return response()->json([
+            'contacts' => $starter->search((int) $team->id, (string) $request->query('q', '')),
+        ]);
+    }
+
+    public function startWhatsAppContact(StartWhatsAppChatContactRequest $request, WhatsAppInboxContactStarter $starter)
+    {
+        $user = auth()->user();
+        $team = $user?->currentTeam;
+        if ($user === null || $team === null)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No team selected.'),
+            ], 401);
+        }
+
+        $result = $starter->start(
+            $user,
+            $team,
+            (string) $request->validated('name'),
+            (string) $request->validated('phone'),
+        );
+
+        return response()->json([
+            'success' => true,
+            'created' => $result['created'],
+            'contact' => $result['contact'],
+        ], $result['created'] ? 201 : 200);
+    }
+
     /**
      * Per-contact inbound WhatsApp assistant (same flag as web chat CRM / {@see Contact::allowsInboundChatAssistant}).
      */
@@ -994,9 +1098,10 @@ class ChatController extends Controller
             {
                 $item['user_name'] = $c->user_name;
             }
-            if (! empty($c->user_photo))
+            $photoUrl = $this->chatListPhotoUrl($c);
+            if ($photoUrl !== null)
             {
-                $item['user_photo'] = Storage::url($c->user_photo);
+                $item['user_photo'] = $photoUrl;
             }
             if (isset($c->contact_id) && $c->contact_id !== null)
             {
@@ -2096,17 +2201,6 @@ class ChatController extends Controller
 
         try
         {
-            // Check if this number needs registration
-            $registrationResponse = $this->processRegistration($request->to, $message);
-            if ($registrationResponse)
-            {
-                return response()->json([
-                    'success' => true,
-                    'registration' => true,
-                    'message' => $registrationResponse['message'],
-                ]);
-            }
-
             // Send as media (audio) when audio file is provided
             if ($hasAudio)
             {
@@ -2135,21 +2229,7 @@ class ChatController extends Controller
 
             if ($hasAttachments)
             {
-                $recipientDigits = preg_replace('/[^0-9]/', '', (string) $request->input('to', ''));
-                $ingestionResult = $this->ingestUploadedDocumentsForAssistant(
-                    $request,
-                    (int) (auth()->user()?->currentTeam?->id ?? 0),
-                    $recipientDigits !== '' ? 'WhatsApp' : 'Chat',
-                    $recipientDigits !== '' ? $recipientDigits : null,
-                );
-                $assistantSummary = $this->buildDocumentIngestionAssistantResponse($ingestionResult['ingestions']);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => $assistantSummary,
-                    'document_ingestion' => true,
-                    'documents_registered' => $ingestionResult['count'],
-                ]);
+                return $this->sendWhatsAppAttachments($request, $gateway, $userResolver, $contextService, $message);
             }
 
             // Check if AI assistance was requested
@@ -2223,6 +2303,113 @@ class ChatController extends Controller
                 'error' => WhatsAppSendExceptionPresenter::messageForUser($e),
             ], 500);
         }
+    }
+
+    /**
+     * Send uploaded chat files to WhatsApp and keep them on the thread.
+     */
+    private function sendWhatsAppAttachments(
+        Request $request,
+        WhatsAppGateway $gateway,
+        UserResolverService $userResolver,
+        AgentConversationContextService $contextService,
+        string $message,
+    ): \Illuminate\Http\JsonResponse {
+        $uploadedFiles = $request->file('attachments', []);
+        if (! is_array($uploadedFiles))
+        {
+            $uploadedFiles = [];
+        }
+
+        $cleanTo = preg_replace('/[^0-9]/', '', (string) $request->input('to', ''));
+        $team = auth()->user()?->currentTeam;
+        $cleanFrom = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
+        $media = [];
+
+        foreach (array_values($uploadedFiles) as $index => $uploadedFile)
+        {
+            if ($uploadedFile === null)
+            {
+                continue;
+            }
+
+            $storedPath = $uploadedFile->store('chat/attachments', 'public');
+            $publicRelativePath = 'storage/'.$storedPath;
+            $caption = $index === 0 && $message !== '' ? $message : null;
+            $sent = $gateway->sendMedia((string) $request->input('to'), $publicRelativePath, $caption);
+            if (! $sent)
+            {
+                return response()->json(['success' => false, 'error' => __('No se pudo enviar el archivo.')], 500);
+            }
+
+            $media[] = [
+                'url' => asset('storage/'.$storedPath),
+                'content_type' => $uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType(),
+                'name' => $uploadedFile->getClientOriginalName() ?: ('attachment-'.$index),
+                'size' => $uploadedFile->getSize(),
+            ];
+        }
+
+        if ($media === [])
+        {
+            return response()->json(['success' => false, 'error' => __('No se pudo enviar el archivo.')], 422);
+        }
+
+        $conversation = Conversation::create([
+            'message_sid' => 'wa_attach_'.uniqid('', true),
+            'channel' => 'whatsapp',
+            'from' => $cleanFrom !== '' ? $cleanFrom : (string) (auth()->id() ?? '0'),
+            'to' => $cleanTo,
+            'body' => $message,
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'media' => $media,
+            'user_id' => auth()->id(),
+            'metadata' => ['source' => 'chat_attachments'],
+        ]);
+
+        $contextUser = $userResolver->resolveUserForConversation($request->input('to'), $request->input('contact_id'));
+        if ($contextUser !== null && $message !== '')
+        {
+            $contextService->persistAgentReply($contextUser->id, $message);
+        }
+
+        if ($team && $this->inboundAssistantMayReplyForAttachment($team, $userResolver, $request, $cleanTo))
+        {
+            $ingestions = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+                $conversation,
+                'WhatsApp',
+                $conversation->message_sid,
+                (int) $team->id,
+            );
+            $summary = $this->buildDocumentIngestionAssistantResponse($ingestions);
+            $gateway->sendMessage($cleanTo, $summary, null, auth()->id());
+            if ($contextUser !== null)
+            {
+                $contextService->persistAgentReply($contextUser->id, $summary);
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => __('Archivo enviado.')]);
+    }
+
+    private function inboundAssistantMayReplyForAttachment(
+        Team $team,
+        UserResolverService $userResolver,
+        Request $request,
+        string $phone,
+    ): bool {
+        $inboundUser = $userResolver->resolveUserForConversation(
+            $request->input('to'),
+            $request->input('contact_id'),
+        );
+
+        return app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
+            $team,
+            $inboundUser,
+            (int) $team->id,
+            $phone,
+        );
     }
 
     /**

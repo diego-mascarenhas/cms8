@@ -671,6 +671,8 @@ Route::middleware('auth.api')->group(function ()
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');
     Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
+    Route::get('chat/whatsapp-search-contacts', [ChatController::class, 'searchWhatsAppContacts'])->name('api.chat.whatsapp-search-contacts');
+    Route::post('chat/whatsapp-start-contact', [ChatController::class, 'startWhatsAppContact'])->name('api.chat.whatsapp-start-contact');
     Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
     Route::get('chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('api.chat.whatsapp-status');
     Route::get('chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('api.chat.whatsapp-qr-image');

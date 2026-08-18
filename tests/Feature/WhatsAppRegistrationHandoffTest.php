@@ -258,4 +258,143 @@ class WhatsAppRegistrationHandoffTest extends TestCase
             return str_contains($body, 'nombre y apellido');
         });
     }
+
+    public function test_webhook_skips_registration_when_contact_assistant_is_off(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'name' => 'Contacto 34722372860',
+            'phone' => '34722372860',
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+            'status_id' => 1,
+            'creator_id' => $team->user_id,
+        ]);
+
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'out_reg_skip_toggle'], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372860',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_registration_toggle_off',
+            'team_id' => $team->id,
+        ])->assertOk()->assertJsonMissing(['registration' => true]);
+
+        Http::assertNotSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message')
+                && str_contains((string) ($request->data()['body'] ?? ''), 'nombre y apellido');
+        });
+    }
+
+    public function test_webhook_skips_registration_for_staff_named_contact(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'name' => 'Ana',
+            'surname' => 'Pérez',
+            'phone' => '34722372861',
+            'status_id' => 1,
+            'creator_id' => $team->user_id,
+        ]);
+
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'out_reg_skip_named'], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372861',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_registration_named',
+            'team_id' => $team->id,
+        ])->assertOk()->assertJsonMissing(['registration' => true]);
+
+        Http::assertNotSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message')
+                && str_contains((string) ($request->data()['body'] ?? ''), 'mesa de ayuda');
+        });
+    }
+
+    public function test_webhook_skips_registration_when_peer_is_another_linked_team(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'out_reg_skip_peer'], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372862',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_registration_peer',
+            'team_id' => $team->id,
+            'peer_linked_team_id' => 99,
+        ])->assertOk()->assertJsonMissing(['registration' => true]);
+
+        Http::assertNotSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message');
+        });
+    }
+
+    public function test_registration_does_not_resend_the_same_welcome(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $welcome = __('app.whatsapp_registration_ask_full_name');
+
+        Conversation::create([
+            'channel' => 'whatsapp',
+            'direction' => 'outbound',
+            'from' => '34600000001',
+            'to' => '34722372863',
+            'body' => $welcome,
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'out_reg_dedup'], 200),
+        ]);
+
+        $result = app(ChatController::class)->processRegistration(
+            '34722372863',
+            'Hola',
+            new LocalWhatsAppGateway('http://localhost:3000', null, $team->id),
+            $team,
+        );
+
+        $this->assertSame('Registration already sent', $result['message'] ?? null);
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
+    }
 }

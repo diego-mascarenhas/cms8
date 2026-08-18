@@ -41,12 +41,21 @@ PROMPT;
             return false;
         }
 
+        $contact = $this->findContactByPhone($team, $phone);
+        if ($contact !== null && ! $contact->allowsInboundChatAssistant())
+        {
+            return false;
+        }
+
         if ($this->hasRegistrationInProgress($phone))
         {
             return true;
         }
 
-        $contact = $this->findContactByPhone($team, $phone);
+        if ($this->hasStaffProvidedName($contact))
+        {
+            return false;
+        }
 
         return ! $this->contactHasCompletedRegistration($contact);
     }
@@ -106,6 +115,10 @@ PROMPT;
             }
 
             $response = __('app.whatsapp_registration_ask_full_name');
+            if ($this->alreadySentRecently($phone, $response))
+            {
+                return ['success' => true, 'message' => 'Registration already sent'];
+            }
 
             $sender->sendMessage($phone, $response, ['registration_step' => 'name']);
 
@@ -427,6 +440,44 @@ PROMPT;
 
             return ['success' => false, 'message' => 'Registration error'];
         }
+    }
+
+    private function hasStaffProvidedName(?Contact $contact): bool
+    {
+        if ($contact === null)
+        {
+            return false;
+        }
+
+        $name = trim((string) $contact->name);
+
+        return $name !== '' && ! preg_match('/^Contacto\s+[0-9]+$/u', $name);
+    }
+
+    private function alreadySentRecently(string $phone, string $body): bool
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phone) ?? '';
+        if ($digits === '')
+        {
+            return false;
+        }
+
+        $last = Conversation::query()
+            ->where('channel', 'whatsapp')
+            ->where('direction', 'outbound')
+            ->where(function ($query) use ($digits)
+            {
+                $query->where('to', $digits)->orWhere('to', 'like', $digits.':%');
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if ($last === null || $last->created_at === null || $last->created_at->lt(now()->subMinutes(2)))
+        {
+            return false;
+        }
+
+        return trim((string) $last->body) === trim($body);
     }
 
     private function findContactByPhone(Team $team, string $phone): ?Contact
