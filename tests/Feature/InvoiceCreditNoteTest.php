@@ -136,7 +136,7 @@ class InvoiceCreditNoteTest extends TestCase
             ->post(route('invoice.credit-notes.store', $invoice), [
                 'reason' => 'order_change',
             ])
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     public function test_invoice_show_displays_credit_note_form_only_for_team_owner_on_stripe_invoice(): void

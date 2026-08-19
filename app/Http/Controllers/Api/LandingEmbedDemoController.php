@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 
 /**
  * Public demo endpoints for embedded HTML landings (calendar + assistant widgets).
- * Intended for smoke tests and static sites loading {@see public/js/humano-widgets.js}.
+ * Intended for smoke tests and static sites loading {@see public/js/cms8-widgets.js}.
  */
 class LandingEmbedDemoController extends Controller
 {

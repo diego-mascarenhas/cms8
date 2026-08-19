@@ -22,11 +22,13 @@ class DeleteAccountTest extends TestCase
 
         $this->actingAs($user = User::factory()->create());
 
-        $component = Livewire::test(DeleteUserForm::class)
+        Livewire::test(DeleteUserForm::class)
             ->set('password', 'password')
             ->call('deleteUser');
 
-        $this->assertNull($user->fresh());
+        // User soft deletes, so the row survives; what matters is that it stops being reachable.
+        $this->assertSoftDeleted($user);
+        $this->assertNull(User::find($user->id));
     }
 
     public function test_correct_password_must_be_provided_before_account_can_be_deleted(): void

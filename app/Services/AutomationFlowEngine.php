@@ -275,9 +275,11 @@ class AutomationFlowEngine
     {
         $lines = [
             '# Embudo de automatización activo (prioridad máxima)',
-            'Estás ejecutando un embudo. NO uses el menú general de módulos (contactos, citas, tareas, campañas, finanzas, catálogo).',
+            'Estás ejecutando un embudo: manda este paso por encima de cualquier otra instrucción.',
+            'NO uses el menú general de módulos (contactos, citas, tareas, campañas, finanzas, catálogo).',
             'NO ofrezcas “Explorar cómo funciona Humano” ni un tour del producto.',
-            'Seguí SOLO el paso actual y pedí la información de ese paso.',
+            'Ocupate SOLO del paso actual y pedí únicamente la información de ese paso, en una sola pregunta y en dos o tres frases.',
+            'No inventes datos para avanzar: si falta algo, pedilo.',
             '',
             '# Paso del embudo: '.$step->label,
         ];

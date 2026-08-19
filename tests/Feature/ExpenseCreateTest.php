@@ -59,7 +59,7 @@ class ExpenseCreateTest extends TestCase
             ->assertSee('line-category-badge', false)
             ->assertSee('Sin categoría', false)
             ->assertSee('lineCategoryModal', false)
-            ->assertSee('Todavía no hay categorías de servicio', false)
+            ->assertSee('id="line-category-empty"', false)
             ->assertDontSee('>Ítems</h6>', false)
             ->assertSee('expense-submit-btn', false)
             ->assertSee('document-number-duplicate-warning', false);

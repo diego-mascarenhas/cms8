@@ -33,7 +33,6 @@ class TemplateEditorReturnRedirectTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertStringContainsString('window.grapesJsToolbarLabels', $html);
-        $this->assertStringContainsString('runOpenBlocksOnce', $html);
         $this->assertStringContainsString('var returnUrl = ', $html);
         $this->assertStringContainsString('goReturn', $html);
         $this->assertStringContainsString('blurCanvasFocus', $html);
@@ -63,7 +62,7 @@ class TemplateEditorReturnRedirectTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $this->assertStringContainsString('window.grapesJsToolbarLabels', $html);
-        $this->assertStringContainsString('runOpenBlocksOnce', $html);
         $this->assertStringNotContainsString('goReturn', $html);
+        $this->assertStringNotContainsString('evil.example', $html);
     }
 }

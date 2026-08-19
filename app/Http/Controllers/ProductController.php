@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ProductDataTable;
+use App\Http\Requests\ImportProductCsvRequest;
 use App\Http\Requests\StoreLocalProductRequest;
 use App\Http\Requests\UpdateLocalProductRequest;
 use App\Models\Category;
@@ -10,9 +11,11 @@ use App\Models\Currency;
 use App\Models\Module;
 use App\Models\Product;
 use App\Models\Store;
+use App\Services\ProductCsvImportService;
 use App\Services\WordPressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
 {
@@ -91,6 +94,84 @@ class ProductController extends Controller
             'defaultCurrencyId' => $defaultCurrencyId,
             'defaultStoreId' => $defaultStoreId,
         ]);
+    }
+
+    /**
+     * Show the CSV import screen for the team catalogue.
+     */
+    public function importForm(): View|RedirectResponse
+    {
+        $this->authorize('create', Product::class);
+
+        if (! auth()->user()->currentTeam)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        return view('product.import', [
+            'requiredColumns' => ProductCsvImportService::REQUIRED_COLUMNS,
+            'optionalColumns' => ProductCsvImportService::OPTIONAL_COLUMNS,
+            'demoProductCount' => app(ProductCsvImportService::class)->demoCatalog()['products'],
+        ]);
+    }
+
+    /**
+     * Create or update products from an uploaded CSV, matching existing rows by `code`.
+     */
+    public function import(ImportProductCsvRequest $request, ProductCsvImportService $importer): RedirectResponse
+    {
+        $team = auth()->user()->currentTeam;
+        if (! $team)
+        {
+            return redirect()->route('error-without-team');
+        }
+
+        $result = $importer->import($request->file('file')->getRealPath(), (int) $team->id);
+
+        if ($result['created'] === 0 && $result['updated'] === 0)
+        {
+            return redirect()->route('product.import')
+                ->with('error', __('No products were imported.'))
+                ->with('import_errors', $result['errors']);
+        }
+
+        return redirect()->route('product.index')
+            ->with('success', __(':created created, :updated updated, :skipped skipped.', [
+                'created' => $result['created'],
+                'updated' => $result['updated'],
+                'skipped' => $result['skipped'],
+            ]))
+            ->with('import_errors', $result['errors']);
+    }
+
+    /**
+     * Download a sample CSV with the expected columns.
+     */
+    public function importTemplate(ProductCsvImportService $importer): StreamedResponse
+    {
+        $this->authorize('create', Product::class);
+
+        $contents = $importer->templateContents();
+
+        return response()->streamDownload(function () use ($contents)
+        {
+            echo $contents;
+        }, 'cms8-products-template.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Download the demo catalogue: a full CSV with real product photo URLs.
+     */
+    public function importSample(ProductCsvImportService $importer): StreamedResponse
+    {
+        $this->authorize('create', Product::class);
+
+        $demo = $importer->demoCatalog();
+
+        return response()->streamDownload(function () use ($demo)
+        {
+            echo $demo['csv'];
+        }, $demo['filename'], ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     /**

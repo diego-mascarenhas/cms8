@@ -120,7 +120,7 @@ class PaymentStatusUpdateTest extends TestCase
             ->patch(route('payments.update-status', $payment), [
                 'status' => 2,
             ])
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
 
         $this->assertSame(1, $payment->fresh()->status);
     }

@@ -121,7 +121,7 @@
                 <p class="text-muted">{{ __('For interactive chat from a mobile app with user login (Sanctum), see also:') }}</p>
                 <ul>
                     <li><code>POST /api/chat/whatsapp-send</code> — {{ __('Send message (user token, supports audio and attachments)') }}</li>
-                    <li><code>GET /api/chat/whatsapp-list</code> — {{ __('List WhatsApp conversations') }}</li>
+                    <li><code>GET /api/chat/whatsapp-list</code> — {{ __('List WhatsApp conversations') }} <span class="text-muted">({{ __('optional :params for paging; the response carries total, unread_total and has_more', ['params' => 'limit, offset']) }})</span></li>
                     <li><code>GET /api/chat/whatsapp-messages/{phone}</code> — {{ __('Thread messages for a contact') }}</li>
                 </ul>
 

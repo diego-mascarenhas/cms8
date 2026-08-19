@@ -356,6 +356,8 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
     Route::put('/team/{team}/settings/email-sender', [TeamSettingController::class, 'updateEmailSender'])->name('team-settings.update-email-sender');
     Route::post('/team/{team}/settings/chat/seed-default-assistant-prompts', [TeamSettingController::class, 'seedDefaultAssistantFlowPrompts'])->name('team-settings.chat.seed-default-assistant-prompts');
+    Route::post('/team/{team}/settings/chat/site-assistant-prompt', [TeamSettingController::class, 'updateSiteAssistantPrompt'])->name('team-settings.chat.site-assistant-prompt');
+    Route::post('/team/{team}/settings/chat/site-assistant-prompt/create', [TeamSettingController::class, 'storeSiteAssistantPrompt'])->name('team-settings.chat.site-assistant-prompt.store');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
@@ -879,6 +881,10 @@ Route::middleware(['auth'])->group(function ()
     // Product Routes
     Route::get('/product/list', [ProductController::class, 'index'])->name('product.index');
     Route::get('/product/create', [ProductController::class, 'create'])->name('product.create');
+    Route::get('/product/import', [ProductController::class, 'importForm'])->name('product.import');
+    Route::get('/product/import/template', [ProductController::class, 'importTemplate'])->name('product.import.template');
+    Route::get('/product/import/sample', [ProductController::class, 'importSample'])->name('product.import.sample');
+    Route::post('/product/import', [ProductController::class, 'import'])->name('product.import.store');
     Route::get('/product/{id}', [ProductController::class, 'show'])->name('product.show');
     Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
     Route::post('/product', [ProductController::class, 'store'])->name('product.store');

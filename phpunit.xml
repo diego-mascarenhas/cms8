@@ -25,8 +25,9 @@
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
         <env name="MAIL_MAILER" value="array"/>
-        <env name="MAIL_FROM_ADDRESS" value=""/>
-        <env name="MAIL_FROM_NAME" value=""/>
+        <!-- An empty sender makes Symfony reject every message, so any code path that mails ends in a 500. -->
+        <env name="MAIL_FROM_ADDRESS" value="testing@example.test"/>
+        <env name="MAIL_FROM_NAME" value="Testing"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

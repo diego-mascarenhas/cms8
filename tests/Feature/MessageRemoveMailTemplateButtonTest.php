@@ -96,7 +96,11 @@ class MessageRemoveMailTemplateButtonTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/<a[^>]+href="[^"]*remove_mail_template=1[^"]*"/', $html);
     }
 
-    public function test_message_edit_remove_mail_template_hides_preview_and_shows_template_select(): void
+    /**
+     * Dropping the template no longer leaves the message without a body: the template-bound preview
+     * is swapped for a standalone editor, and the select comes back so another one can be picked.
+     */
+    public function test_message_edit_remove_mail_template_falls_back_to_the_standalone_editor(): void
     {
         $user = $this->userWithPersonalTeamResolved();
         $teamId = (int) $user->current_team_id;
@@ -128,7 +132,11 @@ class MessageRemoveMailTemplateButtonTest extends TestCase
         ]));
 
         $response->assertOk();
-        $response->assertDontSee(__('Contenido del correo'));
         $response->assertSee('id="template_id"', false);
+        $response->assertSee('name="template_html"', false);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<a[^>]+href="[^"]*remove_mail_template=1[^"]*"/',
+            (string) $response->getContent(),
+        );
     }
 }

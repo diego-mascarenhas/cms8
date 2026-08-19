@@ -70,7 +70,7 @@ class TeamSettingsAffiliatesTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']))
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     public function test_root_cannot_open_affiliates_settings_on_non_platform_team(): void
@@ -87,7 +87,7 @@ class TeamSettingsAffiliatesTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('team-settings.edit', ['team' => $team, 'group' => 'affiliates']))
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     public function test_presentacion_afiliados_injects_commission_percent(): void

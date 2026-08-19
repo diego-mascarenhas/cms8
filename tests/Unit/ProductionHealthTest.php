@@ -13,6 +13,10 @@ class ProductionHealthTest extends TestCase
      */
     public function test_database_connection_and_tables(): void
     {
+        // The rest of the class inspects config and classes, so the schema is built only here
+        // rather than paying for a full migration run on every method of this class.
+        $this->artisan('migrate', ['--no-interaction' => true]);
+
         // Test database connection
         $this->assertNotNull(DB::connection()->getPdo(), 'Database connection failed');
 

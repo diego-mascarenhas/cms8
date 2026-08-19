@@ -8,6 +8,7 @@ use App\Models\Server;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ServerFormTest extends TestCase
@@ -16,10 +17,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_store_sets_status_automatically_without_form_field(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $response = $this->actingAs($user)->post(route('server.store'), [
             'name' => 'Huginn',
@@ -39,10 +37,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_edit_form_does_not_show_status_field(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -64,10 +59,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_create_form_shows_spanish_labels(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $response = $this->actingAs($user)->get(route('server.create'));
 
@@ -90,11 +82,8 @@ class ServerFormTest extends TestCase
 
     public function test_server_store_ignores_submitted_team_id_and_uses_current_team(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
+        [$user, $team] = $this->adminWithTeam();
         $otherTeam = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
 
         $this->actingAs($user)->post(route('server.store'), [
             'name' => 'Muninn',
@@ -112,10 +101,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_index_shows_spanish_table_labels(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -140,10 +126,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_show_page_is_spanish_and_hides_operating_system(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -197,10 +180,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_store_normalizes_server_url_with_protocol(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->actingAs($user)->post(route('server.store'), [
             'name' => 'Huginn',
@@ -217,10 +197,7 @@ class ServerFormTest extends TestCase
 
     public function test_server_show_datatable_returns_synced_domains(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -255,5 +232,22 @@ class ServerFormTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('recordsTotal', 1);
         $this->assertStringContainsString('revisionalpha.es', (string) $response->json('data.0.domain'));
+    }
+
+    /**
+     * ServerController sits behind the `access-infrastructure-modules` gate, which reads a Spatie
+     * role ({@see \App\Models\User::canAccessInfrastructure}), not the team pivot role.
+     *
+     * @return array{0: User, 1: Team}
+     */
+    private function adminWithTeam(): array
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin'], ['guard_name' => 'web']));
+
+        return [$user->refresh(), $team];
     }
 }

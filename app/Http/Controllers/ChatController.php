@@ -6,6 +6,7 @@ use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
+use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
 use App\Jobs\SendScheduledMessageJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -24,6 +25,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\TeamInboundAssistantPolicy;
+use App\Services\TeamSiteAssistantPromptService;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
@@ -35,6 +37,7 @@ use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
+use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\ChatMessageAvatar;
@@ -215,57 +218,320 @@ class ChatController extends Controller
      */
     private function getWhatsAppContacts(?Request $request = null): Collection
     {
+        return $this->hydrateWhatsAppContacts($this->whatsAppConversationIndex($request));
+    }
+
+    /**
+     * Ordered conversation index for the current team: who we talk to, when they last wrote and how
+     * much is unread, resolved with a handful of aggregates instead of a query per conversation.
+     *
+     * The expensive per-conversation work lives in {@see hydrateWhatsAppContacts()}, so callers can
+     * slice this index first and only pay for the page they are about to show.
+     *
+     * @return list<array{digits: string, phone: string, last_at: int, unread: int, crm: ?Contact}>
+     */
+    private function whatsAppConversationIndex(?Request $request = null): array
+    {
         $team = auth()->check() ? auth()->user()->currentTeam : null;
         if (! $team || ! $team->getWhatsAppFrom())
+        {
+            return [];
+        }
+
+        // Every conversation asks the team for the same handful of settings.
+        $team->loadMissing('settings');
+
+        $query = $this->conversationQueryForTeam();
+        $teamNumber = preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom());
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+        $inboundPolicy = app(TeamInboundAssistantPolicy::class);
+
+        $lastAt = [];
+        $unread = [];
+        $phones = [];
+
+        $collect = function (Collection $rows) use (&$lastAt, &$phones): void
+        {
+            foreach ($rows as $row)
+            {
+                $digits = preg_replace('/[^0-9]/', '', $this->normalizePhoneForList((string) $row->phone));
+                if ($digits === '')
+                {
+                    continue;
+                }
+                $timestamp = strtotime((string) $row->last_at) ?: 0;
+                if (! isset($lastAt[$digits]) || $timestamp > $lastAt[$digits])
+                {
+                    $lastAt[$digits] = $timestamp;
+                }
+                $phones[$digits] ??= $this->normalizePhoneForList((string) $row->phone);
+            }
+        };
+
+        $collect($this->whatsAppConversationAggregate($query, 'inbound', 'from'));
+        $collect($this->whatsAppConversationAggregate($query, 'outbound', 'to'));
+
+        foreach ($this->whatsAppConversationAggregate($query, 'inbound', 'from', unreadOnly: true) as $row)
+        {
+            $digits = preg_replace('/[^0-9]/', '', $this->normalizePhoneForList((string) $row->phone));
+            if ($digits !== '')
+            {
+                $unread[$digits] = ($unread[$digits] ?? 0) + (int) $row->unread;
+            }
+        }
+
+        // Digit-only keys come back from array_keys() as ints, and the inbox sends them out as phones.
+        $digitsList = array_values(array_filter(
+            array_map(strval(...), array_keys($lastAt)),
+            function (string $digits) use ($allowedPhones, $teamNumber, $inboundPolicy, $team, $phones): bool
+            {
+                if ($digits === $teamNumber || $phones[$digits] === $teamNumber)
+                {
+                    return false;
+                }
+                if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
+                {
+                    return false;
+                }
+
+                return ! $inboundPolicy->isBlacklistedWhatsAppPhone($team, $phones[$digits]);
+            },
+        ));
+
+        $crmByDigits = $this->crmContactsByChatDigits((int) $team->id, $digitsList);
+
+        $effectiveRequest = $request ?? request();
+        $filter = $effectiveRequest instanceof Request
+            ? $this->resolveWhatsAppListCrmStatusFilter($effectiveRequest)
+            : ['mode' => 'all'];
+        $leadStatusId = $filter['mode'] === 'all' ? null : $this->resolveLeadContactStatusId();
+
+        $index = [];
+        foreach ($digitsList as $digits)
+        {
+            $crm = $crmByDigits[$digits] ?? null;
+            $row = (object) ['crm_has_contact' => $crm !== null, 'crm_status_id' => $crm?->status_id];
+            if ($filter['mode'] !== 'all' && ! $this->contactRowMatchesCrmStatusFilter($row, (int) ($filter['status_id'] ?? 0), $leadStatusId))
+            {
+                continue;
+            }
+
+            $index[] = [
+                'digits' => $digits,
+                'phone' => $phones[$digits],
+                'last_at' => $lastAt[$digits],
+                'unread' => $unread[$digits] ?? 0,
+                'crm' => $crm,
+            ];
+        }
+
+        usort($index, fn (array $a, array $b): int => $b['last_at'] <=> $a['last_at']);
+
+        return $index;
+    }
+
+    /**
+     * One grouped row per counterpart phone: its latest message time, or its unread tally.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<\App\Models\Conversation>  $query
+     * @return Collection<int, object{phone: string, last_at: ?string, unread: int}>
+     */
+    private function whatsAppConversationAggregate($query, string $direction, string $column, bool $unreadOnly = false): Collection
+    {
+        $scoped = (clone $query)->where('direction', $direction);
+        if ($unreadOnly)
+        {
+            $scoped->where('status', 'received');
+        }
+
+        $base = $scoped->toBase();
+        $wrapped = $base->getGrammar()->wrap($column);
+
+        return $base
+            ->selectRaw("{$wrapped} as phone, MAX(created_at) as last_at, COUNT(*) as unread")
+            ->groupBy($column)
+            ->get()
+            ->filter(fn ($row) => (string) $row->phone !== '')
+            ->values();
+    }
+
+    /**
+     * Resolve every conversation's CRM contact in one query instead of one lookup per phone.
+     *
+     * @param  list<string>  $digitsList
+     * @return array<string, Contact>
+     */
+    private function crmContactsByChatDigits(int $teamId, array $digitsList): array
+    {
+        if ($digitsList === [])
+        {
+            return [];
+        }
+
+        $candidatesByDigits = [];
+        $allCandidates = [];
+        foreach ($digitsList as $digits)
+        {
+            $candidates = $this->chatPhoneCandidates($digits);
+            $candidatesByDigits[$digits] = $candidates;
+            $allCandidates = array_merge($allCandidates, $candidates);
+        }
+
+        $contactsByPhone = [];
+        Contact::query()
+            ->where('team_id', $teamId)
+            ->whereIn('phone', array_values(array_unique($allCandidates)))
+            ->orderBy('id')
+            ->get()
+            ->each(function (Contact $contact) use (&$contactsByPhone): void
+            {
+                $phone = (string) $contact->phone;
+                $contactsByPhone[$phone] ??= $contact;
+            });
+
+        $resolved = [];
+        foreach ($candidatesByDigits as $digits => $candidates)
+        {
+            $matches = array_filter(array_map(fn (string $phone): ?Contact => $contactsByPhone[$phone] ?? null, $candidates));
+            if ($matches === [])
+            {
+                continue;
+            }
+
+            usort($matches, fn (Contact $a, Contact $b): int => $a->id <=> $b->id);
+            $resolved[$digits] = $matches[0];
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Batched {@see getUserByPhone()} for the inbox: two queries for the whole page instead of up to
+     * three per conversation.
+     *
+     * @param  list<string>  $digitsList
+     * @return array<string, User>
+     */
+    private function usersByChatDigits(array $digitsList): array
+    {
+        if ($digitsList === [])
+        {
+            return [];
+        }
+
+        $candidatesByDigits = [];
+        foreach ($digitsList as $digits)
+        {
+            // Only Spanish numbers are tried without their country code, to avoid false matches.
+            $candidatesByDigits[$digits] = strlen($digits) === 11 && str_starts_with($digits, '34')
+                ? [$digits, substr($digits, -9)]
+                : [$digits];
+        }
+
+        $usersByPhone = [];
+        User::query()
+            ->whereIn('phone', array_values(array_unique(array_merge(...array_values($candidatesByDigits)))))
+            ->get()
+            ->each(function (User $user) use (&$usersByPhone): void
+            {
+                $usersByPhone[(string) $user->phone] ??= $user;
+            });
+
+        $resolved = [];
+        $unmatched = [];
+        foreach ($candidatesByDigits as $digits => $candidates)
+        {
+            $hit = null;
+            foreach ($candidates as $candidate)
+            {
+                $hit ??= $usersByPhone[$candidate] ?? null;
+            }
+
+            if ($hit instanceof User)
+            {
+                $resolved[(string) $digits] = $hit;
+            } else
+            {
+                $unmatched[] = (string) $digits;
+            }
+        }
+
+        if ($unmatched === [])
+        {
+            return $resolved;
+        }
+
+        // The phone may hang off a CRM contact's phone source rather than the user row.
+        Contact::query()
+            ->with(['user', 'sources' => fn ($q) => $q->where('source_id', 2)->whereIn('value', $unmatched)])
+            ->whereHas('sources', fn ($q) => $q->where('source_id', 2)->whereIn('value', $unmatched))
+            ->get()
+            ->each(function (Contact $contact) use (&$resolved): void
+            {
+                if (! $contact->user)
+                {
+                    return;
+                }
+
+                foreach ($contact->sources as $source)
+                {
+                    $value = (string) ($source->pivot->value ?? '');
+                    if ($value !== '')
+                    {
+                        $resolved[$value] ??= $contact->user;
+                    }
+                }
+            });
+
+        return $resolved;
+    }
+
+    /**
+     * Phone spellings a Spanish number may be stored under: as dialled, and with or without the 34.
+     *
+     * @return list<string>
+     */
+    private function chatPhoneCandidates(string $digits): array
+    {
+        $candidates = [$digits];
+        if (strlen($digits) === 11 && str_starts_with($digits, '34'))
+        {
+            $candidates[] = substr($digits, -9);
+        }
+        if (strlen($digits) === 9)
+        {
+            $candidates[] = '34'.$digits;
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * Fill in the fields the inbox shows for a slice of {@see whatsAppConversationIndex()}: last
+     * message body, display name, assistant state and avatar.
+     *
+     * @param  list<array{digits: string, phone: string, last_at: int, unread: int, crm: ?Contact}>  $index
+     */
+    private function hydrateWhatsAppContacts(array $index): Collection
+    {
+        $team = auth()->check() ? auth()->user()->currentTeam : null;
+        if ($team === null || $index === [])
         {
             return collect();
         }
 
+        $team->loadMissing('settings');
         $query = $this->conversationQueryForTeam();
-        $allowedPhones = $this->allowedExternalPhonesForChat();
-
-        $inboundPhones = (clone $query)->where('direction', 'inbound')->distinct()->pluck('from');
-        $outboundPhones = (clone $query)->where('direction', 'outbound')->distinct()->pluck('to');
-        $allRaw = $inboundPhones->merge($outboundPhones)->filter()->values();
-
-        $team = auth()->check() ? auth()->user()->currentTeam : null;
-        $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
-
-        $byDigits = [];
-        foreach ($allRaw as $raw)
-        {
-            $norm = $this->normalizePhoneForList((string) $raw);
-            $digits = preg_replace('/[^0-9]/', '', $norm);
-            if ($digits !== '' && ! isset($byDigits[$digits]))
-            {
-                $byDigits[$digits] = $norm;
-            }
-        }
-        $normalizedUnique = collect(array_values($byDigits));
-
-        if ($allowedPhones !== null)
-        {
-            $normalizedUnique = $normalizedUnique->filter(fn ($p) => $p !== $teamNumber && in_array(preg_replace('/[^0-9]/', '', (string) $p), $allowedPhones, true))->values();
-        } else
-        {
-            $normalizedUnique = $normalizedUnique->filter(fn ($p) => preg_replace('/[^0-9]/', '', (string) $p) !== $teamNumber)->values();
-        }
         $inboundPolicy = app(TeamInboundAssistantPolicy::class);
-        $normalizedUnique = $normalizedUnique
-            ->filter(fn ($p) => ! $inboundPolicy->isBlacklistedWhatsAppPhone($team, (string) $p))
-            ->values();
+        $usersByDigits = $this->usersByChatDigits(array_column($index, 'digits'));
 
         $contacts = collect();
-        foreach ($normalizedUnique as $normalizedPhone)
+        foreach ($index as $entry)
         {
-            $digitsOnly = preg_replace('/[^0-9]/', '', (string) $normalizedPhone);
             $lastMessage = (clone $query)
-                ->where(function ($q) use ($normalizedPhone)
+                ->where(function ($q) use ($entry)
                 {
-                    $q->where('from', $normalizedPhone)
-                        ->orWhere('to', $normalizedPhone)
-                        ->orWhere('from', 'like', $normalizedPhone.':%')
-                        ->orWhere('to', 'like', $normalizedPhone.':%');
+                    $this->applyConversationPhoneFilter($q, $entry['phone']);
                 })
                 ->latest()
                 ->first();
@@ -273,31 +539,24 @@ class ChatController extends Controller
             {
                 continue;
             }
-            $unreadCount = (clone $query)
-                ->where('direction', 'inbound')
-                ->where('status', 'received')
-                ->where(function ($q) use ($normalizedPhone)
-                {
-                    $q->where('from', $normalizedPhone)
-                        ->orWhere('from', 'like', $normalizedPhone.':%');
-                })
-                ->count();
 
             $contact = (object) [
-                'from' => $digitsOnly,
+                'from' => $entry['digits'],
                 'last_message' => $lastMessage->body,
                 'last_message_time' => $lastMessage->created_at->diffForHumans(),
                 'last_message_at' => $lastMessage->created_at,
-                'unread_count' => $unreadCount,
+                'unread_count' => $entry['unread'],
             ];
-            $userData = $this->getUserByPhone($normalizedPhone);
+
+            $userData = $usersByDigits[$entry['digits']] ?? null;
             if ($userData)
             {
                 $contact->user_name = $userData->name;
                 $contact->user_photo = $userData->profile_photo_path;
                 $contact->user_id = $userData->id;
             }
-            $crmProfile = $this->findContactForTeamByChatPhone((int) $team->id, $digitsOnly);
+
+            $crmProfile = $entry['crm'];
             if (! $userData && $crmProfile !== null)
             {
                 $crmDisplayName = trim($crmProfile->name.' '.(string) ($crmProfile->surname ?? ''));
@@ -309,34 +568,23 @@ class ChatController extends Controller
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
-            $inboundUser = isset($userData) && $userData instanceof User
-                ? $userData
-                : (isset($contact->user_id) ? User::query()->find($contact->user_id) : null);
+
             $assistantState = $inboundPolicy->presentWhatsAppAssistantState(
                 $team,
-                $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digitsOnly),
+                $inboundPolicy->autoReplyPreferencesAllow($team, $userData instanceof User ? $userData : null, (int) $team->id, $entry['digits']),
                 $crmProfile !== null,
             );
             $contact->assistant_toggle_available = $assistantState['assistant_toggle_available'];
             $contact->assistant_inbound_enabled = $assistantState['assistant_inbound_enabled'];
             $contact->assistant_plan_active = $assistantState['assistant_plan_active'];
             $contact->assistant_locked_reason = $assistantState['assistant_locked_reason'];
+
             $contacts->push($contact);
         }
 
-        $effectiveRequest = $request ?? request();
-        $contacts = $this->applyWhatsAppCrmConversationFilter(
-            $contacts,
-            $effectiveRequest instanceof Request ? $this->resolveWhatsAppListCrmStatusFilter($effectiveRequest) : ['mode' => 'all'],
-            $this->resolveLeadContactStatusId(),
-        );
-
         $this->attachWhatsAppProfilePhotos($contacts);
 
-        return $contacts->sortByDesc(function ($c)
-        {
-            return $c->last_message_at ? $c->last_message_at->timestamp : 0;
-        })->values();
+        return $contacts->values();
     }
 
     private function attachWhatsAppProfilePhotos(Collection $contacts): void
@@ -894,6 +1142,7 @@ class ChatController extends Controller
         $userIds = $messages->pluck('user_id')->filter()->unique();
         $messageUsers = User::whereIn('id', $userIds)->get()->keyBy('id');
         $authUser = auth()->user();
+        $crm = $team && $normPhone !== '' ? $this->findContactForTeamByChatPhone((int) $team->id, $normPhone) : null;
 
         return response()->json([
             'messages' => $messages->map(function ($message) use ($messageUsers, $authUser)
@@ -928,7 +1177,8 @@ class ChatController extends Controller
 
                 return $payload;
             })->values()->all(),
-            'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone),
+            'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone, $crm),
+            'thread_categories' => app(WhatsAppThreadCategoryService::class)->present($team, $crm),
         ]);
     }
 
@@ -974,14 +1224,10 @@ class ChatController extends Controller
 
     /**
      * Per-contact inbound WhatsApp assistant (same flag as web chat CRM / {@see Contact::allowsInboundChatAssistant}).
+     * An empty prompt_key turns the assistant off; a routing key enables it and pins that prompt.
      */
-    public function updateWhatsAppContactAssistant(Request $request)
+    public function updateWhatsAppContactAssistant(UpdateWhatsAppContactAssistantRequest $request)
     {
-        $request->validate([
-            'phone' => ['required', 'string'],
-            'on' => ['required', 'boolean'],
-        ]);
-
         if (! auth()->check() || ! auth()->user()->currentTeam)
         {
             return response()->json(['success' => false], 401);
@@ -1014,15 +1260,35 @@ class ChatController extends Controller
         $this->authorize('update', $contact);
 
         $inboundPolicy = app(TeamInboundAssistantPolicy::class);
-        if (! $inboundPolicy->assistantPlanIsInEffect($team))
+        $siteAssistant = app(TeamSiteAssistantPromptService::class);
+        $hasPromptKey = $request->exists('prompt_key');
+        $promptKey = $hasPromptKey ? trim((string) $request->input('prompt_key', '')) : null;
+
+        if ($hasPromptKey && $promptKey !== '')
         {
-            return response()->json(array_merge([
-                'success' => false,
-                'message' => __('La IA se activa cuando el plan Assistant está vigente. Los tokens se facturan aparte.'),
-            ], $inboundPolicy->presentWhatsAppAssistantState($team, false, false)), 403);
+            $prompt = Prompt::findByRoutingKey($promptKey, (int) $team->id);
+            if (! $prompt || ! $prompt->is_active)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('team_settings.site_assistant.invalid_prompt'),
+                ], 422);
+            }
+
+            $this->applyContactInboundAssistantPreference($contact, true, $siteAssistant->routingKeyFor($prompt));
+        } elseif ($hasPromptKey)
+        {
+            $this->applyContactInboundAssistantPreference($contact, $request->boolean('on', false), null);
+        } else
+        {
+            $enabled = $request->boolean('on');
+            $this->applyContactInboundAssistantPreference(
+                $contact,
+                $enabled,
+                $enabled ? $contact->inboundChatAssistantPromptKey() : null,
+            );
         }
 
-        $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
         $contact->refresh();
 
         $inboundUser = $contact->user_id ? User::query()->find($contact->user_id) : null;
@@ -1031,31 +1297,31 @@ class ChatController extends Controller
             'success' => true,
         ], $inboundPolicy->presentWhatsAppAssistantState(
             $team,
-            $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
+            $inboundPolicy->autoReplyPreferencesAllow($team, $inboundUser, (int) $team->id, $digits),
             true,
-        )));
+        ), $this->whatsAppThreadPromptMeta($team, $contact)));
     }
 
     /**
-     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null}
+     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null, prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
      */
-    private function whatsAppThreadAssistantMetaForDigits(string $digits): array
+    private function whatsAppThreadAssistantMetaForDigits(string $digits, ?Contact $crm = null): array
     {
         $team = auth()->user()?->currentTeam;
         $inboundPolicy = app(TeamInboundAssistantPolicy::class);
         if (! $team || $digits === '')
         {
-            return [
+            return array_merge([
                 'contact_id' => null,
                 'assistant_inbound_enabled' => false,
                 'assistant_toggle_available' => false,
                 'assistant_plan_active' => false,
                 'assistant_locked_reason' => 'plan',
-            ];
+            ], $this->whatsAppThreadPromptMeta(null, null));
         }
 
-        $crm = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
-        $inboundEnabled = $inboundPolicy->allowsWhatsAppAutoReply(
+        $crm ??= $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        $inboundEnabled = $inboundPolicy->autoReplyPreferencesAllow(
             $team,
             $crm?->user_id ? User::query()->find($crm->user_id) : null,
             (int) $team->id,
@@ -1064,10 +1330,36 @@ class ChatController extends Controller
 
         return array_merge([
             'contact_id' => $crm ? (int) $crm->id : null,
-        ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null));
+        ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null), $this->whatsAppThreadPromptMeta($team, $crm));
     }
 
-    private function applyContactInboundAssistantEnabled(Contact $contact, bool $on): void
+    /**
+     * @return array{prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
+     */
+    private function whatsAppThreadPromptMeta(?Team $team, ?Contact $contact): array
+    {
+        $siteAssistant = app(TeamSiteAssistantPromptService::class);
+        $prompts = [];
+        if ($team)
+        {
+            foreach ($siteAssistant->promptOptions($team) as $option)
+            {
+                $prompts[] = [
+                    'key' => $option['key'],
+                    'label' => $option['section_label'],
+                    'section_label' => $option['section_label'],
+                ];
+            }
+        }
+
+        return [
+            'prompt_key' => $contact?->inboundChatAssistantPromptKey(),
+            'default_prompt_key' => $team ? $siteAssistant->selectedRoutingKey($team) : null,
+            'prompts' => $prompts,
+        ];
+    }
+
+    private function applyContactInboundAssistantPreference(Contact $contact, bool $on, ?string $promptKey): void
     {
         $payload = json_encode($contact->data ?? new \stdClass);
         $data = json_decode($payload ?: '{}', true);
@@ -1076,6 +1368,14 @@ class ChatController extends Controller
             $data = [];
         }
         $data['chat_assistant_ai_enabled'] = $on;
+        $key = $promptKey !== null ? trim($promptKey) : '';
+        if ($key !== '')
+        {
+            $data['chat_assistant_prompt_key'] = $key;
+        } else
+        {
+            unset($data['chat_assistant_prompt_key']);
+        }
         $contact->data = $data;
         $contact->save();
     }
@@ -1083,9 +1383,27 @@ class ChatController extends Controller
     /**
      * Get WhatsApp conversation list as JSON for sidebar polling (live update without page refresh).
      */
+    /**
+     * Conversation list for the SPA inbox. Accepts `limit`/`offset` so the client can show the most
+     * recent threads straight away and pull the tail as it scrolls; without them it returns
+     * everything, which is what the older clients expect.
+     */
     public function getChatList(Request $request)
     {
-        $contacts = $this->getWhatsAppContacts($request);
+        $request->validate([
+            'limit' => 'sometimes|integer|min:1|max:200',
+            'offset' => 'sometimes|integer|min:0',
+        ]);
+
+        $index = $this->whatsAppConversationIndex($request);
+        $total = count($index);
+        $unreadTotal = array_sum(array_column($index, 'unread'));
+
+        $limit = $request->filled('limit') ? $request->integer('limit') : null;
+        $offset = $request->integer('offset');
+        $page = $limit === null ? array_slice($index, $offset) : array_slice($index, $offset, $limit);
+
+        $contacts = $this->hydrateWhatsAppContacts($page);
         $list = $contacts->map(function ($c)
         {
             $item = [
@@ -1115,7 +1433,15 @@ class ChatController extends Controller
             return $item;
         })->values()->all();
 
-        return response()->json(['contacts' => $list]);
+        $nextOffset = $offset + count($page);
+
+        return response()->json([
+            'contacts' => $list,
+            'total' => $total,
+            'unread_total' => $unreadTotal,
+            'has_more' => $nextOffset < $total,
+            'next_offset' => $nextOffset,
+        ]);
     }
 
     /**
@@ -1209,7 +1535,12 @@ class ChatController extends Controller
 
             $this->authorize('update', $contact);
 
-            $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
+            $enabled = $request->boolean('on');
+            $this->applyContactInboundAssistantPreference(
+                $contact,
+                $enabled,
+                $enabled ? $contact->inboundChatAssistantPromptKey() : null,
+            );
 
             return response()->json(['success' => true]);
         }
@@ -2890,6 +3221,16 @@ class ChatController extends Controller
         }
         $baseUrl = auth()->user()?->currentTeam?->getWhatsAppServiceBaseUrl() ?? rtrim(config('whatsapp.local.base_url', ''), '/');
         $team = auth()->user()?->currentTeam;
+
+        // Cutting the line affects the whole team, so it is not something any member may do.
+        if ($team && ! auth()->user()?->canManageTeam($team))
+        {
+            $err = __('No tenés permiso para desconectar WhatsApp.');
+
+            return $request->expectsJson()
+                ? response()->json(['ok' => false, 'message' => $err], 403)
+                : redirect()->route('chat.index')->with('error', $err);
+        }
 
         if ($baseUrl === '')
         {

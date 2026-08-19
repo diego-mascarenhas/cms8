@@ -86,7 +86,7 @@ class AutomationCrudTest extends TestCase
                 'name' => 'Blocked',
                 'slug' => 'blocked',
             ])
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     public function test_admin_can_update_and_regenerate_token(): void

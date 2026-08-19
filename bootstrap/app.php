@@ -97,9 +97,20 @@ return Application::configure(basePath: dirname(__DIR__))
             return $redirect;
         };
 
-        $exceptions->render(function (HttpException $e, $request) use ($redirectNotAuthorized)
+        // Livewire swaps the `redirect` binding for its own Redirector, which returns itself instead
+        // of a RedirectResponse so it can drive the redirect from the component lifecycle. Handing
+        // that object back to the router blows up with a TypeError, so let Livewire keep the 403 and
+        // render its own error state, the same exemption the middleware already makes for it.
+        $wantsPlainForbidden = function ($request): bool
         {
-            if ($e->getStatusCode() !== 403 || $request->expectsJson())
+            return $request->expectsJson()
+                || $request->hasHeader('X-Livewire')
+                || str_starts_with($request->path(), 'livewire');
+        };
+
+        $exceptions->render(function (HttpException $e, $request) use ($redirectNotAuthorized, $wantsPlainForbidden)
+        {
+            if ($e->getStatusCode() !== 403 || $wantsPlainForbidden($request))
             {
                 return null;
             }
@@ -107,9 +118,9 @@ return Application::configure(basePath: dirname(__DIR__))
             return $redirectNotAuthorized($e->getMessage());
         });
 
-        $exceptions->render(function (AuthorizationException $e, $request) use ($redirectNotAuthorized)
+        $exceptions->render(function (AuthorizationException $e, $request) use ($redirectNotAuthorized, $wantsPlainForbidden)
         {
-            if ($request->expectsJson())
+            if ($wantsPlainForbidden($request))
             {
                 return null;
             }

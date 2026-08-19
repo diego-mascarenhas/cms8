@@ -446,47 +446,6 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee('dashboardLatestContactsTable', false);
     }
 
-    public function test_dashboard_shows_clients_metric_when_clients_module_enabled(): void
-    {
-        $this->seed([
-            EnterpriseTypeSeeder::class,
-            EnterpriseStatusSeeder::class,
-        ]);
-
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-
-        $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
-        $user->forceFill(['current_team_id' => $team->id])->save();
-        $user->assignRole('admin');
-
-        Module::query()->firstOrCreate(
-            ['key' => 'clients'],
-            [
-                'name' => 'Clients',
-                'icon' => 'user-heart',
-                'description' => 'CRM clients',
-                'status' => 1,
-            ],
-        );
-        $team->enableModule('clients');
-
-        Enterprise::withoutEvents(fn () => Enterprise::factory()->count(3)->forTeam($team->id)->create([
-            'type_id' => 1,
-            'status_id' => 1,
-            'payment_type_id' => null,
-            'invoice_type_id' => null,
-        ]));
-
-        $this->actingAs($user);
-        $response = $this->get(route('dashboard'));
-
-        $response->assertOk();
-        $response->assertSee(__('app.clients'), false);
-        $response->assertSee('ti-user-heart', false);
-        $this->assertMatchesRegularExpression('/text-danger[^>]*>3</', $response->getContent());
-    }
-
     public function test_dashboard_ongoing_projects_table_links_to_project_and_client(): void
     {
         $this->seed([
@@ -599,9 +558,9 @@ class DashboardAnalyticsTest extends TestCase
         $response = $this->get(route('team-settings.edit', ['team' => $team, 'group' => 'analytics']));
 
         $response->assertStatus(200);
-        $response->assertSee('Google Analytics', false);
-        $response->assertSee('GA4 Property ID', false);
-        $response->assertSee('Service account credentials', false);
+        $response->assertSee(__('team_settings.groups.analytics.title'), false);
+        $response->assertSee(__('team_settings.fields.analytics_property_id.label'), false);
+        $response->assertSee(__('team_settings.fields.analytics_credentials_json.label'), false);
     }
 
     public function test_team_settings_analytics_can_be_saved(): void

@@ -528,6 +528,59 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
     }
 
+    public function test_webhook_auto_ai_uses_contact_prompt_key(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->withArgs(function (...$args): bool
+                {
+                    return ($args[6] ?? null) === 'chat:citas_y_ventas';
+                })
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Prompt pinned reply',
+                    'tool_results' => [],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000000',
+            'name' => 'Test',
+            'surname' => 'Client',
+            'email' => 'prompt.client@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'chat:citas_y_ventas',
+            ],
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => 'Quiero una cita',
+            'id' => 'msg_contact_prompt_1',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+        ]);
+    }
+
     public function test_webhook_auto_ai_when_team_enabled_and_contact_phone_is_national_digits_only(): void
     {
         $this->mock(ChatAssistantReplyService::class, function ($mock): void

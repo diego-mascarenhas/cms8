@@ -21,7 +21,9 @@ class PasswordConfirmationTest extends TestCase
 
     public function test_password_can_be_confirmed(): void
     {
-        $user = User::factory()->create();
+        // Without a team the web middleware bounces every request to the no-team page, which would
+        // make these assertions pass regardless of the password.
+        $user = User::factory()->withPersonalTeam()->create();
 
         $response = $this->actingAs($user)->post('/user/confirm-password', [
             'password' => 'password',
@@ -29,11 +31,12 @@ class PasswordConfirmationTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHasNoErrors();
+        $this->assertNotNull(session('auth.password_confirmed_at'));
     }
 
     public function test_password_is_not_confirmed_with_invalid_password(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->withPersonalTeam()->create();
 
         $response = $this->actingAs($user)->post('/user/confirm-password', [
             'password' => 'wrong-password',

@@ -73,7 +73,7 @@ class PaidAdCampaignCrudTest extends TestCase
             'objective' => 'traffic',
             'budget_type' => 'daily',
             'currency' => 'EUR',
-        ])->assertForbidden();
+        ])->assertDeniedForBrowser();
     }
 
     public function test_admin_can_delete_campaign(): void

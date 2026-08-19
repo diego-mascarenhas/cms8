@@ -63,7 +63,12 @@ class ModifyMenuBasedOnRole
 
             if (! $team && ! $this->allowsRequestsWithoutTeam($request))
             {
-                return redirect()->route('error-without-team');
+                // The redirect is a guard for browser navigation. A JSON client cannot follow it,
+                // so it would swallow the controller's own status code (401/403/422) behind a 302.
+                if (! $request->expectsJson())
+                {
+                    return redirect()->route('error-without-team');
+                }
             }
 
             // Skip menu processing for AJAX/Livewire requests (performance optimization)

@@ -35,6 +35,11 @@ return [
         'no me hables de productos',
         'no es sobre productos',
         'hablame de otra cosa',
+        'salir del embudo',
+        'abandonar el embudo',
+        'cancelar el embudo',
+        'salir del flujo',
+        'abandonar el flujo',
     ],
 
     /**

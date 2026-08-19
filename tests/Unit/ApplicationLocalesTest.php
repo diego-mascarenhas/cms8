@@ -21,26 +21,30 @@ class ApplicationLocalesTest extends TestCase
         $this->assertSame('es_AR', ApplicationLocales::normalize('es_AR'));
     }
 
+    /**
+     * Asserts the wiring, not the wording: the keys resolve and the default locale is served from
+     * the es_ES dictionary. Pinning the marketing copy itself only breaks on every rewrite.
+     */
     public function test_slash_landing_copy_defaults_to_spain_spanish(): void
     {
         app()->setLocale(ApplicationLocales::DEFAULT);
 
-        $this->assertSame('Conoce cada plan en acción', __('slash_landing.stories.title'));
-        $this->assertSame('Todo lo que necesitas para gestionar tu negocio', __('slash_landing.benefits.title'));
-        $this->assertSame('Completa cualquier tarea en pocos clics', __('slash_landing.tools.title'));
+        foreach (['slash_landing.stories.title', 'slash_landing.benefits.title', 'slash_landing.tools.title'] as $key)
+        {
+            $this->assertNotSame($key, __($key), "Missing es_ES copy for {$key}.");
+            $this->assertSame(__($key, [], 'es_ES'), __($key));
+        }
     }
 
     public function test_spain_and_argentina_dictionaries_differ(): void
     {
-        $this->assertSame(
-            'Compara módulos y capacidades. Los precios y el checkout están en la página de planes.',
-            __('humano_pricing.landing_plans_subtitle', [], 'es_ES'),
-        );
+        $key = 'humano_pricing.landing_plans_subtitle';
+        $spain = __($key, [], 'es_ES');
+        $argentina = __($key, [], 'es_AR');
 
-        $this->assertSame(
-            'Compará módulos y capacidades. Los precios y el checkout están en la página de planes.',
-            __('humano_pricing.landing_plans_subtitle', [], 'es_AR'),
-        );
+        $this->assertNotSame($key, $spain);
+        $this->assertNotSame($key, $argentina);
+        $this->assertNotSame($spain, $argentina, 'es_AR must keep its own voseo copy instead of falling back to es_ES.');
     }
 
     public function test_content_translation_candidates_keep_legacy_es_fallback(): void

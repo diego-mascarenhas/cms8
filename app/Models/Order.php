@@ -270,13 +270,14 @@ class Order extends Model
             return 'bg-label-secondary';
         }
 
+        // Mirrors LegacyTiendaPedidoEstadoHelper::toHumanoOrderStatuses so the colour never
+        // contradicts the label: 'Recibido' is a delivered order, 'Cancelado' is not.
         return match ($code)
         {
-            4, 10 => 'bg-label-danger',
-            7 => 'bg-label-success',
-            6 => 'bg-label-primary',
-            5, 9, 11 => 'bg-label-success',
-            1, 2, 3, 8 => 'bg-label-warning',
+            0, 8 => 'bg-label-danger',
+            4, 6, 7 => 'bg-label-success',
+            2, 3 => 'bg-label-primary',
+            1, 5 => 'bg-label-warning',
             default => 'bg-label-secondary',
         };
     }

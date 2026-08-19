@@ -30,13 +30,17 @@ class LandingBusinessWizardEmailDeliveryTest extends TestCase
             'current_step' => 6,
         ]);
 
+        // The wizard used to bounce to a thank-you page; it now confirms in place.
         Livewire::test(BusinessWizard::class, ['token' => $session->token])
             ->call('submit')
-            ->assertRedirect(route('landing.gracias'));
+            ->assertNoRedirect()
+            ->assertSet('reportSent', true);
 
         Mail::assertSent(BusinessCreationReportMail::class, function (BusinessCreationReportMail $mail): bool
         {
             return $mail->hasTo('lead@example.com') && $mail->hasBcc('copy@humano.test');
         });
+
+        $this->assertNotNull($session->fresh()->completed_at);
     }
 }

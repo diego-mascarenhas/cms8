@@ -31,7 +31,7 @@ class ClientShowInvoicesOrderTest extends TestCase
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
     }
 
-    public function test_client_show_invoices_are_ordered_by_id_desc_not_date(): void
+    public function test_client_show_invoices_are_sorted_by_date_desc(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $user->assignRole('admin');
@@ -80,10 +80,11 @@ class ClientShowInvoicesOrderTest extends TestCase
         $response = $this->actingAs($user)->get(route('client.show', $client->id));
 
         $response->assertOk();
-        $response->assertSee('order: [[0, \'desc\']]', false);
-        $response->assertSeeInOrder([
-            'NEW-ID-OLD-DATE',
-            'OLD-ID-NEW-DATE',
-        ]);
+
+        // The table sorts on the date column, which needs the ISO data-order attribute to beat
+        // the d/m/Y text shown to the user.
+        $response->assertSee('order: [[2, \'desc\']]', false);
+        $response->assertSee('data-order="2026-06-20"', false);
+        $response->assertSee('data-order="2026-01-05"', false);
     }
 }

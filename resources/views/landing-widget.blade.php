@@ -15,8 +15,8 @@
         <code>{{ url('/api/embed/demo') }}</code>
       </p>
       <div class="humano-embed-grid">
-        <div data-humano-widget="calendar" data-site="demo"></div>
-        <div data-humano-widget="assistant" data-site="demo"></div>
+        <div data-cms8-widget="calendar" data-site="demo"></div>
+        <div data-cms8-widget="assistant" data-site="demo"></div>
       </div>
     </section>
 
@@ -74,9 +74,9 @@
   </div>
 
   <script>
-    window.HUMANO_WIDGETS_API_BASE = @json(rtrim(url('/api/embed/demo'), '/'));
+    window.CMS8_WIDGETS_API_BASE = @json(rtrim(url('/api/embed/demo'), '/'));
   </script>
-  <script src="{{ asset('js/humano-widgets.js') }}" defer></script>
+  <script src="{{ asset('js/cms8-widgets.js') }}" defer></script>
   <script>
     window.LANDING_API_BASE_URL = @json(rtrim(config('services.landing_widget.api_url'), '/'));
     window.LANDING_TEAM_TOKEN = @json(config('services.landing_widget.team_token'));

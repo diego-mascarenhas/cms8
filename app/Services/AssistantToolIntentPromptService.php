@@ -432,9 +432,45 @@ class AssistantToolIntentPromptService
             return $resolved;
         }
 
+        $default = $this->defaultSitePromptResolution($teamId);
+        if ($default !== null)
+        {
+            return $default;
+        }
+
         return [
             'prompt' => null,
             'routing_key' => null,
+            'persist_assistant_flow_key' => 'omit',
+        ];
+    }
+
+    /**
+     * @return array{prompt: Prompt, routing_key: string, persist_assistant_flow_key: 'omit'}|null
+     */
+    protected function defaultSitePromptResolution(int $teamId): ?array
+    {
+        $team = Team::query()->find($teamId);
+        if ($team === null)
+        {
+            return null;
+        }
+
+        $key = app(TeamSiteAssistantPromptService::class)->resolvedRoutingKey($team);
+        if ($key === null)
+        {
+            return null;
+        }
+
+        $prompt = Prompt::findByRoutingKey($key, $teamId);
+        if (! $prompt || ! $prompt->is_active || $prompt->isGeneralRouter())
+        {
+            return null;
+        }
+
+        return [
+            'prompt' => $prompt,
+            'routing_key' => $key,
             'persist_assistant_flow_key' => 'omit',
         ];
     }

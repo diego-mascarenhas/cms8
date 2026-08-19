@@ -13,6 +13,7 @@ use App\Services\AffiliateReferralLinkBuilder;
 use App\Services\TeamStripeCustomerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class BillingAffiliateTeamTest extends TestCase
@@ -140,6 +141,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->forceFill(['stripe_id' => 'cus_invite_ref'])->save();
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->actingAs($user)->post(route('billing.affiliate-invite'), [
             'invite_name' => 'Jane Doe',
@@ -202,6 +204,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->forceFill(['stripe_id' => 'cus_invite_ref'])->save();
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->actingAs($user)->post(route('billing.affiliate-invite'), [
             'invite_name' => 'Jane Doe',
@@ -251,6 +254,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->forceFill(['stripe_id' => 'cus_invite_ref'])->save();
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->actingAs($user)
             ->from(route('billing.index'))
@@ -298,6 +302,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->setSetting('mail_from_address', 'referidos@miempresa.test', ['group' => 'email', 'type' => 'string']);
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->actingAs($user)->post(route('billing.affiliate-invite'), [
             'invite_name' => 'Ana',
@@ -333,6 +338,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team = $user->currentTeam;
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         AffiliateInvitation::query()->create([
             'team_id' => $team->id,
@@ -369,6 +375,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->forceFill(['stripe_id' => null])->save();
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->mock(TeamStripeCustomerService::class, function ($mock): void
         {
@@ -402,6 +409,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->forceFill(['stripe_id' => null])->save();
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->mock(TeamStripeCustomerService::class, function ($mock) use ($team): void
         {
@@ -451,6 +459,7 @@ class BillingAffiliateTeamTest extends TestCase
         $team->forceFill(['stripe_id' => null])->save();
         $team->enableModule('affiliates');
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->grantBillingAccess($user);
 
         $this->mock(TeamStripeCustomerService::class, function ($mock) use ($team): void
         {
@@ -472,5 +481,15 @@ class BillingAffiliateTeamTest extends TestCase
             ->assertDontSee('Activa tu código de referido', false);
 
         $this->assertSame('cus_auto_index', $team->fresh()->stripe_id);
+    }
+
+    /**
+     * Billing routes are gated on admin/root ({@see \App\Models\User::canAccessBilling}); the
+     * affiliates module alone does not open them.
+     */
+    private function grantBillingAccess(User $user): void
+    {
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+        $user->refresh();
     }
 }

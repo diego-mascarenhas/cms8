@@ -84,11 +84,11 @@
                 <code class="d-block small mb-3">POST {{ url('/api/embed/automation/'.$automation->public_token.'/chat') }}</code>
 
                 <p class="small text-muted mb-2">{{ __('Widget (ejemplo)') }}</p>
-                <pre class="bg-lighter p-3 rounded small mb-0" style="white-space: pre-wrap;">&lt;div data-humano-widget="assistant"&gt;&lt;/div&gt;
+                <pre class="bg-lighter p-3 rounded small mb-0" style="white-space: pre-wrap;">&lt;div data-cms8-widget="assistant"&gt;&lt;/div&gt;
 &lt;script&gt;
-  window.HUMANO_WIDGETS_API_BASE = @json(url('/api/embed/automation/'.$automation->public_token));
+  window.CMS8_WIDGETS_API_BASE = @json(url('/api/embed/automation/'.$automation->public_token));
 &lt;/script&gt;
-&lt;script src="@json(url('/js/humano-widgets.js'))" async&gt;&lt;/script&gt;</pre>
+&lt;script src="@json(url('/js/cms8-widgets.js'))" async&gt;&lt;/script&gt;</pre>
             </div>
         </div>
 

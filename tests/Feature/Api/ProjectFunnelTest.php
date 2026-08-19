@@ -106,6 +106,20 @@ class ProjectFunnelTest extends TestCase
                         ],
                     ],
                 ]);
+
+            // The spec above carries no token_consumption, so the job derives it from the tasks.
+            $mock->shouldReceive('buildTokenConsumption')
+                ->once()
+                ->andReturn([
+                    'notes' => 'Discovery: 8h',
+                    'input_tokens' => 5600,
+                    'output_tokens' => 2400,
+                    'total_tokens' => 8000,
+                    'cost_euros' => 1.2,
+                    'savings_percent' => 57.0,
+                    'billable_euros' => 2.79,
+                    'currency' => 'EUR',
+                ]);
         });
 
         $response = $this->postJson('/api/projects/funnel/quote', [

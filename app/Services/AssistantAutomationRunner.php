@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Automation;
+use App\Models\AutomationFlowSession;
 use App\Models\AutomationStep;
+use App\Models\Team;
 use Illuminate\Http\UploadedFile;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -52,11 +54,17 @@ class AssistantAutomationRunner
 
     public function findDefaultForChannel(int $teamId, string $channel): ?Automation
     {
-        return Automation::forTeam($teamId)
+        $automations = Automation::forTeam($teamId)
             ->active()
             ->orderBy('id')
             ->get()
-            ->first(fn (Automation $automation) => $automation->allowsChannel($channel));
+            ->filter(fn (Automation $automation) => $automation->allowsChannel($channel));
+
+        $siteEmbed = $automations->first(
+            fn (Automation $automation) => $automation->slug === TeamSiteAssistantPromptService::EMBED_SLUG,
+        );
+
+        return $siteEmbed ?? $automations->first();
     }
 
     /**
@@ -216,11 +224,35 @@ class AssistantAutomationRunner
         } elseif ($automationSlug !== null && trim($automationSlug) !== '')
         {
             $automation = $this->findBySlug(trim($automationSlug), $teamId);
+        } elseif (app(AssistantToolIntentPromptService::class)->matchesFlowReset($message))
+        {
+            $awaiting = $this->findAwaitingAutomation($teamId, $channel, $externalKey);
+            if ($awaiting !== null)
+            {
+                $this->flowEngine->resetSession(
+                    $this->flowEngine->sessionFor($awaiting, $channel, $externalKey),
+                );
+            }
+
+            return [
+                'prompt_key' => ($existingForcedKey !== null && trim($existingForcedKey) !== '') ? trim($existingForcedKey) : null,
+                'appendix' => null,
+                'step' => null,
+                'completed' => false,
+                'automation' => null,
+            ];
         } else
         {
-            // Prefer an open funnel session over the team default (needed for WhatsApp mid-flow replies).
-            $automation = $this->findAwaitingAutomation($teamId, $channel, $externalKey)
-                ?? $this->findDefaultForChannel($teamId, $channel);
+            // Prefer an open funnel session. The team default only applies when no site prompt owns the turn.
+            $automation = $this->findAwaitingAutomation($teamId, $channel, $externalKey);
+            if ($automation !== null && ! $this->shouldHonorAwaitingAutomation($teamId, $channel, $automation))
+            {
+                $automation = null;
+            }
+            if ($automation === null && $this->shouldUseDefaultAutomationForChannel($teamId, $channel))
+            {
+                $automation = $this->findDefaultForChannel($teamId, $channel);
+            }
         }
 
         if ($automation === null || ! $automation->allowsChannel($channel) || ! $automation->is_active)
@@ -572,7 +604,7 @@ class AssistantAutomationRunner
         } elseif ($automationSlug !== null && trim($automationSlug) !== '')
         {
             $automation = $this->findBySlug(trim($automationSlug), $teamId);
-        } else
+        } elseif ($this->shouldUseDefaultAutomationForChannel($teamId, $channel))
         {
             $automation = $this->findDefaultForChannel($teamId, $channel);
         }
@@ -599,5 +631,46 @@ class AssistantAutomationRunner
         }
 
         return data_get($automation->settings, 'action_type') === self::ACTION_TYPE_SEND_FUNNEL_SUMMARY_EMAIL;
+    }
+
+    public function releaseAwaitingSessionsForTeam(int $teamId): void
+    {
+        $sessions = AutomationFlowSession::query()
+            ->where('team_id', $teamId)
+            ->where('meta->awaiting_reply', true)
+            ->get();
+
+        foreach ($sessions as $session)
+        {
+            $this->flowEngine->resetSession($session);
+        }
+    }
+
+    protected function shouldUseDefaultAutomationForChannel(int $teamId, string $channel): bool
+    {
+        if ($channel === Automation::CHANNEL_API)
+        {
+            return true;
+        }
+
+        $team = Team::query()->find($teamId);
+        if ($team === null)
+        {
+            return true;
+        }
+
+        return app(TeamSiteAssistantPromptService::class)->resolvedRoutingKey($team) === null;
+    }
+
+    protected function shouldHonorAwaitingAutomation(int $teamId, string $channel, Automation $awaiting): bool
+    {
+        if ($this->shouldUseDefaultAutomationForChannel($teamId, $channel))
+        {
+            return true;
+        }
+
+        $default = $this->findDefaultForChannel($teamId, $channel);
+
+        return $default === null || $default->id !== $awaiting->id;
     }
 }

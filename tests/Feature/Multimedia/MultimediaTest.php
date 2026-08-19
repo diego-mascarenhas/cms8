@@ -263,7 +263,7 @@ class MultimediaTest extends TestCase
             'files' => [UploadedFile::fake()->image('photo.jpg')],
         ]);
 
-        $response->assertForbidden();
+        $response->assertDeniedForBrowser();
     }
 
     private function createUserWithRole(string $roleName): User

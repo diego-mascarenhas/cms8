@@ -76,16 +76,20 @@ class ApolloIntegrationTest extends TestCase
     {
         $user = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'client']);
+        $user->teams()->attach($team->id, ['role' => 'guest']);
         $user->current_team_id = $team->id;
         $user->save();
-        $user->assignRole(Role::firstOrCreate(['name' => 'client']));
+        $user->assignRole(Role::firstOrCreate(['name' => 'guest']));
+
+        // Without the module the route 404s before it ever checks permissions, which would make
+        // this test pass for the wrong reason.
+        $this->enableProspectingModule($team);
 
         $this->actingAs($user);
 
         $response = $this->get(route('contact.apollo'));
 
-        $response->assertStatus(403);
+        $response->assertDeniedForBrowser();
     }
 
     public function test_apollo_index_returns_404_when_prospecting_module_disabled(): void
