@@ -150,8 +150,7 @@ class UserController extends Controller
 
     private function canManageTeamUsers(User $actor, Team $team): bool
     {
-        return (int) $team->user_id === (int) $actor->id
-            || $actor->hasRole('admin');
+        return $actor->canManageTeam($team);
     }
 
     /**

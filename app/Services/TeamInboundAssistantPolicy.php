@@ -14,6 +14,14 @@ use App\Services\Billing\AssistantSubscriptionService;
  */
 class TeamInboundAssistantPolicy
 {
+    /**
+     * Billing answers per team, cached for the life of this instance. The inbox asks once per
+     * conversation, and each miss costs a subscription lookup.
+     *
+     * @var array<int, bool>
+     */
+    private array $planInEffect = [];
+
     public function assistantPlanIsInEffect(Team $team): bool
     {
         if (! config('humano_pricing.require_paid_plan_for_ai', true))
@@ -21,7 +29,7 @@ class TeamInboundAssistantPolicy
             return true;
         }
 
-        return app(AssistantSubscriptionService::class)->teamHasPaidAccessForAi($team);
+        return $this->planInEffect[(int) $team->id] ??= app(AssistantSubscriptionService::class)->teamHasPaidAccessForAi($team);
     }
 
     public function lockedReason(Team $team): ?string
@@ -30,6 +38,9 @@ class TeamInboundAssistantPolicy
     }
 
     /**
+     * The plan gates whether the AI actually answers, not whether the team can configure it: the
+     * prompt picker stays usable so the line is set up before (or after) the plan is paid.
+     *
      * @return array{assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null}
      */
     public function presentWhatsAppAssistantState(Team $team, bool $inboundEnabled, bool $toggleAvailable): array
@@ -37,8 +48,8 @@ class TeamInboundAssistantPolicy
         $planActive = $this->assistantPlanIsInEffect($team);
 
         return [
-            'assistant_inbound_enabled' => $planActive && $inboundEnabled,
-            'assistant_toggle_available' => $planActive && $toggleAvailable,
+            'assistant_inbound_enabled' => $inboundEnabled,
+            'assistant_toggle_available' => $toggleAvailable,
             'assistant_plan_active' => $planActive,
             'assistant_locked_reason' => $planActive ? null : 'plan',
         ];
@@ -51,6 +62,15 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
+        return $this->autoReplyPreferencesAllow($team, $inboundSender, $membershipTeamId, $inboundSenderPhone);
+    }
+
+    /**
+     * Everything the team chose (blacklist, master switch, per-contact opt-out) without the billing
+     * gate, so the UI can show the configured state while the plan is dormant.
+     */
+    public function autoReplyPreferencesAllow(Team $team, ?User $inboundSender = null, ?int $membershipTeamId = null, ?string $inboundSenderPhone = null): bool
+    {
         if ($this->isBlacklistedWhatsAppPhone($team, $inboundSenderPhone))
         {
             return false;

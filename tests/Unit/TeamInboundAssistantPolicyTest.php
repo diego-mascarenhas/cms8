@@ -127,7 +127,39 @@ class TeamInboundAssistantPolicyTest extends TestCase
 
         $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null));
         $this->assertSame('plan', $policy->lockedReason($team));
-        $this->assertFalse($policy->presentWhatsAppAssistantState($team, true, true)['assistant_toggle_available']);
+    }
+
+    /**
+     * The plan stops the AI from answering; it does not stop the team from choosing which prompt
+     * that AI will use once the plan is paid.
+     */
+    public function test_missing_paid_plan_still_lets_the_team_pick_a_prompt(): void
+    {
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+
+        $team = Team::factory()->create();
+        $team->setSetting('assistant_auto_respond', '1');
+
+        $state = app(TeamInboundAssistantPolicy::class)->presentWhatsAppAssistantState($team, true, true);
+
+        $this->assertTrue($state['assistant_toggle_available']);
+        $this->assertTrue($state['assistant_inbound_enabled']);
+        $this->assertFalse($state['assistant_plan_active']);
+        $this->assertSame('plan', $state['assistant_locked_reason']);
+    }
+
+    public function test_auto_reply_preferences_ignore_the_plan_but_keep_team_choices(): void
+    {
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+
+        $team = Team::factory()->create();
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $team->setSetting('assistant_auto_respond', '1');
+        $this->assertTrue($policy->autoReplyPreferencesAllow($team, null));
+
+        $team->setSetting('assistant_auto_respond', '0');
+        $this->assertFalse($policy->autoReplyPreferencesAllow($team, null));
     }
 
     public function test_active_assistant_subscription_unlocks_auto_reply(): void

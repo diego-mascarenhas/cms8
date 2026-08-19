@@ -118,4 +118,50 @@ class ChatWhatsappDisconnectTest extends TestCase
         $team->refresh();
         $this->assertNull($team->getSetting('whatsapp_from'));
     }
+
+    public function test_assistant_api_can_disconnect_with_a_sanctum_token(): void
+    {
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/logout*' => Http::response(['success' => true], 200),
+        ]);
+
+        $user = $this->userWithTeam();
+        $user->currentTeam->setSetting('whatsapp_from', '34600111222');
+        $token = $user->createToken('assistant-test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-disconnect')
+            ->assertOk()
+            ->assertJson(['ok' => true]);
+
+        $this->assertNull($user->currentTeam->fresh()->getSetting('whatsapp_from'));
+    }
+
+    public function test_plain_member_cannot_cut_the_team_line(): void
+    {
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://wa.test');
+
+        Http::fake([
+            'wa.test/logout*' => Http::response(['success' => true], 200),
+        ]);
+
+        $owner = $this->userWithTeam();
+        $team = $owner->currentTeam;
+        $team->setSetting('whatsapp_from', '34600111222');
+
+        $member = User::factory()->create();
+        $member->teams()->attach($team->id, ['role' => 'editor']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($member->refresh())
+            ->postJson(route('chat.whatsapp-disconnect'))
+            ->assertStatus(403);
+
+        Http::assertNothingSent();
+        $this->assertSame('34600111222', $team->fresh()->getSetting('whatsapp_from'));
+    }
 }

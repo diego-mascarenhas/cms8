@@ -687,6 +687,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('api.chat.whatsapp-qr-image');
     Route::post('chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('api.chat.whatsapp-refresh-qr');
     Route::post('chat/whatsapp-warmup-qr', [ChatController::class, 'whatsappWarmupQr'])->name('api.chat.whatsapp-warmup-qr');
+    Route::post('chat/whatsapp-disconnect', [ChatController::class, 'whatsappDisconnect'])->name('api.chat.whatsapp-disconnect');
 
     // Assistant chat (idoneo-assistant SPA / Sanctum): uses authenticated user's current_team_id.
     Route::post('assistant/chat', [UserAssistantController::class, 'chat'])->name('api.assistant.chat');

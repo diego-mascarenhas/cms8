@@ -7,7 +7,9 @@ use App\Models\ContactStatus;
 use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\Prompt;
+use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamInboundAssistantPolicy;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -590,7 +592,11 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->postJson('/api/chat/whatsapp-refresh-qr')->assertStatus(401);
     }
 
-    public function test_whatsapp_thread_locks_assistant_without_paid_plan(): void
+    /**
+     * The thread reports the plan is dormant, but the prompt picker stays usable so the line can be
+     * configured before the plan is paid.
+     */
+    public function test_whatsapp_thread_reports_dormant_plan_without_blocking_prompt_choice(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -633,16 +639,30 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertOk()
             ->assertJsonPath('thread_assistant.assistant_plan_active', false)
             ->assertJsonPath('thread_assistant.assistant_locked_reason', 'plan')
-            ->assertJsonPath('thread_assistant.assistant_inbound_enabled', false)
-            ->assertJsonPath('thread_assistant.assistant_toggle_available', false);
+            ->assertJsonPath('thread_assistant.assistant_toggle_available', true);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->patchJson('/api/chat/whatsapp-contact-assistant', [
                 'phone' => $clientPhone,
                 'on' => true,
             ])
-            ->assertStatus(403)
+            ->assertOk()
             ->assertJsonPath('assistant_locked_reason', 'plan');
+    }
+
+    public function test_whatsapp_auto_reply_stays_off_while_the_plan_is_dormant(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+
+        $team = Team::factory()->create();
+        $team->setSetting('assistant_auto_respond', '1');
+
+        $this->assertFalse(app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply($team, null));
     }
 
     public function test_whatsapp_send_does_not_start_registration_for_new_named_contact(): void

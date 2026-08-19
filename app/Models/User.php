@@ -112,6 +112,31 @@ class User extends Authenticatable
     }
 
     /**
+     * Single answer to "may this user administer the team?", covering both the Spatie role and the
+     * Jetstream membership role. Team settings, the Assistant panel and user management share it so
+     * a user cannot be offered a screen they are then forbidden to save.
+     */
+    public function canManageTeam(?Team $team): bool
+    {
+        if ($this->hasRole('root'))
+        {
+            return true;
+        }
+
+        if (! $team instanceof Team)
+        {
+            return false;
+        }
+
+        if ($this->ownsTeam($team))
+        {
+            return true;
+        }
+
+        return $this->belongsToTeam($team) && ($this->hasRole('admin') || $this->hasTeamRole($team, 'admin'));
+    }
+
+    /**
      * Update the user's profile photo. Crops to a square (center) before storing
      * so the image is never deformed in the UI.
      */

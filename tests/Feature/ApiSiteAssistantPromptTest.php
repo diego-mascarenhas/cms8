@@ -171,4 +171,44 @@ class ApiSiteAssistantPromptTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['prompt_key', 'section_label', 'prompt_instruction']);
     }
+
+    /**
+     * The Assistant offers the settings screen to every team administrator, so saving from it must
+     * work for an admin who does not own the team.
+     */
+    public function test_admin_who_does_not_own_the_team_can_save_the_site_prompt(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $admin = User::factory()->create();
+        $admin->teams()->attach($team->id, ['role' => 'editor']);
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+        $admin->assignRole('admin');
+        $adminToken = $admin->refresh()->createToken('assistant-admin-test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$adminToken)
+            ->postJson('/api/assistant/site-prompt', [
+                'section_label' => 'Citas y tienda',
+                'prompt_instruction' => 'Reservá citas y vendé el catálogo.',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.selected_key', 'chat:citas_y_tienda');
+    }
+
+    public function test_plain_member_cannot_save_the_site_prompt(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $member = User::factory()->create();
+        $member->teams()->attach($team->id, ['role' => 'editor']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $memberToken = $member->refresh()->createToken('assistant-member-test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$memberToken)
+            ->postJson('/api/assistant/site-prompt', [
+                'section_label' => 'Citas y tienda',
+                'prompt_instruction' => 'Reservá citas y vendé el catálogo.',
+            ])
+            ->assertStatus(403);
+    }
 }

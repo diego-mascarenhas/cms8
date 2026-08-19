@@ -45,18 +45,7 @@ class TeamPolicy
      */
     public function update(User $user, Team $team): bool
     {
-        // Root users can update any team
-        if ($user->hasRole('root'))
-        {
-            return true;
-        }
-
-        if ($user->ownsTeam($team))
-        {
-            return true;
-        }
-
-        return $user->belongsToTeam($team) && $user->hasTeamRole($team, 'admin');
+        return $user->canManageTeam($team);
     }
 
     /**
