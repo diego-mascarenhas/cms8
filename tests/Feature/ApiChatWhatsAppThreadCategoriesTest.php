@@ -11,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
@@ -97,6 +98,17 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
             ->assertOk()
             ->assertJsonPath('thread_categories.selected', [['id' => $live->id, 'name' => 'Alfa']])
             ->assertJsonPath('thread_categories.available', [['id' => $live->id, 'name' => 'Alfa']]);
+    }
+
+    public function test_the_same_category_cannot_be_attached_twice(): void
+    {
+        [, , $team] = $this->inbox();
+        $category = $this->contactsCategory('Legacy', $team);
+        $contact = $this->crmContact($team);
+        $contact->categories()->attach($category->id);
+
+        $this->expectException(QueryException::class);
+        $contact->categories()->attach($category->id);
     }
 
     public function test_assigning_requires_authentication(): void

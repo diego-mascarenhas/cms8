@@ -138,8 +138,9 @@ class WhatsAppThreadCategoryService
             })
             ->orderBy('name')
             ->get(['categories.id', 'categories.name'])
-            ->map(fn (Category $category): array => $this->presentCategory($category))
+            ->unique('id')
             ->values()
+            ->map(fn (Category $category): array => $this->presentCategory($category))
             ->all();
     }
 
@@ -213,6 +214,8 @@ class WhatsAppThreadCategoryService
                     ->orWhereNull('categories.module_id');
             })
             ->pluck('categories.id')
+            ->unique()
+            ->values()
             ->all();
     }
 
