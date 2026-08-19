@@ -11,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
@@ -99,25 +100,15 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
             ->assertJsonPath('thread_categories.available', [['id' => $live->id, 'name' => 'Alfa']]);
     }
 
-    /**
-     * contact_category has no unique pair, so imports and attach() can leave the same tag
-     * three times. The thread header should still show it once.
-     */
-    public function test_duplicate_pivot_rows_appear_once(): void
+    public function test_the_same_category_cannot_be_attached_twice(): void
     {
-        [$token, , $team] = $this->inbox();
+        [, , $team] = $this->inbox();
         $category = $this->contactsCategory('Legacy', $team);
         $contact = $this->crmContact($team);
         $contact->categories()->attach($category->id);
-        $contact->categories()->attach($category->id);
-        $contact->categories()->attach($category->id);
 
-        $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
-            ->assertOk()
-            ->assertJsonPath('thread_categories.selected', [
-                ['id' => $category->id, 'name' => 'Legacy'],
-            ]);
+        $this->expectException(QueryException::class);
+        $contact->categories()->attach($category->id);
     }
 
     public function test_assigning_requires_authentication(): void

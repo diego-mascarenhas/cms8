@@ -12,6 +12,7 @@ return new class extends Migration
         {
             $table->foreignId('contact_id')->constrained()->onDelete('cascade');
             $table->foreignId('category_id')->constrained()->onDelete('cascade');
+            $table->unique(['contact_id', 'category_id']);
         });
     }
 
