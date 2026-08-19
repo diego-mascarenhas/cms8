@@ -42,12 +42,16 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
             ['id' => $shared->id, 'name' => 'Mayorista'],
             ['id' => $own->id, 'name' => 'Testing'],
         ]);
+        $response->assertJsonPath('thread_categories.available', [
+            ['id' => $shared->id, 'name' => 'Mayorista'],
+            ['id' => $own->id, 'name' => 'Testing'],
+        ]);
     }
 
     public function test_thread_without_a_crm_contact_reports_no_categories(): void
     {
         [$token, , $team] = $this->inbox();
-        $this->contactsCategory('Testing', $team);
+        $category = $this->contactsCategory('Testing', $team);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE);
@@ -55,6 +59,9 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('thread_categories.contact_id', null);
         $response->assertJsonPath('thread_categories.selected', []);
+        $response->assertJsonPath('thread_categories.available', [
+            ['id' => $category->id, 'name' => 'Testing'],
+        ]);
     }
 
     /**
@@ -73,7 +80,8 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
             ->assertOk()
-            ->assertJsonPath('thread_categories.selected', [['id' => $contactTag->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('thread_categories.selected', [['id' => $contactTag->id, 'name' => 'Alfa']])
+            ->assertJsonPath('thread_categories.available', [['id' => $contactTag->id, 'name' => 'Alfa']]);
     }
 
     public function test_archived_categories_are_left_out(): void
@@ -87,7 +95,94 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
             ->assertOk()
-            ->assertJsonPath('thread_categories.selected', [['id' => $live->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('thread_categories.selected', [['id' => $live->id, 'name' => 'Alfa']])
+            ->assertJsonPath('thread_categories.available', [['id' => $live->id, 'name' => 'Alfa']]);
+    }
+
+    public function test_assigning_requires_authentication(): void
+    {
+        $this->patchJson('/api/chat/whatsapp-contact-categories', [
+            'phone' => self::CLIENT_PHONE,
+            'category_ids' => [1],
+        ])->assertStatus(401);
+    }
+
+    public function test_assigning_a_category_attaches_it_to_the_crm_contact(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $category = $this->contactsCategory('Alfa', $team);
+        $contact = $this->crmContact($team);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-categories', [
+                'phone' => self::CLIENT_PHONE,
+                'category_ids' => [$category->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('contact_id', $contact->id)
+            ->assertJsonPath('selected', [['id' => $category->id, 'name' => 'Alfa']]);
+
+        $this->assertTrue($contact->fresh()->categories->contains('id', $category->id));
+    }
+
+    public function test_assigning_keeps_tags_from_other_modules(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $contactTag = $this->contactsCategory('Alfa', $team);
+        $productModule = Module::firstOrCreate(['key' => 'products'], ['name' => 'products', 'description' => 'products', 'is_core' => 0, 'status' => 1, 'order' => 0]);
+        $productTag = Category::create(['name' => 'Cerámica', 'module_id' => $productModule->id, 'team_id' => $team->id, 'status' => 1]);
+        $contact = $this->crmContact($team);
+        $contact->categories()->sync([$productTag->id]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-categories', [
+                'phone' => self::CLIENT_PHONE,
+                'category_ids' => [$contactTag->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('selected', [['id' => $contactTag->id, 'name' => 'Alfa']]);
+
+        $this->assertEqualsCanonicalizing(
+            [$contactTag->id, $productTag->id],
+            $contact->fresh()->categories->pluck('id')->all(),
+        );
+    }
+
+    public function test_other_module_and_foreign_team_categories_are_refused(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $this->crmContact($team);
+        $productModule = Module::firstOrCreate(['key' => 'products'], ['name' => 'products', 'description' => 'products', 'is_core' => 0, 'status' => 1, 'order' => 0]);
+        $productTag = Category::create(['name' => 'Cerámica', 'module_id' => $productModule->id, 'team_id' => $team->id, 'status' => 1]);
+        $foreign = $this->contactsCategory('Ajena', Team::factory()->create());
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-categories', [
+                'phone' => self::CLIENT_PHONE,
+                'category_ids' => [$productTag->id],
+            ])
+            ->assertStatus(422);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-categories', [
+                'phone' => self::CLIENT_PHONE,
+                'category_ids' => [$foreign->id],
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_assigning_without_a_crm_contact_is_refused(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $category = $this->contactsCategory('Alfa', $team);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-categories', [
+                'phone' => self::CLIENT_PHONE,
+                'category_ids' => [$category->id],
+            ])
+            ->assertStatus(422);
     }
 
     /**

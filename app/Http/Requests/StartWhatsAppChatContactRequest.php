@@ -28,6 +28,9 @@ class StartWhatsAppChatContactRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'regex:/^[0-9]{10,15}$/'],
+            'status_id' => ['sometimes', 'nullable', 'integer', 'exists:contact_statuses,id'],
+            'category_ids' => ['sometimes', 'array'],
+            'category_ids.*' => ['integer', 'distinct', 'min:1'],
         ];
     }
 

@@ -110,6 +110,28 @@ class MobileAssistantApiTest extends TestCase
         $this->assertContains('Tareas', $menuNames);
     }
 
+    public function test_auth_user_includes_the_same_profile_photo_as_chat(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+        $user->forceFill(['profile_photo_path' => 'profile-photos/demo.jpg'])->save();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('profile_photo_url', $user->fresh()->profile_photo_url);
+    }
+
+    public function test_auth_user_leaves_profile_photo_empty_without_a_stored_file(): void
+    {
+        [$user, , $token] = $this->assistantUserWithToken();
+        $this->assertNull($user->profile_photo_path);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('profile_photo_url', null);
+    }
+
     public function test_auth_user_returns_role_label(): void
     {
         [$user, , $token] = $this->assistantUserWithToken();
