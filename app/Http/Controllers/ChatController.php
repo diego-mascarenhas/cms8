@@ -7,6 +7,8 @@ use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
 use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
+use App\Http\Requests\UpdateWhatsAppContactCategoriesRequest;
+use App\Http\Requests\UpdateWhatsAppInboxContactRequest;
 use App\Jobs\SendScheduledMessageJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -1179,6 +1181,7 @@ class ChatController extends Controller
             })->values()->all(),
             'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone, $crm),
             'thread_categories' => app(WhatsAppThreadCategoryService::class)->present($team, $crm),
+            'thread_contact' => $this->whatsAppThreadContactMeta($team, $crm, $normPhone),
         ]);
     }
 
@@ -1208,11 +1211,23 @@ class ChatController extends Controller
             ], 401);
         }
 
+        $categoryIds = $request->validated('category_ids') ?? [];
+        $categoryService = app(WhatsAppThreadCategoryService::class);
+        if ($categoryIds !== [] && count($categoryService->assignableIds($team, $categoryIds)) !== count(array_unique(array_map('intval', $categoryIds))))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('The selected category is invalid.'),
+            ], 422);
+        }
+
         $result = $starter->start(
             $user,
             $team,
             (string) $request->validated('name'),
             (string) $request->validated('phone'),
+            $request->validated('status_id') !== null ? (int) $request->validated('status_id') : null,
+            $categoryIds,
         );
 
         return response()->json([
@@ -1300,6 +1315,132 @@ class ChatController extends Controller
             $inboundPolicy->autoReplyPreferencesAllow($team, $inboundUser, (int) $team->id, $digits),
             true,
         ), $this->whatsAppThreadPromptMeta($team, $contact)));
+    }
+
+    public function updateWhatsAppContactCategories(UpdateWhatsAppContactCategoriesRequest $request)
+    {
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+        $digits = preg_replace('/[^0-9]/', '', $request->string('phone')->toString());
+        if ($digits === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid phone number.'),
+            ], 422);
+        }
+        if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
+        {
+            return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $contact = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        if (! $contact)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No CRM contact is linked to this number. Create or link a contact in Humano to use this option.'),
+            ], 422);
+        }
+
+        $this->authorize('update', $contact);
+
+        $service = app(WhatsAppThreadCategoryService::class);
+        $categoryIds = $request->validated('category_ids');
+        $valid = $service->assignableIds($team, $categoryIds);
+        if (count($valid) !== count(array_unique(array_map('intval', $categoryIds))))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('The selected category is invalid.'),
+            ], 422);
+        }
+
+        return response()->json(array_merge(
+            ['success' => true],
+            $service->assign($team, $contact, $valid),
+        ));
+    }
+
+    public function updateWhatsAppInboxContact(UpdateWhatsAppInboxContactRequest $request, WhatsAppInboxContactStarter $starter)
+    {
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $allowedPhones = $this->allowedExternalPhonesForChat();
+        $digits = preg_replace('/[^0-9]/', '', $request->string('phone')->toString());
+        if ($digits === '')
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Invalid phone number.'),
+            ], 422);
+        }
+        if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
+        {
+            return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $contact = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+        if (! $contact)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No CRM contact is linked to this number. Create or link a contact in Humano to use this option.'),
+            ], 422);
+        }
+
+        $categoryIds = $request->validated('category_ids') ?? [];
+        $categoryService = app(WhatsAppThreadCategoryService::class);
+        if (count($categoryService->assignableIds($team, $categoryIds)) !== count(array_unique(array_map('intval', $categoryIds))))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('The selected category is invalid.'),
+            ], 422);
+        }
+
+        $result = $starter->update(
+            auth()->user(),
+            $team,
+            $contact,
+            (string) $request->validated('name'),
+            (int) $request->validated('status_id'),
+            $categoryIds,
+        );
+
+        return response()->json(array_merge(['success' => true], $result, [
+            'thread_contact' => $this->whatsAppThreadContactMeta($team, $contact->fresh(), $digits),
+        ]));
+    }
+
+    /**
+     * @return array{contact_id: int|null, name: string, phone: string, status_id: int|null, statuses: list<array{id: int, name: string}>}
+     */
+    private function whatsAppThreadContactMeta(?Team $team, ?Contact $contact, string $digits): array
+    {
+        $catalog = app(WhatsAppThreadCategoryService::class)->catalog($team);
+        $name = '';
+        if ($contact !== null)
+        {
+            $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
+        }
+
+        return [
+            'contact_id' => $contact !== null ? (int) $contact->id : null,
+            'name' => $name,
+            'phone' => $digits,
+            'status_id' => $contact?->status_id !== null ? (int) $contact->status_id : null,
+            'statuses' => $catalog['statuses'],
+        ];
     }
 
     /**
@@ -1435,12 +1576,15 @@ class ChatController extends Controller
 
         $nextOffset = $offset + count($page);
 
+        $catalog = app(WhatsAppThreadCategoryService::class)->catalog(auth()->user()?->currentTeam);
+
         return response()->json([
             'contacts' => $list,
             'total' => $total,
             'unread_total' => $unreadTotal,
             'has_more' => $nextOffset < $total,
             'next_offset' => $nextOffset,
+            'contact_catalog' => $catalog,
         ]);
     }
 

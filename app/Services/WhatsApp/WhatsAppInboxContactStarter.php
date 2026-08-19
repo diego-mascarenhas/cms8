@@ -3,6 +3,7 @@
 namespace App\Services\WhatsApp;
 
 use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
@@ -52,9 +53,10 @@ class WhatsAppInboxContactStarter
     }
 
     /**
-     * @return array{created: bool, contact: array{id: int, contact_id: int, name: string, phone: string}}
+     * @param  list<int|string>  $categoryIds
+     * @return array{created: bool, contact: array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}}
      */
-    public function start(User $user, Team $team, string $name, string $phone): array
+    public function start(User $user, Team $team, string $name, string $phone, ?int $statusId = null, array $categoryIds = []): array
     {
         $digits = self::normalizeInboxPhone($phone);
         if ($digits === '')
@@ -94,17 +96,56 @@ class WhatsAppInboxContactStarter
             'name' => $firstName !== '' ? $firstName : $name,
             'surname' => $surname,
             'phone' => $digits,
-            'status_id' => 1,
+            'status_id' => $this->resolvedStatusId($statusId),
         ]);
+
+        if ($categoryIds !== [])
+        {
+            app(WhatsAppThreadCategoryService::class)->replace($team, $contact, $categoryIds);
+        }
 
         return [
             'created' => true,
-            'contact' => $this->present($contact, $digits),
+            'contact' => $this->present($contact->fresh(), $digits),
         ];
     }
 
     /**
-     * @return array{id: int, contact_id: int, name: string, phone: string}
+     * Phone stays as stored. Name, CRM status and contact categories can change.
+     *
+     * @param  list<int|string>  $categoryIds
+     * @return array{contact: array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}, thread_categories: array{contact_id: int|null, selected: list<array{id: int, name: string}>, available: list<array{id: int, name: string}>}}
+     */
+    public function update(User $user, Team $team, Contact $contact, string $name, int $statusId, array $categoryIds): array
+    {
+        if (! Gate::forUser($user)->allows('update', $contact))
+        {
+            throw new AuthorizationException;
+        }
+
+        if (! ContactStatus::query()->whereKey($statusId)->exists())
+        {
+            throw new HttpException(422, __('The selected status is invalid.'));
+        }
+
+        [$firstName, $surname] = $this->matcher->splitFullName($name);
+        $contact->forceFill([
+            'name' => $firstName !== '' ? $firstName : $name,
+            'surname' => $surname,
+            'status_id' => $statusId,
+        ])->save();
+
+        $digits = self::normalizeInboxPhone((string) $contact->phone);
+        $categories = app(WhatsAppThreadCategoryService::class)->replace($team, $contact, $categoryIds);
+
+        return [
+            'contact' => $this->present($contact->fresh(), $digits),
+            'thread_categories' => $categories,
+        ];
+    }
+
+    /**
+     * @return array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}
      */
     private function present(Contact $contact, string $fallbackPhone): array
     {
@@ -116,7 +157,20 @@ class WhatsAppInboxContactStarter
             'contact_id' => (int) $contact->id,
             'name' => $display !== '' ? $display : $fallbackPhone,
             'phone' => $storedPhone !== '' ? $storedPhone : $fallbackPhone,
+            'status_id' => $contact->status_id !== null ? (int) $contact->status_id : null,
         ];
+    }
+
+    private function resolvedStatusId(?int $statusId): int
+    {
+        if ($statusId !== null && ContactStatus::query()->whereKey($statusId)->exists())
+        {
+            return $statusId;
+        }
+
+        $leadId = ContactStatus::query()->where('name', 'Lead')->value('id');
+
+        return $leadId !== null ? (int) $leadId : 1;
     }
 
     private function findContactByPhone(int $teamId, string $digits): ?Contact

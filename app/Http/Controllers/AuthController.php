@@ -9,6 +9,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\AuthIntendedUrlGuard;
+use App\Support\ChatMessageAvatar;
 use App\Support\NewUserWelcomeEmailNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -236,6 +237,7 @@ class AuthController extends Controller
             'email' => $user->email,
             'phone' => $user->phone !== null ? (string) $user->phone : null,
             'role' => $this->formatUserRoleLabel($user),
+            'profile_photo_url' => ChatMessageAvatar::forUser($user)['photo_url'] ?? null,
             'current_team' => $user->currentTeam ? [
                 'id' => $user->currentTeam->id,
                 'name' => $user->currentTeam->name,
