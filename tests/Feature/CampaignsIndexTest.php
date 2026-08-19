@@ -415,9 +415,17 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'Guardar'),
         );
+        // Scoped to the campaign form: the layout also ships the assistant chat, which has its
+        // own submit and would otherwise be counted here.
+        preg_match(
+            '#<form[^>]*action="[^"]*'.preg_quote((string) parse_url(route('campaigns.update', $campaign), PHP_URL_PATH), '#').'"[^>]*>(.*?)</form>#s',
+            $html,
+            $matches,
+        );
+        $this->assertNotEmpty($matches, 'Expected the campaign edit form to be rendered.');
         $this->assertSame(
             1,
-            substr_count($html, 'type="submit"'),
+            substr_count($matches[1], 'type="submit"'),
             'Expected a single submit control in the campaign edit form.',
         );
         $this->assertTrue(
@@ -530,10 +538,7 @@ class CampaignsIndexTest extends TestCase
         $this->assertTrue(
             str_contains($html, 'email-template-content-preview'),
         );
-        $this->assertTrue(
-            str_contains($html, 'Contenido del correo'),
-        );
-        $this->assertSame(1, substr_count($html, 'Contenido del correo'), 'Expected a single mail content toolbar block.');
+        $this->assertSame(1, substr_count($html, 'id="body-editor"'), 'Expected a single mail body editor.');
         $this->assertSame(1, substr_count($html, 'Guardar para después'), 'Expected a single save-for-later submit control.');
     }
 

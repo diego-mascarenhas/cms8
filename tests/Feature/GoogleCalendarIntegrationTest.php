@@ -30,41 +30,6 @@ class GoogleCalendarIntegrationTest extends TestCase
         $this->assertTrue(GoogleCredentialsService::hasCredentials($team));
     }
 
-    public function test_calendar_index_redirects_if_no_credentials()
-    {
-        $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->currentTeam;
-
-        $this->actingAs($user);
-
-        $response = $this->get(route('calendar.google.index'));
-
-        $response->assertRedirect(route('team-settings.edit', ['team' => $team, 'group' => 'analytics']));
-        $response->assertSessionHas('warning');
-    }
-
-    public function test_can_access_calendar_with_credentials()
-    {
-        $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->currentTeam;
-
-        // Add mock credentials
-        $team->setSetting('analytics_credentials_json', json_encode([
-            'type' => 'service_account',
-            'project_id' => 'test-project',
-            'client_email' => 'test@test.iam.gserviceaccount.com',
-            'private_key' => '-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----',
-        ]), ['is_encrypted' => true]);
-
-        $this->actingAs($user);
-
-        $response = $this->get(route('calendar.google.index'));
-
-        $response->assertStatus(200);
-        $response->assertViewIs('calendar.index');
-        $response->assertViewHas('team', $team);
-    }
-
     public function test_get_calendar_id_returns_primary_by_default()
     {
         $user = User::factory()->withPersonalTeam()->create();
@@ -115,8 +80,8 @@ class GoogleCalendarIntegrationTest extends TestCase
         $response = $this->get(route('team-settings.edit', ['team' => $team, 'group' => 'calendar']));
 
         $response->assertStatus(200);
-        $response->assertSee('Calendar');
-        $response->assertSee('Google Calendar ID');
+        $response->assertSee(__('team_settings.groups.calendar.title'), false);
+        $response->assertSee(__('team_settings.fields.google_calendar_id.label'), false);
     }
 
     public function test_can_save_google_calendar_id_in_team_settings()

@@ -296,7 +296,8 @@ class ClientController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $invoices = $client->invoices->sortByDesc('id')->values();
+        // Matches the table's default sort so the rows do not jump when DataTables initialises.
+        $invoices = $client->invoices->sortByDesc('date')->values();
 
         $invoiceBalanceTotal = $client->invoices->sum('balance');
 

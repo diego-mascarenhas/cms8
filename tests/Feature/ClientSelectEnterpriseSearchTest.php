@@ -96,7 +96,16 @@ class ClientSelectEnterpriseSearchTest extends TestCase
         $response->assertSee('data-type="Cliente"', false);
         $response->assertSee('data-type="Proveedor"', false);
         $response->assertDontSee("$('#enterprise_id, #category_id, #status_id').select2", false);
-        $response->assertSee('data-contacts="[{&quot;label&quot;:&quot;Ignacio Escobar Unique · ignacio.escobar.unique@example.test&quot;', false);
+
+        // The widget searches this payload client-side, so what matters is that it decodes to a
+        // label carrying the contact, not how the attribute happens to be quoted or escaped.
+        preg_match_all("/data-contacts='([^']*)'/", (string) $response->getContent(), $matches);
+        $labels = collect($matches[1])
+            ->flatMap(fn (string $json): array => json_decode(html_entity_decode($json), true) ?: [])
+            ->pluck('label')
+            ->all();
+
+        $this->assertContains('Ignacio Escobar Unique · ignacio.escobar.unique@example.test', $labels);
     }
 
     public function test_expense_create_enterprise_select_includes_contact_keywords(): void

@@ -22,6 +22,9 @@ class TeamSettingsHostingCardTest extends TestCase
         $team = Team::factory()->create(['user_id' => $user->id]);
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
+        // The links sit behind access-infrastructure-modules, which reads the Spatie role.
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+        $user->refresh();
 
         $team->enableModule('servers');
         $team->enableModule('hosting');

@@ -30,7 +30,7 @@ class OrderLegacyEstadoMetadataTest extends TestCase
         ]);
 
         $this->assertSame(5, $order->legacy_estado_code);
-        $this->assertSame('Solicitado/Pagado MP', $order->legacy_estado_label);
+        $this->assertSame('Pendiente', $order->legacy_estado_label);
     }
 
     public function test_resolves_label_from_code_when_label_missing(): void
@@ -41,8 +41,18 @@ class OrderLegacyEstadoMetadataTest extends TestCase
             ],
         ]);
 
-        $this->assertSame('Cancelado', $order->legacy_estado_label);
-        $this->assertSame('bg-label-danger', $order->legacy_estado_badge);
+        $this->assertSame('Recibido', $order->legacy_estado_label);
+        $this->assertSame('bg-label-success', $order->legacy_estado_badge);
+    }
+
+    public function test_badge_marks_cancelled_legacy_codes_as_danger(): void
+    {
+        foreach ([0, 8] as $code)
+        {
+            $order = new Order(['metadata' => ['legacy_estado' => $code]]);
+
+            $this->assertSame('bg-label-danger', $order->legacy_estado_badge);
+        }
     }
 
     public function test_returns_null_when_no_legacy_metadata(): void

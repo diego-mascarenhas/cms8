@@ -17,6 +17,15 @@ class AdPlatformConnectionTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The callback hands off to the ads SPA when its URL is set. Pin it off by default so a
+        // local .env pointing at a dev server does not change what these tests assert.
+        config(['services.paid_ads.spa_url' => '']);
+    }
+
     public function test_connect_redirects_to_provider_when_configured(): void
     {
         config([
@@ -74,6 +83,32 @@ class AdPlatformConnectionTest extends TestCase
             'platform' => AdPlatform::Meta->value,
             'status' => AdConnectionStatus::PendingAccount->value,
         ]);
+    }
+
+    public function test_callback_hands_off_to_the_ads_spa_when_configured(): void
+    {
+        config([
+            'services.meta_ads.app_id' => 'app-123',
+            'services.meta_ads.app_secret' => 'secret-123',
+            'services.paid_ads.spa_url' => 'https://ads.example.test',
+        ]);
+
+        Http::fake([
+            'graph.facebook.com/*' => Http::response([
+                'access_token' => 'meta-token',
+                'expires_in' => 3600,
+            ], 200),
+        ]);
+
+        $user = $this->createUserWithRole('admin');
+        $this->enablePaidAdsModule($user);
+
+        $response = $this->actingAs($user)
+            ->get(route('integrations.ad-platforms.callback', AdPlatform::Meta->value).'?code=abc123');
+
+        $connection = AdPlatformConnection::query()->where('team_id', $user->currentTeam->id)->sole();
+
+        $response->assertRedirect('https://ads.example.test/connections?connected=meta&connection_id='.$connection->id);
     }
 
     public function test_select_account_activates_connection(): void
