@@ -30,8 +30,32 @@
                     <h6 class="mt-4">{{ __('Chat with a client') }}</h6>
                     <p>{{ __('If you select a client or contact in the chat list, the conversation is specific to that recipient (e.g. WhatsApp). The assistant can suggest replies; you can enable or disable this with the robot toggle next to the message box.') }}</p>
 
+                    <h6 class="mt-4" id="site-assistant-prompt">{{ __('Site prompt (appointments and sales)') }}</h6>
+                    <p>{{ __('From the Assistant app (Configuración) or Team settings → Chat / Assistant you can select one team prompt or create a new one. That prompt is the default voice of the assistant when no funnel, sticky flow, or WhatsApp cart command owns the turn.') }}</p>
+                    <p>{{ __('The recommended template is written for three jobs: book appointments, show the catalog, and help the customer buy. Funnels stay a separate path (aliases or an open session). WhatsApp commands such as comprar or finalizar still skip the prompt.') }}</p>
+                    <ul>
+                        <li>{{ __('Select an existing active prompt of the team, or create one with a name plus instructions.') }}</li>
+                        <li>{{ __('Saving the prompt also creates or updates the web embed automation (slug: asistente-web) so the widget uses the same flow.') }}</li>
+                        <li>{{ __('Path in the Assistant app:') }} <span class="text-muted">/settings</span></li>
+                        <li>{{ __('Path in cms8:') }} <span class="text-muted">/team/{id}/settings/chat</span></li>
+                    </ul>
+
+                    <h6 class="mt-4" id="assistant-embed">{{ __('Embed the assistant on a client website') }}</h6>
+                    <p>{{ __('Copy the cms8 snippet from Assistant settings or Chat settings and paste it before the closing body tag of the client site. The snippet is always available.') }}</p>
+                    <pre class="language-html"><code>&lt;div data-cms8-widget="assistant"&gt;&lt;/div&gt;
+&lt;script&gt;
+  window.CMS8_WIDGETS_API_BASE = "{{ url('/api/embed/automation/PUBLIC_TOKEN') }}";
+&lt;/script&gt;
+&lt;script src="{{ url('/js/cms8-widgets.js') }}" async&gt;&lt;/script&gt;</code></pre>
+                    <p>{{ __('Replace PUBLIC_TOKEN with the public token shown in settings (or on the Asistente web automation). The widget calls:') }}</p>
+                    <ul>
+                        <li><code>GET {{ url('/api/embed/automation/{token}') }}</code> — {{ __('name and welcome message') }}</li>
+                        <li><code>POST {{ url('/api/embed/automation/{token}/assistant') }}</code> — {{ __('JSON body:') }} <code>{"message":"...","session_key":"..."}</code></li>
+                    </ul>
+                    <p class="mb-0">{{ __('Keep the API channel enabled on that automation. Regenerating the public token in the automation form invalidates the old snippet.') }}</p>
+
                     <h6 class="mt-4" id="assistant-flow-routing">{{ __('Team flow prompts and routing') }}</h6>
-                    <p>{{ __('The Humano Assistant can merge extra instructions from per-team prompts (module prompts). Each prompt has a module (optional), a stable section key, a section label, and the instruction text for the model.') }}</p>
+                    <p>{{ __('The cms8 Assistant can merge extra instructions from per-team prompts (module prompts). Each prompt has a module (optional), a stable section key, a section label, and the instruction text for the model.') }}</p>
                     <ul>
                         <li>{{ __('Routing key: if the prompt has a module, the key is «module_key:section_key» (e.g. «chat:onboarding»). Without a module, the routing key is just «section_key».') }}</li>
                         <li>{{ __('Manage prompts from the prompts list in the app (authenticated users).') }} <span class="text-muted">{{ __('Path: /prompt/list') }}</span></li>
@@ -110,7 +134,7 @@ php artisan humano:system-onboarding "+34600111222" --team=YOUR_TEAM_ID</code></
                     </ul>
 
                     <h6 class="mt-4">{{ __('Sticky flow and reset') }}</h6>
-                    <p>{{ __('When a tool flow is active, the routing key may stick across messages until the user clearly changes topic. Substrings configured under assistant_tool_intent_prompts (e.g. «cambiar de tema») clear the sticky key and re-evaluate routing for that message.') }}</p>
+                    <p>{{ __('When a tool flow is active, the routing key may stick across messages until the user clearly changes topic. Substrings configured under assistant_tool_intent_prompts (e.g. «cambiar de tema», «salir del embudo», «empezar de nuevo») clear the sticky key and also abandon an open funnel session, then re-evaluate routing for that message.') }}</p>
 
                     <h6 class="mt-4">{{ __('Environment') }}</h6>
                     <p>{{ __('Global intent routing can be disabled with ASSISTANT_TOOL_INTENT_PROMPTS=false. Minimum match score can be tuned with ASSISTANT_TOOL_INTENT_PROMPTS_MIN_SCORE.') }}</p>

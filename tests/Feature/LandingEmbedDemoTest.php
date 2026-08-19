@@ -10,8 +10,9 @@ class LandingEmbedDemoTest extends TestCase
     {
         $this->get('/landing')
             ->assertOk()
-            ->assertSee('data-humano-widget="calendar"', false)
-            ->assertSee('humano-widgets.js', false);
+            ->assertSee('data-cms8-widget="calendar"', false)
+            ->assertSee('CMS8_WIDGETS_API_BASE', false)
+            ->assertSee('cms8-widgets.js', false);
     }
 
     public function test_embed_demo_calendar_returns_json(): void

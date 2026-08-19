@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\ExternalProvider;
+use App\Http\Requests\StoreTeamSiteAssistantPromptRequest;
 use App\Http\Requests\UpdateTeamEmailSenderRequest;
 use App\Http\Requests\UpdateTeamSettingsRequest;
+use App\Http\Requests\UpdateTeamSiteAssistantPromptRequest;
 use App\Models\ContactValoration;
 use App\Models\Currency;
 use App\Models\CustomTranslation;
@@ -16,6 +18,7 @@ use App\Services\AstralChartService;
 use App\Services\DefaultAssistantFlowPromptsService;
 use App\Services\Fiscal\Cuentica\CuenticaClientFactory;
 use App\Services\Fiscal\Exceptions\FiscalExportException;
+use App\Services\TeamSiteAssistantPromptService;
 use App\Services\TokenUsageLogService;
 use App\Services\WebDavApiClient;
 use App\Support\AffiliateCommission;
@@ -204,7 +207,29 @@ class TeamSettingController extends Controller
 
         $settings = $this->getSettingsConfig($team, $group);
 
-        return view('team-settings.edit', compact('team', 'settings', 'group'));
+        $siteAssistantPromptOptions = [];
+        $siteAssistantSelectedKey = null;
+        $siteAssistantEmbedSnippet = null;
+        $siteAssistantDefaultInstruction = null;
+        if ($group === 'chat')
+        {
+            $siteAssistant = app(TeamSiteAssistantPromptService::class);
+            $siteAssistantPayload = $siteAssistant->settingsPayload($team);
+            $siteAssistantPromptOptions = $siteAssistantPayload['prompts'];
+            $siteAssistantSelectedKey = $siteAssistantPayload['selected_key'];
+            $siteAssistantEmbedSnippet = $siteAssistantPayload['embed']['snippet'];
+            $siteAssistantDefaultInstruction = $siteAssistantPayload['default_instruction'];
+        }
+
+        return view('team-settings.edit', compact(
+            'team',
+            'settings',
+            'group',
+            'siteAssistantPromptOptions',
+            'siteAssistantSelectedKey',
+            'siteAssistantEmbedSnippet',
+            'siteAssistantDefaultInstruction',
+        ));
     }
 
     public function update(UpdateTeamSettingsRequest $request, Team $team)
@@ -453,6 +478,58 @@ class TeamSettingController extends Controller
         return redirect()
             ->back()
             ->with('success', __('Default assistant flow prompts are ready. You can review and edit them in Prompts.'));
+    }
+
+    public function updateSiteAssistantPrompt(UpdateTeamSiteAssistantPromptRequest $request, Team $team, TeamSiteAssistantPromptService $siteAssistant)
+    {
+        if ((int) $team->id !== (int) (auth()->user()->currentTeam?->id))
+        {
+            return redirect()
+                ->back()
+                ->with('error', __('Switch to this team in the app bar to run this action.'));
+        }
+
+        try
+        {
+            $siteAssistant->select($team, $request->validated('prompt_key'));
+        } catch (\InvalidArgumentException $e)
+        {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', __('team_settings.site_assistant.saved'));
+    }
+
+    public function storeSiteAssistantPrompt(StoreTeamSiteAssistantPromptRequest $request, Team $team, TeamSiteAssistantPromptService $siteAssistant)
+    {
+        if ((int) $team->id !== (int) (auth()->user()->currentTeam?->id))
+        {
+            return redirect()
+                ->back()
+                ->with('error', __('Switch to this team in the app bar to run this action.'));
+        }
+
+        try
+        {
+            $siteAssistant->create(
+                $team,
+                (string) $request->validated('section_label'),
+                (string) $request->validated('prompt_instruction'),
+            );
+        } catch (\InvalidArgumentException $e)
+        {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->back()
+            ->with('success', __('team_settings.site_assistant.created'));
     }
 
     /**

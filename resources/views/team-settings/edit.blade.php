@@ -13,8 +13,9 @@
 
 @section('content')
 @php
-    $groupTitle = TeamSettingsLabels::groupTitle($group ?? '');
-    $groupSubtitle = TeamSettingsLabels::groupSubtitle($group ?? '');
+    $settingsGroup = $group ?? '';
+    $groupTitle = TeamSettingsLabels::groupTitle($settingsGroup);
+    $groupSubtitle = TeamSettingsLabels::groupSubtitle($settingsGroup);
     $headerActions = '';
     if (($group ?? '') === 'cuentica') {
         $headerActions = '<button type="button" id="btnTestCuentica" class="btn btn-info waves-effect waves-light" data-url="'.e(route('team-settings.test-cuentica', $team)).'"><i class="ti ti-plug-connected me-1"></i>'.e(__('Probar conexión')).'</button>';
@@ -273,7 +274,15 @@
                 @endforeach
             </form>
 
-            @if (($group ?? '') === 'chat')
+            @if ($settingsGroup === 'chat')
+                @include('team-settings.partials.site-assistant-prompt', [
+                    'team' => $team,
+                    'siteAssistantPromptOptions' => $siteAssistantPromptOptions ?? [],
+                    'siteAssistantSelectedKey' => $siteAssistantSelectedKey ?? null,
+                    'siteAssistantEmbedSnippet' => $siteAssistantEmbedSnippet ?? null,
+                    'siteAssistantDefaultInstruction' => $siteAssistantDefaultInstruction ?? '',
+                ])
+
                 <div class="card mb-4">
                     <h5 class="card-header d-flex align-items-center">
                         <i class="ti ti-file-text me-2"></i>

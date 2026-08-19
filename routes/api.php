@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\TeamAssistantController;
@@ -85,7 +86,7 @@ Route::prefix('embed/automation/{token}')->middleware('throttle:60,1')->group(fu
 {
     Route::get('/', [PublicAutomationEmbedController::class, 'meta'])->name('api.embed.automation.meta');
     Route::post('chat', [PublicAutomationEmbedController::class, 'chat'])->name('api.embed.automation.chat');
-    // Alias matching humano-widgets.js fetch(base + '/assistant')
+    // Alias matching cms8-widgets.js fetch(base + '/assistant')
     Route::post('assistant', [PublicAutomationEmbedController::class, 'chat'])->name('api.embed.automation.assistant');
 });
 
@@ -470,6 +471,10 @@ Route::middleware('auth.api')->group(function ()
     Route::post('assistant/checkout', [AssistantSubscriptionController::class, 'checkout'])->name('api.assistant.checkout');
     Route::post('assistant/checkout/complete', [AssistantSubscriptionController::class, 'complete'])->name('api.assistant.checkout.complete');
     Route::post('assistant/payment-method', [AssistantSubscriptionController::class, 'paymentMethod'])->name('api.assistant.payment-method');
+    Route::get('assistant/site-prompt', [SiteAssistantPromptController::class, 'show'])->name('api.assistant.site-prompt.show');
+    Route::put('assistant/site-prompt', [SiteAssistantPromptController::class, 'update'])->name('api.assistant.site-prompt.update');
+    Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');
+    Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
 
     // Mobile dashboard summary
     Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');

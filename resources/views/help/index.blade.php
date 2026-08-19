@@ -126,6 +126,7 @@
                                             <h5 class="card-title">{{ __('Chat and Assistant') }}</h5>
                                             <p class="card-text">{{ __('Assistant chat, team flow prompts (routing keys), sidebar settings, and keyword vs AI flow selection.') }}</p>
                                             <a href="{{ route('help.chat-assistant') }}" class="btn btn-warning">{{ __('View documentation') }}</a>
+                                            <a href="{{ route('help.chat-assistant') }}#assistant-embed" class="btn btn-outline-warning ms-1">{{ __('Embed on a website') }}</a>
                                         </div>
                                     </div>
                                 </div>

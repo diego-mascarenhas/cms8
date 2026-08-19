@@ -56,7 +56,8 @@ class HelpDocumentationCompletenessTest extends TestCase
             ->assertOk()
             ->assertSee(route('help.plugins', [], false), false)
             ->assertSee(route('help.paid-ads-setup', [], false), false)
-            ->assertSee(route('manual.index', [], false), false);
+            ->assertSee(route('manual.index', [], false), false)
+            ->assertSee(route('help.chat-assistant').'#assistant-embed', false);
     }
 
     public function test_paid_ads_uses_help_layout_sidebar(): void

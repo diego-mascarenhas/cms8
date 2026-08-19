@@ -356,6 +356,8 @@ Route::middleware(['auth'])->group(function ()
     Route::put('/team/{team}/settings', [TeamSettingController::class, 'update'])->name('team-settings.update');
     Route::put('/team/{team}/settings/email-sender', [TeamSettingController::class, 'updateEmailSender'])->name('team-settings.update-email-sender');
     Route::post('/team/{team}/settings/chat/seed-default-assistant-prompts', [TeamSettingController::class, 'seedDefaultAssistantFlowPrompts'])->name('team-settings.chat.seed-default-assistant-prompts');
+    Route::post('/team/{team}/settings/chat/site-assistant-prompt', [TeamSettingController::class, 'updateSiteAssistantPrompt'])->name('team-settings.chat.site-assistant-prompt');
+    Route::post('/team/{team}/settings/chat/site-assistant-prompt/create', [TeamSettingController::class, 'storeSiteAssistantPrompt'])->name('team-settings.chat.site-assistant-prompt.store');
     Route::post('/team/{team}/test-smtp', [TeamSettingController::class, 'testSmtpConnection'])->name('team-settings.test-smtp');
     Route::post('/team/{team}/test-imap', [TeamSettingController::class, 'testImapConnection'])->name('team-settings.test-imap');
     Route::post('/team/{team}/test-stripe', [TeamSettingController::class, 'testStripeConnection'])->name('team-settings.test-stripe');
