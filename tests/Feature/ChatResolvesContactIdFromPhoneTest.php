@@ -73,6 +73,6 @@ class ChatResolvesContactIdFromPhoneTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('chat.index', ['phone' => '34722372858']));
 
-        $response->assertForbidden();
+        $response->assertDeniedForBrowser();
     }
 }

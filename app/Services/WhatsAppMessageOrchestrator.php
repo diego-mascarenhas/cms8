@@ -1153,6 +1153,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     }
 
                     $forcedFlowRoutingKey = $this->resolveForcedFlowRoutingKeyForWhatsApp($history, (string) $body);
+                    if ($forcedFlowRoutingKey === null && $contextContactId !== null)
+                    {
+                        $forcedFlowRoutingKey = Contact::withoutGlobalScopes()
+                            ->find((int) $contextContactId)
+                            ?->inboundChatAssistantPromptKey();
+                    }
                     $flowAppendix = null;
                     $flowSession = null;
                     if ($assistantTeamId !== null)

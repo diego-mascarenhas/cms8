@@ -34,7 +34,7 @@ class DepartmentIndexTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('department.index'));
 
-        $response->assertForbidden();
+        $response->assertDeniedForBrowser();
     }
 
     private function createUserWithRole(string $roleName): User

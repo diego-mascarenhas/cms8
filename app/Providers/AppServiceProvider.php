@@ -10,12 +10,14 @@ use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\SubscriptionProduct;
 use App\Models\Task;
+use App\Models\Team;
 use App\Models\TicketResponse;
 use App\Observers\CalendarEventWebDavOutboundObserver;
 use App\Observers\ContactGoogleOutboundObserver;
 use App\Observers\ContactWebDavOutboundObserver;
 use App\Observers\SubscriptionProductObserver;
 use App\Observers\TaskWebDavOutboundObserver;
+use App\Observers\TeamDefaultPromptsObserver;
 use App\Observers\TicketResponseObserver;
 use App\Services\AssistantToolsService;
 use App\Services\Fiscal\Cuentica\CuenticaFiscalExportAdapter;
@@ -97,6 +99,7 @@ class AppServiceProvider extends ServiceProvider
         Contact::observe(ContactWebDavOutboundObserver::class);
         CalendarEvent::observe(CalendarEventWebDavOutboundObserver::class);
         Task::observe(TaskWebDavOutboundObserver::class);
+        Team::observe(TeamDefaultPromptsObserver::class);
 
         $this->registerPublicTeamInvitationAcceptRoute();
         $this->registerLivewireComponentOverrides();

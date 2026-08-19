@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Domain;
 use App\Models\Server;
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class DomainSuspensionTest extends TestCase
@@ -23,10 +25,7 @@ class DomainSuspensionTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = \App\Models\Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->infrastructureAdmin();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -69,10 +68,7 @@ class DomainSuspensionTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = \App\Models\Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->infrastructureAdmin();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -115,10 +111,7 @@ class DomainSuspensionTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = \App\Models\Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->infrastructureAdmin();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -149,10 +142,7 @@ class DomainSuspensionTest extends TestCase
     {
         Http::fake();
 
-        $user = User::factory()->create();
-        $team = \App\Models\Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->infrastructureAdmin();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -207,10 +197,7 @@ class DomainSuspensionTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = \App\Models\Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->infrastructureAdmin();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -236,5 +223,22 @@ class DomainSuspensionTest extends TestCase
         $response->assertRedirect(route('domain.show', $domain->id));
         $response->assertSessionHas('success');
         $this->assertTrue($domain->fresh()->suspended);
+    }
+
+    /**
+     * Domains live behind the `access-infrastructure-modules` gate, which reads a Spatie role
+     * ({@see \App\Models\User::canAccessInfrastructure}), not the team pivot role.
+     *
+     * @return array{0: User, 1: Team}
+     */
+    private function infrastructureAdmin(): array
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+
+        return [$user->refresh(), $team];
     }
 }

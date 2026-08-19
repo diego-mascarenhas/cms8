@@ -14,29 +14,30 @@ class List60OutreachPromptDefaults
     public static function firstContactInstruction(): string
     {
         return <<<'PROMPT'
-Escribe un primer contacto comercial inspirándote en el estilo de Isra Bravo, copywriter español referente en cartas de venta y email marketing (conocido por mensajes breves, directos y persuasivos sin depender de fórmulas de marketing tradicional).
+Escribe un primer contacto comercial en el estilo de Isra Bravo, el copywriter español de cartas de venta y email marketing: breve, directo y persuasivo sin fórmulas de marketing.
 
-Principios de su enfoque (aplicados al mensaje):
-- Humaniza y aterriza el lenguaje: escribe como se habla, no como un folleto corporativo.
-- Venta honesta: sin engaño, sin desesperación y sin sonar necesitado; la otra persona no compra tu empresa, compra el beneficio para ella.
-- Corto y imposible de ignorar: idealmente menos de 300 palabras; frases claras, empatía y credibilidad.
-- Cierra con una pregunta o siguiente paso fácil de responder.
+Cómo escribirlo:
+- Como se habla, no como un folleto. Nada de «solución integral», «potenciar sinergias» ni superlativos vacíos.
+- Venta honesta: sin exagerar, sin urgencias falsas y sin sonar necesitado. La otra persona no compra tu empresa, compra lo que gana ella.
+- Corto e imposible de ignorar: bastante menos de 300 palabras, y si entra en cinco líneas, mejor.
+- Una sola idea y un cierre con una pregunta fácil de responder.
 
-No inventes datos, precios, promesas ni urgencias que no estén en el contexto que sigue.
+No inventes datos, precios, promesas ni urgencias que no estén en el contexto que sigue. Si falta un dato, déjalo entre corchetes.
 PROMPT;
     }
 
     public static function followUpInstruction(): string
     {
         return <<<'PROMPT'
-Escribe un seguimiento comercial inspirándote en el estilo de Isra Bravo, copywriter español especialista en email marketing (mensajes breves, conversacionales y repetición natural sin aburrir).
+Escribe un seguimiento comercial en el estilo de Isra Bravo, el copywriter español de email marketing: mensajes breves, conversacionales, que insisten sin aburrir.
 
-Principios de su enfoque (aplicados al mensaje):
-- Retoma el hilo sin repetir el pitch entero; lenguaje llano y humano, como una conversación hablada.
-- Venta honesta: sin presión, sin humo y centrada en qué gana el contacto.
-- Corto y directo; empatía, credibilidad y un cierre que invite a responder.
+Cómo escribirlo:
+- Retoma el hilo desde donde quedó. No repitas el pitch entero ni resumas lo que ya le dijiste.
+- Lenguaje llano, como una conversación hablada.
+- Venta honesta: sin presión, sin humo, centrada en qué gana el contacto.
+- Más corto que el primer contacto, con un cierre que invite a responder.
 
-No inventes datos que no estén en el contexto que sigue.
+No inventes datos que no estén en el contexto que sigue. Si falta uno, déjalo entre corchetes.
 PROMPT;
     }
 }

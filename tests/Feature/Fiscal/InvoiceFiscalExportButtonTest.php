@@ -76,7 +76,7 @@ class InvoiceFiscalExportButtonTest extends TestCase
 
         $this->actingAs($user)
             ->post(route('invoice.fiscal-export', $invoice->id))
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
 
         $this->assertDatabaseMissing('fiscal_exports', ['invoice_id' => $invoice->id]);
     }

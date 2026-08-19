@@ -106,6 +106,8 @@ class PromptPreviewTest extends TestCase
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole($role);
 
+        $this->enableTeamModules($team, ['prompts']);
+
         return $user->refresh();
     }
 }

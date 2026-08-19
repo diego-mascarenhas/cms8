@@ -38,23 +38,25 @@ class BillingIndexApiUsageWidgetTest extends TestCase
         $response->assertSee('Uso de API & Ahorro', false);
     }
 
-    public function test_billing_index_hides_api_usage_widget_for_non_admin_roles(): void
+    /**
+     * The widget is unreachable rather than hidden: billing itself is gated on admin/root
+     * ({@see \App\Models\User::canAccessBilling}), so a user without either role never gets the page.
+     */
+    public function test_billing_index_is_denied_for_non_admin_roles(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
 
-        $response = $this->actingAs($user)->get(route('billing.index'));
-
-        $response->assertOk();
-        $response->assertDontSee('Uso de API & Ahorro', false);
+        $this->actingAs($user)
+            ->get(route('billing.index'))
+            ->assertDeniedForBrowser();
     }
 
     public function test_billing_index_hides_affiliates_section_when_team_was_referred(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->billingAdmin();
         $team = $user->ownedTeams()->first();
         $team->forceFill(['referred_by' => 'cus_some_referrer'])->save();
-        $user->forceFill(['current_team_id' => $team->id])->save();
 
         $response = $this->actingAs($user)->get(route('billing.index'));
 
@@ -65,13 +67,22 @@ class BillingIndexApiUsageWidgetTest extends TestCase
 
     public function test_billing_index_shows_affiliates_section_without_affiliates_module(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user = $this->billingAdmin();
 
         $response = $this->actingAs($user)->get(route('billing.index'));
 
         $response->assertOk();
         $response->assertSee('Invitaciones enviadas', false);
+    }
+
+    private function billingAdmin(): User
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+
+        return $user;
     }
 }

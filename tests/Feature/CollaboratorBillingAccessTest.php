@@ -18,41 +18,41 @@ class CollaboratorBillingAccessTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('invoice.index'))
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     public function test_collaborator_cannot_access_payments_income_or_expense_lists(): void
     {
         $user = $this->makeCollaboratorUser();
 
-        $this->actingAs($user)->get(route('payments.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('income.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('expense.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('payments.index'))->assertDeniedForBrowser();
+        $this->actingAs($user)->get(route('income.index'))->assertDeniedForBrowser();
+        $this->actingAs($user)->get(route('expense.index'))->assertDeniedForBrowser();
     }
 
     public function test_collaborator_cannot_access_subscription_or_finance_dashboard(): void
     {
         $user = $this->makeCollaboratorUser();
 
-        $this->actingAs($user)->get(route('subscription.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('finance-dashboard.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('billing.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('subscription.index'))->assertDeniedForBrowser();
+        $this->actingAs($user)->get(route('finance-dashboard.index'))->assertDeniedForBrowser();
+        $this->actingAs($user)->get(route('billing.index'))->assertDeniedForBrowser();
     }
 
     public function test_collaborator_cannot_access_fare_or_enterprise_lists(): void
     {
         $user = $this->makeCollaboratorUser();
 
-        $this->actingAs($user)->get(route('fare.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('enterprise.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('fare.index'))->assertDeniedForBrowser();
+        $this->actingAs($user)->get(route('enterprise.index'))->assertDeniedForBrowser();
     }
 
     public function test_collaborator_cannot_access_server_or_hosting(): void
     {
         $user = $this->makeCollaboratorUser();
 
-        $this->actingAs($user)->get(route('server.index'))->assertForbidden();
-        $this->actingAs($user)->get(route('hosting.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('server.index'))->assertDeniedForBrowser();
+        $this->actingAs($user)->get(route('hosting.index'))->assertDeniedForBrowser();
     }
 
     public function test_collaborator_cannot_access_infrastructure_gate(): void
@@ -93,7 +93,7 @@ class CollaboratorBillingAccessTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('invoice.index'))
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     public function test_client_cannot_access_billing_per_model_and_gate(): void

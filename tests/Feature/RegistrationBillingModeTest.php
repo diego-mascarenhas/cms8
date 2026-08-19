@@ -8,6 +8,7 @@ use App\Models\SubscriptionProduct;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RegistrationBillingModeTest extends TestCase
@@ -280,9 +281,8 @@ class RegistrationBillingModeTest extends TestCase
             'recurring_interval' => 'month',
         ]);
 
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->billingUser();
         $team = $user->ownedTeams()->first();
-        $user->forceFill(['current_team_id' => $team->id])->save();
 
         $this->actingAs($user)
             ->get(route('subscription.billing-info', [
@@ -537,9 +537,8 @@ class RegistrationBillingModeTest extends TestCase
             'category' => null,
         ]);
 
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->billingUser();
         $team = $user->ownedTeams()->first();
-        $user->forceFill(['current_team_id' => $team->id])->save();
 
         $this->actingAs($user)
             ->get(route('subscription.billing-info', [
@@ -547,5 +546,18 @@ class RegistrationBillingModeTest extends TestCase
                 'product_id' => $product->id,
             ]))
             ->assertOk();
+    }
+
+    /**
+     * SubscriptionController is gated on `access-billing-modules`, which reads a Spatie role
+     * ({@see \App\Models\User::canAccessBilling}).
+     */
+    private function billingUser(): User
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+
+        return $user->refresh();
     }
 }

@@ -2,7 +2,10 @@
 
 namespace Tests;
 
+use App\Models\Module;
+use App\Models\Team;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Testing\TestResponse;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -18,6 +21,42 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         $this->assertTestsUseIsolatedDatabase();
         config(['daily_performance_insight.use_llm' => false]);
+        $this->registerDeniedForBrowserAssertion();
+    }
+
+    /**
+     * Activate modules for a team, creating the catalog rows the ModuleSeeder would have
+     * created. Lets a test name the modules it needs without seeding the whole catalog.
+     *
+     * @param  list<string>  $moduleKeys
+     */
+    protected function enableTeamModules(Team $team, array $moduleKeys): void
+    {
+        foreach ($moduleKeys as $moduleKey)
+        {
+            Module::firstOrCreate(
+                ['key' => $moduleKey],
+                ['name' => $moduleKey, 'description' => $moduleKey, 'is_core' => 0, 'status' => 1, 'order' => 0],
+            );
+
+            $team->enableModule($moduleKey);
+        }
+
+        $team->unsetRelation('modules');
+    }
+
+    /**
+     * `assertForbidden()` never matches a page request: the exception handler in bootstrap/app.php
+     * turns a 403 into a redirect to the "not authorized" screen so the user keeps the chrome and
+     * a readable message. Only JSON requests still get the bare 403.
+     */
+    private function registerDeniedForBrowserAssertion(): void
+    {
+        TestResponse::macro('assertDeniedForBrowser', function (): TestResponse
+        {
+            /** @var TestResponse $this */
+            return $this->assertRedirect('/misc-not-authorized');
+        });
     }
 
     protected function assertTestsUseIsolatedDatabase(): void

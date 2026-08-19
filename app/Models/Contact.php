@@ -90,6 +90,22 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * Forced team prompt for inbound WhatsApp replies. Empty means team default / router.
+     */
+    public function inboundChatAssistantPromptKey(): ?string
+    {
+        $d = $this->data;
+        if ($d === null || ! is_object($d) || ! property_exists($d, 'chat_assistant_prompt_key'))
+        {
+            return null;
+        }
+
+        $key = trim((string) $d->chat_assistant_prompt_key);
+
+        return $key !== '' ? $key : null;
+    }
+
+    /**
      * Scope to exclude collaborators removed from a specific project
      */
     public function scopeExcludeRemovedFromProject($query, $projectId)

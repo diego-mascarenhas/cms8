@@ -76,7 +76,7 @@ class TeamFileTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('team-file.index'));
 
-        $response->assertForbidden();
+        $response->assertDeniedForBrowser();
     }
 
     public function test_store_rejects_executable_extension(): void

@@ -6,6 +6,7 @@ use App\Models\CalendarEvent;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AppCalendarEventTimezoneTest extends TestCase
@@ -14,7 +15,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_store_rejects_timed_event_when_end_equals_start(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $user->refresh();
         $this->assertNotNull($user->currentTeam, 'Test user must have a current team.');
 
@@ -33,7 +34,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_store_preserves_utc_instant_from_iso8601_payload(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $team = $user->currentTeam;
 
         $startIso = '2026-05-15T14:42:00.000Z';
@@ -59,7 +60,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_update_preserves_utc_instant_from_iso8601_payload(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $team = $user->currentTeam;
 
         $this->actingAs($user);
@@ -89,7 +90,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_store_all_day_event_accepts_same_start_and_end_date(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $team = $user->currentTeam;
 
         $response = $this->actingAs($user)->postJson(route('app-calendar-events-store'), [
@@ -112,7 +113,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_store_all_day_multi_day_event_uses_exclusive_end_date(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $team = $user->currentTeam;
 
         $response = $this->actingAs($user)->postJson(route('app-calendar-events-store'), [
@@ -133,7 +134,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_update_can_disable_all_day_flag(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $team = $user->currentTeam;
 
         $this->actingAs($user);
@@ -164,7 +165,7 @@ class AppCalendarEventTimezoneTest extends TestCase
 
     public function test_update_accepts_drag_and_drop_datetime_payload(): void
     {
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = $this->calendarUser();
         $team = $user->currentTeam;
 
         $this->actingAs($user);
@@ -189,5 +190,16 @@ class AppCalendarEventTimezoneTest extends TestCase
         $event->refresh();
         $this->assertTrue($event->start->utc()->equalTo(Carbon::parse('2026-05-15T11:00:00.000Z')->utc()));
         $this->assertTrue($event->end->utc()->equalTo(Carbon::parse('2026-05-15T12:30:00.000Z')->utc()));
+    }
+
+    /**
+     * CalendarEventPolicy grants access by role, so a personal team on its own is not enough.
+     */
+    private function calendarUser(): User
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin'], ['guard_name' => 'web']));
+
+        return $user->refresh();
     }
 }

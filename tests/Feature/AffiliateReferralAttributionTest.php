@@ -21,6 +21,10 @@ class AffiliateReferralAttributionTest extends TestCase
         {
             config(['humano_pricing' => require config_path('humano_pricing.php')]);
         }
+
+        // /pricing bounces to the slash landing when that landing is the public home, and whether
+        // it is depends on the developer's .env. Pin it so these tests actually reach the page.
+        config(['app.public_home_route' => 'pricing']);
     }
 
     public function test_capture_route_stores_session_and_redirects_to_stripe(): void

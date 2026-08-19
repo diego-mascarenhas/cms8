@@ -30,4 +30,20 @@ class ContactAllowsInboundChatAssistantTest extends TestCase
 
         $this->assertFalse($contact->allowsInboundChatAssistant());
     }
+
+    public function test_inbound_prompt_key_is_null_when_missing(): void
+    {
+        $contact = new Contact;
+        $contact->data = (object) ['chat_assistant_ai_enabled' => true];
+
+        $this->assertNull($contact->inboundChatAssistantPromptKey());
+    }
+
+    public function test_inbound_prompt_key_returns_trimmed_value(): void
+    {
+        $contact = new Contact;
+        $contact->data = (object) ['chat_assistant_prompt_key' => ' chat:citas_y_ventas '];
+
+        $this->assertSame('chat:citas_y_ventas', $contact->inboundChatAssistantPromptKey());
+    }
 }

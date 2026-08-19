@@ -6,6 +6,7 @@ use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
+use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
 use App\Jobs\SendScheduledMessageJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -24,6 +25,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\TeamInboundAssistantPolicy;
+use App\Services\TeamSiteAssistantPromptService;
 use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
@@ -974,14 +976,10 @@ class ChatController extends Controller
 
     /**
      * Per-contact inbound WhatsApp assistant (same flag as web chat CRM / {@see Contact::allowsInboundChatAssistant}).
+     * An empty prompt_key turns the assistant off; a routing key enables it and pins that prompt.
      */
-    public function updateWhatsAppContactAssistant(Request $request)
+    public function updateWhatsAppContactAssistant(UpdateWhatsAppContactAssistantRequest $request)
     {
-        $request->validate([
-            'phone' => ['required', 'string'],
-            'on' => ['required', 'boolean'],
-        ]);
-
         if (! auth()->check() || ! auth()->user()->currentTeam)
         {
             return response()->json(['success' => false], 401);
@@ -1019,10 +1017,38 @@ class ChatController extends Controller
             return response()->json(array_merge([
                 'success' => false,
                 'message' => __('La IA se activa cuando el plan Assistant está vigente. Los tokens se facturan aparte.'),
-            ], $inboundPolicy->presentWhatsAppAssistantState($team, false, false)), 403);
+            ], $inboundPolicy->presentWhatsAppAssistantState($team, false, false), $this->whatsAppThreadPromptMeta($team, $contact)), 403);
         }
 
-        $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
+        $siteAssistant = app(TeamSiteAssistantPromptService::class);
+        $hasPromptKey = $request->exists('prompt_key');
+        $promptKey = $hasPromptKey ? trim((string) $request->input('prompt_key', '')) : null;
+
+        if ($hasPromptKey && $promptKey !== '')
+        {
+            $prompt = Prompt::findByRoutingKey($promptKey, (int) $team->id);
+            if (! $prompt || ! $prompt->is_active)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('team_settings.site_assistant.invalid_prompt'),
+                ], 422);
+            }
+
+            $this->applyContactInboundAssistantPreference($contact, true, $siteAssistant->routingKeyFor($prompt));
+        } elseif ($hasPromptKey)
+        {
+            $this->applyContactInboundAssistantPreference($contact, $request->boolean('on', false), null);
+        } else
+        {
+            $enabled = $request->boolean('on');
+            $this->applyContactInboundAssistantPreference(
+                $contact,
+                $enabled,
+                $enabled ? $contact->inboundChatAssistantPromptKey() : null,
+            );
+        }
+
         $contact->refresh();
 
         $inboundUser = $contact->user_id ? User::query()->find($contact->user_id) : null;
@@ -1033,11 +1059,11 @@ class ChatController extends Controller
             $team,
             $inboundPolicy->allowsWhatsAppAutoReply($team, $inboundUser, (int) $team->id, $digits),
             true,
-        )));
+        ), $this->whatsAppThreadPromptMeta($team, $contact)));
     }
 
     /**
-     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null}
+     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null, prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
      */
     private function whatsAppThreadAssistantMetaForDigits(string $digits): array
     {
@@ -1045,13 +1071,13 @@ class ChatController extends Controller
         $inboundPolicy = app(TeamInboundAssistantPolicy::class);
         if (! $team || $digits === '')
         {
-            return [
+            return array_merge([
                 'contact_id' => null,
                 'assistant_inbound_enabled' => false,
                 'assistant_toggle_available' => false,
                 'assistant_plan_active' => false,
                 'assistant_locked_reason' => 'plan',
-            ];
+            ], $this->whatsAppThreadPromptMeta(null, null));
         }
 
         $crm = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
@@ -1064,10 +1090,36 @@ class ChatController extends Controller
 
         return array_merge([
             'contact_id' => $crm ? (int) $crm->id : null,
-        ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null));
+        ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null), $this->whatsAppThreadPromptMeta($team, $crm));
     }
 
-    private function applyContactInboundAssistantEnabled(Contact $contact, bool $on): void
+    /**
+     * @return array{prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
+     */
+    private function whatsAppThreadPromptMeta(?Team $team, ?Contact $contact): array
+    {
+        $siteAssistant = app(TeamSiteAssistantPromptService::class);
+        $prompts = [];
+        if ($team)
+        {
+            foreach ($siteAssistant->promptOptions($team) as $option)
+            {
+                $prompts[] = [
+                    'key' => $option['key'],
+                    'label' => $option['section_label'],
+                    'section_label' => $option['section_label'],
+                ];
+            }
+        }
+
+        return [
+            'prompt_key' => $contact?->inboundChatAssistantPromptKey(),
+            'default_prompt_key' => $team ? $siteAssistant->selectedRoutingKey($team) : null,
+            'prompts' => $prompts,
+        ];
+    }
+
+    private function applyContactInboundAssistantPreference(Contact $contact, bool $on, ?string $promptKey): void
     {
         $payload = json_encode($contact->data ?? new \stdClass);
         $data = json_decode($payload ?: '{}', true);
@@ -1076,6 +1128,14 @@ class ChatController extends Controller
             $data = [];
         }
         $data['chat_assistant_ai_enabled'] = $on;
+        $key = $promptKey !== null ? trim($promptKey) : '';
+        if ($key !== '')
+        {
+            $data['chat_assistant_prompt_key'] = $key;
+        } else
+        {
+            unset($data['chat_assistant_prompt_key']);
+        }
         $contact->data = $data;
         $contact->save();
     }
@@ -1209,7 +1269,12 @@ class ChatController extends Controller
 
             $this->authorize('update', $contact);
 
-            $this->applyContactInboundAssistantEnabled($contact, $request->boolean('on'));
+            $enabled = $request->boolean('on');
+            $this->applyContactInboundAssistantPreference(
+                $contact,
+                $enabled,
+                $enabled ? $contact->inboundChatAssistantPromptKey() : null,
+            );
 
             return response()->json(['success' => true]);
         }

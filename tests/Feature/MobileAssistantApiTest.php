@@ -50,7 +50,13 @@ class MobileAssistantApiTest extends TestCase
         }
     }
 
-    private function assistantUserWithToken(): array
+    /**
+     * The API gates each endpoint on the modules the plan grants ({@see \App\Http\Controllers\Api\Concerns\ChecksTeamModule}),
+     * so a test hitting an endpoint outside the assistant bundle has to name the plan that includes it.
+     *
+     * @return array{0: User, 1: \App\Models\Team, 2: string}
+     */
+    private function assistantUserWithToken(string $planSlug = 'assistant'): array
     {
         if (! Features::hasTeamFeatures())
         {
@@ -66,7 +72,7 @@ class MobileAssistantApiTest extends TestCase
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
 
-        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, 'assistant');
+        app(TeamModulesByPricingPlanSyncer::class)->syncForHumanoPricingPlan($team, $planSlug);
 
         $token = $user->createToken('mobile-test')->plainTextToken;
 
@@ -200,7 +206,7 @@ class MobileAssistantApiTest extends TestCase
 
     public function test_emails_endpoint_returns_inbox_messages(): void
     {
-        [$user, $team, $token] = $this->assistantUserWithToken();
+        [$user, $team, $token] = $this->assistantUserWithToken('hunter');
 
         Email::factory()->create([
             'team_id' => $team->id,
@@ -218,7 +224,7 @@ class MobileAssistantApiTest extends TestCase
 
     public function test_message_endpoint_returns_campaign_list_like_web(): void
     {
-        [, $team, $token] = $this->assistantUserWithToken();
+        [, $team, $token] = $this->assistantUserWithToken('hunter');
 
         Message::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -250,7 +256,7 @@ class MobileAssistantApiTest extends TestCase
 
     public function test_message_show_returns_campaign_detail(): void
     {
-        [, $team, $token] = $this->assistantUserWithToken();
+        [, $team, $token] = $this->assistantUserWithToken('hunter');
 
         $message = Message::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -278,7 +284,7 @@ class MobileAssistantApiTest extends TestCase
                     'open_rate',
                 ],
                 'sender' => ['from_name', 'from_address', 'configured'],
-                'category_label',
+                'contact_categories_label',
                 'contact_status_label',
                 'stats_updated_at_label',
                 'status',

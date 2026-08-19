@@ -76,7 +76,7 @@ class AssistantActivityPageTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('assistant.activity'));
 
-        $response->assertForbidden();
+        $response->assertDeniedForBrowser();
     }
 
     public function test_admin_can_view_team_document_ingestions_page(): void

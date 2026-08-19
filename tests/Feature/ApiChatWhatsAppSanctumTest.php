@@ -5,10 +5,13 @@ namespace Tests\Feature;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Conversation;
+use App\Models\Module;
+use App\Models\Prompt;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\ModuleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -161,6 +164,9 @@ class ApiChatWhatsAppSanctumTest extends TestCase
                 'contact_id',
                 'assistant_inbound_enabled',
                 'assistant_toggle_available',
+                'prompt_key',
+                'default_prompt_key',
+                'prompts',
             ],
         ]);
         $this->assertCount(1, $response->json('messages'));
@@ -331,6 +337,97 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         $contact->refresh();
         $this->assertFalse($contact->allowsInboundChatAssistant());
+        $this->assertNull($contact->inboundChatAssistantPromptKey());
+    }
+
+    public function test_whatsapp_contact_assistant_patch_pins_prompt_and_none_disables(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class, ModuleSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $team->setSetting('assistant_auto_respond', '1');
+        $clientPhone = '34600555777';
+        $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'citas_y_ventas',
+            'section_label' => 'Citas y ventas',
+            'prompt_instruction' => 'Reservá citas.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => $clientPhone,
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_prompt_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'prompt_key' => 'chat:citas_y_ventas',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'assistant_inbound_enabled' => true,
+                'prompt_key' => 'chat:citas_y_ventas',
+            ]);
+
+        $contact->refresh();
+        $this->assertTrue($contact->allowsInboundChatAssistant());
+        $this->assertSame('chat:citas_y_ventas', $contact->inboundChatAssistantPromptKey());
+
+        $thread = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone)
+            ->assertOk()
+            ->assertJsonPath('thread_assistant.prompt_key', 'chat:citas_y_ventas');
+
+        $promptKeys = collect($thread->json('thread_assistant.prompts'))->pluck('key');
+        $this->assertTrue($promptKeys->contains('chat:citas_y_ventas'));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'on' => false,
+                'prompt_key' => '',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'assistant_inbound_enabled' => false,
+                'prompt_key' => null,
+            ]);
+
+        $contact->refresh();
+        $this->assertFalse($contact->allowsInboundChatAssistant());
+        $this->assertNull($contact->inboundChatAssistantPromptKey());
     }
 
     public function test_whatsapp_contact_assistant_patch_returns_422_without_crm_contact(): void

@@ -26,6 +26,9 @@
 	</div>
 	<div class="d-flex flex-wrap align-items-center gap-2 mt-3 mt-md-0">
 		@can('create', \App\Models\Product::class)
+		<a href="{{ route('product.import') }}" class="btn btn-label-secondary">
+			<i class="ti ti-file-import me-1"></i>{{ __('Import CSV') }}
+		</a>
 		<a href="{{ route('product.create') }}" class="btn btn-primary">
 			<i class="ti ti-plus me-1"></i>{{ __('Add product') }}
 		</a>
@@ -53,6 +56,17 @@
 @if (session('error'))
 <div class="alert alert-danger alert-dismissible mb-3" role="alert">
 	{{ session('error') }}
+	<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+@endif
+@if (session('import_errors'))
+<div class="alert alert-warning alert-dismissible mb-3" role="alert">
+	<h6 class="alert-heading mb-2">{{ __('Rows that could not be imported') }}</h6>
+	<ul class="mb-0">
+		@foreach (session('import_errors') as $importError)
+		<li>{{ $importError }}</li>
+		@endforeach
+	</ul>
 	<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 @endif

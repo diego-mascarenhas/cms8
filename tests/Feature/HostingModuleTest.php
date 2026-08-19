@@ -17,6 +17,7 @@ use Database\Seeders\TeamDemoSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class HostingModuleTest extends TestCase
@@ -131,10 +132,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -371,10 +369,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -405,10 +400,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
@@ -471,10 +463,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -509,10 +498,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->seed([
             EnterpriseTypeSeeder::class,
@@ -575,10 +561,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create(['email' => 'staff@example.com']);
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam(['email' => 'staff@example.com']);
 
         $team->setSetting('business_config', json_encode([
             'business_email' => 'negocio@empresa.test',
@@ -616,10 +599,7 @@ class HostingModuleTest extends TestCase
 
     public function test_hosting_store_validates_required_server_and_username(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $response = $this->actingAs($user)->from(route('hosting.create'))->post(route('hosting.store'), [
             'domain' => 'pepe5',
@@ -648,10 +628,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
@@ -697,10 +674,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
@@ -750,10 +724,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
@@ -799,10 +770,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
@@ -845,10 +813,7 @@ class HostingModuleTest extends TestCase
             ]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $this->createHostingCategory();
         $enterprise = $this->createHostingEnterprise($team);
@@ -887,10 +852,7 @@ class HostingModuleTest extends TestCase
             '*changepackage*' => Http::response(['metadata' => ['result' => 1]]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -923,10 +885,7 @@ class HostingModuleTest extends TestCase
             '*changepackage*' => Http::response(['metadata' => ['result' => 1]]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -968,10 +927,7 @@ class HostingModuleTest extends TestCase
             '*modifyacct*' => Http::response(['metadata' => ['result' => 1]]),
         ]);
 
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $server = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -1006,10 +962,7 @@ class HostingModuleTest extends TestCase
 
     public function test_hosting_index_shows_spanish_summary_and_table_labels(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -1053,10 +1006,7 @@ class HostingModuleTest extends TestCase
 
     public function test_hosting_list_domain_column_links_to_detail_with_hosting_show_permission(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         Permission::firstOrCreate(['name' => 'hosting.show', 'guard_name' => 'web']);
         $user->givePermissionTo('hosting.show');
@@ -1092,10 +1042,7 @@ class HostingModuleTest extends TestCase
 
     public function test_hosting_datatable_shows_server_name_and_filters_by_server(): void
     {
-        $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
-        $user->teams()->attach($team->id, ['role' => 'admin']);
-        $user->forceFill(['current_team_id' => $team->id])->save();
+        [$user, $team] = $this->adminWithTeam();
 
         $serverA = Server::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -1184,6 +1131,25 @@ class HostingModuleTest extends TestCase
         $phpResponse->assertOk();
         $phpResponse->assertJsonPath('recordsTotal', 1);
         $this->assertSame('8.3', collect($phpResponse->json('data'))->first()['php_version'] ?? null);
+    }
+
+    /**
+     * Servers and hosting sit behind the `access-infrastructure-modules` gate, which reads a
+     * Spatie role ({@see \App\Models\User::canAccessInfrastructure}). The team pivot role is a
+     * different thing and does not open that gate.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array{0: User, 1: Team}
+     */
+    private function adminWithTeam(array $attributes = []): array
+    {
+        $user = User::factory()->create($attributes);
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole(Role::firstOrCreate(['name' => 'admin'], ['guard_name' => 'web']));
+
+        return [$user->refresh(), $team];
     }
 
     /**

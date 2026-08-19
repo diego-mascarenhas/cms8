@@ -218,7 +218,7 @@ class UserDailyPerformanceInsightTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('performance-insights.index'));
 
-        $response->assertForbidden();
+        $response->assertDeniedForBrowser();
     }
 
     public function test_performance_insights_index_ok_for_admin(): void

@@ -47,7 +47,7 @@ class TeamSettingsTeamAdminAccessTest extends TestCase
 
         $this->actingAs($editor)
             ->get(route('team-settings.edit', ['team' => $team, 'group' => 'paid_ads']))
-            ->assertForbidden();
+            ->assertDeniedForBrowser();
     }
 
     private function enablePaidAdsModule(Team $team): void
