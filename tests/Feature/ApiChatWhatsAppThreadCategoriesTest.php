@@ -99,6 +99,27 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
             ->assertJsonPath('thread_categories.available', [['id' => $live->id, 'name' => 'Alfa']]);
     }
 
+    /**
+     * contact_category has no unique pair, so imports and attach() can leave the same tag
+     * three times. The thread header should still show it once.
+     */
+    public function test_duplicate_pivot_rows_appear_once(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $category = $this->contactsCategory('Legacy', $team);
+        $contact = $this->crmContact($team);
+        $contact->categories()->attach($category->id);
+        $contact->categories()->attach($category->id);
+        $contact->categories()->attach($category->id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
+            ->assertOk()
+            ->assertJsonPath('thread_categories.selected', [
+                ['id' => $category->id, 'name' => 'Legacy'],
+            ]);
+    }
+
     public function test_assigning_requires_authentication(): void
     {
         $this->patchJson('/api/chat/whatsapp-contact-categories', [
