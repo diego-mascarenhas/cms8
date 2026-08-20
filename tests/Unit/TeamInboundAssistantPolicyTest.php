@@ -174,6 +174,39 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertTrue($policy->allowsWhatsAppAutoReply($team, $admin));
     }
 
+    public function test_contact_opt_out_blocks_even_an_admin_sender_when_team_allows_admins(): void
+    {
+        $this->seed([
+            \Database\Seeders\CountrySeeder::class,
+            \Database\Seeders\LanguageSeeder::class,
+            \Database\Seeders\ContactStatusSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $admin = User::factory()->create();
+        $admin->teams()->attach($team->id, ['role' => 'admin']);
+        $admin->assignRole('admin');
+
+        $team->setSetting('assistant_auto_respond', '0');
+        $team->setSetting('assistant_auto_respond_admins_when_off', '1');
+
+        \App\Models\Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34722372858',
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'user_id' => $admin->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+        ]);
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($policy->allowsWhatsAppAutoReply($team, $admin, (int) $team->id, '34722372858'));
+    }
+
     public function test_blacklisted_sender_phone_blocks_auto_reply_even_when_team_is_on(): void
     {
         $team = Team::factory()->create();

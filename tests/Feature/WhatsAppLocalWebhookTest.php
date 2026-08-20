@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class WhatsAppLocalWebhookTest extends TestCase
@@ -390,6 +391,60 @@ class WhatsAppLocalWebhookTest extends TestCase
             return str_contains($request->url(), '/send-message')
                 && (str_contains($body, '¡Hola') || str_contains($body, 'Hola'));
         });
+    }
+
+    public function test_webhook_skips_auto_ai_when_contact_is_off_even_for_an_admin_sender(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('getReply');
+        });
+
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']));
+        $admin->teams()->attach($team->id, ['role' => 'admin']);
+
+        $team->setSetting('whatsapp_from', '34694258947');
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->setSetting('assistant_auto_respond_admins_when_off', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34722372858',
+            'name' => 'Diego',
+            'surname' => 'Tester',
+            'email' => 'diego.tester.optout@example.com',
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'user_id' => $admin->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+        ]);
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34722372858',
+            'name' => 'Diego',
+            'surname' => '',
+            'email' => 'diego.duplicate.optout@example.com',
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => true],
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372858',
+            'to' => '34694258947',
+            'body' => 'Me explicas el asistente?',
+            'id' => 'msg_admin_opt_out_1',
+        ])->assertOk();
+
+        $this->assertSame(0, Conversation::query()->where('direction', 'outbound')->count());
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
     }
 
     public function test_webhook_skips_auto_greeting_when_contact_disables_assistant(): void
