@@ -479,6 +479,7 @@ Route::middleware('auth.api')->group(function ()
     Route::put('assistant/site-prompt', [SiteAssistantPromptController::class, 'update'])->name('api.assistant.site-prompt.update');
     Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
+    Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
     Route::get('assistant/products/import', [AssistantProductImportController::class, 'show'])->name('api.assistant.products.import.show');
     Route::get('assistant/products/import/sample', [AssistantProductImportController::class, 'sample'])->name('api.assistant.products.import.sample');
     Route::post('assistant/products/import', [AssistantProductImportController::class, 'store'])->name('api.assistant.products.import.store');

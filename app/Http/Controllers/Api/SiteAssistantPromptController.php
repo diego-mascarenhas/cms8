@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\UpdateSiteAssistantPromptContentRequest;
+use App\Services\AssistantPromptCatalog;
 use App\Services\TeamSiteAssistantPromptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -142,5 +143,41 @@ class SiteAssistantPromptController extends Controller
             'message' => __('team_settings.site_assistant.created'),
             'data' => $siteAssistant->settingsPayload($team->fresh()),
         ], 201);
+    }
+
+    public function applyCatalog(Request $request, TeamSiteAssistantPromptService $siteAssistant, AssistantPromptCatalog $catalog): JsonResponse
+    {
+        $team = $request->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual.'),
+            ], 422);
+        }
+
+        $this->authorize('update', $team);
+
+        $validated = $request->validate([
+            'prompt_key' => ['required', 'string', 'max:255'],
+        ]);
+
+        try
+        {
+            $key = $catalog->apply($team, $validated['prompt_key']);
+            $siteAssistant->select($team->fresh(), $key);
+        } catch (InvalidArgumentException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('team_settings.site_assistant.saved'),
+            'data' => $siteAssistant->settingsPayload($team->fresh()),
+        ]);
     }
 }

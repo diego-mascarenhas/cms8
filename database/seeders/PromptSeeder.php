@@ -124,8 +124,7 @@ class PromptSeeder extends Seeder
     /**
      * Get prompt definitions for each module.
      *
-     * Public so `assistant:refresh-prompts` can replay the same defaults onto a team that
-     * was seeded before the copy was rewritten.
+     * Public so the assistant prompt catalog can list the same shipped defaults.
      *
      * @return list<array<string, mixed>>
      */

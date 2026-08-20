@@ -18,7 +18,7 @@ class ChatAssistantProactiveDemoPromptsSeeder extends Seeder
     /**
      * @return list<array{section_key: string, section_label: string, order: int, instruction: string}>
      */
-    private function promptDefinitions(): array
+    public static function definitions(): array
     {
         return [
             [
@@ -114,7 +114,7 @@ MD;
         foreach (Team::query()->orderBy('id')->get() as $team)
         {
             /** @var Team $team */
-            foreach ($this->promptDefinitions() as $def)
+            foreach (self::definitions() as $def)
             {
                 Prompt::withoutGlobalScope('team')->updateOrCreate(
                     [

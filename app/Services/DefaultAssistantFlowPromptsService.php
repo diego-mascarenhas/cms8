@@ -55,66 +55,6 @@ class DefaultAssistantFlowPromptsService
     }
 
     /**
-     * Overwrite the flow instructions of an existing team with the current defaults.
-     * Keeps `is_active` and `order` as the team left them; only the copy is replaced.
-     *
-     * @return int Number of rows created or rewritten.
-     */
-    public static function refreshForTeam(int $teamId): int
-    {
-        if (Team::query()->whereKey($teamId)->doesntExist())
-        {
-            return 0;
-        }
-
-        $touched = 0;
-
-        foreach (self::definitions() as $def)
-        {
-            $module = Module::where('key', $def['module_key'])->first();
-            if (! $module)
-            {
-                continue;
-            }
-
-            $existing = Prompt::withoutGlobalScope('team')
-                ->where('team_id', $teamId)
-                ->where('module_id', $module->id)
-                ->where('section_key', $def['section_key'])
-                ->first();
-
-            if ($existing === null)
-            {
-                DatabaseSequence::retryOnDuplicateId('module_prompts', function () use ($teamId, $module, $def): void
-                {
-                    Prompt::withoutGlobalScope('team')->create([
-                        'team_id' => $teamId,
-                        'module_id' => $module->id,
-                        'section_key' => $def['section_key'],
-                        'section_label' => $def['section_label'],
-                        'prompt_instruction' => $def['prompt_instruction'],
-                        'helper_text' => $def['helper_text'] ?? null,
-                        'order' => $def['order'] ?? 0,
-                        'is_active' => $def['is_active'] ?? true,
-                    ]);
-                });
-                $touched++;
-
-                continue;
-            }
-
-            $existing->fill([
-                'section_label' => $def['section_label'],
-                'prompt_instruction' => $def['prompt_instruction'],
-                'helper_text' => $def['helper_text'] ?? null,
-            ])->save();
-            $touched++;
-        }
-
-        return $touched;
-    }
-
-    /**
      * @return list<array{module_key: string, section_key: string, section_label: string, prompt_instruction: string, helper_text: string, order: int, is_active: bool}>
      */
     public static function definitions(): array

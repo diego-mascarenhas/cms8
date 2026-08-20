@@ -56,6 +56,9 @@ class ApiSiteAssistantPromptTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'prompts',
+                    'catalog' => [
+                        ['group', 'group_label', 'items' => [['key', 'section_key', 'label', 'helper', 'section_label', 'prompt_instruction', 'own_brand', 'owned', 'drifted']]],
+                    ],
                     'default_instruction',
                     'recommended_label',
                     'embed' => ['snippet', 'api_base', 'script_url'],
@@ -224,5 +227,68 @@ class ApiSiteAssistantPromptTest extends TestCase
                 'prompt_instruction' => 'Reservá citas y vendé el catálogo.',
             ])
             ->assertStatus(403);
+    }
+
+    public function test_catalog_lists_grouped_defaults_without_own_brand_scripts(): void
+    {
+        config(['humano_pricing.plan_access_team_ids' => []]);
+        [, , $token] = $this->assistantUserWithToken();
+
+        $items = collect(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/assistant/site-prompt')
+                ->assertOk()
+                ->json('data.catalog'),
+        )->flatMap(fn (array $group) => $group['items']);
+
+        $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'calendar:assistant_citas'));
+        $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'invoices:collections'));
+        $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:humano_assistant'));
+        $this->assertFalse($items->contains(fn (array $item) => str_starts_with((string) $item['key'], 'list60:')));
+    }
+
+    public function test_from_catalog_copies_the_php_default_and_selects_it(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $prompt = Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_citas')
+            ->first();
+        $this->assertNotNull($prompt);
+        $prompt->prompt_instruction = 'TEXTO DEL EQUIPO';
+        $prompt->save();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/site-prompt/from-catalog', [
+                'prompt_key' => 'calendar:assistant_citas',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.selected_key', 'calendar:assistant_citas');
+
+        $this->assertSame('calendar:assistant_citas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertNotSame('TEXTO DEL EQUIPO', $prompt->fresh()->prompt_instruction);
+        $this->assertStringContainsString('create_calendar_event', (string) $prompt->fresh()->prompt_instruction);
+
+        $citas = collect(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/assistant/site-prompt')
+                ->json('data.catalog'),
+        )->flatMap(fn (array $group) => $group['items'])->firstWhere('key', 'calendar:assistant_citas');
+        $this->assertIsArray($citas);
+        $this->assertTrue($citas['owned']);
+        $this->assertFalse($citas['drifted']);
+    }
+
+    public function test_from_catalog_rejects_own_brand_for_a_regular_team(): void
+    {
+        config(['humano_pricing.plan_access_team_ids' => []]);
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/site-prompt/from-catalog', [
+                'prompt_key' => 'products:humano_assistant',
+            ])
+            ->assertStatus(422);
     }
 }

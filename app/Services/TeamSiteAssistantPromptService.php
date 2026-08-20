@@ -165,6 +165,7 @@ class TeamSiteAssistantPromptService
      * @return array{
      *     selected_key: string|null,
      *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string}>,
+     *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool}>}>,
      *     default_instruction: string,
      *     recommended_label: string,
      *     embed: array{snippet: string, api_base: string, script_url: string}
@@ -178,6 +179,7 @@ class TeamSiteAssistantPromptService
         return [
             'selected_key' => $this->selectedRoutingKey($team),
             'prompts' => $this->promptOptions($team),
+            'catalog' => app(AssistantPromptCatalog::class)->groupsFor($team),
             'default_instruction' => $this->defaultInstruction(),
             'recommended_label' => __('team_settings.site_assistant.recommended_label'),
             'embed' => [
