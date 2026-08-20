@@ -446,6 +446,9 @@ Route::group(['prefix' => 'auth'], function ()
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
         Route::put('profile', [AuthController::class, 'updateProfile'])->name('api.auth.profile.update');
+        Route::get('profile-photo', [AuthController::class, 'showProfilePhoto'])->name('api.auth.profile-photo.show');
+        Route::post('profile-photo', [AuthController::class, 'updateProfilePhoto'])->name('api.auth.profile-photo.update');
+        Route::delete('profile-photo', [AuthController::class, 'deleteProfilePhoto'])->name('api.auth.profile-photo.destroy');
         Route::put('password', [AuthController::class, 'updatePassword'])->name('api.auth.password.update');
     });
 });

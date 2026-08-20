@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Contact;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Avatar payload for chat message bubbles (web UI + JSON polling).
@@ -51,10 +52,10 @@ class ChatMessageAvatar
         $photoPath = $user->profile_photo_path ?? null;
         if (is_string($photoPath) && $photoPath !== '')
         {
-            $photoUrl = $user->profile_photo_url;
+            $photoUrl = self::reachablePhotoUrl($photoPath);
 
             return [
-                'photo_url' => is_string($photoUrl) && $photoUrl !== '' ? $photoUrl : null,
+                'photo_url' => $photoUrl,
                 'label_class' => $labelClass,
             ];
         }
@@ -105,6 +106,26 @@ class ChatMessageAvatar
             'initials' => $digits !== '' ? substr($digits, -2) : '?',
             'label_class' => 'bg-label-success',
         ];
+    }
+
+    /**
+     * SPAs call cms8.test; Storage::url() follows APP_URL (idoneo.test here) and the <img> never loads.
+     */
+    public static function reachablePhotoUrl(string $path): ?string
+    {
+        $disk = (string) config('jetstream.profile_photo_disk', 'public');
+        if ($disk === 'public')
+        {
+            $request = request();
+            if ($request)
+            {
+                return $request->getSchemeAndHttpHost().'/storage/'.ltrim($path, '/');
+            }
+        }
+
+        $url = Storage::disk($disk)->url($path);
+
+        return is_string($url) && $url !== '' ? $url : null;
     }
 
     public static function initialsFromName(string $name): string

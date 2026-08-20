@@ -118,7 +118,7 @@ class MobileAssistantApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/auth/user')
             ->assertOk()
-            ->assertJsonPath('profile_photo_url', $user->fresh()->profile_photo_url);
+            ->assertJsonPath('profile_photo_url', url('storage/profile-photos/demo.jpg'));
     }
 
     public function test_auth_user_leaves_profile_photo_empty_without_a_stored_file(): void
