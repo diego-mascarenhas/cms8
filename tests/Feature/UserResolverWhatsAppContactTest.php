@@ -241,6 +241,49 @@ class UserResolverWhatsAppContactTest extends TestCase
         $this->assertSame('Leonardo Tolosa Perez', $contact->name);
     }
 
+    public function test_greeting_name_uses_crm_contact_and_ignores_placeholder_labels(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $service = app(UserResolverService::class);
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'name' => 'María García',
+            'phone' => 34600111222,
+            'status_id' => 1,
+        ]);
+
+        $this->assertSame(
+            'María García',
+            $service->greetingNameForWhatsAppPhone((int) $team->id, '34600111222'),
+        );
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'name' => 'Usuario 34722372858',
+            'phone' => 34722372858,
+            'status_id' => 1,
+        ]);
+
+        $this->assertNull($service->greetingNameForWhatsAppPhone((int) $team->id, '34722372858'));
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'name' => 'Contacto 34600999000',
+            'phone' => 34600999000,
+            'status_id' => 1,
+        ]);
+
+        $this->assertNull($service->greetingNameForWhatsAppPhone((int) $team->id, '34600999000'));
+    }
+
     public function test_link_phone_adds_platform_root_user_to_team_as_admin(): void
     {
         $rootUser = User::factory()->create([

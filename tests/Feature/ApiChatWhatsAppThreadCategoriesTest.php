@@ -119,6 +119,90 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         ])->assertStatus(401);
     }
 
+    public function test_creating_a_category_requires_authentication(): void
+    {
+        $this->postJson('/api/chat/whatsapp-contact-categories', [
+            'name' => 'Mayorista',
+        ])->assertStatus(401);
+    }
+
+    public function test_creating_a_category_adds_it_to_the_contacts_catalogue(): void
+    {
+        [$token, , $team] = $this->inbox();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-contact-categories', [
+                'name' => '  Mayorista  ',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('category.name', 'Mayorista');
+
+        $categoryId = (int) $response->json('category.id');
+        $this->assertContains(
+            ['id' => $categoryId, 'name' => 'Mayorista'],
+            $response->json('available'),
+        );
+
+        $this->assertDatabaseHas('categories', [
+            'id' => $categoryId,
+            'name' => 'Mayorista',
+            'team_id' => $team->id,
+            'module_id' => Module::where('key', 'contacts')->value('id'),
+            'status' => 1,
+        ]);
+    }
+
+    public function test_creating_a_second_category_keeps_both(): void
+    {
+        [$token] = $this->inbox();
+
+        $first = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-contact-categories', [
+                'name' => 'Mayorista',
+            ]);
+        $second = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-contact-categories', [
+                'name' => 'Retail',
+            ]);
+
+        $first->assertOk()->assertJsonPath('category.name', 'Mayorista');
+        $second->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('category.name', 'Retail');
+        $this->assertNotSame($first->json('category.id'), $second->json('category.id'));
+        $this->assertCount(2, $second->json('available'));
+    }
+
+    public function test_creating_a_category_reuses_an_existing_contacts_name(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $existing = $this->contactsCategory('Mayorista', $team);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-contact-categories', [
+                'name' => 'mayorista',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('category.id', $existing->id)
+            ->assertJsonPath('category.name', 'Mayorista');
+
+        $this->assertSame(1, Category::query()->where('name', 'Mayorista')->count());
+    }
+
+    public function test_creating_a_category_without_a_name_is_refused(): void
+    {
+        [$token] = $this->inbox();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-contact-categories', [
+                'name' => ' ',
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_assigning_a_category_attaches_it_to_the_crm_contact(): void
     {
         [$token, , $team] = $this->inbox();

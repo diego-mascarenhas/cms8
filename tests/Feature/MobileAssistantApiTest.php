@@ -118,7 +118,7 @@ class MobileAssistantApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/auth/user')
             ->assertOk()
-            ->assertJsonPath('profile_photo_url', $user->fresh()->profile_photo_url);
+            ->assertJsonPath('profile_photo_url', url('storage/profile-photos/demo.jpg'));
     }
 
     public function test_auth_user_leaves_profile_photo_empty_without_a_stored_file(): void
@@ -143,6 +143,44 @@ class MobileAssistantApiTest extends TestCase
         $response->assertJsonPath('role', 'Admin');
         $response->assertJsonPath('current_team.is_owner', true);
         $response->assertJsonPath('current_team.can_manage', true);
+        $response->assertJsonPath('current_team.apps.assistant.active', true);
+    }
+
+    public function test_auth_user_reports_assistant_trial_access(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('current_team.apps.assistant.active', true)
+            ->assertJsonPath('current_team.apps.assistant.status', 'trial')
+            ->assertJsonPath('current_team.apps.assistant.locked_reason', null);
+    }
+
+    public function test_auth_user_reports_expired_assistant_trial(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        \App\Models\Team::query()->whereKey($team->id)->update([
+            'created_at' => now()->subHours(49),
+        ]);
+
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('current_team.apps.assistant.active', false)
+            ->assertJsonPath('current_team.apps.assistant.status', 'expired')
+            ->assertJsonPath('current_team.apps.assistant.locked_reason', 'plan');
     }
 
     public function test_auth_user_marks_non_owner_team_member(): void

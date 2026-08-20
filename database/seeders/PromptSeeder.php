@@ -6,6 +6,7 @@ use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
 use App\Services\DefaultAssistantFlowPromptsService;
+use App\Support\DatabaseSequence;
 use Illuminate\Database\Seeder;
 
 class PromptSeeder extends Seeder
@@ -26,19 +27,24 @@ class PromptSeeder extends Seeder
 
         $teamId = \App\Models\Team::min('id') ?? 1;
 
-        foreach ($prompts as $definition)
+        DatabaseSequence::sync('module_prompts');
+
+        DatabaseSequence::retryOnDuplicateId('module_prompts', function () use ($prompts, $teamId): void
         {
-            $data = self::promptAttributes($definition);
-            $data['team_id'] = $data['team_id'] ?? $teamId;
-            Prompt::withoutGlobalScope('team')->updateOrCreate(
-                [
-                    'team_id' => $data['team_id'],
-                    'module_id' => $data['module_id'],
-                    'section_key' => $data['section_key'],
-                ],
-                $data,
-            );
-        }
+            foreach ($prompts as $definition)
+            {
+                $data = self::promptAttributes($definition);
+                $data['team_id'] = $data['team_id'] ?? $teamId;
+                Prompt::withoutGlobalScope('team')->updateOrCreate(
+                    [
+                        'team_id' => $data['team_id'],
+                        'module_id' => $data['module_id'],
+                        'section_key' => $data['section_key'],
+                    ],
+                    $data,
+                );
+            }
+        });
 
         /** Default assistant flows (module_prompts), editable in /prompt/list; firstOrCreate per team, no overwrite. */
         Team::query()->pluck('id')->each(function ($id)
@@ -69,27 +75,34 @@ class PromptSeeder extends Seeder
 
         $created = 0;
 
-        foreach ((new self)->getPromptDefinitions() as $definition)
+        DatabaseSequence::sync('module_prompts');
+
+        DatabaseSequence::retryOnDuplicateId('module_prompts', function () use ($teamId, &$created): void
         {
-            if ($definition['own_brand'] ?? false)
-            {
-                continue;
-            }
+            $created = 0;
 
-            $prompt = Prompt::withoutGlobalScope('team')->firstOrCreate(
-                [
-                    'team_id' => $teamId,
-                    'module_id' => $definition['module_id'],
-                    'section_key' => $definition['section_key'],
-                ],
-                self::promptAttributes($definition),
-            );
-
-            if ($prompt->wasRecentlyCreated)
+            foreach ((new self)->getPromptDefinitions() as $definition)
             {
-                $created++;
+                if ($definition['own_brand'] ?? false)
+                {
+                    continue;
+                }
+
+                $prompt = Prompt::withoutGlobalScope('team')->firstOrCreate(
+                    [
+                        'team_id' => $teamId,
+                        'module_id' => $definition['module_id'],
+                        'section_key' => $definition['section_key'],
+                    ],
+                    self::promptAttributes($definition),
+                );
+
+                if ($prompt->wasRecentlyCreated)
+                {
+                    $created++;
+                }
             }
-        }
+        });
 
         return $created;
     }

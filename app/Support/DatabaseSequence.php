@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -53,5 +54,42 @@ class DatabaseSequence
         DB::statement("ALTER TABLE `{$escapedTable}` AUTO_INCREMENT = {$next}");
 
         return $next;
+    }
+
+    /**
+     * Run a write that allocates a serial id, then realign and retry once if the sequence
+     * still points at a primary key that already exists (common after dumps / explicit-id imports).
+     *
+     * Composite unique violations are rethrown: those are real duplicates, not a stale sequence.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public static function retryOnDuplicateId(string $table, callable $callback): mixed
+    {
+        try
+        {
+            return DB::transaction($callback);
+        } catch (UniqueConstraintViolationException $e)
+        {
+            if (! self::isPrimaryKeyViolation($e, $table))
+            {
+                throw $e;
+            }
+
+            self::sync($table);
+
+            return DB::transaction($callback);
+        }
+    }
+
+    private static function isPrimaryKeyViolation(UniqueConstraintViolationException $e, string $table): bool
+    {
+        $message = $e->getMessage();
+
+        return str_contains($message, $table.'_pkey')
+            || (str_contains($message, 'Duplicate entry') && str_contains($message, 'PRIMARY'));
     }
 }

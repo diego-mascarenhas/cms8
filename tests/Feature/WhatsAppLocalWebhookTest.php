@@ -442,6 +442,94 @@ class WhatsAppLocalWebhookTest extends TestCase
         });
     }
 
+    public function test_auto_greeting_uses_crm_name_when_known(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')->andReturn([
+                'message' => '',
+                'tool_results' => [],
+            ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600111222',
+            'name' => 'María García',
+            'surname' => '',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600111222',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_greeting_named_1',
+        ])->assertOk();
+
+        $this->assertTrue(
+            Conversation::query()
+                ->where('direction', 'outbound')
+                ->where('to', '34600111222')
+                ->pluck('body')
+                ->contains('¡Hola María García! 👋'),
+        );
+    }
+
+    public function test_auto_greeting_omits_placeholder_user_label(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')->andReturn([
+                'message' => '',
+                'tool_results' => [],
+            ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34722372858',
+            'name' => 'Usuario 34722372858',
+            'surname' => '',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34722372858',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_greeting_placeholder_1',
+        ])->assertOk();
+
+        $outbound = Conversation::query()
+            ->where('direction', 'outbound')
+            ->where('to', '34722372858')
+            ->pluck('body');
+
+        $this->assertTrue($outbound->contains('¡Hola! 👋'));
+        $this->assertFalse($outbound->contains(fn (string $body): bool => str_contains($body, 'Usuario 34722372858')));
+    }
+
     public function test_webhook_skips_auto_ai_when_team_disabled_even_if_contact_enables_assistant(): void
     {
         $this->mock(ChatAssistantReplyService::class, function ($mock): void

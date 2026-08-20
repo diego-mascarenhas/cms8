@@ -5,16 +5,20 @@ namespace App\Http\Controllers;
 use App\Actions\Fortify\PasswordValidationRules;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Helpers\TokenHelper;
+use App\Http\Requests\UpdateUserProfilePhotoRequest;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\AuthIntendedUrlGuard;
 use App\Support\ChatMessageAvatar;
-use App\Support\NewUserWelcomeEmailNotifier;
+use App\Support\EnsureRegisteredUserRole;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -56,7 +60,7 @@ class AuthController extends Controller
         ]);
 
         $this->createPersonalTeamForApiUser($user);
-        NewUserWelcomeEmailNotifier::queue($user, $user->currentTeam);
+        event(new Registered($user->fresh()));
 
         $user->load(['currentTeam', 'roles']);
         $token = $user->createToken('IDONEO Access Token')->plainTextToken;
@@ -94,6 +98,7 @@ class AuthController extends Controller
                 }
             }
 
+            EnsureRegisteredUserRole::assignIfMissing($user);
             $user->load(['currentTeam', 'roles']);
             $token = $user->createToken('IDONEO Access Token')->plainTextToken;
             $profile = $this->profilePayload($user);
@@ -150,6 +155,53 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('Perfil actualizado correctamente.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
+    public function showProfilePhoto(Request $request)
+    {
+        $user = $request->user();
+        $path = $user?->profile_photo_path;
+        if (! is_string($path) || $path === '')
+        {
+            return response()->noContent();
+        }
+
+        $disk = Storage::disk((string) config('jetstream.profile_photo_disk', 'public'));
+        if (! $disk->exists($path))
+        {
+            return response()->noContent();
+        }
+
+        return $disk->response($path);
+    }
+
+    public function updateProfilePhoto(UpdateUserProfilePhotoRequest $request)
+    {
+        $user = $request->user();
+        $user->updateProfilePhoto($request->file('photo'));
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Foto de perfil actualizada.'),
+            'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
+        ]);
+    }
+
+    public function deleteProfilePhoto(Request $request)
+    {
+        $user = $request->user();
+        if (! $user)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $user->deleteProfilePhoto();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Foto de perfil eliminada.'),
             'user' => $this->profilePayload($user->fresh(['currentTeam', 'roles'])),
         ]);
     }
@@ -243,6 +295,7 @@ class AuthController extends Controller
                 'name' => $user->currentTeam->name,
                 'is_owner' => $user->ownsTeam($user->currentTeam),
                 'can_manage' => $user->canManageTeam($user->currentTeam),
+                'apps' => app(AssistantSubscriptionService::class)->appsPayload($user->currentTeam),
             ] : null,
         ];
     }

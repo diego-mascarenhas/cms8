@@ -123,6 +123,31 @@ class ApiChatWhatsAppStartContactTest extends TestCase
             ->assertJsonPath('contacts.0.name', 'Ana Pérez');
     }
 
+    public function test_team_owner_without_spatie_role_can_start_contact(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->assertFalse($user->roles()->exists());
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
+            ->postJson('/api/chat/whatsapp-start-contact', [
+                'name' => 'Ana Pérez',
+                'phone' => '600 111 222',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('contact.phone', '34600111222');
+    }
+
     public function test_start_contact_rejects_invalid_phone(): void
     {
         if (! Features::hasTeamFeatures())

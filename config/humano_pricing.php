@@ -38,6 +38,17 @@ return [
     ),
 
     /*
+     * | Per-app trial from the team created_at. Hours <= 0 disables the trial for
+     * | that catalog. Assistant uses the same gate as a paid plan while this window
+     * | is open; when it ends the app is locked until checkout.
+     */
+    'app_trials' => [
+        'assistant' => (int) env('CMS8_APP_TRIAL_HOURS_ASSISTANT', 48),
+        'mailer' => (int) env('CMS8_APP_TRIAL_HOURS_MAILER', 0),
+        'platform' => (int) env('CMS8_APP_TRIAL_HOURS_PLATFORM', 0),
+    ],
+
+    /*
      * | Customer token rate billed on the Assistant subscription period
      * | (calendar month when there is no Stripe period). amount_per_million is
      * | the estimated provider cost in EUR per 1,000,000 tokens used after TOON.

@@ -120,13 +120,34 @@ class TeamInboundAssistantPolicyTest extends TestCase
     {
         config(['humano_pricing.require_paid_plan_for_ai' => true]);
 
-        $team = Team::factory()->create();
+        $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
         $team->setSetting('assistant_auto_respond', '1');
 
         $policy = app(TeamInboundAssistantPolicy::class);
 
         $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null));
         $this->assertSame('plan', $policy->lockedReason($team));
+    }
+
+    public function test_app_trial_unlocks_auto_reply_like_a_paid_plan(): void
+    {
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $team = Team::factory()->create(['created_at' => now()->subHours(12)]);
+        $team->setSetting('assistant_auto_respond', '1');
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+        $access = app(\App\Services\Billing\AssistantSubscriptionService::class)
+            ->accessForCatalog($team, 'assistant');
+
+        $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null));
+        $this->assertNull($policy->lockedReason($team));
+        $this->assertTrue($access['active']);
+        $this->assertSame('trial', $access['status']);
+        $this->assertNotNull($access['trial_ends_at']);
     }
 
     /**
@@ -137,7 +158,7 @@ class TeamInboundAssistantPolicyTest extends TestCase
     {
         config(['humano_pricing.require_paid_plan_for_ai' => true]);
 
-        $team = Team::factory()->create();
+        $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
         $team->setSetting('assistant_auto_respond', '1');
 
         $state = app(TeamInboundAssistantPolicy::class)->presentWhatsAppAssistantState($team, true, true);

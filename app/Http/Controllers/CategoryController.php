@@ -9,6 +9,7 @@ use App\Models\Module;
 use App\Models\Team;
 use App\Services\Finance\InvoicedLineItemsService;
 use App\Services\Finance\ServiceCategoryOptionsService;
+use App\Support\DatabaseSequence;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -724,14 +725,17 @@ class CategoryController extends Controller
             ]);
         }
 
-        $category = Category::create([
-            'name' => $request->name,
-            'module_id' => $moduleId,
-            'parent_id' => null, // Quick create as parent category
-            'order' => 0,
-            'status' => 1,
-            'team_id' => $team->id,
-        ]);
+        $category = DatabaseSequence::retryOnDuplicateId('categories', function () use ($request, $moduleId, $team)
+        {
+            return Category::create([
+                'name' => $request->name,
+                'module_id' => $moduleId,
+                'parent_id' => null,
+                'order' => 0,
+                'status' => 1,
+                'team_id' => $team->id,
+            ]);
+        });
 
         return response()->json([
             'success' => true,

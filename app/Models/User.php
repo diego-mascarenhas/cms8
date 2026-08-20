@@ -181,6 +181,17 @@ class User extends Authenticatable
             $size = static::$profilePhotoCropSize;
 
             $tempPath = $photo->getRealPath();
+            if (! is_string($tempPath) || $tempPath === '')
+            {
+                return null;
+            }
+
+            $info = @getimagesize($tempPath);
+            if (is_array($info) && ($info[0] ?? 0) <= $size && ($info[1] ?? 0) <= $size)
+            {
+                return null;
+            }
+
             $ext = $photo->getClientOriginalExtension() ?: 'jpg';
             $tempCropped = sys_get_temp_dir().'/profile_photo_'.uniqid().'.'.strtolower($ext);
 

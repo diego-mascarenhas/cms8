@@ -272,14 +272,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return null;
         }
 
-        $user = $this->getUserByPhone($phoneNumber);
-        $name = $user && ! empty($user->name) ? trim($user->name) : null;
-        if ($name === null || $name === '')
-        {
-            $name = 'Usuario '.$phoneNumber;
-        }
+        $teamId = (int) ($this->team?->id ?? 0);
+        $name = $teamId > 0
+            ? app(UserResolverService::class)->greetingNameForWhatsAppPhone($teamId, (string) $phoneNumber)
+            : null;
 
-        $greeting = "¡Hola {$name}! 👋";
+        $greeting = $name !== null ? "¡Hola {$name}! 👋" : '¡Hola! 👋';
 
         try
         {

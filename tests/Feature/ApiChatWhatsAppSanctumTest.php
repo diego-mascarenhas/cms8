@@ -611,6 +611,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $team->forceFill(['created_at' => now()->subHours(49)])->save();
         $teamWa = '34999000111';
         $team->setSetting('whatsapp_from', $teamWa);
         $team->setSetting('assistant_auto_respond', '1');
@@ -659,7 +660,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         config(['humano_pricing.require_paid_plan_for_ai' => true]);
 
-        $team = Team::factory()->create();
+        $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
         $team->setSetting('assistant_auto_respond', '1');
 
         $this->assertFalse(app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply($team, null));

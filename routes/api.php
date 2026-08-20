@@ -446,6 +446,9 @@ Route::group(['prefix' => 'auth'], function ()
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
         Route::put('profile', [AuthController::class, 'updateProfile'])->name('api.auth.profile.update');
+        Route::get('profile-photo', [AuthController::class, 'showProfilePhoto'])->name('api.auth.profile-photo.show');
+        Route::post('profile-photo', [AuthController::class, 'updateProfilePhoto'])->name('api.auth.profile-photo.update');
+        Route::delete('profile-photo', [AuthController::class, 'deleteProfilePhoto'])->name('api.auth.profile-photo.destroy');
         Route::put('password', [AuthController::class, 'updatePassword'])->name('api.auth.password.update');
     });
 });
@@ -685,6 +688,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('chat/whatsapp-contact', [ChatController::class, 'updateWhatsAppInboxContact'])->name('api.chat.whatsapp-contact');
     Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
     Route::patch('chat/whatsapp-contact-categories', [ChatController::class, 'updateWhatsAppContactCategories'])->name('api.chat.whatsapp-contact-categories');
+    Route::post('chat/whatsapp-contact-categories', [ChatController::class, 'storeWhatsAppContactCategory'])->name('api.chat.whatsapp-contact-categories.store');
     Route::get('chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('api.chat.whatsapp-status');
     Route::get('chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('api.chat.whatsapp-qr-image');
     Route::post('chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('api.chat.whatsapp-refresh-qr');
