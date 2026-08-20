@@ -1,0 +1,148 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Models\Module;
+use App\Models\Prompt;
+use App\Models\Team;
+use App\Models\User;
+use App\Services\AgentConversationContextService;
+use App\Services\Assistant\AssistantActorContextService;
+use App\Services\ChatAssistantReplyService;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\LanguageSeeder;
+use Database\Seeders\ModuleSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class ChatAssistantReplyForcedPromptTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ModuleSeeder::class]);
+    }
+
+    public function test_forced_whatsapp_prompt_applies_without_context_user(): void
+    {
+        $team = Team::factory()->create();
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'citas_y_ventas',
+            'section_label' => 'Citas y ventas',
+            'prompt_instruction' => 'Reservá citas con el prompt nuevo.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+
+        $service = $this->recordingReplyService();
+        $reply = $service->getReply(
+            'Hola',
+            [],
+            (int) $team->id,
+            true,
+            null,
+            '34600000020',
+            'chat:citas_y_ventas',
+            null,
+            false,
+            AssistantActorContextService::CHANNEL_WHATSAPP,
+        );
+
+        $this->assertTrue($reply['success'] ?? false);
+        $this->assertSame('Citas y ventas', $reply['routed_to'] ?? null);
+        $this->assertStringContainsString('Reservá citas con el prompt nuevo.', $service->lastInstructions);
+    }
+
+    public function test_whatsapp_does_not_reuse_sticky_prompt_from_another_chat(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'citas_y_ventas',
+            'section_label' => 'Citas y ventas',
+            'prompt_instruction' => 'Prompt de la primera charla.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'campanas',
+            'section_label' => 'Campañas',
+            'prompt_instruction' => 'Prompt de campañas actualizado.',
+            'is_active' => true,
+            'order' => 1,
+        ]);
+
+        app(AgentConversationContextService::class)->persistMessages(
+            $user->id,
+            'Hola',
+            '¿Cómo te llamás?',
+            'Citas y ventas',
+            [],
+            [],
+            [],
+            [],
+            (int) $team->id,
+            true,
+            'chat:citas_y_ventas',
+        );
+
+        $service = $this->recordingReplyService();
+        $reply = $service->getReply(
+            'Hola',
+            [],
+            (int) $team->id,
+            true,
+            $user->id,
+            '34600000020',
+            'chat:campanas',
+            null,
+            false,
+            AssistantActorContextService::CHANNEL_WHATSAPP,
+        );
+
+        $this->assertSame('Campañas', $reply['routed_to'] ?? null);
+        $this->assertStringContainsString('Prompt de campañas actualizado.', $service->lastInstructions);
+        $this->assertStringNotContainsString('Prompt de la primera charla.', $service->lastInstructions);
+    }
+
+    private function recordingReplyService(): ChatAssistantReplyService
+    {
+        return new class(app(\App\Services\AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
+        {
+            public string $lastInstructions = '';
+
+            public function useStub(?int $teamId = null): bool
+            {
+                return false;
+            }
+
+            protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
+            {
+                $this->lastInstructions = $instructions;
+
+                return [
+                    'success' => true,
+                    'text' => 'ok',
+                    'routed_to' => $routedTo,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
+                    'meta' => [],
+                ];
+            }
+        };
+    }
+}
