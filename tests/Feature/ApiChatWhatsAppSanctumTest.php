@@ -452,6 +452,65 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertNull($contact->inboundChatAssistantPromptKey());
     }
 
+    public function test_whatsapp_contact_assistant_patch_copies_a_catalog_prompt_onto_the_team(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class, ModuleSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+        $team->setSetting('whatsapp_from', '34999000111');
+        $team->setSetting('assistant_auto_respond', '1');
+        $clientPhone = '34600555999';
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => $clientPhone,
+            'status_id' => ContactStatus::where('name', 'Lead')->firstOrFail()->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_catalog_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => '34999000111',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $this->assertNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'humano_assistant')
+                ->first(),
+        );
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'prompt_key' => 'products:humano_assistant',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('prompt_key', 'products:humano_assistant');
+
+        $this->assertNotNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'humano_assistant')
+                ->first(),
+        );
+    }
+
     public function test_whatsapp_contact_assistant_patch_does_not_overwrite_another_contact_prompt(): void
     {
         if (! Features::hasTeamFeatures())

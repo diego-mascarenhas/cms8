@@ -27,6 +27,7 @@ use App\Services\AdminProactiveOutreachSlashDispatcher;
 use App\Services\AgentConversationContextService;
 use App\Services\Assistant\AssistantInboundContactCreationService;
 use App\Services\Assistant\AssistantInboundTaskStatusService;
+use App\Services\AssistantPromptCatalog;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
@@ -1283,6 +1284,17 @@ class ChatController extends Controller
 
         if ($hasPromptKey && $promptKey !== '')
         {
+            try
+            {
+                $promptKey = app(AssistantPromptCatalog::class)->ensureOnTeam($team, $promptKey);
+            } catch (InvalidArgumentException $exception)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => $exception->getMessage(),
+                ], 422);
+            }
+
             $prompt = Prompt::findByRoutingKey($promptKey, (int) $team->id);
             if (! $prompt || ! $prompt->is_active)
             {

@@ -115,4 +115,37 @@ class AssistantPromptCatalogTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $catalog->apply($team, 'products:humano_assistant');
     }
+
+    public function test_ensure_on_team_copies_a_catalog_default_without_overwriting_a_custom_copy(): void
+    {
+        [$catalog, $team] = $this->catalogForPersonalTeam();
+
+        $this->assertSame('chat:mi-flujo-demo', $catalog->ensureOnTeam($team, 'chat:mi-flujo-demo'));
+        $prompt = Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'mi-flujo-demo')
+            ->first();
+        $this->assertNotNull($prompt);
+        $this->assertStringContainsString('mi flujo demo', (string) $prompt->prompt_instruction);
+
+        $prompt->prompt_instruction = 'TEXTO DEL EQUIPO';
+        $prompt->save();
+
+        $this->assertSame('chat:mi-flujo-demo', $catalog->ensureOnTeam($team, 'chat:mi-flujo-demo'));
+        $this->assertSame('TEXTO DEL EQUIPO', $prompt->fresh()->prompt_instruction);
+    }
+
+    public function test_ensure_on_team_copies_own_brand_for_an_allowed_team(): void
+    {
+        [$catalog, $team] = $this->catalogForPersonalTeam();
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+
+        $this->assertSame('products:humano_assistant', $catalog->ensureOnTeam($team, 'products:humano_assistant'));
+        $this->assertNotNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'humano_assistant')
+                ->first(),
+        );
+    }
 }
