@@ -583,6 +583,7 @@ class ChatController extends Controller
             );
             $contact->assistant_toggle_available = $assistantState['assistant_toggle_available'];
             $contact->assistant_inbound_enabled = $assistantState['assistant_inbound_enabled'];
+            $contact->assistant_contact_enabled = $crmProfile ? $crmProfile->allowsInboundChatAssistant() : true;
             $contact->assistant_plan_active = $assistantState['assistant_plan_active'];
             $contact->assistant_locked_reason = $assistantState['assistant_locked_reason'];
 
@@ -1301,6 +1302,7 @@ class ChatController extends Controller
 
         return response()->json(array_merge([
             'success' => true,
+            'assistant_contact_enabled' => $contact->allowsInboundChatAssistant(),
         ], $inboundPolicy->presentWhatsAppAssistantState(
             $team,
             $inboundPolicy->autoReplyPreferencesAllow($team, $inboundUser, (int) $team->id, $digits),
@@ -1463,7 +1465,7 @@ class ChatController extends Controller
     }
 
     /**
-     * @return array{contact_id: int|null, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null, prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
+     * @return array{contact_id: int|null, assistant_contact_enabled: bool, assistant_inbound_enabled: bool, assistant_toggle_available: bool, assistant_plan_active: bool, assistant_locked_reason: string|null, prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
      */
     private function whatsAppThreadAssistantMetaForDigits(string $digits, ?Contact $crm = null): array
     {
@@ -1473,6 +1475,7 @@ class ChatController extends Controller
         {
             return array_merge([
                 'contact_id' => null,
+                'assistant_contact_enabled' => true,
                 'assistant_inbound_enabled' => false,
                 'assistant_toggle_available' => false,
                 'assistant_plan_active' => false,
@@ -1490,6 +1493,7 @@ class ChatController extends Controller
 
         return array_merge([
             'contact_id' => $crm ? (int) $crm->id : null,
+            'assistant_contact_enabled' => $crm ? $crm->allowsInboundChatAssistant() : true,
         ], $inboundPolicy->presentWhatsAppAssistantState($team, $inboundEnabled, $crm !== null), $this->whatsAppThreadPromptMeta($team, $crm));
     }
 
@@ -1536,7 +1540,7 @@ class ChatController extends Controller
         {
             unset($data['chat_assistant_prompt_key']);
         }
-        $contact->data = $data;
+        $contact->data = (object) $data;
         $contact->save();
     }
 
@@ -1609,6 +1613,7 @@ class ChatController extends Controller
             }
             $item['assistant_toggle_available'] = (bool) ($c->assistant_toggle_available ?? false);
             $item['assistant_inbound_enabled'] = (bool) ($c->assistant_inbound_enabled ?? true);
+            $item['assistant_contact_enabled'] = (bool) ($c->assistant_contact_enabled ?? true);
             $item['assistant_plan_active'] = (bool) ($c->assistant_plan_active ?? true);
             $item['assistant_locked_reason'] = $c->assistant_locked_reason ?? null;
 
