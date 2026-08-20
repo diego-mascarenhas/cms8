@@ -8,6 +8,7 @@ use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
 use App\Http\Requests\StoreWhatsAppContactCategoryRequest;
+use App\Http\Requests\UpdateWhatsAppChatArchiveRequest;
 use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
 use App\Http\Requests\UpdateWhatsAppContactCategoriesRequest;
 use App\Http\Requests\UpdateWhatsAppInboxContactRequest;
@@ -34,6 +35,7 @@ use App\Services\TeamWhatsAppChatPresentation;
 use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppChatArchiveService;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
 use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
 use App\Services\WhatsApp\WhatsAppInboxContactStarter;
@@ -1561,14 +1563,35 @@ class ChatController extends Controller
      * recent threads straight away and pull the tail as it scrolls; without them it returns
      * everything, which is what the older clients expect.
      */
-    public function getChatList(Request $request)
+    public function getChatList(Request $request, WhatsAppChatArchiveService $archives)
     {
         $request->validate([
             'limit' => 'sometimes|integer|min:1|max:200',
             'offset' => 'sometimes|integer|min:0',
+            'archived' => 'sometimes|boolean',
         ]);
 
         $index = $this->whatsAppConversationIndex($request);
+        $team = auth()->user()?->currentTeam;
+        $archivedPhones = $team ? $archives->archivedPhoneSet((int) $team->id) : [];
+        $archivedCount = 0;
+        $archivedUnread = 0;
+        foreach ($index as $row)
+        {
+            if (! isset($archivedPhones[$row['digits']]))
+            {
+                continue;
+            }
+            $archivedCount++;
+            $archivedUnread += (int) $row['unread'];
+        }
+
+        $wantArchived = $request->boolean('archived');
+        $index = array_values(array_filter(
+            $index,
+            fn (array $row): bool => $wantArchived === isset($archivedPhones[$row['digits']]),
+        ));
+
         $total = count($index);
         $unreadTotal = array_sum(array_column($index, 'unread'));
 
@@ -1577,13 +1600,14 @@ class ChatController extends Controller
         $page = $limit === null ? array_slice($index, $offset) : array_slice($index, $offset, $limit);
 
         $contacts = $this->hydrateWhatsAppContacts($page);
-        $list = $contacts->map(function ($c)
+        $list = $contacts->map(function ($c) use ($archivedPhones)
         {
             $item = [
                 'from' => $c->from,
                 'last_message' => $c->last_message ?? '',
                 'last_message_time' => $c->last_message_time ?? '',
                 'unread_count' => (int) ($c->unread_count ?? 0),
+                'is_archived' => isset($archivedPhones[(string) $c->from]),
             ];
             if (! empty($c->user_name))
             {
@@ -1614,9 +1638,41 @@ class ChatController extends Controller
             'contacts' => $list,
             'total' => $total,
             'unread_total' => $unreadTotal,
+            'archived_count' => $archivedCount,
+            'archived_unread' => $archivedUnread,
             'has_more' => $nextOffset < $total,
             'next_offset' => $nextOffset,
             'contact_catalog' => $catalog,
+        ]);
+    }
+
+    public function updateWhatsAppChatArchive(UpdateWhatsAppChatArchiveRequest $request, WhatsAppChatArchiveService $archives): \Illuminate\Http\JsonResponse
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json(['success' => false, 'message' => __('No team found')], 422);
+        }
+
+        $phone = WhatsAppInboxContactStarter::normalizeInboxPhone((string) $request->input('phone'));
+        if ($phone === '')
+        {
+            return response()->json(['success' => false, 'message' => __('Invalid phone number.')], 422);
+        }
+
+        $archived = $request->boolean('archived');
+        if ($archived)
+        {
+            $archives->archive((int) $team->id, $phone);
+        } else
+        {
+            $archives->unarchive((int) $team->id, $phone);
+        }
+
+        return response()->json([
+            'success' => true,
+            'phone' => $phone,
+            'is_archived' => $archived,
         ]);
     }
 
