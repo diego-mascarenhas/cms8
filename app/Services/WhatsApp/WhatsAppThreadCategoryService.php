@@ -7,6 +7,7 @@ use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Module;
 use App\Models\Team;
+use App\Support\DatabaseSequence;
 use InvalidArgumentException;
 
 /**
@@ -92,6 +93,47 @@ class WhatsAppThreadCategoryService
                 ->all(),
             'categories' => $this->availableFor($team),
         ];
+    }
+
+    /**
+     * @return array{id: int, name: string}
+     */
+    public function findOrCreate(Team $team, string $name): array
+    {
+        $name = trim($name);
+        if ($name === '')
+        {
+            throw new InvalidArgumentException('Enter a category name.');
+        }
+
+        $moduleId = $this->contactsModuleId();
+        if ($moduleId === null)
+        {
+            throw new InvalidArgumentException('The contacts module is not available.');
+        }
+
+        $normalized = mb_strtolower($name);
+        foreach ($this->availableFor($team) as $row)
+        {
+            if (mb_strtolower($row['name']) === $normalized)
+            {
+                return $row;
+            }
+        }
+
+        $category = DatabaseSequence::retryOnDuplicateId('categories', function () use ($name, $moduleId, $team)
+        {
+            return Category::query()->create([
+                'name' => $name,
+                'module_id' => $moduleId,
+                'team_id' => $team->id,
+                'parent_id' => null,
+                'order' => 0,
+                'status' => 1,
+            ]);
+        });
+
+        return $this->presentCategory($category);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Contracts\WhatsAppGateway;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
+use App\Http\Requests\StoreWhatsAppContactCategoryRequest;
 use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
 use App\Http\Requests\UpdateWhatsAppContactCategoriesRequest;
 use App\Http\Requests\UpdateWhatsAppInboxContactRequest;
@@ -49,6 +50,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Transcription;
@@ -1365,6 +1367,34 @@ class ChatController extends Controller
             ['success' => true],
             $service->assign($team, $contact, $valid),
         ));
+    }
+
+    public function storeWhatsAppContactCategory(StoreWhatsAppContactCategoryRequest $request)
+    {
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $service = app(WhatsAppThreadCategoryService::class);
+
+        try
+        {
+            $category = $service->findOrCreate($team, $request->validated('name'));
+        } catch (InvalidArgumentException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __($exception->getMessage()),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'category' => $category,
+            'available' => $service->catalog($team)['categories'],
+        ]);
     }
 
     public function updateWhatsAppInboxContact(UpdateWhatsAppInboxContactRequest $request, WhatsAppInboxContactStarter $starter)

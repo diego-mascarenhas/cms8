@@ -685,6 +685,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('chat/whatsapp-contact', [ChatController::class, 'updateWhatsAppInboxContact'])->name('api.chat.whatsapp-contact');
     Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
     Route::patch('chat/whatsapp-contact-categories', [ChatController::class, 'updateWhatsAppContactCategories'])->name('api.chat.whatsapp-contact-categories');
+    Route::post('chat/whatsapp-contact-categories', [ChatController::class, 'storeWhatsAppContactCategory'])->name('api.chat.whatsapp-contact-categories.store');
     Route::get('chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('api.chat.whatsapp-status');
     Route::get('chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('api.chat.whatsapp-qr-image');
     Route::post('chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('api.chat.whatsapp-refresh-qr');
