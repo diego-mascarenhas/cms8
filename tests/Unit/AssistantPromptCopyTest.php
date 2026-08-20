@@ -24,6 +24,18 @@ class AssistantPromptCopyTest extends TestCase
         $this->fail("No default flow prompt for section key {$sectionKey}.");
     }
 
+    public function test_sales_funnel_walks_from_capture_to_a_closed_order(): void
+    {
+        $instruction = $this->flowInstruction('assistant_embudo');
+
+        $this->assertStringContainsString('search_contacts', $instruction);
+        $this->assertStringContainsString('list_product_catalog', $instruction);
+        $this->assertStringContainsString('search_products', $instruction);
+        $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
+        $this->assertStringContainsString('finalizar', $instruction);
+        $this->assertStringContainsString('Escalera', $instruction);
+    }
+
     public function test_catalog_flow_walks_the_customer_to_a_closed_order(): void
     {
         $instruction = $this->flowInstruction('assistant_catalogo');

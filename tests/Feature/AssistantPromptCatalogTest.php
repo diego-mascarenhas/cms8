@@ -43,6 +43,7 @@ class AssistantPromptCatalogTest extends TestCase
         $keys = collect($catalog->items())->pluck('key');
         $this->assertTrue($keys->contains('calendar:assistant_citas'));
         $this->assertTrue($keys->contains('products:assistant_catalogo'));
+        $this->assertTrue($keys->contains('products:assistant_embudo'));
         $this->assertTrue($keys->contains('invoices:collections'));
         $this->assertTrue($keys->contains('chat:mi-flujo-demo'));
         $this->assertTrue($keys->contains('products:humano_assistant'));
@@ -50,6 +51,7 @@ class AssistantPromptCatalogTest extends TestCase
 
         $visible = collect($catalog->groupsFor($team))->flatMap(fn (array $group) => $group['items'])->pluck('key');
         $this->assertTrue($visible->contains('calendar:assistant_citas'));
+        $this->assertTrue($visible->contains('products:assistant_embudo'));
         $this->assertTrue($visible->contains('chat:mi-flujo-demo'));
         $this->assertFalse($visible->contains('products:humano_assistant'));
         $this->assertFalse($visible->contains('products:wapify_me'));

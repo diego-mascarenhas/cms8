@@ -250,7 +250,7 @@ class AssistantPromptCatalog
         return match ($sectionKey)
         {
             'assistant_citas' => 'agenda',
-            'assistant_catalogo' => 'ventas',
+            'assistant_embudo', 'assistant_catalogo' => 'ventas',
             'assistant_contactos', 'assistant_tareas', 'assistant_campanas' => 'equipo',
             'assistant_finanzas' => 'finanzas',
             default => null,
