@@ -14,6 +14,8 @@ class TeamSiteAssistantPromptService
 {
     public const SETTING_KEY = 'assistant_default_prompt_key';
 
+    public const OFF_KEY = '__off__';
+
     public const EMBED_SLUG = 'asistente-web';
 
     public const RECOMMENDED_SECTION_KEY = 'citas_y_ventas';
@@ -58,10 +60,19 @@ class TeamSiteAssistantPromptService
         return $key !== '' ? $key : null;
     }
 
+    /**
+     * Team default for chats on Automático (no pinned prompt): stay silent.
+     * A contact can still pin a prompt and get replies.
+     */
+    public function isSilentDefault(Team $team): bool
+    {
+        return $this->selectedRoutingKey($team) === self::OFF_KEY;
+    }
+
     public function resolvedRoutingKey(Team $team): ?string
     {
         $key = $this->selectedRoutingKey($team);
-        if ($key === null)
+        if ($key === null || $key === self::OFF_KEY)
         {
             return null;
         }
@@ -79,9 +90,9 @@ class TeamSiteAssistantPromptService
     {
         $key = $routingKey !== null ? trim($routingKey) : '';
 
-        if ($key === '')
+        if ($key === '' || $key === self::OFF_KEY)
         {
-            $team->setSetting(self::SETTING_KEY, '', [
+            $team->setSetting(self::SETTING_KEY, $key, [
                 'group' => 'chat',
                 'type' => 'text',
                 'is_encrypted' => false,

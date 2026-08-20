@@ -50,6 +50,44 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '34600000000'));
     }
 
+    public function test_silent_team_default_blocks_automatic_chats_but_allows_pinned_prompt(): void
+    {
+        $this->seed([
+            \Database\Seeders\CountrySeeder::class,
+            \Database\Seeders\LanguageSeeder::class,
+            \Database\Seeders\ContactStatusSeeder::class,
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->setSetting(\App\Services\TeamSiteAssistantPromptService::SETTING_KEY, \App\Services\TeamSiteAssistantPromptService::OFF_KEY);
+
+        \App\Models\Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000001',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => true],
+        ]);
+        \App\Models\Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000002',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'chat:citas_y_ventas',
+            ],
+        ]);
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($policy->autoReplyPreferencesAllow($team, null, (int) $team->id, '34600000001'));
+        $this->assertFalse($policy->autoReplyPreferencesAllow($team, null, (int) $team->id, '34600000999'));
+        $this->assertTrue($policy->autoReplyPreferencesAllow($team, null, (int) $team->id, '34600000002'));
+    }
+
     public function test_contact_opt_out_blocks_reply_even_when_team_auto_respond_is_on(): void
     {
         $this->seed([

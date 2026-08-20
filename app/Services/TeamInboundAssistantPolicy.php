@@ -9,8 +9,9 @@ use App\Services\Billing\AssistantSubscriptionService;
 /**
  * Inbound WhatsApp assistant rules.
  *
- * Precedence: paid plan → blacklist → team global auto-respond (master) → per-contact opt-out → admins-when-off exception.
+ * Precedence: paid plan → blacklist → team global auto-respond (master) → per-contact opt-out → silent team default → admins-when-off exception.
  * The header contact toggle cannot override a disabled team global setting.
+ * A silent team default (no responder) still allows a contact with a pinned prompt.
  */
 class TeamInboundAssistantPolicy
 {
@@ -94,6 +95,12 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
+        if (app(TeamSiteAssistantPromptService::class)->isSilentDefault($team)
+            && ! $this->contactHasPinnedInboundPrompt((int) $team->id, $inboundSenderPhone))
+        {
+            return false;
+        }
+
         return true;
     }
 
@@ -117,6 +124,23 @@ class TeamInboundAssistantPolicy
         }
 
         return $contact->allowsInboundChatAssistant();
+    }
+
+    /**
+     * True only when this phone has a CRM contact with a pinned inbound prompt.
+     * Unknown numbers and Automático contacts follow the team default.
+     */
+    public function contactHasPinnedInboundPrompt(int $teamId, ?string $phone): bool
+    {
+        $digits = preg_replace('/\D/', '', (string) $phone);
+        if ($digits === '')
+        {
+            return false;
+        }
+
+        $contact = app(UserResolverService::class)->findContactInTeamByPhone($teamId, $digits);
+
+        return $contact !== null && $contact->inboundChatAssistantPromptKey() !== null;
     }
 
     public function isBlacklistedWhatsAppPhone(Team $team, ?string $phone): bool

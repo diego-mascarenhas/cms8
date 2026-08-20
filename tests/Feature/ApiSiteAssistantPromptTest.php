@@ -110,6 +110,20 @@ class ApiSiteAssistantPromptTest extends TestCase
             ]);
 
         $response->assertOk()->assertJsonPath('data.selected_key', 'chat:citas_y_ventas');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/assistant/site-prompt', [
+                'prompt_key' => TeamSiteAssistantPromptService::OFF_KEY,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.selected_key', TeamSiteAssistantPromptService::OFF_KEY);
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
+        $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
+        $this->assertNull(app(TeamSiteAssistantPromptService::class)->resolvedRoutingKey($team->fresh()));
         $snippet = $response->json('data.embed.snippet');
         $this->assertIsString($snippet);
         $this->assertStringContainsString('data-cms8-widget="assistant"', $snippet);
