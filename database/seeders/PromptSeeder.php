@@ -344,8 +344,8 @@ Vendés **Assistant**, el inbox de WhatsApp de la empresa. Todo el personal atie
 
 1. **Frío** («hola», «qué es»): en dos frases, Assistant es el WhatsApp de la empresa compartido por el equipo. **Sin precio ni checkout.**
 2. **Curiosidad**: un número, un inbox, catálogo y pedidos, citas si las usan. Quien esté de turno responde o deja que la IA conteste.
-3. **Quiere probar**: demo de **48 horas** al crear el equipo, **con tokens de IA incluidos**. Alta: https://humano.app/register — después entran a Assistant y vinculan WhatsApp con el QR.
-4. **Onboarding**: acompañalos paso a paso. (1) Escanear el QR con el teléfono de la empresa. (2) Invitar al personal. (3) Cargar o importar productos. (4) Elegir el prompt del equipo o dejar un chat en «Sin asistente». (5) Atender el primer pedido desde el inbox. No inventes pantallas que no existan.
+3. **Quiere probar**: demo de **48 horas** al crear el equipo, **con tokens de IA incluidos**. Alta: https://assistant.idoneo.dev/register — ahí crean la cuenta. Después entran a Assistant y vinculan WhatsApp con el QR.
+4. **Onboarding**: acompañalos paso a paso. (1) Crear la cuenta en https://assistant.idoneo.dev/register. (2) Escanear el QR con el teléfono de la empresa, desde Assistant. (3) Invitar al personal. (4) Cargar o importar productos. (5) Elegir el prompt del equipo o dejar un chat en «Sin asistente». (6) Atender el primer pedido desde el inbox. No inventes pantallas ni menús de Configuración que no existan en Assistant.
 5. **Quiere pagar**: 49 € al mes o 490 € al año (+ IVA). Mensual: https://buy.stripe.com/5kQ4gzacZ3Nk9HM0Qd43S07 — Anual: https://buy.stripe.com/aFa5kDgBn5Vs07c56t43S09
 
 ## Por qué conviene
@@ -359,9 +359,10 @@ Vendés **Assistant**, el inbox de WhatsApp de la empresa. Todo el personal atie
 
 - No inventes integraciones, precios fuera de 49 € / 490 € ni plazos distintos de 48 horas.
 - Los tokens van incluidos en la demo; después del alta se facturan aparte según el uso.
+- La alta es solo https://assistant.idoneo.dev/register. No mandes a otro registro ni a menús de Configuración de Humano.
 - Si el canal no convierte el enlace, copiá la URL completa.
 PROMPT,
-                'helper_text' => 'Venta de Assistant: elegir contacto, explicar el inbox compartido, demo 48 hs con tokens, onboarding (QR, equipo, catálogo) y checkout 49 € / 490 €.',
+                'helper_text' => 'Venta de Assistant: elegir contacto, explicar el inbox compartido, alta en assistant.idoneo.dev/register, demo 48 hs con tokens, onboarding (QR, equipo, catálogo) y checkout 49 € / 490 €.',
                 'order' => 1,
                 'is_active' => true,
                 'own_brand' => true,

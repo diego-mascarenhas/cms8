@@ -116,14 +116,14 @@ class TeamInboundAssistantPolicy
             return true;
         }
 
-        $contact = app(UserResolverService::class)->findContactInTeamByPhone($teamId, $digits);
+        $contacts = app(UserResolverService::class)->findContactsInTeamByPhone($teamId, $digits);
 
-        if ($contact === null)
+        if ($contacts->isEmpty())
         {
             return true;
         }
 
-        return $contact->allowsInboundChatAssistant();
+        return $contacts->every(fn ($contact) => $contact->allowsInboundChatAssistant());
     }
 
     /**

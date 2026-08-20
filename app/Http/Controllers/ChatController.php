@@ -1281,6 +1281,11 @@ class ChatController extends Controller
         $siteAssistant = app(TeamSiteAssistantPromptService::class);
         $hasPromptKey = $request->exists('prompt_key');
         $promptKey = $hasPromptKey ? trim((string) $request->input('prompt_key', '')) : null;
+        $contacts = app(UserResolverService::class)->findContactsInTeamByPhone((int) $team->id, $digits);
+        if ($contacts->isEmpty())
+        {
+            $contacts = collect([$contact]);
+        }
 
         if ($hasPromptKey && $promptKey !== '')
         {
@@ -1304,15 +1309,15 @@ class ChatController extends Controller
                 ], 422);
             }
 
-            $this->applyContactInboundAssistantPreference($contact, true, $siteAssistant->routingKeyFor($prompt));
+            $this->applyContactInboundAssistantPreference($contacts, true, $siteAssistant->routingKeyFor($prompt));
         } elseif ($hasPromptKey)
         {
-            $this->applyContactInboundAssistantPreference($contact, $request->boolean('on', false), null);
+            $this->applyContactInboundAssistantPreference($contacts, $request->boolean('on', false), null);
         } else
         {
             $enabled = $request->boolean('on');
             $this->applyContactInboundAssistantPreference(
-                $contact,
+                $contacts,
                 $enabled,
                 $enabled ? $contact->inboundChatAssistantPromptKey() : null,
             );
@@ -1545,25 +1550,32 @@ class ChatController extends Controller
         ];
     }
 
-    private function applyContactInboundAssistantPreference(Contact $contact, bool $on, ?string $promptKey): void
+    /**
+     * @param  Contact|iterable<int, Contact>  $contacts
+     */
+    private function applyContactInboundAssistantPreference(Contact|iterable $contacts, bool $on, ?string $promptKey): void
     {
-        $payload = json_encode($contact->data ?? new \stdClass);
-        $data = json_decode($payload ?: '{}', true);
-        if (! is_array($data))
+        $items = $contacts instanceof Contact ? [$contacts] : $contacts;
+        foreach ($items as $contact)
         {
-            $data = [];
+            $payload = json_encode($contact->data ?? new \stdClass);
+            $data = json_decode($payload ?: '{}', true);
+            if (! is_array($data))
+            {
+                $data = [];
+            }
+            $data['chat_assistant_ai_enabled'] = $on;
+            $key = $promptKey !== null ? trim($promptKey) : '';
+            if ($key !== '')
+            {
+                $data['chat_assistant_prompt_key'] = $key;
+            } else
+            {
+                unset($data['chat_assistant_prompt_key']);
+            }
+            $contact->data = (object) $data;
+            $contact->save();
         }
-        $data['chat_assistant_ai_enabled'] = $on;
-        $key = $promptKey !== null ? trim($promptKey) : '';
-        if ($key !== '')
-        {
-            $data['chat_assistant_prompt_key'] = $key;
-        } else
-        {
-            unset($data['chat_assistant_prompt_key']);
-        }
-        $contact->data = (object) $data;
-        $contact->save();
     }
 
     /**
