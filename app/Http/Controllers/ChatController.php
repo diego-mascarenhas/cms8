@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\PhoneHelper;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
@@ -1184,6 +1185,7 @@ class ChatController extends Controller
             'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone, $crm),
             'thread_categories' => app(WhatsAppThreadCategoryService::class)->present($team, $crm),
             'thread_contact' => $this->whatsAppThreadContactMeta($team, $crm, $normPhone),
+            'thread_clock' => $this->whatsAppThreadClock($team, $normPhone),
         ]);
     }
 
@@ -3050,11 +3052,7 @@ class ChatController extends Controller
 
         SendScheduledMessageJob::dispatch($scheduled->id)->delay($scheduledAt);
 
-        return response()->json([
-            'success' => true,
-            'scheduled_at' => $scheduledAt->toIso8601String(),
-            'scheduled_message_id' => $scheduled->id,
-        ]);
+        return response()->json($this->scheduledMessagePayload($scheduled->fresh()));
     }
 
     public function updateScheduledMessage(Request $request, ScheduledMessage $scheduledMessage): \Illuminate\Http\JsonResponse
@@ -3081,11 +3079,7 @@ class ChatController extends Controller
 
         SendScheduledMessageJob::dispatch($scheduledMessage->id)->delay($scheduledAt);
 
-        return response()->json([
-            'success' => true,
-            'scheduled_at' => $scheduledAt->toIso8601String(),
-            'scheduled_message_id' => $scheduledMessage->id,
-        ]);
+        return response()->json($this->scheduledMessagePayload($scheduledMessage->fresh()));
     }
 
     public function destroyScheduledMessage(ScheduledMessage $scheduledMessage): \Illuminate\Http\JsonResponse
@@ -3109,6 +3103,41 @@ class ChatController extends Controller
     {
         $team = auth()->user()?->currentTeam;
         abort_unless($team && (int) $scheduledMessage->team_id === (int) $team->id, 403);
+    }
+
+    /**
+     * @return array{recipient: array{calling_code: string, country: string, label: string, timezone: string}|null, sender: array{calling_code: string, country: string, label: string, timezone: string}|null}
+     */
+    private function whatsAppThreadClock(?Team $team, string $recipientDigits): array
+    {
+        return [
+            'recipient' => PhoneHelper::clockForPhone($recipientDigits),
+            'sender' => PhoneHelper::clockForPhone($team?->getWhatsAppFrom()),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function scheduledMessagePayload(?ScheduledMessage $scheduled): array
+    {
+        if (! $scheduled)
+        {
+            return ['success' => true];
+        }
+
+        $at = $scheduled->scheduled_at;
+        $clock = PhoneHelper::clockForPhone($scheduled->recipient);
+
+        return [
+            'success' => true,
+            'scheduled_at' => $at?->toIso8601String(),
+            'scheduled_message_id' => $scheduled->id,
+            'recipient_clock' => $clock,
+            'scheduled_at_recipient' => ($clock && $at)
+                ? $at->copy()->timezone($clock['timezone'])->toIso8601String()
+                : null,
+        ];
     }
 
     public function whatsappStatus()
