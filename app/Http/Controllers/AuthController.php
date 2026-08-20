@@ -10,7 +10,8 @@ use App\Models\User;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\AuthIntendedUrlGuard;
 use App\Support\ChatMessageAvatar;
-use App\Support\NewUserWelcomeEmailNotifier;
+use App\Support\EnsureRegisteredUserRole;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -56,7 +57,7 @@ class AuthController extends Controller
         ]);
 
         $this->createPersonalTeamForApiUser($user);
-        NewUserWelcomeEmailNotifier::queue($user, $user->currentTeam);
+        event(new Registered($user->fresh()));
 
         $user->load(['currentTeam', 'roles']);
         $token = $user->createToken('IDONEO Access Token')->plainTextToken;
@@ -94,6 +95,7 @@ class AuthController extends Controller
                 }
             }
 
+            EnsureRegisteredUserRole::assignIfMissing($user);
             $user->load(['currentTeam', 'roles']);
             $token = $user->createToken('IDONEO Access Token')->plainTextToken;
             $profile = $this->profilePayload($user);

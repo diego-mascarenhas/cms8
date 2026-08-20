@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
+use App\Support\DatabaseSequence;
 use App\Support\List60OutreachPromptDefaults;
 
 /**
@@ -23,29 +24,34 @@ class DefaultAssistantFlowPromptsService
             return;
         }
 
-        foreach (self::definitions() as $def)
-        {
-            $module = Module::where('key', $def['module_key'])->first();
-            if (! $module)
-            {
-                continue;
-            }
+        DatabaseSequence::sync('module_prompts');
 
-            Prompt::withoutGlobalScope('team')->firstOrCreate(
-                [
-                    'team_id' => $teamId,
-                    'module_id' => $module->id,
-                    'section_key' => $def['section_key'],
-                ],
-                [
-                    'section_label' => $def['section_label'],
-                    'prompt_instruction' => $def['prompt_instruction'],
-                    'helper_text' => $def['helper_text'] ?? null,
-                    'order' => $def['order'] ?? 0,
-                    'is_active' => $def['is_active'] ?? true,
-                ],
-            );
-        }
+        DatabaseSequence::retryOnDuplicateId('module_prompts', function () use ($teamId): void
+        {
+            foreach (self::definitions() as $def)
+            {
+                $module = Module::where('key', $def['module_key'])->first();
+                if (! $module)
+                {
+                    continue;
+                }
+
+                Prompt::withoutGlobalScope('team')->firstOrCreate(
+                    [
+                        'team_id' => $teamId,
+                        'module_id' => $module->id,
+                        'section_key' => $def['section_key'],
+                    ],
+                    [
+                        'section_label' => $def['section_label'],
+                        'prompt_instruction' => $def['prompt_instruction'],
+                        'helper_text' => $def['helper_text'] ?? null,
+                        'order' => $def['order'] ?? 0,
+                        'is_active' => $def['is_active'] ?? true,
+                    ],
+                );
+            }
+        });
     }
 
     /**
@@ -79,16 +85,19 @@ class DefaultAssistantFlowPromptsService
 
             if ($existing === null)
             {
-                Prompt::withoutGlobalScope('team')->create([
-                    'team_id' => $teamId,
-                    'module_id' => $module->id,
-                    'section_key' => $def['section_key'],
-                    'section_label' => $def['section_label'],
-                    'prompt_instruction' => $def['prompt_instruction'],
-                    'helper_text' => $def['helper_text'] ?? null,
-                    'order' => $def['order'] ?? 0,
-                    'is_active' => $def['is_active'] ?? true,
-                ]);
+                DatabaseSequence::retryOnDuplicateId('module_prompts', function () use ($teamId, $module, $def): void
+                {
+                    Prompt::withoutGlobalScope('team')->create([
+                        'team_id' => $teamId,
+                        'module_id' => $module->id,
+                        'section_key' => $def['section_key'],
+                        'section_label' => $def['section_label'],
+                        'prompt_instruction' => $def['prompt_instruction'],
+                        'helper_text' => $def['helper_text'] ?? null,
+                        'order' => $def['order'] ?? 0,
+                        'is_active' => $def['is_active'] ?? true,
+                    ]);
+                });
                 $touched++;
 
                 continue;

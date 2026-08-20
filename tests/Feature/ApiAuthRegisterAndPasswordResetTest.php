@@ -33,6 +33,8 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
         $user = User::query()->where('email', 'ana@example.com')->first();
         $this->assertNotNull($user);
         $this->assertNotNull($user->current_team_id);
+        $this->assertTrue($user->hasRole('admin'));
+        $this->assertTrue($user->can('create', \App\Models\Contact::class));
         $this->assertTrue(Hash::check('secret12', $user->password));
     }
 

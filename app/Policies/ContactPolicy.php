@@ -29,6 +29,11 @@ class ContactPolicy
      */
     public function viewAny(User $user): bool
     {
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return true;
+        }
+
         // Admin can see all contacts
         if ($user->hasRole('admin'))
         {
@@ -61,6 +66,11 @@ class ContactPolicy
      */
     public function view(User $user, Contact $contact): bool
     {
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return (int) $contact->team_id === (int) $user->currentTeam->id;
+        }
+
         // Admin can see any contact in their team
         if ($user->hasRole('admin'))
         {
@@ -114,6 +124,11 @@ class ContactPolicy
             return false;
         }
 
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return true;
+        }
+
         return $user->hasRole([
             'admin',
             'collaborator',
@@ -129,6 +144,11 @@ class ContactPolicy
      */
     public function update(User $user, Contact $contact): bool
     {
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return (int) $contact->team_id === (int) $user->currentTeam->id;
+        }
+
         // Admin can update any contact in their team
         if ($user->hasRole('admin'))
         {
@@ -155,6 +175,11 @@ class ContactPolicy
      */
     public function delete(User $user, Contact $contact): bool
     {
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return (int) $contact->team_id === (int) $user->currentTeam->id;
+        }
+
         // Only admins can delete contacts
         return $user->hasRole('admin') && $contact->team_id === $user->currentTeam->id;
     }
@@ -167,6 +192,11 @@ class ContactPolicy
         if ($contact->team_id !== $user->currentTeam->id)
         {
             return false;
+        }
+
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return true;
         }
 
         if ($user->hasRole('admin'))
@@ -192,6 +222,11 @@ class ContactPolicy
      */
     public function assignAdvisor(User $user, Contact $contact): bool
     {
+        if ($this->managesCurrentTeamContacts($user))
+        {
+            return (int) $contact->team_id === (int) $user->currentTeam->id;
+        }
+
         return ($user->hasRole('admin') || $user->hasRole('root'))
             && $contact->team_id === $user->currentTeam->id;
     }
@@ -203,6 +238,11 @@ class ContactPolicy
     {
         return function ($query) use ($user)
         {
+            if ($user->currentTeam && $user->canManageTeam($user->currentTeam))
+            {
+                return $query->where('team_id', $user->currentTeam->id);
+            }
+
             // Admin and root can see all contacts in their team
             if ($user->hasRole(['admin', 'root']))
             {
@@ -247,5 +287,10 @@ class ContactPolicy
             // No access
             return $query->whereRaw('1 = 0');
         };
+    }
+
+    private function managesCurrentTeamContacts(User $user): bool
+    {
+        return $user->currentTeam !== null && $user->canManageTeam($user->currentTeam);
     }
 }
