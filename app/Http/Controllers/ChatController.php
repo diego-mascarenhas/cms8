@@ -386,6 +386,7 @@ class ChatController extends Controller
 
         $contactsByPhone = [];
         Contact::query()
+            ->with('currentSentiment.sentiment')
             ->where('team_id', $teamId)
             ->whereIn('phone', array_values(array_unique($allCandidates)))
             ->orderBy('id')
@@ -575,6 +576,14 @@ class ChatController extends Controller
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
+            $mood = $crmProfile?->currentSentiment?->sentiment;
+            $contact->sentiment = $mood !== null
+                ? [
+                    'id' => (int) $mood->id,
+                    'name' => (string) $mood->name,
+                    'emoji' => (string) $mood->emoji,
+                ]
+                : null;
 
             $assistantState = $inboundPolicy->presentWhatsAppAssistantState(
                 $team,
@@ -1616,6 +1625,10 @@ class ChatController extends Controller
             $item['assistant_contact_enabled'] = (bool) ($c->assistant_contact_enabled ?? true);
             $item['assistant_plan_active'] = (bool) ($c->assistant_plan_active ?? true);
             $item['assistant_locked_reason'] = $c->assistant_locked_reason ?? null;
+            if (! empty($c->sentiment) && is_array($c->sentiment))
+            {
+                $item['sentiment'] = $c->sentiment;
+            }
 
             return $item;
         })->values()->all();
