@@ -9,8 +9,8 @@ use App\Services\Billing\AssistantSubscriptionService;
 /**
  * Inbound WhatsApp assistant rules.
  *
- * Precedence: paid plan → blacklist → team global auto-respond (master) → per-contact opt-out → silent team default → admins-when-off exception.
- * The header contact toggle cannot override a disabled team global setting.
+ * Precedence: paid plan → blacklist → per-contact opt-out → team global auto-respond (master) → silent team default → admins-when-off exception.
+ * Inbox "Sin asistente" blocks WhatsApp auto-reply even for team admins.
  * A silent team default (no responder) still allows a contact with a pinned prompt.
  */
 class TeamInboundAssistantPolicy
@@ -77,6 +77,12 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
+        // Inbox "Sin asistente" always wins. An admin answers that chat by hand.
+        if ($inboundSenderPhone !== null && ! $this->contactAllowsAutoReply((int) $team->id, $inboundSenderPhone))
+        {
+            return false;
+        }
+
         $teamAutoRespond = filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN);
 
         if (! $teamAutoRespond)
@@ -87,12 +93,6 @@ class TeamInboundAssistantPolicy
             }
 
             return $this->inboundSenderIsTeamAdministrator($inboundSender, $membershipTeamId ?? (int) $team->id);
-        }
-
-        // Team global is on: contact may still opt out via the header toggle / contact form.
-        if ($inboundSenderPhone !== null && ! $this->contactAllowsAutoReply((int) $team->id, $inboundSenderPhone))
-        {
-            return false;
         }
 
         if (app(TeamSiteAssistantPromptService::class)->isSilentDefault($team)

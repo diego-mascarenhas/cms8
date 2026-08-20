@@ -343,6 +343,77 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertNull($contact->inboundChatAssistantPromptKey());
     }
 
+    public function test_whatsapp_contact_assistant_patch_turns_off_every_crm_row_for_the_phone(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $team->setSetting('assistant_auto_respond', '1');
+        $clientPhone = '34722372858';
+        $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
+
+        $optedOut = Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => $clientPhone,
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+        ]);
+        $stillOn = Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => $clientPhone,
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['webdav_uid' => 'keep-me'],
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_toggle_all_1',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'on' => false,
+                'prompt_key' => '',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'assistant_contact_enabled' => false,
+                'assistant_inbound_enabled' => false,
+            ]);
+
+        $this->assertFalse($optedOut->fresh()->allowsInboundChatAssistant());
+        $this->assertFalse($stillOn->fresh()->allowsInboundChatAssistant());
+        $this->assertSame('keep-me', $stillOn->fresh()->data->webdav_uid ?? null);
+        $this->assertFalse(app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
+            $team,
+            null,
+            (int) $team->id,
+            $clientPhone,
+        ));
+    }
+
     public function test_whatsapp_contact_assistant_patch_pins_prompt_and_none_disables(): void
     {
         if (! Features::hasTeamFeatures())
