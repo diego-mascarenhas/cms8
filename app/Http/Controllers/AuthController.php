@@ -7,6 +7,7 @@ use App\Actions\Fortify\ResetUserPassword;
 use App\Helpers\TokenHelper;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Support\AuthIntendedUrlGuard;
 use App\Support\ChatMessageAvatar;
@@ -245,6 +246,7 @@ class AuthController extends Controller
                 'name' => $user->currentTeam->name,
                 'is_owner' => $user->ownsTeam($user->currentTeam),
                 'can_manage' => $user->canManageTeam($user->currentTeam),
+                'apps' => app(AssistantSubscriptionService::class)->appsPayload($user->currentTeam),
             ] : null,
         ];
     }

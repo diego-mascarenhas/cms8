@@ -710,18 +710,72 @@ class AssistantSubscriptionService
 
     public function isInEffectForTeam(Team $team): bool
     {
-        $subscription = $this->findAssistantSubscription($team);
-
-        return $subscription !== null && $this->subscriptionIsActive($subscription);
+        return $this->catalogHasActiveSubscription($team, 'assistant');
     }
 
     public function teamHasPaidAccessForAi(Team $team): bool
     {
-        if ($this->isInEffectForTeam($team))
+        return $this->accessForCatalog($team, 'assistant')['active'];
+    }
+
+    /**
+     * Single per-app gate: paid catalog subscription, another active Cashier
+     * subscription (Assistant only), or the catalog trial window from team created_at.
+     *
+     * @return array{active: bool, status: 'paid'|'trial'|'expired', trial_ends_at: ?string, locked_reason: string|null}
+     */
+    public function accessForCatalog(Team $team, string $catalog = 'assistant'): array
+    {
+        $catalog = $this->normalizeCatalog($catalog);
+        $trialEnds = $this->trialEndsAt($team, $catalog);
+
+        if ($catalog === 'assistant' && ! config('humano_pricing.require_paid_plan_for_ai', true))
         {
-            return true;
+            return $this->accessPayload(true, 'paid', $trialEnds);
         }
 
+        if ($this->catalogHasActiveSubscription($team, $catalog))
+        {
+            return $this->accessPayload(true, 'paid', $trialEnds);
+        }
+
+        if ($catalog === 'assistant' && $this->teamHasOtherActiveSubscription($team))
+        {
+            return $this->accessPayload(true, 'paid', $trialEnds);
+        }
+
+        if ($trialEnds && $trialEnds->isFuture())
+        {
+            return $this->accessPayload(true, 'trial', $trialEnds);
+        }
+
+        return $this->accessPayload(false, 'expired', $trialEnds);
+    }
+
+    /**
+     * @return array<string, array{active: bool, status: 'paid'|'trial'|'expired', trial_ends_at: ?string, locked_reason: string|null}>
+     */
+    public function appsPayload(Team $team): array
+    {
+        return [
+            'assistant' => $this->accessForCatalog($team, 'assistant'),
+        ];
+    }
+
+    private function findAssistantSubscription(Team $team): ?Subscription
+    {
+        return $this->findCatalogSubscription($team, $this->catalogPlanConfigs('assistant'));
+    }
+
+    private function catalogHasActiveSubscription(Team $team, string $catalog): bool
+    {
+        $subscription = $this->findCatalogSubscription($team, $this->catalogPlanConfigs($catalog));
+
+        return $subscription !== null && $this->subscriptionIsActive($subscription);
+    }
+
+    private function teamHasOtherActiveSubscription(Team $team): bool
+    {
         foreach ($team->subscriptions()->where('stripe_status', '!=', 'canceled')->get() as $subscription)
         {
             if ($this->subscriptionIsActive($subscription))
@@ -733,9 +787,28 @@ class AssistantSubscriptionService
         return false;
     }
 
-    private function findAssistantSubscription(Team $team): ?Subscription
+    private function trialEndsAt(Team $team, string $catalog): ?Carbon
     {
-        return $this->findCatalogSubscription($team, $this->catalogPlanConfigs('assistant'));
+        $hours = (int) config('humano_pricing.app_trials.'.$catalog, 0);
+        if ($hours <= 0 || $team->created_at === null)
+        {
+            return null;
+        }
+
+        return $team->created_at->copy()->addHours($hours);
+    }
+
+    /**
+     * @return array{active: bool, status: 'paid'|'trial'|'expired', trial_ends_at: ?string, locked_reason: string|null}
+     */
+    private function accessPayload(bool $active, string $status, ?Carbon $trialEnds): array
+    {
+        return [
+            'active' => $active,
+            'status' => $status,
+            'trial_ends_at' => $trialEnds?->toIso8601String(),
+            'locked_reason' => $active ? null : 'plan',
+        ];
     }
 
     /**

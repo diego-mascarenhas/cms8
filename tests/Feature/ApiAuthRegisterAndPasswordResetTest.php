@@ -28,7 +28,9 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             ->assertJsonPath('email', 'ana@example.com')
             ->assertJsonPath('user.email', 'ana@example.com')
             ->assertJsonPath('current_team.is_owner', true)
-            ->assertJsonStructure(['token', 'user' => ['id', 'name', 'email'], 'current_team' => ['id', 'name']]);
+            ->assertJsonPath('current_team.apps.assistant.active', true)
+            ->assertJsonPath('current_team.apps.assistant.status', 'paid')
+            ->assertJsonStructure(['token', 'user' => ['id', 'name', 'email'], 'current_team' => ['id', 'name', 'apps']]);
 
         $user = User::query()->where('email', 'ana@example.com')->first();
         $this->assertNotNull($user);
