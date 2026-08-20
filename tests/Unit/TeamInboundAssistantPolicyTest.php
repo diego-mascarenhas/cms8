@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\TeamInboundAssistantPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -118,7 +119,10 @@ class TeamInboundAssistantPolicyTest extends TestCase
 
     public function test_missing_paid_plan_blocks_auto_reply_when_required(): void
     {
-        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [],
+        ]);
 
         $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
         $team->setSetting('assistant_auto_respond', '1');
@@ -140,7 +144,7 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $team->setSetting('assistant_auto_respond', '1');
 
         $policy = app(TeamInboundAssistantPolicy::class);
-        $access = app(\App\Services\Billing\AssistantSubscriptionService::class)
+        $access = app(AssistantSubscriptionService::class)
             ->accessForCatalog($team, 'assistant');
 
         $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null));
@@ -156,7 +160,10 @@ class TeamInboundAssistantPolicyTest extends TestCase
      */
     public function test_missing_paid_plan_still_lets_the_team_pick_a_prompt(): void
     {
-        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [],
+        ]);
 
         $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
         $team->setSetting('assistant_auto_respond', '1');
@@ -225,5 +232,47 @@ class TeamInboundAssistantPolicyTest extends TestCase
 
         $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null));
         $this->assertTrue($policy->presentWhatsAppAssistantState($team, true, true)['assistant_plan_active']);
+    }
+
+    public function test_whitelisted_team_has_paid_access_without_subscription_or_trial(): void
+    {
+        $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
+        $team->setSetting('assistant_auto_respond', '1');
+
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [(int) $team->id],
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $access = app(AssistantSubscriptionService::class)->accessForCatalog($team, 'assistant');
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertTrue($access['active']);
+        $this->assertSame('paid', $access['status']);
+        $this->assertNull($access['locked_reason']);
+        $this->assertTrue($policy->allowsWhatsAppAutoReply($team, null));
+        $this->assertNull($policy->lockedReason($team));
+    }
+
+    public function test_team_outside_whitelist_stays_expired_after_trial(): void
+    {
+        $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
+        $team->setSetting('assistant_auto_respond', '1');
+
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [(int) $team->id + 999],
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $access = app(AssistantSubscriptionService::class)->accessForCatalog($team, 'assistant');
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($access['active']);
+        $this->assertSame('expired', $access['status']);
+        $this->assertSame('plan', $access['locked_reason']);
+        $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null));
+        $this->assertSame('plan', $policy->lockedReason($team));
     }
 }

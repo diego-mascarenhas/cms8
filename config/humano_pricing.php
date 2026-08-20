@@ -49,6 +49,16 @@ return [
     ],
 
     /*
+     * | Teams that skip checkout and the app trial (treated as paid). Comma-separated
+     * | ids. Default 1,2,3 (internal / early teams). PHPUnit sets this empty so lock
+     * | tests stay honest — first factory teams often get those ids.
+     */
+    'plan_access_team_ids' => array_values(array_unique(array_filter(
+        array_map('intval', preg_split('/\s*,\s*/', (string) env('CMS8_PLAN_ACCESS_TEAM_IDS', '1,2,3'), -1, PREG_SPLIT_NO_EMPTY) ?: []),
+        static fn (int $id): bool => $id > 0,
+    ))),
+
+    /*
      * | Customer token rate billed on the Assistant subscription period
      * | (calendar month when there is no Stripe period). amount_per_million is
      * | the estimated provider cost in EUR per 1,000,000 tokens used after TOON.

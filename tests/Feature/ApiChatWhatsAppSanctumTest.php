@@ -603,7 +603,10 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             $this->markTestSkipped('Jetstream team features disabled.');
         }
 
-        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [],
+        ]);
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
 
@@ -658,7 +661,10 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             $this->markTestSkipped('Jetstream team features disabled.');
         }
 
-        config(['humano_pricing.require_paid_plan_for_ai' => true]);
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [],
+        ]);
 
         $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
         $team->setSetting('assistant_auto_respond', '1');

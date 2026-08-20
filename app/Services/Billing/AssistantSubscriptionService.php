@@ -719,8 +719,9 @@ class AssistantSubscriptionService
     }
 
     /**
-     * Single per-app gate: paid catalog subscription, another active Cashier
-     * subscription (Assistant only), or the catalog trial window from team created_at.
+     * Single per-app gate: complimentary team whitelist, paid catalog subscription,
+     * another active Cashier subscription (Assistant only), or the catalog trial
+     * window from team created_at.
      *
      * @return array{active: bool, status: 'paid'|'trial'|'expired', trial_ends_at: ?string, locked_reason: string|null}
      */
@@ -730,6 +731,11 @@ class AssistantSubscriptionService
         $trialEnds = $this->trialEndsAt($team, $catalog);
 
         if ($catalog === 'assistant' && ! config('humano_pricing.require_paid_plan_for_ai', true))
+        {
+            return $this->accessPayload(true, 'paid', $trialEnds);
+        }
+
+        if ($this->teamHasComplimentaryAccess($team))
         {
             return $this->accessPayload(true, 'paid', $trialEnds);
         }
@@ -785,6 +791,17 @@ class AssistantSubscriptionService
         }
 
         return false;
+    }
+
+    private function teamHasComplimentaryAccess(Team $team): bool
+    {
+        $ids = config('humano_pricing.plan_access_team_ids', []);
+        if (! is_array($ids) || $ids === [])
+        {
+            return false;
+        }
+
+        return in_array((int) $team->id, array_map('intval', $ids), true);
     }
 
     private function trialEndsAt(Team $team, string $catalog): ?Carbon
