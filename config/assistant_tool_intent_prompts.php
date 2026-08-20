@@ -49,6 +49,7 @@ return [
         'chat_capabilities',
         'humano_assistant',
         'wapify',
+        'pumpstall',
         'collections_billing',
         'chat_commerce',
         'chat_calendar',
@@ -167,6 +168,26 @@ return [
             ],
             'words' => [
                 'wapify',
+            ],
+        ],
+
+        'pumpstall' => [
+            'routing_keys' => [
+                'products:pumpstall',
+                'pumpstall',
+            ],
+            'phrases' => [
+                'pumpstall',
+                'pump stall',
+                'pump → stall',
+                't.me/pumpstall',
+                'pumpstall.com',
+                'señales de pumpstall',
+                'automatizar el short',
+                'binance futures usdt-m',
+            ],
+            'words' => [
+                'pumpstall',
             ],
         ],
 
