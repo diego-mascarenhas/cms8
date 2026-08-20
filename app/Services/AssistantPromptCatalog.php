@@ -146,6 +146,56 @@ class AssistantPromptCatalog
      */
     public function apply(Team $team, string $routingKey): string
     {
+        $item = $this->catalogItemOrFail($team, $routingKey);
+        $existing = $this->teamPromptBySection($team, $item['section_key']);
+        if ($existing)
+        {
+            $existing->section_label = $item['section_label'];
+            $existing->prompt_instruction = $item['prompt_instruction'];
+            $existing->helper_text = $item['helper_text'];
+            $existing->is_active = true;
+            $existing->save();
+
+            return $this->routingKeyForPrompt($existing, $item['module_key']);
+        }
+
+        return $this->copyItemToTeam($team, $item);
+    }
+
+    /**
+     * Resolve a catalog or team prompt for pinning. Copies the default when the team has no row.
+     * Does not overwrite a team customization.
+     */
+    public function ensureOnTeam(Team $team, string $routingKey): string
+    {
+        $direct = Prompt::findByRoutingKey(trim($routingKey), (int) $team->id);
+        if ($direct && $direct->is_active)
+        {
+            return $this->routingKeyForPrompt($direct, $direct->module?->key ?? '');
+        }
+
+        $item = $this->catalogItemOrFail($team, $routingKey);
+        $existing = $this->teamPromptBySection($team, $item['section_key'])
+            ?? $this->teamPrompt($team, $item['module_key'], $item['section_key']);
+        if ($existing)
+        {
+            if (! $existing->is_active)
+            {
+                $existing->is_active = true;
+                $existing->save();
+            }
+
+            return $this->routingKeyForPrompt($existing, $item['module_key']);
+        }
+
+        return $this->copyItemToTeam($team, $item);
+    }
+
+    /**
+     * @return array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}
+     */
+    private function catalogItemOrFail(Team $team, string $routingKey): array
+    {
         $item = $this->find($routingKey) ?? $this->findBySectionKey($this->sectionKeyFrom($routingKey));
         if ($item === null)
         {
@@ -157,20 +207,14 @@ class AssistantPromptCatalog
             throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
         }
 
-        $existing = $this->teamPromptBySection($team, $item['section_key']);
-        if ($existing)
-        {
-            $existing->section_label = $item['section_label'];
-            $existing->prompt_instruction = $item['prompt_instruction'];
-            $existing->helper_text = $item['helper_text'];
-            $existing->is_active = true;
-            $existing->save();
+        return $item;
+    }
 
-            $existing->loadMissing('module');
-
-            return ($existing->module?->key ?: $item['module_key']).':'.$existing->section_key;
-        }
-
+    /**
+     * @param  array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}  $item
+     */
+    private function copyItemToTeam(Team $team, array $item): string
+    {
         $module = Module::query()->where('key', $item['module_key'])->first();
         if (! $module)
         {
@@ -199,6 +243,13 @@ class AssistantPromptCatalog
         });
 
         return $item['key'];
+    }
+
+    private function routingKeyForPrompt(Prompt $prompt, string $fallbackModuleKey = ''): string
+    {
+        $prompt->loadMissing('module');
+
+        return ($prompt->module?->key ?: $fallbackModuleKey).':'.$prompt->section_key;
     }
 
     /**
