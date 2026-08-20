@@ -334,6 +334,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertJson([
                 'success' => true,
                 'assistant_inbound_enabled' => false,
+                'assistant_contact_enabled' => false,
                 'assistant_toggle_available' => true,
             ]);
 
@@ -409,7 +410,8 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $thread = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.$clientPhone)
             ->assertOk()
-            ->assertJsonPath('thread_assistant.prompt_key', 'chat:citas_y_ventas');
+            ->assertJsonPath('thread_assistant.prompt_key', 'chat:citas_y_ventas')
+            ->assertJsonPath('thread_assistant.assistant_contact_enabled', true);
 
         $promptKeys = collect($thread->json('thread_assistant.prompts'))->pluck('key');
         $this->assertTrue($promptKeys->contains('chat:citas_y_ventas'));
@@ -424,11 +426,29 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertJson([
                 'success' => true,
                 'assistant_inbound_enabled' => false,
+                'assistant_contact_enabled' => false,
                 'prompt_key' => null,
             ]);
 
         $contact->refresh();
         $this->assertFalse($contact->allowsInboundChatAssistant());
+        $this->assertNull($contact->inboundChatAssistantPromptKey());
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => $clientPhone,
+                'on' => true,
+                'prompt_key' => '',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'assistant_contact_enabled' => true,
+                'prompt_key' => null,
+            ]);
+
+        $contact->refresh();
+        $this->assertTrue($contact->allowsInboundChatAssistant());
         $this->assertNull($contact->inboundChatAssistantPromptKey());
     }
 

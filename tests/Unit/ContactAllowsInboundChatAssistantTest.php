@@ -31,6 +31,14 @@ class ContactAllowsInboundChatAssistantTest extends TestCase
         $this->assertFalse($contact->allowsInboundChatAssistant());
     }
 
+    public function test_disallows_inbound_chat_assistant_when_data_is_array(): void
+    {
+        $contact = new Contact;
+        $contact->data = ['chat_assistant_ai_enabled' => false];
+
+        $this->assertFalse($contact->allowsInboundChatAssistant());
+    }
+
     public function test_inbound_prompt_key_is_null_when_missing(): void
     {
         $contact = new Contact;

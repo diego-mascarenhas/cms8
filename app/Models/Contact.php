@@ -80,13 +80,13 @@ class Contact extends Model implements HasMedia
      */
     public function allowsInboundChatAssistant(): bool
     {
-        $d = $this->data;
-        if ($d === null || ! is_object($d) || ! property_exists($d, 'chat_assistant_ai_enabled'))
+        $data = $this->chatAssistantData();
+        if (! array_key_exists('chat_assistant_ai_enabled', $data))
         {
             return true;
         }
 
-        return filter_var($d->chat_assistant_ai_enabled, FILTER_VALIDATE_BOOLEAN);
+        return filter_var($data['chat_assistant_ai_enabled'], FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
@@ -94,15 +94,33 @@ class Contact extends Model implements HasMedia
      */
     public function inboundChatAssistantPromptKey(): ?string
     {
-        $d = $this->data;
-        if ($d === null || ! is_object($d) || ! property_exists($d, 'chat_assistant_prompt_key'))
+        $data = $this->chatAssistantData();
+        if (! array_key_exists('chat_assistant_prompt_key', $data))
         {
             return null;
         }
 
-        $key = trim((string) $d->chat_assistant_prompt_key);
+        $key = trim((string) $data['chat_assistant_prompt_key']);
 
         return $key !== '' ? $key : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function chatAssistantData(): array
+    {
+        $data = $this->data;
+        if (is_array($data))
+        {
+            return $data;
+        }
+        if (is_object($data))
+        {
+            return get_object_vars($data);
+        }
+
+        return [];
     }
 
     /**
