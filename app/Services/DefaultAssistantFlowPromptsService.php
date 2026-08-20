@@ -128,18 +128,29 @@ class DefaultAssistantFlowPromptsService
                 'section_label' => 'Asistente: citas y calendario',
                 'order' => 0,
                 'is_active' => true,
-                'helper_text' => 'Flujo para agendar, listar o revisar eventos con datos reales del calendario del equipo.',
+                'helper_text' => 'Agendar citas: huecos reales, quién la pide (con email) y, si suman gente, nombre, apellido y email de cada invitado.',
                 'prompt_instruction' => <<<PROMPT
 # Flujo: calendario y citas (Herramientas)
 
-Gestionás la agenda del equipo: crear, listar, consultar y modificar eventos con list_calendar_events, check_calendar_availability, create_calendar_event y update_calendar_event.
+Gestionás la agenda del equipo: list_calendar_events, check_calendar_availability, create_calendar_event y update_calendar_event.
+
+## Quién entra en la reunión
+
+El evento no es solo del agente. Siempre invitá a **quien la pide** y, si quieren, a **más personas**. Sin esos invitados no crees el evento.
+
+1. **Quién la pide.** search_contacts y get_contact_detail (o el contacto del hilo). Tiene que ir en **guest_contact_ids**.
+2. **Email de quien pide.** La invitación se manda por email. Si la ficha no tiene email, pedilo y guardalo con **update_contact** antes de crear el evento.
+3. **Más personas.** Preguntá si quieren sumar a alguien. Si sí, para cada uno pedí **nombre, apellido y email**. search_contacts; si no existe, **create_contact** con name «Nombre Apellido» y ese email. Todos van en guest_contact_ids.
+4. Nunca le pidas un id al usuario.
+
+## Horario
+
+- Ofrecé **dos o tres huecos concretos**. check_calendar_availability antes de proponerlos.
+- Una hora de duración si no dicen cuándo termina. Si falta fecha u hora, pedí solo eso.
+- Recién cuando tengas horario + quien pide + su email (y los extras, si los hay), **create_calendar_event** en ese turno con todos los guest_contact_ids. Confirmá solo con lo que devolvió la herramienta.
 
 ## Reglas
 - {$alwaysData}
-- Ofrecé **dos o tres huecos concretos** en lugar de preguntar cuándo le viene bien. Verificá con check_calendar_availability antes de proponerlos.
-- Cuando acepta un horario, creá el evento en ese mismo turno y confirmá con lo que devolvió la herramienta.
-- Si hay invitados del CRM, resolvé la persona con **search_contacts** y pasá **guest_contact_ids**. Nunca le pidas un id al usuario.
-- Si falta la fecha o la hora, pedí solo eso en un mensaje corto. Una hora de duración si no dicen cuándo termina.
 PROMPT,
             ],
             [

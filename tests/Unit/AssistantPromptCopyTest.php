@@ -59,6 +59,12 @@ class AssistantPromptCopyTest extends TestCase
 
         $this->assertStringContainsString('check_calendar_availability', $instruction);
         $this->assertStringContainsString('huecos concretos', $instruction);
+        $this->assertStringContainsString('quien la pide', $instruction);
+        $this->assertStringContainsString('email', $instruction);
+        $this->assertStringContainsString('nombre, apellido y email', $instruction);
+        $this->assertStringContainsString('guest_contact_ids', $instruction);
+        $this->assertStringContainsString('create_contact', $instruction);
+        $this->assertStringContainsString('update_contact', $instruction);
     }
 
     public function test_task_flow_requires_a_successful_tool_call_before_confirming(): void

@@ -102,10 +102,10 @@ class TeamRevisionAlphaSeeder extends Seeder
         // 8.1. Ensure tickets module is active for Revision Alpha (support tickets)
         $team->enableModule('tickets');
 
-        // 8.2. Prompt de cobranzas hosting (Saldo) en module_prompts — invoices.collections (JSON)
+        // 8.2. Prompt de cobranzas (invoices) en module_prompts
         if (CollectionMessagingGuide::syncHostingCollectionsPromptForTeam($team->id))
         {
-            $this->getCommand()->info('✅ Prompt de cobranzas hosting (module_prompts) sincronizado para Revision Alpha');
+            $this->getCommand()->info('✅ Prompt de cobranzas (module_prompts) sincronizado para Revision Alpha');
         }
 
         // 9. Configure team shortcuts

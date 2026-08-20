@@ -47,6 +47,7 @@ return [
      */
     'intents_order' => [
         'chat_capabilities',
+        'humano_assistant',
         'wapify',
         'collections_billing',
         'chat_commerce',
@@ -117,6 +118,28 @@ return [
                 'stripe',
                 'facturación',
                 'facturacion',
+            ],
+        ],
+
+        'humano_assistant' => [
+            'routing_keys' => [
+                'products:humano_assistant',
+                'humano_assistant',
+            ],
+            'phrases' => [
+                'humano assistant',
+                'idoneo assistant',
+                'probar assistant',
+                'demo de assistant',
+                'demo de 48 horas',
+                '48 horas de prueba',
+                '48 hs de prueba',
+                'inbox de whatsapp',
+                'whatsapp de la empresa',
+                'gestionar pedidos por whatsapp',
+            ],
+            'words' => [
+                'assistant',
             ],
         ],
 

@@ -60,6 +60,7 @@ class TeamCreatedSeedsDefaultPromptsTest extends TestCase
         $keys = $this->sectionKeysFor((int) $team->id);
 
         $this->assertNotContains('wapify_me', $keys, 'The Wapify.Me script (with its Stripe link) must not be seeded into client teams.');
+        $this->assertNotContains('humano_assistant', $keys, 'The Assistant sales script must not be seeded into client teams.');
         $this->assertNotContains('landing', $keys, 'The Humano.app strategy framework must not be seeded into client teams.');
     }
 

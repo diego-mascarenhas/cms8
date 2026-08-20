@@ -17,54 +17,90 @@ class CollectionMessagingGuide
      *     steps: list<array{key: string, title: string, body: string, only_if_suspended?: bool}>
      * }
      */
-    public static function hostingCollectionsPromptDefinition(): array
+    public static function collectionsPromptDefinition(): array
     {
         return [
-            'advisor_notes' => 'No envíes todos los mensajes de una sola vez. Guiá al cliente paso a paso: primero saludo y contexto; luego, si acepta avanzar, explicá la opción recomendada (pago con tarjeta vía Stripe); después compartí el o los links de pago; recién al final ofrecé transferencia bancaria si no puede pagar con tarjeta.',
+            'advisor_notes' => 'No envíes todos los mensajes de una sola vez. Primero identificá al contacto y leé las facturas impagas. Saludá, mostrá el saldo real y pasá el link de cada invoice. No inventes importes ni URLs. Transferencia solo si el equipo tiene datos bancarios y el cliente no puede pagar la factura.',
             'steps' => [
                 [
                     'key' => 'open',
-                    'title' => 'Paso 1 — Apertura (cordial)',
-                    'body' => 'Hola {{CONTACT_FIRST_NAME}}, ¿cómo estás? Te escribo por un tema administrativo: registramos facturas impagas correspondientes al servicio de hosting. Cuando puedas, lo vemos juntos para regularizar la situación de la forma más simple para vos.',
+                    'title' => 'Paso 1 — Apertura',
+                    'body' => 'Hola {{CONTACT_FIRST_NAME}}, te escribo por las facturas pendientes. Cuando puedas lo vemos y lo regularizamos por el link de cada invoice.',
                 ],
                 [
-                    'key' => 'card_preference',
-                    'title' => 'Paso 2 — Por qué conviene pagar con tarjeta',
-                    'body' => 'Para nosotros es la opción que más nos ayuda porque el proceso queda automatizado: el dinero se acredita directamente en la cuenta correcta, sin depender de transferencias entre titulares de distintas empresas. Si te sirve, podemos hacer el pago con tarjeta de crédito o débito a través de Stripe; así simplificamos y aceleramos todo.',
-                ],
-                [
-                    'key' => 'benefits',
-                    'title' => 'Paso 3 — Beneficios por pagar con tarjeta (Stripe)',
-                    'body' => "Queremos que este cambio sea beneficioso para vos, por eso sumamos bonificaciones exclusivas al pagar con tarjeta (crédito o débito) vía Stripe:\n- 20% de descuento por los próximos 6 meses.\n- Acceso a herramientas de Email Marketing y WhatsApp Marketing.\n- Horas adicionales de consultoría y soporte tecnológico para potenciar tu experiencia.\n- Soporte Premium bonificado: tiempo de respuesta que no supera las 2 horas.\n\nSi abonás con tarjeta en moneda extranjera (por ejemplo euros), por ser residente en Argentina el descuento es del 30% y es permanente.",
+                    'key' => 'invoices',
+                    'title' => 'Paso 2 — Facturas impagas',
+                    'body' => "Este es el detalle que figura en invoices:\n{{UNPAID_INVOICES_LIST}}",
                 ],
                 [
                     'key' => 'links',
-                    'title' => 'Paso 4 — Links de pago y documentación',
-                    'body' => "Detalle de facturas impagas y montos:\n{{UNPAID_INVOICES_LIST}}\n\nLinks para pagar o revisar en Stripe (hosted invoice / PDF cuando aplique):\n{{PAYMENT_LINKS}}",
+                    'title' => 'Paso 3 — Cómo pagar',
+                    'body' => "Links de pago o PDF de cada factura:\n{{PAYMENT_LINKS}}",
                 ],
                 [
                     'key' => 'suspended',
-                    'title' => 'Paso 5 — Servicio suspendido',
-                    'body' => 'Te comento que el servicio se encuentra suspendido por la deuda. Al regularizar con tarjeta de crédito, la restauración no debería demorar más de 15 minutos desde el pago acreditado.',
+                    'title' => 'Paso 4 — Servicio suspendido o en riesgo',
+                    'body' => 'El servicio figura suspendido o en mora por esas facturas. Al pagar por el link de la invoice, la reactivación suele ser inmediata cuando el cobro se acredita.',
                     'only_if_suspended' => true,
                 ],
                 [
                     'key' => 'transfer_last',
-                    'title' => 'Última instancia — Transferencia bancaria',
+                    'title' => 'Última instancia — Transferencia',
                     'body' => '{{BANK_TRANSFER_BLOCK}}',
-                ],
-                [
-                    'key' => 'transfer_delay',
-                    'title' => 'Plazos según medio de pago',
-                    'body' => 'Si pagás por transferencia bancaria, la activación puede demorar hasta 24 horas hábiles desde que impacta el pago y lo verificamos. Con tarjeta el proceso suele ser inmediato en la plataforma.',
                 ],
             ],
         ];
     }
 
     /**
-     * Persist hosting collection JSON prompt to module_prompts (invoices / collections).
-     * Used by TeamRevisionAlphaSeeder and optional migrations.
+     * @deprecated Use {@see collectionsPromptDefinition()}
+     *
+     * @return array{advisor_notes: string, steps: list<array{key: string, title: string, body: string, only_if_suspended?: bool}>}
+     */
+    public static function hostingCollectionsPromptDefinition(): array
+    {
+        return self::collectionsPromptDefinition();
+    }
+
+    /**
+     * Instruction for the invoices:collections assistant flow. Looks up the contact and uses
+     * real invoice data from context (Stripe appendix). Do not invent amounts or URLs.
+     */
+    public static function collectionsAssistantInstruction(): string
+    {
+        return <<<'PROMPT'
+# Flujo: cobranzas
+
+Cobrás saldos pendientes. Los importes, vencimientos y links salen de las **facturas (invoices)** del contacto. Nunca los inventes.
+
+## Cómo arrancar
+
+1. Si no hay ficha en contexto, **search_contacts** por nombre, teléfono o email. Si hay varios, pedí un dato para desambiguar y usá **get_contact_detail**.
+2. Leé el bloque de invoices impagas del contexto. Si no hay facturas, decilo en una frase: no hay saldo en invoices para esa persona.
+3. Redactá o enviá el recordatorio solo con esos datos: número, importe, moneda, vencimiento y link de pago.
+
+## Mensaje al cliente
+
+- Un canal por turno: WhatsApp corto, o email con asunto.
+- Tono firme y respetuoso. Una sola llamada a la acción: pagar por el link de la factura.
+- Si hay varias invoices, listalas y pasá cada link. No inventes URLs.
+- Transferencia solo si el operador la pide y el contexto trae datos bancarios del equipo.
+
+## Herramientas
+
+- search_contacts, get_contact_detail
+- send_whatsapp_message cuando el operador pida enviarlo (no en vista previa)
+- create_contact_interaction para dejar constancia de la gestión
+
+## Límites
+
+- No inventes importes, moneda, número de factura, fechas ni URLs.
+- No amenaces con juicios ni cortes de servicio salvo que el operador lo pida y el contexto lo confirme (por ejemplo suscripción en mora).
+PROMPT;
+    }
+
+    /**
+     * Persist the generic collections flow on invoices:collections.
      */
     public static function syncHostingCollectionsPromptForTeam(int $teamId): bool
     {
@@ -79,8 +115,6 @@ class CollectionMessagingGuide
             return false;
         }
 
-        $definition = self::hostingCollectionsPromptDefinition();
-
         Prompt::withoutGlobalScope('team')->updateOrCreate(
             [
                 'team_id' => $teamId,
@@ -88,9 +122,9 @@ class CollectionMessagingGuide
                 'section_key' => 'collections',
             ],
             [
-                'section_label' => 'Cobranzas hosting (Stripe, AR)',
-                'prompt_instruction' => json_encode($definition, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT),
-                'helper_text' => 'Saldo: JSON con advisor_notes y steps. Placeholders: {{CONTACT_FIRST_NAME}}, {{UNPAID_INVOICES_LIST}}, {{PAYMENT_LINKS}}, {{BANK_TRANSFER_BLOCK}}. Paso suspendido: only_if_suspended: true.',
+                'section_label' => 'Cobranzas',
+                'prompt_instruction' => self::collectionsAssistantInstruction(),
+                'helper_text' => 'Cobranzas: buscar el contacto y usar las facturas (invoices) reales. No inventes importes ni links.',
                 'order' => 1,
                 'is_active' => true,
             ],
@@ -208,7 +242,7 @@ class CollectionMessagingGuide
             }
         }
 
-        return self::hostingCollectionsPromptDefinition();
+        return self::collectionsPromptDefinition();
     }
 
     /**

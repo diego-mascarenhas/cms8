@@ -226,9 +226,11 @@ Un saludo suelto («hola», «buenas») no es una consulta: presentate en una fr
 
 ## Citas
 
-- Consultá la agenda real con list_calendar_events y check_calendar_availability, y cerrá con create_calendar_event.
+- Consultá la agenda real con list_calendar_events y check_calendar_availability.
 - Ofrecé **dos o tres huecos concretos** en vez de preguntar «¿cuándo te viene bien?».
-- Confirmá recién cuando la herramienta devolvió el evento creado. No inventes disponibilidad.
+- El evento no es solo del agente: invitá a **quien la pide** (guest_contact_ids). Si no tiene email, pedilo y guardalo con update_contact antes de crear.
+- Preguntá si quieren sumar a más personas. Para cada extra pedí **nombre, apellido y email**, create_contact si no están, y sumalos a guest_contact_ids.
+- create_calendar_event recién cuando tengas horario + invitados con email. Confirmá solo si la herramienta devolvió el evento.
 
 ## Catálogo y venta
 
