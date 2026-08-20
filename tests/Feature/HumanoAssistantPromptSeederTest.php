@@ -43,6 +43,9 @@ class HumanoAssistantPromptSeederTest extends TestCase
         $this->assertStringContainsString('search_contacts', $prompt->prompt_instruction);
         $this->assertStringContainsString('48 horas', $prompt->prompt_instruction);
         $this->assertStringContainsString('tokens', mb_strtolower($prompt->prompt_instruction));
+        $this->assertStringContainsString('https://assistant.idoneo.dev/register', $prompt->prompt_instruction);
+        $this->assertStringNotContainsString('humano.app/register', $prompt->prompt_instruction);
+        $this->assertStringNotContainsString('WhatsApp Business', $prompt->prompt_instruction);
         $this->assertStringContainsString('buy.stripe.com/5kQ4gzacZ3Nk9HM0Qd43S07', $prompt->prompt_instruction);
         $this->assertStringContainsString('49 €', $prompt->prompt_instruction);
         $this->assertTrue($prompt->is_active);

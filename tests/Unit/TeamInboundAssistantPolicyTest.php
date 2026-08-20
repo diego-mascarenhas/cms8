@@ -113,6 +113,38 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '34600000000'));
     }
 
+    public function test_any_matching_contact_opt_out_blocks_reply(): void
+    {
+        $this->seed([
+            \Database\Seeders\CountrySeeder::class,
+            \Database\Seeders\LanguageSeeder::class,
+            \Database\Seeders\ContactStatusSeeder::class,
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('assistant_auto_respond', '1');
+
+        \App\Models\Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000000',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => true],
+        ]);
+        \App\Models\Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '+34 600 000 000',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) ['chat_assistant_ai_enabled' => false],
+        ]);
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null, (int) $team->id, '34600000000'));
+    }
+
     public function test_team_auto_respond_off_blocks_non_admin_senders(): void
     {
         $team = Team::factory()->create();

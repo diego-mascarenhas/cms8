@@ -141,11 +141,11 @@ class AssistantPromptCatalogTest extends TestCase
         config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
 
         $this->assertSame('products:humano_assistant', $catalog->ensureOnTeam($team, 'products:humano_assistant'));
-        $this->assertNotNull(
-            Prompt::withoutGlobalScope('team')
-                ->forTeam((int) $team->id)
-                ->where('section_key', 'humano_assistant')
-                ->first(),
-        );
+        $copied = Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'humano_assistant')
+            ->first();
+        $this->assertNotNull($copied);
+        $this->assertStringContainsString('https://assistant.idoneo.dev/register', (string) $copied->prompt_instruction);
     }
 }

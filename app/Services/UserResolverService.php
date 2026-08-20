@@ -6,6 +6,7 @@ use App\Helpers\PhoneHelper;
 use App\Models\Contact;
 use App\Models\Team;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 class UserResolverService
 {
@@ -132,10 +133,18 @@ class UserResolverService
 
     public function findContactInTeamByPhone(int $teamId, string $phone): ?Contact
     {
+        return $this->findContactsInTeamByPhone($teamId, $phone)->first();
+    }
+
+    /**
+     * @return Collection<int, Contact>
+     */
+    public function findContactsInTeamByPhone(int $teamId, string $phone): Collection
+    {
         $cleanNumber = preg_replace('/[^0-9]/', '', $phone);
         if ($cleanNumber === '')
         {
-            return null;
+            return collect();
         }
 
         $phoneNormalizedSql = "REPLACE(REPLACE(REPLACE(CONCAT(phone, ''), ' ', ''), '+', ''), '-', '')";
@@ -150,7 +159,7 @@ class UserResolverService
                 })
                     ->orWhereRaw("{$phoneNormalizedSql} = ?", [$cleanNumber]);
 
-                if (strlen($cleanNumber) === 11 && str_starts_with($cleanNumber, '34'))
+                if (strlen($cleanNumber) >= 11 && str_starts_with($cleanNumber, '34'))
                 {
                     $query->orWhereRaw("{$phoneNormalizedSql} = ?", [substr($cleanNumber, -9)]);
                 }
@@ -160,7 +169,7 @@ class UserResolverService
                 }
             })
             ->orderBy('id')
-            ->first();
+            ->get();
     }
 
     /**

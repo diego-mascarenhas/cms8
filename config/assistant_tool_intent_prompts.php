@@ -134,6 +134,7 @@ return [
                 'demo de 48 horas',
                 '48 horas de prueba',
                 '48 hs de prueba',
+                'assistant.idoneo.dev/register',
                 'inbox de whatsapp',
                 'whatsapp de la empresa',
                 'gestionar pedidos por whatsapp',
