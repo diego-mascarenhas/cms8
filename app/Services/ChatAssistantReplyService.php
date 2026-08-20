@@ -93,9 +93,12 @@ class ChatAssistantReplyService
 
         $hasGuideAppendix = $humanoGuideAppendix !== null && trim($humanoGuideAppendix) !== '';
 
-        if ($withTools && $teamId !== null && $contextUserId !== null)
+        if ($withTools && $teamId !== null)
         {
             $forced = $forcedFlowRoutingKey !== null ? trim($forcedFlowRoutingKey) : '';
+            $stickyKey = ($contextUserId !== null && $channel !== AssistantActorContextService::CHANNEL_WHATSAPP)
+                ? $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId)
+                : null;
             if ($forced !== '')
             {
                 $forcedPrompt = Prompt::findByRoutingKey($forced, $teamId);
@@ -116,7 +119,6 @@ class ChatAssistantReplyService
                     ];
                 } else
                 {
-                    $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
                     $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
                 }
             } elseif ($hasGuideAppendix)
@@ -129,7 +131,6 @@ class ChatAssistantReplyService
                 ];
             } else
             {
-                $stickyKey = $this->agentConversationContext->getAssistantToolFlowRoutingKey($contextUserId, $teamId);
                 $resolution = $this->toolIntentPrompts->resolveFlowForToolAssistant($teamId, $message, $stickyKey);
             }
             $flowPrompt = $resolution['prompt'];
