@@ -1053,23 +1053,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         null,
                         $assistantTeamId,
                     );
-                    $contextContactId = null;
-                    if ($assistantTeamId !== null)
-                    {
-                        if ($contextUser !== null)
-                        {
-                            $contextContactId = Contact::withoutGlobalScopes()
-                                ->where('user_id', $contextUser->id)
-                                ->where('team_id', $assistantTeamId)
-                                ->value('id');
-                        }
-                        if ($contextContactId === null)
-                        {
-                            $contextContactId = app(UserResolverService::class)
-                                ->findContactInTeamByPhone((int) $assistantTeamId, $cleanFrom)
-                                ?->id;
-                        }
-                    }
+                    $contextContactId = $assistantTeamId !== null
+                        ? $this->resolveInboundContextContactId((int) $assistantTeamId, $cleanFrom)
+                        : null;
 
                     if ($contextUser !== null && $assistantTeamId !== null && trim((string) $body) !== '')
                     {
@@ -1326,6 +1312,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         $peerTeamId = $request->input('peer_linked_team_id');
 
         return is_numeric($peerTeamId) && (int) $peerTeamId > 0;
+    }
+
+    private function resolveInboundContextContactId(int $teamId, string $fromPhone): ?int
+    {
+        return app(UserResolverService::class)
+            ->findContactInTeamByPhone($teamId, $fromPhone)
+            ?->id;
     }
 
     private function inboundAssistantMayAutoReply(string $fromPhone, ?string $toPhone = null): bool

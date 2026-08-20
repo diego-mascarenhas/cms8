@@ -1093,22 +1093,7 @@ class ChatController extends Controller
             return null;
         }
 
-        return Contact::query()
-            ->where('team_id', $teamId)
-            ->where(function ($query) use ($digits)
-            {
-                $query->where('phone', $digits);
-                if (strlen($digits) === 11 && str_starts_with($digits, '34'))
-                {
-                    $query->orWhere('phone', substr($digits, -9));
-                }
-                if (strlen($digits) === 9)
-                {
-                    $query->orWhere('phone', '34'.$digits);
-                }
-            })
-            ->orderBy('id')
-            ->first();
+        return app(UserResolverService::class)->findContactInTeamByPhone($teamId, $digits);
     }
 
     public function getMessages(Request $request, $phone)
