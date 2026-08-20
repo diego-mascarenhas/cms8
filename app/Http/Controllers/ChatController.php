@@ -9,6 +9,7 @@ use App\Helpers\WhatsAppOutboundText;
 use App\Http\Requests\StartWhatsAppChatContactRequest;
 use App\Http\Requests\StoreWhatsAppContactCategoryRequest;
 use App\Http\Requests\UpdateWhatsAppChatArchiveRequest;
+use App\Http\Requests\UpdateWhatsAppChatReadRequest;
 use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
 use App\Http\Requests\UpdateWhatsAppContactCategoriesRequest;
 use App\Http\Requests\UpdateWhatsAppInboxContactRequest;
@@ -1676,6 +1677,57 @@ class ChatController extends Controller
             'success' => true,
             'phone' => $phone,
             'is_archived' => $archived,
+        ]);
+    }
+
+    public function updateWhatsAppChatRead(UpdateWhatsAppChatReadRequest $request): \Illuminate\Http\JsonResponse
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json(['success' => false, 'message' => __('No team found')], 422);
+        }
+
+        $phone = WhatsAppInboxContactStarter::normalizeInboxPhone((string) $request->input('phone'));
+        if ($phone === '')
+        {
+            return response()->json(['success' => false, 'message' => __('Invalid phone number.')], 422);
+        }
+
+        $unread = $request->boolean('unread');
+        $query = $this->conversationQueryForTeam()
+            ->where('direction', 'inbound')
+            ->where(function ($q) use ($phone)
+            {
+                $this->applyConversationPhoneFilter($q, $phone);
+            });
+
+        if ($unread)
+        {
+            $latestRead = (clone $query)
+                ->where('status', 'read')
+                ->latest()
+                ->first();
+            if ($latestRead)
+            {
+                $latestRead->status = 'received';
+                $latestRead->save();
+            }
+        } else
+        {
+            (clone $query)->where('status', 'received')->update(['status' => 'read']);
+        }
+
+        Cache::forget('inbound_received_count_team_'.$team->id);
+        Cache::forget(Conversation::CACHE_KEY_INBOUND_UNREAD);
+
+        $unreadCount = (clone $query)->where('status', 'received')->count();
+
+        return response()->json([
+            'success' => true,
+            'phone' => $phone,
+            'unread' => $unreadCount > 0,
+            'unread_count' => $unreadCount,
         ]);
     }
 
