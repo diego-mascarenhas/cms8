@@ -432,6 +432,111 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertNull($contact->inboundChatAssistantPromptKey());
     }
 
+    public function test_whatsapp_contact_assistant_patch_does_not_overwrite_another_contact_prompt(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class, ModuleSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $team->setSetting('assistant_auto_respond', '1');
+        $leadId = ContactStatus::where('name', 'Lead')->firstOrFail()->id;
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'citas_y_ventas',
+            'section_label' => 'Citas y ventas',
+            'prompt_instruction' => 'Reservá citas.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'campanas',
+            'section_label' => 'Campañas',
+            'prompt_instruction' => 'Hablá de campañas.',
+            'is_active' => true,
+            'order' => 1,
+        ]);
+        $first = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'phone' => '34600555111',
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'chat:citas_y_ventas',
+            ],
+        ]);
+        $second = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'phone' => '34600555222',
+            'status_id' => $leadId,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_prompt_first',
+            'channel' => 'whatsapp',
+            'from' => '34600555111',
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_api_assistant_prompt_second',
+            'channel' => 'whatsapp',
+            'from' => '34600555222',
+            'to' => $teamWa,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact-assistant', [
+                'phone' => '34600555222',
+                'prompt_key' => 'chat:campanas',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'prompt_key' => 'chat:campanas',
+            ]);
+
+        $first->refresh();
+        $second->refresh();
+        $this->assertSame('chat:citas_y_ventas', $first->inboundChatAssistantPromptKey());
+        $this->assertSame('chat:campanas', $second->inboundChatAssistantPromptKey());
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/34600555222')
+            ->assertOk()
+            ->assertJsonPath('thread_assistant.prompt_key', 'chat:campanas');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/34600555111')
+            ->assertOk()
+            ->assertJsonPath('thread_assistant.prompt_key', 'chat:citas_y_ventas');
+    }
+
     public function test_whatsapp_contact_assistant_patch_returns_422_without_crm_contact(): void
     {
         if (! Features::hasTeamFeatures())

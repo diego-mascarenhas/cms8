@@ -669,6 +669,75 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
     }
 
+    public function test_webhook_auto_ai_uses_sender_contact_prompt_when_several_share_user(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'phone' => '34600000010',
+            'name' => 'First',
+            'surname' => 'Chat',
+            'email' => 'first.chat@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'chat:citas_y_ventas',
+            ],
+        ]);
+        $second = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'phone' => '34600000020',
+            'name' => 'Second',
+            'surname' => 'Chat',
+            'email' => 'second.chat@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'invoices:collections',
+            ],
+        ]);
+
+        $this->mock(ChatAssistantReplyService::class, function ($mock) use ($second): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->withArgs(function (...$args) use ($second): bool
+                {
+                    return ($args[6] ?? null) === 'invoices:collections'
+                        && (int) ($args[7] ?? 0) === (int) $second->id;
+                })
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Second contact prompt',
+                    'tool_results' => [],
+                ]);
+        });
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000020',
+            'to' => '34600000001',
+            'body' => 'Hola, cambio de prompt',
+            'id' => 'msg_contact_prompt_second',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJson([
+            'status' => 'success',
+        ]);
+    }
+
     public function test_webhook_auto_ai_when_team_enabled_and_contact_phone_is_national_digits_only(): void
     {
         $this->mock(ChatAssistantReplyService::class, function ($mock): void
