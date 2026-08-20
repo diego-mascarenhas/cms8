@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactSentimentHistory;
 use App\Models\ContactStatus;
 use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\Team;
 use App\Models\User;
+use Database\Seeders\ContactSentimentSeeder;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
@@ -51,6 +53,28 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $response->assertJsonPath('thread_contact.phone', self::CLIENT_PHONE);
         $response->assertJsonPath('thread_contact.status_id', $status->id);
         $this->assertContains('Lead', collect($response->json('thread_contact.statuses'))->pluck('name')->all());
+    }
+
+    public function test_list_includes_the_contact_sentiment_on_the_avatar_payload(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $this->seed(ContactSentimentSeeder::class);
+        $contact = $this->crmContact($team, ['name' => 'Diego', 'surname' => 'Mascarenhas']);
+        ContactSentimentHistory::query()->create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => 2,
+            'notes' => 'Análisis automático de daily: molesto por la espera',
+        ]);
+
+        $row = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list')
+            ->assertOk()
+            ->json('contacts.0');
+
+        $this->assertSame(self::CLIENT_PHONE, $row['from']);
+        $this->assertSame(2, $row['sentiment']['id']);
+        $this->assertSame('Negativo', $row['sentiment']['name']);
+        $this->assertSame('🙁', $row['sentiment']['emoji']);
     }
 
     public function test_list_includes_the_contact_catalog(): void
@@ -218,7 +242,7 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
 
         Http::fake(['*' => Http::response(['pictures' => []], 200)]);
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class, ContactSentimentSeeder::class]);
         Module::firstOrCreate(['key' => 'contacts'], ['name' => 'contacts', 'description' => 'contacts', 'is_core' => 1, 'status' => 1, 'order' => 0]);
 
         $user = User::factory()->withPersonalTeam()->create();

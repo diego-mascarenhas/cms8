@@ -96,6 +96,29 @@ class TeamSettingsSiteAssistantPromptTest extends TestCase
         $this->assertStringNotContainsString('HUMANO_WIDGETS_API_BASE', $html);
     }
 
+    public function test_owner_can_select_silent_default(): void
+    {
+        [$user, $team] = $this->actingTeamAdmin();
+        $this->createTeamPrompt($team);
+
+        $this->actingAs($user)
+            ->post(route('team-settings.chat.site-assistant-prompt', $team), [
+                'prompt_key' => TeamSiteAssistantPromptService::OFF_KEY,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(TeamSiteAssistantPromptService::OFF_KEY, $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
+        $this->assertStringContainsString(
+            __('team_settings.site_assistant.select_off'),
+            $this->actingAs($user)
+                ->get(route('team-settings.edit', ['team' => $team, 'group' => 'chat']))
+                ->assertOk()
+                ->getContent(),
+        );
+    }
+
     public function test_chat_settings_always_shows_cms8_embed_snippet(): void
     {
         [$user, $team] = $this->actingTeamAdmin();

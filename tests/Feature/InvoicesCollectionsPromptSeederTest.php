@@ -39,8 +39,9 @@ class InvoicesCollectionsPromptSeederTest extends TestCase
             ->first();
 
         $this->assertNotNull($prompt);
-        $this->assertStringContainsString('facturación online', $prompt->prompt_instruction);
-        $this->assertStringContainsString('portal de facturación del cliente', $prompt->prompt_instruction);
+        $this->assertSame('Cobranzas', $prompt->section_label);
+        $this->assertStringContainsString('search_contacts', $prompt->prompt_instruction);
+        $this->assertStringContainsString('invoices', $prompt->prompt_instruction);
         $this->assertStringContainsString('No inventes', $prompt->prompt_instruction);
         $this->assertTrue($prompt->is_active);
     }

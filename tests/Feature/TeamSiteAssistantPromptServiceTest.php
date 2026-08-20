@@ -31,6 +31,8 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertStringContainsString('citas', mb_strtolower($instruction));
         $this->assertStringContainsString('catálogo', mb_strtolower($instruction));
         $this->assertStringContainsString('create_calendar_event', $instruction);
+        $this->assertStringContainsString('quien la pide', $instruction);
+        $this->assertStringContainsString('nombre, apellido y email', $instruction);
         $this->assertStringContainsString('list_product_catalog', $instruction);
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
     }
@@ -152,5 +154,17 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertSame('Agenda y tienda', $option['section_label']);
         $this->assertSame('Texto nuevo.', $option['prompt_instruction']);
         $this->assertSame('chat:citas_y_ventas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+    }
+
+    public function test_select_off_is_a_silent_default_without_a_routing_key(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+
+        $service->select($team, TeamSiteAssistantPromptService::OFF_KEY);
+
+        $this->assertTrue($service->isSilentDefault($team->fresh()));
+        $this->assertSame(TeamSiteAssistantPromptService::OFF_KEY, $service->selectedRoutingKey($team->fresh()));
+        $this->assertNull($service->resolvedRoutingKey($team->fresh()));
     }
 }

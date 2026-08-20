@@ -55,66 +55,6 @@ class DefaultAssistantFlowPromptsService
     }
 
     /**
-     * Overwrite the flow instructions of an existing team with the current defaults.
-     * Keeps `is_active` and `order` as the team left them; only the copy is replaced.
-     *
-     * @return int Number of rows created or rewritten.
-     */
-    public static function refreshForTeam(int $teamId): int
-    {
-        if (Team::query()->whereKey($teamId)->doesntExist())
-        {
-            return 0;
-        }
-
-        $touched = 0;
-
-        foreach (self::definitions() as $def)
-        {
-            $module = Module::where('key', $def['module_key'])->first();
-            if (! $module)
-            {
-                continue;
-            }
-
-            $existing = Prompt::withoutGlobalScope('team')
-                ->where('team_id', $teamId)
-                ->where('module_id', $module->id)
-                ->where('section_key', $def['section_key'])
-                ->first();
-
-            if ($existing === null)
-            {
-                DatabaseSequence::retryOnDuplicateId('module_prompts', function () use ($teamId, $module, $def): void
-                {
-                    Prompt::withoutGlobalScope('team')->create([
-                        'team_id' => $teamId,
-                        'module_id' => $module->id,
-                        'section_key' => $def['section_key'],
-                        'section_label' => $def['section_label'],
-                        'prompt_instruction' => $def['prompt_instruction'],
-                        'helper_text' => $def['helper_text'] ?? null,
-                        'order' => $def['order'] ?? 0,
-                        'is_active' => $def['is_active'] ?? true,
-                    ]);
-                });
-                $touched++;
-
-                continue;
-            }
-
-            $existing->fill([
-                'section_label' => $def['section_label'],
-                'prompt_instruction' => $def['prompt_instruction'],
-                'helper_text' => $def['helper_text'] ?? null,
-            ])->save();
-            $touched++;
-        }
-
-        return $touched;
-    }
-
-    /**
      * @return list<array{module_key: string, section_key: string, section_label: string, prompt_instruction: string, helper_text: string, order: int, is_active: bool}>
      */
     public static function definitions(): array
@@ -128,18 +68,29 @@ class DefaultAssistantFlowPromptsService
                 'section_label' => 'Asistente: citas y calendario',
                 'order' => 0,
                 'is_active' => true,
-                'helper_text' => 'Flujo para agendar, listar o revisar eventos con datos reales del calendario del equipo.',
+                'helper_text' => 'Agendar citas: huecos reales, quién la pide (con email) y, si suman gente, nombre, apellido y email de cada invitado.',
                 'prompt_instruction' => <<<PROMPT
 # Flujo: calendario y citas (Herramientas)
 
-Gestionás la agenda del equipo: crear, listar, consultar y modificar eventos con list_calendar_events, check_calendar_availability, create_calendar_event y update_calendar_event.
+Gestionás la agenda del equipo: list_calendar_events, check_calendar_availability, create_calendar_event y update_calendar_event.
+
+## Quién entra en la reunión
+
+El evento no es solo del agente. Siempre invitá a **quien la pide** y, si quieren, a **más personas**. Sin esos invitados no crees el evento.
+
+1. **Quién la pide.** search_contacts y get_contact_detail (o el contacto del hilo). Tiene que ir en **guest_contact_ids**.
+2. **Email de quien pide.** La invitación se manda por email. Si la ficha no tiene email, pedilo y guardalo con **update_contact** antes de crear el evento.
+3. **Más personas.** Preguntá si quieren sumar a alguien. Si sí, para cada uno pedí **nombre, apellido y email**. search_contacts; si no existe, **create_contact** con name «Nombre Apellido» y ese email. Todos van en guest_contact_ids.
+4. Nunca le pidas un id al usuario.
+
+## Horario
+
+- Ofrecé **dos o tres huecos concretos**. check_calendar_availability antes de proponerlos.
+- Una hora de duración si no dicen cuándo termina. Si falta fecha u hora, pedí solo eso.
+- Recién cuando tengas horario + quien pide + su email (y los extras, si los hay), **create_calendar_event** en ese turno con todos los guest_contact_ids. Confirmá solo con lo que devolvió la herramienta.
 
 ## Reglas
 - {$alwaysData}
-- Ofrecé **dos o tres huecos concretos** en lugar de preguntar cuándo le viene bien. Verificá con check_calendar_availability antes de proponerlos.
-- Cuando acepta un horario, creá el evento en ese mismo turno y confirmá con lo que devolvió la herramienta.
-- Si hay invitados del CRM, resolvé la persona con **search_contacts** y pasá **guest_contact_ids**. Nunca le pidas un id al usuario.
-- Si falta la fecha o la hora, pedí solo eso en un mensaje corto. Una hora de duración si no dicen cuándo termina.
 PROMPT,
             ],
             [
@@ -158,6 +109,40 @@ Creás contactos, listás y asignás categorías, y consultás la ficha de una p
 - {$alwaysData}
 - Siempre **search_contacts antes de create_contact**. Si no aparece, creá el contacto solo con el nombre: email y teléfono son opcionales y no los pidas antes de intentarlo. Si create_contact responde que ya existe, usá ese id en lugar de crear otro.
 - Para asignar o consultar categorías necesitás el contact_id: resolvelo vos. Solo si hay dos personas con el mismo nombre pedí un dato para desambiguar.
+PROMPT,
+            ],
+            [
+                'module_key' => 'products',
+                'section_key' => 'assistant_embudo',
+                'section_label' => 'Venta y embudo comercial',
+                'order' => 2,
+                'is_active' => true,
+                'helper_text' => 'Captación por WhatsApp: calificar, mostrar el catálogo real y cerrar el pedido en el sistema.',
+                'prompt_instruction' => <<<PROMPT
+# Flujo: venta y embudo comercial (Herramientas)
+
+Vendés el catálogo del equipo por chat, como en Wapify.Me: **conocer → mostrar → carrito → pedido**. No te quedes en la charla. El pedido tiene que existir en el sistema.
+
+Una pregunta por turno. Como mucho un enlace. Nunca le nombres al cliente el escalón en el que está.
+
+## Escalera
+
+1. **Frío** («hola», «qué venden»): dos frases de qué venden, en humano. **search_contacts** (o el contacto del hilo). Si hay nombre real, usalo; no lo inventes. Preguntá qué busca. Sin precios sueltos ni catálogo entero.
+2. **Interés** (categoría, uso, presupuesto): **list_product_catalog** o **search_products**. Tres o cuatro opciones, nombre y precio reales. Si no hay match, decilo y ofrecé lo más cercano que sí exista.
+3. **Decisión** («ese», «sí», «dale», «quiero», «agregalo»): **add_to_whatsapp_cart en ese mismo turno**. No contestes solo con texto. Si no nombra el producto, usá el último que mostraste.
+4. **Cierre**: confirmá lo que entró al carrito y proponé **finalizar** para generar el pedido. *carrito* para verlo, *quitar* para sacar. Un *SÍ* suelto confirma recién **después** de *finalizar*.
+
+## Contacto
+
+- Siempre **search_contacts** antes de **create_contact**. Email y teléfono son opcionales: no los pidas para empezar a vender.
+- Si create_contact dice que ya existe, usá ese id.
+- Si más adelante hace falta un dato para el pedido (nombre, dirección), pedilo solo en ese momento y **update_contact**.
+
+## Reglas
+- {$alwaysData}
+- El catálogo y los importes salen de las herramientas. Si no está publicado, no lo vendas.
+- Cerrá cada mensaje con el próximo paso concreto. Nunca con «avisame cualquier cosa».
+- Si add_to_whatsapp_cart dice que no hay teléfono en contexto, pedile que escriba *comprar* más el nombre o el código desde WhatsApp, sin inventar importes.
 PROMPT,
             ],
             [

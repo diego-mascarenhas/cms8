@@ -19,7 +19,10 @@
                 <div class="col-md-8">
                     <label class="form-label" for="site_assistant_prompt_key">{{ __('team_settings.site_assistant.select_label') }}</label>
                     <select name="prompt_key" id="site_assistant_prompt_key" class="form-select">
-                        <option value="">{{ __('team_settings.site_assistant.select_empty') }}</option>
+                        <option value="{{ \App\Services\TeamSiteAssistantPromptService::OFF_KEY }}" @selected(($siteAssistantSelectedKey ?? '') === \App\Services\TeamSiteAssistantPromptService::OFF_KEY)>
+                            {{ __('team_settings.site_assistant.select_off') }}
+                        </option>
+                        <option value="" @selected(($siteAssistantSelectedKey ?? '') === '')>{{ __('team_settings.site_assistant.select_empty') }}</option>
                         @foreach($siteAssistantPromptOptions as $option)
                             <option value="{{ $option['key'] }}" @selected(($siteAssistantSelectedKey ?? '') === $option['key'])>
                                 {{ $option['label'] }}

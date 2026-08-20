@@ -479,6 +479,7 @@ Route::middleware('auth.api')->group(function ()
     Route::put('assistant/site-prompt', [SiteAssistantPromptController::class, 'update'])->name('api.assistant.site-prompt.update');
     Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
+    Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
     Route::get('assistant/products/import', [AssistantProductImportController::class, 'show'])->name('api.assistant.products.import.show');
     Route::get('assistant/products/import/sample', [AssistantProductImportController::class, 'sample'])->name('api.assistant.products.import.sample');
     Route::post('assistant/products/import', [AssistantProductImportController::class, 'store'])->name('api.assistant.products.import.store');
@@ -690,6 +691,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('chat/whatsapp-start-contact', [ChatController::class, 'startWhatsAppContact'])->name('api.chat.whatsapp-start-contact');
     Route::patch('chat/whatsapp-contact', [ChatController::class, 'updateWhatsAppInboxContact'])->name('api.chat.whatsapp-contact');
     Route::patch('chat/whatsapp-archive', [ChatController::class, 'updateWhatsAppChatArchive'])->name('api.chat.whatsapp-archive');
+    Route::patch('chat/whatsapp-read', [ChatController::class, 'updateWhatsAppChatRead'])->name('api.chat.whatsapp-read');
     Route::patch('chat/whatsapp-contact-assistant', [ChatController::class, 'updateWhatsAppContactAssistant'])->name('api.chat.whatsapp-contact-assistant');
     Route::patch('chat/whatsapp-contact-categories', [ChatController::class, 'updateWhatsAppContactCategories'])->name('api.chat.whatsapp-contact-categories');
     Route::post('chat/whatsapp-contact-categories', [ChatController::class, 'storeWhatsAppContactCategory'])->name('api.chat.whatsapp-contact-categories.store');

@@ -14,6 +14,8 @@ class TeamSiteAssistantPromptService
 {
     public const SETTING_KEY = 'assistant_default_prompt_key';
 
+    public const OFF_KEY = '__off__';
+
     public const EMBED_SLUG = 'asistente-web';
 
     public const RECOMMENDED_SECTION_KEY = 'citas_y_ventas';
@@ -58,10 +60,19 @@ class TeamSiteAssistantPromptService
         return $key !== '' ? $key : null;
     }
 
+    /**
+     * Team default for chats on Automático (no pinned prompt): stay silent.
+     * A contact can still pin a prompt and get replies.
+     */
+    public function isSilentDefault(Team $team): bool
+    {
+        return $this->selectedRoutingKey($team) === self::OFF_KEY;
+    }
+
     public function resolvedRoutingKey(Team $team): ?string
     {
         $key = $this->selectedRoutingKey($team);
-        if ($key === null)
+        if ($key === null || $key === self::OFF_KEY)
         {
             return null;
         }
@@ -79,9 +90,9 @@ class TeamSiteAssistantPromptService
     {
         $key = $routingKey !== null ? trim($routingKey) : '';
 
-        if ($key === '')
+        if ($key === '' || $key === self::OFF_KEY)
         {
-            $team->setSetting(self::SETTING_KEY, '', [
+            $team->setSetting(self::SETTING_KEY, $key, [
                 'group' => 'chat',
                 'type' => 'text',
                 'is_encrypted' => false,
@@ -154,6 +165,7 @@ class TeamSiteAssistantPromptService
      * @return array{
      *     selected_key: string|null,
      *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string}>,
+     *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool}>}>,
      *     default_instruction: string,
      *     recommended_label: string,
      *     embed: array{snippet: string, api_base: string, script_url: string}
@@ -167,6 +179,7 @@ class TeamSiteAssistantPromptService
         return [
             'selected_key' => $this->selectedRoutingKey($team),
             'prompts' => $this->promptOptions($team),
+            'catalog' => app(AssistantPromptCatalog::class)->groupsFor($team),
             'default_instruction' => $this->defaultInstruction(),
             'recommended_label' => __('team_settings.site_assistant.recommended_label'),
             'embed' => [
@@ -215,9 +228,11 @@ Un saludo suelto («hola», «buenas») no es una consulta: presentate en una fr
 
 ## Citas
 
-- Consultá la agenda real con list_calendar_events y check_calendar_availability, y cerrá con create_calendar_event.
+- Consultá la agenda real con list_calendar_events y check_calendar_availability.
 - Ofrecé **dos o tres huecos concretos** en vez de preguntar «¿cuándo te viene bien?».
-- Confirmá recién cuando la herramienta devolvió el evento creado. No inventes disponibilidad.
+- El evento no es solo del agente: invitá a **quien la pide** (guest_contact_ids). Si no tiene email, pedilo y guardalo con update_contact antes de crear.
+- Preguntá si quieren sumar a más personas. Para cada extra pedí **nombre, apellido y email**, create_contact si no están, y sumalos a guest_contact_ids.
+- create_calendar_event recién cuando tengas horario + invitados con email. Confirmá solo si la herramienta devolvió el evento.
 
 ## Catálogo y venta
 

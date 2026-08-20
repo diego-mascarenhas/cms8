@@ -50,6 +50,7 @@ class TeamCreatedSeedsDefaultPromptsTest extends TestCase
         $this->assertContains('wordpress', $keys, 'WordPress assistant prompt missing for a fresh team.');
 
         $this->assertContains('assistant_catalogo', $keys, 'Catalog flow missing for a fresh team.');
+        $this->assertContains('assistant_embudo', $keys, 'Sales funnel flow missing for a fresh team.');
         $this->assertContains('assistant_citas', $keys, 'Calendar flow missing for a fresh team.');
     }
 
@@ -60,6 +61,7 @@ class TeamCreatedSeedsDefaultPromptsTest extends TestCase
         $keys = $this->sectionKeysFor((int) $team->id);
 
         $this->assertNotContains('wapify_me', $keys, 'The Wapify.Me script (with its Stripe link) must not be seeded into client teams.');
+        $this->assertNotContains('humano_assistant', $keys, 'The Assistant sales script must not be seeded into client teams.');
         $this->assertNotContains('landing', $keys, 'The Humano.app strategy framework must not be seeded into client teams.');
     }
 
