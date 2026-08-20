@@ -32,5 +32,7 @@
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="ASSISTANT_AI_REQUIRES_PLAN" value="false"/>
+        <!-- Empty so factory teams with id 1–3 are not treated as complimentary paid. -->
+        <env name="CMS8_PLAN_ACCESS_TEAM_IDS" value=""/>
     </php>
 </phpunit>

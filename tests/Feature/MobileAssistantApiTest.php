@@ -173,6 +173,7 @@ class MobileAssistantApiTest extends TestCase
         config([
             'humano_pricing.require_paid_plan_for_ai' => true,
             'humano_pricing.app_trials.assistant' => 48,
+            'humano_pricing.plan_access_team_ids' => [],
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
