@@ -824,7 +824,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     ]);
                 }
 
-                if ($channel === 'whatsapp' && ! $this->inboundIsLinkedPeer($request) && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
+                if ($channel === 'whatsapp' && ! $this->shouldSkipLinkedPeerAutoReply($request, $cleanFrom) && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
                 {
                     try
                     {
@@ -892,7 +892,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             // Send automatic greeting if it's WhatsApp and first message of the day; persist to agent context
-            if ($channel == 'whatsapp' && ! $shouldHandleRegistration && ! $linkedPeer && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
+            if ($channel == 'whatsapp' && ! $shouldHandleRegistration && ! $this->shouldSkipLinkedPeerAutoReply($request, $cleanFrom) && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
             {
                 $greetingSent = $this->sendAutoGreeting($cleanFrom);
                 if ($greetingSent !== null)
@@ -922,7 +922,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             // Automatic AI response: team global setting is master; contact opt-out and blacklist also block.
-            $shouldProcessAutoAi = $channel === 'whatsapp' && ! $linkedPeer && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo);
+            $shouldProcessAutoAi = $channel === 'whatsapp' && ! $this->shouldSkipLinkedPeerAutoReply($request, $cleanFrom) && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo);
 
             if ($shouldHandleRegistration && $chatController !== null)
             {
@@ -1312,6 +1312,22 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         $peerTeamId = $request->input('peer_linked_team_id');
 
         return is_numeric($peerTeamId) && (int) $peerTeamId > 0;
+    }
+
+    /**
+     * Another team's connected WhatsApp is a person unless that team has a bot that would answer us.
+     */
+    private function shouldSkipLinkedPeerAutoReply($request, string $fromPhone): bool
+    {
+        if (! $this->inboundIsLinkedPeer($request) || $this->team === null)
+        {
+            return false;
+        }
+
+        $peerTeamId = (int) $request->input('peer_linked_team_id');
+
+        return app(TeamInboundAssistantPolicy::class)
+            ->shouldSkipLinkedPeerAutoReply($this->team, $fromPhone, $peerTeamId > 0 ? $peerTeamId : null);
     }
 
     private function resolveInboundContextContactId(int $teamId, string $fromPhone): ?int

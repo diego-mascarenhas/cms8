@@ -174,6 +174,34 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertTrue($policy->allowsWhatsAppAutoReply($team, $admin));
     }
 
+    public function test_admin_owner_of_another_team_is_not_an_administrator_here(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $owner = User::factory()->create();
+        $salesTeam = Team::factory()->create(['user_id' => $owner->id]);
+        $foreignOwner = User::factory()->create();
+        $foreignTeam = Team::factory()->create(['user_id' => $foreignOwner->id]);
+        $foreignOwner->teams()->attach($foreignTeam->id, ['role' => 'admin']);
+        $foreignOwner->assignRole('admin');
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertFalse($policy->inboundSenderIsTeamAdministrator($foreignOwner, (int) $salesTeam->id));
+
+        config([
+            'humano_pricing.plan_access_team_ids' => [],
+            'humano_pricing.require_paid_plan_for_ai' => false,
+        ]);
+        $this->assertFalse($policy->teamHasConfiguredInboundBot($foreignTeam));
+        $this->assertFalse($policy->shouldSkipLinkedPeerAutoReply($salesTeam, '5491147348879', (int) $foreignTeam->id));
+
+        $foreignTeam->setSetting('assistant_auto_respond', '1');
+        $foreignTeam->setSetting(\App\Services\TeamSiteAssistantPromptService::SETTING_KEY, 'calendar:assistant_citas');
+        $this->assertTrue($policy->teamHasConfiguredInboundBot($foreignTeam));
+        $this->assertTrue($policy->shouldSkipLinkedPeerAutoReply($salesTeam, '5491147348879', (int) $foreignTeam->id));
+    }
+
     public function test_contact_opt_out_blocks_even_an_admin_sender_when_team_allows_admins(): void
     {
         $this->seed([

@@ -344,6 +344,11 @@ class WhatsAppRegistrationHandoffTest extends TestCase
         $team = Team::factory()->create();
         $team->setSetting('whatsapp_from', '34600000001');
         $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        $peer = Team::factory()->create();
+        $peer->setSetting('assistant_auto_respond', '1');
+        $peer->setSetting(\App\Services\TeamSiteAssistantPromptService::SETTING_KEY, 'calendar:assistant_citas');
 
         $this->mock(ChatAssistantReplyService::class, function ($mock): void
         {
@@ -360,7 +365,7 @@ class WhatsAppRegistrationHandoffTest extends TestCase
             'body' => 'Hola',
             'id' => 'msg_registration_peer',
             'team_id' => $team->id,
-            'peer_linked_team_id' => 99,
+            'peer_linked_team_id' => $peer->id,
         ])->assertOk()->assertJsonMissing(['registration' => true]);
 
         Http::assertNotSent(function ($request): bool

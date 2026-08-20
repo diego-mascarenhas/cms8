@@ -724,6 +724,125 @@ class WhatsAppLocalWebhookTest extends TestCase
         ]);
     }
 
+    public function test_webhook_auto_ai_answers_when_the_linked_peer_is_a_person_without_a_bot(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Perfecto, te ayudo.',
+                    'tool_results' => [],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34694258947');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        $peer = Team::factory()->create();
+        $peer->setSetting('assistant_auto_respond', '0');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '5491147348879',
+            'to' => '34694258947',
+            'body' => 'Si dale perfecto muchas gracias',
+            'id' => 'msg_peer_person_1',
+            'peer_linked_team_id' => $peer->id,
+        ])->assertOk();
+
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
+    }
+
+    public function test_webhook_auto_ai_answers_a_linked_peer_when_the_chat_has_a_pinned_prompt(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Dale, te paso el enlace de Assistant.',
+                    'tool_results' => [],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34694258947');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '5491147348879',
+            'name' => 'Respuestos',
+            'surname' => 'AV',
+            'email' => 'info@repuestosav.example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'products:humano_assistant',
+            ],
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '5491147348879',
+            'to' => '34694258947',
+            'body' => 'Si dale perfecto muchas gracias',
+            'id' => 'msg_peer_pinned_sales_1',
+            'peer_linked_team_id' => 99,
+        ])->assertOk();
+
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
+    }
+
+    public function test_webhook_auto_ai_answers_a_linked_peer_on_an_internal_sales_team(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Hola, soy Assistant.',
+                    'tool_results' => [],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34694258947');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '5491157359506',
+            'to' => '34694258947',
+            'body' => 'Hola, quiero probar Assistant',
+            'id' => 'msg_peer_internal_sales_1',
+            'peer_linked_team_id' => 99,
+        ])->assertOk();
+
+        Http::assertSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
+    }
+
     public function test_webhook_auto_ai_uses_sender_contact_prompt_when_several_share_user(): void
     {
         $user = User::factory()->create();
