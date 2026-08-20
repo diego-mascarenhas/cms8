@@ -218,35 +218,127 @@ class PhoneHelper
      */
     public static function getCountryCode($phone)
     {
-        $cleaned = self::clean($phone);
-        if (! $cleaned)
+        $clock = self::clockForPhone($phone);
+        if (! $clock)
         {
             return null;
         }
 
-        $countryCodes = [
-            '1' => 'US/CA',
-            '34' => 'ES',
-            '52' => 'MX',
-            '54' => 'AR',
-            '56' => 'CL',
-            '58' => 'VE',
-            '33' => 'FR',
-            '39' => 'IT',
-            '49' => 'DE',
-            '44' => 'UK',
-            '61' => 'AU',
-        ];
+        return ['code' => $clock['calling_code'], 'country' => $clock['country']];
+    }
 
-        foreach ($countryCodes as $code => $country)
+    /**
+     * IANA timezone and country for a phone's calling code (longest prefix).
+     *
+     * @return array{calling_code: string, country: string, label: string, timezone: string}|null
+     */
+    public static function clockForPhone(?string $phone): ?array
+    {
+        $raw = preg_replace('/\D/', '', (string) $phone);
+        $raw = preg_replace('/^00/', '', $raw);
+        $resolved = self::clockForDigits($raw);
+        if ($resolved)
         {
-            if (strpos($cleaned, $code) === 0)
+            return $resolved;
+        }
+
+        $cleaned = self::clean((string) $phone);
+
+        return $cleaned && $cleaned !== $raw ? self::clockForDigits($cleaned) : null;
+    }
+
+    /**
+     * @return array{calling_code: string, country: string, label: string, timezone: string}|null
+     */
+    private static function clockForDigits(?string $digits): ?array
+    {
+        if (! $digits)
+        {
+            return null;
+        }
+
+        $codes = array_keys(self::callingClocks());
+        usort($codes, fn (string|int $left, string|int $right): int => strlen((string) $right) <=> strlen((string) $left));
+
+        foreach ($codes as $code)
+        {
+            $prefix = (string) $code;
+            if (! str_starts_with($digits, $prefix))
             {
-                return ['code' => $code, 'country' => $country];
+                continue;
             }
+
+            if ($prefix === '1' && strlen($digits) < 11)
+            {
+                continue;
+            }
+
+            $clock = self::callingClocks()[$prefix];
+
+            return [
+                'calling_code' => $prefix,
+                'country' => $clock['country'],
+                'label' => $clock['label'],
+                'timezone' => $clock['timezone'],
+            ];
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, array{country: string, label: string, timezone: string}>
+     */
+    private static function callingClocks(): array
+    {
+        return [
+            '1' => ['country' => 'US', 'label' => 'Estados Unidos / Canadá', 'timezone' => 'America/New_York'],
+            '7' => ['country' => 'RU', 'label' => 'Rusia', 'timezone' => 'Europe/Moscow'],
+            '20' => ['country' => 'EG', 'label' => 'Egipto', 'timezone' => 'Africa/Cairo'],
+            '27' => ['country' => 'ZA', 'label' => 'Sudáfrica', 'timezone' => 'Africa/Johannesburg'],
+            '30' => ['country' => 'GR', 'label' => 'Grecia', 'timezone' => 'Europe/Athens'],
+            '31' => ['country' => 'NL', 'label' => 'Países Bajos', 'timezone' => 'Europe/Amsterdam'],
+            '32' => ['country' => 'BE', 'label' => 'Bélgica', 'timezone' => 'Europe/Brussels'],
+            '33' => ['country' => 'FR', 'label' => 'Francia', 'timezone' => 'Europe/Paris'],
+            '34' => ['country' => 'ES', 'label' => 'España', 'timezone' => 'Europe/Madrid'],
+            '36' => ['country' => 'HU', 'label' => 'Hungría', 'timezone' => 'Europe/Budapest'],
+            '39' => ['country' => 'IT', 'label' => 'Italia', 'timezone' => 'Europe/Rome'],
+            '40' => ['country' => 'RO', 'label' => 'Rumanía', 'timezone' => 'Europe/Bucharest'],
+            '41' => ['country' => 'CH', 'label' => 'Suiza', 'timezone' => 'Europe/Zurich'],
+            '43' => ['country' => 'AT', 'label' => 'Austria', 'timezone' => 'Europe/Vienna'],
+            '44' => ['country' => 'GB', 'label' => 'Reino Unido', 'timezone' => 'Europe/London'],
+            '45' => ['country' => 'DK', 'label' => 'Dinamarca', 'timezone' => 'Europe/Copenhagen'],
+            '46' => ['country' => 'SE', 'label' => 'Suecia', 'timezone' => 'Europe/Stockholm'],
+            '47' => ['country' => 'NO', 'label' => 'Noruega', 'timezone' => 'Europe/Oslo'],
+            '48' => ['country' => 'PL', 'label' => 'Polonia', 'timezone' => 'Europe/Warsaw'],
+            '49' => ['country' => 'DE', 'label' => 'Alemania', 'timezone' => 'Europe/Berlin'],
+            '51' => ['country' => 'PE', 'label' => 'Perú', 'timezone' => 'America/Lima'],
+            '52' => ['country' => 'MX', 'label' => 'México', 'timezone' => 'America/Mexico_City'],
+            '53' => ['country' => 'CU', 'label' => 'Cuba', 'timezone' => 'America/Havana'],
+            '54' => ['country' => 'AR', 'label' => 'Argentina', 'timezone' => 'America/Argentina/Buenos_Aires'],
+            '55' => ['country' => 'BR', 'label' => 'Brasil', 'timezone' => 'America/Sao_Paulo'],
+            '56' => ['country' => 'CL', 'label' => 'Chile', 'timezone' => 'America/Santiago'],
+            '57' => ['country' => 'CO', 'label' => 'Colombia', 'timezone' => 'America/Bogota'],
+            '58' => ['country' => 'VE', 'label' => 'Venezuela', 'timezone' => 'America/Caracas'],
+            '61' => ['country' => 'AU', 'label' => 'Australia', 'timezone' => 'Australia/Sydney'],
+            '81' => ['country' => 'JP', 'label' => 'Japón', 'timezone' => 'Asia/Tokyo'],
+            '91' => ['country' => 'IN', 'label' => 'India', 'timezone' => 'Asia/Kolkata'],
+            '212' => ['country' => 'MA', 'label' => 'Marruecos', 'timezone' => 'Africa/Casablanca'],
+            '351' => ['country' => 'PT', 'label' => 'Portugal', 'timezone' => 'Europe/Lisbon'],
+            '352' => ['country' => 'LU', 'label' => 'Luxemburgo', 'timezone' => 'Europe/Luxembourg'],
+            '353' => ['country' => 'IE', 'label' => 'Irlanda', 'timezone' => 'Europe/Dublin'],
+            '376' => ['country' => 'AD', 'label' => 'Andorra', 'timezone' => 'Europe/Andorra'],
+            '502' => ['country' => 'GT', 'label' => 'Guatemala', 'timezone' => 'America/Guatemala'],
+            '503' => ['country' => 'SV', 'label' => 'El Salvador', 'timezone' => 'America/El_Salvador'],
+            '504' => ['country' => 'HN', 'label' => 'Honduras', 'timezone' => 'America/Tegucigalpa'],
+            '505' => ['country' => 'NI', 'label' => 'Nicaragua', 'timezone' => 'America/Managua'],
+            '506' => ['country' => 'CR', 'label' => 'Costa Rica', 'timezone' => 'America/Costa_Rica'],
+            '507' => ['country' => 'PA', 'label' => 'Panamá', 'timezone' => 'America/Panama'],
+            '591' => ['country' => 'BO', 'label' => 'Bolivia', 'timezone' => 'America/La_Paz'],
+            '593' => ['country' => 'EC', 'label' => 'Ecuador', 'timezone' => 'America/Guayaquil'],
+            '595' => ['country' => 'PY', 'label' => 'Paraguay', 'timezone' => 'America/Asuncion'],
+            '598' => ['country' => 'UY', 'label' => 'Uruguay', 'timezone' => 'America/Montevideo'],
+        ];
     }
 
     /**
