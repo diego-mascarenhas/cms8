@@ -96,12 +96,66 @@ class TeamInboundAssistantPolicy
         }
 
         if (app(TeamSiteAssistantPromptService::class)->isSilentDefault($team)
-            && ! $this->contactHasPinnedInboundPrompt((int) $team->id, $inboundSenderPhone))
+                && ! $this->contactHasPinnedInboundPrompt((int) $team->id, $inboundSenderPhone))
         {
             return false;
         }
 
         return true;
+    }
+
+    /**
+     * A connected WhatsApp on another team is usually a person, not a bot.
+     * Skip only when that other team has a configured inbound bot that would answer us.
+     * Internal sales lines and chats with a pinned prompt still answer.
+     */
+    public function shouldSkipLinkedPeerAutoReply(Team $team, ?string $inboundSenderPhone, ?int $peerTeamId = null): bool
+    {
+        if (in_array((int) $team->id, config('humano_pricing.plan_access_team_ids', []), true))
+        {
+            return false;
+        }
+
+        if ($this->contactHasPinnedInboundPrompt((int) $team->id, $inboundSenderPhone))
+        {
+            return false;
+        }
+
+        if ($peerTeamId === null || $peerTeamId < 1)
+        {
+            return false;
+        }
+
+        $peer = Team::withoutGlobalScopes()->find($peerTeamId);
+        if ($peer === null || ! $this->teamHasConfiguredInboundBot($peer))
+        {
+            return false;
+        }
+
+        $ourNumber = preg_replace('/\D/', '', (string) $team->getWhatsAppFrom());
+
+        return $this->allowsWhatsAppAutoReply(
+            $peer,
+            null,
+            (int) $peer->id,
+            $ourNumber !== '' ? $ourNumber : null,
+        );
+    }
+
+    /**
+     * True when the team turned inbound auto-reply on and chose a default prompt.
+     * Empty / Sin asistente means a person answers that line.
+     */
+    public function teamHasConfiguredInboundBot(Team $team): bool
+    {
+        if (! filter_var($team->getSetting('assistant_auto_respond', '1'), FILTER_VALIDATE_BOOLEAN))
+        {
+            return false;
+        }
+
+        $key = app(TeamSiteAssistantPromptService::class)->selectedRoutingKey($team);
+
+        return $key !== null && $key !== TeamSiteAssistantPromptService::OFF_KEY;
     }
 
     /**
@@ -194,14 +248,20 @@ class TeamInboundAssistantPolicy
             return false;
         }
 
-        if ($user->hasAnyRole(['admin', 'root']))
+        if ($user->hasRole('root'))
         {
             return true;
         }
 
         $membership = $user->teams()->where('teams.id', $teamId)->first();
-        $pivotRole = strtolower((string) ($membership?->pivot?->role ?? ''));
+        if ($membership === null)
+        {
+            return false;
+        }
 
-        return in_array($pivotRole, ['admin', 'editor'], true);
+        $pivotRole = strtolower((string) ($membership->pivot->role ?? ''));
+
+        return in_array($pivotRole, ['admin', 'editor'], true)
+            || $user->hasRole('admin');
     }
 }

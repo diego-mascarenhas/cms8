@@ -118,12 +118,17 @@ class AssistantToolAuthorizationService
      */
     public function hasFullAssistantToolAccess(User $user, int $teamId): bool
     {
+        if (! $this->userBelongsToTeam($user, $teamId) && ! $user->hasRole('root'))
+        {
+            return false;
+        }
+
         if ($user->hasAnyRole(['admin', 'root']))
         {
             return true;
         }
 
-        $membership = $user->teams()->where('team_id', $teamId)->first();
+        $membership = $user->teams()->where('teams.id', $teamId)->first();
         $pivotRole = $membership?->pivot?->role;
         if (is_string($pivotRole) && in_array($pivotRole, ['admin', 'editor', 'collaborator'], true))
         {
@@ -134,6 +139,21 @@ class AssistantToolAuthorizationService
 
         return Gate::forUser($user)->allows('viewAny', Contact::class)
             && Gate::forUser($user)->allows('create', Contact::class);
+    }
+
+    private function userBelongsToTeam(User $user, int $teamId): bool
+    {
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        if ($team !== null && method_exists($user, 'ownsTeam') && $user->ownsTeam($team))
+        {
+            return true;
+        }
+        if ($team !== null && method_exists($user, 'belongsToTeam') && $user->belongsToTeam($team))
+        {
+            return true;
+        }
+
+        return $user->teams()->where('teams.id', $teamId)->exists();
     }
 
     /**
@@ -152,6 +172,11 @@ class AssistantToolAuthorizationService
         if ($this->hasFullAssistantToolAccess($user, $teamId))
         {
             return false;
+        }
+
+        if (! $this->userBelongsToTeam($user, $teamId) && ! $user->hasRole('root'))
+        {
+            return true;
         }
 
         $this->prepareTeamContext($user, $teamId);

@@ -84,6 +84,33 @@ class AssistantActorContextTest extends TestCase
         $this->assertFalse($context->whatsappInboundCustomerPrompts);
     }
 
+    public function test_admin_owner_of_another_team_gets_customer_prompts_here(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $salesOwner = User::factory()->create();
+        $salesTeam = Team::factory()->create(['user_id' => $salesOwner->id]);
+
+        $foreignOwner = User::factory()->create();
+        $foreignTeam = Team::factory()->create(['user_id' => $foreignOwner->id]);
+        $foreignOwner->teams()->attach($foreignTeam->id, ['role' => 'admin']);
+        $foreignOwner->assignRole('admin');
+        $foreignOwner->forceFill(['current_team_id' => $foreignTeam->id])->save();
+
+        $auth = app(\App\Services\AssistantToolAuthorizationService::class);
+        $this->assertFalse($auth->hasFullAssistantToolAccess($foreignOwner, (int) $salesTeam->id));
+        $this->assertTrue($auth->usesCustomerAssistantPrompts($foreignOwner, (int) $salesTeam->id));
+
+        $context = app(AssistantActorContextService::class)->resolveForUser(
+            $foreignOwner,
+            (int) $salesTeam->id,
+            AssistantActorContextService::CHANNEL_WHATSAPP,
+        );
+
+        $this->assertTrue($context->limitedToolset);
+        $this->assertTrue($context->whatsappInboundCustomerPrompts);
+    }
+
     public function test_guest_without_calendar_gets_customer_assistant_prompts(): void
     {
         $owner = User::factory()->create();
