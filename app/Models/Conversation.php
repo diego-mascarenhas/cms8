@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WhatsApp\WhatsAppChatArchiveService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -88,6 +89,11 @@ class Conversation extends Model
             if ($conversation->direction === 'inbound' && $conversation->status === 'received')
             {
                 Cache::forget(self::CACHE_KEY_INBOUND_UNREAD);
+            }
+
+            if ($conversation->direction === 'inbound')
+            {
+                app(WhatsAppChatArchiveService::class)->unarchiveIncoming($conversation);
             }
         });
 
