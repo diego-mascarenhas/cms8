@@ -55,6 +55,26 @@ class AccountManagementDataTableTest extends TestCase
         $names = collect($payload['data'])->pluck('name')->implode(' ');
         $this->assertStringContainsString('Orphan Owner', $names);
         $this->assertStringContainsString('With Owner', $names);
+        $this->assertArrayNotHasKey('members_count', $payload['data'][0]);
+        $this->assertArrayNotHasKey('total_time', $payload['data'][0]);
+    }
+
+    public function test_account_management_page_does_not_show_removed_columns(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $root = User::factory()->withPersonalTeam()->create();
+        $root->assignRole('root');
+
+        $html = $this->actingAs($root)
+            ->get(route('account-management'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('title="Creación"', $html);
+        $this->assertStringNotContainsString('title="Miembros"', $html);
+        $this->assertStringNotContainsString('title="Tiempo"', $html);
+        $this->assertStringContainsString('title="Acciones"', $html);
     }
 
     public function test_account_management_datatable_shows_owner_as_title_and_team_as_truncated_subtitle(): void
@@ -370,11 +390,8 @@ class AccountManagementDataTableTest extends TestCase
             ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'owner_name', 'name' => 'owner_name', 'searchable' => 'true', 'orderable' => 'true'],
-            ['data' => 'members_count', 'name' => 'members_count', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'active_clients_count', 'name' => 'active_clients_count', 'searchable' => 'false', 'orderable' => 'true'],
-            ['data' => 'total_time', 'name' => 'total_time', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'subscriptions_count', 'name' => 'subscriptions_count', 'searchable' => 'false', 'orderable' => 'true'],
-            ['data' => 'created_at', 'name' => 'created_at', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false'],
         ];
     }

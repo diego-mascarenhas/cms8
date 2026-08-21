@@ -36,30 +36,9 @@ class AccountDataTable extends DataTable
             {
                 $query->whereResponsibleMatches($keyword);
             })
-            ->addColumn('members_count', function ($account)
-            {
-                return $account->members_count;
-            })
             ->addColumn('active_clients_count', function ($account)
             {
                 return $account->active_clients_count;
-            })
-            ->addColumn('total_time', function ($account)
-            {
-                $seconds = $account->total_time;
-                $hours = floor($seconds / 3600);
-                $minutes = floor(($seconds % 3600) / 60);
-
-                if ($hours > 0)
-                {
-                    return sprintf('%dh %dm', $hours, $minutes);
-                }
-
-                return sprintf('%dm', $minutes);
-            })
-            ->editColumn('created_at', function ($account)
-            {
-                return $account->created_at->format('d/m/Y');
             })
             ->addColumn('subscriptions_count', function ($account)
             {
@@ -162,18 +141,8 @@ class AccountDataTable extends DataTable
                 ->width('220px')
                 ->orderable(true)
                 ->searchable(true),
-            Column::computed('members_count')
-                ->title('Miembros')
-                ->className('text-center')
-                ->addClass('min-phone')
-                ->orderable(true),
             Column::computed('active_clients_count')
                 ->title('Clientes')
-                ->className('text-center')
-                ->addClass('min-phone')
-                ->orderable(true),
-            Column::computed('total_time')
-                ->title('Tiempo')
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
@@ -182,16 +151,10 @@ class AccountDataTable extends DataTable
                 ->className('text-center')
                 ->addClass('min-phone')
                 ->orderable(true),
-            Column::make('created_at')
-                ->title('Creación')
-                ->className('text-center')
-                ->addClass('min-phone')
-                ->orderable(true)
-                ->searchable(false),
             Column::computed('action')
                 ->title('Acciones')
                 ->className('text-center')
-                ->addClass('min-phone')
+                ->addClass('all')
                 ->orderable(false)
                 ->searchable(false),
         ];
