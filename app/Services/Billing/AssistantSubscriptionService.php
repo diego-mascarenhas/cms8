@@ -41,8 +41,11 @@ class AssistantSubscriptionService
             }
         }
         $stripe = $this->fetchPlatformPaymentData($team, $subscription);
+        $customerMissing = (bool) ($stripe['customer_missing'] ?? false);
 
-        $active = $subscription !== null && $this->subscriptionIsActive($subscription);
+        $active = ! $customerMissing
+            && $subscription !== null
+            && $this->subscriptionIsActive($subscription);
         $canCheckout = $this->catalogHasCheckout($plans) && ! $active;
 
         return [
@@ -163,6 +166,13 @@ class AssistantSubscriptionService
         } catch (\Exception $e)
         {
             Log::error('Assistant checkout session failed', StripeErrorMessage::logContext($e));
+
+            if (StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return $this->needsBillingResponse();
+            }
 
             return [
                 'success' => false,
@@ -431,6 +441,13 @@ class AssistantSubscriptionService
         } catch (\Exception $e)
         {
             Log::error('Assistant payment method session failed', StripeErrorMessage::logContext($e));
+
+            if (StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return $this->needsBillingResponse();
+            }
 
             return [
                 'success' => false,
@@ -1051,7 +1068,19 @@ class AssistantSubscriptionService
     }
 
     /**
-     * @return array{payment_method: ?array<string, mixed>, payment_methods: list<array<string, mixed>>, invoices: list<array<string, mixed>>, current_period_start: ?string, current_period_end: ?string}
+     * @return array{success: false, code: string, message: string}
+     */
+    private function needsBillingResponse(): array
+    {
+        return [
+            'success' => false,
+            'code' => 'needs_billing',
+            'message' => __('Completá los datos de facturación para crear el cliente en Stripe. Después contratá el plan; la tarjeta se pide ahí.'),
+        ];
+    }
+
+    /**
+     * @return array{payment_method: ?array<string, mixed>, payment_methods: list<array<string, mixed>>, invoices: list<array<string, mixed>>, current_period_start: ?string, current_period_end: ?string, customer_missing: bool}
      */
     private function fetchPlatformPaymentData(Team $team, ?Subscription $subscription = null): array
     {
@@ -1061,6 +1090,7 @@ class AssistantSubscriptionService
             'invoices' => [],
             'current_period_start' => null,
             'current_period_end' => null,
+            'customer_missing' => false,
         ];
 
         $customerId = $this->customerService->getStripeCustomerIdForCategory($team, '');
@@ -1073,6 +1103,12 @@ class AssistantSubscriptionService
         {
             \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
             $customer = \Stripe\Customer::retrieve($customerId);
+            if ($customer->deleted ?? false)
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return array_merge($empty, ['customer_missing' => true]);
+            }
             $customerTeamId = $customer->metadata->team_id ?? null;
             if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
             {
@@ -1112,6 +1148,7 @@ class AssistantSubscriptionService
             }
 
             return [
+                'customer_missing' => false,
                 'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
                 'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
                 'payment_method' => $card,
@@ -1142,6 +1179,13 @@ class AssistantSubscriptionService
             Log::warning('Could not load Assistant Stripe payment data', array_merge([
                 'team_id' => $team->id,
             ], StripeErrorMessage::logContext($e)));
+
+            if (StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return array_merge($empty, ['customer_missing' => true]);
+            }
 
             return $empty;
         }

@@ -515,6 +515,32 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/cs_test_payment_method');
     }
 
+    public function test_payment_method_returns_needs_billing_code_when_stripe_customer_is_missing(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('createPaymentMethodUpdate')
+                ->once()
+                ->andReturn([
+                    'success' => false,
+                    'code' => 'needs_billing',
+                    'message' => 'Completá los datos de facturación para crear el cliente en Stripe.',
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/payment-method', [
+                'success_url' => 'https://assistant.test/profile?updated=payment-method',
+                'cancel_url' => 'https://assistant.test/profile?checkout=cancel&updated=payment-method',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'needs_billing')
+            ->assertJsonPath('message', 'Completá los datos de facturación para crear el cliente en Stripe.');
+    }
+
     public function test_payment_method_is_forbidden_for_non_owners(): void
     {
         [, $team] = $this->assistantUserWithToken();

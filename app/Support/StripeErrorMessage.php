@@ -93,6 +93,7 @@ class StripeErrorMessage
 
         $message = strtolower((string) ($err?->message ?? $e->getMessage()));
 
-        return $err?->param === 'id' || str_contains($message, 'no such customer');
+        return in_array($err?->param, ['id', 'customer'], true)
+            || str_contains($message, 'no such customer');
     }
 }
