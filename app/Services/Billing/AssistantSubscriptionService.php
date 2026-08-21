@@ -2,7 +2,10 @@
 
 namespace App\Services\Billing;
 
+use App\Models\AgentConversationMessage;
+use App\Models\Conversation;
 use App\Models\Team;
+use App\Models\TokenUsageLog;
 use App\Services\HumanoPricingPlanResolver;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamApiUsageStatsService;
@@ -532,9 +535,8 @@ class AssistantSubscriptionService
      */
     private function tokenUsagePayload(Team $team, array $stripe): array
     {
-        [$from, $to] = $this->tokenUsagePeriod($stripe);
-        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
-        $periodTokens = (int) TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to)['totalTokensUsed'];
+        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         $byModule = [];
 
         foreach ($stats['byModule'] as $row)
@@ -560,7 +562,7 @@ class AssistantSubscriptionService
             'by_module' => $byModule,
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'amount_due_cents' => (int) round(($periodTokens / 1_000_000) * $rate * 100),
+            'amount_due_cents' => (int) round(($tokensUsed / 1_000_000) * $rate * 100),
             'currency' => $currency,
             'rate_per_million' => $rate,
         ];
@@ -572,9 +574,8 @@ class AssistantSubscriptionService
      */
     private function whatsappUsagePayload(Team $team, array $stripe): array
     {
-        [$from, $to] = $this->tokenUsagePeriod($stripe);
-        $stats = TeamWhatsAppUsageStatsService::forTeam($team);
-        $period = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
+        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        $stats = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
 
         return [
             'messages_sent' => (int) $stats['messages_sent'],
@@ -587,8 +588,8 @@ class AssistantSubscriptionService
             'currency' => (string) $stats['currency'],
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'period_messages_sent' => (int) $period['messages_sent'],
-            'amount_due_cents' => (int) $period['our_amount_cents'],
+            'period_messages_sent' => (int) $stats['messages_sent'],
+            'amount_due_cents' => (int) $stats['our_amount_cents'],
         ];
     }
 
@@ -601,19 +602,106 @@ class AssistantSubscriptionService
     }
 
     /**
+     * Paid Assistant cycle when it exists. Otherwise from the first real use
+     * (tokens, chat, WhatsApp) — not the 48h trial stamp, not another product's invoice.
+     *
      * @param  array<string, mixed>  $stripe
      * @return array{0: Carbon, 1: Carbon}
      */
-    private function tokenUsagePeriod(array $stripe): array
+    private function tokenUsagePeriod(Team $team, array $stripe): array
     {
-        $from = ! empty($stripe['current_period_start'])
-            ? Carbon::parse($stripe['current_period_start'])
-            : now()->startOfMonth();
-        $to = ! empty($stripe['current_period_end'])
-            ? Carbon::parse($stripe['current_period_end'])
-            : now()->endOfMonth();
+        if (! empty($stripe['current_period_start']))
+        {
+            $from = Carbon::parse($stripe['current_period_start']);
+            $to = ! empty($stripe['current_period_end'])
+                ? Carbon::parse($stripe['current_period_end'])
+                : now();
 
-        return [$from, $to];
+            return [$from, $to];
+        }
+
+        return [$this->assistantUsageStartedAt($team), now()];
+    }
+
+    private function assistantUsageStartedAt(Team $team): Carbon
+    {
+        $firstUsage = $this->firstAssistantUsageAt($team);
+        if ($firstUsage)
+        {
+            return $firstUsage;
+        }
+
+        $stored = $this->parseTimestamp($team->getSetting(self::trialStartedSettingKey('assistant')));
+        if ($stored)
+        {
+            return $stored;
+        }
+
+        $hours = (int) config('humano_pricing.app_trials.assistant', 0);
+        if ($hours > 0 && $team->created_at && $team->created_at->copy()->addHours($hours)->isFuture())
+        {
+            return $team->created_at->copy();
+        }
+
+        $subscription = $this->findAssistantSubscription($team);
+        if ($subscription?->created_at)
+        {
+            return $subscription->created_at->copy();
+        }
+
+        return $team->created_at?->copy() ?? now();
+    }
+
+    private function firstAssistantUsageAt(Team $team): ?Carbon
+    {
+        $times = [];
+
+        $tokenAt = TokenUsageLog::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->min('created_at');
+        if ($tokenAt)
+        {
+            $times[] = Carbon::parse($tokenAt);
+        }
+
+        $chatAt = AgentConversationMessage::query()
+            ->where('role', 'assistant')
+            ->whereHas('conversation', function ($query) use ($team): void
+            {
+                $query->where('team_id', $team->id);
+            })
+            ->min('created_at');
+        if ($chatAt)
+        {
+            $times[] = Carbon::parse($chatAt);
+        }
+
+        $teamNumber = preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom());
+        if ($teamNumber !== '')
+        {
+            $whatsappAt = Conversation::query()
+                ->where('channel', 'whatsapp')
+                ->where('direction', 'outbound')
+                ->where(function ($query) use ($teamNumber): void
+                {
+                    $query->where('from', $teamNumber)
+                        ->orWhere('from', 'like', $teamNumber.':%');
+                })
+                ->min('created_at');
+            if ($whatsappAt)
+            {
+                $times[] = Carbon::parse($whatsappAt);
+            }
+        }
+
+        if ($times === [])
+        {
+            return null;
+        }
+
+        usort($times, fn (Carbon $a, Carbon $b): int => $a->timestamp <=> $b->timestamp);
+
+        return $times[0];
     }
 
     /**
@@ -1136,16 +1224,6 @@ class AssistantSubscriptionService
                 ->all();
             $card = collect($cards)->firstWhere('is_default') ?? ($cards[0] ?? null);
             [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
-            if (! $periodStart || ! $periodEnd)
-            {
-                $latestInvoice = $invoices->data[0] ?? null;
-                $periodStart ??= $latestInvoice?->period_start
-                    ?? $latestInvoice?->lines?->data[0]?->period?->start
-                    ?? null;
-                $periodEnd ??= $latestInvoice?->period_end
-                    ?? $latestInvoice?->lines?->data[0]?->period?->end
-                    ?? null;
-            }
 
             return [
                 'customer_missing' => false,
