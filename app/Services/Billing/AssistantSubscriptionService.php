@@ -8,6 +8,7 @@ use App\Services\StripeAccountResolver;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
+use App\Services\TeamWhatsAppUsageStatsService;
 use App\Support\StripeErrorMessage;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -40,8 +41,11 @@ class AssistantSubscriptionService
             }
         }
         $stripe = $this->fetchPlatformPaymentData($team, $subscription);
+        $customerMissing = (bool) ($stripe['customer_missing'] ?? false);
 
-        $active = $subscription !== null && $this->subscriptionIsActive($subscription);
+        $active = ! $customerMissing
+            && $subscription !== null
+            && $this->subscriptionIsActive($subscription);
         $canCheckout = $this->catalogHasCheckout($plans) && ! $active;
 
         return [
@@ -62,6 +66,7 @@ class AssistantSubscriptionService
             'invoices' => $stripe['invoices'],
             'can_checkout' => $canCheckout,
             'token_usage' => $this->tokenUsagePayload($team, $stripe),
+            'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
         ];
     }
 
@@ -161,6 +166,13 @@ class AssistantSubscriptionService
         } catch (\Exception $e)
         {
             Log::error('Assistant checkout session failed', StripeErrorMessage::logContext($e));
+
+            if (StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return $this->needsBillingResponse();
+            }
 
             return [
                 'success' => false,
@@ -430,6 +442,13 @@ class AssistantSubscriptionService
         {
             Log::error('Assistant payment method session failed', StripeErrorMessage::logContext($e));
 
+            if (StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return $this->needsBillingResponse();
+            }
+
             return [
                 'success' => false,
                 'message' => __('Error al abrir el cambio de medio de pago: :error', [
@@ -514,7 +533,8 @@ class AssistantSubscriptionService
     private function tokenUsagePayload(Team $team, array $stripe): array
     {
         [$from, $to] = $this->tokenUsagePeriod($stripe);
-        $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+        $periodTokens = (int) TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to)['totalTokensUsed'];
         $byModule = [];
 
         foreach ($stats['byModule'] as $row)
@@ -540,9 +560,35 @@ class AssistantSubscriptionService
             'by_module' => $byModule,
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'amount_due_cents' => (int) round(($tokensUsed / 1_000_000) * $rate * 100),
+            'amount_due_cents' => (int) round(($periodTokens / 1_000_000) * $rate * 100),
             'currency' => $currency,
             'rate_per_million' => $rate,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $stripe
+     * @return array<string, mixed>
+     */
+    private function whatsappUsagePayload(Team $team, array $stripe): array
+    {
+        [$from, $to] = $this->tokenUsagePeriod($stripe);
+        $stats = TeamWhatsAppUsageStatsService::forTeam($team);
+        $period = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
+
+        return [
+            'messages_sent' => (int) $stats['messages_sent'],
+            'our_amount_cents' => (int) $stats['our_amount_cents'],
+            'reference_amount_cents' => (int) $stats['reference_amount_cents'],
+            'saved_amount_cents' => (int) $stats['saved_amount_cents'],
+            'average_savings' => (float) $stats['average_savings'],
+            'our_rate' => (float) $stats['our_rate'],
+            'reference_rate' => (float) $stats['reference_rate'],
+            'currency' => (string) $stats['currency'],
+            'period_start' => $from->toIso8601String(),
+            'period_end' => $to->toIso8601String(),
+            'period_messages_sent' => (int) $period['messages_sent'],
+            'amount_due_cents' => (int) $period['our_amount_cents'],
         ];
     }
 
@@ -1022,7 +1068,19 @@ class AssistantSubscriptionService
     }
 
     /**
-     * @return array{payment_method: ?array<string, mixed>, payment_methods: list<array<string, mixed>>, invoices: list<array<string, mixed>>, current_period_start: ?string, current_period_end: ?string}
+     * @return array{success: false, code: string, message: string}
+     */
+    private function needsBillingResponse(): array
+    {
+        return [
+            'success' => false,
+            'code' => 'needs_billing',
+            'message' => __('Completá los datos de facturación para crear el cliente en Stripe. Después contratá el plan; la tarjeta se pide ahí.'),
+        ];
+    }
+
+    /**
+     * @return array{payment_method: ?array<string, mixed>, payment_methods: list<array<string, mixed>>, invoices: list<array<string, mixed>>, current_period_start: ?string, current_period_end: ?string, customer_missing: bool}
      */
     private function fetchPlatformPaymentData(Team $team, ?Subscription $subscription = null): array
     {
@@ -1032,6 +1090,7 @@ class AssistantSubscriptionService
             'invoices' => [],
             'current_period_start' => null,
             'current_period_end' => null,
+            'customer_missing' => false,
         ];
 
         $customerId = $this->customerService->getStripeCustomerIdForCategory($team, '');
@@ -1044,6 +1103,12 @@ class AssistantSubscriptionService
         {
             \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
             $customer = \Stripe\Customer::retrieve($customerId);
+            if ($customer->deleted ?? false)
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return array_merge($empty, ['customer_missing' => true]);
+            }
             $customerTeamId = $customer->metadata->team_id ?? null;
             if ($customerTeamId && (int) $customerTeamId !== (int) $team->id)
             {
@@ -1083,6 +1148,7 @@ class AssistantSubscriptionService
             }
 
             return [
+                'customer_missing' => false,
                 'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
                 'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
                 'payment_method' => $card,
@@ -1113,6 +1179,13 @@ class AssistantSubscriptionService
             Log::warning('Could not load Assistant Stripe payment data', array_merge([
                 'team_id' => $team->id,
             ], StripeErrorMessage::logContext($e)));
+
+            if (StripeErrorMessage::isMissingCustomer($e))
+            {
+                $this->customerService->forgetPersistedCustomerId($team);
+
+                return array_merge($empty, ['customer_missing' => true]);
+            }
 
             return $empty;
         }

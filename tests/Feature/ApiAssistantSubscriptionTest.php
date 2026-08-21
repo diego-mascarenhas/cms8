@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Conversation;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
@@ -67,6 +68,12 @@ class ApiAssistantSubscriptionTest extends TestCase
         $this->assertNotEmpty($response->json('data.token_usage.period_start'));
         $this->assertNotEmpty($response->json('data.token_usage.period_end'));
         $this->assertIsArray($response->json('data.token_usage.by_module'));
+        $response->assertJsonPath('data.whatsapp_usage.messages_sent', 0);
+        $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 0);
+        $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.whatsapp_usage.currency', 'EUR');
+        $this->assertSame(0.003, $response->json('data.whatsapp_usage.our_rate'));
+        $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
     }
 
     public function test_subscription_token_usage_bills_tokens_used_in_current_period(): void
@@ -106,10 +113,64 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 1_000_000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 2_000_000);
+        $response->assertJsonPath('data.token_usage.total_calls', 2);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 900);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
         $response->assertJsonPath('data.token_usage.rate_per_million', 9);
+    }
+
+    public function test_subscription_whatsapp_usage_bills_outbound_messages_in_current_period(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        config([
+            'humano_pricing.whatsapp_message_billing.our_amount' => 0.10,
+            'humano_pricing.whatsapp_message_billing.reference_amount' => 0.25,
+        ]);
+
+        $teamNumber = '34999000111';
+        $team->setSetting('whatsapp_from', $teamNumber);
+
+        Conversation::create([
+            'message_sid' => 'SM_wa_bill_1',
+            'channel' => 'whatsapp',
+            'from' => $teamNumber,
+            'to' => '34600111222',
+            'body' => 'Hola',
+            'status' => 'sent',
+            'direction' => 'outbound',
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_wa_bill_2',
+            'channel' => 'whatsapp',
+            'from' => $teamNumber,
+            'to' => '34600111222',
+            'body' => 'Hola',
+            'status' => 'delivered',
+            'direction' => 'outbound',
+        ]);
+
+        $previous = Conversation::create([
+            'message_sid' => 'SM_wa_bill_old',
+            'channel' => 'whatsapp',
+            'from' => $teamNumber,
+            'to' => '34600111222',
+            'body' => 'Hola',
+            'status' => 'sent',
+            'direction' => 'outbound',
+        ]);
+        $previous->forceFill(['created_at' => now()->subMonth()])->save();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.whatsapp_usage.messages_sent', 3);
+        $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 30);
+        $response->assertJsonPath('data.whatsapp_usage.saved_amount_cents', 45);
+        $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 20);
+        $response->assertJsonPath('data.whatsapp_usage.period_messages_sent', 2);
+        $response->assertJsonPath('data.whatsapp_usage.average_savings', 60);
     }
 
     public function test_subscription_summary_includes_active_assistant_subscription(): void
@@ -452,6 +513,32 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/cs_test_payment_method');
+    }
+
+    public function test_payment_method_returns_needs_billing_code_when_stripe_customer_is_missing(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('createPaymentMethodUpdate')
+                ->once()
+                ->andReturn([
+                    'success' => false,
+                    'code' => 'needs_billing',
+                    'message' => 'Completá los datos de facturación para crear el cliente en Stripe.',
+                ]);
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/payment-method', [
+                'success_url' => 'https://assistant.test/profile?updated=payment-method',
+                'cancel_url' => 'https://assistant.test/profile?checkout=cancel&updated=payment-method',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'needs_billing')
+            ->assertJsonPath('message', 'Completá los datos de facturación para crear el cliente en Stripe.');
     }
 
     public function test_payment_method_is_forbidden_for_non_owners(): void

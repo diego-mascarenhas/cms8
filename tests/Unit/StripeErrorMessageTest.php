@@ -64,4 +64,23 @@ class StripeErrorMessageTest extends TestCase
         $this->assertTrue(StripeErrorMessage::isMissingCustomer($e));
         $this->assertFalse(StripeErrorMessage::isMissingCustomer(new Exception('No such customer')));
     }
+
+    public function test_is_missing_customer_detects_param_customer(): void
+    {
+        $e = InvalidRequestException::factory(
+            "No such customer: 'cus_V5XeOzzyrgKmpK'",
+            400,
+            null,
+            [
+                'error' => [
+                    'type' => 'invalid_request_error',
+                    'code' => 'resource_missing',
+                    'message' => "No such customer: 'cus_V5XeOzzyrgKmpK'",
+                    'param' => 'customer',
+                ],
+            ],
+        );
+
+        $this->assertTrue(StripeErrorMessage::isMissingCustomer($e));
+    }
 }

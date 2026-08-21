@@ -73,6 +73,18 @@ return [
     ],
 
     /*
+     * | Baileys WhatsApp outbound message billing (EUR per sent message).
+     * | our_amount is what we charge. reference_amount is the Twilio-like BSP
+     * | handling fee used to show savings (Meta Cloud API service replies in
+     * | the 24h window are free; BSPs still charge per message).
+     */
+    'whatsapp_message_billing' => [
+        'currency' => env('HUMANO_WHATSAPP_BILLING_CURRENCY', 'EUR'),
+        'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.003),
+        'reference_amount' => (float) env('HUMANO_WHATSAPP_REFERENCE_AMOUNT', 0.005),
+    ],
+
+    /*
      * | Default plan slug when checkout return URL omits &category= (assistant, business, or mentor).
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))

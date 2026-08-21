@@ -50,6 +50,7 @@ class AssistantSubscriptionController extends Controller
         {
             return response()->json([
                 'success' => false,
+                'code' => $result['code'] ?? null,
                 'message' => $result['message'] ?? __('No se pudo crear el checkout.'),
             ], 422);
         }
@@ -142,6 +143,7 @@ class AssistantSubscriptionController extends Controller
         {
             return response()->json([
                 'success' => false,
+                'code' => $result['code'] ?? null,
                 'message' => $result['message'] ?? __('No se pudo abrir el cambio de medio de pago.'),
             ], 422);
         }
