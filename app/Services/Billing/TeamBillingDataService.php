@@ -232,15 +232,16 @@ class TeamBillingDataService
                 Log::warning('Could not retrieve tax IDs: '.$e->getMessage());
             }
 
+            $collected = $customer->collected_information ?? null;
+            $individualName = $this->firstFilled([
+                $customer->metadata->individual_name ?? null,
+                is_object($collected) ? ($collected->individual_name ?? null) : null,
+            ]);
+
             return [
                 'has_stripe_customer' => true,
-                'individual_name' => (string) ($customer->metadata->individual_name
-                    ?? $customer->collected_information->individual_name
-                    ?? ''),
-                'business_name' => (string) ($customer->metadata->business_name
-                    ?? $customer->metadata->company_name
-                    ?? $customer->collected_information->business_name
-                    ?? ''),
+                'individual_name' => $individualName,
+                'business_name' => $this->resolveBusinessName($team, $customer, $individualName),
                 'country' => (string) ($customer->address->country ?? $customer->metadata->country ?? ''),
                 'phone' => (string) ($customer->phone ?? ''),
                 'tax_id' => $taxId,
@@ -253,6 +254,50 @@ class TeamBillingDataService
 
             return $defaults;
         }
+    }
+
+    public function resolveBusinessName(Team $team, object $customer, string $individualName = ''): string
+    {
+        $collected = $customer->collected_information ?? null;
+
+        $fromStripe = $this->firstFilled([
+            $customer->metadata->business_name ?? null,
+            $customer->metadata->company_name ?? null,
+            is_object($collected) ? ($collected->business_name ?? null) : null,
+        ]);
+
+        if ($fromStripe !== '')
+        {
+            return $fromStripe;
+        }
+
+        $customerName = trim((string) ($customer->name ?? ''));
+        if ($customerName !== '' && strcasecmp($customerName, $individualName) !== 0)
+        {
+            return $customerName;
+        }
+
+        return $this->firstFilled([
+            $team->getDecodedBusinessConfig()['business_name'] ?? null,
+            $team->name,
+        ]);
+    }
+
+    /**
+     * @param  list<mixed>  $candidates
+     */
+    public function firstFilled(array $candidates): string
+    {
+        foreach ($candidates as $candidate)
+        {
+            $value = trim((string) $candidate);
+            if ($value !== '')
+            {
+                return $value;
+            }
+        }
+
+        return '';
     }
 
     public function normalizePhoneNumber(string $phone, string $country): string
