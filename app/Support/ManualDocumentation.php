@@ -175,8 +175,8 @@ class ManualDocumentation
                     'CRUD completo, presupuesto, precios y asignación de equipo.',
                 ],
                 'collaborator' => [
-                    'Crea proyectos; ve/edita si es responsable o está asignado.',
-                    'Sin eliminar; precios de billing ocultos.',
+                    'Crea proyectos; ve/edita presupuesto y precio si es asesor, responsable o está asignado.',
+                    'Sin eliminar; facturación del equipo (facturas, cobros, tarifas) oculta.',
                 ],
                 'client' => [
                     'Consulta proyectos de sus empresas (avance, alcance).',

@@ -63,15 +63,40 @@ class CollaboratorBillingAccessTest extends TestCase
         $this->assertFalse(Gate::forUser($user)->allows('access-infrastructure-modules'));
     }
 
-    public function test_collaborator_cannot_generate_project_budget_spec(): void
+    public function test_collaborator_can_generate_project_budget_spec(): void
     {
         $user = $this->makeCollaboratorUser();
+
+        $this->mock(\App\Services\ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn([
+                    'ai_interpretation' => 'Landing page',
+                    'dimension' => 'Small',
+                    'estimated_times' => '2 weeks',
+                    'resources' => '1 developer',
+                    'token_consumption' => [],
+                    'client_items' => [],
+                    'resource_breakdown' => [],
+                    'suggested_tasks' => [
+                        [
+                            'title' => 'Home',
+                            'estimated_hours' => 8,
+                            'unit_price' => 800,
+                            'included' => true,
+                        ],
+                    ],
+                ]);
+        });
 
         $this->actingAs($user)
             ->postJson(route('project.generate-budget-spec'), [
                 'budget_given' => 'Presupuesto de prueba',
             ])
-            ->assertForbidden();
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('suggested_tasks.0.unit_price', 800);
     }
 
     public function test_admin_can_access_invoice_list(): void

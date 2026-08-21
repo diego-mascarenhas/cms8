@@ -95,8 +95,8 @@ class User extends Authenticatable
      * Whether the user may access billing & budgeting features (invoices, payments,
      * income/expense, fares, fiscal companies, finance, subscriptions, project budgets).
      *
-     * Collaborators are scoped to operational work (tasks, projects without pricing,
-     * contacts and clients) and are excluded from billing and infrastructure.
+     * Collaborators are scoped to operational work (tasks, project budgets they can see,
+     * contacts and clients) and are excluded from team billing and infrastructure.
      */
     public function canAccessBilling(): bool
     {

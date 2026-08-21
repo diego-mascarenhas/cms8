@@ -80,7 +80,7 @@
 			<a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="btn btn-info waves-effect waves-light">
 				<i class="ti ti-layout-kanban me-1"></i>{{ __('Board') }}
 			</a>
-			@if(data_get($project->data, 'budget_preview_token') && auth()->user()->can('access-billing-modules'))
+			@if(data_get($project->data, 'budget_preview_token') && auth()->user()->can('manageBudget', $project))
 				<a href="{{ route('project.budget-preview', data_get($project->data, 'budget_preview_token')) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary waves-effect waves-light">
 					<i class="ti ti-file-invoice me-1"></i>{{ __('Preview') }}
 				</a>
@@ -467,7 +467,7 @@
 			<p class="text-muted mb-0">{{ __('No tasks on this project board yet. Add the suggested tasks below (or in the Kanban) to register time per collaborator and task.') }}</p>
 		@endif
 
-		@if(isset($suggestedTasks) && count($suggestedTasks) > 0 && auth()->user()->can('access-billing-modules'))
+		@if(isset($suggestedTasks) && count($suggestedTasks) > 0 && auth()->user()->can('manageBudget', $project))
 			@php
 				$suggestedTotalHours = collect($suggestedTasks)->sum(fn ($t) => ($t['included'] ?? true) && isset($t['estimated_hours']) && $t['estimated_hours'] !== '' && $t['estimated_hours'] !== null ? (float) $t['estimated_hours'] : 0);
 			@endphp
