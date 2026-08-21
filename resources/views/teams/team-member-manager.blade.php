@@ -1,4 +1,4 @@
-<div>
+<div id="team-member-manager">
   @if (Gate::check('addTeamMember', $team))
 
     <!-- Add Team Member -->
@@ -187,7 +187,7 @@
               <div class="pe-2">
                 <img class="rounded-circle" width="32" height="32" style="object-fit: cover;" src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}">
               </div>
-              <span class="fw-medium">{{ $user->name }}</span>
+              <span class="fw-medium">{{ $user->email ? $user->name.' ('.$user->email.')' : $user->name }}</span>
             </div>
 
             <div class="d-flex align-items-center">
@@ -196,6 +196,12 @@
                 $roleObj = $roleKey ? Laravel\Jetstream\Jetstream::findRole($roleKey) : null;
                 $roleName = $roleObj->name ?? __('Member');
               @endphp
+              @if (Gate::check('updateTeamMember', $team))
+                <a href="javascript:;" class="text-body me-2" title="{{ __('Change Password') }}"
+                  onclick="changeTeamMemberPassword({{ $user->id }})">
+                  <i class="ti ti-key ti-sm"></i>
+                </a>
+              @endif
               @if (Gate::check('addTeamMember', $team) && Laravel\Jetstream\Jetstream::hasRoles())
                 <button class="btn btn-link text-secondary" wire:click="manageRole({{ $user->id }})">
                   {{ $roleName }}
@@ -237,12 +243,16 @@
   @endif
 
   <!-- Role Management Modal -->
-  <x-dialog-modal wire:model.live="currentlyManagingRole">
+  <x-dialog-modal wire:model="currentlyManagingRole">
     <x-slot name="title">
       {{ __('Manage Role') }}
     </x-slot>
 
     <x-slot name="content">
+      @error('role')
+        <div class="alert alert-danger py-2 mb-3">{{ $message }}</div>
+      @enderror
+
       <div class="list-group">
         @foreach ($this->roles as $index => $role)
           <a href="#" class="list-group-item list-group-item-action"
@@ -273,7 +283,7 @@
         {{ __('Cancel') }}
       </x-secondary-button>
 
-      <x-button class="ms-2" wire:click="updateRole" wire:loading.attr="disabled">
+      <x-button type="button" class="ms-2" wire:click.prevent="updateRole" wire:loading.attr="disabled" wire:target="updateRole">
         {{ __('Save') }}
       </x-button>
     </x-slot>

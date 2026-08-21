@@ -2,10 +2,20 @@
 
 namespace App\Helpers;
 
+use App\Models\Project;
+use App\Models\Team;
+use App\Models\User;
 use Illuminate\Support\Facades\Route;
 
 class MenuHelper
 {
+    /**
+     * Modules that stay in the menu even when the team toggle is off.
+     *
+     * @var list<string>
+     */
+    private const ALWAYS_VISIBLE_MODULES = ['dashboard', 'settings'];
+
     public static function menuLabel(?string $key): string
     {
         if ($key === null || $key === '')
@@ -29,6 +39,84 @@ class MenuHelper
         }
 
         return json_decode(file_get_contents($menuFile), true);
+    }
+
+    /**
+     * Filter the sidebar menu by role permissions and enabled team modules.
+     *
+     * Collaborators keep Projects even when the team module is disabled: they
+     * already have ProjectPolicy::viewAny and work against assigned projects.
+     *
+     * @param  array{menu: list<array<string, mixed>>}  $menuConfig
+     * @return array{menu: list<array<string, mixed>>}
+     */
+    public static function filterMenuForUser(array $menuConfig, User $user, ?Team $team): array
+    {
+        $filteredMenu = [];
+        $currentSection = null;
+        $sectionItems = [];
+
+        foreach ($menuConfig['menu'] as $menuItem)
+        {
+            if (isset($menuItem['menuHeader']))
+            {
+                if ($currentSection && count($sectionItems) > 0)
+                {
+                    $filteredMenu[] = $currentSection;
+                    $filteredMenu = array_merge($filteredMenu, $sectionItems);
+                }
+
+                $currentSection = $menuItem;
+                $sectionItems = [];
+
+                continue;
+            }
+
+            $moduleKey = $menuItem['module_key'] ?? null;
+
+            if (! $user->hasRole('admin'))
+            {
+                if (isset($menuItem['permission']) && ! $user->can($menuItem['permission']))
+                {
+                    continue;
+                }
+            }
+
+            if ($moduleKey && ! in_array($moduleKey, self::ALWAYS_VISIBLE_MODULES, true))
+            {
+                if (! self::userCanSeeModuleMenuItem($user, $team, $moduleKey))
+                {
+                    continue;
+                }
+            }
+
+            $sectionItems[] = $menuItem;
+        }
+
+        if ($currentSection && count($sectionItems) > 0)
+        {
+            $filteredMenu[] = $currentSection;
+            $filteredMenu = array_merge($filteredMenu, $sectionItems);
+        }
+
+        $menuConfig['menu'] = array_values($filteredMenu);
+
+        return $menuConfig;
+    }
+
+    public static function userCanSeeModuleMenuItem(User $user, ?Team $team, string $moduleKey): bool
+    {
+        if ($team && $team->hasModule($moduleKey))
+        {
+            return true;
+        }
+
+        if ($moduleKey === 'projects' && $user->hasRole('collaborator') && $user->can('viewAny', Project::class))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /**

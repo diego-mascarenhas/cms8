@@ -58,6 +58,31 @@ class TokenUsageLogServiceTest extends TestCase
         $this->assertSame(100, TokenUsageLogService::totalTokensFromUsage($usage));
     }
 
+    public function test_chat_assistant_reply_logs_count_in_team_stats(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'chat'],
+            ['name' => 'Chat', 'is_core' => true, 'order' => 1, 'status' => 1],
+        );
+
+        TokenUsageLogService::logFromAiResponse(
+            (int) $team->id,
+            'ChatAssistantReplyService',
+            ['prompt_tokens' => 80, 'completion_tokens' => 40, 'total_tokens' => 120],
+            moduleKey: 'chat',
+        );
+
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+
+        $this->assertSame(1, $stats['totalCalls']);
+        $this->assertSame(120, $stats['totalTokensUsed']);
+        $this->assertSame(120, $stats['byModule'][$module->name]['tokens_used']);
+    }
+
     public function test_skips_zero_token_logs(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

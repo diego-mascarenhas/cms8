@@ -1057,7 +1057,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertSame(1, Conversation::query()->where('direction', 'outbound')->count());
     }
 
-    public function test_whatsapp_send_attachment_asks_assistant_when_enabled(): void
+    public function test_whatsapp_send_attachment_does_not_reply_with_document_summary(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -1098,7 +1098,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        $this->assertGreaterThanOrEqual(2, Conversation::query()->where('direction', 'outbound')->where('to', $clientPhone)->count());
+        $this->assertSame(1, Conversation::query()->where('direction', 'outbound')->where('to', $clientPhone)->count());
         $attachment = Conversation::query()
             ->where('to', $clientPhone)
             ->where('direction', 'outbound')
@@ -1107,13 +1107,14 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertNotNull($attachment);
         $this->assertSame('', (string) $attachment->body);
         $this->assertNotEmpty($attachment->media);
-        $this->assertTrue(
+        $this->assertFalse(
             Conversation::query()
                 ->where('direction', 'outbound')
                 ->where('to', $clientPhone)
                 ->get()
                 ->contains(fn (Conversation $row): bool => str_contains((string) $row->body, 'Recibi tu documento')),
         );
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
     }
 
     public function test_whatsapp_send_attachment_failure_is_logged(): void
