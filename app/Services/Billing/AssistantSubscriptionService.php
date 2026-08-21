@@ -719,9 +719,9 @@ class AssistantSubscriptionService
     }
 
     /**
-     * Single per-app gate: complimentary team whitelist, paid catalog subscription,
-     * another active Cashier subscription (Assistant only), or the catalog trial
-     * window from team created_at.
+     * Single per-app gate: complimentary team whitelist, that catalog's paid
+     * subscription, or that catalog's trial. Hosting or another product never
+     * unlocks a different catalog.
      *
      * @return array{active: bool, status: 'paid'|'trial'|'expired', trial_ends_at: ?string, locked_reason: string|null}
      */
@@ -745,11 +745,6 @@ class AssistantSubscriptionService
             return $this->accessPayload(true, 'paid', $trialEnds);
         }
 
-        if ($catalog === 'assistant' && $this->teamHasOtherActiveSubscription($team))
-        {
-            return $this->accessPayload(true, 'paid', $trialEnds);
-        }
-
         if ($trialEnds && $trialEnds->isFuture())
         {
             return $this->accessPayload(true, 'trial', $trialEnds);
@@ -765,6 +760,8 @@ class AssistantSubscriptionService
     {
         return [
             'assistant' => $this->accessForCatalog($team, 'assistant'),
+            'mailer' => $this->accessForCatalog($team, 'mailer'),
+            'platform' => $this->accessForCatalog($team, 'platform'),
         ];
     }
 
@@ -780,19 +777,6 @@ class AssistantSubscriptionService
         return $subscription !== null && $this->subscriptionIsActive($subscription);
     }
 
-    private function teamHasOtherActiveSubscription(Team $team): bool
-    {
-        foreach ($team->subscriptions()->where('stripe_status', '!=', 'canceled')->get() as $subscription)
-        {
-            if ($this->subscriptionIsActive($subscription))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private function teamHasComplimentaryAccess(Team $team): bool
     {
         $ids = config('humano_pricing.plan_access_team_ids', []);
@@ -804,15 +788,66 @@ class AssistantSubscriptionService
         return in_array((int) $team->id, array_map('intval', $ids), true);
     }
 
+    public static function trialStartedSettingKey(string $catalog): string
+    {
+        return 'app_trial_started_'.$catalog;
+    }
+
     private function trialEndsAt(Team $team, string $catalog): ?Carbon
     {
         $hours = (int) config('humano_pricing.app_trials.'.$catalog, 0);
-        if ($hours <= 0 || $team->created_at === null)
+        if ($hours <= 0)
         {
             return null;
         }
 
-        return $team->created_at->copy()->addHours($hours);
+        $started = $this->trialStartedAt($team, $catalog, $hours);
+
+        return $started?->copy()->addHours($hours);
+    }
+
+    private function trialStartedAt(Team $team, string $catalog, int $hours): ?Carbon
+    {
+        $key = self::trialStartedSettingKey($catalog);
+        $stored = $this->parseTimestamp($team->getSetting($key));
+        if ($stored)
+        {
+            return $stored;
+        }
+
+        if ($team->created_at && $team->created_at->copy()->addHours($hours)->isFuture())
+        {
+            return $team->created_at->copy();
+        }
+
+        $started = now();
+        $team->setSetting($key, $started->toIso8601String(), [
+            'type' => 'string',
+            'group' => 'billing',
+        ]);
+
+        if ($team->relationLoaded('settings'))
+        {
+            $team->unsetRelation('settings');
+        }
+
+        return $started;
+    }
+
+    private function parseTimestamp(mixed $value): ?Carbon
+    {
+        if (! is_string($value) || trim($value) === '')
+        {
+            return null;
+        }
+
+        try
+        {
+            return Carbon::parse($value);
+        } catch (\Throwable)
+        {
+            return null;
+        }
     }
 
     /**
