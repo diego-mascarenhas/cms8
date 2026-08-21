@@ -514,7 +514,8 @@ class AssistantSubscriptionService
     private function tokenUsagePayload(Team $team, array $stripe): array
     {
         [$from, $to] = $this->tokenUsagePeriod($stripe);
-        $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+        $periodTokens = (int) TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to)['totalTokensUsed'];
         $byModule = [];
 
         foreach ($stats['byModule'] as $row)
@@ -540,7 +541,7 @@ class AssistantSubscriptionService
             'by_module' => $byModule,
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'amount_due_cents' => (int) round(($tokensUsed / 1_000_000) * $rate * 100),
+            'amount_due_cents' => (int) round(($periodTokens / 1_000_000) * $rate * 100),
             'currency' => $currency,
             'rate_per_million' => $rate,
         ];

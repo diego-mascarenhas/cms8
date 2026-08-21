@@ -106,7 +106,8 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 1_000_000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 2_000_000);
+        $response->assertJsonPath('data.token_usage.total_calls', 2);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 900);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
         $response->assertJsonPath('data.token_usage.rate_per_million', 9);
