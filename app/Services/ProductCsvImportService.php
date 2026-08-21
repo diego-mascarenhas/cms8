@@ -21,6 +21,8 @@ class ProductCsvImportService
      */
     public const DEMO_CATALOG_PATH = 'database/samples/products-demo.csv';
 
+    public const DEMO_CATALOG_LIMIT = 30;
+
     public const OPTIONAL_COLUMNS = [
         'description',
         'short_description',
@@ -170,11 +172,33 @@ class ProductCsvImportService
             return ['filename' => 'cms8-productos-ejemplo.csv', 'csv' => $this->templateContents(), 'products' => 2];
         }
 
+        $rows = array_slice($this->readRows($path), 0, self::DEMO_CATALOG_LIMIT);
+
         return [
             'filename' => 'cms8-catalogo-demo.csv',
-            'csv' => (string) file_get_contents($path),
-            'products' => count($this->readRows($path)),
+            'csv' => $this->csvFromRows($rows),
+            'products' => count($rows),
         ];
+    }
+
+    /**
+     * @param  list<array{line: int, values: array<string, string>}>  $rows
+     */
+    private function csvFromRows(array $rows): string
+    {
+        $header = array_merge(self::REQUIRED_COLUMNS, self::OPTIONAL_COLUMNS);
+        $handle = fopen('php://temp', 'r+');
+        fputcsv($handle, $header);
+        foreach ($rows as $row)
+        {
+            $values = $row['values'];
+            fputcsv($handle, array_map(fn (string $column): string => $values[$column] ?? '', $header));
+        }
+        rewind($handle);
+        $contents = (string) stream_get_contents($handle);
+        fclose($handle);
+
+        return $contents;
     }
 
     /**

@@ -21,6 +21,7 @@ class UserController extends Controller
      * Query params:
      * - assignable=1: only staff profiles (admin, collaborator, editor, etc.). Excludes clients.
      * - admins=1: team owner plus users with the admin role.
+     * - assistant=1: team owner plus admin and collaborator profiles.
      */
     public function index(Request $request): JsonResponse
     {
@@ -164,6 +165,19 @@ class UserController extends Controller
         }
 
         $users = $team->allUsers()->load('roles')->sortBy('name')->values();
+        if ($request->boolean('assistant'))
+        {
+            $ownerId = (int) $team->user_id;
+
+            return $users
+                ->filter(function (User $teamUser) use ($ownerId)
+                {
+                    return ($ownerId > 0 && (int) $teamUser->id === $ownerId)
+                        || $teamUser->hasAnyRole(['admin', 'root', 'collaborator']);
+                })
+                ->values();
+        }
+
         if (! $request->boolean('admins'))
         {
             return $users;
