@@ -28,8 +28,9 @@ return [
         : 'payment_link',
 
     /*
-     * | WhatsApp / inbox AI auto-reply requires an in-effect paid plan (Assistant
-     * | subscription, including Stripe trial, or another active Cashier subscription).
+     * | WhatsApp / inbox AI auto-reply requires an in-effect Assistant plan
+     * | (Assistant subscription, including Stripe trial, or the Assistant app trial).
+     * | Other Cashier products (hosting, mailer, platform) do not unlock Assistant.
      * | Tests set ASSISTANT_AI_REQUIRES_PLAN=false so existing fixtures keep working.
      */
     'require_paid_plan_for_ai' => filter_var(
@@ -38,9 +39,10 @@ return [
     ),
 
     /*
-     * | Per-app trial from the team created_at. Hours <= 0 disables the trial for
-     * | that catalog. Assistant uses the same gate as a paid plan while this window
-     * | is open; when it ends the app is locked until checkout.
+     * | Per-app trial in hours. Hours <= 0 disables the trial for that catalog.
+     * | New teams count from created_at. Teams older than that window (the product
+     * | launched after they signed up) start their clock the first time we evaluate
+     * | that catalog, so they still get a full trial.
      */
     'app_trials' => [
         'assistant' => (int) env('CMS8_APP_TRIAL_HOURS_ASSISTANT', 48),

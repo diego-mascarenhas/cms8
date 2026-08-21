@@ -16,7 +16,8 @@ class ProjectPolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->hasRole('admin'))
+        {
             return true;
         }
 
@@ -66,19 +67,10 @@ class ProjectPolicy
             return $project->team_id === $user->currentTeam->id;
         }
 
-        // Collaborators can only see projects where they are involved
+        // Collaborators can see projects they advise, are assigned to, or own a task on
         if ($user->hasRole('collaborator'))
         {
-            // Check if user is responsible for the project
-            if ($project->responsible_id === $user->id && $project->team_id === $user->currentTeam->id)
-            {
-                return true;
-            }
-
-            // Check if user is assigned as a collaborator to the project
-            return $project->collaborators()
-                ->where('user_id', $user->id)
-                ->exists() && $project->team_id === $user->currentTeam->id;
+            return $project->isVisibleToCollaborator($user);
         }
 
         // Developers and editors can view projects in their team
@@ -109,10 +101,10 @@ class ProjectPolicy
             return $project->team_id === $user->currentTeam->id;
         }
 
-        // Collaborators can only update projects they are responsible for
+        // Collaborators can update projects they are authorized to see (advisor, assigned, or task owner)
         if ($user->hasRole('collaborator'))
         {
-            return $project->responsible_id === $user->id && $project->team_id === $user->currentTeam->id;
+            return $project->isVisibleToCollaborator($user);
         }
 
         // Developers and technical users can update projects in their team
@@ -122,6 +114,22 @@ class ProjectPolicy
         }
 
         return false;
+    }
+
+    /**
+     * Create a project budget (AI spec + pricing fields on the create form).
+     */
+    public function createBudget(User $user): bool
+    {
+        return $this->create($user);
+    }
+
+    /**
+     * Manage budget and pricing on a project the user is already allowed to see.
+     */
+    public function manageBudget(User $user, Project $project): bool
+    {
+        return $this->update($user, $project);
     }
 
     /**
@@ -149,15 +157,10 @@ class ProjectPolicy
             // Collaborators can only see projects where they are involved
             if ($user->hasRole('collaborator'))
             {
-                return $query->where('team_id', $user->currentTeam->id)
-                    ->where(function ($q) use ($user)
-                    {
-                        $q->where('responsible_id', $user->id)
-                            ->orWhereHas('collaborators', function ($collaboratorQuery) use ($user)
-                            {
-                                $collaboratorQuery->where('user_id', $user->id);
-                            });
-                    });
+                return Project::constrainCollaboratorVisibility(
+                    $query->where('team_id', $user->currentTeam->id),
+                    $user,
+                );
             }
 
             // Clients can see projects of their enterprises

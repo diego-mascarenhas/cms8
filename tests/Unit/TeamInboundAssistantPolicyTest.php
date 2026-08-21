@@ -256,6 +256,7 @@ class TeamInboundAssistantPolicyTest extends TestCase
         ]);
 
         $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
+        $this->consumeAppTrial($team, 'assistant');
         $team->setSetting('assistant_auto_respond', '1');
 
         $policy = app(TeamInboundAssistantPolicy::class);
@@ -297,6 +298,7 @@ class TeamInboundAssistantPolicyTest extends TestCase
         ]);
 
         $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
+        $this->consumeAppTrial($team, 'assistant');
         $team->setSetting('assistant_auto_respond', '1');
 
         $state = app(TeamInboundAssistantPolicy::class)->presentWhatsAppAssistantState($team, true, true);
@@ -389,6 +391,7 @@ class TeamInboundAssistantPolicyTest extends TestCase
     public function test_team_outside_whitelist_stays_expired_after_trial(): void
     {
         $team = Team::factory()->create(['created_at' => now()->subHours(49)]);
+        $this->consumeAppTrial($team, 'assistant');
         $team->setSetting('assistant_auto_respond', '1');
 
         config([
@@ -405,5 +408,96 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertSame('plan', $access['locked_reason']);
         $this->assertFalse($policy->allowsWhatsAppAutoReply($team, null));
         $this->assertSame('plan', $policy->lockedReason($team));
+    }
+
+    public function test_hosting_subscription_does_not_unlock_assistant(): void
+    {
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [],
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $user->id,
+            'created_at' => now()->subHours(49),
+        ]);
+        $this->consumeAppTrial($team, 'assistant');
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'hosting',
+            'stripe_id' => 'sub_hosting_independent',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hosting_monthly',
+            'quantity' => 1,
+        ]);
+
+        $service = app(AssistantSubscriptionService::class);
+        $assistant = $service->accessForCatalog($team, 'assistant');
+        $apps = $service->appsPayload($team);
+
+        $this->assertFalse($assistant['active']);
+        $this->assertSame('expired', $assistant['status']);
+        $this->assertSame('expired', $apps['assistant']['status']);
+        $this->assertFalse(app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply($team, null));
+    }
+
+    public function test_assistant_subscription_does_not_unlock_mailer(): void
+    {
+        config([
+            'humano_pricing.plan_access_team_ids' => [],
+            'humano_pricing.app_trials.mailer' => 0,
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create([
+            'user_id' => $user->id,
+            'created_at' => now()->subHours(49),
+        ]);
+        $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_assistant_independent',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+        ]);
+
+        $mailer = app(AssistantSubscriptionService::class)->accessForCatalog($team, 'mailer');
+
+        $this->assertFalse($mailer['active']);
+        $this->assertSame('expired', $mailer['status']);
+    }
+
+    public function test_old_team_gets_a_fresh_trial_when_the_product_is_new(): void
+    {
+        config([
+            'humano_pricing.require_paid_plan_for_ai' => true,
+            'humano_pricing.plan_access_team_ids' => [],
+            'humano_pricing.app_trials.assistant' => 48,
+        ]);
+
+        $team = Team::factory()->create(['created_at' => now()->subYear()]);
+        $service = app(AssistantSubscriptionService::class);
+
+        $first = $service->accessForCatalog($team, 'assistant');
+        $second = $service->accessForCatalog($team->fresh(), 'assistant');
+
+        $this->assertTrue($first['active']);
+        $this->assertSame('trial', $first['status']);
+        $this->assertNotNull($first['trial_ends_at']);
+        $this->assertSame($first['trial_ends_at'], $second['trial_ends_at']);
+        $this->assertTrue(now()->addHours(47)->lt(\Carbon\Carbon::parse($first['trial_ends_at'])));
+    }
+
+    private function consumeAppTrial(Team $team, string $catalog): void
+    {
+        $started = $team->created_at?->toIso8601String() ?? now()->subHours(49)->toIso8601String();
+        $team->setSetting(AssistantSubscriptionService::trialStartedSettingKey($catalog), $started, [
+            'type' => 'string',
+            'group' => 'billing',
+        ]);
     }
 }

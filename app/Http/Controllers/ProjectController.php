@@ -194,8 +194,7 @@ class ProjectController extends Controller
      */
     public function generateBudgetSpec(Request $request, ProjectBudgetSpecService $budgetSpecService): \Illuminate\Http\JsonResponse
     {
-        $this->authorize('access-billing-modules');
-        $this->authorize('create', Project::class);
+        $this->authorize('createBudget', Project::class);
 
         $request->validate([
             'budget_given' => 'required|string|max:16000',
@@ -819,13 +818,6 @@ class ProjectController extends Controller
 
         $this->syncProjectStatusFromBudgetResponse($project);
         $project->load('status');
-
-        // Collaborators can only view their assigned projects
-        $currentUser = auth()->user();
-        if ($currentUser && $currentUser->hasRole('collaborator') && $project->responsible_id !== $currentUser->id)
-        {
-            abort(403);
-        }
 
         // Get time tracking data and task breakdown for this project through board tasks
         $timeEntries = collect();

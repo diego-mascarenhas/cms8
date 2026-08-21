@@ -846,7 +846,7 @@
 			</div>
 
 			<!-- Presupuesto: texto recibido + datos interpretados (data JSON) -->
-			@can('access-billing-modules')
+			@if ($data->exists ? auth()->user()->can('manageBudget', $data) : auth()->user()->can('createBudget', \App\Models\Project::class))
 			<div class="col-12">
 				<label for="data_budget_given" class="form-label">{{ __('Budget received') }}</label>
 				<textarea id="data_budget_given" name="data[budget_given]" class="form-control js-auto-resize" rows="3" placeholder="{{ __('Paste or type the budget text you received from the client') }}">{{ old('data.budget_given', data_get($data, 'data.budget_given', '')) }}</textarea>

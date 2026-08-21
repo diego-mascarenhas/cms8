@@ -51,18 +51,77 @@ class Project extends Model
             }
         });
 
-        // Ownership: non-admin users only see their assigned projects
+        // Ownership: non-admin users only see projects they can work on
         static::addGlobalScope('ownership', function (Builder $builder)
         {
-            if (auth()->check())
+            if (! auth()->check())
             {
-                $user = auth()->user();
-                if (! $user->hasRole('admin'))
-                {
-                    $builder->where('responsible_id', $user->id);
-                }
+                return;
             }
+
+            $user = auth()->user();
+            if ($user->hasRole('admin'))
+            {
+                return;
+            }
+
+            if ($user->hasRole('collaborator'))
+            {
+                static::constrainCollaboratorVisibility($builder, $user);
+
+                return;
+            }
+
+            $builder->where('responsible_id', $user->id);
         });
+    }
+
+    /**
+     * Collaborators may see a project when they are the advisor (responsible_id),
+     * assigned on the project, or responsible for a board task.
+     */
+    public static function constrainCollaboratorVisibility(Builder $builder, User $user): Builder
+    {
+        return $builder->where(function (Builder $query) use ($user)
+        {
+            $query->where('responsible_id', $user->id)
+                ->orWhereHas('collaborators', function ($collaboratorQuery) use ($user)
+                {
+                    $collaboratorQuery->where('user_id', $user->id);
+                })
+                ->orWhereHas('board.tasks', function ($taskQuery) use ($user)
+                {
+                    $taskQuery->where('responsible_id', $user->id);
+                });
+        });
+    }
+
+    public function isVisibleToCollaborator(User $user): bool
+    {
+        if (! $user->currentTeam || (int) $this->team_id !== (int) $user->currentTeam->id)
+        {
+            return false;
+        }
+
+        if ((int) $this->responsible_id === (int) $user->id)
+        {
+            return true;
+        }
+
+        if ($this->collaborators()->where('user_id', $user->id)->exists())
+        {
+            return true;
+        }
+
+        if (! $this->board_id)
+        {
+            return false;
+        }
+
+        return Task::query()
+            ->where('board_id', $this->board_id)
+            ->where('responsible_id', $user->id)
+            ->exists();
     }
 
     /**

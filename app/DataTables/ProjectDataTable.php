@@ -118,7 +118,7 @@ class ProjectDataTable extends DataTable
         $user = Auth::user();
         if ($user && $user->hasRole('collaborator'))
         {
-            $query->where('responsible_id', $user->id);
+            Project::constrainCollaboratorVisibility($query, $user);
         }
 
         $statusFilter = trim((string) request()->input('status_filter', ''));

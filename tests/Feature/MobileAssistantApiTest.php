@@ -169,6 +169,11 @@ class MobileAssistantApiTest extends TestCase
         \App\Models\Team::query()->whereKey($team->id)->update([
             'created_at' => now()->subHours(49),
         ]);
+        $team->refresh()->setSetting(
+            \App\Services\Billing\AssistantSubscriptionService::trialStartedSettingKey('assistant'),
+            now()->subHours(49)->toIso8601String(),
+            ['type' => 'string', 'group' => 'billing'],
+        );
 
         config([
             'humano_pricing.require_paid_plan_for_ai' => true,
