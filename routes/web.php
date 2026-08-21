@@ -479,6 +479,7 @@ Route::middleware(['auth'])->group(function ()
         Route::get('/account-management/subscriptions/all', [AccountController::class, 'allSubscriptions'])->name('account.subscriptions.all');
         Route::post('/account-management/{id}/revoke-autologin', [AccountController::class, 'revokeAutologinToken'])->name('account.revoke-autologin');
         Route::post('/account-management/{id}/send-autologin-invitation', [AccountController::class, 'sendAutologinInvitation'])->name('account.send-autologin-invitation');
+        Route::post('/account-management/{id}/password', [AccountController::class, 'updateOwnerPassword'])->name('account.update-password');
 
         // Product Management (Root only)
         Route::get('/account-management/products', [ProductManagementController::class, 'index'])->name('account.products.index');

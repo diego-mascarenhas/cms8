@@ -4,7 +4,6 @@ namespace App\DataTables;
 
 use App\Helpers\TokenHelper;
 use App\Models\Account;
-use App\Support\DataTableFormatter;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -23,18 +22,19 @@ class AccountDataTable extends DataTable
         return (new EloquentDataTable($query))
             ->editColumn('name', function ($account)
             {
-                return DataTableFormatter::showLink($account, 'account.edit', $account->name, 'update', [$account->id]);
+                return view('account.name-cell', ['account' => $account])->render();
+            })
+            ->filterColumn('name', function ($query, $keyword)
+            {
+                $query->whereResponsibleMatches($keyword);
             })
             ->addColumn('owner_name', function ($account)
             {
-                return $account->owner?->name ?? '—';
+                return view('account.owner-cell', ['owner' => $account->owner])->render();
             })
             ->filterColumn('owner_name', function ($query, $keyword)
             {
-                $query->whereHas('owner', function ($q) use ($keyword)
-                {
-                    $q->where('name', 'like', "%{$keyword}%");
-                });
+                $query->whereResponsibleMatches($keyword);
             })
             ->addColumn('members_count', function ($account)
             {
@@ -87,6 +87,12 @@ class AccountDataTable extends DataTable
                                             <i class="ti ti-send ti-sm me-2"></i>
                                         </a>
                                         <a href="javascript:;"
+                                           class="text-body"
+                                           onclick="changeAccountPassword('.$account->id.')"
+                                           title="Cambiar contraseña">
+                                            <i class="ti ti-key ti-sm me-2"></i>
+                                        </a>
+                                        <a href="javascript:;"
                                            class="text-danger"
                                            onclick="revokeAutologinToken('.$account->id.', this)"
                                            title="Revocar tokens de autologueo">
@@ -105,13 +111,20 @@ class AccountDataTable extends DataTable
 				</div>';
             })
             ->setRowId('id')
-            ->rawColumns(['name', 'action']);
+            ->rawColumns(['name', 'owner_name', 'action']);
     }
 
     public function query(Account $model): QueryBuilder
     {
         return $model->newQuery()
-            ->with(['owner', 'subscriptions']);
+            ->with([
+                'owner:id,name,email,phone',
+                'subscriptions',
+                'billingEnterprise.contacts' => function ($query)
+                {
+                    $query->withoutGlobalScopes();
+                },
+            ]);
     }
 
     public function html(): HtmlBuilder
@@ -123,26 +136,30 @@ class AccountDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(1, direction: 'asc')
             ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
+            ->pageLength(25)
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters([
-                'pageLength' => 60,
-                'paging' => false,
+                'autoWidth' => false,
             ]);
     }
 
     public function getColumns(): array
     {
         return [
-            Column::make('id')->hidden(),
+            Column::make('id')->hidden()->searchable(false),
             Column::make('name')
-                ->title(value: 'Nombre')
+                ->title(__('Responsable'))
                 ->addClass('all')
+                ->width('280px')
                 ->orderable(true)
                 ->searchable(true),
             Column::computed('owner_name')
-                ->title('Propietario')
-                ->className('text-center')
+                ->title(__('Contacto'))
+                ->className('text-start')
                 ->addClass('min-phone')
+                ->width('220px')
                 ->orderable(true)
                 ->searchable(true),
             Column::computed('members_count')
@@ -169,7 +186,8 @@ class AccountDataTable extends DataTable
                 ->title('Creación')
                 ->className('text-center')
                 ->addClass('min-phone')
-                ->orderable(true),
+                ->orderable(true)
+                ->searchable(false),
             Column::computed('action')
                 ->title('Acciones')
                 ->className('text-center')

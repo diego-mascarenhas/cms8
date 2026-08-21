@@ -12,6 +12,7 @@ use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -168,6 +169,38 @@ class AccountController extends Controller
         return redirect()
             ->route('account-management')
             ->with('success', 'Account updated successfully');
+    }
+
+    public function updateOwnerPassword(Request $request, string $id)
+    {
+        $team = Team::query()->with('owner')->findOrFail($id);
+
+        if (! $team->owner)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'La cuenta no tiene propietario asignado',
+            ], 400);
+        }
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $team->owner->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        Log::info('Account owner password updated', [
+            'team_id' => $team->id,
+            'owner_id' => $team->owner->id,
+            'updated_by' => auth()->id(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Contraseña actualizada correctamente',
+        ]);
     }
 
     /**

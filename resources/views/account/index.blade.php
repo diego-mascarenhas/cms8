@@ -218,6 +218,81 @@
             });
         }
 
+        function changeAccountPassword(accountId) {
+            Swal.fire({
+                title: 'Cambiar contraseña',
+                html: '<div class="text-start">' +
+                    '<label class="form-label" for="account-new-password">Nueva contraseña</label>' +
+                    '<input id="account-new-password" type="password" class="form-control mb-3" autocomplete="new-password">' +
+                    '<label class="form-label" for="account-new-password-confirmation">Confirmar contraseña</label>' +
+                    '<input id="account-new-password-confirmation" type="password" class="form-control" autocomplete="new-password">' +
+                    '</div>',
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                buttonsStyling: false,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2 waves-effect waves-light',
+                    cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+                },
+                preConfirm: () => {
+                    const password = document.getElementById('account-new-password').value;
+                    const confirmation = document.getElementById('account-new-password-confirmation').value;
+
+                    if (!password || password.length < 8) {
+                        Swal.showValidationMessage('La contraseña debe tener al menos 8 caracteres');
+                        return false;
+                    }
+
+                    if (password !== confirmation) {
+                        Swal.showValidationMessage('Las contraseñas no coinciden');
+                        return false;
+                    }
+
+                    return {
+                        password: password,
+                        password_confirmation: confirmation
+                    };
+                }
+            }).then((result) => {
+                if (!result.isConfirmed) {
+                    return;
+                }
+
+                fetch("{{ route('account.update-password', ['id' => ':ID']) }}".replace(':ID', accountId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(result.value)
+                }).then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Network response was not ok.');
+                        });
+                    }
+                    return response.json();
+                }).then(data => {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Contraseña actualizada',
+                        text: data.message || 'La contraseña del responsable se actualizó correctamente.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }).catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: error.message || 'Ha ocurrido un error al cambiar la contraseña',
+                    });
+                });
+            });
+        }
+
         function revokeAutologinToken(accountId, element) {
             Swal.fire({
                 title: '¿Revocar tokens de autologueo?',
