@@ -428,16 +428,15 @@
 
         (function persistChatTeamSettingsSidebarToggles() {
             var box = document.getElementById('chat-team-settings-sidebar-toggles');
-            if (!box || box.getAttribute('data-can-manage') !== '1') return;
+            if (!box) return;
             var tokenEl = document.querySelector('meta[name="csrf-token"]');
             var token = tokenEl ? tokenEl.getAttribute('content') : '';
             if (!token) return;
+            var canManage = box.getAttribute('data-can-manage') === '1';
             var url = '{{ route("chat.team-settings-sidebar") }}';
-            var flowPairKey = 'assistant_keyword_intent_routing';
-            var elDefaultFlow = document.getElementById('sidebar-default-assistant-flow-toggle');
-            var elKeywordRouting = document.getElementById('sidebar-assistant-keyword-routing-toggle');
             var assistantExtraClientsSection = document.getElementById('assistant-conversations-extra-section');
             var whatsappSection = document.getElementById('whatsapp-conversations-section');
+            var promptSelect = document.getElementById('sidebar-team-prompt-key');
 
             function syncSidebarConversationsVisibility() {
                 var showAssistantClientsToggle = document.getElementById('sidebar-show-assistant-conversations-toggle');
@@ -450,53 +449,54 @@
                 }
             }
 
-            function syncKeywordFlowPair(changed) {
-                if (!elDefaultFlow || !elKeywordRouting) return;
-                if (changed === elDefaultFlow) {
-                    elKeywordRouting.checked = elDefaultFlow.checked ? false : true;
-                } else if (changed === elKeywordRouting) {
-                    elDefaultFlow.checked = elKeywordRouting.checked ? false : true;
-                }
-            }
-            box.querySelectorAll('input[data-team-setting-key]').forEach(function (input) {
-                input.addEventListener('change', function () {
-                    var key = input.getAttribute('data-team-setting-key');
-                    if (!key) return;
-                    var invert = input.getAttribute('data-team-setting-invert') === '1';
-                    var on = invert ? !input.checked : input.checked;
-                    if (key === flowPairKey) {
-                        syncKeywordFlowPair(input);
-                    }
-                    if (key === 'chat_show_assistant_conversations' || key === 'chat_show_whatsapp_conversations') {
-                        syncSidebarConversationsVisibility();
-                    }
-                    fetch(url, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
-                        body: JSON.stringify({ key: key, on: on })
-                    }).catch(function () {});
+            if (canManage) {
+                box.querySelectorAll('input[data-team-setting-key]').forEach(function (input) {
+                    input.addEventListener('change', function () {
+                        var key = input.getAttribute('data-team-setting-key');
+                        if (!key) return;
+                        if (key === 'chat_show_assistant_conversations' || key === 'chat_show_whatsapp_conversations') {
+                            syncSidebarConversationsVisibility();
+                        }
+                        fetch(url, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                            body: JSON.stringify({ key: key, on: input.checked })
+                        }).catch(function () {});
+                    });
                 });
-            });
+            }
             syncSidebarConversationsVisibility();
 
-            var aiRepliesToggle = document.getElementById('sidebar-ai-replies-toggle');
-            var adminsWhenOffToggle = document.getElementById('sidebar-assistant-admins-when-off-toggle');
-            var adminsWhenOffLabel = adminsWhenOffToggle ? adminsWhenOffToggle.closest('label') : null;
-            function syncAdminsWhenOffToggleUi() {
-                if (!adminsWhenOffToggle || !aiRepliesToggle) {
-                    return;
-                }
-                var masterOn = aiRepliesToggle.checked;
-                adminsWhenOffToggle.disabled = masterOn;
-                if (adminsWhenOffLabel) {
-                    adminsWhenOffLabel.classList.toggle('opacity-50', masterOn);
-                }
+            if (canManage && promptSelect) {
+                promptSelect.addEventListener('change', function () {
+                    var saveUrl = promptSelect.getAttribute('data-save-url');
+                    if (!saveUrl) return;
+                    promptSelect.disabled = true;
+                    fetch(saveUrl, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token, 'Accept': 'application/json' },
+                        body: JSON.stringify({ prompt_key: promptSelect.value })
+                    }).then(function (response) {
+                        return response.json().then(function (data) {
+                            return { ok: response.ok, data: data };
+                        });
+                    }).then(function (result) {
+                        var next = result.data && result.data.selected_key != null ? String(result.data.selected_key) : promptSelect.value;
+                        var hasOption = Array.prototype.some.call(promptSelect.options, function (option) {
+                            return option.value === next;
+                        });
+                        if (result.ok && hasOption) {
+                            promptSelect.value = next;
+                            return;
+                        }
+                        if (result.ok) {
+                            window.location.reload();
+                        }
+                    }).catch(function () {}).finally(function () {
+                        promptSelect.disabled = false;
+                    });
+                });
             }
-            syncAdminsWhenOffToggleUi();
-            if (aiRepliesToggle) {
-                aiRepliesToggle.addEventListener('change', syncAdminsWhenOffToggleUi);
-            }
-            window.syncChatAdminsWhenOffToggleUi = syncAdminsWhenOffToggleUi;
         })();
 
         let currentUserMessage = '';
@@ -2729,89 +2729,13 @@
                         id="chat-team-settings-sidebar-toggles"
                         data-can-manage="{{ ($canManageChatTeamSidebarSettings ?? false) ? '1' : '0' }}">
                         <small class="text-muted text-uppercase">{{ __('Settings') }}</small>
+                        @include('chat.partials.sidebar-team-prompt')
                         @php
                             $sidebarReadOnly = !($canManageChatTeamSidebarSettings ?? false);
                         @endphp
                         <ul class="list-unstyled d-grid gap-2 mt-3 pe-3">
-                            <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Humano Assistant replies') }}">
-                                    <i class="ti ti-robot me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Humano Assistant replies') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-ai-replies-toggle"
-                                        data-team-setting-key="assistant_auto_respond"
-                                        @checked($assistantAutoRespond ?? false) @if($sidebarReadOnly) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
-                            </li>
-                            <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('When Humano Assistant replies is off, still auto-reply only for team admins and editors (not clients).') }}">
-                                    <i class="ti ti-user-shield me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Assistant replies only for admins (when assistant off)') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif @if($assistantAutoRespond ?? false) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-admins-when-off-toggle"
-                                        data-team-setting-key="assistant_auto_respond_admins_when_off"
-                                        @checked($assistantAutoRespondAdminsWhenOff ?? false)
-                                        @if($sidebarReadOnly || ($assistantAutoRespond ?? false)) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
-                            </li>
-                            <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('How flows are chosen: AI asks vs automatic keyword routing.') }}">
-                                    <i class="ti ti-sparkles me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Default assistant flow (AI discovery)') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-default-assistant-flow-toggle"
-                                        data-team-setting-key="assistant_keyword_intent_routing"
-                                        data-team-setting-invert="1"
-                                        @checked(!($assistantKeywordIntentRouting ?? false)) @if($sidebarReadOnly) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
-                            </li>
-                            <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('Keyword routing') }}">
-                                    <i class="ti ti-webhook me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Keyword routing') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-keyword-routing-toggle"
-                                        data-team-setting-key="assistant_keyword_intent_routing"
-                                        @checked($assistantKeywordIntentRouting ?? false) @if($sidebarReadOnly) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
-                            </li>
                             <li class="w-100 mt-2 pt-3 border-top border-light">
                                 <small class="text-muted text-uppercase">{{ __('Show') }}</small>
-                            </li>
-                            <li class="d-flex justify-content-between align-items-center">
-                                <div class="pe-1 text-truncate" title="{{ __('When ON, the assistant does not call the real AI model (dev/test).') }}">
-                                    <i class="ti ti-bug me-1 ti-sm"></i>
-                                    <span class="align-middle small">{{ __('Predefined test responses') }}</span>
-                                </div>
-                                <label class="switch switch-primary switch-sm flex-shrink-0 @if($sidebarReadOnly) opacity-50 @endif">
-                                    <input type="checkbox" class="switch-input" id="sidebar-assistant-stub-toggle"
-                                        data-team-setting-key="assistant_chat_stub"
-                                        @checked($assistantChatStub ?? false) @if($sidebarReadOnly) disabled @endif />
-                                    <span class="switch-toggle-slider">
-                                        <span class="switch-on"></span>
-                                        <span class="switch-off"></span>
-                                    </span>
-                                </label>
                             </li>
                             <li class="d-flex justify-content-between align-items-center">
                                 <div class="pe-1 text-truncate" title="{{ __('Oculta solo la lista de asistente con otros clientes. Tu chat con el asistente sigue visible.') }}">

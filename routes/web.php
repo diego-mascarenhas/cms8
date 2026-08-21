@@ -641,6 +641,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/chat/assistant-reset-context', [ChatController::class, 'resetAssistantContext'])->name('chat.assistant-reset-context');
     Route::patch('/chat/ai-toggle-preference', [ChatController::class, 'updateAiTogglePreference'])->name('chat.ai-toggle-preference');
     Route::patch('/chat/team-settings-sidebar', [ChatController::class, 'updateChatTeamSettingsSidebar'])->name('chat.team-settings-sidebar');
+    Route::patch('/chat/team-site-assistant-prompt', [ChatController::class, 'updateChatTeamSiteAssistantPrompt'])->name('chat.team-site-assistant-prompt');
     Route::patch('/chat/assistant-auto-respond', [ChatController::class, 'updateAssistantAutoRespond'])->name('chat.assistant-auto-respond');
     Route::patch('/chat/notification-preference', [ChatController::class, 'updateNotificationPreference'])->name('chat.notification-preference');
     Route::post('/chat/assistant', [ChatController::class, 'assistant'])->name('chat.assistant');
