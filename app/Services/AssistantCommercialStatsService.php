@@ -23,7 +23,6 @@ class AssistantCommercialStatsService
         'Conversión',
         'Cliente',
         'Perdido',
-        'Finalizado',
     ];
 
     private const CONVERSION_STATUS_NAMES = [
@@ -103,7 +102,7 @@ class AssistantCommercialStatsService
         }
 
         $extras = ContactStatus::query()
-            ->whereNotIn('name', self::PIPELINE_STATUS_NAMES)
+            ->whereNotIn('name', [...self::PIPELINE_STATUS_NAMES, 'Finalizado'])
             ->orderBy('id')
             ->pluck('name');
 
