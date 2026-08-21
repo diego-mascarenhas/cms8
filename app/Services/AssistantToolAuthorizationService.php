@@ -54,6 +54,26 @@ class AssistantToolAuthorizationService
     ];
 
     /**
+     * WhatsApp inbound customers are CRM contacts, often without a Humano login.
+     * Booking and self-service still run as the team; staff CRM stays closed.
+     *
+     * @var list<string>
+     */
+    private const WHATSAPP_INBOUND_CUSTOMER_TOOLS = [
+        'check_calendar_availability',
+        'create_calendar_event',
+        'list_calendar_events',
+        'update_calendar_event',
+        'search_contacts',
+        'create_contact',
+        'update_contact',
+        'get_contact_detail',
+        'list_contact_categories',
+        'list_contact_statuses',
+        'get_contact_categories',
+    ];
+
+    /**
      * @var array<string, array{0: string, 1: class-string}>
      */
     private const TOOL_POLICY = [
@@ -213,7 +233,7 @@ class AssistantToolAuthorizationService
     /**
      * If the tool is not allowed, returns a short Spanish error for the model; otherwise null.
      */
-    public function denyReasonForTool(string $toolName, User $user, int $teamId): ?string
+    public function denyReasonForTool(string $toolName, User $user, int $teamId, bool $whatsappInboundCustomer = false): ?string
     {
         $this->prepareTeamContext($user, $teamId);
 
@@ -230,6 +250,13 @@ class AssistantToolAuthorizationService
         if (in_array($toolName, self::CMS_READ_TOOLS, true))
         {
             return null;
+        }
+
+        if ($whatsappInboundCustomer)
+        {
+            return in_array($toolName, self::WHATSAPP_INBOUND_CUSTOMER_TOOLS, true)
+                ? null
+                : $this->whatsappCustomerDenialMessage();
         }
 
         $policy = self::TOOL_POLICY[$toolName] ?? null;
@@ -305,5 +332,10 @@ class AssistantToolAuthorizationService
     private function denialMessage(): string
     {
         return 'No disponible para tu rol en este equipo. Pedí ayuda al equipo o usá las opciones que tu cuenta tiene habilitadas.';
+    }
+
+    private function whatsappCustomerDenialMessage(): string
+    {
+        return 'Esa acción no está disponible en este chat. Pedile a alguien del equipo que la complete en Humano.';
     }
 }

@@ -171,6 +171,73 @@ class AssistantToolsService
     }
 
     /**
+     * @return array{0: User|null, 1: int|null}
+     */
+    private function resolveActingUserAndTeam(): array
+    {
+        $user = auth()->user();
+        $teamId = $user?->currentTeam?->id;
+
+        if ($user && $teamId)
+        {
+            return [$user, (int) $teamId];
+        }
+
+        $teamId = $this->contextTeamId ?? $teamId;
+        if ($this->contextUserId !== null)
+        {
+            $contextUser = User::withoutGlobalScopes()->find($this->contextUserId);
+            $team = $teamId !== null ? Team::withoutGlobalScopes()->find($teamId) : null;
+            if ($contextUser !== null && $team !== null)
+            {
+                $contextUser->setRelation('currentTeam', $team);
+
+                return [$contextUser, (int) $team->id];
+            }
+        }
+
+        if ($teamId === null)
+        {
+            return [null, null];
+        }
+
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        $owner = $team?->user_id ? User::withoutGlobalScopes()->find($team->user_id) : null;
+        if ($owner !== null && $team !== null)
+        {
+            $owner->setRelation('currentTeam', $team);
+
+            return [$owner, (int) $team->id];
+        }
+
+        return [null, $teamId !== null ? (int) $teamId : null];
+    }
+
+    private function isWhatsAppInboundCustomer(User $actingUser, int $teamId): bool
+    {
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return false;
+        }
+
+        if ($this->contextUserId === null)
+        {
+            return true;
+        }
+
+        $contextUser = (int) $actingUser->id === (int) $this->contextUserId
+            ? $actingUser
+            : User::withoutGlobalScopes()->find($this->contextUserId);
+
+        if ($contextUser === null)
+        {
+            return true;
+        }
+
+        return $this->toolAuthorization->usesCustomerAssistantPrompts($contextUser, $teamId);
+    }
+
+    /**
      * Resolve the gateway for assistant tool sends. Local driver must use the team's Baileys base URL and team_id
      * so outbound messages go through the correct socket (never the global container binding without team_id).
      */
@@ -822,30 +889,28 @@ class AssistantToolsService
     /**
      * Execute a tool by name and return a short text result for Claude.
      * User and team are resolved from auth() or from setRequestContext() (e.g. WhatsApp).
+     * CRM-only WhatsApp contacts have no Humano user: tools run as the team owner.
      */
     public function execute(string $name, array $input): string
     {
-        $user = auth()->user();
-        $teamId = $user?->currentTeam?->id;
+        [$user, $teamId] = $this->resolveActingUserAndTeam();
 
-        if ((! $user || ! $teamId) && $this->contextUserId !== null && $this->contextTeamId !== null)
+        if (! $teamId)
         {
-            $user = User::withoutGlobalScopes()->find($this->contextUserId);
-            $team = $user ? \App\Models\Team::withoutGlobalScopes()->find($this->contextTeamId) : null;
-            if ($team)
-            {
-                $user?->setRelation('currentTeam', $team);
-            }
-            $teamId = $team?->id ?? $this->contextTeamId;
-            // Log in the context user so Gate/policies see them (e.g. create contact from WhatsApp).
+            return 'Error: No team is configured for this conversation.';
         }
 
-        if (! $user || ! $teamId)
+        if (! $user)
         {
-            return 'Error: Not authenticated or no team selected.';
+            return 'Error: The team has no owner to run this action.';
         }
 
-        $denied = $this->toolAuthorization->denyReasonForTool($name, $user, $teamId);
+        $denied = $this->toolAuthorization->denyReasonForTool(
+            $name,
+            $user,
+            $teamId,
+            $this->isWhatsAppInboundCustomer($user, $teamId),
+        );
         if ($denied !== null)
         {
             return $denied;

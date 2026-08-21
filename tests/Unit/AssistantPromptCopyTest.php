@@ -77,6 +77,8 @@ class AssistantPromptCopyTest extends TestCase
         $this->assertStringContainsString('guest_contact_ids', $instruction);
         $this->assertStringContainsString('create_contact', $instruction);
         $this->assertStringContainsString('update_contact', $instruction);
+        $this->assertStringContainsString('vale solo tu última pregunta', $instruction);
+        $this->assertStringContainsString('no está cancelando la cita', $instruction);
     }
 
     public function test_task_flow_requires_a_successful_tool_call_before_confirming(): void

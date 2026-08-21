@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AssistantCommercialStatsController;
 use App\Http\Controllers\Api\AssistantProductImportController;
 use App\Http\Controllers\Api\AssistantSubscriptionController;
 use App\Http\Controllers\Api\AttendanceController;
@@ -30,6 +31,12 @@ use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Shop\CategoryController as ShopCategoryController;
+use App\Http\Controllers\Api\Shop\DashboardController as ShopDashboardController;
+use App\Http\Controllers\Api\Shop\LookupController as ShopLookupController;
+use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
+use App\Http\Controllers\Api\Shop\ProductController as ShopProductController;
+use App\Http\Controllers\Api\Shop\StoreController as ShopStoreController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TaskController;
@@ -480,6 +487,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
     Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
+    Route::get('assistant/commercial-stats', [AssistantCommercialStatsController::class, 'show'])->name('api.assistant.commercial-stats.show');
     Route::get('assistant/products/import', [AssistantProductImportController::class, 'show'])->name('api.assistant.products.import.show');
     Route::get('assistant/products/import/sample', [AssistantProductImportController::class, 'sample'])->name('api.assistant.products.import.sample');
     Route::post('assistant/products/import', [AssistantProductImportController::class, 'store'])->name('api.assistant.products.import.store');
@@ -581,6 +589,32 @@ Route::middleware('auth.api')->group(function ()
     Route::post('paid-ads/{id}/pause', [ApiPaidAdCampaignController::class, 'pause'])->whereNumber('id');
     Route::post('paid-ads/{id}/resume', [ApiPaidAdCampaignController::class, 'resume'])->whereNumber('id');
     Route::post('paid-ads/{id}/sync-metrics', [ApiPaidAdCampaignController::class, 'syncMetrics'])->whereNumber('id');
+
+    // Shop (idoneo-shop SPA)
+    Route::prefix('shop')->group(function ()
+    {
+        Route::get('lookups', [ShopLookupController::class, 'index']);
+        Route::get('dashboard', [ShopDashboardController::class, 'index']);
+        Route::post('categories', [ShopCategoryController::class, 'store']);
+
+        Route::get('products/import', [ShopProductController::class, 'importSchema']);
+        Route::post('products/import', [ShopProductController::class, 'import']);
+        Route::get('products', [ShopProductController::class, 'index']);
+        Route::post('products', [ShopProductController::class, 'store']);
+        Route::get('products/{id}', [ShopProductController::class, 'show'])->whereNumber('id');
+        Route::put('products/{id}', [ShopProductController::class, 'update'])->whereNumber('id');
+        Route::delete('products/{id}', [ShopProductController::class, 'destroy'])->whereNumber('id');
+
+        Route::get('stores', [ShopStoreController::class, 'index']);
+        Route::post('stores', [ShopStoreController::class, 'store']);
+        Route::get('stores/{id}', [ShopStoreController::class, 'show'])->whereNumber('id');
+        Route::put('stores/{id}', [ShopStoreController::class, 'update'])->whereNumber('id');
+        Route::delete('stores/{id}', [ShopStoreController::class, 'destroy'])->whereNumber('id');
+
+        Route::get('orders', [ShopOrderController::class, 'index']);
+        Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');
+        Route::put('orders/{id}', [ShopOrderController::class, 'update'])->whereNumber('id');
+    });
 
     // Contacts - for user-based authentication (Sanctum tokens)
     Route::get('contacts', [ContactController::class, 'index']);

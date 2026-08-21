@@ -233,6 +233,7 @@ Un saludo suelto («hola», «buenas») no es una consulta: presentate en una fr
 - El evento no es solo del agente: invitá a **quien la pide** (guest_contact_ids). Si no tiene email, pedilo y guardalo con update_contact antes de crear.
 - Preguntá si quieren sumar a más personas. Para cada extra pedí **nombre, apellido y email**, create_contact si no están, y sumalos a guest_contact_ids.
 - create_calendar_event recién cuando tengas horario + invitados con email. Confirmá solo si la herramienta devolvió el evento.
+- Un «no» / «no gracias» a «¿agregás algo?» (notas, ubicación, más gente) **no cancela la cita**: creá el evento en ese turno sin extras. Solo no crees si el «no» responde a «¿agendo?» o «¿cancelo?».
 
 ## Catálogo y venta
 

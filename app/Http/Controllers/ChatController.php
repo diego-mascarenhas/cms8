@@ -902,6 +902,17 @@ class ChatController extends Controller
             && $currentTeam
             && auth()->user()->hasAnyRole(['admin', 'root']);
 
+        $siteAssistantSelectedKey = '';
+        $siteAssistantPromptOptions = [];
+        $siteAssistantCatalog = [];
+        if ($currentTeam)
+        {
+            $siteAssistant = app(TeamSiteAssistantPromptService::class);
+            $siteAssistantSelectedKey = $siteAssistant->selectedRoutingKey($currentTeam) ?? '';
+            $siteAssistantPromptOptions = $siteAssistant->promptOptions($currentTeam);
+            $siteAssistantCatalog = app(AssistantPromptCatalog::class)->groupsFor($currentTeam);
+        }
+
         $assistantFlowPrompts = collect();
         if (auth()->check() && auth()->user()->currentTeam)
         {
@@ -936,7 +947,7 @@ class ChatController extends Controller
             selectedPhone: $selectedPhone,
         );
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'siteAssistantSelectedKey', 'siteAssistantPromptOptions', 'siteAssistantCatalog', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars'));
     }
 
     /**
@@ -1896,6 +1907,56 @@ class ChatController extends Controller
         );
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Same team prompt picker as the Next inbox (Sin asistente / Router / catalog / team copy).
+     */
+    public function updateChatTeamSiteAssistantPrompt(Request $request)
+    {
+        $validated = $request->validate([
+            'prompt_key' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        if (! auth()->check() || ! auth()->user()->currentTeam)
+        {
+            return response()->json(['success' => false], 401);
+        }
+
+        if (! $this->userCanManageChatTeamSidebarSettings(auth()->user()))
+        {
+            return response()->json(['success' => false], 403);
+        }
+
+        $team = auth()->user()->currentTeam;
+        $raw = trim((string) ($validated['prompt_key'] ?? ''));
+        $siteAssistant = app(TeamSiteAssistantPromptService::class);
+        $catalog = app(AssistantPromptCatalog::class);
+
+        try
+        {
+            if (str_starts_with($raw, 'catalog:'))
+            {
+                $key = $catalog->apply($team, substr($raw, strlen('catalog:')));
+                $siteAssistant->select($team->fresh(), $key);
+            } else
+            {
+                $siteAssistant->select($team, $raw);
+            }
+        } catch (InvalidArgumentException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        $team->refresh();
+
+        return response()->json([
+            'success' => true,
+            'selected_key' => $siteAssistant->selectedRoutingKey($team) ?? '',
+        ]);
     }
 
     /**

@@ -31,6 +31,7 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertStringContainsString('citas', mb_strtolower($instruction));
         $this->assertStringContainsString('catálogo', mb_strtolower($instruction));
         $this->assertStringContainsString('create_calendar_event', $instruction);
+        $this->assertStringContainsString('no cancela la cita', $instruction);
         $this->assertStringContainsString('quien la pide', $instruction);
         $this->assertStringContainsString('nombre, apellido y email', $instruction);
         $this->assertStringContainsString('list_product_catalog', $instruction);
