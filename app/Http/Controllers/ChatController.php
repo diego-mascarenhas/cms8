@@ -51,6 +51,7 @@ use App\Support\AssistantTaskStatusUpdate;
 use App\Support\ChatMessageAvatar;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -2033,8 +2034,12 @@ class ChatController extends Controller
             'flow_routing_key' => 'nullable|string|max:512',
             'preview_only' => 'nullable|boolean',
         ], [
-            'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
-            'audio.max' => __('El audio no puede superar 25 MB.'),
+            'audio.mimes' => __('Documento no permitido.'),
+            'audio.max' => __('Archivo demasiado pesado.'),
+            'attachments.max' => __('Podés adjuntar hasta 10 archivos.'),
+            'attachments.*.file' => __('No se pudo leer el archivo.'),
+            'attachments.*.mimes' => __('Documento no permitido.'),
+            'attachments.*.max' => __('Archivo demasiado pesado.'),
         ]);
 
         $message = trim((string) $request->input('message', ''));
@@ -2881,6 +2886,11 @@ class ChatController extends Controller
             }
         }
 
+        if ($rejectedUpload = $this->rejectedPhpUploadResponse($request))
+        {
+            return $rejectedUpload;
+        }
+
         $hasAudio = $request->hasFile('audio');
         $hasAttachments = $request->hasFile('attachments');
         $request->validate([
@@ -2892,8 +2902,12 @@ class ChatController extends Controller
             'use_ai' => 'boolean',
             'contact_id' => 'nullable|integer|exists:contacts,id',
         ], [
-            'audio.mimes' => __('El audio debe ser mp3, wav, m4a, webm u ogg.'),
-            'audio.max' => __('El audio no puede superar 25 MB.'),
+            'audio.mimes' => __('Documento no permitido.'),
+            'audio.max' => __('Archivo demasiado pesado.'),
+            'attachments.max' => __('Podés adjuntar hasta 10 archivos.'),
+            'attachments.*.file' => __('No se pudo leer el archivo.'),
+            'attachments.*.max' => __('Archivo demasiado pesado.'),
+            'attachments.*.mimes' => __('Documento no permitido.'),
         ]);
 
         $message = trim((string) $request->input('message', ''));
@@ -3042,6 +3056,13 @@ class ChatController extends Controller
             $sent = $gateway->sendMedia((string) $request->input('to'), $publicRelativePath, $caption);
             if (! $sent)
             {
+                Log::error('Chat WhatsApp attachment send failed', [
+                    'user_id' => auth()->id(),
+                    'team_id' => $team?->id,
+                    'to' => $cleanTo,
+                    'path' => $storedPath,
+                ]);
+
                 return response()->json(['success' => false, 'error' => __('No se pudo enviar el archivo.')], 500);
             }
 
@@ -3094,6 +3115,43 @@ class ChatController extends Controller
         }
 
         return response()->json(['success' => true, 'message' => __('Archivo enviado.')]);
+    }
+
+    private function rejectedPhpUploadResponse(Request $request): ?\Illuminate\Http\JsonResponse
+    {
+        foreach (['attachments', 'audio'] as $field)
+        {
+            $files = $request->file($field);
+            $files = is_array($files) ? $files : ($files !== null ? [$files] : []);
+
+            foreach ($files as $file)
+            {
+                if (! $file instanceof UploadedFile || $file->isValid())
+                {
+                    continue;
+                }
+
+                if (! in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true))
+                {
+                    continue;
+                }
+
+                Log::error('Chat WhatsApp upload rejected by PHP', [
+                    'field' => $field,
+                    'name' => $file->getClientOriginalName(),
+                    'error' => $file->getError(),
+                    'upload_max_filesize' => ini_get('upload_max_filesize'),
+                    'post_max_size' => ini_get('post_max_size'),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => __('Archivo demasiado pesado.'),
+                ], 413);
+            }
+        }
+
+        return null;
     }
 
     private function inboundAssistantMayReplyForAttachment(

@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
@@ -1113,5 +1114,127 @@ class ApiChatWhatsAppSanctumTest extends TestCase
                 ->get()
                 ->contains(fn (Conversation $row): bool => str_contains((string) $row->body, 'Recibi tu documento')),
         );
+    }
+
+    public function test_whatsapp_send_attachment_failure_is_logged(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Storage::fake('public');
+        $logged = [];
+        Log::listen(function (\Illuminate\Log\Events\MessageLogged $event) use (&$logged): void
+        {
+            $logged[] = $event->message;
+        });
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+            'http://127.0.0.1:3000/send-media' => Http::response(['error' => 'whatsapp timeout'], 500),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34999000111');
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/chat/whatsapp-send', [
+                'to' => '34600111222',
+                'message' => '',
+                'attachments' => [UploadedFile::fake()->image('roto.jpg', 40, 40)],
+            ])
+            ->assertStatus(500)
+            ->assertJsonPath('success', false);
+
+        $this->assertContains('Local WhatsApp send-media failed', $logged);
+        $this->assertContains('Chat WhatsApp attachment send failed', $logged);
+    }
+
+    public function test_whatsapp_send_logs_when_php_rejects_an_oversized_upload(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $logged = [];
+        Log::listen(function (\Illuminate\Log\Events\MessageLogged $event) use (&$logged): void
+        {
+            $logged[] = $event->message;
+        });
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $user->assignRole('admin');
+        $user->ownedTeams()->first()->setSetting('whatsapp_from', '34999000111');
+
+        $oversized = new UploadedFile(
+            tempnam(sys_get_temp_dir(), 'wa'),
+            'Screenshot.png',
+            'image/png',
+            UPLOAD_ERR_INI_SIZE,
+            true,
+        );
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
+            ->post('/api/chat/whatsapp-send', [
+                'to' => '34600111222',
+                'message' => '',
+                'attachments' => [$oversized],
+            ])
+            ->assertStatus(413)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('error', 'Archivo demasiado pesado.');
+
+        $this->assertContains('Chat WhatsApp upload rejected by PHP', $logged);
+    }
+
+    public function test_whatsapp_send_rejects_disallowed_attachment_with_clear_message(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $user->assignRole('admin');
+        $user->ownedTeams()->first()->setSetting('whatsapp_from', '34999000111');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ])
+            ->post('/api/chat/whatsapp-send', [
+                'to' => '34600111222',
+                'message' => '',
+                'attachments' => [UploadedFile::fake()->create('nota.exe', 20, 'application/octet-stream')],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Documento no permitido.');
     }
 }

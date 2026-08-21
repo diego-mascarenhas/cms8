@@ -101,6 +101,11 @@ class LocalWhatsAppGateway implements WhatsAppGateway
     {
         if (! $this->isConfigured())
         {
+            Log::error('Local WhatsApp send-media failed', [
+                'reason' => 'not_configured',
+                'to' => preg_replace('/[^0-9]/', '', $to),
+            ]);
+
             return false;
         }
 
