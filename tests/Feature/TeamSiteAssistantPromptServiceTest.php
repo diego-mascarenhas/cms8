@@ -157,6 +157,26 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertSame('chat:citas_y_ventas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
     }
 
+    public function test_create_does_not_change_the_selected_site_prompt(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+        $service->select($team, TeamSiteAssistantPromptService::OFF_KEY);
+
+        $service->create($team, 'Bienvenida', 'Hola, soy el asistente.');
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
+        $this->assertNotNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_label', 'Bienvenida')
+                ->first(),
+        );
+    }
+
     public function test_select_off_is_a_silent_default_without_a_routing_key(): void
     {
         $team = Team::factory()->create();

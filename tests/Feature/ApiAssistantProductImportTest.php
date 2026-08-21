@@ -61,7 +61,7 @@ class ApiAssistantProductImportTest extends TestCase
         $this->assertSame(['code', 'name', 'price', 'category'], $response->json('data.required_columns'));
         $this->assertStringContainsString('code,name,price,category', $response->json('data.sample_csv'));
         $this->assertContains('whatsapp_enabled', $response->json('data.optional_columns'));
-        $this->assertGreaterThanOrEqual(50, $response->json('data.demo_products'));
+        $this->assertSame(30, $response->json('data.demo_products'));
     }
 
     public function test_demo_catalogue_endpoint_returns_a_csv_with_image_urls(): void
@@ -74,9 +74,34 @@ class ApiAssistantProductImportTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonStructure(['data' => ['filename', 'csv', 'products']]);
 
-        $this->assertGreaterThanOrEqual(50, $response->json('data.products'));
+        $this->assertSame(30, $response->json('data.products'));
         $this->assertStringContainsString('https://cdn.dummyjson.com/', $response->json('data.csv'));
         $this->assertStringEndsWith('.csv', $response->json('data.filename'));
+    }
+
+    public function test_demo_catalogue_upload_imports_thirty_products(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $demo = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/products/import/sample')
+            ->assertOk()
+            ->json('data');
+
+        $this->assertSame(30, $demo['products']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/assistant/products/import', [
+                'file' => UploadedFile::fake()->createWithContent($demo['filename'], $demo['csv']),
+            ], ['Accept' => 'application/json'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.created', 30)
+            ->assertJsonPath('data.updated', 0)
+            ->assertJsonPath('data.skipped', 0)
+            ->assertJsonPath('data.products_count', 30);
+
+        $this->assertSame(30, Product::withoutGlobalScope('team')->where('team_id', $team->id)->count());
     }
 
     public function test_owner_can_import_products_from_the_assistant(): void

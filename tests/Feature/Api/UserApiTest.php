@@ -99,6 +99,28 @@ class UserApiTest extends TestCase
         $this->assertFalse($ids->contains($editor->id));
     }
 
+    public function test_assistant_filter_includes_collaborators_and_excludes_clients(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $collaborator = User::factory()->create();
+        $team->users()->attach($collaborator, ['role' => 'editor']);
+        $collaborator->assignRole('collaborator');
+
+        $client = User::factory()->create();
+        $team->users()->attach($client, ['role' => 'client']);
+        $client->assignRole('client');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?assistant=1');
+
+        $response->assertOk();
+        $ids = collect($response->json('users'))->pluck('id');
+        $this->assertTrue($ids->contains($admin->id));
+        $this->assertTrue($ids->contains($collaborator->id));
+        $this->assertFalse($ids->contains($client->id));
+    }
+
     public function test_store_creates_admin_on_current_team(): void
     {
         [, $team, $token] = $this->adminWithToken();

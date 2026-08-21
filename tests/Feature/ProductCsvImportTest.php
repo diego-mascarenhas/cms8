@@ -182,14 +182,18 @@ class ProductCsvImportTest extends TestCase
 
     public function test_bundled_demo_catalogue_imports_cleanly_with_image_urls(): void
     {
-        $path = base_path(ProductCsvImportService::DEMO_CATALOG_PATH);
-        $this->assertFileExists($path);
+        $demo = app(ProductCsvImportService::class)->demoCatalog();
+        $this->assertSame(ProductCsvImportService::DEMO_CATALOG_LIMIT, $demo['products']);
+
+        $path = tempnam(sys_get_temp_dir(), 'cms8-demo-');
+        $this->assertIsString($path);
+        file_put_contents($path, $demo['csv']);
 
         $result = app(ProductCsvImportService::class)->import($path, (int) $this->team->id);
 
         $this->assertSame([], $result['errors']);
         $this->assertSame(0, $result['skipped']);
-        $this->assertGreaterThanOrEqual(50, $result['created']);
+        $this->assertSame(ProductCsvImportService::DEMO_CATALOG_LIMIT, $result['created']);
 
         $products = Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->get();
         $this->assertCount($result['created'], $products);
@@ -200,10 +204,10 @@ class ProductCsvImportTest extends TestCase
         );
         $this->assertTrue($products->every(fn (Product $product): bool => $product->whatsapp_enabled));
         $this->assertTrue($products->every(fn (Product $product): bool => $product->status));
-        $this->assertGreaterThanOrEqual(8, Category::query()->where('team_id', $this->team->id)->count());
+        $this->assertGreaterThanOrEqual(4, Category::query()->where('team_id', $this->team->id)->count());
 
-        // Re-importing the same file must update in place, never duplicate.
         $second = app(ProductCsvImportService::class)->import($path, (int) $this->team->id);
+        @unlink($path);
         $this->assertSame(0, $second['created']);
         $this->assertSame($result['created'], $second['updated']);
         $this->assertSame(
