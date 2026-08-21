@@ -2,12 +2,20 @@
 
 namespace App\Livewire\Teams;
 
+use App\Actions\Fortify\PasswordValidationRules;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Laravel\Jetstream\Actions\UpdateTeamMemberRole;
 use Laravel\Jetstream\Http\Livewire\TeamMemberManager as JetstreamTeamMemberManager;
 use Laravel\Jetstream\Jetstream;
 
 class TeamMemberManager extends JetstreamTeamMemberManager
 {
+    use PasswordValidationRules;
+
     public string $roleFilter = 'admin';
 
     public string $search = '';
@@ -28,6 +36,57 @@ class TeamMemberManager extends JetstreamTeamMemberManager
         {
             $this->addTeamMemberForm['role'] = $defaultRole->key;
         }
+    }
+
+    /**
+     * Persist the selected Jetstream team role, then keep the member visible in the list.
+     */
+    public function updateRole(UpdateTeamMemberRole $updater): void
+    {
+        $updater->update(
+            $this->user,
+            $this->team,
+            $this->managingRoleFor->id,
+            $this->currentRole,
+        );
+
+        $this->team = $this->team->fresh();
+        $this->roleFilter = $this->currentRole !== '' && $this->currentRole !== null
+            ? $this->currentRole
+            : 'all';
+        $this->stopManagingRole();
+    }
+
+    /**
+     * Set a new password for a member of this team.
+     */
+    public function updateMemberPassword(int $userId, string $password, string $passwordConfirmation): void
+    {
+        Gate::forUser($this->user)->authorize('updateTeamMember', $this->team);
+
+        $member = Jetstream::findUserByIdOrFail($userId);
+
+        if (! $member->belongsToTeam($this->team))
+        {
+            abort(403);
+        }
+
+        Validator::make([
+            'password' => $password,
+            'password_confirmation' => $passwordConfirmation,
+        ], [
+            'password' => $this->passwordRules(),
+        ])->validate();
+
+        $member->forceFill([
+            'password' => Hash::make($password),
+        ])->save();
+
+        Log::info('Team member password updated', [
+            'team_id' => $this->team->id,
+            'member_id' => $member->id,
+            'updated_by' => $this->user->id,
+        ]);
     }
 
     /**

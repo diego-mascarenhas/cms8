@@ -24,23 +24,33 @@ switch ($maxWidth ?? '') {
 @endphp
 
 <!-- Modal -->
-<div 
+<div
     x-data="{ show: @entangle($attributes->wire('model')) }"
-    x-init="() => {
-        let modal = $('#{{ $id }}');
+    x-init="
+        const el = $el;
+        const instance = () => bootstrap.Modal.getOrCreateInstance(el);
         $watch('show', value => {
             if (value) {
-                modal.modal('show')
+                instance().show();
             } else {
-                modal.modal('hide')
+                instance().hide();
             }
         });
-
-        modal.on('hide.bs.modal', function () {
-            show = false
-        })
-    }" wire:ignore.self class="modal fade" tabindex="-1" id="{{ $id }}" aria-labelledby="{{ $id }}"
-    aria-hidden="true" x-ref="{{ $id }}">
+        if (show) {
+            instance().show();
+        }
+        el.addEventListener('hide.bs.modal', () => {
+            show = false;
+        });
+    "
+    wire:ignore.self
+    class="modal fade"
+    tabindex="-1"
+    id="{{ $id }}"
+    aria-labelledby="{{ $id }}"
+    aria-hidden="true"
+    x-ref="{{ $id }}"
+>
   <div class="modal-dialog{{ $maxWidth }}">
     {{ $slot }}
   </div>

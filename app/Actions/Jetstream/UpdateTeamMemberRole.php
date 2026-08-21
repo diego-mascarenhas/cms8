@@ -20,13 +20,14 @@ class UpdateTeamMemberRole extends JetstreamUpdateTeamMemberRole
 
         if ($member !== null)
         {
+            $currentRole = $member->teamRole($team)?->key;
             $linkedContact = $member->contact()->withoutGlobalScopes()->first();
 
-            if ($linkedContact !== null && $role !== 'client')
+            if ($linkedContact !== null && $currentRole === 'client' && $role !== 'client')
             {
                 throw ValidationException::withMessages([
                     'role' => [__('This user is linked to a client contact and must keep the Client role.')],
-                ])->errorBag('updateTeamMember');
+                ]);
             }
         }
 

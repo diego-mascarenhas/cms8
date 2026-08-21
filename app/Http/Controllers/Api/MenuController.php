@@ -35,58 +35,13 @@ class MenuController extends Controller
 
         $teamKey = $team?->id ?? 'none';
         $rolesFingerprint = md5($user->roles->pluck('name')->sort()->values()->implode(','));
-        $cacheKey = "api_menu_user_{$user->id}_team_{$teamKey}_roles_{$rolesFingerprint}_".app()->getLocale().'_restricted_v3';
+        $cacheKey = "api_menu_user_{$user->id}_team_{$teamKey}_roles_{$rolesFingerprint}_".app()->getLocale().'_restricted_v4';
 
         $menu = Cache::remember($cacheKey, 3600, function () use ($user, $team)
         {
-            $menuConfig = MenuHelper::getMenuConfig();
-            $alwaysVisibleModules = ['dashboard', 'settings'];
-            $filteredMenu = [];
-            $currentSection = null;
-            $sectionItems = [];
+            $menuConfig = MenuHelper::filterMenuForUser(MenuHelper::getMenuConfig(), $user, $team);
 
-            foreach ($menuConfig['menu'] as $menuItem)
-            {
-                if (isset($menuItem['menuHeader']))
-                {
-                    if ($currentSection && count($sectionItems) > 0)
-                    {
-                        $filteredMenu[] = $currentSection;
-                        $filteredMenu = array_merge($filteredMenu, $sectionItems);
-                    }
-                    $currentSection = $menuItem;
-                    $sectionItems = [];
-                } else
-                {
-                    $moduleKey = $menuItem['module_key'] ?? null;
-
-                    if (! $user->hasRole('admin'))
-                    {
-                        if (isset($menuItem['permission']) && ! $user->can($menuItem['permission']))
-                        {
-                            continue;
-                        }
-                    }
-
-                    if ($moduleKey && ! in_array($moduleKey, $alwaysVisibleModules))
-                    {
-                        if (! $team || ! $team->hasModule($moduleKey))
-                        {
-                            continue;
-                        }
-                    }
-
-                    $sectionItems[] = $menuItem;
-                }
-            }
-
-            if ($currentSection && count($sectionItems) > 0)
-            {
-                $filteredMenu[] = $currentSection;
-                $filteredMenu = array_merge($filteredMenu, $sectionItems);
-            }
-
-            return array_values($filteredMenu);
+            return array_values($menuConfig['menu']);
         });
 
         $items = $this->formatMenuForApi($menu);

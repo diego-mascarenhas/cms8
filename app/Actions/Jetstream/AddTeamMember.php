@@ -88,7 +88,7 @@ class AddTeamMember implements AddsTeamMembers
 
             $member = User::query()->where('email', $email)->first();
 
-            if ($member === null)
+            if ($member === null || ! $member->hasRole('client'))
             {
                 return;
             }

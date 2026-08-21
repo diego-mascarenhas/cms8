@@ -245,6 +245,18 @@ class ChatAssistantReplyService
             }
         }
 
+        if ($teamId !== null && ($reply['success'] ?? false))
+        {
+            TokenUsageLogService::logFromAiResponse(
+                (int) $teamId,
+                'ChatAssistantReplyService',
+                $reply['usage'] ?? [],
+                moduleKey: 'chat',
+                inputSize: strlen($message),
+                outputSize: strlen((string) ($reply['text'] ?? '')),
+            );
+        }
+
         return $this->mergeFlowPersistMeta($reply, $flowPersistSpecified, $flowPersistKey);
     }
 
@@ -301,17 +313,7 @@ class ChatAssistantReplyService
             $response = $agent->prompt($message, [], $providerParam, $modelParam, $timeout);
             $text = $response->text ?? '';
 
-            $usage = [];
-            if (isset($response->usage))
-            {
-                $promptTokens = $response->usage->promptTokens ?? 0;
-                $completionTokens = $response->usage->completionTokens ?? 0;
-                $usage = [
-                    'prompt_tokens' => $promptTokens,
-                    'completion_tokens' => $completionTokens,
-                    'total_tokens' => $promptTokens + $completionTokens,
-                ];
-            }
+            $usage = $this->usageArrayFromAiResponse($response->usage ?? null);
 
             $toolCalls = [];
             $toolResults = [];
@@ -354,6 +356,36 @@ class ChatAssistantReplyService
                 'meta' => [],
             ];
         }
+    }
+
+    /**
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int}
+     */
+    private function usageArrayFromAiResponse(mixed $usage): array
+    {
+        if ($usage === null)
+        {
+            return [];
+        }
+
+        $prompt = is_array($usage)
+            ? (int) ($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0)
+            : (int) ($usage->promptTokens ?? $usage->prompt_tokens ?? 0);
+        $completion = is_array($usage)
+            ? (int) ($usage['completion_tokens'] ?? $usage['completionTokens'] ?? 0)
+            : (int) ($usage->completionTokens ?? $usage->completion_tokens ?? 0);
+        $total = TokenUsageLogService::totalTokensFromUsage($usage);
+
+        if ($total <= 0 && $prompt <= 0 && $completion <= 0)
+        {
+            return [];
+        }
+
+        return [
+            'prompt_tokens' => $prompt,
+            'completion_tokens' => $completion,
+            'total_tokens' => $total > 0 ? $total : ($prompt + $completion),
+        ];
     }
 
     /**

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Actions\Jetstream\AddTeamMember;
 use App\Actions\Jetstream\RemoveTeamMember;
 use App\Actions\Jetstream\UpdateTeamMemberRole;
+use App\Livewire\Teams\TeamMemberManager;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Team;
@@ -15,6 +16,7 @@ use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -85,6 +87,7 @@ class TeamMemberClientRoleSyncTest extends TestCase
         $team = $owner->currentTeam;
 
         $clientUser = User::factory()->create(['email' => 'portal-client@example.com']);
+        $clientUser->assignRole('client');
         $this->createLinkedClientContact($team, $owner, $clientUser);
 
         try
@@ -120,6 +123,53 @@ class TeamMemberClientRoleSyncTest extends TestCase
 
         $this->assertTrue($clientUser->fresh()->hasTeamRole($team, 'client'));
         $this->assertTrue($clientUser->fresh()->hasRole('client'));
+    }
+
+    public function test_admin_with_a_crm_contact_can_change_team_role(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $team = $owner->currentTeam;
+
+        $adminMember = User::factory()->create(['name' => 'Ada Adminson']);
+        $adminMember->assignRole('admin');
+        $team->users()->attach($adminMember, ['role' => 'admin']);
+        $this->createLinkedClientContact($team, $owner, $adminMember);
+
+        $this->actingAs($owner);
+
+        Livewire::test(TeamMemberManager::class, ['team' => $team])
+            ->call('manageRole', $adminMember->id)
+            ->set('currentRole', 'editor')
+            ->call('updateRole')
+            ->assertHasNoErrors()
+            ->assertSet('currentlyManagingRole', false);
+
+        $this->assertTrue($adminMember->fresh()->hasTeamRole($team, 'editor'));
+        $this->assertTrue($adminMember->fresh()->hasRole('editor'));
+    }
+
+    public function test_manage_role_save_shows_an_error_when_the_member_is_a_linked_client(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $team = $owner->currentTeam;
+
+        $clientUser = User::factory()->create(['name' => 'Portal Client User']);
+        $clientUser->assignRole('client');
+        $team->users()->attach($clientUser, ['role' => 'client']);
+        $this->createLinkedClientContact($team, $owner, $clientUser);
+
+        $this->actingAs($owner);
+
+        Livewire::test(TeamMemberManager::class, ['team' => $team])
+            ->set('roleFilter', 'client')
+            ->call('manageRole', $clientUser->id)
+            ->set('currentRole', 'collaborator')
+            ->call('updateRole')
+            ->assertHasErrors(['role'])
+            ->assertSee(__('This user is linked to a client contact and must keep the Client role.'))
+            ->assertSet('currentlyManagingRole', true);
+
+        $this->assertTrue($clientUser->fresh()->hasTeamRole($team, 'client'));
     }
 
     public function test_sync_from_remaining_memberships_switches_current_team_after_removal(): void
