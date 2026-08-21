@@ -160,7 +160,7 @@ class TeamSettingsSiteAssistantPromptTest extends TestCase
         $this->assertStringContainsString('catálogo', (string) $prompt->prompt_instruction);
 
         $team->refresh();
-        $this->assertSame('chat:citas_y_tienda', $team->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertNull($team->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
     }
 
     public function test_create_requires_label_and_instruction(): void

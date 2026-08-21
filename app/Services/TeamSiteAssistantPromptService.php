@@ -128,7 +128,8 @@ class TeamSiteAssistantPromptService
         }
 
         $sectionKey = $this->uniqueSectionKey($team, $label);
-        $prompt = Prompt::withoutGlobalScope('team')->create([
+
+        return Prompt::withoutGlobalScope('team')->create([
             'team_id' => $team->id,
             'module_id' => $module->id,
             'section_key' => $sectionKey,
@@ -138,10 +139,6 @@ class TeamSiteAssistantPromptService
             'is_active' => true,
             'order' => 10,
         ]);
-
-        $this->select($team, $this->routingKeyFor($prompt->load('module')));
-
-        return $prompt;
     }
 
     public function updateContent(Team $team, string $routingKey, string $label, string $instruction): Prompt

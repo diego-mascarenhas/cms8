@@ -80,9 +80,9 @@ class ApiSiteAssistantPromptTest extends TestCase
             ])
             ->assertCreated()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.selected_key', 'chat:citas_y_tienda');
+            ->assertJsonPath('data.selected_key', null);
 
-        $this->assertSame('chat:citas_y_tienda', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertNull($team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
         $this->assertNotNull(
             Prompt::withoutGlobalScope('team')
                 ->forTeam((int) $team->id)
@@ -209,7 +209,7 @@ class ApiSiteAssistantPromptTest extends TestCase
                 'prompt_instruction' => 'Reservá citas y vendé el catálogo.',
             ])
             ->assertCreated()
-            ->assertJsonPath('data.selected_key', 'chat:citas_y_tienda');
+            ->assertJsonPath('data.selected_key', null);
     }
 
     public function test_plain_member_cannot_save_the_site_prompt(): void
