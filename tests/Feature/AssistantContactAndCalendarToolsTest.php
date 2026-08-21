@@ -464,6 +464,59 @@ class AssistantContactAndCalendarToolsTest extends TestCase
             ->count());
     }
 
+    public function test_whatsapp_inbound_without_humano_user_can_create_a_calendar_event(): void
+    {
+        $owner = $this->createAdminWithTeam();
+        $team = $owner->currentTeam;
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext(null, (int) $team->id, '34600111222');
+
+        $out = $service->execute('create_calendar_event', [
+            'title' => 'Wordexpress',
+            'start' => '2026-08-21 03:00:00',
+            'end' => '2026-08-21 09:00:00',
+        ]);
+
+        $this->assertStringContainsString('Calendar event created', $out);
+        $this->assertStringNotContainsString('Not authenticated', $out);
+        $this->assertDatabaseHas('calendar_events', [
+            'team_id' => $team->id,
+            'title' => 'Wordexpress',
+        ]);
+    }
+
+    public function test_whatsapp_inbound_without_humano_user_cannot_use_staff_tools(): void
+    {
+        $owner = $this->createAdminWithTeam();
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext(null, (int) $owner->currentTeam->id, '34600111222');
+
+        $out = $service->execute('list_team_users', []);
+
+        $this->assertStringContainsString('no está disponible en este chat', $out);
+        $this->assertStringNotContainsString('Not authenticated', $out);
+    }
+
+    public function test_whatsapp_inbound_without_team_does_not_ask_the_customer_to_log_in(): void
+    {
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext(null, null, '34600111222');
+
+        $out = $service->execute('create_calendar_event', [
+            'title' => 'Wordexpress',
+            'start' => '2026-08-21 03:00:00',
+            'end' => '2026-08-21 09:00:00',
+        ]);
+
+        $this->assertStringContainsString('No team is configured', $out);
+        $this->assertStringNotContainsString('Not authenticated', $out);
+    }
+
     private function assistantTools(User $user): AssistantToolsService
     {
         $service = app(AssistantToolsService::class);
