@@ -8,6 +8,7 @@ use App\Services\StripeAccountResolver;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
+use App\Services\TeamWhatsAppUsageStatsService;
 use App\Support\StripeErrorMessage;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -62,6 +63,7 @@ class AssistantSubscriptionService
             'invoices' => $stripe['invoices'],
             'can_checkout' => $canCheckout,
             'token_usage' => $this->tokenUsagePayload($team, $stripe),
+            'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
         ];
     }
 
@@ -544,6 +546,32 @@ class AssistantSubscriptionService
             'amount_due_cents' => (int) round(($periodTokens / 1_000_000) * $rate * 100),
             'currency' => $currency,
             'rate_per_million' => $rate,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $stripe
+     * @return array<string, mixed>
+     */
+    private function whatsappUsagePayload(Team $team, array $stripe): array
+    {
+        [$from, $to] = $this->tokenUsagePeriod($stripe);
+        $stats = TeamWhatsAppUsageStatsService::forTeam($team);
+        $period = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
+
+        return [
+            'messages_sent' => (int) $stats['messages_sent'],
+            'our_amount_cents' => (int) $stats['our_amount_cents'],
+            'reference_amount_cents' => (int) $stats['reference_amount_cents'],
+            'saved_amount_cents' => (int) $stats['saved_amount_cents'],
+            'average_savings' => (float) $stats['average_savings'],
+            'our_rate' => (float) $stats['our_rate'],
+            'reference_rate' => (float) $stats['reference_rate'],
+            'currency' => (string) $stats['currency'],
+            'period_start' => $from->toIso8601String(),
+            'period_end' => $to->toIso8601String(),
+            'period_messages_sent' => (int) $period['messages_sent'],
+            'amount_due_cents' => (int) $period['our_amount_cents'],
         ];
     }
 
