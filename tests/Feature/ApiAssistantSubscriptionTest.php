@@ -7,6 +7,7 @@ use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamBillingDataService;
+use Carbon\Carbon;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -76,6 +77,39 @@ class ApiAssistantSubscriptionTest extends TestCase
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
     }
 
+    public function test_subscription_usage_starts_at_first_use_not_trial_clock(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        $team->setSetting(
+            AssistantSubscriptionService::trialStartedSettingKey('assistant'),
+            now()->subHours(12)->toIso8601String(),
+        );
+
+        $firstUse = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $firstUse->forceFill(['created_at' => now()->subDays(10)])->save();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 1_000_000);
+        $this->assertEqualsWithDelta(
+            $firstUse->fresh()->created_at->timestamp,
+            Carbon::parse($response->json('data.token_usage.period_start'))->timestamp,
+            5,
+        );
+    }
+
     public function test_subscription_token_usage_bills_tokens_used_in_current_period(): void
     {
         [, $team, $token] = $this->assistantUserWithToken();
@@ -115,7 +149,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.token_usage.total_tokens_used', 2_000_000);
         $response->assertJsonPath('data.token_usage.total_calls', 2);
-        $response->assertJsonPath('data.token_usage.amount_due_cents', 900);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 1800);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
         $response->assertJsonPath('data.token_usage.rate_per_million', 9);
     }
@@ -168,8 +202,8 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.whatsapp_usage.messages_sent', 3);
         $response->assertJsonPath('data.whatsapp_usage.our_amount_cents', 30);
         $response->assertJsonPath('data.whatsapp_usage.saved_amount_cents', 45);
-        $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 20);
-        $response->assertJsonPath('data.whatsapp_usage.period_messages_sent', 2);
+        $response->assertJsonPath('data.whatsapp_usage.amount_due_cents', 30);
+        $response->assertJsonPath('data.whatsapp_usage.period_messages_sent', 3);
         $response->assertJsonPath('data.whatsapp_usage.average_savings', 60);
     }
 
