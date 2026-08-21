@@ -3098,22 +3098,6 @@ class ChatController extends Controller
             $contextService->persistAgentReply($contextUser->id, $message);
         }
 
-        if ($team && $this->inboundAssistantMayReplyForAttachment($team, $userResolver, $request, $cleanTo))
-        {
-            $ingestions = app(DocumentIngestionService::class)->ingestFromConversationMedia(
-                $conversation,
-                'WhatsApp',
-                $conversation->message_sid,
-                (int) $team->id,
-            );
-            $summary = $this->buildDocumentIngestionAssistantResponse($ingestions);
-            $gateway->sendMessage($cleanTo, $summary, null, auth()->id());
-            if ($contextUser !== null)
-            {
-                $contextService->persistAgentReply($contextUser->id, $summary);
-            }
-        }
-
         return response()->json(['success' => true, 'message' => __('Archivo enviado.')]);
     }
 
@@ -3152,25 +3136,6 @@ class ChatController extends Controller
         }
 
         return null;
-    }
-
-    private function inboundAssistantMayReplyForAttachment(
-        Team $team,
-        UserResolverService $userResolver,
-        Request $request,
-        string $phone,
-    ): bool {
-        $inboundUser = $userResolver->resolveUserForConversation(
-            $request->input('to'),
-            $request->input('contact_id'),
-        );
-
-        return app(TeamInboundAssistantPolicy::class)->allowsWhatsAppAutoReply(
-            $team,
-            $inboundUser,
-            (int) $team->id,
-            $phone,
-        );
     }
 
     /**
