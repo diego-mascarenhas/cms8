@@ -271,6 +271,33 @@ class PaidAdCampaignController extends Controller
         ]);
     }
 
+    public function calendar(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'paid_ads'))
+        {
+            return $denied;
+        }
+
+        $validated = $request->validate([
+            'from' => 'required|date',
+            'to' => 'required|date|after_or_equal:from',
+        ]);
+
+        $range = $this->campaigns->calendar($team, $validated['from'], $validated['to']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $range['scheduled']->map(fn ($campaign) => $this->campaigns->formatForList($campaign))->values()->all(),
+            'unscheduled' => $range['unscheduled']->map(fn ($campaign) => $this->campaigns->formatForList($campaign))->values()->all(),
+        ]);
+    }
+
     public function lookups(Request $request): JsonResponse
     {
         $team = $this->teamOrError($request);

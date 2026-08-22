@@ -14,6 +14,7 @@ use App\Models\AdPlatformConnection;
 use App\Models\PaidAdAudience;
 use App\Models\PaidAdCampaign;
 use App\Services\PaidAdMetricsAggregator;
+use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -56,6 +57,7 @@ class PaidAdCampaignController extends Controller
 
         $this->syncPlatforms($campaign, $platformConnectionIds);
         $campaign->audiences()->sync($audienceIds);
+        app(PaidAdCampaignCalendarSyncer::class)->sync($campaign->load('platforms', 'team'));
 
         return redirect()
             ->route('paid-ads.show', $campaign->id)
@@ -103,6 +105,7 @@ class PaidAdCampaignController extends Controller
 
         $this->syncPlatforms($campaign, $platformConnectionIds);
         $campaign->audiences()->sync($audienceIds);
+        app(PaidAdCampaignCalendarSyncer::class)->sync($campaign->load('platforms', 'team'));
 
         return redirect()
             ->route('paid-ads.show', $campaign->id)

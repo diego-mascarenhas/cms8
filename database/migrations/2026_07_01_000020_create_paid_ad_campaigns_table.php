@@ -24,6 +24,7 @@ return new class extends Migration
             $table->json('targeting')->nullable();
             $table->json('creative')->nullable();
             $table->json('settings')->nullable();
+            $table->foreignId('calendar_event_id')->nullable()->constrained('calendar_events')->nullOnDelete();
             $table->timestamps();
 
             $table->index(['team_id', 'status'], 'paid_ad_campaigns_team_status_idx');

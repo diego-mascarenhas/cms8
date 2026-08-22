@@ -494,7 +494,7 @@ class ModuleSeeder extends Seeder
     ];
 
     protected $teamModules = [
-        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'ebooks', 'website', 'campaigns', 'templates', 'mailer', 'hosting', 'mail', 'chat', 'enterprises', 'affiliates', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
+        1 => ['invoices', 'payments', 'communications', 'notes', 'tickets', 'events', 'landings', 'multimedia', 'team_files', 'blog', 'ebooks', 'website', 'campaigns', 'templates', 'mailer', 'paid_ads', 'hosting', 'mail', 'chat', 'enterprises', 'affiliates', 'prospecting', 'projects', 'services', 'times', 'documentation', 'ocr', 'incomes', 'expenses', 'financial', 'departments', 'funnel', 'automations', 'integrations', 'products', 'orders', 'academy'],
     ];
 
     public function run()

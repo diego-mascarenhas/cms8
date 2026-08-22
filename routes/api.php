@@ -571,6 +571,7 @@ Route::middleware('auth.api')->group(function ()
     // Paid Ads (idoneo-ads SPA)
     Route::get('paid-ads/dashboard', [ApiPaidAdDashboardController::class, 'index']);
     Route::get('paid-ads/lookups', [ApiPaidAdCampaignController::class, 'lookups']);
+    Route::get('paid-ads/calendar', [ApiPaidAdCampaignController::class, 'calendar']);
     Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
     Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
     Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');
