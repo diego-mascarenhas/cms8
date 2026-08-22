@@ -21,8 +21,10 @@ class ContactListToolbarFilterTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('id="EmotionalState"', false);
+        $response->assertSee('id="IntentFilter"', false);
         $response->assertSee('id="CategoryFilter"', false);
         $response->assertSee('contact_list_emotional_state', false);
+        $response->assertSee('contact_list_intent', false);
         $response->assertSee('contact_list_category', false);
         $response->assertSee('change.select2', false);
         $response->assertSee('change.contactFilter', false);

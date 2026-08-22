@@ -9,7 +9,7 @@ class ContactSentimentHistory extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['contact_id', 'sentiment_id', 'notes'];
+    protected $fillable = ['contact_id', 'sentiment_id', 'intent_id', 'notes'];
 
     public function contact()
     {
@@ -19,5 +19,10 @@ class ContactSentimentHistory extends Model
     public function sentiment()
     {
         return $this->belongsTo(ContactSentiment::class);
+    }
+
+    public function intent()
+    {
+        return $this->belongsTo(ContactIntent::class);
     }
 }

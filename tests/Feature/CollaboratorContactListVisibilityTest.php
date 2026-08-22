@@ -96,6 +96,7 @@ class CollaboratorContactListVisibilityTest extends TestCase
             ['data' => 'id', 'name' => 'id'],
             ['data' => 'name', 'name' => 'name'],
             ['data' => 'current_sentiment', 'name' => 'current_sentiment'],
+            ['data' => 'current_intent', 'name' => 'current_intent'],
             ['data' => 'sources', 'name' => 'sources'],
             ['data' => 'responsible_name', 'name' => 'responsible_name'],
             ['data' => 'categories', 'name' => 'categories'],

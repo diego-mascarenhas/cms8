@@ -405,6 +405,12 @@ class ModuleSeeder extends Seeder
             'description' => 'Daily performance insights and admin team metrics list',
             'order' => 10,
         ],
+        'insights' => [
+            'name' => 'Insights',
+            'icon' => 'mood-smile',
+            'description' => 'Contact emotion and intent from WhatsApp and email',
+            'order' => 11,
+        ],
         // INNOVATION GROUP
         'proposals' => [
             'name' => 'Proposals',

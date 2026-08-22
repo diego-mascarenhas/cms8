@@ -64,6 +64,17 @@ class ContactDataTable extends DataTable
 
                 return '<span style="font-size: 1.5em;">🤔</span>';
             })
+            ->addColumn('current_intent', function ($row)
+            {
+                if ($row->currentSentiment?->intent)
+                {
+                    $intent = $row->currentSentiment->intent;
+
+                    return '<span style="font-size: 1.5em;" title="'.e($intent->name).'">'.$intent->emoji.'</span>';
+                }
+
+                return '<span style="font-size: 1.5em;" title="'.e(__('Unclear')).'">❔</span>';
+            })
             ->filterColumn('current_sentiment', function ($query, $keyword)
             {
                 if ($keyword !== '' && is_numeric($keyword))
@@ -71,6 +82,19 @@ class ContactDataTable extends DataTable
                     $query->whereHas('currentSentiment', function ($q) use ($keyword)
                     {
                         $q->where('sentiment_id', $keyword);
+                    });
+                } elseif ($keyword !== '')
+                {
+                    $query->whereRaw('0 = 1');
+                }
+            })
+            ->filterColumn('current_intent', function ($query, $keyword)
+            {
+                if ($keyword !== '' && is_numeric($keyword))
+                {
+                    $query->whereHas('currentSentiment', function ($q) use ($keyword)
+                    {
+                        $q->where('intent_id', $keyword);
                     });
                 } elseif ($keyword !== '')
                 {
@@ -118,7 +142,7 @@ class ContactDataTable extends DataTable
             {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'sources', 'status_id', 'categories']);
+            ->rawColumns(['name', 'action', 'current_sentiment', 'current_intent', 'sources', 'status_id', 'categories']);
     }
 
     public function query(Contact $model): QueryBuilder
@@ -129,6 +153,7 @@ class ContactDataTable extends DataTable
                 'list60:id,contact_id',
                 'enterprises:id,name',
                 'currentSentiment.sentiment',
+                'currentSentiment.intent',
                 'status',
                 'sources',
                 'responsible:id,name',
@@ -161,6 +186,10 @@ class ContactDataTable extends DataTable
 						if (emotionalVal) {
 							$('#EmotionalState').val(emotionalVal).trigger('change.select2');
 						}
+						var intentVal = $('#IntentFilter').val();
+						if (intentVal) {
+							$('#IntentFilter').val(intentVal).trigger('change.select2');
+						}
 						var categoryVal = $('#CategoryFilter').val();
 						if (categoryVal) {
 							$('#CategoryFilter').val(categoryVal).trigger('change.select2');
@@ -175,6 +204,11 @@ class ContactDataTable extends DataTable
 						});
 					});
 
+					$('#IntentFilter').off('change.contactFilter').on('change.contactFilter', function() {
+						var val = $(this).val();
+						api.column('.intent-filter').search(val ? val : '', true, false).draw();
+					});
+
 					$('#CategoryFilter').off('change.contactFilter').on('change.contactFilter', function() {
 						var val = $(this).val();
 						api.column('.category-filter').search(val ? val : '', true, false).draw();
@@ -186,16 +220,21 @@ class ContactDataTable extends DataTable
 					});
 
 					var savedEmotional = sessionStorage.getItem('contact_list_emotional_state');
+					var savedIntent = sessionStorage.getItem('contact_list_intent');
 					var savedCategory = sessionStorage.getItem('contact_list_category');
 					if (savedEmotional) {
 						$('#EmotionalState').val(savedEmotional).trigger('change.select2');
 						api.columns('.select-filter').search(savedEmotional, true, false);
 					}
+					if (savedIntent) {
+						$('#IntentFilter').val(savedIntent).trigger('change.select2');
+						api.column('.intent-filter').search(savedIntent, true, false);
+					}
 					if (savedCategory) {
 						$('#CategoryFilter').val(savedCategory).trigger('change.select2');
 						api.column('.category-filter').search(savedCategory, true, false);
 					}
-					if (savedEmotional || savedCategory) {
+					if (savedEmotional || savedIntent || savedCategory) {
 						api.draw();
 					}
 
@@ -205,6 +244,15 @@ class ContactDataTable extends DataTable
 							sessionStorage.setItem('contact_list_emotional_state', val);
 						} else {
 							sessionStorage.removeItem('contact_list_emotional_state');
+						}
+					});
+
+					$('#IntentFilter').off('change.contactFilterPersist').on('change.contactFilterPersist', function() {
+						var val = $(this).val();
+						if (val) {
+							sessionStorage.setItem('contact_list_intent', val);
+						} else {
+							sessionStorage.removeItem('contact_list_intent');
 						}
 					});
 
@@ -223,6 +271,10 @@ class ContactDataTable extends DataTable
 					var emotionalVal = $('#EmotionalState').val();
 					if (emotionalVal) {
 						$('#EmotionalState').val(emotionalVal).trigger('change.select2');
+					}
+					var intentVal = $('#IntentFilter').val();
+					if (intentVal) {
+						$('#IntentFilter').val(intentVal).trigger('change.select2');
 					}
 					var categoryVal = $('#CategoryFilter').val();
 					if (categoryVal) {
@@ -245,7 +297,14 @@ class ContactDataTable extends DataTable
                 ->addClass('select-filter min-tablet')
                 ->searchable(true)
                 ->orderable(false)
-                ->width(150),
+                ->width(80),
+            Column::make('current_intent')
+                ->title(__('Intent'))
+                ->className('text-center')
+                ->addClass('intent-filter min-tablet')
+                ->searchable(true)
+                ->orderable(false)
+                ->width(80),
             Column::make('sources')
                 ->title(__('Networks'))
                 ->className('text-center')

@@ -31,6 +31,7 @@ return [
         // New teams only (see EnableCoreModulesForTeam); existing teams are unchanged.
         // Not a sidebar module; insights are generated on schedule and on dashboard for admin/root.
         'performance_insights' => false,
+        'insights' => false,
         'templates' => false,
         // Additional modules (billing)
         'invoices' => true,

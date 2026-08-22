@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contact;
+use App\Models\ContactIntent;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
 use App\Support\AiTasks;
@@ -12,44 +13,60 @@ use function Laravel\Ai\agent;
 
 class ContactSentimentAnalysisService
 {
-    private const SENTIMENT_INSTRUCTIONS = <<<'PROMPT'
-You are a sentiment classifier. Classify the emotional tone of the message into exactly one of these categories:
+    private const INTENT_KEYS = 'buy, update, work, cancel, other, unclear';
 
+    private const SENTIMENT_INSTRUCTIONS = <<<'PROMPT'
+You classify inbound customer messages for a CRM.
+
+Emotional tone (sentiment_id), exactly one:
 1 = Muy Negativo (very negative, angry, furious, outraged)
 2 = Negativo (negative, annoyed, dissatisfied, worried)
 3 = Neutral (neutral, factual, no clear emotion)
 4 = Positivo (positive, satisfied, grateful, friendly)
 5 = Muy Positivo (very positive, delighted, enthusiastic, celebrating)
 
-Respond with ONLY a valid JSON object, no markdown, no code block, no extra text. Example:
-{"sentiment_id": 4, "reason": "El mensaje expresa gratitud y satisfacción"}
+Commercial intent (intent_key), exactly one:
+buy = wants to purchase a product or service
+update = wants to change existing data, an order, a plan, or details
+work = wants a job, repair, project, or service performed
+cancel = wants to unsubscribe, cancel, or leave
+other = a clear request that is none of the above
+unclear = greeting, noise, or no actionable intent
 
-Valid keys: sentiment_id (integer 1-5), reason (short string in the same language as the message).
+Respond with ONLY a valid JSON object, no markdown. Example:
+{"sentiment_id": 4, "intent_key": "buy", "reason": "Pide precio y quiere comprar"}
+
+Valid keys: sentiment_id (integer 1-5), intent_key (buy|update|work|cancel|other|unclear), reason (short string in the message language).
 PROMPT;
 
     private const DAILY_CONTEXT_INSTRUCTIONS = <<<'PROMPT'
-You are a sentiment classifier. You will receive one or more inbound messages from the same contact within the last 24 hours (WhatsApp and/or email).
-Classify the overall emotional tone across the full conversation context into exactly one of these categories:
+You classify the last 24 hours of inbound messages from one contact (WhatsApp and/or email).
 
+Emotional tone (sentiment_id) across the full thread, exactly one:
 1 = Muy Negativo (very negative, angry, furious, outraged)
 2 = Negativo (negative, annoyed, dissatisfied, worried)
 3 = Neutral (neutral, factual, no clear emotion)
 4 = Positivo (positive, satisfied, grateful, friendly)
 5 = Muy Positivo (very positive, delighted, enthusiastic, celebrating)
 
-Weigh the whole thread, not just the last line. If tone shifts, favor the most recent emotional direction unless earlier messages clearly dominate.
+Weigh the whole thread. If tone shifts, favor the most recent emotional direction unless earlier messages clearly dominate.
 
-Respond with ONLY a valid JSON object, no markdown, no code block, no extra text. Example:
-{"sentiment_id": 4, "reason": "El contacto pasó de una queja inicial a agradecer la resolución"}
+Commercial intent (intent_key) for what they want next, exactly one:
+buy = wants to purchase a product or service
+update = wants to change existing data, an order, a plan, or details
+work = wants a job, repair, project, or service performed
+cancel = wants to unsubscribe, cancel, or leave
+other = a clear request that is none of the above
+unclear = greeting, noise, or no actionable intent
 
-Valid keys: sentiment_id (integer 1-5), reason (short string in the same language as the messages).
+Respond with ONLY a valid JSON object, no markdown. Example:
+{"sentiment_id": 4, "intent_key": "work", "reason": "Pasó de quejarse a pedir que hagan la reparación"}
+
+Valid keys: sentiment_id (integer 1-5), intent_key (buy|update|work|cancel|other|unclear), reason (short string in the messages language).
 PROMPT;
 
     /**
-     * Classify message text into one of the 5 emotional states using AI (Laravel AI / Anthropic).
-     * Returns array with sentiment_id (1-5), name, reason or null on failure.
-     *
-     * @return array{id: int, name: string, reason: string}|null
+     * @return array{id: int, name: string, reason: string, intent_id: int|null, intent_key: string}|null
      */
     public function analyzeWithAi(string $text, ?int $teamId = null, ?string $instructions = null): ?array
     {
@@ -74,7 +91,7 @@ PROMPT;
                     teamId: $teamId,
                     service: 'ContactSentimentAnalysisService',
                     usage: $response->usage ?? null,
-                    moduleKey: 'contacts',
+                    moduleKey: 'insights',
                     inputSize: strlen($text),
                 );
             }
@@ -103,6 +120,13 @@ PROMPT;
                 $id = 3;
             }
 
+            $intentKey = strtolower(trim((string) ($data['intent_key'] ?? 'unclear')));
+            if (! in_array($intentKey, explode(', ', self::INTENT_KEYS), true))
+            {
+                $intentKey = 'unclear';
+            }
+
+            $intent = ContactIntent::query()->where('key', $intentKey)->first();
             $sentiment = ContactSentiment::find($id);
             $reason = isset($data['reason']) && is_string($data['reason'])
                 ? trim($data['reason'])
@@ -112,6 +136,8 @@ PROMPT;
                 'id' => $id,
                 'name' => $sentiment ? $sentiment->name : 'Neutral',
                 'reason' => $reason,
+                'intent_id' => $intent?->id,
+                'intent_key' => $intentKey,
             ];
         } catch (\Throwable $e)
         {
@@ -122,7 +148,7 @@ PROMPT;
     }
 
     /**
-     * Analyze text with AI and record sentiment for the contact (all channels).
+     * Analyze text with AI and record sentiment and intent for the contact.
      */
     public function recordForContact(Contact $contact, string $text, string $channel): void
     {
@@ -140,12 +166,14 @@ PROMPT;
         ContactSentimentHistory::create([
             'contact_id' => $contact->id,
             'sentiment_id' => $result['id'],
+            'intent_id' => $result['intent_id'],
             'notes' => sprintf('Análisis automático de %s: %s', $channel, $result['reason']),
         ]);
 
         Log::info('Contact sentiment recorded', [
             'contact_id' => $contact->id,
             'sentiment_id' => $result['id'],
+            'intent_id' => $result['intent_id'],
             'channel' => $channel,
         ]);
     }

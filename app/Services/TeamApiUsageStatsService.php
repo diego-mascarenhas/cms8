@@ -65,6 +65,35 @@ final class TeamApiUsageStatsService
         ];
     }
 
+    public static function sellRatePerMillion(): float
+    {
+        $cost = (float) config('humano_pricing.token_billing.amount_per_million', 6);
+        $markup = max(0, (float) config('humano_pricing.token_billing.markup_percent', 50));
+
+        return round($cost * (1 + ($markup / 100)), 4);
+    }
+
+    /**
+     * @return array{tokens: int, amount_cents: int, currency: string, formatted: string}
+     */
+    public static function costSummary(int $teamId): array
+    {
+        $tokens = (int) self::forTeam($teamId)['totalTokensUsed'];
+        $rate = self::sellRatePerMillion();
+        $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
+        $amountCents = (int) round(($tokens / 1_000_000) * $rate * 100);
+        $amount = $amountCents / 100;
+        $tokenLabel = number_format($tokens, 0, ',', '.');
+        $priceLabel = number_format($amount, 2, ',', '.').' '.$currency;
+
+        return [
+            'tokens' => $tokens,
+            'amount_cents' => $amountCents,
+            'currency' => $currency,
+            'formatted' => $tokenLabel.' / '.$priceLabel,
+        ];
+    }
+
     /**
      * @return Builder<\App\Models\TokenUsageLog>
      */
