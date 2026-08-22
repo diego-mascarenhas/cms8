@@ -4,6 +4,7 @@ namespace App\Services\PaidAds;
 
 use App\Enums\PaidAdObjective;
 use App\Models\Team;
+use App\Services\Business\BusinessProfileService;
 use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
@@ -23,6 +24,12 @@ class PaidAdImageSuggestionService
         if (mb_strlen(trim($userMessage)) < 8)
         {
             throw new RuntimeException(__('Completá el titular, el texto o el nombre para sugerir una imagen.'));
+        }
+
+        $brand = app(BusinessProfileService::class)->promptAppendix($team);
+        if ($brand !== '')
+        {
+            $userMessage .= "\n\n".$brand;
         }
 
         try

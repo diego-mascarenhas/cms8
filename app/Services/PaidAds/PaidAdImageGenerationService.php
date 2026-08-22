@@ -3,6 +3,7 @@
 namespace App\Services\PaidAds;
 
 use App\Models\Team;
+use App\Services\Business\BusinessProfileService;
 use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
@@ -19,7 +20,7 @@ class PaidAdImageGenerationService
      */
     public function generate(Team $team, array $brief): array
     {
-        $prompt = $this->prompt($brief);
+        $prompt = $this->prompt($brief, $team);
 
         try
         {
@@ -79,12 +80,21 @@ class PaidAdImageGenerationService
     /**
      * @param  array{scene: string, hook?: string|null, framing?: string|null, query?: string|null, headline?: string|null}  $brief
      */
-    public function prompt(array $brief): string
+    public function prompt(array $brief, ?Team $team = null): string
     {
         $lines = [
-            'Photorealistic advertising photograph. No text, no logos, no watermarks, no UI chrome.',
+            'Photorealistic advertising photograph. No text overlay, no watermarks, no UI chrome. Do not invent a logo.',
             'Scene: '.trim((string) $brief['scene']),
         ];
+
+        if ($team)
+        {
+            $brand = app(BusinessProfileService::class)->promptAppendix($team);
+            if ($brand !== '')
+            {
+                $lines[] = $brand;
+            }
+        }
 
         if (trim((string) ($brief['framing'] ?? '')) !== '')
         {

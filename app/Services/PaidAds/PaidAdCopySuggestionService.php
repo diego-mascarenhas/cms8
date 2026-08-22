@@ -4,6 +4,7 @@ namespace App\Services\PaidAds;
 
 use App\Enums\PaidAdObjective;
 use App\Models\Team;
+use App\Services\Business\BusinessProfileService;
 use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
@@ -26,6 +27,11 @@ class PaidAdCopySuggestionService
         }
 
         $userMessage = $this->userMessage($context);
+        $brand = app(BusinessProfileService::class)->promptAppendix($team);
+        if ($brand !== '')
+        {
+            $userMessage .= "\n\n".$brand;
+        }
 
         try
         {
