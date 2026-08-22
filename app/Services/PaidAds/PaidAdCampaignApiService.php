@@ -18,7 +18,10 @@ class PaidAdCampaignApiService
 {
     public const PER_PAGE = 20;
 
-    public function __construct(private readonly PaidAdMetricsAggregator $metrics) {}
+    public function __construct(
+        private readonly PaidAdMetricsAggregator $metrics,
+        private readonly PaidAdCreativeAssetService $assets,
+    ) {}
 
     public function paginate(Team $team, string $search = '', int $page = 1, int $perPage = self::PER_PAGE): LengthAwarePaginator
     {
@@ -160,7 +163,7 @@ class PaidAdCampaignApiService
 
         return array_merge($list, [
             'targeting' => $campaign->targeting ?? [],
-            'creative' => $campaign->creative ?? [],
+            'creative' => $this->assets->formatCreative($campaign->creative ?? []),
             'settings' => $campaign->settings ?? [],
             'audiences' => $campaign->audiences->map(fn (PaidAdAudience $audience) => [
                 'id' => $audience->id,
@@ -243,6 +246,7 @@ class PaidAdCampaignApiService
                 ->values()
                 ->all(),
             'audiences' => $audiences,
+            'formats' => $this->assets->formats(),
         ];
     }
 

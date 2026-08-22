@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\MessageController;
 use App\Http\Controllers\Api\NotificationInboxController;
 use App\Http\Controllers\Api\PaidAdAudienceController as ApiPaidAdAudienceController;
 use App\Http\Controllers\Api\PaidAdCampaignController as ApiPaidAdCampaignController;
+use App\Http\Controllers\Api\PaidAdCreativeAssetController as ApiPaidAdCreativeAssetController;
 use App\Http\Controllers\Api\PaidAdDashboardController as ApiPaidAdDashboardController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
@@ -572,6 +573,8 @@ Route::middleware('auth.api')->group(function ()
     Route::get('paid-ads/dashboard', [ApiPaidAdDashboardController::class, 'index']);
     Route::get('paid-ads/lookups', [ApiPaidAdCampaignController::class, 'lookups']);
     Route::get('paid-ads/calendar', [ApiPaidAdCampaignController::class, 'calendar']);
+    Route::post('paid-ads/assets', [ApiPaidAdCreativeAssetController::class, 'store']);
+    Route::delete('paid-ads/assets', [ApiPaidAdCreativeAssetController::class, 'destroy']);
     Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
     Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
     Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');
