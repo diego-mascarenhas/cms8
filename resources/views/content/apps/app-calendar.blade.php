@@ -101,6 +101,10 @@
         </div>
 
         <div class="app-calendar-events-filter ms-3">
+          <div class="form-check mb-2">
+            <input class="form-check-input input-filter" type="checkbox" id="select-ads" data-value="ads" checked>
+            <label class="form-check-label" for="select-ads">{{ __('Ads') }}</label>
+          </div>
           <div class="form-check form-check-danger mb-2">
             <input class="form-check-input input-filter" type="checkbox" id="select-personal" data-value="personal" checked>
             <label class="form-check-label" for="select-personal">{{ __('Personal') }}</label>
@@ -151,6 +155,7 @@
             <div class="mb-3">
               <label class="form-label" for="eventLabel">{{ __('Label') }}</label>
               <select class="select2 select-event-label form-select" id="eventLabel" name="eventLabel">
+                <option data-label="primary" value="Ads">{{ __('Ads') }}</option>
                 <option data-label="primary" value="Business" selected>{{ __('Business') }}</option>
                 <option data-label="danger" value="Personal">{{ __('Personal') }}</option>
                 <option data-label="warning" value="Family">{{ __('Family') }}</option>

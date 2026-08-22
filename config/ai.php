@@ -50,6 +50,9 @@ return [
         'vision' => [],
         'ocr' => [],
         'registration' => [],
+        'image' => [
+            'provider' => env('AI_IMAGE_TASK_PROVIDER', 'openai'),
+        ],
     ],
 
     /*

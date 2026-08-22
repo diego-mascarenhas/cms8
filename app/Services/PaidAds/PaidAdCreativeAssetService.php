@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PaidAdCreativeAssetService
 {
@@ -40,15 +41,23 @@ class PaidAdCreativeAssetService
         ];
     }
 
-    public function delete(Team $team, string $path): void
+    public function stream(Team $team, string $path): StreamedResponse
     {
-        $prefix = 'paid-ads/'.$team->id.'/';
-        if (! str_starts_with($path, $prefix))
+        $this->assertOwnedPath($team, $path);
+
+        if (! Storage::disk('public')->exists($path))
         {
             throw ValidationException::withMessages([
-                'path' => [__('Esa pieza no pertenece a este equipo.')],
+                'path' => [__('No encontramos esa imagen.')],
             ]);
         }
+
+        return Storage::disk('public')->response($path);
+    }
+
+    public function delete(Team $team, string $path): void
+    {
+        $this->assertOwnedPath($team, $path);
 
         if (Storage::disk('public')->exists($path))
         {
@@ -92,6 +101,19 @@ class PaidAdCreativeAssetService
             ->map(fn (AdCreativeFormat $format) => $format->toLookup())
             ->values()
             ->all();
+    }
+
+    private function assertOwnedPath(Team $team, string $path): void
+    {
+        $normalized = ltrim(str_replace('\\', '/', $path), '/');
+        $prefix = 'paid-ads/'.$team->id.'/';
+
+        if ($normalized !== $path || str_contains($normalized, '..') || ! str_starts_with($normalized, $prefix))
+        {
+            throw ValidationException::withMessages([
+                'path' => [__('Esa pieza no pertenece a este equipo.')],
+            ]);
+        }
     }
 
     private function publicUrl(string $path): string

@@ -97,6 +97,7 @@ class PaidAdCalendarApiTest extends TestCase
             'id' => $campaign->calendar_event_id,
             'team_id' => $team->id,
             'title' => 'Ads · Pauta agosto',
+            'label' => 'Ads',
         ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)

@@ -121,6 +121,45 @@ class PaidAdCreativeAssetApiTest extends TestCase
             ]);
     }
 
+    public function test_can_download_own_creative_asset(): void
+    {
+        Storage::fake('public');
+
+        [, $team, $token] = $this->adminWithToken();
+
+        $upload = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/paid-ads/assets', [
+                'format' => AdCreativeFormat::Square->value,
+                'file' => UploadedFile::fake()->image('feed.jpg', 1080, 1080),
+            ], ['Accept' => 'application/json']);
+
+        $path = (string) $upload->json('data.path');
+
+        $download = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/paid-ads/assets?path='.urlencode($path));
+
+        $download->assertOk();
+        $this->assertNotSame('', $download->streamedContent());
+        $this->assertStringStartsWith('paid-ads/'.$team->id.'/', $path);
+    }
+
+    public function test_cannot_download_asset_from_another_team(): void
+    {
+        Storage::fake('public');
+
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/paid-ads/assets?path=paid-ads/999/secret.jpg')
+            ->assertStatus(422);
+    }
+
+    public function test_guest_cannot_download_creative_asset(): void
+    {
+        $this->getJson('/api/paid-ads/assets?path=paid-ads/1/feed.jpg')
+            ->assertUnauthorized();
+    }
+
     public function test_cannot_delete_asset_from_another_team(): void
     {
         Storage::fake('public');

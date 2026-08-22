@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\AdCreativeFormat;
 use App\Enums\PaidAdCampaignStatus;
 use App\Enums\PaidAdObjective;
+use App\Services\PaidAds\PaidAdCampaignApiService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -27,7 +28,7 @@ class UpdatePaidAdCampaignRequest extends FormRequest
             'status' => ['nullable', new Enum(PaidAdCampaignStatus::class)],
             'budget_type' => ['required', Rule::in(['daily', 'lifetime'])],
             'budget_amount' => ['nullable', 'numeric', 'min:0'],
-            'currency' => ['required', 'string', 'size:3'],
+            'currency' => ['required', 'string', 'size:3', Rule::in(PaidAdCampaignApiService::CURRENCIES)],
             'start_at' => ['nullable', 'date'],
             'end_at' => ['nullable', 'date', 'after_or_equal:start_at'],
             'creative' => ['nullable', 'array'],

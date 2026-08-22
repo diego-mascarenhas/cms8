@@ -205,7 +205,8 @@ class PaidAdApiTest extends TestCase
             ->getJson('/api/paid-ads/lookups')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonStructure(['data' => ['objectives', 'connections', 'audiences']]);
+            ->assertJsonStructure(['data' => ['objectives', 'connections', 'audiences', 'currencies']])
+            ->assertJsonPath('data.currencies', ['EUR', 'USD', 'ARS']);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->deleteJson('/api/paid-ads/audiences/'.$audienceId)

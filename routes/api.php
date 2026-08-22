@@ -573,8 +573,12 @@ Route::middleware('auth.api')->group(function ()
     Route::get('paid-ads/dashboard', [ApiPaidAdDashboardController::class, 'index']);
     Route::get('paid-ads/lookups', [ApiPaidAdCampaignController::class, 'lookups']);
     Route::get('paid-ads/calendar', [ApiPaidAdCampaignController::class, 'calendar']);
+    Route::get('paid-ads/assets', [ApiPaidAdCreativeAssetController::class, 'show']);
     Route::post('paid-ads/assets', [ApiPaidAdCreativeAssetController::class, 'store']);
     Route::delete('paid-ads/assets', [ApiPaidAdCreativeAssetController::class, 'destroy']);
+    Route::post('paid-ads/suggest-copy', [ApiPaidAdCampaignController::class, 'suggestCopy']);
+    Route::post('paid-ads/suggest-image', [ApiPaidAdCampaignController::class, 'suggestImage']);
+    Route::post('paid-ads/generate-image', [ApiPaidAdCampaignController::class, 'generateImage']);
     Route::get('paid-ads/connections', [ApiAdPlatformConnectionController::class, 'index']);
     Route::post('paid-ads/connections/{platform}/authorize', [ApiAdPlatformConnectionController::class, 'authorizeUrl']);
     Route::post('paid-ads/connections/{id}/select-account', [ApiAdPlatformConnectionController::class, 'selectAccount'])->whereNumber('id');

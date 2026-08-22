@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\PushCalendarEventToGoogleJob;
 use App\Models\CalendarEvent;
 use App\Models\Contact;
+use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use App\Support\CalendarEventDateTimeParser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -46,6 +47,12 @@ class Calendar extends Controller
         if (! $start || ! $end)
         {
             return response()->json([]);
+        }
+
+        $team = $request->user()?->currentTeam;
+        if ($team && $team->hasModule('paid_ads'))
+        {
+            app(PaidAdCampaignCalendarSyncer::class)->syncForTeam($team);
         }
 
         $events = CalendarEvent::query()

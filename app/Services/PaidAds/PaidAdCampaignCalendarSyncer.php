@@ -7,9 +7,24 @@ use App\Enums\PaidAdCampaignStatus;
 use App\Enums\PaidAdObjective;
 use App\Models\CalendarEvent;
 use App\Models\PaidAdCampaign;
+use App\Models\Team;
 
 class PaidAdCampaignCalendarSyncer
 {
+    public const LABEL = 'Ads';
+
+    public function syncForTeam(Team $team): void
+    {
+        PaidAdCampaign::query()
+            ->where('team_id', $team->id)
+            ->whereNotNull('start_at')
+            ->with(['team', 'platforms'])
+            ->orderByDesc('start_at')
+            ->limit(200)
+            ->get()
+            ->each(fn (PaidAdCampaign $campaign) => $this->sync($campaign));
+    }
+
     public function sync(PaidAdCampaign $campaign): void
     {
         $campaign->loadMissing(['team', 'platforms']);
@@ -21,8 +36,7 @@ class PaidAdCampaignCalendarSyncer
             return;
         }
 
-        $team = $campaign->team;
-        if ($team === null || ! $team->hasModule('calendar'))
+        if ($campaign->team_id === null)
         {
             return;
         }
@@ -50,7 +64,7 @@ class PaidAdCampaignCalendarSyncer
             'start' => $start,
             'end' => $end,
             'all_day' => false,
-            'label' => 'Business',
+            'label' => self::LABEL,
             'location' => $platforms !== '' ? $platforms : null,
             'notes' => $this->notes($campaign, $platforms),
             'url' => $this->campaignUrl($campaign),
