@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PaidAdCampaignStatus;
 use App\Enums\PaidAdObjective;
+use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,6 +30,7 @@ class PaidAdCampaign extends Model
         'targeting',
         'creative',
         'settings',
+        'calendar_event_id',
     ];
 
     protected $casts = [
@@ -67,6 +69,18 @@ class PaidAdCampaign extends Model
                 }
             }
         });
+
+        static::saved(function (PaidAdCampaign $model): void
+        {
+            app(PaidAdCampaignCalendarSyncer::class)->sync(
+                $model->fresh(['platforms', 'team']) ?? $model,
+            );
+        });
+
+        static::deleting(function (PaidAdCampaign $model): void
+        {
+            app(PaidAdCampaignCalendarSyncer::class)->forget($model);
+        });
     }
 
     public function team(): BelongsTo
@@ -77,6 +91,11 @@ class PaidAdCampaign extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function calendarEvent(): BelongsTo
+    {
+        return $this->belongsTo(CalendarEvent::class, 'calendar_event_id');
     }
 
     public function platforms(): HasMany

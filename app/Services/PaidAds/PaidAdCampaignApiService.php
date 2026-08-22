@@ -3,6 +3,7 @@
 namespace App\Services\PaidAds;
 
 use App\Enums\AdConnectionStatus;
+use App\Enums\AdPlatform;
 use App\Enums\PaidAdCampaignStatus;
 use App\Enums\PaidAdObjective;
 use App\Models\AdPlatformConnection;
@@ -11,12 +12,16 @@ use App\Models\PaidAdCampaign;
 use App\Models\Team;
 use App\Services\PaidAdMetricsAggregator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Carbon;
 
 class PaidAdCampaignApiService
 {
     public const PER_PAGE = 20;
 
-    public function __construct(private readonly PaidAdMetricsAggregator $metrics) {}
+    public function __construct(
+        private readonly PaidAdMetricsAggregator $metrics,
+        private readonly PaidAdCreativeAssetService $assets,
+    ) {}
 
     public function paginate(Team $team, string $search = '', int $page = 1, int $perPage = self::PER_PAGE): LengthAwarePaginator
     {
@@ -31,6 +36,43 @@ class PaidAdCampaignApiService
         }
 
         return $query->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    /**
+     * @return array{scheduled: \Illuminate\Support\Collection<int, PaidAdCampaign>, unscheduled: \Illuminate\Support\Collection<int, PaidAdCampaign>}
+     */
+    public function calendar(Team $team, string $from, string $to): array
+    {
+        $rangeStart = Carbon::parse($from)->startOfDay();
+        $rangeEnd = Carbon::parse($to)->endOfDay();
+
+        $with = ['platforms.connection', 'audiences:id,name,type', 'creator:id,name'];
+
+        $scheduled = PaidAdCampaign::query()
+            ->where('team_id', $team->id)
+            ->with($with)
+            ->whereNotNull('start_at')
+            ->where('start_at', '<=', $rangeEnd)
+            ->where(function ($query) use ($rangeStart)
+            {
+                $query->whereNull('end_at')->orWhere('end_at', '>=', $rangeStart);
+            })
+            ->orderBy('start_at')
+            ->get();
+
+        $unscheduled = PaidAdCampaign::query()
+            ->where('team_id', $team->id)
+            ->with($with)
+            ->whereNull('start_at')
+            ->where('status', '!=', PaidAdCampaignStatus::Archived->value)
+            ->orderByDesc('updated_at')
+            ->limit(20)
+            ->get();
+
+        return [
+            'scheduled' => $scheduled,
+            'unscheduled' => $unscheduled,
+        ];
     }
 
     public function findForTeam(Team $team, int $id): ?PaidAdCampaign
@@ -55,8 +97,10 @@ class PaidAdCampaignApiService
         $campaign = PaidAdCampaign::query()->create($validated);
         $this->syncPlatforms($campaign, $platformConnectionIds);
         $campaign->audiences()->sync($audienceIds);
+        $campaign = $this->findForTeam($team, $campaign->id) ?? $campaign;
+        app(PaidAdCampaignCalendarSyncer::class)->sync($campaign);
 
-        return $this->findForTeam($team, $campaign->id) ?? $campaign;
+        return $campaign;
     }
 
     /**
@@ -69,8 +113,10 @@ class PaidAdCampaignApiService
         $campaign->update($validated);
         $this->syncPlatforms($campaign, $platformConnectionIds);
         $campaign->audiences()->sync($audienceIds);
+        $campaign = $this->findForTeam($team, $campaign->id) ?? $campaign->fresh();
+        app(PaidAdCampaignCalendarSyncer::class)->sync($campaign);
 
-        return $this->findForTeam($team, $campaign->id) ?? $campaign->fresh();
+        return $campaign;
     }
 
     /**
@@ -117,7 +163,7 @@ class PaidAdCampaignApiService
 
         return array_merge($list, [
             'targeting' => $campaign->targeting ?? [],
-            'creative' => $campaign->creative ?? [],
+            'creative' => $this->assets->formatCreative($campaign->creative ?? []),
             'settings' => $campaign->settings ?? [],
             'audiences' => $campaign->audiences->map(fn (PaidAdAudience $audience) => [
                 'id' => $audience->id,
@@ -170,6 +216,8 @@ class PaidAdCampaignApiService
             ->values()
             ->all();
 
+        $connectionsByPlatform = collect($connections)->keyBy('platform');
+
         return [
             'objectives' => collect(PaidAdObjective::cases())->map(fn (PaidAdObjective $objective) => [
                 'key' => $objective->value,
@@ -181,7 +229,24 @@ class PaidAdCampaignApiService
             ],
             'currencies' => ['EUR', 'USD', 'GBP'],
             'connections' => $connections,
+            'platforms' => collect(AdPlatform::cases())
+                ->filter(fn (AdPlatform $platform) => $platform->isEnabled())
+                ->map(function (AdPlatform $platform) use ($connectionsByPlatform)
+                {
+                    $connection = $connectionsByPlatform->get($platform->value);
+
+                    return [
+                        'key' => $platform->value,
+                        'label' => $platform->label(),
+                        'color' => $platform->color(),
+                        'connected' => $connection !== null,
+                        'connection_id' => $connection['id'] ?? null,
+                    ];
+                })
+                ->values()
+                ->all(),
             'audiences' => $audiences,
+            'formats' => $this->assets->formats(),
         ];
     }
 

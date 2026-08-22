@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\AdCreativeFormat;
 use App\Enums\PaidAdCampaignStatus;
 use App\Enums\PaidAdObjective;
 use App\Models\PaidAdCampaign;
@@ -33,6 +34,13 @@ class StorePaidAdCampaignRequest extends FormRequest
             'creative.headline' => ['nullable', 'string', 'max:255'],
             'creative.body' => ['nullable', 'string', 'max:2000'],
             'creative.url' => ['nullable', 'url', 'max:2000'],
+            'creative.assets' => ['nullable', 'array'],
+            'creative.assets.*.format' => ['required', new Enum(AdCreativeFormat::class)],
+            'creative.assets.*.path' => ['required', 'string', 'max:255'],
+            'creative.assets.*.url' => ['nullable', 'string', 'max:2000'],
+            'creative.assets.*.width' => ['nullable', 'integer', 'min:1'],
+            'creative.assets.*.height' => ['nullable', 'integer', 'min:1'],
+            'creative.assets.*.original_name' => ['nullable', 'string', 'max:255'],
             'targeting' => ['nullable', 'array'],
             'targeting.locations' => ['nullable', 'string', 'max:1000'],
             'targeting.age_min' => ['nullable', 'integer', 'min:13', 'max:99'],
