@@ -30,7 +30,7 @@ class ContactDailySentimentService
      */
     public function processTeam(Team $team, ?CarbonInterface $since = null): int
     {
-        if (! $team->hasModule('contacts'))
+        if (! $team->hasModule('insights'))
         {
             return 0;
         }
@@ -62,7 +62,7 @@ class ContactDailySentimentService
     {
         $latestSentimentIds = ContactSentimentHistory::query()
             ->selectRaw('MAX(id) as id')
-            ->whereIn('contact_id', Contact::query()->where('team_id', $team->id)->select('id'))
+            ->whereIn('contact_id', Contact::withoutGlobalScopes()->where('team_id', $team->id)->select('id'))
             ->groupBy('contact_id');
 
         $sentimentCounts = ContactSentimentHistory::query()
@@ -92,7 +92,7 @@ class ContactDailySentimentService
         /** @var array<int, list<array{at: string, channel: string, text: string}>> $entriesByContact */
         $entriesByContact = [];
 
-        if ($team->hasModule('chat'))
+        if ($this->teamUsesWhatsApp($team))
         {
             $whatsappMessages = $this->digestCollector
                 ->whatsappConversationQueryForTeam($team)
@@ -209,5 +209,21 @@ class ContactDailySentimentService
         }
 
         return $from;
+    }
+
+    /**
+     * WhatsApp inbound is stored even when the Chat sidebar module is off
+     * (connected number + contact chat actions). Gate on the number, not the module.
+     */
+    private function teamUsesWhatsApp(Team $team): bool
+    {
+        if ($team->hasModule('chat'))
+        {
+            return true;
+        }
+
+        $number = preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom());
+
+        return $number !== '';
     }
 }

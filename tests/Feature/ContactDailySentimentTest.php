@@ -62,7 +62,17 @@ class ContactDailySentimentTest extends TestCase
                 'status' => 1,
             ],
         );
+        Module::query()->firstOrCreate(
+            ['key' => 'insights'],
+            [
+                'name' => 'Insights',
+                'icon' => 'mood-smile',
+                'description' => 'Contact emotion and intent',
+                'status' => 1,
+            ],
+        );
         $team->enableModule('contacts');
+        $team->enableModule('insights');
 
         return [$user, $team];
     }
@@ -214,5 +224,85 @@ class ContactDailySentimentTest extends TestCase
         app(ContactDailySentimentService::class)->processTeam($team, Carbon::parse('2026-06-15 06:30:00'));
 
         Carbon::setTestNow();
+    }
+
+    public function test_daily_processing_uses_whatsapp_when_chat_module_is_off_but_number_is_set(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-06-16 06:30:00'));
+
+        [$user, $team] = $this->createAdminWithContactsModule();
+
+        $contact = $this->createContact([
+            'name' => 'WhatsApp Without Chat Module',
+            'phone' => '5491150639323',
+        ], $user, $team);
+
+        $this->assertFalse($team->hasModule('chat'));
+        $this->assertTrue($team->hasModule('insights'));
+        $team->setSetting('whatsapp_from', '5491154905633');
+        $team = $team->fresh();
+
+        Conversation::query()->create([
+            'channel' => 'whatsapp',
+            'from' => '5491150639323',
+            'to' => '5491154905633',
+            'body' => 'Tienen el vidrio así paso? Cuánto sale?',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'created_at' => Carbon::parse('2026-06-15 22:00:00'),
+            'updated_at' => Carbon::parse('2026-06-15 22:00:00'),
+        ]);
+
+        $this->mock(ContactSentimentAnalysisService::class, function ($mock) use ($contact): void
+        {
+            $mock->shouldReceive('recordForContact')
+                ->once()
+                ->with(
+                    \Mockery::on(fn ($model) => $model instanceof Contact && (int) $model->id === (int) $contact->id),
+                    \Mockery::on(fn (string $context): bool => str_contains($context, 'Tienen el vidrio')),
+                    'daily',
+                );
+        });
+
+        $processed = app(ContactDailySentimentService::class)->processTeam($team, Carbon::parse('2026-06-15 06:30:00'));
+
+        $this->assertSame(1, $processed);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_daily_processing_skips_when_insights_module_is_off(): void
+    {
+        [$user, $team] = $this->createAdminWithContactsModule();
+        $team->disableModule('insights');
+        $team = $team->fresh();
+        $this->assertFalse($team->hasModule('insights'));
+
+        $this->createContact([
+            'name' => 'Skipped Contact',
+            'phone' => '5491150639323',
+        ], $user, $team);
+
+        $team->setSetting('whatsapp_from', '5491154905633');
+
+        Conversation::query()->create([
+            'channel' => 'whatsapp',
+            'from' => '5491150639323',
+            'to' => '5491154905633',
+            'body' => 'Quiero comprar',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'created_at' => now()->subHour(),
+            'updated_at' => now()->subHour(),
+        ]);
+
+        $this->mock(ContactSentimentAnalysisService::class, function ($mock): void
+        {
+            $mock->shouldNotReceive('recordForContact');
+        });
+
+        $processed = app(ContactDailySentimentService::class)->processTeam($team);
+
+        $this->assertSame(0, $processed);
     }
 }

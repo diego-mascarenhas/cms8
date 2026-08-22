@@ -25,7 +25,7 @@ class ComputeDailyTeamSentimentBalanceCommand extends Command
 
         foreach ($teams as $team)
         {
-            if (! $team->hasModule('contacts'))
+            if (! $team->hasModule('insights'))
             {
                 continue;
             }

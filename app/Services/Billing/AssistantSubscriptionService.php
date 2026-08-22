@@ -550,7 +550,7 @@ class AssistantSubscriptionService
         }
 
         $tokensUsed = (int) $stats['totalTokensUsed'];
-        $rate = $this->tokenSellRatePerMillion();
+        $rate = TeamApiUsageStatsService::sellRatePerMillion();
         $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
 
         return [
@@ -591,14 +591,6 @@ class AssistantSubscriptionService
             'period_messages_sent' => (int) $stats['messages_sent'],
             'amount_due_cents' => (int) $stats['our_amount_cents'],
         ];
-    }
-
-    private function tokenSellRatePerMillion(): float
-    {
-        $cost = (float) config('humano_pricing.token_billing.amount_per_million', 6);
-        $markup = max(0, (float) config('humano_pricing.token_billing.markup_percent', 50));
-
-        return round($cost * (1 + ($markup / 100)), 4);
     }
 
     /**

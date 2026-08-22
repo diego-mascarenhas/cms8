@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Account;
 use App\Models\Contact;
+use App\Models\TokenUsageLog;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -75,6 +76,41 @@ class AccountManagementDataTableTest extends TestCase
         $this->assertStringNotContainsString('title="Miembros"', $html);
         $this->assertStringNotContainsString('title="Tiempo"', $html);
         $this->assertStringContainsString('title="Acciones"', $html);
+    }
+
+    public function test_account_management_datatable_shows_token_usage_in_subscriptions_column(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $root = User::factory()->create();
+        $root->assignRole('root');
+
+        $account = Account::query()->create([
+            'name' => 'Token Team',
+            'user_id' => User::factory()->create()->id,
+            'personal_team' => false,
+        ]);
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $account->id,
+            'module_id' => null,
+            'service' => 'ContactSentimentAnalysisService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $response = $this->actingAs($root)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('account-management').'?'.http_build_query($this->accountDataTableBaseQuery()));
+
+        $response->assertOk();
+        $html = collect($response->json('data'))->pluck('subscriptions_count')->implode(' ');
+        $this->assertStringContainsString('1.000.000 / 9,00 EUR', $html);
     }
 
     public function test_account_management_datatable_shows_owner_as_title_and_team_as_truncated_subtitle(): void

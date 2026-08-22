@@ -7,6 +7,7 @@ use App\Enums\MessageDeliverySendProfile;
 use App\Http\Requests\UpdateContactRequest;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactIntent;
 use App\Models\ContactSentiment;
 use App\Models\ContactSentimentHistory;
 use App\Models\ContactSource;
@@ -59,6 +60,7 @@ class ContactController extends Controller
 
         $data = Contact::getContactStats($teamId);
         $data['emotionalStates'] = ContactSentiment::getOptions();
+        $data['intentStates'] = ContactIntent::getOptions();
         $data['enterpriseStatuses'] = ContactStatus::getOptions();
 
         if (auth()->user()->currentTeam?->hasModule('list60'))

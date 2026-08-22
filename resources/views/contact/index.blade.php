@@ -187,6 +187,10 @@
                         placeholder="Selector de estado emocional" />
                 </div>
                 <div class="contact-list-toolbar__filter">
+                    <x-input-select id="IntentFilter" :options="$intentStates ?? []" :value="''"
+                        placeholder="{{ __('Intent') }}" />
+                </div>
+                <div class="contact-list-toolbar__filter">
                     <x-module-categories-select
                         id="CategoryFilter"
                         label=""

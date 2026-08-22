@@ -4,6 +4,7 @@ namespace App\DataTables;
 
 use App\Helpers\TokenHelper;
 use App\Models\Account;
+use App\Services\TeamApiUsageStatsService;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -42,7 +43,10 @@ class AccountDataTable extends DataTable
             })
             ->addColumn('subscriptions_count', function ($account)
             {
-                return $account->subscriptions_count;
+                $cost = TeamApiUsageStatsService::costSummary((int) $account->id);
+
+                return '<div class="lh-sm">'.(int) $account->subscriptions_count
+                    .'<div class="small text-muted">'.e($cost['formatted']).'</div></div>';
             })
             ->addColumn('action', function ($account)
             {
@@ -90,7 +94,7 @@ class AccountDataTable extends DataTable
 				</div>';
             })
             ->setRowId('id')
-            ->rawColumns(['name', 'owner_name', 'action']);
+            ->rawColumns(['name', 'owner_name', 'subscriptions_count', 'action']);
     }
 
     public function query(Account $model): QueryBuilder

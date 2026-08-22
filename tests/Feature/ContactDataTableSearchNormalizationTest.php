@@ -202,6 +202,7 @@ class ContactDataTableSearchNormalizationTest extends TestCase
             ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'current_sentiment', 'name' => 'current_sentiment', 'searchable' => 'true', 'orderable' => 'false'],
+            ['data' => 'current_intent', 'name' => 'current_intent', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'sources', 'name' => 'sources', 'searchable' => 'false', 'orderable' => 'false'],
             ['data' => 'responsible_name', 'name' => 'responsible_name', 'searchable' => 'false', 'orderable' => 'false'],
             ['data' => 'categories', 'name' => 'categories', 'searchable' => 'true', 'orderable' => 'false'],

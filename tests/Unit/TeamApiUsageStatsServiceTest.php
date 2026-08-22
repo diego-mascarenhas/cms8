@@ -280,4 +280,35 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(1, $stats['totalCalls']);
         $this->assertSame(80, $stats['totalTokensUsed']);
     }
+
+    public function test_cost_summary_uses_configured_sell_rate(): void
+    {
+        config([
+            'humano_pricing.token_billing.amount_per_million' => 6,
+            'humano_pricing.token_billing.markup_percent' => 50,
+            'humano_pricing.token_billing.currency' => 'EUR',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'ContactSentimentAnalysisService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $summary = TeamApiUsageStatsService::costSummary((int) $team->id);
+
+        $this->assertSame(1_000_000, $summary['tokens']);
+        $this->assertSame(900, $summary['amount_cents']);
+        $this->assertSame('EUR', $summary['currency']);
+        $this->assertSame('1.000.000 / 9,00 EUR', $summary['formatted']);
+    }
 }
