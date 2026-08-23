@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Enterprise;
 use App\Models\Team;
+use App\Support\AffiliateCommission;
 use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session;
 
@@ -50,28 +51,80 @@ class PaymentLinkAffiliateTeamAttributionService
         }
 
         $existing = trim((string) ($team->referred_by ?? ''));
-        if ($existing !== '' && strcasecmp($existing, $referrerStripeId) !== 0)
+        if ($existing === '')
+        {
+            $team->forceFill(['referred_by' => $referrerStripeId])->save();
+
+            Log::info('Payment link affiliate: set referred_by on paying team', [
+                'team_id' => $team->id,
+                'referrer_team_id' => $referrerTeam->id,
+                'referrer_stripe_id' => $referrerStripeId,
+            ]);
+        } elseif (strcasecmp($existing, $referrerStripeId) !== 0)
         {
             Log::info('Payment link affiliate: team already has referred_by, not overwriting', [
                 'team_id' => $team->id,
                 'existing' => $existing,
             ]);
-
-            return;
         }
 
-        if (strcasecmp($existing, $referrerStripeId) === 0)
+        $this->applyReferrerToSessionSubscription($team, $session, $referrerStripeId);
+    }
+
+    public function applyReferrerToSessionSubscription(Team $team, Session $session, ?string $referrerStripeId = null): void
+    {
+        $referrerStripeId = $referrerStripeId ?? $this->resolveReferrerStripeCustomerId($session);
+        if ($referrerStripeId === null || $referrerStripeId === '')
         {
             return;
         }
 
-        $team->forceFill(['referred_by' => $referrerStripeId])->save();
+        $stripeSubscriptionId = $this->sessionSubscriptionId($session);
+        if ($stripeSubscriptionId === null)
+        {
+            return;
+        }
 
-        Log::info('Payment link affiliate: set referred_by on paying team', [
-            'team_id' => $team->id,
-            'referrer_team_id' => $referrerTeam->id,
-            'referrer_stripe_id' => $referrerStripeId,
-        ]);
+        $subscription = $team->subscriptions()
+            ->where('stripe_id', $stripeSubscriptionId)
+            ->first();
+
+        if ($subscription === null)
+        {
+            return;
+        }
+
+        $existing = trim((string) ($subscription->referred_by ?? ''));
+        if ($existing !== '' && strcasecmp($existing, $referrerStripeId) !== 0)
+        {
+            return;
+        }
+
+        if (strcasecmp($existing, $referrerStripeId) === 0 && $subscription->affiliate_commission_percent !== null)
+        {
+            return;
+        }
+
+        $subscription->forceFill([
+            'referred_by' => $referrerStripeId,
+            'affiliate_commission_percent' => AffiliateCommission::percent(),
+        ])->save();
+    }
+
+    private function sessionSubscriptionId(Session $session): ?string
+    {
+        $subscription = $session->subscription ?? null;
+        if (is_string($subscription) && str_starts_with($subscription, 'sub_'))
+        {
+            return $subscription;
+        }
+
+        if (is_object($subscription) && isset($subscription->id))
+        {
+            return (string) $subscription->id;
+        }
+
+        return null;
     }
 
     private function resolveReferrerStripeCustomerId(Session $session, ?string $payerEmail = null): ?string

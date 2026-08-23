@@ -25,14 +25,12 @@ class AffiliateController extends Controller
             return $team;
         }
 
-        if ($denied = $this->ensureTeamModule($team, 'affiliates'))
-        {
-            return $denied;
-        }
-
         return response()->json([
             'success' => true,
-            'data' => $this->affiliates->dashboard($team),
+            'data' => $this->affiliates->dashboard(
+                $team,
+                $this->affiliatesCatalog($request),
+            ),
         ]);
     }
 
@@ -42,11 +40,6 @@ class AffiliateController extends Controller
         if ($team instanceof JsonResponse)
         {
             return $team;
-        }
-
-        if ($denied = $this->ensureTeamModule($team, 'affiliates'))
-        {
-            return $denied;
         }
 
         if (! $team->canUseAffiliateProgram())
@@ -84,11 +77,6 @@ class AffiliateController extends Controller
             return $team;
         }
 
-        if ($denied = $this->ensureTeamModule($team, 'affiliates'))
-        {
-            return $denied;
-        }
-
         try
         {
             $result = $this->affiliates->sendInvitation(
@@ -110,5 +98,14 @@ class AffiliateController extends Controller
             'message' => __('Invitación enviada correctamente.'),
             'data' => $result['invitation'],
         ], 201);
+    }
+
+    private function affiliatesCatalog(Request $request): ?string
+    {
+        $catalog = strtolower(trim((string) $request->query('catalog', $request->input('catalog', ''))));
+
+        return in_array($catalog, ['assistant', 'platform', 'mailer'], true)
+            ? $catalog
+            : null;
     }
 }

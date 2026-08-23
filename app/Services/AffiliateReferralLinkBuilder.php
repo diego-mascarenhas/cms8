@@ -18,11 +18,25 @@ class AffiliateReferralLinkBuilder
         return $stripeId;
     }
 
-    /**
-     * @return list<array{id: string, name: string, checkout_url: string}>
-     */
-    public function availablePlans(): array
+    public function normalizeCatalog(?string $catalog): ?string
     {
+        $catalog = strtolower(trim((string) $catalog));
+
+        return match ($catalog)
+        {
+            'platform' => 'platform',
+            'mailer' => 'mailer',
+            'assistant' => 'assistant',
+            default => null,
+        };
+    }
+
+    /**
+     * @return list<array{id: string, name: string, checkout_url: string, catalog: string}>
+     */
+    public function availablePlans(?string $catalog = null): array
+    {
+        $catalog = $this->normalizeCatalog($catalog);
         $plans = [];
 
         foreach (config('humano_pricing.plans', []) as $plan)
@@ -35,8 +49,14 @@ class AffiliateReferralLinkBuilder
             $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
             $available = (bool) ($plan['checkout_available'] ?? false);
             $planId = (string) ($plan['id'] ?? '');
+            $planCatalog = strtolower(trim((string) ($plan['catalog'] ?? 'assistant')));
 
             if ($planId === '' || $checkoutUrl === '' || ! $available)
+            {
+                continue;
+            }
+
+            if ($catalog !== null && $planCatalog !== $catalog)
             {
                 continue;
             }
@@ -45,6 +65,7 @@ class AffiliateReferralLinkBuilder
                 'id' => $planId,
                 'name' => (string) __("humano_pricing.plans.{$planId}.name"),
                 'checkout_url' => $checkoutUrl,
+                'catalog' => $planCatalog,
             ];
         }
 

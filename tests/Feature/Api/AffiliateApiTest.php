@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Mail\AffiliatePurchaseInvitationMail;
+use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
 use App\Models\Module;
 use App\Models\Team;
@@ -66,16 +67,30 @@ class AffiliateApiTest extends TestCase
 
     public function test_dashboard_returns_affiliate_payload_for_eligible_team(): void
     {
-        [, $team, $token] = $this->adminWithAffiliatesModule([
+        [$user, $team, $token] = $this->adminWithAffiliatesModule([
             'stripe_id' => 'cus_api_referrer',
             'referred_by' => null,
         ]);
 
-        $payingOwner = User::factory()->create();
+        $payingOwner = User::factory()->create([
+            'email' => 'ana.referida@example.com',
+        ]);
         $payingTeam = Team::factory()->create([
             'user_id' => $payingOwner->id,
             'stripe_id' => 'cus_api_paying',
             'referred_by' => 'cus_api_referrer',
+        ]);
+
+        AffiliateInvitation::query()->create([
+            'team_id' => $team->id,
+            'invited_by_user_id' => $user->id,
+            'invitee_name' => 'Ana Referida',
+            'invitee_email' => 'ana.referida@example.com',
+            'plan_id' => 'hunter',
+            'plan_name' => 'Hunter',
+            'tracking_token' => AffiliateInvitation::generateTrackingToken(),
+            'sent_at' => now()->subDay(),
+            'opened_at' => now()->subHours(4),
         ]);
 
         BillingAffiliateCommission::query()->create([
@@ -96,8 +111,14 @@ class AffiliateApiTest extends TestCase
             ->assertJsonPath('data.eligible', true)
             ->assertJsonPath('data.referral_code', 'cus_api_referrer')
             ->assertJsonPath('data.commission_percent', 30)
-            ->assertJsonPath('data.totals_as_referrer.EUR.commission_cents', 3000);
+            ->assertJsonPath('data.totals_as_referrer.EUR.commission_cents', 3000)
+            ->assertJsonPath('data.referrals.0.name', 'Ana Referida')
+            ->assertJsonPath('data.referrals.0.email', 'ana.referida@example.com')
+            ->assertJsonPath('data.referrals.0.contracted', true)
+            ->assertJsonPath('data.referrals.0.commission_cents', 3000)
+            ->assertJsonPath('data.referrals.0.status', 'Contrató');
 
+        $this->assertNotNull($response->json('data.referrals.0.opened_at'));
         $this->assertNotEmpty($response->json('data.commissions_as_referrer'));
     }
 
@@ -116,7 +137,7 @@ class AffiliateApiTest extends TestCase
             ->assertJsonPath('data.referral_code', null);
     }
 
-    public function test_dashboard_forbidden_without_affiliates_module(): void
+    public function test_dashboard_available_without_affiliates_module(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -131,8 +152,49 @@ class AffiliateApiTest extends TestCase
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/affiliates/dashboard')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.eligible', true);
+    }
+
+    public function test_dashboard_filters_plans_by_product_catalog(): void
+    {
+        config([
+            'humano_pricing.plans' => [
+                [
+                    'id' => 'assistant',
+                    'catalog' => 'assistant',
+                    'name' => 'Assistant',
+                    'checkout_url' => 'https://buy.stripe.com/test_assistant',
+                    'checkout_available' => true,
+                    'public' => true,
+                ],
+                [
+                    'id' => 'hunter',
+                    'catalog' => 'platform',
+                    'name' => 'Hunter',
+                    'checkout_url' => 'https://buy.stripe.com/test_hunter',
+                    'checkout_available' => true,
+                    'public' => true,
+                ],
+            ],
+        ]);
+
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_catalog_referrer',
+            'referred_by' => null,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard?catalog=assistant')
+            ->assertOk()
+            ->assertJsonPath('data.plans.0.id', 'assistant');
+
+        $ids = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard?catalog=assistant')
+            ->json('data.plans');
+
+        $this->assertSame(['assistant'], array_column($ids, 'id'));
     }
 
     public function test_can_send_affiliate_invitation_via_api(): void

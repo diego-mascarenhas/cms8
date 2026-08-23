@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AppFeedbackController;
 use App\Http\Controllers\Api\AssistantCommercialStatsController;
 use App\Http\Controllers\Api\AssistantProductImportController;
 use App\Http\Controllers\Api\AssistantSubscriptionController;
@@ -576,6 +577,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('affiliates/dashboard', [AffiliateController::class, 'dashboard']);
     Route::post('affiliates/setup-stripe', [AffiliateController::class, 'setupStripe']);
     Route::post('affiliates/invitations', [AffiliateController::class, 'invite']);
+    Route::post('feedback', [AppFeedbackController::class, 'store']);
 
     // Paid Ads (idoneo-ads SPA)
     Route::get('paid-ads/dashboard', [ApiPaidAdDashboardController::class, 'index']);

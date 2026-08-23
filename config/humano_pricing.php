@@ -146,7 +146,8 @@ return [
 
     /*
      * | Affiliate commission % on Humano platform billing (team-to-team referrals).
-     * | Applied when a referred team pays a Stripe invoice (see teams.referred_by).
+     * | Stored on the referred subscription (subscriptions.referred_by + affiliate_commission_percent).
+     * | Applied only when that subscription's invoice is paid, not the team's full account.
      */
     'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 30),
 

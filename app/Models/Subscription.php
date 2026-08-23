@@ -22,6 +22,8 @@ class Subscription extends CashierSubscription
         'ends_at',
         'team_id',
         'data',
+        'referred_by',
+        'affiliate_commission_percent',
     ];
 
     /**
@@ -33,6 +35,7 @@ class Subscription extends CashierSubscription
         'trial_ends_at' => 'datetime',
         'ends_at' => 'datetime',
         'data' => 'array',
+        'affiliate_commission_percent' => 'decimal:4',
     ];
 
     /**

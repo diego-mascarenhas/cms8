@@ -127,6 +127,12 @@ class TeamCheckoutSessionSubscriptionSyncer
                 ->where('stripe_id', $stripeSubscription->id)
                 ->first();
 
+            if ($localSubscription)
+            {
+                app(PaymentLinkAffiliateTeamAttributionService::class)
+                    ->applyReferrerToSessionSubscription($team, $session);
+            }
+
             if ($fromPublicPaymentLinkCheckout && $localSubscription)
             {
                 $existing = is_array($localSubscription->data) ? $localSubscription->data : [];
