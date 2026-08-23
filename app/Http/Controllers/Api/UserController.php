@@ -21,7 +21,7 @@ class UserController extends Controller
      * Query params:
      * - assignable=1: only staff profiles (admin, collaborator, editor, etc.). Excludes clients.
      * - admins=1: team owner plus users with the admin role.
-     * - assistant=1: team owner plus admin and collaborator profiles.
+     * - assistant=1 / basic=1: team owner plus admin and collaborator profiles.
      */
     public function index(Request $request): JsonResponse
     {
@@ -56,20 +56,21 @@ class UserController extends Controller
         {
             return response()->json([
                 'success' => false,
-                'message' => __('No tenés permiso para agregar administradores.'),
+                'message' => __('No tenés permiso para agregar usuarios.'),
             ], 403);
         }
 
         $validated = $request->validated();
+        $role = $validated['role'] ?? 'admin';
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
 
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $user->assignRole('admin');
-        $user->teams()->syncWithoutDetaching([$team->id => ['role' => 'admin']]);
+        Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+        $user->assignRole($role);
+        $user->teams()->syncWithoutDetaching([$team->id => ['role' => $role]]);
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->load('roles');
 
@@ -95,7 +96,7 @@ class UserController extends Controller
         {
             return response()->json([
                 'success' => false,
-                'message' => __('No tenés permiso para quitar administradores.'),
+                'message' => __('No tenés permiso para quitar usuarios.'),
             ], 403);
         }
 
@@ -165,7 +166,7 @@ class UserController extends Controller
         }
 
         $users = $team->allUsers()->load('roles')->sortBy('name')->values();
-        if ($request->boolean('assistant'))
+        if ($request->boolean('assistant') || $request->boolean('basic'))
         {
             $ownerId = (int) $team->user_id;
 

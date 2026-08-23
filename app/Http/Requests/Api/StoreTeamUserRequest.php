@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTeamUserRequest extends FormRequest
 {
@@ -20,6 +21,7 @@ class StoreTeamUserRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'role' => ['nullable', 'string', Rule::in(['admin', 'collaborator'])],
         ];
     }
 
@@ -36,6 +38,7 @@ class StoreTeamUserRequest extends FormRequest
             'password.required' => __('La contraseña es obligatoria.'),
             'password.min' => __('La contraseña debe tener al menos 8 caracteres.'),
             'password.confirmed' => __('Las contraseñas no coinciden.'),
+            'role.in' => __('Elegí un rol básico: administrador o colaborador.'),
         ];
     }
 }
