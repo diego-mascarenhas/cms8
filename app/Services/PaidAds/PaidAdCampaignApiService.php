@@ -18,6 +18,8 @@ class PaidAdCampaignApiService
 {
     public const PER_PAGE = 20;
 
+    public const CURRENCIES = ['EUR', 'USD', 'ARS'];
+
     public function __construct(
         private readonly PaidAdMetricsAggregator $metrics,
         private readonly PaidAdCreativeAssetService $assets,
@@ -227,7 +229,7 @@ class PaidAdCampaignApiService
                 ['key' => 'daily', 'label' => __('Daily')],
                 ['key' => 'lifetime', 'label' => __('Lifetime')],
             ],
-            'currencies' => ['EUR', 'USD', 'GBP'],
+            'currencies' => self::CURRENCIES,
             'connections' => $connections,
             'platforms' => collect(AdPlatform::cases())
                 ->filter(fn (AdPlatform $platform) => $platform->isEnabled())

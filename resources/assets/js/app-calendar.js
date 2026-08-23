@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
       addEventSidebar = document.getElementById('addEventSidebar'),
       appOverlay = document.querySelector('.app-overlay'),
       calendarsColor = {
+        Ads: 'primary',
         Business: 'primary',
         Holiday: 'success',
         Personal: 'danger',
