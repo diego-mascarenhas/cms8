@@ -56,7 +56,7 @@ class WhatsAppInboxContactStarter
      * @param  list<int|string>  $categoryIds
      * @return array{created: bool, contact: array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}}
      */
-    public function start(User $user, Team $team, string $name, string $phone, ?int $statusId = null, array $categoryIds = []): array
+    public function start(User $user, Team $team, string $name, string $phone, ?int $statusId = null, array $categoryIds = [], ?string $email = null): array
     {
         $digits = self::normalizeInboxPhone($phone);
         if ($digits === '')
@@ -96,6 +96,7 @@ class WhatsAppInboxContactStarter
             'name' => $firstName !== '' ? $firstName : $name,
             'surname' => $surname,
             'phone' => $digits,
+            'email' => $this->normalizedEmail($email),
             'status_id' => $this->resolvedStatusId($statusId),
         ]);
 
@@ -116,7 +117,7 @@ class WhatsAppInboxContactStarter
      * @param  list<int|string>  $categoryIds
      * @return array{contact: array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}, thread_categories: array{contact_id: int|null, selected: list<array{id: int, name: string}>, available: list<array{id: int, name: string}>}}
      */
-    public function update(User $user, Team $team, Contact $contact, string $name, int $statusId, array $categoryIds): array
+    public function update(User $user, Team $team, Contact $contact, string $name, int $statusId, array $categoryIds, ?string $email = null, bool $updateEmail = false): array
     {
         if (! Gate::forUser($user)->allows('update', $contact))
         {
@@ -129,11 +130,16 @@ class WhatsAppInboxContactStarter
         }
 
         [$firstName, $surname] = $this->matcher->splitFullName($name);
-        $contact->forceFill([
+        $values = [
             'name' => $firstName !== '' ? $firstName : $name,
             'surname' => $surname,
             'status_id' => $statusId,
-        ])->save();
+        ];
+        if ($updateEmail)
+        {
+            $values['email'] = $this->normalizedEmail($email);
+        }
+        $contact->forceFill($values)->save();
 
         $digits = self::normalizeInboxPhone((string) $contact->phone);
         $categories = app(WhatsAppThreadCategoryService::class)->replace($team, $contact, $categoryIds);
@@ -145,7 +151,7 @@ class WhatsAppInboxContactStarter
     }
 
     /**
-     * @return array{id: int, contact_id: int, name: string, phone: string, status_id: int|null}
+     * @return array{id: int, contact_id: int, name: string, phone: string, email: string|null, status_id: int|null}
      */
     private function present(Contact $contact, string $fallbackPhone): array
     {
@@ -157,8 +163,20 @@ class WhatsAppInboxContactStarter
             'contact_id' => (int) $contact->id,
             'name' => $display !== '' ? $display : $fallbackPhone,
             'phone' => $storedPhone !== '' ? $storedPhone : $fallbackPhone,
+            'email' => $this->normalizedEmail($contact->email),
             'status_id' => $contact->status_id !== null ? (int) $contact->status_id : null,
         ];
+    }
+
+    private function normalizedEmail(?string $email): ?string
+    {
+        $trimmed = trim((string) $email);
+        if ($trimmed === '' || str_ends_with(strtolower($trimmed), '@chat.placeholder'))
+        {
+            return null;
+        }
+
+        return strtolower($trimmed);
     }
 
     private function resolvedStatusId(?int $statusId): int

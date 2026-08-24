@@ -54,6 +54,65 @@ class ApiChatWhatsAppStartContactTest extends TestCase
         ]);
     }
 
+    public function test_start_contact_saves_optional_email(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = $this->authenticatedAdmin();
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
+            ->postJson('/api/chat/whatsapp-start-contact', [
+                'name' => 'Ana Pérez',
+                'phone' => '600111333',
+                'email' => 'Ana.Perez@Example.com',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('contact.email', 'ana.perez@example.com');
+
+        $this->assertDatabaseHas('contacts', [
+            'team_id' => $user->currentTeam->id,
+            'phone' => '34600111333',
+            'email' => 'ana.perez@example.com',
+        ]);
+    }
+
+    public function test_start_contact_rejects_invalid_email_and_ignores_placeholder(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = $this->authenticatedAdmin();
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-start-contact', [
+                'name' => 'Ana Pérez',
+                'phone' => '600111444',
+                'email' => 'no-es-un-email',
+            ])
+            ->assertStatus(422);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-start-contact', [
+                'name' => 'Ana Pérez',
+                'phone' => '600111444',
+                'email' => '600111444@chat.placeholder',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('contact.email', null);
+
+        $this->assertDatabaseHas('contacts', [
+            'team_id' => $user->currentTeam->id,
+            'phone' => '34600111444',
+            'email' => null,
+        ]);
+    }
+
     public function test_start_contact_reuses_existing_phone_without_duplicating(): void
     {
         if (! Features::hasTeamFeatures())
