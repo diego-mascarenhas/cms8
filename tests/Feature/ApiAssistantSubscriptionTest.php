@@ -338,6 +338,39 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('url', 'https://checkout.stripe.com/c/pay/cs_test_assistant');
     }
 
+    public function test_checkout_returns_subscription_data_when_card_is_already_on_file(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('createCheckout')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'data' => [
+                        'can_checkout' => false,
+                        'subscription' => [
+                            'active' => true,
+                            'status' => 'active',
+                        ],
+                    ],
+                ]);
+        });
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/checkout', [
+                'interval' => 'monthly',
+                'success_url' => 'https://assistant.test/profile',
+                'cancel_url' => 'https://assistant.test/profile',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonMissing(['url']);
+        $response->assertJsonPath('data.subscription.active', true);
+    }
+
     public function test_complete_checkout_requires_session_id(): void
     {
         [, , $token] = $this->assistantUserWithToken();
