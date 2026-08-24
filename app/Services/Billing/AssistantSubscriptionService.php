@@ -155,6 +155,7 @@ class AssistantSubscriptionService
                     $plan,
                     $actingUserId,
                     $catalog,
+                    $successUrl,
                 );
                 if ($subscribed !== null)
                 {
@@ -627,8 +628,9 @@ class AssistantSubscriptionService
     }
 
     /**
-     * Paid Assistant cycle when it exists. Otherwise from the first real use
-     * (tokens, chat, WhatsApp) — not the 48h trial stamp, not another product's invoice.
+     * Paid Assistant cycle when it exists. Pre-plan usage is CAC and stays
+     * outside this window. Without a Stripe period, count from the first real
+     * use (tokens, chat, WhatsApp) — not the 48h trial stamp.
      *
      * @param  array<string, mixed>  $stripe
      * @return array{0: Carbon, 1: Carbon}
@@ -1279,7 +1281,7 @@ class AssistantSubscriptionService
 
     /**
      * @param  array<string, mixed>  $plan
-     * @return array{success: true, data: array<string, mixed>}|null
+     * @return array{success: true, url: string, data: array<string, mixed>}|null
      */
     private function subscribeWithSavedPaymentMethod(
         Team $team,
@@ -1290,6 +1292,7 @@ class AssistantSubscriptionService
         array $plan,
         ?int $actingUserId,
         string $catalog,
+        string $successUrl,
     ): ?array {
         try
         {
@@ -1326,6 +1329,7 @@ class AssistantSubscriptionService
 
             return [
                 'success' => true,
+                'url' => $successUrl,
                 'data' => $this->summary($team->fresh(), $catalog),
             ];
         } catch (\Exception $e)
