@@ -13,6 +13,7 @@ class HumanoPricingCatalogTest extends TestCase
         $this->assertSame('shop', HumanoPricingCatalog::normalize('Shop'));
         $this->assertSame('ads', HumanoPricingCatalog::normalize('ads'));
         $this->assertSame('mailer', HumanoPricingCatalog::normalize('mailer'));
+        $this->assertSame('estimator', HumanoPricingCatalog::normalize('Estimator'));
         $this->assertNull(HumanoPricingCatalog::normalize('unknown'));
         $this->assertNull(HumanoPricingCatalog::normalize(null));
     }

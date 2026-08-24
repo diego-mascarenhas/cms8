@@ -18,6 +18,8 @@ class HumanoPricingCatalog
 
     public const AFFILIATES = 'affiliates';
 
+    public const ESTIMATOR = 'estimator';
+
     /**
      * @return list<string>
      */
@@ -31,6 +33,7 @@ class HumanoPricingCatalog
             self::ADS,
             self::PROJECTS,
             self::AFFILIATES,
+            self::ESTIMATOR,
         ];
     }
 

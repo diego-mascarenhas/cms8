@@ -167,6 +167,15 @@ return [
                 'Un catálogo por cada producto Idoneo',
             ],
         ],
+        'estimator' => [
+            'name' => 'Estimator',
+            'description' => 'Cotações comerciais. O plano é grátis; só se faturam os tokens de IA.',
+            'features' => [
+                'Funil de cotação para a equipe',
+                'Plano a 0 €; o cartão serve só para faturar tokens',
+                'Faturação partilhada com as outras apps Idoneo',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

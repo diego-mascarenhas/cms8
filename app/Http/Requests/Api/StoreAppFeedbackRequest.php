@@ -29,6 +29,7 @@ class StoreAppFeedbackRequest extends FormRequest
                 'assistant',
                 'projects',
                 'affiliates',
+                'estimator',
             ])],
             'answers' => ['required', 'array', 'size:'.count($keys)],
             'answers.*.key' => ['required', 'string', Rule::in($keys)],

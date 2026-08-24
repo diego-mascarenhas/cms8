@@ -167,6 +167,15 @@ return [
                 'Un catálogo por cada producto Idoneo',
             ],
         ],
+        'estimator' => [
+            'name' => 'Estimator',
+            'description' => 'Kommerzielle Angebote. Der Plan ist kostenlos; nur KI-Tokens werden berechnet.',
+            'features' => [
+                'Angebotsfunnel für das Team',
+                '0-€-Plan; die Karte dient nur der Token-Abrechnung',
+                'Gemeinsame Abrechnung mit den anderen Idoneo-Apps',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

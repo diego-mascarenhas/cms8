@@ -154,6 +154,16 @@ class PromptSeeder extends Seeder
                 'order' => 1,
                 'is_active' => true,
             ];
+
+            $prompts[] = [
+                'module_id' => $module->id,
+                'section_key' => 'budget_chat',
+                'section_label' => 'Presupuesto: chat de necesidad (funnel)',
+                'prompt_instruction' => app(\App\Services\ProjectBudgetSpecService::class)->getDefaultBudgetChatPrompt(),
+                'helper_text' => 'Prompt del chat de Necesidad. El paso 1 pide nombre, apellido, email, teléfono, empresa y país (llegan en {intake}; no los vuelvas a preguntar). El chat debe preguntar título, usuarios, integraciones, qué tiene que hacer y plazo. Placeholders: {lead_name}, {requirements_json}, {project_name}, {intake}. La IA debe devolver JSON con assistant_message, requirements, brief, business_name y project_name.',
+                'order' => 2,
+                'is_active' => true,
+            ];
         }
 
         // Tasks Module

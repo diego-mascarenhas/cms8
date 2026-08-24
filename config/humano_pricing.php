@@ -46,12 +46,13 @@ return [
      */
     'app_trials' => [
         'assistant' => (int) env('CMS8_APP_TRIAL_HOURS_ASSISTANT', 48),
-        'mailer' => (int) env('CMS8_APP_TRIAL_HOURS_MAILER', 0),
+        'mailer' => (int) env('CMS8_APP_TRIAL_HOURS_MAILER', 48),
         'platform' => (int) env('CMS8_APP_TRIAL_HOURS_PLATFORM', 0),
-        'shop' => (int) env('CMS8_APP_TRIAL_HOURS_SHOP', 0),
-        'ads' => (int) env('CMS8_APP_TRIAL_HOURS_ADS', 0),
-        'projects' => (int) env('CMS8_APP_TRIAL_HOURS_PROJECTS', 0),
+        'shop' => (int) env('CMS8_APP_TRIAL_HOURS_SHOP', 48),
+        'ads' => (int) env('CMS8_APP_TRIAL_HOURS_ADS', 48),
+        'projects' => (int) env('CMS8_APP_TRIAL_HOURS_PROJECTS', 48),
         'affiliates' => (int) env('CMS8_APP_TRIAL_HOURS_AFFILIATES', 0),
+        'estimator' => (int) env('CMS8_APP_TRIAL_HOURS_ESTIMATOR', 48),
     ],
 
     /*
@@ -549,6 +550,24 @@ return [
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_AFFILIATES_CHECKOUT_AVAILABLE', 'false'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'estimator',
+            'catalog' => 'estimator',
+            'public' => false,
+            'subscription_type' => 'estimator',
+            'checkout_url' => env('HUMANO_PRICING_ESTIMATOR_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_ESTIMATOR_STRIPE_PRODUCT_ID', ''),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_ESTIMATOR_PRICE_MONTHLY_ID', ''),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_ESTIMATOR_MONTHLY_AMOUNT', '0'),
+            'yearly_amount' => env('HUMANO_PRICING_ESTIMATOR_YEARLY_AMOUNT', '0'),
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_ESTIMATOR_CHECKOUT_AVAILABLE', 'true'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],

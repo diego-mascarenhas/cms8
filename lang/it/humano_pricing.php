@@ -167,6 +167,15 @@ return [
                 'Un catálogo por cada producto Idoneo',
             ],
         ],
+        'estimator' => [
+            'name' => 'Estimator',
+            'description' => 'Preventivi commerciali. Il piano è gratis; si fatturano solo i token IA.',
+            'features' => [
+                'Funnel di preventivo per il team',
+                'Piano a 0 €; la carta serve solo a fatturare i token',
+                'Fatturazione condivisa con le altre app Idoneo',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

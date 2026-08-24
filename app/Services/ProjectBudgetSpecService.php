@@ -8,7 +8,6 @@ use App\Models\Module;
 use App\Models\Project;
 use App\Models\Prompt;
 use App\Models\Team;
-use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Support\AiTasks;
 use Illuminate\Support\Facades\Log;
@@ -77,34 +76,19 @@ class ProjectBudgetSpecService
                 $this->budgetSpecTimeout(),
             );
             $text = $response->text ?: '';
+            $this->logAiUsage(
+                $team,
+                $user,
+                'ProjectBudgetSpecService::generate',
+                $response->usage ?? null,
+                strlen($userMessage),
+                strlen($text),
+            );
         } catch (\Throwable $e)
         {
             Log::error('ProjectBudgetSpecService failed', ['error' => $e->getMessage()]);
 
             throw new RuntimeException(__('Error al comunicar con la IA: ').$e->getMessage(), 0, $e);
-        }
-
-        if (isset($response->usage) && $user?->currentTeam)
-        {
-            $usage = $response->usage;
-            $totalTokens = $usage->promptTokens + $usage->completionTokens;
-            try
-            {
-                TokenUsageLog::create([
-                    'team_id' => $user->currentTeam->id,
-                    'module_id' => TokenUsageLog::inferModuleId(),
-                    'service' => 'ProjectBudgetSpecService::generate',
-                    'json_size' => strlen($userMessage),
-                    'toon_size' => 0,
-                    'json_tokens' => $totalTokens,
-                    'toon_tokens' => 0,
-                    'savings_percentage' => 0,
-                    'used_toon' => false,
-                ]);
-            } catch (\Exception $logEx)
-            {
-                Log::warning('TokenUsageLog failed', ['error' => $logEx->getMessage()]);
-            }
         }
 
         if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $text, $m))
@@ -152,8 +136,13 @@ class ProjectBudgetSpecService
      *   all_met: bool
      * }
      */
-    public function chatTurn(array $messages, ?string $projectName = null, ?string $leadName = null): array
-    {
+    public function chatTurn(
+        array $messages,
+        ?string $projectName = null,
+        ?string $leadName = null,
+        ?Team $team = null,
+        ?string $context = null,
+    ): array {
         $normalized = [];
         foreach ($messages as $message)
         {
@@ -213,27 +202,18 @@ class ProjectBudgetSpecService
             ->implode("\n\n");
 
         $leadLabel = trim((string) $leadName) !== '' ? trim((string) $leadName) : '(sin nombre)';
-
-        $instructions = "Eres un asistente comercial-técnico que ayuda a fundamentar un presupuesto de producto digital (web, app, etc.).\n"
-            ."El cliente se llama {$leadLabel}. Puedes usar su nombre de forma natural, sin forzar.\n"
-            ."Mantén un tono cercano y profesional en español. Haz UNA sola pregunta clara por turno.\n"
-            ."Evalúa los requisitos con TODA la conversación acumulada (no solo el último mensaje).\n"
-            ."Si un requisito ya se cubrió en un turno anterior, déjalo met=true. Nunca lo bajes a false.\n"
-            ."Orden sugerido de preguntas (salta lo ya cubierto): objetivo → negocio → usuarios → funcionalidades → plataforma → urls → diseno → alcance.\n"
-            ."Para \"urls\": pregunta si tiene web/app actual (pide la URL) y 1-3 URLs de referencia o inspiración. Si dice que no tiene URL actual, marca met=true igual y anótalo.\n"
-            ."Para \"diseno\": en uno o dos turnos cubre (a) si ya tienen identidad/gráfica hecha, (b) si quieren gráfica a medida o solo un template, (c) nivel de diseño (básico, medio, premium).\n"
-            ."Tilda met=true solo cuando haya información suficiente y concreta para ese requisito:\n"
-            .$requirementsJson."\n\n"
-            ."Responde SOLO con un JSON válido (sin markdown) con estas claves:\n"
-            ."- \"assistant_message\": tu siguiente mensaje al cliente (pregunta o confirmación breve).\n"
-            ."- \"requirements\": array con un objeto por cada requisito; cada uno con \"key\", \"met\" (boolean), \"feedback\" (frase corta).\n"
-            ."- \"brief\": síntesis acumulada del proyecto con TODO lo que el cliente ya dijo (negocio, URLs, diseño, alcance…), sin inventar. Debe tener al menos 2-3 frases útiles para presupuestar.\n"
-            ."- \"business_name\": nombre del negocio o marca si el cliente lo dijo (solo el nombre, sin inventar), o null.\n"
-            ."- \"project_name\": nombre corto del proyecto (usa business_name si existe) o null.\n"
-            .'Si aún faltan requisitos, pregunta por el primero que falte. Si ya están todos, confirma que puedes estimar el alcance y no hagas más preguntas.';
+        $intake = trim((string) $context);
+        $instructions = $this->interpolateBudgetChatPrompt(
+            $this->resolveBudgetChatPrompt($team),
+            $leadLabel,
+            $requirementsJson ?: '[]',
+            $projectName ?: '(ninguno)',
+            $intake !== '' ? $intake : '(sin datos iniciales)',
+        );
 
         $userMessage = $instructions
             ."\n\nNOMBRE DE PROYECTO ACTUAL: ".($projectName ?: '(ninguno)')
+            .($intake !== '' ? "\n\nDATOS INICIALES DEL FORMULARIO:\n".$intake : '')
             ."\n\nCONVERSACIÓN:\n\n".$transcript;
 
         try
@@ -251,6 +231,14 @@ class ProjectBudgetSpecService
                 $this->budgetSpecTimeout(),
             );
             $text = $response->text ?: '';
+            $this->logAiUsage(
+                $team,
+                null,
+                'ProjectBudgetSpecService::chatTurn',
+                $response->usage ?? null,
+                strlen($userMessage),
+                strlen($text),
+            );
         } catch (\Throwable $e)
         {
             Log::error('ProjectBudgetSpecService::chatTurn failed', ['error' => $e->getMessage()]);
@@ -320,7 +308,7 @@ class ProjectBudgetSpecService
      *   all_met: bool
      * }
      */
-    public function guideBrief(string $brief): array
+    public function guideBrief(string $brief, ?Team $team = null): array
     {
         $brief = trim($brief);
         if (mb_strlen($brief) < 10)
@@ -366,6 +354,14 @@ class ProjectBudgetSpecService
                 $this->budgetSpecTimeout(),
             );
             $text = $response->text ?: '';
+            $this->logAiUsage(
+                $team,
+                null,
+                'ProjectBudgetSpecService::guideBrief',
+                $response->usage ?? null,
+                strlen($userMessage),
+                strlen($text),
+            );
         } catch (\Throwable $e)
         {
             Log::error('ProjectBudgetSpecService::guideBrief failed', ['error' => $e->getMessage()]);
@@ -1204,6 +1200,121 @@ class ProjectBudgetSpecService
             ."- **estimated_tokens** (integer): Estimated AI token consumption for that labor (prompt + completion). Use roughly 15k–25k tokens per assisted hour depending on complexity; output a plain integer (e.g. 160000).\n"
             ."- Also add \"token_consumption\": an object with \"notes\" (ONE line per labor, format exactly: \"{title}: {N} K\" — no \"Tokens AI\" prefix), optional totals, currency EUR.\n"
             .'- Suggest between 0 and 15 tasks. Leave suggested_tasks as empty array [] only if the budget does not describe concrete tasks. Every suggested task must have description, resource_level, unit_price and estimated_tokens.';
+    }
+
+    public function resolveBudgetChatPrompt(?Team $team): string
+    {
+        if ($team === null)
+        {
+            return $this->getDefaultBudgetChatPrompt();
+        }
+
+        $instruction = trim((string) (Prompt::forTeam($team->id)
+            ->forModule('projects')
+            ->where('section_key', 'budget_chat')
+            ->active()
+            ->first()?->prompt_instruction ?? ''));
+
+        return $instruction !== '' ? $instruction : $this->getDefaultBudgetChatPrompt();
+    }
+
+    public function ensureBudgetChatPrompt(Team $team): Prompt
+    {
+        $module = Module::query()->firstOrCreate(
+            ['key' => 'projects'],
+            [
+                'name' => 'Projects',
+                'icon' => 'ti ti-briefcase',
+                'description' => 'Projects',
+                'is_core' => false,
+                'group' => 'work',
+                'order' => 0,
+                'status' => 1,
+            ],
+        );
+
+        return Prompt::withoutGlobalScope('team')->firstOrCreate(
+            [
+                'team_id' => $team->id,
+                'module_id' => $module->id,
+                'section_key' => 'budget_chat',
+            ],
+            [
+                'section_label' => 'Presupuesto: chat de necesidad (funnel)',
+                'prompt_instruction' => $this->getDefaultBudgetChatPrompt(),
+                'helper_text' => 'Prompt del chat de Necesidad. El paso 1 pide nombre, apellido, email, teléfono, empresa y país (llegan en {intake}; no los vuelvas a preguntar). El chat debe preguntar título, usuarios, integraciones, qué tiene que hacer y plazo. Placeholders: {lead_name}, {requirements_json}, {project_name}, {intake}.',
+                'order' => 2,
+                'is_active' => true,
+            ],
+        );
+    }
+
+    public function getDefaultBudgetChatPrompt(): string
+    {
+        return "Eres un asistente comercial-técnico que ayuda a fundamentar un presupuesto de producto digital (web, app, etc.).\n"
+            ."El cliente se llama {lead_name}. Puedes usar su nombre de forma natural, sin forzar.\n"
+            ."El formulario inicial ya pidió nombre, apellido, email, teléfono, empresa y país. Esos datos llegan en {intake}: no los vuelvas a preguntar.\n"
+            ."Durante el chat debes recoger, si aún no lo dijo:\n"
+            ."- título del proyecto\n"
+            ."- usuarios aproximados\n"
+            ."- herramientas a integrar (opcional: WhatsApp, Stripe, ERP…)\n"
+            ."- qué tiene que hacer el producto\n"
+            ."- para cuándo lo necesitan\n"
+            ."Incorpora esas respuestas en el brief. No las preguntes todas de golpe: una por turno, y salta las que ya cubrió.\n"
+            ."Mantén un tono cercano y profesional en español. Haz UNA sola pregunta clara por turno.\n"
+            ."Evalúa los requisitos con TODA la conversación acumulada (no solo el último mensaje).\n"
+            ."Si un requisito ya se cubrió en un turno anterior, déjalo met=true. Nunca lo bajes a false.\n"
+            ."Orden sugerido de preguntas (salta lo ya cubierto): objetivo → negocio → usuarios → funcionalidades → plataforma → urls → diseno → alcance.\n"
+            ."Para \"urls\": pregunta si tiene web/app actual (pide la URL) y 1-3 URLs de referencia o inspiración. Si dice que no tiene URL actual, marca met=true igual y anótalo.\n"
+            ."Para \"diseno\": en uno o dos turnos cubre (a) si ya tienen identidad/gráfica hecha, (b) si quieren gráfica a medida o solo un template, (c) nivel de diseño (básico, medio, premium).\n"
+            ."Usa los datos iniciales del formulario si vienen en {intake}; no vuelvas a preguntar lo que ya está cubierto.\n"
+            ."Tilda met=true solo cuando haya información suficiente y concreta para ese requisito:\n"
+            ."{requirements_json}\n\n"
+            ."Responde SOLO con un JSON válido (sin markdown) con estas claves:\n"
+            ."- \"assistant_message\": tu siguiente mensaje al cliente (pregunta o confirmación breve).\n"
+            ."- \"requirements\": array con un objeto por cada requisito; cada uno con \"key\", \"met\" (boolean), \"feedback\" (frase corta).\n"
+            ."- \"brief\": síntesis acumulada del proyecto con TODO lo que el cliente ya dijo (negocio, URLs, diseño, alcance…), sin inventar. Debe tener al menos 2-3 frases útiles para presupuestar.\n"
+            ."- \"business_name\": nombre del negocio o marca si el cliente lo dijo (solo el nombre, sin inventar), o null.\n"
+            ."- \"project_name\": nombre corto del proyecto (usa business_name si existe) o null.\n"
+            .'Si aún faltan requisitos, pregunta por el primero que falte. Si ya están todos, confirma que puedes estimar el alcance y no hagas más preguntas.';
+    }
+
+    public function interpolateBudgetChatPrompt(
+        string $prompt,
+        string $leadName,
+        string $requirementsJson,
+        string $projectName,
+        string $intake,
+    ): string {
+        return str_replace(
+            ['{lead_name}', '{requirements_json}', '{project_name}', '{intake}'],
+            [$leadName, $requirementsJson, $projectName, $intake],
+            $prompt,
+        );
+    }
+
+    private function logAiUsage(
+        ?Team $team,
+        ?User $user,
+        string $service,
+        mixed $usage,
+        int $inputSize = 0,
+        int $outputSize = 0,
+    ): void {
+        $teamId = $team?->id ?? $user?->currentTeam?->id;
+        if (! $teamId)
+        {
+            return;
+        }
+
+        TokenUsageLogService::logFromAiResponse(
+            (int) $teamId,
+            $service,
+            $usage,
+            moduleKey: 'projects',
+            inputSize: $inputSize,
+            outputSize: $outputSize,
+        );
     }
 
     private function getDefaultBudgetSpecPrompt(): string

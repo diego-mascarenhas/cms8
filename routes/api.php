@@ -474,6 +474,11 @@ Route::post('task-complete-by-context-key', [TaskController::class, 'taskComplet
 
 Route::middleware('auth.api')->group(function ()
 {
+    Route::get('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'showChatPrompt'])
+        ->name('api.projects.funnel.chat-prompt.show');
+    Route::put('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'updateChatPrompt'])
+        ->name('api.projects.funnel.chat-prompt.update');
+
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
 

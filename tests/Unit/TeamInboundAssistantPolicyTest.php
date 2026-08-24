@@ -492,6 +492,47 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertTrue(now()->addHours(47)->lt(\Carbon\Carbon::parse($first['trial_ends_at'])));
     }
 
+    public function test_estimator_shop_and_mailer_share_the_assistant_trial_window(): void
+    {
+        config([
+            'humano_pricing.plan_access_team_ids' => [],
+            'humano_pricing.app_trials.estimator' => 48,
+            'humano_pricing.app_trials.shop' => 48,
+            'humano_pricing.app_trials.mailer' => 48,
+        ]);
+
+        $team = Team::factory()->create(['created_at' => now()->subYear()]);
+        $service = app(AssistantSubscriptionService::class);
+        $apps = $service->appsPayload($team);
+
+        foreach (['estimator', 'shop', 'mailer', 'ads', 'projects'] as $catalog)
+        {
+            $this->assertArrayHasKey($catalog, $apps);
+            $this->assertTrue($apps[$catalog]['active']);
+            $this->assertSame('trial', $apps[$catalog]['status']);
+            $this->assertNotNull($apps[$catalog]['trial_ends_at']);
+        }
+    }
+
+    public function test_estimator_with_saved_card_is_paid_without_subscription(): void
+    {
+        config([
+            'humano_pricing.plan_access_team_ids' => [],
+            'humano_pricing.app_trials.estimator' => 48,
+        ]);
+
+        $team = Team::factory()->create([
+            'created_at' => now()->subYear(),
+            'pm_type' => 'card',
+            'pm_last_four' => '4242',
+        ]);
+
+        $access = app(AssistantSubscriptionService::class)->accessForCatalog($team, 'estimator');
+
+        $this->assertTrue($access['active']);
+        $this->assertSame('paid', $access['status']);
+    }
+
     private function consumeAppTrial(Team $team, string $catalog): void
     {
         $started = $team->created_at?->toIso8601String() ?? now()->subHours(49)->toIso8601String();

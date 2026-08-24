@@ -50,7 +50,12 @@ class AssistantSubscriptionService
         $active = ! $customerMissing
             && $subscription !== null
             && $this->subscriptionIsActive($subscription);
+        $hasPaymentMethod = is_array($stripe['payment_method'] ?? null);
         $canCheckout = $this->catalogHasCheckout($plans) && ! $active;
+        if ($canCheckout && $this->catalogIsFree($plans) && $hasPaymentMethod)
+        {
+            $canCheckout = false;
+        }
 
         return [
             'plan' => $this->planPayload($currentConfig),
@@ -113,6 +118,11 @@ class AssistantSubscriptionService
 
         if ($priceId === '')
         {
+            if ($this->planIsFree($plan))
+            {
+                return $this->createPaymentMethodUpdate($team, $successUrl, $cancelUrl);
+            }
+
             return [
                 'success' => false,
                 'message' => __('No hay un precio de Stripe configurado para este intervalo.'),
@@ -748,6 +758,42 @@ class AssistantSubscriptionService
 
     /**
      * @param  array<string, mixed>  $plan
+     */
+    private function planIsFree(array $plan): bool
+    {
+        return (float) ($plan['monthly_amount'] ?? 0) <= 0
+            && (float) ($plan['yearly_amount'] ?? 0) <= 0;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $plans
+     */
+    private function catalogIsFree(array $plans): bool
+    {
+        if ($plans === [])
+        {
+            return false;
+        }
+
+        foreach ($plans as $plan)
+        {
+            if (! $this->planIsFree($plan))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function teamHasSavedPaymentMethod(Team $team): bool
+    {
+        return trim((string) ($team->pm_last_four ?? '')) !== ''
+            || trim((string) ($team->pm_type ?? '')) !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
      * @return array<string, mixed>
      */
     private function planPayload(array $plan): array
@@ -868,6 +914,11 @@ class AssistantSubscriptionService
             return $this->accessPayload(true, 'paid', $trialEnds);
         }
 
+        if ($this->catalogIsFree($this->catalogPlanConfigs($catalog)) && $this->teamHasSavedPaymentMethod($team))
+        {
+            return $this->accessPayload(true, 'paid', $trialEnds);
+        }
+
         if ($trialEnds && $trialEnds->isFuture())
         {
             return $this->accessPayload(true, 'trial', $trialEnds);
@@ -881,11 +932,14 @@ class AssistantSubscriptionService
      */
     public function appsPayload(Team $team): array
     {
-        return [
-            'assistant' => $this->accessForCatalog($team, 'assistant'),
-            'mailer' => $this->accessForCatalog($team, 'mailer'),
-            'platform' => $this->accessForCatalog($team, 'platform'),
-        ];
+        $apps = [];
+
+        foreach (HumanoPricingCatalog::all() as $catalog)
+        {
+            $apps[$catalog] = $this->accessForCatalog($team, $catalog);
+        }
+
+        return $apps;
     }
 
     private function findAssistantSubscription(Team $team): ?Subscription

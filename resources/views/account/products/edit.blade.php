@@ -76,6 +76,7 @@
                         <option value="ads" {{ old('category', $product->category) === 'ads' ? 'selected' : '' }}>Ads</option>
                         <option value="projects" {{ old('category', $product->category) === 'projects' ? 'selected' : '' }}>Projects</option>
                         <option value="affiliates" {{ old('category', $product->category) === 'affiliates' ? 'selected' : '' }}>Affiliates</option>
+                        <option value="estimator" {{ old('category', $product->category) === 'estimator' ? 'selected' : '' }}>Estimator</option>
                         <option value="mentoring" {{ old('category', $product->category) === 'mentoring' ? 'selected' : '' }}>Mentoring</option>
                         <option value="prospecting" {{ old('category', $product->category) === 'prospecting' ? 'selected' : '' }}>Prospectos</option>
                         <option value="support" {{ old('category', $product->category) === 'support' ? 'selected' : '' }}>Support</option>

@@ -310,6 +310,21 @@ class SubscriptionProductSeeder extends Seeder
                 'recurring_interval_count' => 1,
                 'active' => true,
             ],
+            [
+                'stripe_id' => null,
+                'stripe_product' => null,
+                'stripe_price' => null,
+                'name' => 'Estimator',
+                'description' => 'Cotizaciones comerciales. El plan es gratis; solo se facturan los tokens de IA',
+                'category' => 'estimator',
+                'plan' => null,
+                'type' => 'estimator',
+                'currency' => 'eur',
+                'unit_amount' => 0.00,
+                'recurring_interval' => 'month',
+                'recurring_interval_count' => 1,
+                'active' => true,
+            ],
         ];
 
         $allProducts = array_merge($mailerProducts, $mentoringProducts, $prospectingProducts, $hostingProducts, $shopProducts, $appProducts);

@@ -76,6 +76,19 @@ class TeamApiTokensMultiTest extends TestCase
         ])->assertStatus(200);
     }
 
+    public function test_find_by_plain_api_token_returns_the_team(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+        $created = $team->createApiToken('Estimator', '*');
+
+        $found = \App\Models\Team::findByPlainApiToken($created['plain']);
+
+        $this->assertNotNull($found);
+        $this->assertSame($team->id, $found->id);
+        $this->assertNull(\App\Models\Team::findByPlainApiToken('missing-token'));
+    }
+
     public function test_legacy_single_token_setting_still_authenticates(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

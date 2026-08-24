@@ -54,6 +54,7 @@ class SubscriptionProduct extends Model
             'ads' => __('Ads'),
             'projects' => __('Projects'),
             'affiliates' => __('Affiliates'),
+            'estimator' => __('Estimator'),
             'mentoring' => __('Mentoring'),
             'prospecting' => __('Prospectos'),
             'support' => __('Support'),

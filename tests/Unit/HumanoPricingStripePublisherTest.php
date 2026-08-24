@@ -28,9 +28,22 @@ class HumanoPricingStripePublisherTest extends TestCase
             ->all();
 
         $this->assertNotContains('affiliates', $ids);
+        $this->assertNotContains('estimator', $ids);
         $this->assertNotContains('assistant', $ids);
         $this->assertNotContains('mailer_basic', $ids);
         $this->assertNotContains('hunter', $ids);
+    }
+
+    public function test_estimator_plan_is_free_and_not_publishable(): void
+    {
+        $plan = collect(config('humano_pricing.plans'))->firstWhere('id', 'estimator');
+
+        $this->assertIsArray($plan);
+        $this->assertSame('0', $plan['monthly_amount'] ?? null);
+        $this->assertSame('0', $plan['yearly_amount'] ?? null);
+        $this->assertSame('', $plan['stripe_price_monthly_id'] ?? null);
+        $this->assertTrue($plan['checkout_available'] ?? false);
+        $this->assertSame('Estimator', trans('humano_pricing.plans.estimator.name', [], 'en'));
     }
 
     public function test_shop_and_ads_plans_have_test_stripe_ids_in_config(): void
