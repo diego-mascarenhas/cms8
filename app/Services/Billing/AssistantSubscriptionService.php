@@ -81,7 +81,7 @@ class AssistantSubscriptionService
     }
 
     /**
-     * @return array{success: bool, message?: string, url?: string}
+     * @return array{success: bool, message?: string, url?: string, data?: array<string, mixed>}
      */
     public function createCheckout(
         Team $team,
@@ -89,6 +89,7 @@ class AssistantSubscriptionService
         string $successUrl,
         string $cancelUrl,
         string $planId = 'assistant',
+        ?int $actingUserId = null,
     ): array {
         $planId = $this->normalizePlanId($planId);
         $plan = $this->planConfigById($planId);
@@ -142,10 +143,30 @@ class AssistantSubscriptionService
         {
             \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
 
+            $paymentMethodId = $this->reusablePaymentMethodId($customerId);
+            if ($paymentMethodId)
+            {
+                $subscribed = $this->subscribeWithSavedPaymentMethod(
+                    $team,
+                    $customerId,
+                    $paymentMethodId,
+                    $priceId,
+                    $planId,
+                    $plan,
+                    $actingUserId,
+                    $catalog,
+                );
+                if ($subscribed !== null)
+                {
+                    return $subscribed;
+                }
+            }
+
             $session = \Stripe\Checkout\Session::create([
                 'customer' => $customerId,
                 'mode' => 'subscription',
                 'locale' => 'es',
+                'payment_method_collection' => 'if_required',
                 'line_items' => [[
                     'price' => $priceId,
                     'quantity' => 1,
@@ -1209,6 +1230,110 @@ class AssistantSubscriptionService
             'exp_year' => (int) $method->card->exp_year,
             'is_default' => $isDefault,
         ];
+    }
+
+    private function reusablePaymentMethodId(string $customerId): ?string
+    {
+        $customer = \Stripe\Customer::retrieve($customerId);
+        $default = $customer->invoice_settings->default_payment_method ?? null;
+        if (is_object($default))
+        {
+            $default = $default->id ?? null;
+        }
+        if (is_string($default) && $default !== '')
+        {
+            return $default;
+        }
+
+        $cards = \Stripe\PaymentMethod::all([
+            'customer' => $customerId,
+            'type' => 'card',
+            'limit' => 5,
+        ]);
+        $firstCard = $cards->data[0]->id ?? null;
+        if (is_string($firstCard) && $firstCard !== '')
+        {
+            return $firstCard;
+        }
+
+        $subscriptions = \Stripe\Subscription::all([
+            'customer' => $customerId,
+            'status' => 'active',
+            'limit' => 10,
+        ]);
+        foreach ($subscriptions->data as $subscription)
+        {
+            $method = $subscription->default_payment_method ?? null;
+            if (is_object($method))
+            {
+                $method = $method->id ?? null;
+            }
+            if (is_string($method) && $method !== '')
+            {
+                return $method;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return array{success: true, data: array<string, mixed>}|null
+     */
+    private function subscribeWithSavedPaymentMethod(
+        Team $team,
+        string $customerId,
+        string $paymentMethodId,
+        string $priceId,
+        string $planId,
+        array $plan,
+        ?int $actingUserId,
+        string $catalog,
+    ): ?array {
+        try
+        {
+            $customer = \Stripe\Customer::retrieve($customerId);
+            if (! ($customer->invoice_settings->default_payment_method ?? null))
+            {
+                \Stripe\Customer::update($customerId, [
+                    'invoice_settings' => [
+                        'default_payment_method' => $paymentMethodId,
+                    ],
+                ]);
+            }
+
+            $stripeSubscription = \Stripe\Subscription::create([
+                'customer' => $customerId,
+                'items' => [[
+                    'price' => $priceId,
+                ]],
+                'default_payment_method' => $paymentMethodId,
+                'off_session' => true,
+                'payment_behavior' => 'error_if_incomplete',
+                'metadata' => [
+                    'team_id' => (string) $team->id,
+                    'subscription_type' => (string) ($plan['subscription_type'] ?? $planId),
+                    'plan' => $planId,
+                ],
+            ]);
+
+            $this->subscriptionSyncer->syncFromStripeSubscription(
+                $team,
+                $stripeSubscription,
+                $actingUserId ?? (int) ($team->owner->id ?? $team->user_id ?? 0),
+            );
+
+            return [
+                'success' => true,
+                'data' => $this->summary($team->fresh(), $catalog),
+            ];
+        } catch (\Exception $e)
+        {
+            Log::warning('Assistant saved-card subscribe fell back to checkout', StripeErrorMessage::logContext($e));
+
+            return null;
+        }
     }
 
     /**

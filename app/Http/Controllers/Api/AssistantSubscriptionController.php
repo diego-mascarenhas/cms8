@@ -45,6 +45,7 @@ class AssistantSubscriptionController extends Controller
             (string) $request->validated('success_url'),
             (string) $request->validated('cancel_url'),
             (string) ($request->validated('plan') ?? 'assistant'),
+            (int) $request->user()->id,
         );
 
         if (! $result['success'])
@@ -56,10 +57,11 @@ class AssistantSubscriptionController extends Controller
             ], 422);
         }
 
-        return response()->json([
+        return response()->json(array_filter([
             'success' => true,
-            'url' => $result['url'],
-        ]);
+            'url' => $result['url'] ?? null,
+            'data' => $result['data'] ?? null,
+        ], fn (mixed $value): bool => $value !== null));
     }
 
     public function complete(CompleteAssistantCheckoutRequest $request): JsonResponse
