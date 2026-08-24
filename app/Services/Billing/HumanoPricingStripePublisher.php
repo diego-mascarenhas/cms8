@@ -16,6 +16,7 @@ class HumanoPricingStripePublisher
      * @var list<string>
      */
     public const PAID_APP_CATALOGS = [
+        HumanoPricingCatalog::ASSISTANT,
         HumanoPricingCatalog::SHOP,
         HumanoPricingCatalog::ADS,
         HumanoPricingCatalog::PROJECTS,
@@ -64,6 +65,7 @@ class HumanoPricingStripePublisher
      *     created: bool,
      *     product_id: string,
      *     price_id: string,
+     *     yearly_price_id: string,
      *     amount: string,
      *     currency: string
      * }>
@@ -79,6 +81,10 @@ class HumanoPricingStripePublisher
             $description = (string) trans("humano_pricing.plans.{$planId}.description", [], 'en');
             $amount = (string) $plan['monthly_amount'];
             $cents = (int) round(((float) $amount) * 100);
+            $yearlyAmount = trim((string) ($plan['yearly_amount'] ?? ''));
+            $yearlyCents = $yearlyAmount !== '' && (float) $yearlyAmount > 0
+                ? (int) round(((float) $yearlyAmount) * 100)
+                : 0;
             $currency = 'eur';
 
             $existing = $this->findProductByPlanId($planId);
@@ -91,8 +97,11 @@ class HumanoPricingStripePublisher
                     'created' => $existing === null,
                     'product_id' => $existing?->id ?? '(would create)',
                     'price_id' => $existing !== null
-                        ? ($this->findMonthlyPrice($existing->id, $cents, $currency)?->id ?? '(would create price)')
+                        ? ($this->findRecurringPrice($existing->id, $cents, $currency, 'month')?->id ?? '(would create price)')
                         : '(would create)',
+                    'yearly_price_id' => $yearlyCents > 0 && $existing !== null
+                        ? ($this->findRecurringPrice($existing->id, $yearlyCents, $currency, 'year')?->id ?? '(would create price)')
+                        : ($yearlyCents > 0 ? '(would create)' : ''),
                     'amount' => $amount,
                     'currency' => $currency,
                 ];
@@ -122,25 +131,25 @@ class HumanoPricingStripePublisher
                 ]);
             }
 
-            $price = $this->findMonthlyPrice($existing->id, $cents, $currency);
+            $price = $this->findRecurringPrice($existing->id, $cents, $currency, 'month');
             if ($price === null)
             {
-                $price = $this->client->prices->create([
-                    'product' => $existing->id,
-                    'currency' => $currency,
-                    'unit_amount' => $cents,
-                    'recurring' => [
-                        'interval' => 'month',
-                        'interval_count' => 1,
-                    ],
-                    'metadata' => [
-                        'humano_plan_id' => $planId,
-                    ],
-                ]);
+                $price = $this->createRecurringPrice($existing->id, $cents, $currency, 'month', $planId);
 
                 $this->client->products->update($existing->id, [
                     'default_price' => $price->id,
                 ]);
+            }
+
+            $yearlyPriceId = '';
+            if ($yearlyCents > 0)
+            {
+                $yearlyPrice = $this->findRecurringPrice($existing->id, $yearlyCents, $currency, 'year');
+                if ($yearlyPrice === null)
+                {
+                    $yearlyPrice = $this->createRecurringPrice($existing->id, $yearlyCents, $currency, 'year', $planId);
+                }
+                $yearlyPriceId = $yearlyPrice->id;
             }
 
             $results[] = [
@@ -149,6 +158,7 @@ class HumanoPricingStripePublisher
                 'created' => $created,
                 'product_id' => $existing->id,
                 'price_id' => $price->id,
+                'yearly_price_id' => $yearlyPriceId,
                 'amount' => $amount,
                 'currency' => $currency,
             ];
@@ -181,7 +191,7 @@ class HumanoPricingStripePublisher
         return null;
     }
 
-    private function findMonthlyPrice(string $productId, int $cents, string $currency): ?Price
+    private function findRecurringPrice(string $productId, int $cents, string $currency, string $interval): ?Price
     {
         foreach ($this->client->prices->all([
             'product' => $productId,
@@ -189,16 +199,37 @@ class HumanoPricingStripePublisher
             'limit' => 100,
         ])->autoPagingIterator() as $price)
         {
-            $interval = $price->recurring->interval ?? null;
+            $priceInterval = $price->recurring->interval ?? null;
             if (
                 (int) $price->unit_amount === $cents
                 && strtolower((string) $price->currency) === $currency
-                && $interval === 'month'
+                && $priceInterval === $interval
             ) {
                 return $price;
             }
         }
 
         return null;
+    }
+
+    private function createRecurringPrice(
+        string $productId,
+        int $cents,
+        string $currency,
+        string $interval,
+        string $planId,
+    ): Price {
+        return $this->client->prices->create([
+            'product' => $productId,
+            'currency' => $currency,
+            'unit_amount' => $cents,
+            'recurring' => [
+                'interval' => $interval,
+                'interval_count' => 1,
+            ],
+            'metadata' => [
+                'humano_plan_id' => $planId,
+            ],
+        ]);
     }
 }

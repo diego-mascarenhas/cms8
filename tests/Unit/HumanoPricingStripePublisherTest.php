@@ -8,13 +8,13 @@ use Tests\TestCase;
 
 class HumanoPricingStripePublisherTest extends TestCase
 {
-    public function test_publishable_plans_are_paid_shop_ads_and_projects(): void
+    public function test_publishable_plans_are_paid_assistant_shop_ads_and_projects(): void
     {
         $publisher = new HumanoPricingStripePublisher(new StripeClient('sk_test_dummy'));
         $ids = collect($publisher->publishablePlans())->pluck('id')->all();
 
         $this->assertSame(
-            ['shop_basic', 'shop_premium', 'shop_profesional', 'ads', 'projects'],
+            ['assistant', 'shop_basic', 'shop_premium', 'shop_profesional', 'ads', 'projects'],
             $ids,
         );
         $this->assertSame('19', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['monthly_amount']);
@@ -29,7 +29,7 @@ class HumanoPricingStripePublisherTest extends TestCase
 
         $this->assertNotContains('affiliates', $ids);
         $this->assertNotContains('estimator', $ids);
-        $this->assertNotContains('assistant', $ids);
+        $this->assertContains('assistant', $ids);
         $this->assertNotContains('mailer_basic', $ids);
         $this->assertNotContains('hunter', $ids);
     }
@@ -50,12 +50,17 @@ class HumanoPricingStripePublisherTest extends TestCase
     {
         $shop = collect(config('humano_pricing.plans'))->firstWhere('id', 'shop_basic');
         $ads = collect(config('humano_pricing.plans'))->firstWhere('id', 'ads');
+        $assistant = collect(config('humano_pricing.plans'))->firstWhere('id', 'assistant');
 
         $this->assertSame('prod_V89Ch5pNA8GG1s', $shop['stripe_product_id'] ?? null);
         $this->assertSame('price_1U7suBRwN51ygFde4qEpYyXf', $shop['stripe_price_monthly_id'] ?? null);
         $this->assertSame('19', $shop['monthly_amount'] ?? null);
         $this->assertSame('prod_V89CoEJptr2nT5', $ads['stripe_product_id'] ?? null);
         $this->assertSame('49', $ads['monthly_amount'] ?? null);
+        $this->assertSame('prod_V8Jgzp5AQyRYmC', $assistant['stripe_product_id'] ?? null);
+        $this->assertSame('price_1U832kRwN51ygFdeVvMTtNJH', $assistant['stripe_price_monthly_id'] ?? null);
+        $this->assertSame('price_1U832kRwN51ygFdebJxgLunP', $assistant['stripe_price_yearly_id'] ?? null);
+        $this->assertSame('49', $assistant['monthly_amount'] ?? null);
     }
 
     public function test_shop_plan_names_are_audience_tiers(): void

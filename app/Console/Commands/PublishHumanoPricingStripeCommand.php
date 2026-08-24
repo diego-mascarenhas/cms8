@@ -12,7 +12,7 @@ class PublishHumanoPricingStripeCommand extends Command
                             {--live : Use the commented sk_live_ STRIPE_SECRET in .env}
                             {--dry-run : Show what would be created without calling Stripe}';
 
-    protected $description = 'Create missing Shop, Ads and Projects products and monthly prices in Stripe';
+    protected $description = 'Create missing Assistant, Shop, Ads and Projects products and prices in Stripe';
 
     public function handle(): int
     {
@@ -81,6 +81,10 @@ class PublishHumanoPricingStripeCommand extends Command
             $prefix = $this->envPrefix($row['plan_id']);
             $this->line($prefix.'_STRIPE_PRODUCT_ID='.$row['product_id']);
             $this->line($prefix.'_PRICE_MONTHLY_ID='.$row['price_id']);
+            if (($row['yearly_price_id'] ?? '') !== '')
+            {
+                $this->line($prefix.'_PRICE_YEARLY_ID='.$row['yearly_price_id']);
+            }
         }
 
         return self::SUCCESS;

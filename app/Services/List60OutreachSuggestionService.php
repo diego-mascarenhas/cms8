@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Helpers\PhoneHelper;
 use App\Models\Contact;
+use App\Models\List60;
 use App\Models\Prompt;
+use App\Models\Team;
 use App\Models\User;
 use App\Support\List60OutreachPromptDefaults;
 
@@ -104,6 +107,82 @@ class List60OutreachSuggestionService
     }
 
     /**
+     * @return array{success: bool, message?: string, not_found?: bool}
+     */
+    public function suggestWhatsAppForPhone(User $user, string $phone): array
+    {
+        $team = $user->currentTeam;
+        if (! $team)
+        {
+            return ['success' => false, 'message' => __('No hay equipo seleccionado.')];
+        }
+
+        $record = $this->findForTeamPhone($team, $phone);
+        $contact = $record?->contact;
+        if ($record === null || $contact === null)
+        {
+            return [
+                'success' => false,
+                'not_found' => true,
+                'message' => __('team_settings.list60_prompt.not_on_list'),
+            ];
+        }
+
+        $notes = '';
+        if (is_object($contact->data) && isset($contact->data->notes))
+        {
+            $notes = (string) $contact->data->notes;
+        }
+
+        $sentiment = null;
+        $currentSentiment = $contact->currentSentiment;
+        if ($currentSentiment?->sentiment)
+        {
+            $sentiment = [
+                'name' => $currentSentiment->sentiment->name,
+                'emoji' => $currentSentiment->sentiment->emoji,
+                'notes' => $currentSentiment->notes,
+            ];
+        }
+
+        return $this->suggest(
+            $user,
+            $contact,
+            'whatsapp',
+            $notes,
+            $sentiment,
+            $contact->categories->pluck('name')->all(),
+            $record->status?->name,
+        );
+    }
+
+    public function findForTeamPhone(Team $team, string $phone): ?List60
+    {
+        $digits = preg_replace('/[^0-9]/', '', $phone);
+        if ($digits === '')
+        {
+            return null;
+        }
+
+        return List60::query()
+            ->with([
+                'contact' => fn ($query) => $query->withoutGlobalScopes(),
+                'contact.categories',
+                'contact.currentSentiment.sentiment',
+                'status',
+            ])
+            ->whereHas('contact', function ($query) use ($team): void
+            {
+                $query->withoutGlobalScopes()->where('team_id', $team->id);
+            })
+            ->get()
+            ->first(function (List60 $entry) use ($digits): bool
+            {
+                return PhoneHelper::digitsBelongToSameLine((string) $entry->contact?->phone, $digits);
+            });
+    }
+
+    /**
      * @param  array{name: string, emoji: string, notes: ?string}|null  $sentiment
      * @param  list<string>  $categories
      */
@@ -166,7 +245,8 @@ class List60OutreachSuggestionService
             $parts[] = 'Responde solo con un objeto JSON (sin markdown ni comentarios). Claves: "subject" (asunto breve y directo) y "body" (cuerpo del email: saludo, párrafos cortos, cierre).';
         } else
         {
-            $parts[] = 'Canal: WhatsApp (texto plano, conversacional, máximo 4 párrafos cortos, sin HTML).';
+            $parts[] = 'Canal: WhatsApp (texto plano, como un mensaje humano, sin HTML).';
+            $parts[] = List60OutreachPromptDefaults::whatsappBrevityRules();
             $parts[] = 'Responde solo con un objeto JSON (sin markdown ni comentarios). Clave: "message" (texto del WhatsApp).';
         }
 

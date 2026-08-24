@@ -239,4 +239,12 @@ return [
         'embed_description' => 'Asistente embebible: citas, catálogo y ventas.',
         'welcome_message' => 'Hola, ¿reservamos una cita o te muestro el catálogo?',
     ],
+    'list60_prompt' => [
+        'updated' => 'Prompt de Lista 60 actualizado.',
+        'instruction_required' => 'La instrucción para la IA es obligatoria.',
+        'missing_prompt' => 'El prompt de Lista 60 no está disponible en este equipo.',
+        'unclassified' => 'La IA no clasificó este hilo.',
+        'phone_required' => 'El teléfono es obligatorio.',
+        'not_on_list' => 'Ese contacto no está en Lista 60.',
+    ],
 ];

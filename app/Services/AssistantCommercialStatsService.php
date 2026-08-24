@@ -438,7 +438,9 @@ class AssistantCommercialStatsService
                     'overdue_days' => max(0, $days),
                     'suggestion' => $this->resumeSuggestion($entry, $days),
                     'sentiment_emoji' => $contact->currentSentiment?->sentiment?->emoji,
-                    'inbox_href' => $phone !== '' ? '/inbox?phone='.rawurlencode($phone) : null,
+                    'inbox_href' => $phone !== ''
+                        ? '/inbox?phone='.rawurlencode($phone).'&suggest=list60'
+                        : null,
                 ];
             })
             ->values()

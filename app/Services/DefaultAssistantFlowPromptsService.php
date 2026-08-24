@@ -265,6 +265,15 @@ PROMPT,
                 'helper_text' => 'Botón Sugerir en Lista de 60 tras el primer contacto (1/2/3 Contactos, etc.). Routing key: list60:seguimiento',
                 'prompt_instruction' => List60OutreachPromptDefaults::followUpInstruction(),
             ],
+            [
+                'module_key' => 'list60',
+                'section_key' => 'alta',
+                'section_label' => 'Lista de 60: quién entra',
+                'order' => 24,
+                'is_active' => true,
+                'helper_text' => 'Revisar inbox (incluidos archivados) y decidir quién pasa a Lista 60. Routing key: list60:alta',
+                'prompt_instruction' => List60OutreachPromptDefaults::altaInstruction(),
+            ],
         ];
     }
 }

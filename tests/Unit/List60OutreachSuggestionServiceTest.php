@@ -63,6 +63,8 @@ class List60OutreachSuggestionServiceTest extends TestCase
         $this->assertStringContainsString('PROMPT PERSONALIZADO PRIMER CONTACTO', $instruction);
         $this->assertStringContainsString('- Estado en Lista de 60: Sin contactar', $instruction);
         $this->assertStringContainsString('Clave: "message"', $instruction);
+        $this->assertStringContainsString('1 o 2 frases', $instruction);
+        $this->assertStringContainsString('220 caracteres', $instruction);
     }
 
     public function test_build_instruction_uses_module_prompt_for_follow_up(): void
@@ -102,7 +104,7 @@ class List60OutreachSuggestionServiceTest extends TestCase
             statusName: 'Sin contactar',
         );
 
-        $this->assertStringContainsString('Isra Bravo', $instruction);
+        $this->assertStringContainsString('corto, humano', $instruction);
     }
 
     private function seedTeamWithList60Prompts(): int
