@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Team;
 use App\Support\HumanoHomeAsset;
+use App\Support\HumanoPricingCatalog;
 
 class AffiliateReferralLinkBuilder
 {
@@ -18,11 +19,17 @@ class AffiliateReferralLinkBuilder
         return $stripeId;
     }
 
-    /**
-     * @return list<array{id: string, name: string, checkout_url: string}>
-     */
-    public function availablePlans(): array
+    public function normalizeCatalog(?string $catalog): ?string
     {
+        return HumanoPricingCatalog::normalize($catalog);
+    }
+
+    /**
+     * @return list<array{id: string, name: string, checkout_url: string, catalog: string}>
+     */
+    public function availablePlans(?string $catalog = null): array
+    {
+        $catalog = $this->normalizeCatalog($catalog);
         $plans = [];
 
         foreach (config('humano_pricing.plans', []) as $plan)
@@ -32,11 +39,22 @@ class AffiliateReferralLinkBuilder
                 continue;
             }
 
-            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
             $available = (bool) ($plan['checkout_available'] ?? false);
             $planId = (string) ($plan['id'] ?? '');
+            $planCatalog = strtolower(trim((string) ($plan['catalog'] ?? 'assistant')));
 
-            if ($planId === '' || $checkoutUrl === '' || ! $available)
+            if ($planId === '' || ! $available)
+            {
+                continue;
+            }
+
+            if ($catalog !== null && $planCatalog !== $catalog)
+            {
+                continue;
+            }
+
+            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
+            if ($catalog === null && $checkoutUrl === '')
             {
                 continue;
             }
@@ -45,6 +63,7 @@ class AffiliateReferralLinkBuilder
                 'id' => $planId,
                 'name' => (string) __("humano_pricing.plans.{$planId}.name"),
                 'checkout_url' => $checkoutUrl,
+                'catalog' => $planCatalog,
             ];
         }
 

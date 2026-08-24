@@ -46,8 +46,13 @@ return [
      */
     'app_trials' => [
         'assistant' => (int) env('CMS8_APP_TRIAL_HOURS_ASSISTANT', 48),
-        'mailer' => (int) env('CMS8_APP_TRIAL_HOURS_MAILER', 0),
+        'mailer' => (int) env('CMS8_APP_TRIAL_HOURS_MAILER', 48),
         'platform' => (int) env('CMS8_APP_TRIAL_HOURS_PLATFORM', 0),
+        'shop' => (int) env('CMS8_APP_TRIAL_HOURS_SHOP', 48),
+        'ads' => (int) env('CMS8_APP_TRIAL_HOURS_ADS', 48),
+        'projects' => (int) env('CMS8_APP_TRIAL_HOURS_PROJECTS', 48),
+        'affiliates' => (int) env('CMS8_APP_TRIAL_HOURS_AFFILIATES', 0),
+        'estimator' => (int) env('CMS8_APP_TRIAL_HOURS_ESTIMATOR', 48),
     ],
 
     /*
@@ -146,7 +151,8 @@ return [
 
     /*
      * | Affiliate commission % on Humano platform billing (team-to-team referrals).
-     * | Applied when a referred team pays a Stripe invoice (see teams.referred_by).
+     * | Stored on the referred subscription (subscriptions.referred_by + affiliate_commission_percent).
+     * | Applied only when that subscription's invoice is paid, not the team's full account.
      */
     'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 30),
 
@@ -264,9 +270,11 @@ return [
      * |
      * | Default checkout URLs and Stripe catalog IDs for Humano.app (override with
      * | HUMANO_PRICING_* in .env). Display names and marketing copy live under lang (humano_pricing.php).
+     * | Shop / Ads / Projects defaults are Stripe test IDs. Live IDs go in production .env
+     * | (see .env.example). Recreate or reuse with `php artisan humano-pricing:publish-stripe`.
      * |
-     * | Humano.app Assistant — Payment Link …/3cIeVd98VabI07cgPb43S03, product prod_UUoDnxftlyItz0,
-     * |   monthly price_1TVoawGelYN536DrEH4gIAsR (99€), yearly price_1TVod6GelYN536DrtCsqOG6d (990€).
+     * | Humano.app Assistant — product prod_V8Jgzp5AQyRYmC (test) / prod_V8JgY0BNt1q78v (live),
+     * |   monthly 49€, yearly 490€. Recreate with `php artisan humano-pricing:publish-stripe`.
      * | Humano.app Business — …/6oU14nfxjabIbPUbuR43S04, prod_UUoHz602tHBY8b,
      * |   monthly price_1TVoebGelYN536DrLAOm6k90 (299€), yearly price_1TVof6GelYN536DrAaThyVzr (2990€).
      * | Humano.app Mentor — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
@@ -289,9 +297,9 @@ return [
                 'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL_YEARLY',
                 'https://buy.stripe.com/aFa5kDgBn5Vs07c56t43S09',
             ),
-            'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_UJkenQzkHZM1Sr'),
-            'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1ThAmkGelYN536DrP364au8Z'),
-            'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1TUro1GelYN536DriuckpG7j'),
+            'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_V8Jgzp5AQyRYmC'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1U832kRwN51ygFdeVvMTtNJH'),
+            'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1U832kRwN51ygFdebJxgLunP'),
             'monthly_amount' => '49',
             'yearly_amount' => '490',
             'popular' => false,
@@ -434,6 +442,132 @@ return [
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_MAILER_SCALE_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'shop_basic',
+            'catalog' => 'shop',
+            'public' => false,
+            'subscription_type' => 'shop',
+            'checkout_url' => env('HUMANO_PRICING_SHOP_BASIC_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_SHOP_BASIC_STRIPE_PRODUCT_ID', 'prod_V89Ch5pNA8GG1s'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_SHOP_BASIC_PRICE_MONTHLY_ID', 'price_1U7suBRwN51ygFde4qEpYyXf'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_SHOP_BASIC_MONTHLY_AMOUNT', '19'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_SHOP_BASIC_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'shop_premium',
+            'catalog' => 'shop',
+            'public' => false,
+            'subscription_type' => 'shop',
+            'checkout_url' => env('HUMANO_PRICING_SHOP_PREMIUM_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_SHOP_PREMIUM_STRIPE_PRODUCT_ID', 'prod_V89CVxlWTlBMe7'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_SHOP_PREMIUM_PRICE_MONTHLY_ID', 'price_1U7suDRwN51ygFdeaAni5iw4'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_SHOP_PREMIUM_MONTHLY_AMOUNT', '39'),
+            'yearly_amount' => '',
+            'popular' => true,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_SHOP_PREMIUM_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'shop_profesional',
+            'catalog' => 'shop',
+            'public' => false,
+            'subscription_type' => 'shop',
+            'checkout_url' => env('HUMANO_PRICING_SHOP_PROFESIONAL_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_SHOP_PROFESIONAL_STRIPE_PRODUCT_ID', 'prod_V89C0HW6riezWq'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_SHOP_PROFESIONAL_PRICE_MONTHLY_ID', 'price_1U7suERwN51ygFdefw059YTU'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_SHOP_PROFESIONAL_MONTHLY_AMOUNT', '79'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_SHOP_PROFESIONAL_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'ads',
+            'catalog' => 'ads',
+            'public' => false,
+            'subscription_type' => 'ads',
+            'checkout_url' => env('HUMANO_PRICING_ADS_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_ADS_STRIPE_PRODUCT_ID', 'prod_V89CoEJptr2nT5'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_ADS_PRICE_MONTHLY_ID', 'price_1U7suFRwN51ygFdeFSm0geeq'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_ADS_MONTHLY_AMOUNT', '49'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_ADS_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'projects',
+            'catalog' => 'projects',
+            'public' => false,
+            'subscription_type' => 'projects',
+            'checkout_url' => env('HUMANO_PRICING_PROJECTS_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_PROJECTS_STRIPE_PRODUCT_ID', 'prod_V89Cx8SZW5xrV4'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_PROJECTS_PRICE_MONTHLY_ID', 'price_1U7suGRwN51ygFdeGj0PfgIh'),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_PROJECTS_MONTHLY_AMOUNT', '29'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_PROJECTS_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'affiliates',
+            'catalog' => 'affiliates',
+            'public' => false,
+            'subscription_type' => 'affiliates',
+            'checkout_url' => env('HUMANO_PRICING_AFFILIATES_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_AFFILIATES_STRIPE_PRODUCT_ID', ''),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_AFFILIATES_PRICE_MONTHLY_ID', ''),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_AFFILIATES_MONTHLY_AMOUNT', '0'),
+            'yearly_amount' => '',
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_AFFILIATES_CHECKOUT_AVAILABLE', 'false'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'estimator',
+            'catalog' => 'estimator',
+            'public' => false,
+            'subscription_type' => 'estimator',
+            'checkout_url' => env('HUMANO_PRICING_ESTIMATOR_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_ESTIMATOR_STRIPE_PRODUCT_ID', ''),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_ESTIMATOR_PRICE_MONTHLY_ID', ''),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_ESTIMATOR_MONTHLY_AMOUNT', '0'),
+            'yearly_amount' => env('HUMANO_PRICING_ESTIMATOR_YEARLY_AMOUNT', '0'),
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_ESTIMATOR_CHECKOUT_AVAILABLE', 'true'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],

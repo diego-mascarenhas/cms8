@@ -22,6 +22,7 @@ class ChatProjectFunnelRequest extends FormRequest
             'messages.*.content' => ['required_with:messages', 'string', 'max:4000'],
             'project_name' => ['nullable', 'string', 'max:255'],
             'lead_name' => ['nullable', 'string', 'max:120'],
+            'context' => ['nullable', 'string', 'max:8000'],
         ];
     }
 }

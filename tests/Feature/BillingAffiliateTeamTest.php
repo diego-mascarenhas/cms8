@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\AffiliateCommissionRecorder;
 use App\Services\AffiliateReferralLinkBuilder;
+use App\Services\PaymentLinkAffiliateTeamAttributionService;
 use App\Services\TeamStripeCustomerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -43,9 +44,21 @@ class BillingAffiliateTeamTest extends TestCase
         ]);
         $payingOwner->forceFill(['current_team_id' => $payingTeam->id])->save();
 
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hunter',
+            'stripe_id' => 'sub_referred_ads',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hunter',
+            'quantity' => 1,
+            'referred_by' => 'cus_referrer_abc',
+            'affiliate_commission_percent' => 30,
+        ]);
+
         app(AffiliateCommissionRecorder::class)->recordFromInvoice($payingTeam, [
             'id' => 'in_test_aff_team_1',
             'customer' => 'cus_paying_xyz',
+            'subscription' => 'sub_referred_ads',
             'amount_paid' => 10000,
             'currency' => 'eur',
         ]);
@@ -68,9 +81,21 @@ class BillingAffiliateTeamTest extends TestCase
         ]);
         $owner->forceFill(['current_team_id' => $team->id])->save();
 
+        $team->subscriptions()->create([
+            'user_id' => $owner->id,
+            'type' => 'hunter',
+            'stripe_id' => 'sub_same_team',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hunter',
+            'quantity' => 1,
+            'referred_by' => 'cus_same_team',
+            'affiliate_commission_percent' => 30,
+        ]);
+
         app(AffiliateCommissionRecorder::class)->recordFromInvoice($team, [
             'id' => 'in_test_same_team',
             'customer' => 'cus_same_team',
+            'subscription' => 'sub_same_team',
             'amount_paid' => 5000,
             'currency' => 'usd',
         ]);
@@ -96,6 +121,110 @@ class BillingAffiliateTeamTest extends TestCase
         ]);
 
         $this->assertSame(0, BillingAffiliateCommission::query()->count());
+    }
+
+    public function test_no_commission_on_unreferred_product_subscription(): void
+    {
+        $referrerOwner = User::factory()->create();
+        $referrerTeam = Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => 'cus_referrer_ads_only',
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_paying_multi',
+            'referred_by' => 'cus_referrer_ads_only',
+        ]);
+
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hunter',
+            'stripe_id' => 'sub_ads_referred',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hunter',
+            'quantity' => 1,
+            'referred_by' => 'cus_referrer_ads_only',
+            'affiliate_commission_percent' => 30,
+        ]);
+
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_mailer_own',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_mailer',
+            'quantity' => 1,
+            'referred_by' => null,
+            'affiliate_commission_percent' => null,
+        ]);
+
+        app(AffiliateCommissionRecorder::class)->recordFromInvoice($payingTeam, [
+            'id' => 'in_mailer_own',
+            'customer' => 'cus_paying_multi',
+            'subscription' => 'sub_mailer_own',
+            'amount_paid' => 8000,
+            'currency' => 'eur',
+        ]);
+
+        $this->assertSame(0, BillingAffiliateCommission::query()->count());
+
+        app(AffiliateCommissionRecorder::class)->recordFromInvoice($payingTeam, [
+            'id' => 'in_ads_referred',
+            'customer' => 'cus_paying_multi',
+            'subscription' => 'sub_ads_referred',
+            'amount_paid' => 10000,
+            'currency' => 'eur',
+        ]);
+
+        $this->assertDatabaseHas('billing_affiliate_commissions', [
+            'stripe_invoice_id' => 'in_ads_referred',
+            'referrer_team_id' => $referrerTeam->id,
+            'commission_amount_cents' => 3000,
+        ]);
+    }
+
+    public function test_attribution_stamps_referrer_on_subscription(): void
+    {
+        config(['humano_pricing.affiliate_commission_percent' => 25]);
+
+        $referrerOwner = User::factory()->create();
+        Team::factory()->create([
+            'user_id' => $referrerOwner->id,
+            'stripe_id' => 'cus_sub_stamp_ref',
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_sub_stamp_pay',
+        ]);
+
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hunter',
+            'stripe_id' => 'sub_stamp_ads',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hunter',
+            'quantity' => 1,
+        ]);
+
+        $session = \Stripe\Checkout\Session::constructFrom([
+            'id' => 'cs_stamp_sub',
+            'object' => 'checkout.session',
+            'subscription' => 'sub_stamp_ads',
+            'client_reference_id' => 'cus_sub_stamp_ref',
+        ]);
+
+        app(PaymentLinkAffiliateTeamAttributionService::class)
+            ->syncTeamReferrerFromSession($payingTeam, $session);
+
+        $subscription = $payingTeam->subscriptions()->where('stripe_id', 'sub_stamp_ads')->first();
+
+        $this->assertSame('cus_sub_stamp_ref', $payingTeam->fresh()->referred_by);
+        $this->assertSame('cus_sub_stamp_ref', $subscription?->referred_by);
+        $this->assertSame(25.0, (float) $subscription?->affiliate_commission_percent);
     }
 
     public function test_referral_link_builder_appends_client_reference_id(): void

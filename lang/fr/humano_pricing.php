@@ -105,6 +105,77 @@ return [
                 'Para grandes empresas',
             ],
         ],
+        'shop_basic' => [
+            'name' => 'Shop Freelancer',
+            'description' => 'Tu propio carrito de compras y menú digital, de manera rápida y sencilla para un comercio.',
+            'features' => [
+                'Hasta 50 productos',
+                'Hasta 50 pedidos por mes',
+                'Tienda virtual con 1 sucursal',
+                'Cupones de descuento',
+                'Soporte vía email',
+            ],
+        ],
+        'shop_premium' => [
+            'name' => 'Shop Commerce',
+            'description' => 'Más catálogo y sucursales para comercios que venden por WhatsApp.',
+            'features' => [
+                'Hasta 200 productos',
+                'Hasta 100 pedidos por mes',
+                'Tienda virtual con 3 sucursales',
+                'Cupones de descuento',
+                'Soporte vía email/WhatsApp',
+            ],
+        ],
+        'shop_profesional' => [
+            'name' => 'Shop Enterprise',
+            'description' => 'Productos y pedidos ilimitados, con dominio propio y analítica.',
+            'features' => [
+                'Productos ilimitados',
+                'Pedidos ilimitados',
+                'Tienda virtual con 5 sucursales',
+                'Dominio propio',
+                'Google Analytics',
+                'Cupones de descuento',
+                'Soporte vía email/WhatsApp',
+            ],
+        ],
+        'ads' => [
+            'name' => 'Ads',
+            'description' => 'Planificá y ejecutá campañas de pago en Meta, Google, LinkedIn, TikTok y X desde un solo lugar.',
+            'features' => [
+                'Calendario de campañas y creatividades',
+                'Conectá Meta, Google, LinkedIn, TikTok y X',
+                'Facturación compartida con el resto de las apps',
+            ],
+        ],
+        'projects' => [
+            'name' => 'Projects',
+            'description' => 'Seguí el trabajo con clientes, las tareas y la entrega en un solo espacio.',
+            'features' => [
+                'Proyectos y tareas del equipo',
+                'Contexto de cliente compartido con Idoneo',
+                'Avance visible sin cambiar de herramienta',
+            ],
+        ],
+        'affiliates' => [
+            'name' => 'Affiliates',
+            'description' => 'Recomendá productos Idoneo y seguí referidos, invitaciones y comisiones.',
+            'features' => [
+                'Código de referido e invitaciones por email',
+                'Seguimiento de comisiones por cuenta referida',
+                'Un catálogo por cada producto Idoneo',
+            ],
+        ],
+        'estimator' => [
+            'name' => 'Estimator',
+            'description' => 'Devis commerciaux. Le plan est gratuit ; seuls les jetons IA sont facturés.',
+            'features' => [
+                'Tunnel de devis pour l’équipe',
+                'Plan à 0 € ; la carte sert uniquement à facturer les jetons',
+                'Facturation partagée avec les autres apps Idoneo',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

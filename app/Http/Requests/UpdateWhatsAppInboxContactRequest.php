@@ -11,6 +11,19 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    protected function prepareForValidation(): void
+    {
+        if (! $this->exists('email'))
+        {
+            return;
+        }
+
+        $email = trim((string) $this->input('email', ''));
+        $this->merge([
+            'email' => $email !== '' ? $email : null,
+        ]);
+    }
+
     /**
      * @return array<string, list<string>>
      */
@@ -19,6 +32,7 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
         return [
             'phone' => ['required', 'string'],
             'name' => ['required', 'string', 'max:255'],
+            'email' => ['sometimes', 'nullable', 'email:rfc', 'max:255'],
             'status_id' => ['required', 'integer', 'exists:contact_statuses,id'],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => ['integer', 'distinct', 'min:1'],
@@ -33,6 +47,7 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
         return [
             'phone.required' => __('Invalid phone number.'),
             'name.required' => __('El nombre es obligatorio.'),
+            'email.email' => __('Introduce un email válido.'),
             'status_id.required' => __('The selected status is invalid.'),
             'status_id.exists' => __('The selected status is invalid.'),
         ];

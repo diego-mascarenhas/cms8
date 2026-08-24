@@ -353,4 +353,12 @@ return [
         'embed_description' => 'Asistente embebible: citas, catálogo y ventas.',
         'welcome_message' => 'Hola, ¿reservamos una cita o te muestro el catálogo?',
     ],
+    'list60_prompt' => [
+        'updated' => 'List 60 inbox prompt updated.',
+        'instruction_required' => 'The instruction for the AI is required.',
+        'missing_prompt' => 'The List 60 inbox prompt is not available for this team.',
+        'unclassified' => 'The model did not classify this thread.',
+        'phone_required' => 'The phone number is required.',
+        'not_on_list' => 'That contact is not on List 60.',
+    ],
 ];

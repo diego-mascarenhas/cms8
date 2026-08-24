@@ -105,6 +105,77 @@ return [
                 'For larger organizations',
             ],
         ],
+        'shop_basic' => [
+            'name' => 'Shop Freelancer',
+            'description' => 'Your own shopping cart and digital menu, set up quickly for a freelancer.',
+            'features' => [
+                'Up to 50 products',
+                'Up to 50 orders per month',
+                'Online store with 1 branch',
+                'Discount coupons',
+                'Email support',
+            ],
+        ],
+        'shop_premium' => [
+            'name' => 'Shop Commerce',
+            'description' => 'More catalog space and branches for growing stores that sell on WhatsApp.',
+            'features' => [
+                'Up to 200 products',
+                'Up to 100 orders per month',
+                'Online store with 3 branches',
+                'Discount coupons',
+                'Email and WhatsApp support',
+            ],
+        ],
+        'shop_profesional' => [
+            'name' => 'Shop Enterprise',
+            'description' => 'Unlimited catalog and orders, with your own domain and analytics.',
+            'features' => [
+                'Unlimited products',
+                'Unlimited orders',
+                'Online store with 5 branches',
+                'Custom domain',
+                'Google Analytics',
+                'Discount coupons',
+                'Email and WhatsApp support',
+            ],
+        ],
+        'ads' => [
+            'name' => 'Ads',
+            'description' => 'Plan and run paid campaigns across Meta, Google, LinkedIn, TikTok, and X from one workspace.',
+            'features' => [
+                'Campaign calendar and creatives in one place',
+                'Connect Meta, Google, LinkedIn, TikTok, and X',
+                'Shared billing with the rest of your Idoneo apps',
+            ],
+        ],
+        'projects' => [
+            'name' => 'Projects',
+            'description' => 'Track client work, tasks, and delivery in one shared project workspace.',
+            'features' => [
+                'Projects and tasks for the team',
+                'Shared client context with the rest of Idoneo',
+                'Follow progress without switching tools',
+            ],
+        ],
+        'affiliates' => [
+            'name' => 'Affiliates',
+            'description' => 'Recommend Idoneo products and track referrals, invitations, and commissions.',
+            'features' => [
+                'Referral code and invitation emails',
+                'Commission tracking per referred account',
+                'Works with each Idoneo product catalog',
+            ],
+        ],
+        'estimator' => [
+            'name' => 'Estimator',
+            'description' => 'Commercial quotes. The plan is free; only AI tokens are billed.',
+            'features' => [
+                'Quote funnel for the team',
+                '0 € plan; the card is only for token invoices',
+                'Shared billing with the rest of your Idoneo apps',
+            ],
+        ],
     ],
     'checkout_complete_success' => 'Welcome! Your workspace is ready.',
     'checkout_complete_invalid_session' => 'We could not confirm this payment. Please open the link from your Stripe receipt or contact support.',

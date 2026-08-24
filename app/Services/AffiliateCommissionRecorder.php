@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BillingAffiliateCommission;
+use App\Models\Subscription;
 use App\Models\Team;
 use App\Support\AffiliateCommission;
 use Illuminate\Support\Facades\Log;
@@ -10,9 +11,8 @@ use Illuminate\Support\Facades\Log;
 class AffiliateCommissionRecorder
 {
     /**
-     * When a Stripe invoice is paid, attribute commission to the referrer team using
-     * {@see Team::$referred_by} (Stripe customer id of the referrer team).
-     * Commission % comes from {@see AffiliateCommission::percent()}.
+     * When a Stripe invoice is paid, commission only the subscription that was referred
+     * ({@see Subscription::$referred_by}), not the paying team's full account.
      *
      * @param  array<string, mixed>  $invoice  Stripe invoice object from webhook payload
      */
@@ -24,7 +24,23 @@ class AffiliateCommissionRecorder
             return;
         }
 
-        $referralStripeId = trim((string) ($payingTeam->referred_by ?? ''));
+        $stripeSubscriptionId = $this->invoiceSubscriptionId($invoice);
+        if ($stripeSubscriptionId === null)
+        {
+            return;
+        }
+
+        $subscription = Subscription::query()
+            ->where('team_id', $payingTeam->id)
+            ->where('stripe_id', $stripeSubscriptionId)
+            ->first();
+
+        if ($subscription === null)
+        {
+            return;
+        }
+
+        $referralStripeId = trim((string) ($subscription->referred_by ?? ''));
         if ($referralStripeId === '')
         {
             return;
@@ -42,7 +58,7 @@ class AffiliateCommissionRecorder
             return;
         }
 
-        $percent = $this->resolveCommissionPercent();
+        $percent = $this->resolveCommissionPercent($subscription);
         if ($percent <= 0)
         {
             return;
@@ -79,13 +95,41 @@ class AffiliateCommissionRecorder
             Log::warning('Affiliate commission record failed', [
                 'paying_team_id' => $payingTeam->id,
                 'stripe_invoice_id' => $invoiceId,
+                'stripe_subscription_id' => $stripeSubscriptionId,
                 'exception' => $e->getMessage(),
             ]);
         }
     }
 
-    private function resolveCommissionPercent(): float
+    /**
+     * @param  array<string, mixed>  $invoice
+     */
+    private function invoiceSubscriptionId(array $invoice): ?string
     {
+        $subscription = $invoice['subscription'] ?? null;
+        if (is_string($subscription) && str_starts_with($subscription, 'sub_'))
+        {
+            return $subscription;
+        }
+
+        if (is_array($subscription))
+        {
+            $id = trim((string) ($subscription['id'] ?? ''));
+
+            return $id !== '' ? $id : null;
+        }
+
+        return null;
+    }
+
+    private function resolveCommissionPercent(Subscription $subscription): float
+    {
+        $stored = $subscription->affiliate_commission_percent;
+        if ($stored !== null && (float) $stored > 0)
+        {
+            return max(0.0, min(100.0, (float) $stored));
+        }
+
         return AffiliateCommission::percent();
     }
 }

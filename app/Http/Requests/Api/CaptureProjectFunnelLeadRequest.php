@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Http\Requests\Api\Concerns\ValidatesProjectFunnelIntake;
 use Illuminate\Foundation\Http\FormRequest;
 
 class CaptureProjectFunnelLeadRequest extends FormRequest
 {
+    use ValidatesProjectFunnelIntake;
+
     public function authorize(): bool
     {
         return true;
@@ -18,8 +21,9 @@ class CaptureProjectFunnelLeadRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:120'],
-            'surname' => ['required', 'string', 'max:120'],
+            'surname' => ['nullable', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255'],
+            ...$this->funnelIntakeRules(),
         ];
     }
 
@@ -30,9 +34,9 @@ class CaptureProjectFunnelLeadRequest extends FormRequest
     {
         return [
             'name.required' => __('First name is required.'),
-            'surname.required' => __('Last name is required.'),
             'email.required' => __('Email is required.'),
             'email.email' => __('Enter a valid email address.'),
+            ...$this->funnelIntakeMessages(),
         ];
     }
 }

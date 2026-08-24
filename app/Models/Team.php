@@ -304,6 +304,29 @@ class Team extends JetstreamTeam
         return null;
     }
 
+    public static function findByPlainApiToken(?string $plain): ?self
+    {
+        $plain = trim((string) $plain);
+        if ($plain === '')
+        {
+            return null;
+        }
+
+        $tokenHash = hash('sha256', $plain);
+
+        return static::query()
+            ->whereHas('settings', function ($query)
+            {
+                $query->whereIn('key', ['api_token_hash', 'api_tokens']);
+            })
+            ->with('settings')
+            ->get()
+            ->first(function (self $team) use ($tokenHash)
+            {
+                return $team->findApiTokenByHash($tokenHash) !== null;
+            });
+    }
+
     /**
      * @return array{token: array{id: string, name: string, hash: string, plain: string, abilities: string, created_at: string}, plain: string}
      */

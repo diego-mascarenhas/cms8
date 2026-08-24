@@ -121,6 +121,28 @@ class UserApiTest extends TestCase
         $this->assertFalse($ids->contains($client->id));
     }
 
+    public function test_basic_filter_includes_collaborators_and_excludes_clients(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $collaborator = User::factory()->create();
+        $team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->assignRole('collaborator');
+
+        $client = User::factory()->create();
+        $team->users()->attach($client, ['role' => 'client']);
+        $client->assignRole('client');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?basic=1');
+
+        $response->assertOk();
+        $ids = collect($response->json('users'))->pluck('id');
+        $this->assertTrue($ids->contains($admin->id));
+        $this->assertTrue($ids->contains($collaborator->id));
+        $this->assertFalse($ids->contains($client->id));
+    }
+
     public function test_store_creates_admin_on_current_team(): void
     {
         [, $team, $token] = $this->adminWithToken();
@@ -143,6 +165,30 @@ class UserApiTest extends TestCase
         $this->assertTrue($created->hasRole('admin'));
         $this->assertTrue($created->teams->contains('id', $team->id));
         $this->assertSame($team->id, (int) $created->current_team_id);
+    }
+
+    public function test_store_creates_collaborator_when_role_is_sent(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/users', [
+                'name' => 'Carla Colab',
+                'email' => 'carla.colab@example.com',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'collaborator',
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('user.role', 'collaborator');
+
+        $created = User::query()->where('email', 'carla.colab@example.com')->first();
+        $this->assertNotNull($created);
+        $this->assertTrue($created->hasRole('collaborator'));
+        $this->assertFalse($created->hasRole('admin'));
+        $this->assertTrue($created->teams->contains('id', $team->id));
+        $this->assertSame('collaborator', $created->teams->first()?->pivot?->role);
     }
 
     public function test_store_requires_unique_email_and_password_confirmation(): void

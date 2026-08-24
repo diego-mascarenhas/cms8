@@ -380,6 +380,310 @@ class ProjectFunnelTest extends TestCase
         $this->assertNotNull($project->board_id);
     }
 
+    public function test_lead_persists_intake_fields_without_surname(): void
+    {
+        $team = $this->createFunnelTeam();
+
+        $response = $this->postJson('/api/projects/funnel/lead', [
+            'name' => 'Victor Gómez',
+            'email' => 'victor.intake@example.com',
+            'phone' => '+34 600 111 222',
+            'business_name' => 'Idoneo SL',
+            'project_name' => 'CRM interno',
+            'approx_users' => '20-30',
+            'integrations' => 'WhatsApp, Stripe',
+            'needed_by' => 'Octubre 2026',
+            'location' => 'Madrid, España',
+            'scope' => 'Panel para gestionar presupuestos y seguimiento de clientes.',
+        ]);
+
+        $response->assertCreated()->assertJsonPath('success', true);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'victor.intake@example.com')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame('Victor Gómez', $contact->name);
+        $this->assertSame('34600111222', (string) $contact->phone);
+        $intake = (array) ($contact->data->intake ?? []);
+        $this->assertSame('Idoneo SL', $intake['business_name'] ?? null);
+        $this->assertSame('Madrid, España', $intake['location'] ?? null);
+        $this->assertSame('20-30', $intake['approx_users'] ?? null);
+    }
+
+    public function test_quote_stores_intake_on_project_enterprise_and_contact(): void
+    {
+        $team = $this->createFunnelTeam();
+
+        $this->mock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn([
+                    'ai_interpretation' => 'CRM de presupuestos',
+                    'dimension' => 'Small',
+                    'estimated_times' => '4 weeks',
+                    'resources' => '1 senior',
+                    'client_items' => [],
+                    'resource_breakdown' => [],
+                    'suggested_tasks' => [
+                        [
+                            'title' => 'Discovery',
+                            'category_name' => 'Análisis',
+                            'estimated_hours' => 6,
+                            'resource_level' => 'Senior',
+                            'unit_price' => 800,
+                            'included' => true,
+                        ],
+                    ],
+                ]);
+
+            $mock->shouldReceive('toClientSafe')
+                ->once()
+                ->andReturn([
+                    'ai_interpretation' => 'CRM de presupuestos',
+                    'dimension' => 'Small',
+                    'estimated_times' => '4 weeks',
+                    'resources' => '1 senior',
+                    'suggested_tasks' => [
+                        [
+                            'title' => 'Discovery',
+                            'description' => 'Alcance y mapa',
+                            'category_name' => 'Análisis',
+                            'estimated_hours' => 6,
+                            'resource_level' => 'Senior',
+                            'included' => true,
+                        ],
+                    ],
+                ]);
+
+            $mock->shouldReceive('buildTokenConsumption')
+                ->once()
+                ->andReturn([
+                    'notes' => 'Discovery: 6h',
+                    'input_tokens' => 1000,
+                    'output_tokens' => 400,
+                    'total_tokens' => 1400,
+                    'cost_euros' => 0.4,
+                    'savings_percent' => 57.0,
+                    'billable_euros' => 0.9,
+                    'currency' => 'EUR',
+                ]);
+        });
+
+        $response = $this->postJson('/api/projects/funnel/quote', [
+            'name' => 'Victor Gómez',
+            'email' => 'victor.quote@example.com',
+            'phone' => '+34 600 333 444',
+            'business_name' => 'Idoneo SL',
+            'project_name' => 'Estimator',
+            'approx_users' => '15',
+            'integrations' => 'Humano, Stripe',
+            'needed_by' => 'Septiembre 2026',
+            'location' => 'Valencia',
+            'scope' => 'App para cotizar proyectos a medida.',
+            'brief' => "Proyecto: Estimator\nEmpresa: Idoneo SL\nQué tiene que hacer: App para cotizar proyectos a medida.",
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('status', 'ready');
+
+        $contact = Contact::withoutGlobalScopes()->where('email', 'victor.quote@example.com')->first();
+        $this->assertNotNull($contact);
+        $this->assertSame('34600333444', (string) $contact->phone);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->where('email', 'victor.quote@example.com')->first();
+        $this->assertNotNull($enterprise);
+        $this->assertSame('Idoneo SL', $enterprise->name);
+        $this->assertSame('Valencia', $enterprise->locality);
+
+        $project = Project::withoutGlobalScopes()->find($response->json('data.project_id'));
+        $this->assertNotNull($project);
+        $this->assertSame('Estimator', $project->name);
+        $this->assertSame('15', $project->data['funnel']['intake']['approx_users'] ?? null);
+        $this->assertSame('Humano, Stripe', $project->data['funnel']['intake']['integrations'] ?? null);
+        $this->assertSame('Septiembre 2026', $project->data['funnel']['intake']['needed_by'] ?? null);
+        $this->assertSame($team->id, (int) $project->team_id);
+    }
+
+    public function test_chat_prompt_requires_authentication(): void
+    {
+        $this->createFunnelTeam();
+
+        $this->getJson('/api/projects/funnel/chat-prompt')->assertUnauthorized();
+        $this->putJson('/api/projects/funnel/chat-prompt', [
+            'prompt_instruction' => 'Pregunta solo por el presupuesto, las horas y el alcance.',
+        ])->assertUnauthorized();
+    }
+
+    public function test_chat_prompt_forbidden_when_user_is_not_on_token_team(): void
+    {
+        [, $plain] = $this->createTeamWithApiToken();
+        $outsider = User::factory()->withPersonalTeam()->create();
+        $token = $outsider->createToken('estimator-prompt')->plainTextToken;
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+            'X-Team-Token' => $plain,
+        ])->getJson('/api/projects/funnel/chat-prompt')->assertForbidden();
+    }
+
+    public function test_lead_is_stored_on_the_team_from_frontend_token(): void
+    {
+        config(['projects.funnel_team_id' => null]);
+        [$team, $plain] = $this->createTeamWithApiToken();
+
+        $this->withHeader('X-Team-Token', $plain)
+            ->postJson('/api/projects/funnel/lead', [
+                'name' => 'Ana',
+                'surname' => 'García',
+                'email' => 'ana.token@example.com',
+            ])
+            ->assertCreated();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('email', 'ana.token@example.com')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame($team->id, (int) $contact->team_id);
+    }
+
+    public function test_two_frontends_can_send_leads_to_different_teams(): void
+    {
+        config(['projects.funnel_team_id' => null]);
+        [$teamA, $tokenA] = $this->createTeamWithApiToken();
+        [$teamB, $tokenB] = $this->createTeamWithApiToken();
+
+        $this->withHeader('X-Team-Token', $tokenA)
+            ->postJson('/api/projects/funnel/lead', [
+                'name' => 'Ana',
+                'email' => 'ana.team-a@example.com',
+            ])
+            ->assertCreated();
+
+        $this->withHeader('X-Team-Token', $tokenB)
+            ->postJson('/api/projects/funnel/lead', [
+                'name' => 'Luis',
+                'email' => 'luis.team-b@example.com',
+            ])
+            ->assertCreated();
+
+        $this->assertSame(
+            $teamA->id,
+            (int) Contact::withoutGlobalScopes()->where('email', 'ana.team-a@example.com')->value('team_id'),
+        );
+        $this->assertSame(
+            $teamB->id,
+            (int) Contact::withoutGlobalScopes()->where('email', 'luis.team-b@example.com')->value('team_id'),
+        );
+    }
+
+    public function test_invalid_team_token_is_rejected(): void
+    {
+        config(['projects.funnel_team_id' => null]);
+
+        $this->withHeader('X-Team-Token', 'not-a-valid-team-token')
+            ->postJson('/api/projects/funnel/lead', [
+                'name' => 'Ana',
+                'email' => 'ana.invalid@example.com',
+            ])
+            ->assertUnauthorized()
+            ->assertJsonPath('message', 'Invalid team token.');
+    }
+
+    public function test_funnel_member_can_get_and_update_chat_prompt(): void
+    {
+        $team = $this->createFunnelTeam();
+        $user = $team->owner;
+        $this->assertNotNull($user);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $token = $user->createToken('estimator-prompt')->plainTextToken;
+
+        $get = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/funnel/chat-prompt')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertStringContainsString('{lead_name}', (string) $get->json('data.prompt_instruction'));
+
+        $custom = 'Eres un presupuestador. El cliente es {lead_name}. Pregunta solo por horas y precio. Requisitos: {requirements_json}';
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/funnel/chat-prompt', [
+                'prompt_instruction' => $custom,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.prompt_instruction', $custom);
+
+        $this->assertSame(
+            $custom,
+            app(ProjectBudgetSpecService::class)->resolveBudgetChatPrompt($team),
+        );
+    }
+
+    public function test_chat_uses_team_budget_chat_prompt(): void
+    {
+        $team = $this->createFunnelTeam();
+        $service = app(ProjectBudgetSpecService::class);
+        $prompt = $service->ensureBudgetChatPrompt($team);
+        $prompt->forceFill([
+            'prompt_instruction' => 'PROMPT PERSONALIZADO para {lead_name}. JSON: {requirements_json}',
+        ])->save();
+
+        $resolved = $service->resolveBudgetChatPrompt($team);
+        $this->assertStringContainsString('PROMPT PERSONALIZADO', $resolved);
+
+        $interpolated = $service->interpolateBudgetChatPrompt(
+            $resolved,
+            'Victor',
+            '[{"key":"objetivo"}]',
+            'Estimator',
+            'Empresa: Idoneo',
+        );
+        $this->assertStringContainsString('Victor', $interpolated);
+        $this->assertStringNotContainsString('{lead_name}', $interpolated);
+    }
+
+    public function test_public_chat_passes_funnel_team_to_service(): void
+    {
+        $team = $this->createFunnelTeam();
+        $teamId = (int) $team->id;
+
+        $this->mock(ProjectBudgetSpecService::class, function ($mock) use ($teamId)
+        {
+            $mock->shouldReceive('chatTurn')
+                ->once()
+                ->withArgs(function ($messages, $projectName, $leadName, $passedTeam, $context) use ($teamId)
+                {
+                    return $passedTeam instanceof \App\Models\Team
+                        && (int) $passedTeam->id === $teamId
+                        && $leadName === 'Ana'
+                        && $context === 'Empresa: Idoneo';
+                })
+                ->andReturn([
+                    'assistant_message' => '¿Cuál es el objetivo?',
+                    'requirements' => [],
+                    'brief' => 'Brief',
+                    'project_name' => null,
+                    'business_name' => null,
+                    'all_met' => false,
+                ]);
+        });
+
+        $this->postJson('/api/projects/funnel/chat', [
+            'messages' => [
+                ['role' => 'user', 'content' => 'Quiero un CRM'],
+            ],
+            'lead_name' => 'Ana',
+            'project_name' => 'CRM',
+            'context' => 'Empresa: Idoneo',
+        ])->assertOk()->assertJsonPath('data.assistant_message', '¿Cuál es el objetivo?');
+    }
+
     public function test_quote_fails_when_funnel_team_not_configured(): void
     {
         config(['projects.funnel_team_id' => null]);
@@ -424,6 +728,23 @@ class ProjectFunnelTest extends TestCase
         $this->assertSame(1, (int) $project->status_id);
         $this->assertSame('Web Luis', $project->name);
         $this->assertStringContainsString('web corporativa', (string) ($project->data['budget_given'] ?? ''));
+    }
+
+    /**
+     * @return array{0: \App\Models\Team, 1: string}
+     */
+    private function createTeamWithApiToken(): array
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $plain = $team->createApiToken('Frontend funnel', '*')['plain'];
+
+        return [$team, $plain];
     }
 
     private function createFunnelTeam(): \App\Models\Team

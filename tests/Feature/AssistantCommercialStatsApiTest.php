@@ -108,6 +108,7 @@ class AssistantCommercialStatsApiTest extends TestCase
         $this->assertSame($lead->id, $resume['contact_id']);
         $this->assertSame('Sin respuesta', $resume['status']);
         $this->assertStringContainsString('sin respuesta', mb_strtolower($resume['suggestion']));
+        $this->assertSame('/inbox?phone=34600000001&suggest=list60', $resume['inbox_href']);
     }
 
     public function test_commercial_stats_measure_agent_response_and_waiting_inbox(): void

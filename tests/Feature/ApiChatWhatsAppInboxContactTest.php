@@ -52,7 +52,39 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $response->assertJsonPath('thread_contact.name', 'Diego Mascarenhas');
         $response->assertJsonPath('thread_contact.phone', self::CLIENT_PHONE);
         $response->assertJsonPath('thread_contact.status_id', $status->id);
+        $response->assertJsonPath('thread_contact.email', null);
         $this->assertContains('Lead', collect($response->json('thread_contact.statuses'))->pluck('name')->all());
+    }
+
+    public function test_thread_exposes_contact_email_and_hides_placeholder(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $this->crmContact($team, ['email' => 'diego@example.com']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
+            ->assertOk()
+            ->assertJsonPath('thread_contact.email', 'diego@example.com');
+
+        $placeholder = $this->crmContact($team, [
+            'phone' => '34600888777',
+            'email' => '34600888777@chat.placeholder',
+        ]);
+        Conversation::create([
+            'message_sid' => 'SM_inbox_placeholder_email',
+            'channel' => 'whatsapp',
+            'from' => '34600888777',
+            'to' => self::TEAM_NUMBER,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/34600888777')
+            ->assertOk()
+            ->assertJsonPath('thread_contact.contact_id', $placeholder->id)
+            ->assertJsonPath('thread_contact.email', null);
     }
 
     public function test_list_includes_the_contact_sentiment_on_the_avatar_payload(): void
@@ -92,6 +124,38 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         ]);
     }
 
+    public function test_list_can_filter_conversations_by_contact_category(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $alfa = $this->contactsCategory('Alfa', $team);
+        $this->contactsCategory('Beta', $team);
+        $tagged = $this->crmContact($team, ['name' => 'Ana']);
+        $tagged->categories()->sync([$alfa->id]);
+        $this->crmContact($team, ['name' => 'Luis', 'phone' => '34600999888']);
+        Conversation::create([
+            'message_sid' => 'SM_inbox_other',
+            'channel' => 'whatsapp',
+            'from' => '34600999888',
+            'to' => self::TEAM_NUMBER,
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        $all = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list')
+            ->assertOk();
+        $this->assertCount(2, $all->json('contacts'));
+        $ana = collect($all->json('contacts'))->firstWhere('from', self::CLIENT_PHONE);
+        $this->assertSame([$alfa->id], $ana['category_ids']);
+
+        $filtered = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list?category_id='.$alfa->id)
+            ->assertOk();
+        $this->assertSame([self::CLIENT_PHONE], collect($filtered->json('contacts'))->pluck('from')->all());
+        $filtered->assertJsonPath('total', 1);
+    }
+
     public function test_update_changes_name_status_and_categories_but_not_the_phone(): void
     {
         [$token, , $team] = $this->inbox();
@@ -123,6 +187,59 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $this->assertSame(self::CLIENT_PHONE, (string) $contact->phone);
         $this->assertSame($cliente->id, $contact->status_id);
         $this->assertEqualsCanonicalizing([$keep->id], $contact->categories->pluck('id')->all());
+    }
+
+    public function test_update_saves_clears_and_validates_email(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $contact = $this->crmContact($team, ['email' => 'viejo@example.com']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Isabel Ayuso',
+                'status_id' => 1,
+                'email' => 'Isabel@Example.com',
+            ])
+            ->assertOk()
+            ->assertJsonPath('contact.email', 'isabel@example.com')
+            ->assertJsonPath('thread_contact.email', 'isabel@example.com');
+
+        $this->assertSame('isabel@example.com', $contact->fresh()->email);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Isabel Ayuso',
+                'status_id' => 1,
+                'email' => 'no-es-un-email',
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame('isabel@example.com', $contact->fresh()->email);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Isabel Ayuso',
+                'status_id' => 1,
+            ])
+            ->assertOk();
+
+        $this->assertSame('isabel@example.com', $contact->fresh()->email);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Isabel Ayuso',
+                'status_id' => 1,
+                'email' => '',
+            ])
+            ->assertOk()
+            ->assertJsonPath('contact.email', null)
+            ->assertJsonPath('thread_contact.email', null);
+
+        $this->assertNull($contact->fresh()->email);
     }
 
     public function test_update_keeps_tags_from_other_modules_when_categories_change(): void

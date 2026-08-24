@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,7 +20,7 @@ class CompleteAssistantCheckoutRequest extends FormRequest
     {
         return [
             'session_id' => ['required', 'string', 'max:255'],
-            'catalog' => ['nullable', 'string', Rule::in(['assistant', 'platform', 'mailer'])],
+            'catalog' => ['nullable', 'string', Rule::in(HumanoPricingCatalog::all())],
         ];
     }
 

@@ -4,11 +4,11 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Public projects funnel (idoneo-projects SPA)
+    | Public projects funnel (optional fallback team)
     |--------------------------------------------------------------------------
     |
-    | Leads from the public quote wizard are created under this team.
-    | Set PROJECTS_FUNNEL_TEAM_ID in .env (numeric teams.id).
+    | Frontends identify the destination team with X-Team-Token (team API
+    | token). PROJECTS_FUNNEL_TEAM_ID is only used when no token is sent.
     |
     */
     'funnel_team_id' => env('PROJECTS_FUNNEL_TEAM_ID'),

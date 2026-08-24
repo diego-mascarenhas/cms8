@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +21,7 @@ class CreateAssistantCheckoutRequest extends FormRequest
         return [
             'interval' => ['required', 'string', Rule::in(['monthly', 'yearly'])],
             'plan' => ['nullable', 'string', Rule::in($this->allowedPlanIds())],
-            'catalog' => ['nullable', 'string', Rule::in(['assistant', 'platform', 'mailer'])],
+            'catalog' => ['nullable', 'string', Rule::in(HumanoPricingCatalog::all())],
             'success_url' => ['required', 'url', 'max:2048'],
             'cancel_url' => ['required', 'url', 'max:2048'],
         ];

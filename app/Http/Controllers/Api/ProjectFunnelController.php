@@ -8,6 +8,7 @@ use App\Http\Requests\Api\ChatProjectFunnelRequest;
 use App\Http\Requests\Api\GuideProjectFunnelRequest;
 use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
+use App\Http\Requests\Api\UpdateProjectFunnelChatPromptRequest;
 use App\Jobs\GenerateProjectFunnelQuoteJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -34,19 +35,21 @@ class ProjectFunnelController extends Controller
      */
     public function lead(CaptureProjectFunnelLeadRequest $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
-        $name = trim((string) $request->validated('name'));
-        $surname = trim((string) $request->validated('surname'));
-        $email = strtolower(trim((string) $request->validated('email')));
+        $validated = $request->validated();
+        $name = trim((string) $validated['name']);
+        $surname = trim((string) ($validated['surname'] ?? ''));
+        $email = strtolower(trim((string) $validated['email']));
+        $intake = $this->intakeFromValidated($validated);
 
         try
         {
-            $contact = $this->upsertLeadContact($team, $name, $surname, $email);
+            $contact = $this->upsertLeadContact($team, $name, $surname, $email, $intake);
         } catch (\Throwable $e)
         {
             Log::error('Project funnel lead capture failed', ['error' => $e->getMessage()]);
@@ -71,10 +74,10 @@ class ProjectFunnelController extends Controller
      */
     public function chat(ChatProjectFunnelRequest $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
         try
@@ -83,6 +86,8 @@ class ProjectFunnelController extends Controller
                 is_array($request->validated('messages')) ? $request->validated('messages') : [],
                 $request->validated('project_name'),
                 $request->validated('lead_name'),
+                $team,
+                $request->validated('context'),
             );
         } catch (RuntimeException $e)
         {
@@ -103,15 +108,15 @@ class ProjectFunnelController extends Controller
      */
     public function guide(GuideProjectFunnelRequest $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
         try
         {
-            $guide = $this->budgetSpecService->guideBrief((string) $request->validated('brief'));
+            $guide = $this->budgetSpecService->guideBrief((string) $request->validated('brief'), $team);
         } catch (RuntimeException $e)
         {
             return response()->json([
@@ -127,14 +132,67 @@ class ProjectFunnelController extends Controller
     }
 
     /**
+     * Editable Necesidad prompt for the public funnel team (internal login).
+     */
+    public function showChatPrompt(Request $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $prompt = $this->budgetSpecService->ensureBudgetChatPrompt($team);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'section_key' => $prompt->section_key,
+                'section_label' => $prompt->section_label,
+                'prompt_instruction' => $prompt->prompt_instruction,
+                'helper_text' => $prompt->helper_text,
+            ],
+        ]);
+    }
+
+    /**
+     * Persist the Necesidad prompt used by the public estimator chat.
+     */
+    public function updateChatPrompt(UpdateProjectFunnelChatPromptRequest $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $prompt = $this->budgetSpecService->ensureBudgetChatPrompt($team);
+        $prompt->forceFill([
+            'prompt_instruction' => (string) $request->validated('prompt_instruction'),
+            'is_active' => true,
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Chat prompt saved.'),
+            'data' => [
+                'section_key' => $prompt->section_key,
+                'section_label' => $prompt->section_label,
+                'prompt_instruction' => $prompt->prompt_instruction,
+                'helper_text' => $prompt->helper_text,
+            ],
+        ]);
+    }
+
+    /**
      * Strategic growth tips shown while the AI quote is generating.
      */
-    public function strategyTips(): JsonResponse
+    public function strategyTips(Request $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
         $steps = collect(config('strategy.steps', []))
@@ -160,12 +218,12 @@ class ProjectFunnelController extends Controller
     /**
      * Checklist definitions for the guided Necesidad step (no AI).
      */
-    public function requirements(): JsonResponse
+    public function requirements(Request $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
         return response()->json([
@@ -191,25 +249,27 @@ class ProjectFunnelController extends Controller
      */
     public function quote(QuoteProjectFunnelRequest $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
-        $name = trim((string) $request->validated('name'));
-        $surname = trim((string) $request->validated('surname'));
-        $email = strtolower(trim((string) $request->validated('email')));
-        $brief = (string) $request->validated('brief');
-        $businessName = trim((string) ($request->validated('business_name') ?? ''));
-        $projectName = trim((string) ($request->validated('project_name')
+        $validated = $request->validated();
+        $name = trim((string) $validated['name']);
+        $surname = trim((string) ($validated['surname'] ?? ''));
+        $email = strtolower(trim((string) $validated['email']));
+        $brief = (string) $validated['brief'];
+        $intake = $this->intakeFromValidated($validated);
+        $businessName = trim((string) ($intake['business_name'] ?? ''));
+        $projectName = trim((string) ($intake['project_name']
             ?: ($businessName !== '' ? $businessName : ($name.' '.$surname.' — proyecto'))));
 
         try
         {
-            [$contact, $enterprise, $project] = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName)
+            [$contact, $enterprise, $project] = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName, $intake)
             {
-                $contact = $this->upsertLeadContact($team, $name, $surname, $email);
+                $contact = $this->upsertLeadContact($team, $name, $surname, $email, $intake);
                 $enterprise = $this->ensureEnterpriseForLead(
                     $team,
                     $contact,
@@ -217,8 +277,9 @@ class ProjectFunnelController extends Controller
                     $surname,
                     $email,
                     $businessName !== '' ? $businessName : null,
+                    $intake,
                 );
-                $project = $this->createDraftBudgetProject($team, $enterprise, $contact, $projectName, $brief);
+                $project = $this->createDraftBudgetProject($team, $enterprise, $contact, $projectName, $brief, $intake);
 
                 return [$contact, $enterprise, $project];
             });
@@ -253,10 +314,10 @@ class ProjectFunnelController extends Controller
      */
     public function quoteStatus(Request $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
         $pollToken = trim((string) $request->query('poll_token', $request->input('poll_token', '')));
@@ -316,10 +377,10 @@ class ProjectFunnelController extends Controller
      */
     public function submit(SubmitProjectFunnelRequest $request): JsonResponse
     {
-        $team = $this->resolveFunnelTeam();
-        if (! $team)
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
         {
-            return $this->funnelNotConfiguredResponse();
+            return $team;
         }
 
         try
@@ -345,12 +406,14 @@ class ProjectFunnelController extends Controller
         $clientTasks = $request->validated('suggested_tasks') ?? ($this->budgetSpecService->toClientSafe($spec)['suggested_tasks'] ?? []);
         $spec = $this->budgetSpecService->mergeClientTaskEdits($spec, is_array($clientTasks) ? $clientTasks : []);
 
-        $name = trim((string) $request->validated('name'));
-        $surname = trim((string) $request->validated('surname'));
-        $email = strtolower(trim((string) $request->validated('email')));
-        $brief = (string) $request->validated('brief');
-        $businessName = trim((string) ($request->validated('business_name') ?? ''));
-        $projectName = trim((string) ($request->validated('project_name')
+        $validated = $request->validated();
+        $name = trim((string) $validated['name']);
+        $surname = trim((string) ($validated['surname'] ?? ''));
+        $email = strtolower(trim((string) $validated['email']));
+        $brief = (string) $validated['brief'];
+        $intake = $this->intakeFromValidated($validated);
+        $businessName = trim((string) ($intake['business_name'] ?? ''));
+        $projectName = trim((string) ($intake['project_name']
             ?: ($payload['project_name'] ?? '')
             ?: ($businessName !== '' ? $businessName : ($name.' '.$surname.' — proyecto'))));
 
@@ -358,9 +421,9 @@ class ProjectFunnelController extends Controller
 
         try
         {
-            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName, $spec, $existingProjectId)
+            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName, $spec, $existingProjectId, $intake)
             {
-                $contact = $this->upsertLeadContact($team, $name, $surname, $email);
+                $contact = $this->upsertLeadContact($team, $name, $surname, $email, $intake);
                 $enterprise = $this->ensureEnterpriseForLead(
                     $team,
                     $contact,
@@ -368,6 +431,7 @@ class ProjectFunnelController extends Controller
                     $surname,
                     $email,
                     $businessName !== '' ? $businessName : null,
+                    $intake,
                 );
 
                 $includedTasks = collect($spec['suggested_tasks'] ?? [])
@@ -419,6 +483,10 @@ class ProjectFunnelController extends Controller
                         'source' => 'projects_funnel',
                         'contact_id' => $contact->id,
                         'submitted_at' => now()->toIso8601String(),
+                        'intake' => $this->mergeIntake(
+                            is_array($funnel['intake'] ?? null) ? $funnel['intake'] : [],
+                            $intake,
+                        ),
                     ]),
                 ]);
 
@@ -470,6 +538,9 @@ class ProjectFunnelController extends Controller
         ], 201);
     }
 
+    /**
+     * @param  array<string, string>  $intake
+     */
     private function ensureEnterpriseForLead(
         Team $team,
         Contact $contact,
@@ -477,6 +548,7 @@ class ProjectFunnelController extends Controller
         string $surname,
         string $email,
         ?string $businessName = null,
+        array $intake = [],
     ): Enterprise {
         $personName = trim($name.' '.$surname);
         $enterpriseName = ($businessName !== null && trim($businessName) !== '')
@@ -488,24 +560,44 @@ class ProjectFunnelController extends Controller
             ->whereRaw('LOWER(email) = ?', [$email])
             ->first();
 
+        $phone = trim((string) ($intake['phone'] ?? ''));
+        $location = trim((string) ($intake['location'] ?? ''));
+
         if (! $enterprise)
         {
             $enterprise = Enterprise::withoutGlobalScopes()->create([
                 'team_id' => $team->id,
                 'name' => $enterpriseName,
                 'email' => $email,
+                'phone' => $phone !== '' ? $phone : null,
+                'locality' => $location !== '' ? $location : null,
                 'type_id' => 1,
                 'status_id' => 1,
                 'creator_id' => $team->user_id,
                 'responsible_id' => $team->user_id,
             ]);
-        } elseif (
-            $businessName !== null
-            && trim($businessName) !== ''
-            && in_array(trim((string) $enterprise->name), [$personName, $name, trim($name)], true)
-        ) {
-            // Upgrade placeholder person-name enterprise when the chat later provides a business name.
-            $enterprise->forceFill(['name' => trim($businessName)])->save();
+        } else
+        {
+            $updates = [];
+            if (
+                $businessName !== null
+                && trim($businessName) !== ''
+                && in_array(trim((string) $enterprise->name), [$personName, $name, trim($name)], true)
+            ) {
+                $updates['name'] = trim($businessName);
+            }
+            if ($phone !== '' && trim((string) $enterprise->phone) === '')
+            {
+                $updates['phone'] = $phone;
+            }
+            if ($location !== '' && trim((string) $enterprise->locality) === '')
+            {
+                $updates['locality'] = $location;
+            }
+            if ($updates !== [])
+            {
+                $enterprise->forceFill($updates)->save();
+            }
         }
 
         if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
@@ -521,12 +613,16 @@ class ProjectFunnelController extends Controller
         return $enterprise;
     }
 
+    /**
+     * @param  array<string, string>  $intake
+     */
     private function createDraftBudgetProject(
         Team $team,
         Enterprise $enterprise,
         Contact $contact,
         string $projectName,
         string $brief,
+        array $intake = [],
     ): Project {
         return Project::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -558,6 +654,7 @@ class ProjectFunnelController extends Controller
                     'drafted_at' => now()->toIso8601String(),
                     'quote_status' => 'queued',
                     'quote_error' => null,
+                    'intake' => $intake,
                 ],
             ],
             'price' => null,
@@ -666,12 +763,17 @@ class ProjectFunnelController extends Controller
         ]);
     }
 
-    private function upsertLeadContact(Team $team, string $name, string $surname, string $email): Contact
+    /**
+     * @param  array<string, string>  $intake
+     */
+    private function upsertLeadContact(Team $team, string $name, string $surname, string $email, array $intake = []): Contact
     {
         $contact = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
             ->whereRaw('LOWER(email) = ?', [$email])
             ->first();
+
+        $phone = trim((string) ($intake['phone'] ?? ''));
 
         if (! $contact)
         {
@@ -680,12 +782,14 @@ class ProjectFunnelController extends Controller
                 'name' => $name,
                 'surname' => $surname,
                 'email' => $email,
+                'phone' => $phone !== '' ? $phone : null,
                 'status_id' => $this->resolveLeadContactStatusId(),
                 'creator_id' => $team->user_id,
                 'responsible_id' => $team->user_id,
                 'data' => (object) [
                     'source' => 'projects_funnel',
                     'captured_at' => now()->toIso8601String(),
+                    'intake' => $intake,
                 ],
             ]);
 
@@ -714,25 +818,135 @@ class ProjectFunnelController extends Controller
         {
             $data['captured_at'] = now()->toIso8601String();
         }
+        $data['intake'] = $this->mergeIntake(
+            is_array($data['intake'] ?? null) ? $data['intake'] : [],
+            $intake,
+        );
 
-        $contact->fill([
+        $updates = [
             'name' => $name,
-            'surname' => $surname,
+            'surname' => $surname !== '' ? $surname : $contact->surname,
             'data' => (object) $data,
-        ])->save();
+        ];
+        if ($phone !== '')
+        {
+            $updates['phone'] = $phone;
+        }
+
+        $contact->fill($updates)->save();
 
         return $contact;
     }
 
-    private function resolveFunnelTeam(): ?Team
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, string>
+     */
+    private function intakeFromValidated(array $validated): array
     {
-        $teamId = (int) config('projects.funnel_team_id');
-        if ($teamId <= 0)
+        $keys = [
+            'phone',
+            'business_name',
+            'project_name',
+            'approx_users',
+            'integrations',
+            'needed_by',
+            'location',
+            'scope',
+        ];
+
+        $intake = [];
+        foreach ($keys as $key)
         {
-            return null;
+            $value = trim((string) ($validated[$key] ?? ''));
+            if ($value !== '')
+            {
+                $intake[$key] = $value;
+            }
         }
 
-        return Team::query()->find($teamId);
+        return $intake;
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, string>  $incoming
+     * @return array<string, string>
+     */
+    private function mergeIntake(array $current, array $incoming): array
+    {
+        $merged = [];
+        foreach (array_merge($current, $incoming) as $key => $value)
+        {
+            if (! is_string($key))
+            {
+                continue;
+            }
+            $text = trim((string) $value);
+            if ($text !== '')
+            {
+                $merged[$key] = $text;
+            }
+        }
+
+        return $merged;
+    }
+
+    private function funnelTeam(Request $request): Team|JsonResponse
+    {
+        $headerToken = trim((string) $request->header('X-Team-Token', ''));
+        if ($headerToken !== '')
+        {
+            return Team::findByPlainApiToken($headerToken) ?? $this->invalidTeamTokenResponse();
+        }
+
+        $bearer = $request->bearerToken();
+        if (is_string($bearer) && $bearer !== '')
+        {
+            $fromBearer = Team::findByPlainApiToken($bearer);
+            if ($fromBearer)
+            {
+                return $fromBearer;
+            }
+        }
+
+        $user = $request->user();
+        if ($user?->currentTeam instanceof Team)
+        {
+            return $user->currentTeam;
+        }
+
+        $teamId = (int) config('projects.funnel_team_id');
+        if ($teamId > 0)
+        {
+            $fallback = Team::query()->find($teamId);
+            if ($fallback)
+            {
+                return $fallback;
+            }
+        }
+
+        return $this->funnelNotConfiguredResponse();
+    }
+
+    private function authorizeFunnelEditor(Request $request): Team|JsonResponse
+    {
+        $team = $this->funnelTeam($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $user = $request->user();
+        if (! $user || ! $user->belongsToTeam($team))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('You are not allowed to edit the quote funnel prompt.'),
+            ], 403);
+        }
+
+        return $team;
     }
 
     private function resolveLeadContactStatusId(): ?int
@@ -747,8 +961,16 @@ class ProjectFunnelController extends Controller
     {
         return response()->json([
             'success' => false,
-            'message' => __('Quote funnel is not configured. Set PROJECTS_FUNNEL_TEAM_ID in Humano.'),
+            'message' => __('Quote funnel needs a team token from the frontend.'),
         ], 503);
+    }
+
+    private function invalidTeamTokenResponse(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => __('Invalid team token.'),
+        ], 401);
     }
 
     /**

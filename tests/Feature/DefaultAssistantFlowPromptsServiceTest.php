@@ -39,13 +39,20 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
             ->where('section_key', 'primer_contacto')
             ->first();
         $this->assertNotNull($list60First);
-        $this->assertStringContainsString('Isra Bravo', (string) $list60First->prompt_instruction);
+        $this->assertStringContainsString('corto, humano', (string) $list60First->prompt_instruction);
 
         $list60FollowUp = \App\Models\Prompt::withoutGlobalScope('team')
             ->forTeam((int) $team->id)
             ->where('section_key', 'seguimiento')
             ->first();
         $this->assertNotNull($list60FollowUp);
+
+        $list60Alta = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'alta')
+            ->first();
+        $this->assertNotNull($list60Alta);
+        $this->assertStringContainsString('alta desde el inbox', (string) $list60Alta->prompt_instruction);
     }
 
     public function test_sync_does_not_overwrite_custom_instruction(): void

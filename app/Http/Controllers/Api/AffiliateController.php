@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ClaimAffiliateReferralRequest;
 use App\Http\Requests\SendAffiliateInvitationRequest;
 use App\Services\AffiliateProgramService;
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,14 +27,12 @@ class AffiliateController extends Controller
             return $team;
         }
 
-        if ($denied = $this->ensureTeamModule($team, 'affiliates'))
-        {
-            return $denied;
-        }
-
         return response()->json([
             'success' => true,
-            'data' => $this->affiliates->dashboard($team),
+            'data' => $this->affiliates->dashboard(
+                $team,
+                $this->affiliatesCatalog($request),
+            ),
         ]);
     }
 
@@ -42,11 +42,6 @@ class AffiliateController extends Controller
         if ($team instanceof JsonResponse)
         {
             return $team;
-        }
-
-        if ($denied = $this->ensureTeamModule($team, 'affiliates'))
-        {
-            return $denied;
         }
 
         if (! $team->canUseAffiliateProgram())
@@ -84,11 +79,6 @@ class AffiliateController extends Controller
             return $team;
         }
 
-        if ($denied = $this->ensureTeamModule($team, 'affiliates'))
-        {
-            return $denied;
-        }
-
         try
         {
             $result = $this->affiliates->sendInvitation(
@@ -110,5 +100,42 @@ class AffiliateController extends Controller
             'message' => __('Invitación enviada correctamente.'),
             'data' => $result['invitation'],
         ], 201);
+    }
+
+    public function claim(ClaimAffiliateReferralRequest $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        try
+        {
+            $referral = $this->affiliates->claimReferral(
+                $team,
+                (string) $request->validated('subscription_code'),
+            );
+        } catch (\Illuminate\Validation\ValidationException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => collect($exception->errors())->flatten()->first() ?? __('No se pudo incorporar el cliente.'),
+                'errors' => $exception->errors(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Cliente incorporado correctamente.'),
+            'data' => $referral,
+        ]);
+    }
+
+    private function affiliatesCatalog(Request $request): ?string
+    {
+        $catalog = strtolower(trim((string) $request->query('catalog', $request->input('catalog', ''))));
+
+        return HumanoPricingCatalog::normalize($catalog);
     }
 }

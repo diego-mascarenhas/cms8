@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -19,8 +20,10 @@ class SendAffiliateInvitationRequest extends FormRequest
      */
     public function rules(): array
     {
+        $catalog = HumanoPricingCatalog::normalize((string) $this->input('catalog', ''));
+
         $planIds = collect(config('humano_pricing.plans', []))
-            ->filter(function (mixed $plan): bool
+            ->filter(function (mixed $plan) use ($catalog): bool
             {
                 if (! is_array($plan))
                 {
@@ -28,10 +31,14 @@ class SendAffiliateInvitationRequest extends FormRequest
                 }
 
                 $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
+                $planCatalog = strtolower(trim((string) ($plan['catalog'] ?? 'assistant')));
 
-                return $checkoutUrl !== ''
-                    && (bool) ($plan['checkout_available'] ?? false)
-                    && (bool) ($plan['public'] ?? true);
+                if ($checkoutUrl === '' || ! (bool) ($plan['checkout_available'] ?? false))
+                {
+                    return false;
+                }
+
+                return $catalog === null || $planCatalog === $catalog;
             })
             ->pluck('id')
             ->map(fn (mixed $id): string => (string) $id)
@@ -41,6 +48,7 @@ class SendAffiliateInvitationRequest extends FormRequest
             'invite_name' => ['required', 'string', 'max:255'],
             'invite_email' => ['required', 'email', 'max:255'],
             'invite_plan' => ['required', 'string', Rule::in($planIds)],
+            'catalog' => ['nullable', 'string', Rule::in(HumanoPricingCatalog::all())],
         ];
     }
 

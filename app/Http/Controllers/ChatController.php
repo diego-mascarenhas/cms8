@@ -315,6 +315,7 @@ class ChatController extends Controller
             ? $this->resolveWhatsAppListCrmStatusFilter($effectiveRequest)
             : ['mode' => 'all'];
         $leadStatusId = $filter['mode'] === 'all' ? null : $this->resolveLeadContactStatusId();
+        $categoryId = $effectiveRequest instanceof Request ? $effectiveRequest->integer('category_id') : 0;
 
         $index = [];
         foreach ($digitsList as $digits)
@@ -322,6 +323,10 @@ class ChatController extends Controller
             $crm = $crmByDigits[$digits] ?? null;
             $row = (object) ['crm_has_contact' => $crm !== null, 'crm_status_id' => $crm?->status_id];
             if ($filter['mode'] !== 'all' && ! $this->contactRowMatchesCrmStatusFilter($row, (int) ($filter['status_id'] ?? 0), $leadStatusId))
+            {
+                continue;
+            }
+            if ($categoryId > 0 && ! $this->contactRowMatchesCategoryFilter($crm, $categoryId))
             {
                 continue;
             }
@@ -389,7 +394,7 @@ class ChatController extends Controller
 
         $contactsByPhone = [];
         Contact::query()
-            ->with('currentSentiment.sentiment')
+            ->with(['currentSentiment.sentiment', 'categories:id'])
             ->where('team_id', $teamId)
             ->whereIn('phone', array_values(array_unique($allCandidates)))
             ->orderBy('id')
@@ -579,6 +584,9 @@ class ChatController extends Controller
             $contact->crm_has_contact = $crmProfile !== null;
             $contact->crm_status_id = $crmProfile?->status_id;
             $contact->contact_id = $crmProfile?->id;
+            $contact->category_ids = $crmProfile?->relationLoaded('categories')
+                ? $crmProfile->categories->pluck('id')->map(fn ($id): int => (int) $id)->values()->all()
+                : [];
             $mood = $crmProfile?->currentSentiment?->sentiment;
             $contact->sentiment = $mood !== null
                 ? [
@@ -730,6 +738,20 @@ class ChatController extends Controller
         }
 
         return (int) ($conversationRow->crm_status_id ?? 0) === $targetStatusId;
+    }
+
+    private function contactRowMatchesCategoryFilter(?Contact $contact, int $categoryId): bool
+    {
+        if ($contact === null || $categoryId <= 0)
+        {
+            return false;
+        }
+
+        $ids = $contact->relationLoaded('categories')
+            ? $contact->categories->pluck('id')
+            : $contact->categories()->pluck('categories.id');
+
+        return $ids->map(fn ($id): int => (int) $id)->contains($categoryId);
     }
 
     public function index()
@@ -1243,6 +1265,7 @@ class ChatController extends Controller
             (string) $request->validated('phone'),
             $request->validated('status_id') !== null ? (int) $request->validated('status_id') : null,
             $categoryIds,
+            $request->validated('email'),
         );
 
         return response()->json([
@@ -1468,13 +1491,16 @@ class ChatController extends Controller
             ], 422);
         }
 
+        $validated = $request->validated();
         $result = $starter->update(
             auth()->user(),
             $team,
             $contact,
-            (string) $request->validated('name'),
-            (int) $request->validated('status_id'),
+            (string) $validated['name'],
+            (int) $validated['status_id'],
             $categoryIds,
+            $validated['email'] ?? null,
+            array_key_exists('email', $validated),
         );
 
         return response()->json(array_merge(['success' => true], $result, [
@@ -1483,7 +1509,7 @@ class ChatController extends Controller
     }
 
     /**
-     * @return array{contact_id: int|null, name: string, phone: string, status_id: int|null, statuses: list<array{id: int, name: string}>}
+     * @return array{contact_id: int|null, name: string, phone: string, email: string|null, status_id: int|null, statuses: list<array{id: int, name: string}>}
      */
     private function whatsAppThreadContactMeta(?Team $team, ?Contact $contact, string $digits): array
     {
@@ -1494,10 +1520,17 @@ class ChatController extends Controller
             $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
         }
 
+        $email = trim((string) ($contact?->email ?? ''));
+        if ($email !== '' && str_ends_with(strtolower($email), '@chat.placeholder'))
+        {
+            $email = '';
+        }
+
         return [
             'contact_id' => $contact !== null ? (int) $contact->id : null,
             'name' => $name,
             'phone' => $digits,
+            'email' => $email !== '' ? $email : null,
             'status_id' => $contact?->status_id !== null ? (int) $contact->status_id : null,
             'statuses' => $catalog['statuses'],
         ];
@@ -1604,6 +1637,7 @@ class ChatController extends Controller
             'limit' => 'sometimes|integer|min:1|max:200',
             'offset' => 'sometimes|integer|min:0',
             'archived' => 'sometimes|boolean',
+            'category_id' => 'sometimes|integer|min:1',
         ]);
 
         $index = $this->whatsAppConversationIndex($request);
@@ -1657,6 +1691,7 @@ class ChatController extends Controller
             {
                 $item['contact_id'] = (int) $c->contact_id;
             }
+            $item['category_ids'] = array_values(array_map('intval', $c->category_ids ?? []));
             $item['assistant_toggle_available'] = (bool) ($c->assistant_toggle_available ?? false);
             $item['assistant_inbound_enabled'] = (bool) ($c->assistant_inbound_enabled ?? true);
             $item['assistant_contact_enabled'] = (bool) ($c->assistant_contact_enabled ?? true);

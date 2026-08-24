@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -35,7 +36,7 @@ class CancelAssistantSubscriptionRequest extends FormRequest
     {
         return [
             'reason' => ['required', 'string', Rule::in(self::REASONS)],
-            'catalog' => ['nullable', 'string', Rule::in(['assistant', 'platform', 'mailer'])],
+            'catalog' => ['nullable', 'string', Rule::in(HumanoPricingCatalog::all())],
             'comment' => [
                 Rule::requiredIf($this->input('reason') === 'other'),
                 'nullable',

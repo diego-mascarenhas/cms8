@@ -2,7 +2,9 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AppFeedbackController;
 use App\Http\Controllers\Api\AssistantCommercialStatsController;
+use App\Http\Controllers\Api\AssistantList60PromptController;
 use App\Http\Controllers\Api\AssistantProductImportController;
 use App\Http\Controllers\Api\AssistantSubscriptionController;
 use App\Http\Controllers\Api\AttendanceController;
@@ -473,6 +475,11 @@ Route::post('task-complete-by-context-key', [TaskController::class, 'taskComplet
 
 Route::middleware('auth.api')->group(function ()
 {
+    Route::get('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'showChatPrompt'])
+        ->name('api.projects.funnel.chat-prompt.show');
+    Route::put('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'updateChatPrompt'])
+        ->name('api.projects.funnel.chat-prompt.update');
+
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
 
@@ -497,6 +504,10 @@ Route::middleware('auth.api')->group(function ()
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
     Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
     Route::get('assistant/commercial-stats', [AssistantCommercialStatsController::class, 'show'])->name('api.assistant.commercial-stats.show');
+    Route::get('assistant/list60-prompt', [AssistantList60PromptController::class, 'show'])->name('api.assistant.list60-prompt.show');
+    Route::patch('assistant/list60-prompt', [AssistantList60PromptController::class, 'update'])->name('api.assistant.list60-prompt.update');
+    Route::post('assistant/list60-prompt/review', [AssistantList60PromptController::class, 'review'])->name('api.assistant.list60-prompt.review');
+    Route::post('assistant/list60-prompt/suggest', [AssistantList60PromptController::class, 'suggest'])->name('api.assistant.list60-prompt.suggest');
     Route::get('assistant/products/import', [AssistantProductImportController::class, 'show'])->name('api.assistant.products.import.show');
     Route::get('assistant/products/import/sample', [AssistantProductImportController::class, 'sample'])->name('api.assistant.products.import.sample');
     Route::post('assistant/products/import', [AssistantProductImportController::class, 'store'])->name('api.assistant.products.import.store');
@@ -576,6 +587,8 @@ Route::middleware('auth.api')->group(function ()
     Route::get('affiliates/dashboard', [AffiliateController::class, 'dashboard']);
     Route::post('affiliates/setup-stripe', [AffiliateController::class, 'setupStripe']);
     Route::post('affiliates/invitations', [AffiliateController::class, 'invite']);
+    Route::post('affiliates/claim', [AffiliateController::class, 'claim']);
+    Route::post('feedback', [AppFeedbackController::class, 'store']);
 
     // Paid Ads (idoneo-ads SPA)
     Route::get('paid-ads/dashboard', [ApiPaidAdDashboardController::class, 'index']);

@@ -77,6 +77,49 @@ class ApiAssistantSubscriptionTest extends TestCase
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
     }
 
+    public function test_estimator_catalog_is_free_and_ready_for_token_billing(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=estimator');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.plan.id', 'estimator');
+        $response->assertJsonPath('data.plan.monthly_amount', '0');
+        $response->assertJsonPath('data.plan.yearly_amount', '0');
+        $response->assertJsonPath('data.plan.checkout_available', true);
+        $response->assertJsonPath('data.can_checkout', true);
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
+    }
+
+    public function test_estimator_checkout_does_not_require_a_stripe_price(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $result = app(AssistantSubscriptionService::class)->createCheckout(
+            $team,
+            'monthly',
+            'https://estimator.test/profile',
+            'https://estimator.test/profile',
+            'estimator',
+        );
+
+        if ($result['success'])
+        {
+            $this->assertNotEmpty($result['url'] ?? null);
+
+            return;
+        }
+
+        $this->assertStringNotContainsString(
+            'precio de Stripe configurado',
+            (string) ($result['message'] ?? ''),
+        );
+    }
+
     public function test_subscription_usage_starts_at_first_use_not_trial_clock(): void
     {
         [, $team, $token] = $this->assistantUserWithToken();
@@ -231,6 +274,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.subscription.current_period_start', null);
         $response->assertJsonPath('data.subscription.current_period_end', null);
         $response->assertJsonPath('data.can_checkout', false);
+        $response->assertJsonPath('data.subscription_code', 'sub_test_assistant_1');
     }
 
     public function test_checkout_requires_interval_and_return_urls(): void

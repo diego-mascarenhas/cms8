@@ -24,6 +24,8 @@ return new class extends Migration
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->json('data')->nullable();
+            $table->string('referred_by')->nullable();
+            $table->decimal('affiliate_commission_percent', 8, 4)->nullable();
             $table->timestamps();
 
             $table->index(['user_id', 'stripe_status']);
