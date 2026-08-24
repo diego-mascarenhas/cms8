@@ -57,9 +57,9 @@ class HumanoPricingStripePublisherTest extends TestCase
         $this->assertSame('19', $shop['monthly_amount'] ?? null);
         $this->assertSame('prod_V89CoEJptr2nT5', $ads['stripe_product_id'] ?? null);
         $this->assertSame('49', $ads['monthly_amount'] ?? null);
-        $this->assertSame('prod_V8Jgzp5AQyRYmC', $assistant['stripe_product_id'] ?? null);
-        $this->assertSame('price_1U832kRwN51ygFdeVvMTtNJH', $assistant['stripe_price_monthly_id'] ?? null);
-        $this->assertSame('price_1U832kRwN51ygFdebJxgLunP', $assistant['stripe_price_yearly_id'] ?? null);
+        $this->assertSame('prod_V8JgY0BNt1q78v', $assistant['stripe_product_id'] ?? null);
+        $this->assertSame('price_1U832rRwN51ygFdeO4vRvsls', $assistant['stripe_price_monthly_id'] ?? null);
+        $this->assertSame('price_1U832sRwN51ygFdepkVDBeFy', $assistant['stripe_price_yearly_id'] ?? null);
         $this->assertSame('49', $assistant['monthly_amount'] ?? null);
     }
 

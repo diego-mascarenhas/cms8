@@ -273,8 +273,10 @@ return [
      * | Shop / Ads / Projects defaults are Stripe test IDs. Live IDs go in production .env
      * | (see .env.example). Recreate or reuse with `php artisan humano-pricing:publish-stripe`.
      * |
-     * | Humano.app Assistant — product prod_V8Jgzp5AQyRYmC (test) / prod_V8JgY0BNt1q78v (live),
-     * |   monthly 49€, yearly 490€. Recreate with `php artisan humano-pricing:publish-stripe`.
+     * | Humano.app Assistant — live defaults (Cashier production is live):
+     * |   prod_V8JgY0BNt1q78v, monthly price_1U832rRwN51ygFdeO4vRvsls (49€),
+     * |   yearly price_1U832sRwN51ygFdepkVDBeFy (490€). Test IDs: prod_V8Jgzp5AQyRYmC,
+     * |   price_1U832kRwN51ygFdeVvMTtNJH / price_1U832kRwN51ygFdebJxgLunP.
      * | Humano.app Business — …/6oU14nfxjabIbPUbuR43S04, prod_UUoHz602tHBY8b,
      * |   monthly price_1TVoebGelYN536DrLAOm6k90 (299€), yearly price_1TVof6GelYN536DrAaThyVzr (2990€).
      * | Humano.app Mentor — …/4gM4gz3OB0B82fkcyV43S05, prod_UUoIeGCxj2MfcL,
@@ -297,9 +299,9 @@ return [
                 'HUMANO_PRICING_ASSISTANT_CHECKOUT_URL_YEARLY',
                 'https://buy.stripe.com/aFa5kDgBn5Vs07c56t43S09',
             ),
-            'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_V8Jgzp5AQyRYmC'),
-            'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1U832kRwN51ygFdeVvMTtNJH'),
-            'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1U832kRwN51ygFdebJxgLunP'),
+            'stripe_product_id' => env('HUMANO_PRICING_ASSISTANT_STRIPE_PRODUCT_ID', 'prod_V8JgY0BNt1q78v'),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_MONTHLY_ID', 'price_1U832rRwN51ygFdeO4vRvsls'),
+            'stripe_price_yearly_id' => env('HUMANO_PRICING_ASSISTANT_PRICE_YEARLY_ID', 'price_1U832sRwN51ygFdepkVDBeFy'),
             'monthly_amount' => '49',
             'yearly_amount' => '490',
             'popular' => false,
