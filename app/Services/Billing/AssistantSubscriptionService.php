@@ -12,6 +12,7 @@ use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Services\TeamWhatsAppUsageStatsService;
+use App\Support\HumanoPricingCatalog;
 use App\Support\StripeErrorMessage;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
@@ -68,6 +69,7 @@ class AssistantSubscriptionService
             'payment_methods' => $stripe['payment_methods'],
             'invoices' => $stripe['invoices'],
             'can_checkout' => $canCheckout,
+            'subscription_code' => $this->shareableSubscriptionCode($team, $subscription),
             'token_usage' => $this->tokenUsagePayload($team, $stripe),
             'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
         ];
@@ -800,12 +802,7 @@ class AssistantSubscriptionService
 
     private function normalizeCatalog(string $catalog): string
     {
-        return match (strtolower(trim($catalog)))
-        {
-            'platform' => 'platform',
-            'mailer' => 'mailer',
-            default => 'assistant',
-        };
+        return HumanoPricingCatalog::normalize($catalog) ?? 'assistant';
     }
 
     private function normalizePlanId(string $planId): string
@@ -992,6 +989,19 @@ class AssistantSubscriptionService
     /**
      * @param  list<array<string, mixed>>  $plans
      */
+    private function shareableSubscriptionCode(Team $team, ?Subscription $subscription): ?string
+    {
+        $subscriptionId = trim((string) ($subscription?->stripe_id ?? ''));
+        if ($subscriptionId !== '')
+        {
+            return $subscriptionId;
+        }
+
+        $customerId = trim((string) ($team->stripe_id ?? ''));
+
+        return $customerId !== '' ? $customerId : null;
+    }
+
     private function findCatalogSubscription(Team $team, array $plans): ?Subscription
     {
         $types = [];

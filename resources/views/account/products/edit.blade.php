@@ -72,6 +72,10 @@
                         <option value="domain" {{ old('category', $product->category) === 'domain' ? 'selected' : '' }}>Domain</option>
                         <option value="backups" {{ old('category', $product->category) === 'backups' ? 'selected' : '' }}>Backups</option>
                         <option value="mailer" {{ old('category', $product->category) === 'mailer' ? 'selected' : '' }}>Mailer</option>
+                        <option value="shop" {{ old('category', $product->category) === 'shop' ? 'selected' : '' }}>Shop</option>
+                        <option value="ads" {{ old('category', $product->category) === 'ads' ? 'selected' : '' }}>Ads</option>
+                        <option value="projects" {{ old('category', $product->category) === 'projects' ? 'selected' : '' }}>Projects</option>
+                        <option value="affiliates" {{ old('category', $product->category) === 'affiliates' ? 'selected' : '' }}>Affiliates</option>
                         <option value="mentoring" {{ old('category', $product->category) === 'mentoring' ? 'selected' : '' }}>Mentoring</option>
                         <option value="prospecting" {{ old('category', $product->category) === 'prospecting' ? 'selected' : '' }}>Prospectos</option>
                         <option value="support" {{ old('category', $product->category) === 'support' ? 'selected' : '' }}>Support</option>

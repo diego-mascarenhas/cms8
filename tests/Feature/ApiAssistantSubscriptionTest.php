@@ -231,6 +231,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.subscription.current_period_start', null);
         $response->assertJsonPath('data.subscription.current_period_end', null);
         $response->assertJsonPath('data.can_checkout', false);
+        $response->assertJsonPath('data.subscription_code', 'sub_test_assistant_1');
     }
 
     public function test_checkout_requires_interval_and_return_urls(): void

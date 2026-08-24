@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Team;
 use App\Support\HumanoHomeAsset;
+use App\Support\HumanoPricingCatalog;
 
 class AffiliateReferralLinkBuilder
 {
@@ -20,15 +21,7 @@ class AffiliateReferralLinkBuilder
 
     public function normalizeCatalog(?string $catalog): ?string
     {
-        $catalog = strtolower(trim((string) $catalog));
-
-        return match ($catalog)
-        {
-            'platform' => 'platform',
-            'mailer' => 'mailer',
-            'assistant' => 'assistant',
-            default => null,
-        };
+        return HumanoPricingCatalog::normalize($catalog);
     }
 
     /**
@@ -46,17 +39,22 @@ class AffiliateReferralLinkBuilder
                 continue;
             }
 
-            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
             $available = (bool) ($plan['checkout_available'] ?? false);
             $planId = (string) ($plan['id'] ?? '');
             $planCatalog = strtolower(trim((string) ($plan['catalog'] ?? 'assistant')));
 
-            if ($planId === '' || $checkoutUrl === '' || ! $available)
+            if ($planId === '' || ! $available)
             {
                 continue;
             }
 
             if ($catalog !== null && $planCatalog !== $catalog)
+            {
+                continue;
+            }
+
+            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
+            if ($catalog === null && $checkoutUrl === '')
             {
                 continue;
             }

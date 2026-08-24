@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Mail\AffiliatePurchaseInvitationMail;
 use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
+use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\AffiliateCommission;
@@ -77,9 +78,10 @@ class AffiliateProgramService
         $plans = [];
         foreach ($this->linkBuilder->availablePlans($catalog) as $plan)
         {
+            $checkoutUrl = trim((string) ($plan['checkout_url'] ?? ''));
             $plans[] = array_merge($plan, [
-                'referral_url' => $referralCode !== null
-                    ? $this->linkBuilder->buildCaptureRedirectLink($plan['checkout_url'], $referralCode)
+                'referral_url' => $referralCode !== null && $checkoutUrl !== ''
+                    ? $this->linkBuilder->buildCaptureRedirectLink($checkoutUrl, $referralCode)
                     : null,
             ]);
         }
@@ -161,7 +163,7 @@ class AffiliateProgramService
         $planId = (string) $data['invite_plan'];
         $plan = collect($this->linkBuilder->availablePlans($data['catalog'] ?? null))->firstWhere('id', $planId);
 
-        if ($plan === null)
+        if ($plan === null || trim((string) ($plan['checkout_url'] ?? '')) === '')
         {
             throw ValidationException::withMessages([
                 'invite_plan' => __('The selected plan is not available.'),
@@ -212,6 +214,111 @@ class AffiliateProgramService
         return [
             'invitation' => $this->serializeInvitation($invitation->loadMissing('invitedBy')),
         ];
+    }
+
+    /**
+     * Link an already-subscribed team to this referrer using the shareable subscription code.
+     *
+     * @return array<string, mixed>
+     */
+    public function claimReferral(Team $referrer, string $subscriptionCode): array
+    {
+        if (! $referrer->canUseAffiliateProgram())
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Los equipos referidos no pueden usar el programa de afiliados.'),
+            ]);
+        }
+
+        $this->ensureStripeCustomer($referrer);
+        $referrer->refresh();
+        $referrerCode = $this->linkBuilder->referralCode($referrer);
+
+        if ($referrerCode === null)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Activá tu código de referido e intentalo de nuevo.'),
+            ]);
+        }
+
+        $payingTeam = $this->findPayingTeamBySubscriptionCode($subscriptionCode);
+
+        if ($payingTeam === null)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('No encontramos una suscripción con ese código.'),
+            ]);
+        }
+
+        if ((int) $payingTeam->id === (int) $referrer->id)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('No podés incorporar tu propia suscripción.'),
+            ]);
+        }
+
+        $existing = trim((string) ($payingTeam->referred_by ?? ''));
+        if ($existing !== '')
+        {
+            if (strcasecmp($existing, $referrerCode) === 0)
+            {
+                throw ValidationException::withMessages([
+                    'subscription_code' => __('Ese cliente ya está en tus recomendaciones.'),
+                ]);
+            }
+
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Esa suscripción ya tiene un referente.'),
+            ]);
+        }
+
+        $payingTeam->forceFill(['referred_by' => $referrerCode])->save();
+        $this->stampUnattributedSubscriptions($payingTeam, $referrerCode);
+
+        return $this->serializeReferralFromTeam(
+            $payingTeam->loadMissing('owner'),
+            $referrer->billingAffiliateCommissionsAsReferrer()
+                ->where('paying_team_id', $payingTeam->id)
+                ->get()
+                ->all(),
+        );
+    }
+
+    private function findPayingTeamBySubscriptionCode(string $code): ?Team
+    {
+        $code = trim($code);
+        if ($code === '')
+        {
+            return null;
+        }
+
+        if (str_starts_with(strtolower($code), 'cus_'))
+        {
+            return Team::findByStripeCustomerId($code);
+        }
+
+        $subscription = Subscription::query()
+            ->where('stripe_id', $code)
+            ->first();
+
+        return $subscription?->team;
+    }
+
+    private function stampUnattributedSubscriptions(Team $payingTeam, string $referrerCode): void
+    {
+        foreach ($payingTeam->subscriptions as $subscription)
+        {
+            $existing = trim((string) ($subscription->referred_by ?? ''));
+            if ($existing !== '')
+            {
+                continue;
+            }
+
+            $subscription->forceFill([
+                'referred_by' => $referrerCode,
+                'affiliate_commission_percent' => AffiliateCommission::percent(),
+            ])->save();
+        }
     }
 
     /**

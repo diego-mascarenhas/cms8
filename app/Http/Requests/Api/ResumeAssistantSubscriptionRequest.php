@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -21,7 +22,7 @@ class ResumeAssistantSubscriptionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'catalog' => ['nullable', 'string', Rule::in(['assistant', 'platform', 'mailer'])],
+            'catalog' => ['nullable', 'string', Rule::in(HumanoPricingCatalog::all())],
         ];
     }
 }

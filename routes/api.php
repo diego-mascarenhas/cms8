@@ -577,6 +577,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('affiliates/dashboard', [AffiliateController::class, 'dashboard']);
     Route::post('affiliates/setup-stripe', [AffiliateController::class, 'setupStripe']);
     Route::post('affiliates/invitations', [AffiliateController::class, 'invite']);
+    Route::post('affiliates/claim', [AffiliateController::class, 'claim']);
     Route::post('feedback', [AppFeedbackController::class, 'store']);
 
     // Paid Ads (idoneo-ads SPA)

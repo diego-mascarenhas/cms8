@@ -197,6 +197,60 @@ class AffiliateApiTest extends TestCase
         $this->assertSame(['assistant'], array_column($ids, 'id'));
     }
 
+    public function test_dashboard_shop_catalog_returns_shop_plans_only(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_shop_referrer',
+            'referred_by' => null,
+        ]);
+
+        $ids = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard?catalog=shop')
+            ->assertOk()
+            ->json('data.plans');
+
+        $this->assertSame(
+            ['shop_basic', 'shop_premium', 'shop_profesional'],
+            array_column($ids, 'id'),
+        );
+        $this->assertSame(__('humano_pricing.plans.shop_basic.name'), $ids[0]['name']);
+        $this->assertSame('shop', $ids[0]['catalog']);
+    }
+
+    public function test_dashboard_mailer_catalog_returns_mailer_plans_without_checkout_urls(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_mailer_referrer',
+            'referred_by' => null,
+        ]);
+
+        $ids = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard?catalog=mailer')
+            ->assertOk()
+            ->json('data.plans');
+
+        $this->assertSame(
+            ['mailer_basic', 'mailer_foundation', 'mailer_scale'],
+            array_column($ids, 'id'),
+        );
+        $this->assertNull($ids[0]['referral_url']);
+    }
+
+    public function test_dashboard_ads_catalog_returns_ads_plan_only(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_ads_referrer',
+            'referred_by' => null,
+        ]);
+
+        $ids = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard?catalog=ads')
+            ->assertOk()
+            ->json('data.plans');
+
+        $this->assertSame(['ads'], array_column($ids, 'id'));
+    }
+
     public function test_can_send_affiliate_invitation_via_api(): void
     {
         Mail::fake();
@@ -235,5 +289,123 @@ class AffiliateApiTest extends TestCase
         ]);
 
         Mail::assertSent(AffiliatePurchaseInvitationMail::class);
+    }
+
+    public function test_can_claim_existing_subscriber_by_subscription_code(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_claim_referrer',
+            'referred_by' => null,
+        ]);
+
+        $payingOwner = User::factory()->create([
+            'email' => 'cliente.existente@example.com',
+        ]);
+        $payingTeam = Team::factory()->create([
+            'name' => 'Cliente Existente',
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_claim_paying',
+            'referred_by' => null,
+        ]);
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_claim_assistant',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/affiliates/claim', [
+                'subscription_code' => 'sub_claim_assistant',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Cliente Existente')
+            ->assertJsonPath('data.email', 'cliente.existente@example.com')
+            ->assertJsonPath('data.contracted', true);
+
+        $this->assertSame('cus_claim_referrer', $payingTeam->fresh()->referred_by);
+        $this->assertSame(
+            'cus_claim_referrer',
+            $payingTeam->subscriptions()->first()?->referred_by,
+        );
+    }
+
+    public function test_can_claim_existing_subscriber_by_customer_code(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_claim_by_customer',
+            'referred_by' => null,
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_already_paying',
+            'referred_by' => null,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/affiliates/claim', [
+                'subscription_code' => 'cus_already_paying',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame('cus_claim_by_customer', $payingTeam->fresh()->referred_by);
+    }
+
+    public function test_claim_rejects_unknown_subscription_code(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_claim_unknown',
+            'referred_by' => null,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/affiliates/claim', [
+                'subscription_code' => 'sub_does_not_exist',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_claim_rejects_own_subscription(): void
+    {
+        [, $team, $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_self_claim',
+            'referred_by' => null,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/affiliates/claim', [
+                'subscription_code' => 'cus_self_claim',
+            ])
+            ->assertStatus(422);
+
+        $this->assertNull($team->fresh()->referred_by);
+    }
+
+    public function test_claim_does_not_overwrite_existing_referrer(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_late_referrer',
+            'referred_by' => null,
+        ]);
+
+        $payingOwner = User::factory()->create();
+        Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_already_referred',
+            'referred_by' => 'cus_original_referrer',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/affiliates/claim', [
+                'subscription_code' => 'cus_already_referred',
+            ])
+            ->assertStatus(422);
     }
 }

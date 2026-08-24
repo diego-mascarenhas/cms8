@@ -9,6 +9,7 @@ use App\Http\Requests\Api\CreateAssistantCheckoutRequest;
 use App\Http\Requests\Api\CreateAssistantPaymentMethodRequest;
 use App\Http\Requests\Api\ResumeAssistantSubscriptionRequest;
 use App\Services\Billing\AssistantSubscriptionService;
+use App\Support\HumanoPricingCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -156,8 +157,7 @@ class AssistantSubscriptionController extends Controller
 
     private function requestedCatalog(Request $request): string
     {
-        $catalog = strtolower(trim((string) $request->input('catalog', 'assistant')));
-
-        return in_array($catalog, ['platform', 'mailer'], true) ? $catalog : 'assistant';
+        return HumanoPricingCatalog::normalize((string) $request->input('catalog', 'assistant'))
+            ?? HumanoPricingCatalog::ASSISTANT;
     }
 }
