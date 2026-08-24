@@ -12,6 +12,7 @@ use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
+use ReflectionMethod;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -151,6 +152,38 @@ class ApiAssistantSubscriptionTest extends TestCase
             Carbon::parse($response->json('data.token_usage.period_start'))->timestamp,
             5,
         );
+    }
+
+    public function test_paid_cycle_treats_pre_plan_token_usage_as_cac(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $firstUse = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $firstUse->forceFill(['created_at' => now()->subDays(10)])->save();
+
+        $periodStart = now()->subHour();
+        $method = new ReflectionMethod(AssistantSubscriptionService::class, 'tokenUsagePeriod');
+        [$from] = $method->invoke(
+            app(AssistantSubscriptionService::class),
+            $team,
+            [
+                'current_period_start' => $periodStart->toIso8601String(),
+                'current_period_end' => now()->addMonth()->toIso8601String(),
+            ],
+        );
+
+        $this->assertEqualsWithDelta($periodStart->timestamp, $from->timestamp, 2);
+        $this->assertGreaterThan($firstUse->fresh()->created_at->timestamp, $from->timestamp);
     }
 
     public function test_subscription_token_usage_bills_tokens_used_in_current_period(): void
@@ -348,6 +381,7 @@ class ApiAssistantSubscriptionTest extends TestCase
                 ->once()
                 ->andReturn([
                     'success' => true,
+                    'url' => 'https://assistant.test/profile',
                     'data' => [
                         'can_checkout' => false,
                         'subscription' => [
@@ -367,7 +401,7 @@ class ApiAssistantSubscriptionTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('success', true);
-        $response->assertJsonMissing(['url']);
+        $response->assertJsonPath('url', 'https://assistant.test/profile');
         $response->assertJsonPath('data.subscription.active', true);
     }
 
