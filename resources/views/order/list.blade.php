@@ -20,13 +20,7 @@
 		<h4 class="mb-1 mt-3">{{ __('Órdenes') }}</h4>
 		<p class="text-muted">{{ __('Gestiona las órdenes de tus clientes') }}</p>
 	</div>
-	@can('order.create')
-	<div class="mt-3 mt-md-0">
-		<a href="{{ route('order.create') }}" class="btn btn-primary">
-			<i class="ti ti-plus me-1"></i> {{ __('Agregar Orden') }}
-		</a>
-	</div>
-	@endcan
+	@include('order.partials.header-actions')
 </div>
 
 <!-- Order List Widget -->

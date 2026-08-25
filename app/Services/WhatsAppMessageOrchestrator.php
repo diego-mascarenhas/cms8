@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppCartPresenter;
 use App\Helpers\WhatsAppCartProductFinder;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppLastOfferedProduct;
@@ -953,23 +954,24 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
+            // Cart keywords always win over the LLM (including "Ver carrito").
+            // addToCartCommand already ignores agenda phrases such as "agregar cita".
+            if ($channel == 'whatsapp' && ! $this->shouldSkipLinkedPeerAutoReply($request, $cleanFrom))
+            {
+                $cartResponse = $this->processCartCommands($cleanFrom, $body);
+                if ($cartResponse)
+                {
+                    return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
+                }
+            }
+
             // Check if this is part of a registration process
             if ($channel == 'whatsapp')
             {
                 if ($shouldProcessAutoAi)
                 {
                     // Detect user intent first, then route to the most relevant flow.
-                    // This prevents false positives (for example: "agregar cita..." should not go to cart).
                     $detectedIntent = $this->detectWhatsAppIntent((string) $body);
-
-                    if ($detectedIntent === 'cart')
-                    {
-                        $cartResponse = $this->processCartCommands($cleanFrom, $body);
-                        if ($cartResponse)
-                        {
-                            return response()->json(['status' => 'success', 'conversation_id' => $conversation->id, 'cart_processed' => true]);
-                        }
-                    }
 
                     if ($detectedIntent === 'product')
                     {
@@ -3234,48 +3236,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     {
         try
         {
-            $cartItems = Cart::getContent();
-
-            if ($cartItems->isEmpty())
-            {
-                $response = "🛒 **Tu carrito está vacío**\n\n";
-                $response .= "📋 *comprar* o *agregar* cantidad y nombre para sumar | *productos* catálogo | preguntame por un producto.\n";
-
-                $this->sendWhatsApp($phoneNumber, $response);
-
-                return ['success' => true, 'message' => $response];
-            }
-
-            $response = "🛒 **Tu Carrito de Compras**\n\n";
-
-            foreach ($cartItems as $item)
-            {
-                $response .= "• **{$item->name}**\n";
-                $response .= '  💰 $'.number_format($item->price, 2)." x {$item->quantity}\n";
-                $response .= '  💵 Subtotal: $'.number_format($item->price * $item->quantity, 2)."\n";
-
-                if (! empty($item->attributes->category_name))
-                {
-                    $response .= "  🏷️ {$item->attributes->category_name}\n";
-                }
-                $response .= "\n";
-            }
-
-            $response .= '💰 **TOTAL: $'.number_format(Cart::getTotal(), 2)."**\n";
-            $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
-
-            $response .= "**Siguiente paso:**\n";
-            $response .= "• *finalizar* — total y confirmación con *SÍ*\n";
-            $response .= "• *Comprar* más el producto o *agregar* cantidad y producto — sumar ítems\n";
-            $response .= "• *Quitar* cantidad y producto o *quitar todo* el nombre — sacar unidades o el ítem\n";
-            $response .= '• *vaciar carrito* — empezar de cero';
+            $response = WhatsAppCartPresenter::customerMessage(WhatsAppCartSessionKey::fromPhone((string) $phoneNumber));
 
             $this->sendWhatsApp($phoneNumber, $response);
 
             Log::info('Cart viewed', [
                 'phone' => $phoneNumber,
-                'items_count' => $cartItems->count(),
-                'total' => Cart::getTotal(),
+                'team_id' => $teamId,
             ]);
 
             return ['success' => true, 'message' => $response];

@@ -908,6 +908,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Order Routes
     Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
+    Route::get('/order/carts', [OrderController::class, 'carts'])->name('order.carts');
     Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
     Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
     Route::get('/order/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');

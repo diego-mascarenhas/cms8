@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Helpers\WhatsAppCartPresenter;
+use App\Helpers\WhatsAppCartSessionKey;
+use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Prompt;
 use App\Models\User;
 use App\Services\Assistant\AssistantActorContextService;
@@ -66,6 +69,12 @@ class ChatAssistantReplyService
             {
                 $this->assistantTools->setWhatsAppToolSingleCustomerSendPerTurn(true);
             }
+        }
+
+        $directCart = $this->directWhatsAppCartReply($message, $withTools, $teamId, $contextCustomerPhone);
+        if ($directCart !== null)
+        {
+            return $this->mergeFlowPersistMeta($directCart, false, null);
         }
 
         $flowRoutedTo = null;
@@ -270,6 +279,36 @@ class ChatAssistantReplyService
         $reply['assistant_flow_routing_key'] = $assistantFlowRoutingKey;
 
         return $reply;
+    }
+
+    /**
+     * Show the real Darryldecode cart. The model must not invent another WhatsApp number.
+     *
+     * @return array{success: bool, text: string, routed_to: null, usage: array, tool_calls: array, tool_results: array, meta: array}|null
+     */
+    private function directWhatsAppCartReply(string $message, bool $withTools, ?int $teamId, ?string $contextCustomerPhone): ?array
+    {
+        if (! $withTools || $teamId === null || $contextCustomerPhone === null || trim($contextCustomerPhone) === '')
+        {
+            return null;
+        }
+
+        if (! WhatsAppNaturalCartPhrase::isViewCart($message))
+        {
+            return null;
+        }
+
+        $text = WhatsAppCartPresenter::customerMessage(WhatsAppCartSessionKey::fromPhone($contextCustomerPhone));
+
+        return [
+            'success' => true,
+            'text' => $text,
+            'routed_to' => null,
+            'usage' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'meta' => ['whatsapp_cart' => 'view'],
+        ];
     }
 
     /**

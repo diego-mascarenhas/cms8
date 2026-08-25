@@ -17,9 +17,7 @@
             <h4 class="mb-1 mt-3">{{ __('Orders') }}</h4>
             <p class="text-muted">{{ __('Orders from your WooCommerce store') }}</p>
         </div>
-        <div class="mt-3 mt-md-0">
-            {{-- Orders are created via WooCommerce checkout; edit only from CMS --}}
-        </div>
+        @include('order.partials.header-actions', ['showCreateOrder' => false])
     </div>
 
     @if (session('success'))
