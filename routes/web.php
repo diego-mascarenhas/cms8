@@ -60,6 +60,7 @@ use App\Http\Controllers\MultimediaController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationTrackingController;
 use App\Http\Controllers\OpportunityController;
+use App\Http\Controllers\OrderCartController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\OvhApiController;
 use App\Http\Controllers\PageController;
@@ -909,6 +910,10 @@ Route::middleware(['auth'])->group(function ()
     // Order Routes
     Route::get('/order/list', [OrderController::class, 'index'])->name('order.index');
     Route::get('/order/carts', [OrderController::class, 'carts'])->name('order.carts');
+    Route::get('/order/carts/{id}', [OrderCartController::class, 'show'])->name('order.carts.show');
+    Route::put('/order/carts/{id}', [OrderCartController::class, 'update'])->name('order.carts.update');
+    Route::delete('/order/carts/{id}/items/{item}', [OrderCartController::class, 'destroyItem'])->name('order.carts.items.destroy');
+    Route::delete('/order/carts/{id}', [OrderCartController::class, 'destroy'])->name('order.carts.destroy');
     Route::get('/order/create', [OrderController::class, 'create'])->name('order.create');
     Route::get('/order/{id}', [OrderController::class, 'show'])->name('order.show');
     Route::get('/order/{id}/edit', [OrderController::class, 'edit'])->name('order.edit');

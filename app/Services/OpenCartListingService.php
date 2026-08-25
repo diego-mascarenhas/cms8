@@ -23,7 +23,6 @@ class OpenCartListingService
      *     channel: string,
      *     customer: string,
      *     phone: string,
-     *     items_label: string,
      *     quantity: int,
      *     total: float,
      *     updated_at: string,
@@ -46,6 +45,48 @@ class OpenCartListingService
     public function countForTeam(int $teamId): int
     {
         return $this->shoppingCarts->countOpenForTeam($teamId);
+    }
+
+    /**
+     * @return array{
+     *     id: string,
+     *     channel: string,
+     *     customer: string,
+     *     phone: string,
+     *     quantity: int,
+     *     total: float,
+     *     updated_at: string,
+     *     chat_url: string|null,
+     *     items: list<array{id: int, product_id: int, name: string, quantity: int, unit_price: float, line_total: float, category_name: string|null}>
+     * }|null
+     */
+    public function detailForTeam(int $teamId, int $cartId): ?array
+    {
+        $cart = $this->shoppingCarts->findForTeam($teamId, $cartId);
+        if (! $cart)
+        {
+            return null;
+        }
+
+        $row = $this->mapCart($cart);
+        $items = $cart->relationLoaded('items')
+            ? $cart->items
+            : $cart->items()->withoutGlobalScope('team')->get();
+
+        $row['items'] = $items
+            ->map(fn ($item): array => [
+                'id' => (int) $item->id,
+                'product_id' => (int) $item->product_id,
+                'name' => (string) $item->name,
+                'quantity' => (int) $item->quantity,
+                'unit_price' => (float) $item->price,
+                'line_total' => $item->lineTotal(),
+                'category_name' => $item->category_name,
+            ])
+            ->values()
+            ->all();
+
+        return $row;
     }
 
     /**
@@ -109,7 +150,6 @@ class OpenCartListingService
      *     channel: string,
      *     customer: string,
      *     phone: string,
-     *     items_label: string,
      *     quantity: int,
      *     total: float,
      *     updated_at: string,
@@ -132,9 +172,6 @@ class OpenCartListingService
                 : ($isPublicShop ? __('Tienda web') : 'WhatsApp'),
             'customer' => $contact?->name ?? ($phone !== '' ? $phone : __('Visitante')),
             'phone' => $phone,
-            'items_label' => $items
-                ->map(fn ($item): string => ((int) $item->quantity).' × '.(string) $item->name)
-                ->implode(', '),
             'quantity' => (int) $items->sum('quantity'),
             'total' => $cart->totalAmount(),
             'updated_at' => $cart->updated_at?->format('d/m/Y H:i') ?? '',

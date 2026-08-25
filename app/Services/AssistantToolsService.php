@@ -850,7 +850,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'list_product_catalog',
-                'description' => 'List WhatsApp-enabled published products for the team catalog, grouped by category. Use when the user asks for catalog, "catálogo", "productos", "qué venden", or to browse by category. Optional category_name filters by category name (partial match).',
+                'description' => 'Browse the team catalog. With no category_name, a large catalog returns category counts only (never every SKU). Pass category_name to list a few products in that category. Use search_products when the customer names a part. Use when they ask for catalog, "catálogo", "productos", or "qué venden".',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -3551,7 +3551,13 @@ class AssistantToolsService
             });
         }
 
-        $products = $query->orderBy('category_id')->orderBy('name')->limit(50)->get();
+        $total = (clone $query)->count();
+        if ($categoryFilter === '' && $total > 8)
+        {
+            return $this->listCatalogCategoriesOverview($teamId, $total);
+        }
+
+        $products = $query->orderBy('category_id')->orderBy('name')->limit(8)->get();
 
         if ($products->isEmpty())
         {
@@ -3582,9 +3588,41 @@ class AssistantToolsService
         }
 
         $this->rememberLastOfferedProducts($teamId, $products);
+        if ($total > $products->count())
+        {
+            $lines[] = 'Showing '.$products->count().' of '.$total.'. Use search_products or another category_name for the rest.';
+        }
         $lines[] = 'To buy: call add_to_whatsapp_cart with product_id (or omit it to use the last single product you showed) and quantity if they said how many. Then suggest *finalizar* to close, *carrito* to review, *quitar* to remove.';
 
         return $this->truncate(implode("\n", $lines));
+    }
+
+    private function listCatalogCategoriesOverview(int $teamId, int $total): string
+    {
+        $rows = $this->whatsAppSellableProductsQuery($teamId)
+            ->selectRaw('category_id, COUNT(*) as products_count')
+            ->groupBy('category_id')
+            ->orderByDesc('products_count')
+            ->limit(20)
+            ->get();
+
+        $names = Category::query()
+            ->whereIn('id', $rows->pluck('category_id')->filter())
+            ->pluck('name', 'id');
+
+        $lines = [
+            $total.' WhatsApp-enabled products. Do not list them all to the customer.',
+            'Ask what they need, then search_products or list_product_catalog with category_name.',
+            'Top categories:',
+        ];
+
+        foreach ($rows as $row)
+        {
+            $name = $names[$row->category_id] ?? 'Sin categoría';
+            $lines[] = '- '.$name.' ('.(int) $row->products_count.')';
+        }
+
+        return implode("\n", $lines);
     }
 
     private function searchProducts(int $teamId, array $input): string

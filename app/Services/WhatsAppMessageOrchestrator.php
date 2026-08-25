@@ -1785,39 +1785,14 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return null;
             }
 
-            // Only trigger catalog flow on explicit commerce intents.
-            // Avoid generic "servicio/soporte/app" matches that can hijack other flows (e.g. billing follow-ups).
-            // Do NOT use "precio"/"precios" alone: phrases like "¿es precio final?", "¿incluye IVA?" match \bprecio\b
-            // and would dump the full catalog instead of letting the assistant answer.
-            $productKeywords = [
-                'producto',
-                'productos',
-                'catalogo',
-                'comprar',
-                'carrito',
-                'checkout',
-                'pedido',
-                'pedidos',
-            ];
-
-            $containsProductKeyword = false;
-            foreach ($productKeywords as $keyword)
-            {
-                if (preg_match('/\b'.preg_quote($keyword, '/').'\b/u', $normalizedMessage) === 1)
-                {
-                    $containsProductKeyword = true;
-                    break;
-                }
-            }
-
-            $isProductCommand = $containsProductKeyword;
-
-            if (! $containsProductKeyword && ! $isProductCommand)
+            // Only an explicit catalog browse dumps a reply here. "Catálogo" with 18k SKUs
+            // must not list every product — show categories and ask what they need.
+            // Mentions of comprar/carrito/pedido go to cart commands or the assistant.
+            if (preg_match('/^(ver\s+(el\s+)?)?(catalogo|productos?)(\s+completo)?[[:punct:]\s]*$/u', $normalizedMessage) !== 1)
             {
                 return null;
             }
 
-            // Send product catalog and get the message content
             $catalogMessage = $this->sendProductCatalog($phoneNumber);
 
             // Log the product inquiry
@@ -1844,17 +1819,14 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         {
             $teamId = $this->resolveCartTeamId($phoneNumber);
 
-            // Get active products that are WhatsApp enabled for the specific team
-            $products = \App\Models\Product::withoutGlobalScope('team')
+            $catalogQuery = \App\Models\Product::withoutGlobalScope('team')
                 ->where('team_id', $teamId)
                 ->active()
-                ->whatsAppEnabled()
-                ->with(['category', 'currency'])
-                ->orderBy('category_id')
-                ->orderBy('price')
-                ->get();
+                ->whatsAppEnabled();
 
-            if ($products->isEmpty())
+            $total = (clone $catalogQuery)->count();
+
+            if ($total < 1)
             {
                 $message = "📦 *Catálogo de Productos*\n\n";
                 $message .= "Actualmente no hay productos disponibles.\n\n";
@@ -1865,33 +1837,29 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return $message;
             }
 
-            $message = "🛍️ *Catálogo de Productos y Servicios*\n\n";
+            $categoryRows = (clone $catalogQuery)
+                ->selectRaw('category_id, COUNT(*) as products_count')
+                ->groupBy('category_id')
+                ->orderByDesc('products_count')
+                ->limit(12)
+                ->get();
 
-            // Group products by category
-            $productsByCategory = $products->groupBy('category.name');
+            $categoryNames = \App\Models\Category::query()
+                ->whereIn('id', $categoryRows->pluck('category_id')->filter())
+                ->pluck('name', 'id');
 
-            foreach ($productsByCategory as $categoryName => $categoryProducts)
+            $message = "🛍️ *Catálogo*\n\n";
+            $message .= 'Tenemos *'.number_format($total, 0, ',', '.').'* productos. No te mando la lista entera por acá.';
+            $message .= "\n\nDecime qué buscás: pieza, marca o auto (ej. *bujía Gol*, *filtro de aceite*).\n\n";
+            $message .= "📂 *Categorías:*\n";
+
+            foreach ($categoryRows as $row)
             {
-                $message .= "📂 *{$categoryName}*\n";
-
-                foreach ($categoryProducts as $product)
-                {
-                    $currency = $product->currency ? $product->currency->symbol : '$';
-                    $codeLine = $product->code ? "  🏷️ Código: *{$product->code}*\n" : '';
-                    $message .= "• *{$product->name}*\n";
-                    $message .= $codeLine;
-                    $message .= "  💰 {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
-                    $message .= '  📝 '.\Illuminate\Support\Str::limit(strip_tags((string) $product->description), 80)."\n\n";
-                }
+                $categoryName = $categoryNames[$row->category_id] ?? __('Sin categoría');
+                $message .= '• '.$categoryName.' ('.(int) $row->products_count.")\n";
             }
 
-            $message .= "🛒 *Cómo comprar por aquí:*\n";
-            $message .= "• Escribí *carrito* para ver todos tus productos\n";
-            $message .= "• *Comprar* más el nombre o código del producto, o *agregar* la cantidad y el producto (ej. agregar 2 yerbas)\n";
-            $message .= "• *Quitar* cantidad y producto, o *quitar todo* el producto — sacar del carrito\n";
-            $message .= "• *Finalizar* — cerrar el pedido (luego te pediré *SÍ*)\n";
-            $message .= "• También podés preguntarme por un producto y te guío paso a paso.\n\n";
-            $message .= '📞 Soporte: https://revisionalpha.com/contactenos';
+            $message .= "\n🛒 Después escribí el nombre y te muestro 3 o 4 opciones con precio.\n";
 
             $this->sendWhatsApp($phoneNumber, $message);
 

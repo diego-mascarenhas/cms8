@@ -66,8 +66,10 @@ class OpenCartListTest extends TestCase
 
         $ajax->assertOk();
         $this->assertSame(1, (int) $ajax->json('recordsFiltered'));
-        $this->assertStringContainsString('ABRAZADERA 8 X 16', (string) $ajax->json('data.0.items_label'));
-        $this->assertStringContainsString('4', (string) $ajax->json('data.0.items_label'));
+        $this->assertSame(4, (int) $ajax->json('data.0.quantity'));
+        $this->assertArrayNotHasKey('items_label', $ajax->json('data.0'));
+        $this->assertStringContainsString(route('order.carts.show', $ajax->json('data.0.id')), (string) $ajax->json('data.0.action'));
+        $this->assertStringNotContainsString('ABRAZADERA 8 X 16', (string) $ajax->json('data.0.customer'));
         $this->assertStringNotContainsString('Producto ajeno', json_encode($ajax->json('data')));
     }
 
@@ -98,7 +100,7 @@ class OpenCartListTest extends TestCase
 
     private function openCartDataTableUrl(): string
     {
-        $columnKeys = ['customer', 'channel', 'items_label', 'quantity', 'updated_at', 'total', 'action'];
+        $columnKeys = ['customer', 'channel', 'quantity', 'updated_at', 'total', 'action'];
         $columns = [];
         foreach ($columnKeys as $data)
         {
@@ -116,7 +118,7 @@ class OpenCartListTest extends TestCase
             'start' => 0,
             'length' => 10,
             'search' => ['value' => '', 'regex' => 'false'],
-            'order' => [['column' => 4, 'dir' => 'desc']],
+            'order' => [['column' => 3, 'dir' => 'desc']],
             'columns' => $columns,
         ]);
     }
