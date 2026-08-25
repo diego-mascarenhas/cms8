@@ -18,11 +18,15 @@ class OpenCartDataTable extends DataTable
             {
                 return view('order.carts-action', ['cart' => $cart]);
             })
+            ->editColumn('customer', function (array $cart)
+            {
+                return '<a href="'.e(route('order.carts.show', $cart['id'])).'" class="fw-medium">'.e($cart['customer']).'</a>';
+            })
             ->editColumn('total', function (array $cart)
             {
                 return '$'.number_format((float) $cart['total'], 2);
             })
-            ->rawColumns(['action']);
+            ->rawColumns(['action', 'customer']);
     }
 
     public function query(OpenCartListingService $listing): Collection
@@ -38,7 +42,8 @@ class OpenCartDataTable extends DataTable
             ->setTableId('open-cart-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
-            ->orderBy(4, 'desc')
+            ->dom('frtip')
+            ->orderBy(3, 'desc')
             ->responsive(true)
             ->processing(false)
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
@@ -55,7 +60,6 @@ class OpenCartDataTable extends DataTable
         return [
             Column::make('customer')->title(__('Cliente'))->addClass('text-nowrap'),
             Column::make('channel')->title(__('Canal'))->addClass('text-nowrap'),
-            Column::make('items_label')->title(__('Productos')),
             Column::make('quantity')->title(__('Items'))->addClass('text-center'),
             Column::make('updated_at')->title(__('Actualizado'))->addClass('text-nowrap'),
             Column::make('total')->title(__('Total'))->addClass('text-end'),
@@ -64,7 +68,7 @@ class OpenCartDataTable extends DataTable
                 ->exportable(false)
                 ->printable(false)
                 ->addClass('text-center')
-                ->width(80),
+                ->width(90),
         ];
     }
 

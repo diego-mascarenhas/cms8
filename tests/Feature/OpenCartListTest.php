@@ -42,6 +42,8 @@ class OpenCartListTest extends TestCase
         $response->assertOk();
         $response->assertSee(__('Carritos abiertos'), false);
         $response->assertSee(route('order.carts'), false);
+        $response->assertSee('dt-action-buttons d-flex align-items-center', false);
+        $response->assertSee('justify-content-end', false);
     }
 
     public function test_open_carts_page_lists_team_cart_and_hides_other_teams(): void
@@ -55,6 +57,7 @@ class OpenCartListTest extends TestCase
         $response->assertSee(__('Carritos abiertos'), false);
         $response->assertSee('table table-hover dt-responsive nowrap w-100', false);
         $response->assertSee('<div class="card-body">', false);
+        $response->assertSee('frtip', false);
 
         $ajax = $this->actingAs($this->user)->withHeaders([
             'X-Requested-With' => 'XMLHttpRequest',
@@ -63,8 +66,10 @@ class OpenCartListTest extends TestCase
 
         $ajax->assertOk();
         $this->assertSame(1, (int) $ajax->json('recordsFiltered'));
-        $this->assertStringContainsString('ABRAZADERA 8 X 16', (string) $ajax->json('data.0.items_label'));
-        $this->assertStringContainsString('4', (string) $ajax->json('data.0.items_label'));
+        $this->assertSame(4, (int) $ajax->json('data.0.quantity'));
+        $this->assertArrayNotHasKey('items_label', $ajax->json('data.0'));
+        $this->assertStringContainsString(route('order.carts.show', $ajax->json('data.0.id')), (string) $ajax->json('data.0.action'));
+        $this->assertStringNotContainsString('ABRAZADERA 8 X 16', (string) $ajax->json('data.0.customer'));
         $this->assertStringNotContainsString('Producto ajeno', json_encode($ajax->json('data')));
     }
 
@@ -95,7 +100,7 @@ class OpenCartListTest extends TestCase
 
     private function openCartDataTableUrl(): string
     {
-        $columnKeys = ['customer', 'channel', 'items_label', 'quantity', 'updated_at', 'total', 'action'];
+        $columnKeys = ['customer', 'channel', 'quantity', 'updated_at', 'total', 'action'];
         $columns = [];
         foreach ($columnKeys as $data)
         {
@@ -113,7 +118,7 @@ class OpenCartListTest extends TestCase
             'start' => 0,
             'length' => 10,
             'search' => ['value' => '', 'regex' => 'false'],
-            'order' => [['column' => 4, 'dir' => 'desc']],
+            'order' => [['column' => 3, 'dir' => 'desc']],
             'columns' => $columns,
         ]);
     }

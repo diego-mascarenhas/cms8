@@ -84,6 +84,30 @@ class AssistantProductCatalogToolsTest extends TestCase
         $search = $service->execute('search_products', ['query' => 'CAM-DEMO']);
         $this->assertStringContainsString('CAM-DEMO', $search);
         $this->assertStringContainsString((string) $product->id, $search);
+
+        foreach (range(1, 9) as $index)
+        {
+            Product::withoutGlobalScope('team')->create([
+                'team_id' => $team->id,
+                'name' => 'Extra catalog '.$index,
+                'code' => 'EXTRA-'.$index,
+                'description' => 'Bulk',
+                'price' => 5 + $index,
+                'currency_id' => $currencyId,
+                'category_id' => $category->id,
+                'status' => true,
+                'whatsapp_enabled' => true,
+            ]);
+        }
+
+        $overview = $service->execute('list_product_catalog', []);
+        $this->assertStringContainsString('Ropa', $overview);
+        $this->assertStringContainsString('Do not list them all', $overview);
+        $this->assertStringNotContainsString('Extra catalog 1', $overview);
+
+        $filtered = $service->execute('list_product_catalog', ['category_name' => 'Ropa']);
+        $this->assertStringContainsString('Camiseta demo', $filtered);
+        $this->assertStringContainsString('Showing 8 of', $filtered);
     }
 
     public function test_search_products_matches_natural_language_auto_parts(): void

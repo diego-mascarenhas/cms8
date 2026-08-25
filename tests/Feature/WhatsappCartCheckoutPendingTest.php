@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
+use App\Models\Currency;
+use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsAppMessageOrchestrator;
@@ -183,5 +186,60 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $this->assertSame('cart', $method->invoke($service, 'Quiero ver mi carrito'));
         $this->assertSame('cart', $method->invoke($service, 'Ver carrito'));
         $this->assertSame('cart', $method->invoke($service, 'Qué hay en el carrito'));
+    }
+
+    public function test_catalog_command_lists_categories_not_every_product(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $currencyId = Currency::query()->firstOrCreate(
+            ['code' => 'ARS'],
+            ['name' => 'Peso argentino', 'symbol' => '$', 'status' => true],
+        )->id;
+        $frenos = Category::withoutGlobalScopes()->create([
+            'name' => 'Frenos',
+            'module_id' => null,
+            'team_id' => $team->id,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        foreach (range(1, 12) as $index)
+        {
+            Product::withoutGlobalScope('team')->create([
+                'team_id' => $team->id,
+                'name' => 'Pastilla secreto '.$index,
+                'code' => 'CAT-'.$index,
+                'description' => 'No listar',
+                'price' => 10 + $index,
+                'currency_id' => $currencyId,
+                'category_id' => $frenos->id,
+                'status' => true,
+                'whatsapp_enabled' => true,
+            ]);
+        }
+
+        $service = new class($team) extends WhatsAppMessageOrchestrator
+        {
+            public ?string $sent = null;
+
+            public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
+            {
+                $this->sent = (string) $message;
+
+                return ['success' => true];
+            }
+        };
+
+        $result = $service->processProductCommands('+5491199900099', 'Catálogo');
+
+        $this->assertIsArray($result);
+        $this->assertTrue($result['success']);
+        $this->assertStringContainsString('Frenos', (string) $service->sent);
+        $this->assertStringContainsString('12', (string) $service->sent);
+        $this->assertStringContainsString('qué buscás', mb_strtolower((string) $service->sent));
+        $this->assertStringNotContainsString('Pastilla secreto 1', (string) $service->sent);
+        $this->assertNull($service->processProductCommands('+5491199900099', 'Quiero un pedido urgente'));
     }
 }
