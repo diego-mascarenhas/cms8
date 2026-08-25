@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\DatabaseStorageModel;
 use Illuminate\Support\Collection as SupportCollection;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Open (not yet checked-out) carts from cart_storage, scoped to a team.
@@ -38,7 +40,22 @@ class OpenCartListingService
         return DatabaseStorageModel::query()
             ->orderByDesc('updated_at')
             ->get()
-            ->map(fn (DatabaseStorageModel $row): ?array => $this->mapRow($row, $teamId))
+            ->map(function (DatabaseStorageModel $row) use ($teamId): ?array
+            {
+                try
+                {
+                    return $this->mapRow($row, $teamId);
+                } catch (Throwable $e)
+                {
+                    Log::warning('Skipped cart_storage row while listing open carts', [
+                        'id' => $row->id,
+                        'team_id' => $teamId,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    return null;
+                }
+            })
             ->filter()
             ->values();
     }

@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class DatabaseStorageModel extends Model
 {
@@ -28,6 +30,40 @@ class DatabaseStorageModel extends Model
 
     public function getCartDataAttribute($value)
     {
-        return unserialize($value);
+        if ($value === null || $value === '')
+        {
+            return [];
+        }
+
+        if (! is_string($value))
+        {
+            return $value;
+        }
+
+        try
+        {
+            $decoded = unserialize($value);
+            if ($decoded === false && $value !== 'b:0;')
+            {
+                $this->logUnreadableCartData('unserialize returned false');
+
+                return [];
+            }
+
+            return $decoded;
+        } catch (Throwable $e)
+        {
+            $this->logUnreadableCartData($e->getMessage());
+
+            return [];
+        }
+    }
+
+    private function logUnreadableCartData(string $reason): void
+    {
+        Log::warning('Skipped unreadable cart_storage row', [
+            'id' => $this->attributes['id'] ?? null,
+            'reason' => $reason,
+        ]);
     }
 }

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\OpenCartListingService;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -65,6 +66,25 @@ class OpenCartListTest extends TestCase
         $this->assertStringContainsString('ABRAZADERA 8 X 16', (string) $ajax->json('data.0.items_label'));
         $this->assertStringContainsString('4', (string) $ajax->json('data.0.items_label'));
         $this->assertStringNotContainsString('Producto ajeno', json_encode($ajax->json('data')));
+    }
+
+    public function test_orders_index_survives_corrupt_cart_storage_rows(): void
+    {
+        $this->addCartItem($this->team->id, '5491199900104', 'ABRAZADERA 8 X 16', 2, 989.43);
+
+        DB::table('cart_storage')->insert([
+            'id' => 'corrupt_cart_items',
+            'cart_data' => 'O:8:"stdClass":1:{s:4:"oops";s:10:"truncated',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertSame(1, app(OpenCartListingService::class)->countForTeam((int) $this->team->id));
+
+        $response = $this->actingAs($this->user)->get(route('order.index'));
+
+        $response->assertOk();
+        $response->assertSee(__('Carritos abiertos'), false);
     }
 
     public function test_listing_service_skips_empty_carts(): void
