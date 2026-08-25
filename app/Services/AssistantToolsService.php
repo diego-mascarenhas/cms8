@@ -3638,7 +3638,7 @@ class AssistantToolsService
             return 'query is required (product name or code).';
         }
 
-        $ranked = WhatsAppProductRelevanceSearch::search($teamId, $raw, 20);
+        $ranked = WhatsAppProductRelevanceSearch::search($teamId, $raw, 8);
         $products = $ranked['products'];
         $closest = ! $ranked['all_tokens_matched'];
 

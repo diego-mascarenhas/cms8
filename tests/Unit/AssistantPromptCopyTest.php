@@ -45,6 +45,7 @@ class AssistantPromptCopyTest extends TestCase
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
         $this->assertStringContainsString('agregame 2', $instruction);
         $this->assertStringContainsString('finalizar', $instruction);
+        $this->assertStringContainsString('No vuelvas a listar el catálogo', $instruction);
         $this->assertStringNotContainsString('escriba *comprar* más el nombre', $instruction);
     }
 

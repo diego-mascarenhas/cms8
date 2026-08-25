@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AgentConversation;
+use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Conversation;
@@ -20,6 +22,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -213,6 +216,112 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $response->assertOk();
         $this->assertTrue($response->json('messages.0.from_assistant'));
         $this->assertSame('robot', $response->json('messages.0.sender_avatar.icon'));
+    }
+
+    public function test_whatsapp_messages_exposes_assistant_token_usage(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $teamWa = '34999000111';
+        $team->setSetting('whatsapp_from', $teamWa);
+        $clientPhone = '34600888777';
+        $body = 'Tenemos más de 10.000 productos.';
+        Conversation::create([
+            'message_sid' => 'SM_api_chat_assistant_usage_1',
+            'channel' => 'whatsapp',
+            'from' => $teamWa,
+            'to' => $clientPhone,
+            'body' => $body,
+            'status' => 'sent',
+            'direction' => 'outbound',
+        ]);
+
+        $conversationId = (string) Str::uuid();
+        AgentConversation::create([
+            'id' => $conversationId,
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'title' => 'WhatsApp '.$clientPhone,
+        ]);
+        AgentConversationMessage::create([
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversationId,
+            'user_id' => $user->id,
+            'agent' => 'chat_assistant',
+            'role' => 'assistant',
+            'content' => $body,
+            'attachments' => [],
+            'tool_calls' => [['name' => 'list_product_catalog'], ['name' => 'search_products']],
+            'tool_results' => [],
+            'usage' => [
+                'prompt_tokens' => 12000,
+                'completion_tokens' => 180,
+                'total_tokens' => 12180,
+            ],
+            'meta' => [],
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone);
+
+        $response->assertOk();
+        $response->assertJsonPath('messages.0.from_assistant', true);
+        $response->assertJsonPath('messages.0.usage.prompt_tokens', 12000);
+        $response->assertJsonPath('messages.0.usage.completion_tokens', 180);
+        $response->assertJsonPath('messages.0.usage.total_tokens', 12180);
+        $response->assertJsonPath('messages.0.usage.tool_calls', 2);
+        $this->assertGreaterThan(0, $response->json('messages.0.usage.amount_cents'));
+    }
+
+    public function test_whatsapp_messages_reads_token_usage_from_outbound_metadata(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([CountrySeeder::class, LanguageSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34999000111');
+        Conversation::create([
+            'message_sid' => 'SM_api_chat_assistant_usage_meta',
+            'channel' => 'whatsapp',
+            'from' => '34999000111',
+            'to' => '34600888666',
+            'body' => 'Dale, te busco el filtro.',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'metadata' => [
+                'token_usage' => [
+                    'prompt_tokens' => 800,
+                    'completion_tokens' => 40,
+                    'total_tokens' => 840,
+                    'tool_calls' => 1,
+                ],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
+            ->getJson('/api/chat/whatsapp-messages/34600888666')
+            ->assertOk()
+            ->assertJsonPath('messages.0.usage.total_tokens', 840)
+            ->assertJsonPath('messages.0.usage.tool_calls', 1);
     }
 
     public function test_whatsapp_messages_uses_agent_avatar_for_attributed_outbound(): void

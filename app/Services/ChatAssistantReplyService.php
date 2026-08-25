@@ -80,6 +80,10 @@ class ChatAssistantReplyService
         $flowRoutingKey = null;
         $flowPersistSpecified = false;
         $flowPersistKey = null;
+        $flowPrompt = null;
+        $whatsappCustomerThread = $channel === AssistantActorContextService::CHANNEL_WHATSAPP
+            && $contextCustomerPhone !== null
+            && trim($contextCustomerPhone) !== '';
         $instructions = $withTools
             ? $this->getAssistantToolsSystemPrompt($contextUserId)
             : AssistantSystemPrompt::get();
@@ -93,7 +97,7 @@ class ChatAssistantReplyService
             $instructions .= $this->customerTeamRoleInstructionsAppendix();
         }
 
-        $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId);
+        $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId, $whatsappCustomerThread);
         if ($businessAppendix !== '')
         {
             $instructions .= "\n\n---\n\n".$businessAppendix;
@@ -149,7 +153,7 @@ class ChatAssistantReplyService
                 if ($flowBody !== '')
                 {
                     $instructions .= "\n\n---\n\n## Team flow prompt: «{$flowPrompt->section_label}» (section_key: {$flowPrompt->section_key})\n\n";
-                    $instructions .= "Stay in this flow for follow-up messages in the same conversation until the user clearly changes topic (e.g. reset phrases). You still have access to all tools above.\n\n";
+                    $instructions .= "Stay in this flow for follow-up messages in the same conversation until the user clearly changes topic (e.g. reset phrases).\n\n";
                     $instructions .= $flowBody;
                     if ($flowPrompt->section_key === 'wapify_me')
                     {
@@ -228,7 +232,7 @@ class ChatAssistantReplyService
         if ($hasGuideAppendix)
         {
             $instructions .= "\n\n---\n\n".trim((string) $humanoGuideAppendix);
-        } elseif ($withTools && $teamId !== null && $actorContext !== null)
+        } elseif ($withTools && $teamId !== null && $actorContext !== null && ! $this->shouldCompactWhatsAppCatalogContext($whatsappCustomerThread, $flowRoutingKey))
         {
             $hintKey = $actorContext->usesWebInteractiveGuideHint()
                 ? 'web_help_hint'
@@ -240,9 +244,34 @@ class ChatAssistantReplyService
             }
         }
 
-        $tools = $withTools ? $this->buildLaravelAiTools($previewOnly) : [];
+        if ($withTools && $this->shouldCompactWhatsAppCatalogContext($whatsappCustomerThread, $flowRoutingKey))
+        {
+            $instructions = $this->compactWhatsAppCatalogInstructions(
+                $contextUserId,
+                $teamId,
+                $contactId,
+                $flowPrompt,
+                $history,
+            );
+        }
 
-        $reply = $this->getReplyWithLaravelAi($message, $history, $instructions, $tools, $flowRoutedTo);
+        $tools = $withTools
+            ? $this->buildLaravelAiTools(
+                $previewOnly,
+                $actorContext?->user,
+                $teamId,
+                $whatsappCustomerThread,
+                $flowRoutingKey,
+            )
+            : [];
+
+        $reply = $this->getReplyWithLaravelAi(
+            $message,
+            $this->compactHistoryForPrompt($history, $channel),
+            $instructions,
+            $tools,
+            $flowRoutedTo,
+        );
         if ($withTools && ($reply['success'] ?? false))
         {
             $committedKey = $this->routingKeyCommittedViaTools($reply['tool_results'] ?? []);
@@ -573,24 +602,124 @@ EOT;
      *
      * @return array<int, \Laravel\Ai\Contracts\Tool>
      */
-    protected function buildLaravelAiTools(bool $excludeWhatsAppSend = false): array
-    {
+    protected function buildLaravelAiTools(
+        bool $excludeWhatsAppSend = false,
+        ?User $actor = null,
+        ?int $teamId = null,
+        bool $whatsappCustomerThread = false,
+        ?string $flowRoutingKey = null,
+    ): array {
+        $definitions = $this->assistantTools->getDefinitions();
+        $allowedNames = $teamId !== null
+            ? $this->assistantToolAuthorization->exposedToolNames(
+                array_values(array_filter(array_map(fn (array $def) => (string) ($def['name'] ?? ''), $definitions))),
+                $actor,
+                $teamId,
+                $whatsappCustomerThread,
+                $flowRoutingKey,
+                $excludeWhatsAppSend,
+            )
+            : null;
+        $allowedLookup = $allowedNames !== null ? array_flip($allowedNames) : null;
+
         $tools = [];
-        foreach ($this->assistantTools->getDefinitions() as $def)
+        foreach ($definitions as $def)
         {
-            if ($excludeWhatsAppSend && ($def['name'] ?? '') === 'send_whatsapp_message')
+            $name = (string) ($def['name'] ?? '');
+            if ($name === '')
+            {
+                continue;
+            }
+            if ($excludeWhatsAppSend && $name === 'send_whatsapp_message')
+            {
+                continue;
+            }
+            if ($allowedLookup !== null && ! isset($allowedLookup[$name]))
             {
                 continue;
             }
             $tools[] = new AssistantTool(
                 $this->assistantTools,
-                $def['name'],
+                $name,
                 $def['description'],
                 $def['input_schema'] ?? ['type' => 'object', 'properties' => [], 'required' => []],
             );
         }
 
         return $tools;
+    }
+
+    private function shouldCompactWhatsAppCatalogContext(bool $whatsappCustomerThread, ?string $flowRoutingKey): bool
+    {
+        return $whatsappCustomerThread
+            && $this->assistantToolAuthorization->isCatalogSalesRoutingKey($flowRoutingKey);
+    }
+
+    /**
+     * WhatsApp catalog thread: skip CRM staff prompt, discovery, and help hint.
+     */
+    private function compactWhatsAppCatalogInstructions(
+        ?int $contextUserId,
+        ?int $teamId,
+        ?int $contactId,
+        ?Prompt $flowPrompt,
+        array $history,
+    ): string {
+        $instructions = $this->getCompactWhatsAppCatalogSystemPrompt($contextUserId);
+
+        if ($flowPrompt)
+        {
+            $flowBody = trim((string) $flowPrompt->resolvedInstruction($teamId));
+            if ($flowBody !== '')
+            {
+                $instructions .= "\n\n---\n\n## Team flow prompt: «{$flowPrompt->section_label}»\n\n";
+                $instructions .= $flowBody;
+                if ($flowPrompt->section_key === 'wapify_me')
+                {
+                    $instructions .= $this->wapifyFlowContextAppendix($history);
+                }
+            }
+        }
+
+        $businessAppendix = $this->businessAssistantContext->buildMarkdownAppendix($teamId, true);
+        if ($businessAppendix !== '')
+        {
+            $instructions .= "\n\n---\n\n".$businessAppendix;
+        }
+
+        if ($contactId !== null && $contactId > 0 && $teamId !== null)
+        {
+            $contactSummary = $this->contactAssistantContext->buildMarkdownSummary($contactId, $teamId);
+            if ($contactSummary !== '')
+            {
+                $instructions .= "\n\n---\n\n".$contactSummary;
+            }
+        }
+
+        return $instructions;
+    }
+
+    /**
+     * @param  array<int, array{direction?: string, body?: string}>  $history
+     * @return array<int, array{direction?: string, body?: string}>
+     */
+    private function compactHistoryForPrompt(array $history, ?string $channel): array
+    {
+        $isWhatsApp = $channel === AssistantActorContextService::CHANNEL_WHATSAPP;
+        $maxMessages = $isWhatsApp ? 6 : 12;
+        $maxBody = $isWhatsApp ? 400 : 800;
+        $sliced = array_slice($history, -$maxMessages);
+
+        return array_map(function (array $item) use ($maxBody): array
+        {
+            $body = trim((string) ($item['body'] ?? ''));
+            if (mb_strlen($body) > $maxBody)
+            {
+                $item['body'] = mb_substr($body, 0, $maxBody).'…';
+            }
+
+            return $item;
+        }, $sliced);
     }
 
     /**
@@ -638,7 +767,7 @@ La única fuente de verdad son los resultados de las herramientas y el contexto 
 
 Cuando el cliente quiere comprar, esto tiene prioridad. Recorré el circuito completo; no lo dejes a la mitad.
 
-1. **Mostrar**: list_product_catalog o search_products. Ofrecé como mucho 3 o 4 opciones, con nombre y precio reales.
+1. **Mostrar**: list_product_catalog o search_products. Ofrecé como mucho 3 o 4 opciones, con nombre y precio reales. **No vuelvas a listar el catálogo** si el cliente solo confirma (ok, dale, gracias, sí) y ya mostraste productos en este hilo: seguí al carrito o hacé una pregunta. list_product_catalog sin categoría solo al abrir el catálogo; search_products solo cuando nombra un producto o rubro.
 2. **Agregar**: en cuanto confirma («sí», «dale», «ok», «quiero», «agregalo», «agregame», «agregame 2», «poneme 2», «añadilo», «mandale») después de mostrar un producto, llamá **add_to_whatsapp_cart en ese mismo turno** con `quantity` si dijo cuántas. No contestes solo con texto. Si no nombra el producto, usá el último `product_id` de search_products. No preguntes «¿te lo agrego al carrito?» y después pidas un comando: si mostraste uno solo, preguntá cuántas quiere o sumalo cuando confirme.
 3. **Cerrar**: después de agregar, decí qué agregaste (nombre, cantidad, precio) y proponé **finalizar** para cerrar el pedido. Si piden ver el carrito, llamá **view_whatsapp_cart** y mostrá ese resultado. Un *SÍ* suelto confirma el pedido recién **después** de *finalizar*.
 4. **Siempre proponé el próximo paso concreto.** No cierres con «avisame cualquier cosa».
@@ -676,6 +805,42 @@ Las descripciones de cada herramienta dicen qué hace; esto es el orden en que h
 ## 7. Foco del tema
 
 Si hay un flujo del equipo activo en este hilo, quedate en ese tema hasta resolverlo o hasta que el usuario quiera cambiar. No saltes al catálogo durante una gestión de cobros o de soporte salvo que pidan comprar. Si las instrucciones incluyen «Conversation flow (discovery mode)», hacé como mucho una pregunta corta y después llamá a commit_assistant_flow con la routing_key exacta.
+EOT;
+    }
+
+    protected function getCompactWhatsAppCatalogSystemPrompt(?int $contextUserId = null): string
+    {
+        $today = now()->format('Y-m-d');
+        $todayLabel = now()->translatedFormat('l d \d\e F \d\e Y');
+
+        $user = auth()->user();
+        if ($user === null && $contextUserId !== null)
+        {
+            $user = User::withoutGlobalScopes()->find($contextUserId);
+        }
+        $isAdmin = $user && ($user->hasRole('admin') || $user->hasRole('root'));
+        $adminInstruction = $isAdmin
+            ? "\n- El usuario es del equipo: no cierres con «¿Necesitás algo más?» ni similares."
+            : '';
+
+        return <<<EOT
+Sos el asistente de ventas por WhatsApp de este equipo. Tenés el catálogo y el carrito reales. No es una simulación.
+
+FECHA DE HOY: {$today} ({$todayLabel}).
+
+## Cómo escribís
+
+- Español, 2 a 4 frases. Una pregunta por mensaje. URLs en texto plano, sin asteriscos.{$adminInstruction}
+
+## No inventes
+
+Precios, stock y productos salen solo de las herramientas de este turno. Si no está, decilo y ofrecé lo más cercano.
+
+## Venta
+
+1. **Mostrar**: list_product_catalog o search_products, 3 o 4 opciones. **No vuelvas a listar el catálogo** si el cliente solo confirma (ok, dale, gracias) y ya mostraste productos: agregá al carrito o preguntá qué busca.
+2. **Agregar**: «sí», «dale», «ok», «quiero», «agregalo» → **add_to_whatsapp_cart** en este turno. Si no nombra el producto, usá el último que mostraste.
+3. **Cerrar**: confirmá y proponé **finalizar**. *carrito* para ver, *quitar* para sacar.
 EOT;
     }
 

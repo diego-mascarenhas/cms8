@@ -55,6 +55,16 @@ class AssistantToolAuthorizationService
     ];
 
     /**
+     * @var list<string>
+     */
+    private const CATALOG_SALES_CONTACT_TOOLS = [
+        'search_contacts',
+        'get_contact_detail',
+        'create_contact',
+        'update_contact',
+    ];
+
+    /**
      * WhatsApp inbound customers are CRM contacts, often without a Humano login.
      * Booking and self-service still run as the team; staff CRM stays closed.
      *
@@ -229,6 +239,90 @@ class AssistantToolAuthorizationService
     public function isRestrictedTeamMember(User $user, int $teamId): bool
     {
         return $this->usesCustomerAssistantPrompts($user, $teamId);
+    }
+
+    public function isCatalogSalesRoutingKey(?string $routingKey): bool
+    {
+        $key = strtolower(trim((string) $routingKey));
+        if ($key === '')
+        {
+            return false;
+        }
+
+        return str_ends_with($key, ':assistant_catalogo')
+            || str_ends_with($key, ':assistant_embudo')
+            || $key === 'assistant_catalogo'
+            || $key === 'assistant_embudo';
+    }
+
+    /**
+     * Tool names whose schemas are sent to the model this turn.
+     * WhatsApp customer threads and catalog flows omit staff CRM tools — those schemas dominate prompt tokens.
+     *
+     * @param  list<string>  $definedNames
+     * @return list<string>
+     */
+    public function exposedToolNames(
+        array $definedNames,
+        ?User $user,
+        int $teamId,
+        bool $whatsappCustomerThread,
+        ?string $flowRoutingKey,
+        bool $excludeWhatsAppSend = false,
+    ): array {
+        $names = array_values(array_filter($definedNames, fn ($name) => is_string($name) && $name !== ''));
+
+        if ($excludeWhatsAppSend)
+        {
+            $names = array_values(array_filter($names, fn (string $name) => $name !== 'send_whatsapp_message'));
+        }
+
+        if ($this->isCatalogSalesRoutingKey($flowRoutingKey))
+        {
+            $allowed = self::WHATSAPP_CART_TOOLS;
+            if ($whatsappCustomerThread || str_contains(strtolower((string) $flowRoutingKey), 'assistant_embudo'))
+            {
+                $allowed = array_merge($allowed, self::CATALOG_SALES_CONTACT_TOOLS);
+            }
+            if (! $whatsappCustomerThread)
+            {
+                $allowed[] = 'commit_assistant_flow';
+            }
+
+            return array_values(array_intersect($names, $allowed));
+        }
+
+        if ($whatsappCustomerThread)
+        {
+            $allowed = array_merge(
+                self::ALWAYS_ALLOWED_TOOLS,
+                self::WHATSAPP_CART_TOOLS,
+                self::CMS_READ_TOOLS,
+                self::WHATSAPP_INBOUND_CUSTOMER_TOOLS,
+            );
+            if ($excludeWhatsAppSend)
+            {
+                $allowed = array_values(array_filter($allowed, fn (string $name) => $name !== 'send_whatsapp_message'));
+            }
+
+            return array_values(array_intersect($names, $allowed));
+        }
+
+        if ($user === null)
+        {
+            return $names;
+        }
+
+        $exposed = [];
+        foreach ($names as $name)
+        {
+            if ($this->denyReasonForTool($name, $user, $teamId, false) === null)
+            {
+                $exposed[] = $name;
+            }
+        }
+
+        return $exposed;
     }
 
     /**

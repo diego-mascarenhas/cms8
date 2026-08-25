@@ -95,4 +95,28 @@ class BusinessAssistantContextServiceTest extends TestCase
         $this->assertStringContainsString('Visible SA', $markdown);
         $this->assertStringNotContainsString('Secreto interno', $markdown);
     }
+
+    public function test_compact_appendix_omits_email_and_owner(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id, 'name' => 'Acme SA']);
+        $team->setSetting('business_config', [
+            'business_name' => 'Mi Marca',
+            'business_industry' => 'Retail',
+            'business_email' => 'hola@example.com',
+            'last_name' => 'ApellidoVisible',
+            'instagram' => '@acme',
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+
+        $markdown = app(BusinessAssistantContextService::class)->buildMarkdownAppendix($team->id, true);
+
+        $this->assertStringContainsString('Mi Marca', $markdown);
+        $this->assertStringContainsString('Retail', $markdown);
+        $this->assertStringNotContainsString('hola@example.com', $markdown);
+        $this->assertStringNotContainsString('ApellidoVisible', $markdown);
+        $this->assertStringNotContainsString('@acme', $markdown);
+    }
 }
