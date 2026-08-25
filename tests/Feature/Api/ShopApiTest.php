@@ -118,9 +118,15 @@ class ShopApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.products_count', 0)
+            ->assertJsonPath('data.published_products_count', 0)
             ->assertJsonPath('data.stores_count', 1)
             ->assertJsonPath('data.orders_count', 0)
-            ->assertJsonPath('data.open_carts_count', 0);
+            ->assertJsonPath('data.orders_this_month', 0)
+            ->assertJsonPath('data.pending_orders', 0)
+            ->assertJsonPath('data.pending_orders_total', 0)
+            ->assertJsonPath('data.open_carts_count', 0)
+            ->assertJsonPath('data.open_carts_items', 0)
+            ->assertJsonPath('data.open_carts_total', 0);
     }
 
     public function test_can_crud_product_and_create_category(): void
