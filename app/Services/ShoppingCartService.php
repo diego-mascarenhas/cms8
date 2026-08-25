@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ShoppingCartChannel;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\ShoppingCart;
 use App\Models\ShoppingCartItem;
 use Illuminate\Database\Eloquent\Builder;
@@ -93,35 +94,47 @@ class ShoppingCartService
 
     public function addProduct(ShoppingCart $cart, Product $product, int $quantity = 1): ShoppingCartItem
     {
+        return $this->addVariant($cart, $this->defaultVariantFor($product), $quantity);
+    }
+
+    public function addVariant(ShoppingCart $cart, ProductVariant $variant, int $quantity = 1): ShoppingCartItem
+    {
         $quantity = max(1, min(500, $quantity));
-        $product->loadMissing(['category', 'currency']);
+        $variant->loadMissing(['product.category', 'product.currency', 'optionValues.option']);
+        $product = $variant->product;
+        $label = $variant->optionLabel();
+        $name = $variant->displayName($product?->name);
 
         $item = $this->itemQuery($cart)
-            ->where('product_id', $product->id)
+            ->where('product_variant_id', $variant->id)
             ->first();
 
         if ($item)
         {
             $item->quantity = (int) $item->quantity + $quantity;
-            $item->name = $product->name;
-            $item->price = $product->currentSellingPrice();
-            $item->currency_id = $product->currency_id;
-            $item->store_id = $product->store_id;
-            $item->category_name = $product->category?->name;
-            $item->description = $product->description;
+            $item->product_id = (int) $variant->product_id;
+            $item->name = $name;
+            $item->option_label = $label !== '' ? $label : null;
+            $item->price = $variant->currentSellingPrice();
+            $item->currency_id = $product?->currency_id;
+            $item->store_id = $product?->store_id;
+            $item->category_name = $product?->category?->name;
+            $item->description = $product?->description;
             $item->save();
         } else
         {
             $item = $this->itemQuery($cart)->create([
                 'team_id' => $cart->team_id,
-                'product_id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->currentSellingPrice(),
+                'product_id' => (int) $variant->product_id,
+                'product_variant_id' => $variant->id,
+                'name' => $name,
+                'option_label' => $label !== '' ? $label : null,
+                'price' => $variant->currentSellingPrice(),
                 'quantity' => $quantity,
-                'currency_id' => $product->currency_id,
-                'store_id' => $product->store_id,
-                'category_name' => $product->category?->name,
-                'description' => $product->description,
+                'currency_id' => $product?->currency_id,
+                'store_id' => $product?->store_id,
+                'category_name' => $product?->category?->name,
+                'description' => $product?->description,
             ]);
         }
 
@@ -130,9 +143,9 @@ class ShoppingCartService
         return ShoppingCartItem::withoutGlobalScope('team')->find($item->id) ?? $item;
     }
 
-    public function setProductQuantity(ShoppingCart $cart, int $productId, int $quantity): void
+    public function setVariantQuantity(ShoppingCart $cart, int $variantId, int $quantity): void
     {
-        $item = $this->itemQuery($cart)->where('product_id', $productId)->first();
+        $item = $this->itemQuery($cart)->where('product_variant_id', $variantId)->first();
         if (! $item)
         {
             return;
@@ -149,6 +162,17 @@ class ShoppingCartService
         $item->quantity = min(500, $quantity);
         $item->save();
         $this->touch($cart);
+    }
+
+    public function setProductQuantity(ShoppingCart $cart, int $productId, int $quantity): void
+    {
+        $item = $this->itemQuery($cart)->where('product_id', $productId)->first();
+        if (! $item)
+        {
+            return;
+        }
+
+        $this->setVariantQuantity($cart, (int) $item->product_variant_id, $quantity);
     }
 
     public function removeProduct(ShoppingCart $cart, int $productId): void
@@ -234,6 +258,17 @@ class ShoppingCartService
     private function itemQuery(ShoppingCart $cart): HasMany
     {
         return $cart->items()->withoutGlobalScope('team');
+    }
+
+    private function defaultVariantFor(Product $product): ProductVariant
+    {
+        $variant = $product->defaultVariant();
+        if ($variant)
+        {
+            return $variant;
+        }
+
+        return app(ProductVariantCatalogService::class)->ensureDefaultVariant($product->fresh() ?? $product);
     }
 
     private function publicShopSessionKey(int $teamId, string $laravelSessionId): string

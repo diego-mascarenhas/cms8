@@ -24,14 +24,14 @@ return new class extends Migration
             $table->unsignedInteger('currency_id');
             $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
             $table->foreignId('store_id')->nullable()->constrained('stores')->nullOnDelete();
+            $table->foreignId('brand_id')->nullable()->constrained('brands')->nullOnDelete();
             $table->boolean('status')->default(true);
             $table->string('catalog_status', 20)->default('publish');
             $table->string('stock_status', 20)->default('instock');
             $table->boolean('manage_stock')->default(false);
             $table->unsignedInteger('stock_quantity')->nullable();
+            $table->unsignedInteger('assortment_size')->nullable();
             $table->string('image', 2048)->nullable();
-            $table->json('size_options')->nullable();
-            $table->json('color_options')->nullable();
             $table->boolean('whatsapp_enabled')->default(true);
             $table->timestamps();
 
@@ -40,6 +40,7 @@ return new class extends Migration
             $table->unique(['team_id', 'code']);
             $table->index(['team_id', 'status']);
             $table->index(['team_id', 'store_id']);
+            $table->index(['team_id', 'brand_id']);
             $table->index(['category_id', 'status']);
             $table->index('whatsapp_enabled');
         });

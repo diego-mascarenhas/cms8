@@ -57,7 +57,7 @@ class OpenCartListingService
      *     total: float,
      *     updated_at: string,
      *     chat_url: string|null,
-     *     items: list<array{id: int, product_id: int, name: string, quantity: int, unit_price: float, line_total: float, category_name: string|null}>
+     *     items: list<array{id: int, product_id: int, product_variant_id: int|null, name: string, quantity: int, unit_price: float, line_total: float, category_name: string|null, option_label: string|null}>
      * }|null
      */
     public function detailForTeam(int $teamId, int $cartId): ?array
@@ -77,6 +77,8 @@ class OpenCartListingService
             ->map(fn ($item): array => [
                 'id' => (int) $item->id,
                 'product_id' => (int) $item->product_id,
+                'product_variant_id' => $item->product_variant_id ? (int) $item->product_variant_id : null,
+                'option_label' => $item->option_label,
                 'name' => (string) $item->name,
                 'quantity' => (int) $item->quantity,
                 'unit_price' => (float) $item->price,
@@ -131,6 +133,8 @@ class OpenCartListingService
                 ->map(fn ($item): array => [
                     'id' => (int) $item->id,
                     'product_id' => (int) $item->product_id,
+                    'product_variant_id' => $item->product_variant_id ? (int) $item->product_variant_id : null,
+                    'option_label' => $item->option_label,
                     'name' => (string) $item->name,
                     'quantity' => (int) $item->quantity,
                     'unit_price' => (float) $item->price,

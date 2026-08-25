@@ -11,6 +11,7 @@ use App\Http\Requests\ImportProductCsvRequest;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\ProductCsvImportService;
+use App\Services\ProductVariantCatalogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,13 +34,14 @@ class ProductController extends Controller
             'search' => 'nullable|string|max:255',
             'store_id' => 'nullable|integer',
             'category_id' => 'nullable|integer',
+            'brand_id' => 'nullable|integer',
             'catalog_status' => 'nullable|string|max:32',
             'stock_status' => 'nullable|string|max:32',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
-        $query = Product::query()->with(['category', 'currency', 'store']);
+        $query = Product::query()->with(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option']);
 
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
@@ -59,6 +61,11 @@ class ProductController extends Controller
         if (! empty($validated['category_id']))
         {
             $query->where('category_id', $validated['category_id']);
+        }
+
+        if (! empty($validated['brand_id']))
+        {
+            $query->where('brand_id', $validated['brand_id']);
         }
 
         if (! empty($validated['catalog_status']))
@@ -94,7 +101,7 @@ class ProductController extends Controller
             return $team;
         }
 
-        $product = Product::query()->with(['category', 'currency', 'store'])->find($id);
+        $product = Product::query()->with(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option'])->find($id);
         if (! $product)
         {
             return response()->json([
@@ -121,12 +128,18 @@ class ProductController extends Controller
 
         Store::ensureMainStoreForTeam((int) $team->id);
 
+        $validated = $request->validated();
         $product = Product::query()->create(array_merge(
-            $this->productPayload($request->validated()),
+            $this->productPayload($validated),
             ['team_id' => $team->id],
         ));
+        app(ProductVariantCatalogService::class)->sync(
+            $product,
+            app(ProductVariantCatalogService::class)->optionsFromValidated($validated),
+            $validated['variants'] ?? null,
+        );
 
-        $product->load(['category', 'currency', 'store']);
+        $product->load(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option']);
 
         return response()->json([
             'success' => true,
@@ -151,8 +164,14 @@ class ProductController extends Controller
             ], 404);
         }
 
-        $product->update($this->productPayload($request->validated()));
-        $product->load(['category', 'currency', 'store']);
+        $validated = $request->validated();
+        $product->update($this->productPayload($validated));
+        app(ProductVariantCatalogService::class)->sync(
+            $product->fresh(),
+            app(ProductVariantCatalogService::class)->optionsFromValidated($validated),
+            $validated['variants'] ?? null,
+        );
+        $product->load(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option']);
 
         return response()->json([
             'success' => true,

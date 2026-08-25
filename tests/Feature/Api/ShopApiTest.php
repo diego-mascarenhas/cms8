@@ -95,11 +95,13 @@ class ShopApiTest extends TestCase
             ->assertJsonStructure([
                 'data' => [
                     'categories',
+                    'brands',
                     'currencies',
                     'stores',
                     'catalog_statuses',
                     'stock_statuses',
                     'payment_methods',
+                    'payment_types',
                     'fulfillment_types',
                     'payment_statuses',
                     'delivery_statuses',
@@ -178,7 +180,11 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('data.code', 'CAM-SHOP-001')
             ->assertJsonPath('data.store_id', $mainStoreId)
             ->assertJsonPath('data.manage_stock', true)
-            ->assertJsonPath('data.stock_quantity', 8);
+            ->assertJsonPath('data.stock_quantity', 8)
+            ->assertJsonCount(2, 'data.options')
+            ->assertJsonCount(2, 'data.variants');
+
+        $this->assertEqualsCanonicalizing(['Talle', 'Color'], collect($create->json('data.options'))->pluck('name')->all());
 
         $id = (int) $create->json('data.id');
 
@@ -219,6 +225,79 @@ class ShopApiTest extends TestCase
         $this->assertDatabaseMissing('products', ['id' => $id]);
     }
 
+    public function test_product_import_schema_includes_brand_and_variant_examples(): void
+    {
+        [, , $token] = $this->adminWithShopModules();
+
+        $schema = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/products/import')
+            ->assertOk()
+            ->assertJsonPath('data.required_columns.0', 'code')
+            ->assertJsonFragment(['brand'])
+            ->assertJsonFragment(['flavor_options'])
+            ->assertJsonFragment(['assortment_size']);
+
+        $sample = (string) $schema->json('data.sample_csv');
+
+        $this->assertStringContainsString('PAS-010', $sample);
+        $this->assertStringContainsString('Bosch', $sample);
+        $this->assertStringContainsString('S|M|L|XL', $sample);
+        $this->assertStringContainsString('Carne|Pollo|JyQ|Cebolla', $sample);
+    }
+
+    public function test_can_create_brand_and_filter_products(): void
+    {
+        [, , $token] = $this->adminWithShopModules();
+
+        $brand = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/brands', ['name' => 'Bosch'])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Bosch')
+            ->json('data');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/brands', ['name' => 'bosch'])
+            ->assertOk()
+            ->assertJsonPath('data.id', $brand['id']);
+
+        $category = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/categories', ['name' => 'Autopartes'])
+            ->assertCreated()
+            ->json('data');
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', [
+                'name' => 'Pastilla de freno',
+                'code' => 'BOSCH-PAD-001',
+                'price' => 45,
+                'currency_id' => $currencyId,
+                'category_id' => $category['id'],
+                'brand_id' => $brand['id'],
+                'catalog_status' => 'publish',
+                'stock_status' => 'instock',
+                'manage_stock' => false,
+                'whatsapp_enabled' => true,
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.brand.name', 'Bosch')
+            ->assertJsonCount(1, 'data.variants')
+            ->assertJsonPath('data.variants.0.is_default', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/products?brand_id='.$brand['id'])
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/products?brand_id=999999')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 0);
+    }
+
     public function test_store_main_flag_and_cannot_delete_main(): void
     {
         [, $team, $token] = $this->adminWithShopModules();
@@ -240,13 +319,36 @@ class ShopApiTest extends TestCase
                 'status' => true,
                 'is_main' => true,
                 'checkout_payment_methods' => ['cash', 'mercadopago'],
-                'checkout_fulfillment_types' => ['pickup'],
+                'checkout_fulfillment_types' => ['pickup', 'delivery'],
+                'phone' => '1144556677',
+                'whatsapp' => '5491144556677',
+                'notes' => 'Timbre 2B',
+                'delivery_area' => 'CABA',
+                'delivery_cost' => 1500,
+                'hours' => [
+                    [
+                        'day' => 'mon',
+                        'open' => '09:00',
+                        'close' => '13:00',
+                        'afternoon_open' => '16:00',
+                        'afternoon_close' => '20:00',
+                        'closed' => false,
+                    ],
+                    ['day' => 'sun', 'open' => null, 'close' => null, 'closed' => true],
+                ],
             ]);
 
         $create->assertCreated()
             ->assertJsonPath('data.name', 'Sucursal Norte')
             ->assertJsonPath('data.is_main', true)
-            ->assertJsonPath('data.checkout_payment_methods.0', 'cash');
+            ->assertJsonPath('data.checkout_payment_methods.0', 'cash')
+            ->assertJsonPath('data.phone', '1144556677')
+            ->assertJsonPath('data.delivery_area', 'CABA')
+            ->assertJsonPath('data.hours.0.day', 'mon')
+            ->assertJsonPath('data.hours.0.close', '13:00')
+            ->assertJsonPath('data.hours.0.afternoon_open', '16:00')
+            ->assertJsonPath('data.hours.0.afternoon_close', '20:00')
+            ->assertJsonPath('data.hours.6.closed', true);
 
         $branchId = (int) $create->json('data.id');
 

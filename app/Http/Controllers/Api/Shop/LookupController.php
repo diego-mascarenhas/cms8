@@ -7,6 +7,7 @@ use App\Enums\ProductStockStatus;
 use App\Enums\ShoppingCartChannel;
 use App\Http\Controllers\Api\Shop\Concerns\ResolvesShopTeam;
 use App\Http\Controllers\Controller;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
@@ -32,6 +33,16 @@ class LookupController extends Controller
         $categories = $productsModuleId
             ? Category::getOptions($team->id, null, $productsModuleId)->values()->all()
             : [];
+
+        $brands = Brand::query()
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Brand $brand): array => [
+                'id' => $brand->id,
+                'name' => $brand->name,
+            ])
+            ->values()
+            ->all();
 
         $stores = Store::query()
             ->orderByDesc('is_main')
@@ -64,11 +75,13 @@ class LookupController extends Controller
             'success' => true,
             'data' => [
                 'categories' => $categories,
+                'brands' => $brands,
                 'currencies' => $currencies,
                 'stores' => $stores,
                 'catalog_statuses' => $this->enumOptions(ProductCatalogStatus::cases()),
                 'stock_statuses' => $this->enumOptions(ProductStockStatus::cases()),
                 'payment_methods' => $this->keyedLabels(Store::checkoutPaymentMethodLabels()),
+                'payment_types' => $this->keyedLabels(Store::checkoutPaymentMethodLabels()),
                 'fulfillment_types' => $this->keyedLabels(Store::checkoutFulfillmentLabels()),
                 'payment_statuses' => [
                     ['key' => 'pending', 'label' => __('Pendiente')],

@@ -106,14 +106,29 @@
 							<span class="fw-medium me-1">{{ __('Manage stock') }}:</span>
 							<span>{{ $product->manage_stock ? __('Yes') : __('No') }}</span>
 						</li>
+						@if($product->brand)
 						<li class="mb-2 pt-1">
-							<span class="fw-medium me-1">{{ __('Sizes') }}:</span>
-							<span>{{ !empty($product->size_options) ? implode(', ', $product->size_options) : '—' }}</span>
+							<span class="fw-medium me-1">{{ __('Brand') }}:</span>
+							<span>{{ $product->brand->name }}</span>
 						</li>
+						@endif
+						@forelse($product->options as $option)
 						<li class="mb-2 pt-1">
-							<span class="fw-medium me-1">{{ __('Colors') }}:</span>
-							<span>{{ !empty($product->color_options) ? implode(', ', $product->color_options) : '—' }}</span>
+							<span class="fw-medium me-1">{{ $option->name }}:</span>
+							<span>{{ $option->values->pluck('value')->implode(', ') ?: '—' }}</span>
 						</li>
+						@empty
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Variants') }}:</span>
+							<span>{{ $product->variants->count() > 0 ? $product->variants->count() : '—' }}</span>
+						</li>
+						@endforelse
+						@if($product->assortment_size)
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Combo') }}:</span>
+							<span>{{ $product->assortment_size }}</span>
+						</li>
+						@endif
 						@if($product->manage_stock)
 						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('Stock quantity') }}:</span>

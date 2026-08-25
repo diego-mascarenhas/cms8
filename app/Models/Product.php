@@ -22,13 +22,13 @@ class Product extends Model
         'currency_id',
         'store_id',
         'category_id',
+        'brand_id',
         'status',
         'catalog_status',
         'stock_status',
         'manage_stock',
         'stock_quantity',
-        'size_options',
-        'color_options',
+        'assortment_size',
         'whatsapp_enabled',
         'team_id',
         'image',
@@ -41,8 +41,7 @@ class Product extends Model
         'whatsapp_enabled' => 'boolean',
         'manage_stock' => 'boolean',
         'stock_quantity' => 'integer',
-        'size_options' => 'array',
-        'color_options' => 'array',
+        'assortment_size' => 'integer',
         'catalog_status' => ProductCatalogStatus::class,
         'stock_status' => ProductStockStatus::class,
     ];
@@ -78,6 +77,12 @@ class Product extends Model
      */
     public function currentSellingPrice(): float
     {
+        $variant = $this->defaultVariant();
+        if ($variant)
+        {
+            return $variant->currentSellingPrice();
+        }
+
         $regular = (float) $this->price;
         $sale = $this->sale_price !== null ? (float) $this->sale_price : null;
         if ($sale !== null && $sale > 0 && $sale < $regular)
@@ -118,6 +123,42 @@ class Product extends Model
     public function store()
     {
         return $this->belongsTo(Store::class);
+    }
+
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function options()
+    {
+        return $this->hasMany(ProductOption::class)->orderBy('position')->orderBy('name');
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('position')->orderBy('id');
+    }
+
+    public function defaultVariant(): ?ProductVariant
+    {
+        $this->loadMissing('variants');
+
+        return $this->variants->firstWhere('is_default', true) ?? $this->variants->first();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function optionValuesNamed(string $name): array
+    {
+        $this->loadMissing('options.values');
+        $needle = mb_strtolower($name);
+        $option = $this->options->first(
+            fn (ProductOption $option): bool => mb_strtolower($option->name) === $needle,
+        );
+
+        return $option?->values->pluck('value')->values()->all() ?? [];
     }
 
     /**

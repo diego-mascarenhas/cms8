@@ -6,8 +6,8 @@
 	$catalogStatusOld = old('catalog_status', $isEdit ? $product->catalog_status->value : 'publish');
 	$stockStatusOld = old('stock_status', $isEdit ? $product->stock_status->value : 'instock');
 	$manageStockOld = old('manage_stock', $isEdit ? ($product->manage_stock ? '1' : '0') : '0');
-	$sizeOptionsOld = old('size_options', $isEdit ? implode(', ', $product->size_options ?? []) : '');
-	$colorOptionsOld = old('color_options', $isEdit ? implode(', ', $product->color_options ?? []) : '');
+	$sizeOptionsOld = old('size_options', $isEdit ? implode(', ', $product->optionValuesNamed('Talle')) : '');
+	$colorOptionsOld = old('color_options', $isEdit ? implode(', ', $product->optionValuesNamed('Color')) : '');
 @endphp
 
 @section('title', $isEdit ? __('Edit product') : __('Create product'))

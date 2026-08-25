@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Product;
 use App\Models\ShoppingCart;
 use App\Models\Team;
 use App\Models\User;
@@ -118,15 +119,12 @@ class OpenCartDetailTest extends TestCase
     {
         $carts = app(ShoppingCartService::class);
         $cart = $carts->forWhatsApp($teamId, $phone);
-        $cart->items()->withoutGlobalScope('team')->create([
+        $product = Product::factory()->create([
             'team_id' => $teamId,
-            'product_id' => abs((int) crc32($name.$teamId)) ?: 1,
             'name' => $name,
             'price' => $price,
-            'quantity' => $quantity,
-            'category_name' => 'Abrazaderas',
         ]);
-        $cart->touch();
+        $carts->addProduct($cart, $product, $quantity);
 
         return $cart->fresh();
     }

@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ProductVariantCatalogService;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use Illuminate\Database\Seeder;
 
@@ -157,7 +158,7 @@ class TextileProductsSeeder extends Seeder
 
         foreach ($catalogue as $index => $row)
         {
-            Product::withoutGlobalScope('team')->updateOrCreate(
+            $product = Product::withoutGlobalScope('team')->updateOrCreate(
                 [
                     'team_id' => $team->id,
                     'name' => $row['name'],
@@ -175,12 +176,19 @@ class TextileProductsSeeder extends Seeder
                     'stock_status' => ProductStockStatus::InStock,
                     'manage_stock' => false,
                     'stock_quantity' => null,
-                    'size_options' => $row['sizes'],
-                    'color_options' => $row['colors'],
                     'whatsapp_enabled' => $index % 3 !== 0,
                     'image' => $row['image'],
                     'store_id' => $stores[$index % count($stores)]->id,
                 ],
+            );
+
+            app(ProductVariantCatalogService::class)->sync(
+                $product,
+                [
+                    ['name' => 'Talle', 'values' => $row['sizes']],
+                    ['name' => 'Color', 'values' => $row['colors']],
+                ],
+                [],
             );
         }
 
