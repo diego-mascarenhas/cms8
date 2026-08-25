@@ -381,6 +381,10 @@ class ChatAssistantReplyService
             $text = $response->text ?? '';
 
             $usage = $this->usageArrayFromAiResponse($response->usage ?? null);
+            if ($modelParam !== null && $modelParam !== '')
+            {
+                $usage['model'] = $modelParam;
+            }
 
             $toolCalls = [];
             $toolResults = [];
@@ -405,7 +409,10 @@ class ChatAssistantReplyService
                 'usage' => $usage,
                 'tool_calls' => $toolCalls,
                 'tool_results' => $toolResults,
-                'meta' => [],
+                'meta' => array_filter([
+                    'model' => $modelParam,
+                    'provider' => $provider,
+                ]),
             ];
         } catch (\Throwable $e)
         {

@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AssistantCommercialStatsController;
 use App\Http\Controllers\Api\AssistantList60PromptController;
 use App\Http\Controllers\Api\AssistantProductImportController;
 use App\Http\Controllers\Api\AssistantSubscriptionController;
+use App\Http\Controllers\Api\AssistantUsageController;
 use App\Http\Controllers\Api\AttendanceController;
 use App\Http\Controllers\Api\BillingController as ApiBillingController;
 use App\Http\Controllers\Api\BusinessProfileController;
@@ -505,6 +506,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
     Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
     Route::get('assistant/commercial-stats', [AssistantCommercialStatsController::class, 'show'])->name('api.assistant.commercial-stats.show');
+    Route::get('assistant/usage', [AssistantUsageController::class, 'show'])->name('api.assistant.usage.show');
     Route::get('assistant/list60-prompt', [AssistantList60PromptController::class, 'show'])->name('api.assistant.list60-prompt.show');
     Route::patch('assistant/list60-prompt', [AssistantList60PromptController::class, 'update'])->name('api.assistant.list60-prompt.update');
     Route::post('assistant/list60-prompt/review', [AssistantList60PromptController::class, 'review'])->name('api.assistant.list60-prompt.review');
