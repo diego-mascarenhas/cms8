@@ -42,6 +42,8 @@ class OpenCartListTest extends TestCase
         $response->assertOk();
         $response->assertSee(__('Carritos abiertos'), false);
         $response->assertSee(route('order.carts'), false);
+        $response->assertSee('dt-action-buttons d-flex align-items-center', false);
+        $response->assertSee('justify-content-end', false);
     }
 
     public function test_open_carts_page_lists_team_cart_and_hides_other_teams(): void
@@ -55,6 +57,7 @@ class OpenCartListTest extends TestCase
         $response->assertSee(__('Carritos abiertos'), false);
         $response->assertSee('table table-hover dt-responsive nowrap w-100', false);
         $response->assertSee('<div class="card-body">', false);
+        $response->assertSee('frtip', false);
 
         $ajax = $this->actingAs($this->user)->withHeaders([
             'X-Requested-With' => 'XMLHttpRequest',

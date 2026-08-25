@@ -38,6 +38,7 @@ class OpenCartDataTable extends DataTable
             ->setTableId('open-cart-table')
             ->columns($this->getColumns())
             ->minifiedAjax()
+            ->dom('frtip')
             ->orderBy(4, 'desc')
             ->responsive(true)
             ->processing(false)
