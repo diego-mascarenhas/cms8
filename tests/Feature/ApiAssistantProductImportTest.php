@@ -156,4 +156,62 @@ class ApiAssistantProductImportTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('file');
     }
+
+    public function test_owner_can_delete_all_team_products_with_password(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+        $this->importCsv($token, "code,name,price,category\nREM-DEL-1,Remera,10,Ropa\nTAZ-DEL-2,Taza,8,Bazar\n");
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/assistant/products', ['password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.deleted', 2)
+            ->assertJsonPath('data.products_count', 0);
+
+        $this->assertSame(0, Product::withoutGlobalScope('team')->where('team_id', $team->id)->count());
+        $this->assertSame($user->id, $team->user_id);
+    }
+
+    public function test_delete_all_products_rejects_a_wrong_password(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        $this->importCsv($token, "code,name,price,category\nREM-KEEP,Remera,10,Ropa\n");
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/assistant/products', ['password' => 'no-es-esa'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('password');
+
+        $this->assertSame(1, Product::withoutGlobalScope('team')->where('team_id', $team->id)->count());
+    }
+
+    public function test_delete_all_products_does_not_touch_another_team(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        $other = Team::factory()->create();
+        $this->importCsv($token, "code,name,price,category\nOWN-1,Propio,10,Ropa\n");
+
+        $this->importCsv($token, "code,name,price,category\nOTH-1,Ajeno,10,Bazar\n");
+        Product::withoutGlobalScope('team')->where('team_id', $team->id)->where('code', 'OTH-1')->update([
+            'team_id' => $other->id,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/assistant/products', ['password' => 'password'])
+            ->assertOk()
+            ->assertJsonPath('data.deleted', 1);
+
+        $this->assertSame(0, Product::withoutGlobalScope('team')->where('team_id', $team->id)->count());
+        $this->assertSame(1, Product::withoutGlobalScope('team')->where('team_id', $other->id)->count());
+    }
+
+    private function importCsv(string $token, string $csv): void
+    {
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/assistant/products/import', [
+                'file' => UploadedFile::fake()->createWithContent('products.csv', $csv),
+            ], ['Accept' => 'application/json'])
+            ->assertOk();
+    }
 }

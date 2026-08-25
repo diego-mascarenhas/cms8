@@ -512,6 +512,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('assistant/products/import', [AssistantProductImportController::class, 'show'])->name('api.assistant.products.import.show');
     Route::get('assistant/products/import/sample', [AssistantProductImportController::class, 'sample'])->name('api.assistant.products.import.sample');
     Route::post('assistant/products/import', [AssistantProductImportController::class, 'store'])->name('api.assistant.products.import.store');
+    Route::delete('assistant/products', [AssistantProductImportController::class, 'destroy'])->name('api.assistant.products.destroy');
 
     // Mobile dashboard summary
     Route::get('dashboard', [DashboardController::class, 'index'])->name('api.dashboard.index');

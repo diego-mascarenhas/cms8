@@ -120,6 +120,14 @@ class ProductPolicy
     }
 
     /**
+     * Wipe the current team's catalog (Assistant settings).
+     */
+    public function deleteAny(User $user): bool
+    {
+        return $user->hasRole('admin') && $user->currentTeam !== null;
+    }
+
+    /**
      * Determine whether the user can restore the product.
      */
     public function restore(User $user, Product $product): bool

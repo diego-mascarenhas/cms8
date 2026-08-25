@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroyAllTeamProductsRequest;
 use App\Http\Requests\ImportProductCsvRequest;
 use App\Models\Product;
+use App\Models\ShoppingCartItem;
 use App\Services\ProductCsvImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -91,5 +93,45 @@ class AssistantProductImportController extends Controller
                 'products_count' => Product::withoutGlobalScope('team')->where('team_id', $team->id)->count(),
             ]),
         ], $imported > 0 ? 200 : 422);
+    }
+
+    /**
+     * Delete every product of the current team after password confirmation.
+     */
+    public function destroy(DestroyAllTeamProductsRequest $request): JsonResponse
+    {
+        $team = $request->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual.'),
+            ], 422);
+        }
+
+        $query = Product::withoutGlobalScope('team')->where('team_id', $team->id);
+        $deleted = (clone $query)->count();
+
+        $productIds = (clone $query)->pluck('id');
+        if ($productIds->isNotEmpty())
+        {
+            ShoppingCartItem::withoutGlobalScope('team')
+                ->where('team_id', $team->id)
+                ->whereIn('product_id', $productIds)
+                ->delete();
+        }
+
+        $query->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => $deleted > 0
+                ? __(':count products deleted.', ['count' => $deleted])
+                : __('No había productos para eliminar.'),
+            'data' => [
+                'deleted' => $deleted,
+                'products_count' => 0,
+            ],
+        ]);
     }
 }
