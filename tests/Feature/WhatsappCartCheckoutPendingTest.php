@@ -179,5 +179,6 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $intent = $method->invoke($service, 'Agregar cita para hoy a las 15 hs');
 
         $this->assertSame('assistant', $intent);
+        $this->assertSame('cart', $method->invoke($service, 'Agregame 2'));
     }
 }

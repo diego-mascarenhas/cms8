@@ -20,6 +20,11 @@ class SearchNormalizerTest extends TestCase
         $this->assertSame('jose maria', SearchNormalizer::normalize('  José MARÍA  '));
     }
 
+    public function test_significant_tokens_drop_spanish_stopwords(): void
+    {
+        $this->assertSame(['abrazadera', '16', 'x', '27'], SearchNormalizer::significantTokens('abrazadera 16 x 27'));
+    }
+
     public function test_normalize_matches_nfd_accent_fold_used_by_chat_sidebar_search(): void
     {
         if (! class_exists(\Normalizer::class))

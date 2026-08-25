@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ContactInteractionType;
 use App\Helpers\WhatsAppCartSessionKey;
+use App\Helpers\WhatsAppLastOfferedProduct;
 use App\Helpers\WhatsAppOutboundText;
 use App\Jobs\GenerateTemplateHtmlJob;
 use App\Jobs\PushCalendarEventToGoogleJob;
@@ -33,8 +34,8 @@ use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
-use App\Support\SearchNormalizer;
 use App\Support\TeamTaskBoardResolver;
+use App\Support\WhatsAppProductRelevanceSearch;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
@@ -872,7 +873,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'add_to_whatsapp_cart',
-                'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Requires the customer\'s WhatsApp session (inbound chat). Use when they want to buy, "agregar al carrito", "quiero comprar", after confirming product id or code. Pass exactly one of: product_id, product_code, or product_name.',
+                'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Use when they confirm after you offered a product: "sí", "dale", "agregalo", "agregame", "agregame 2", "poneme 2", "quiero 2". Pass quantity when they say how many. If they omit the name, pass the last product_id from search_products (or omit identifiers to use that last product). Do not ask a WhatsApp customer to type "comprar" plus the name. Pass at most one of: product_id, product_code, or product_name.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -3475,14 +3476,45 @@ class AssistantToolsService
         }
 
         $name = isset($input['product_name']) ? trim((string) $input['product_name']) : '';
-        if ($name !== '')
+        if ($name !== '' && preg_match('/^\d+$/', $name) !== 1)
         {
-            return $this->whatsAppSellableProductsQuery($teamId)
-                ->where('name', 'LIKE', '%'.$name.'%')
-                ->first();
+            return WhatsAppProductRelevanceSearch::find($teamId, $name);
         }
 
-        return null;
+        return $this->lastOfferedWhatsAppProduct($teamId);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Product>  $products
+     */
+    private function rememberLastOfferedProducts(int $teamId, $products): void
+    {
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '' || $teamId < 1)
+        {
+            return;
+        }
+
+        WhatsAppLastOfferedProduct::rememberIfSingle(
+            $this->contextCustomerPhone,
+            $teamId,
+            $products,
+        );
+    }
+
+    private function lastOfferedWhatsAppProduct(int $teamId): ?Product
+    {
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return null;
+        }
+
+        $id = WhatsAppLastOfferedProduct::id($this->contextCustomerPhone, $teamId);
+        if ($id === null)
+        {
+            return null;
+        }
+
+        return $this->whatsAppSellableProductsQuery($teamId)->where('id', $id)->first();
     }
 
     private function listProductCatalog(int $teamId, array $input): string
@@ -3540,7 +3572,8 @@ class AssistantToolsService
             $lines[] = '';
         }
 
-        $lines[] = 'To buy from WhatsApp: use add_to_whatsapp_cart with product_id or product_code, or tell the customer they can write comprar plus the product name or code, or agregar plus quantity and name (e.g. agregar 2 panes). Then carrito to review, quitar with quantity and name or quitar todo plus name to remove, finalizar to close the order (pagar/cerrar pedido/checkout also work in the bot; suggest only finalizar to the customer).';
+        $this->rememberLastOfferedProducts($teamId, $products);
+        $lines[] = 'To buy: call add_to_whatsapp_cart with product_id (or omit it to use the last single product you showed) and quantity if they said how many. Then suggest *finalizar* to close, *carrito* to review, *quitar* to remove.';
 
         return $this->truncate(implode("\n", $lines));
     }
@@ -3558,15 +3591,9 @@ class AssistantToolsService
             return 'query is required (product name or code).';
         }
 
-        $tokens = $this->productSearchTokens($raw);
-        $products = $this->productSearchQuery($teamId, $tokens)->limit(20)->get();
-        $closest = false;
-
-        if ($products->isEmpty() && count($tokens) > 1)
-        {
-            $products = $this->productSearchQuery($teamId, [$tokens[0]])->limit(20)->get();
-            $closest = $products->isNotEmpty();
-        }
+        $ranked = WhatsAppProductRelevanceSearch::search($teamId, $raw, 20);
+        $products = $ranked['products'];
+        $closest = ! $ranked['all_tokens_matched'];
 
         if ($products->isEmpty())
         {
@@ -3590,58 +3617,13 @@ class AssistantToolsService
             );
         })->implode("\n");
 
+        $this->rememberLastOfferedProducts($teamId, $products);
+
         $heading = $closest
             ? 'No exact match for "'.$raw.'". Closest published products:'
             : 'Matches:';
 
         return $this->truncate($heading."\n".$lines);
-    }
-
-    /**
-     * Significant tokens from a customer phrase, without Spanish stopwords.
-     *
-     * @return list<string>
-     */
-    private function productSearchTokens(string $raw): array
-    {
-        $parts = preg_split('/[\s,.;:\/+]+/u', SearchNormalizer::normalize($raw)) ?: [];
-        $stopwords = [
-            'para', 'un', 'una', 'unos', 'unas', 'de', 'del', 'el', 'la', 'los', 'las',
-            'y', 'o', 'en', 'con', 'por', 'a', 'al', 'que', 'se', 'su', 'the', 'for', 'and',
-        ];
-        $tokens = [];
-
-        foreach ($parts as $part)
-        {
-            if ($part === '' || in_array($part, $stopwords, true))
-            {
-                continue;
-            }
-
-            $tokens[] = $part;
-        }
-
-        return $tokens !== [] ? array_values(array_unique($tokens)) : [SearchNormalizer::normalize($raw)];
-    }
-
-    /**
-     * @param  list<string>  $tokens
-     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Product>
-     */
-    private function productSearchQuery(int $teamId, array $tokens): \Illuminate\Database\Eloquent\Builder
-    {
-        $query = $this->whatsAppSellableProductsQuery($teamId)
-            ->with(['category:id,name', 'currency:id,symbol']);
-
-        foreach ($tokens as $token)
-        {
-            $query->where(function ($constraint) use ($token): void
-            {
-                SearchNormalizer::applyColumnsNavbarConditions($constraint, ['name', 'code', 'description'], $token);
-            });
-        }
-
-        return $query->orderBy('name');
     }
 
     /**
@@ -3952,12 +3934,19 @@ class AssistantToolsService
         $product = $this->resolveWhatsAppProduct($teamId, $input);
         if (! $product)
         {
-            return 'Product not found or not available on WhatsApp. Use search_products or pass product_id / product_code / product_name (one required).';
+            return 'Product not found or not available on WhatsApp. Use the last product you showed (omit identifiers) or pass product_id / product_code / product_name.';
         }
 
         $product->loadMissing(['category', 'currency']);
 
-        $quantity = isset($input['quantity']) ? max(1, (int) $input['quantity']) : 1;
+        $quantity = isset($input['quantity']) ? max(1, (int) $input['quantity']) : 0;
+        if ($quantity < 1)
+        {
+            $nameAsQty = trim((string) ($input['product_name'] ?? ''));
+            $quantity = preg_match('/^\d+$/', $nameAsQty) === 1
+                ? max(1, (int) $nameAsQty)
+                : 1;
+        }
 
         Cart::session($this->contextCustomerPhone);
         $cartItems = Cart::getContent();
@@ -3993,9 +3982,11 @@ class AssistantToolsService
         $symbol = $product->currency?->symbol ?? '$';
         $total = Cart::getTotal();
 
+        WhatsAppLastOfferedProduct::remember($this->contextCustomerPhone, $teamId, (int) $product->id);
+
         $msg = "Added to WhatsApp cart for this customer: {$product->name} (id {$product->id}) x{$newQty} at {$symbol}".number_format($product->currentSellingPrice(), 2).'. ';
         $msg .= 'Cart total: '.$symbol.number_format($total, 2).'. ';
-        $msg .= 'Tell them they can write *carrito* to review, *quitar* with quantity and product to remove units, or *finalizar* to finish the order.';
+        $msg .= 'Confirm what you added in plain language (name, quantity, price). Then offer *finalizar* to close the order; mention *carrito* or *quitar* only if useful.';
 
         return $this->truncate($msg);
     }
