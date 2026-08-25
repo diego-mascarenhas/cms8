@@ -2,6 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Helpers\WhatsAppCartPresenter;
+use App\Models\Product;
+use App\Services\ShoppingCartService;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use Illuminate\Console\Command;
 
@@ -203,9 +206,6 @@ class TestWhatsAppCart extends Command
         $normalizedMessage = strtolower(trim($message));
         $teamId = 1;
 
-        // Set cart session
-        \Darryldecode\Cart\Facades\CartFacade::session($phone);
-
         // Handle add to cart
         if (preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage, $matches))
         {
@@ -223,7 +223,11 @@ class TestWhatsAppCart extends Command
         // Handle clear cart
         if (in_array($normalizedMessage, ['vaciar carrito', 'limpiar carrito', 'borrar carrito', 'clear cart']))
         {
-            \Darryldecode\Cart\Facades\CartFacade::clear();
+            $cart = $this->shoppingCarts()->findWhatsApp($teamId, (string) $phone);
+            if ($cart)
+            {
+                $this->shoppingCarts()->clear($cart);
+            }
 
             return "🗑️ **Carrito vaciado exitosamente**\n\n📋 Escribí *productos* para ver nuestro catálogo\n💡 Usá *comprar* más el nombre del producto para sumar ítems";
         }
@@ -249,9 +253,15 @@ class TestWhatsAppCart extends Command
         return null;
     }
 
+    private function shoppingCarts(): ShoppingCartService
+    {
+        return app(ShoppingCartService::class);
+    }
+
     private function simulateAddToCart($phone, $productName, $teamId)
     {
-        $product = \App\Models\Product::where('team_id', $teamId)
+        $product = Product::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
             ->where('name', 'LIKE', "%{$productName}%")
             ->where('status', true)
             ->where('whatsapp_enabled', true)
@@ -262,42 +272,16 @@ class TestWhatsAppCart extends Command
             return "❌ **Producto no encontrado**: '{$productName}'\n\n📋 Escribe 'productos' para ver nuestro catálogo completo\n💡 **Tip**: Usa el nombre exacto del producto";
         }
 
-        $cartItems = \Darryldecode\Cart\Facades\CartFacade::getContent();
-        $existingItem = $cartItems->where('id', $product->id)->first();
-
-        if ($existingItem)
-        {
-            \Darryldecode\Cart\Facades\CartFacade::update($product->id, [
-                'quantity' => [
-                    'relative' => false,
-                    'value' => $existingItem->quantity + 1,
-                ],
-            ]);
-            $quantity = $existingItem->quantity + 1;
-        } else
-        {
-            \Darryldecode\Cart\Facades\CartFacade::add([
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->currentSellingPrice(),
-                'quantity' => 1,
-                'attributes' => [
-                    'team_id' => $teamId,
-                    'currency_id' => $product->currency_id,
-                    'description' => $product->description,
-                    'category_name' => $product->category->name ?? '',
-                ],
-            ]);
-            $quantity = 1;
-        }
-
+        $cart = $this->shoppingCarts()->forWhatsApp((int) $teamId, (string) $phone);
+        $line = $this->shoppingCarts()->addProduct($cart, $product, 1);
+        $quantity = (int) $line->quantity;
         $currency = $product->currency ? $product->currency->symbol : '$';
 
         $response = "✅ **{$product->name}** agregado al carrito!\n\n";
         $response .= "💰 **Precio**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
         $response .= "📦 **Cantidad**: {$quantity}\n";
         $response .= '🏷️ **Categoría**: '.($product->category->name ?? 'General')."\n\n";
-        $response .= "🛒 **Total del carrito**: {$currency}".number_format(\Darryldecode\Cart\Facades\CartFacade::getTotal(), 2)."\n\n";
+        $response .= "🛒 **Total del carrito**: {$currency}".number_format($this->shoppingCarts()->total($cart), 2)."\n\n";
         $response .= "**Opciones:**\n";
         $response .= "• Escribí *carrito* para ver todos tus productos\n";
         $response .= "• *Comprar* más el producto o *agregar* cantidad y producto para sumar más\n";
@@ -308,49 +292,19 @@ class TestWhatsAppCart extends Command
 
     private function simulateViewCart($phone)
     {
-        $cartItems = \Darryldecode\Cart\Facades\CartFacade::getContent();
-
-        if ($cartItems->isEmpty())
-        {
-            return "🛒 **Tu carrito está vacío**\n\n📋 Escribí *productos* para ver nuestro catálogo\n💡 **Tip**: *comprar* más el nombre del producto";
-        }
-
-        $response = "🛒 **Tu Carrito de Compras**\n\n";
-
-        foreach ($cartItems as $item)
-        {
-            $response .= "• **{$item->name}**\n";
-            $response .= '  💰 $'.number_format($item->price, 2)." x {$item->quantity}\n";
-            $response .= '  💵 Subtotal: $'.number_format($item->price * $item->quantity, 2)."\n";
-
-            if (! empty($item->attributes->category_name))
-            {
-                $response .= "  🏷️ {$item->attributes->category_name}\n";
-            }
-            $response .= "\n";
-        }
-
-        $response .= '💰 **TOTAL: $'.number_format(\Darryldecode\Cart\Facades\CartFacade::getTotal(), 2)."**\n";
-        $response .= '📦 **Items**: '.\Darryldecode\Cart\Facades\CartFacade::getTotalQuantity()."\n\n";
-
-        $response .= "**Opciones:**\n";
-        $response .= "• *Finalizar* o *checkout* — cerrar el pedido\n";
-        $response .= "• *Comprar* más el producto o *agregar* cantidad y producto — sumar más\n";
-        $response .= '• *vaciar carrito* — empezar de nuevo';
-
-        return $response;
+        return WhatsAppCartPresenter::customerMessage(1, (string) $phone);
     }
 
     private function simulateCheckout($phone)
     {
-        $cartItems = \Darryldecode\Cart\Facades\CartFacade::getContent();
+        $cartItems = $this->shoppingCarts()->whatsAppLines(1, (string) $phone);
 
         if ($cartItems->isEmpty())
         {
             return "❌ **Tu carrito está vacío**\n\n📋 Escribe 'productos' para ver nuestro catálogo";
         }
 
-        $total = \Darryldecode\Cart\Facades\CartFacade::getTotal();
+        $total = (float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity);
 
         $response = "🛒 **Resumen de tu compra**\n\n";
 
@@ -369,14 +323,15 @@ class TestWhatsAppCart extends Command
 
     private function simulateConfirmCheckout($phone)
     {
-        $cartItems = \Darryldecode\Cart\Facades\CartFacade::getContent();
+        $cart = $this->shoppingCarts()->findWhatsApp(1, (string) $phone);
+        $cartItems = $this->shoppingCarts()->linesOrEmpty($cart);
 
         if ($cartItems->isEmpty())
         {
             return "❌ **Tu carrito está vacío**\n\n📋 Escribe 'productos' para ver nuestro catálogo";
         }
 
-        $total = \Darryldecode\Cart\Facades\CartFacade::getTotal();
+        $total = (float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity);
 
         $response = "✅ **¡Compra Confirmada!**\n\n";
         $response .= "📋 **Resumen del pedido:**\n";
@@ -406,8 +361,10 @@ class TestWhatsAppCart extends Command
         $response .= "¡Gracias por confiar en nosotros! 🎉\n";
         $response .= '📬 Revisa tu email en los próximos minutos.';
 
-        // Clear the cart after successful checkout
-        \Darryldecode\Cart\Facades\CartFacade::clear();
+        if ($cart)
+        {
+            $this->shoppingCarts()->clear($cart);
+        }
 
         return $response;
     }

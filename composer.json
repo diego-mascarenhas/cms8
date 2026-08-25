@@ -10,7 +10,6 @@
   "require": {
     "php": "^8.3",
     "chillerlan/php-qrcode": "^5.0",
-    "darryldecode/cart": "^4.2",
     "fakerphp/faker": "^1.23",
     "google/apiclient": "^2.19",
     "guzzlehttp/guzzle": "^7.9",

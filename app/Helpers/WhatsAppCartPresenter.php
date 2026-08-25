@@ -2,22 +2,23 @@
 
 namespace App\Helpers;
 
-use Darryldecode\Cart\Facades\CartFacade as Cart;
+use App\Services\ShoppingCartService;
 
 /**
  * Customer-facing WhatsApp cart text (keyword command and assistant intercept).
  */
 class WhatsAppCartPresenter
 {
-    public static function customerMessage(string $sessionKey): string
+    public static function customerMessage(int $teamId, string $phone): string
     {
-        if ($sessionKey === '')
+        $sessionKey = WhatsAppCartSessionKey::fromPhone($phone);
+        if ($teamId < 1 || $sessionKey === '')
         {
             return 'No pude abrir el carrito. Escribí de nuevo *ver carrito*.';
         }
 
-        Cart::session($sessionKey);
-        $cartItems = Cart::getContent();
+        $carts = app(ShoppingCartService::class);
+        $cartItems = $carts->whatsAppLines($teamId, $phone);
 
         if ($cartItems->isEmpty())
         {
@@ -43,8 +44,11 @@ class WhatsAppCartPresenter
             $response .= "\n";
         }
 
-        $response .= '💰 **TOTAL: $'.number_format((float) Cart::getTotal(), 2)."**\n";
-        $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
+        $total = (float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity);
+        $quantity = (int) $cartItems->sum(fn (object $item): int => (int) $item->quantity);
+
+        $response .= '💰 **TOTAL: $'.number_format($total, 2)."**\n";
+        $response .= '📦 **Items**: '.$quantity."\n\n";
         $response .= "**Siguiente paso:**\n";
         $response .= "• *finalizar* — total y confirmación con *SÍ*\n";
         $response .= "• *Comprar* más el producto o *agregar* cantidad y producto — sumar ítems\n";

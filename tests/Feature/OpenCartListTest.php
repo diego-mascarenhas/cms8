@@ -2,13 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\OpenCartListingService;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
+use App\Services\ShoppingCartService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -55,6 +53,8 @@ class OpenCartListTest extends TestCase
         $response = $this->actingAs($this->user)->get(route('order.carts'));
         $response->assertOk();
         $response->assertSee(__('Carritos abiertos'), false);
+        $response->assertSee('table table-hover dt-responsive nowrap w-100', false);
+        $response->assertSee('<div class="card-body">', false);
 
         $ajax = $this->actingAs($this->user)->withHeaders([
             'X-Requested-With' => 'XMLHttpRequest',
@@ -68,29 +68,10 @@ class OpenCartListTest extends TestCase
         $this->assertStringNotContainsString('Producto ajeno', json_encode($ajax->json('data')));
     }
 
-    public function test_orders_index_survives_corrupt_cart_storage_rows(): void
-    {
-        $this->addCartItem($this->team->id, '5491199900104', 'ABRAZADERA 8 X 16', 2, 989.43);
-
-        DB::table('cart_storage')->insert([
-            'id' => 'corrupt_cart_items',
-            'cart_data' => 'O:8:"stdClass":1:{s:4:"oops";s:10:"truncated',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $this->assertSame(1, app(OpenCartListingService::class)->countForTeam((int) $this->team->id));
-
-        $response = $this->actingAs($this->user)->get(route('order.index'));
-
-        $response->assertOk();
-        $response->assertSee(__('Carritos abiertos'), false);
-    }
-
     public function test_listing_service_skips_empty_carts(): void
     {
-        $phone = WhatsAppCartSessionKey::fromPhone('5491199900103');
-        Cart::session($phone)->clear();
+        $carts = app(ShoppingCartService::class);
+        $carts->forWhatsApp((int) $this->team->id, '5491199900103');
 
         $rows = app(OpenCartListingService::class)->forTeam((int) $this->team->id);
 
@@ -99,18 +80,17 @@ class OpenCartListTest extends TestCase
 
     private function addCartItem(int $teamId, string $phone, string $name, int $quantity, float $price): void
     {
-        $session = WhatsAppCartSessionKey::fromPhone($phone);
-        Cart::session($session)->clear();
-        Cart::session($session)->add([
-            'id' => crc32($name.$teamId),
+        $carts = app(ShoppingCartService::class);
+        $cart = $carts->forWhatsApp($teamId, $phone);
+        $cart->items()->withoutGlobalScope('team')->create([
+            'team_id' => $teamId,
+            'product_id' => abs((int) crc32($name.$teamId)) ?: 1,
             'name' => $name,
             'price' => $price,
             'quantity' => $quantity,
-            'attributes' => [
-                'team_id' => $teamId,
-                'category_name' => 'Abrazaderas',
-            ],
+            'category_name' => 'Abrazaderas',
         ]);
+        $cart->touch();
     }
 
     private function openCartDataTableUrl(): string

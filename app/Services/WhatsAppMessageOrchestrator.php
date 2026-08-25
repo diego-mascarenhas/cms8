@@ -15,6 +15,7 @@ use App\Models\Conversation;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Service;
+use App\Models\ShoppingCart;
 use App\Models\Store;
 use App\Models\Task;
 use App\Models\TaskStatus;
@@ -28,7 +29,6 @@ use App\Support\NewUserWelcomeEmailNotifier;
 use Carbon\Carbon;
 use chillerlan\QRCode\Output\QROutputInterface;
 use chillerlan\QRCode\QROptions;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -436,6 +436,11 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         }
 
         return 1;
+    }
+
+    private function shoppingCarts(): ShoppingCartService
+    {
+        return app(ShoppingCartService::class);
     }
 
     /**
@@ -2705,17 +2710,14 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return null;
             }
 
-            // Same key as assistant tool add_to_whatsapp_cart (Spanish 9 vs 34+9 digits).
-            Cart::session($cartSessionKey);
-
-            // DEBUG: Log cart session and current contents
-            $currentCartItems = Cart::getContent();
+            $existingCart = $this->shoppingCarts()->findWhatsApp($teamId, (string) $phoneNumber);
+            $currentCartItems = $this->shoppingCarts()->linesOrEmpty($existingCart);
             Log::info('Cart session set', [
                 'phone_number' => $phoneNumber,
                 'cart_session_key' => $cartSessionKey,
                 'cart_items_count' => $currentCartItems->count(),
-                'cart_total' => Cart::getTotal(),
-                'storage_key' => $cartSessionKey.'_cart_items',
+                'cart_total' => $existingCart ? $this->shoppingCarts()->total($existingCart) : 0,
+                'team_id' => $teamId,
             ]);
 
             $affirmativeCheckout = ['si', 'sí', 'yes', 'confirmar', 'aceptar', 'proceder'];
@@ -2786,7 +2788,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             {
                 $this->forgetCheckoutPending($phoneNumber);
 
-                return $this->clearCart($phoneNumber);
+                return $this->clearCart($phoneNumber, $teamId);
             }
 
             // Check for checkout commands ("checkout" English kept for compatibility; user-facing copy uses "finalizar")
@@ -2996,7 +2998,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     /**
      * @return \Illuminate\Support\Collection<int, object>
      */
-    private function findCartItemsMatchingNeedle(int $teamId, string $needle): \Illuminate\Support\Collection
+    private function findCartItemsMatchingNeedle(ShoppingCart $cart, int $teamId, string $needle): \Illuminate\Support\Collection
     {
         $needle = trim($needle);
         if ($needle === '')
@@ -3005,10 +3007,11 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         }
 
         $product = $this->productForCartNeedle($teamId, $needle);
+        $lines = $this->shoppingCarts()->lines($cart);
 
         if ($product)
         {
-            $item = Cart::getContent()->first(function ($row) use ($product)
+            $item = $lines->first(function ($row) use ($product)
             {
                 return (int) $row->id === (int) $product->id;
             });
@@ -3019,7 +3022,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         }
 
         $matches = collect();
-        foreach (Cart::getContent() as $item)
+        foreach ($lines as $item)
         {
             if (mb_stripos((string) $item->name, $needle) !== false)
             {
@@ -3037,7 +3040,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     {
         try
         {
-            $items = $this->findCartItemsMatchingNeedle($teamId, $productNeedle);
+            $cart = $this->shoppingCarts()->forWhatsApp($teamId, (string) $phoneNumber);
+            $items = $this->findCartItemsMatchingNeedle($cart, $teamId, $productNeedle);
 
             if ($items->isEmpty())
             {
@@ -3077,19 +3081,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             $newQty = $currentQty - $toRemove;
-
-            if ($newQty <= 0)
-            {
-                Cart::remove($itemId);
-            } else
-            {
-                Cart::update($itemId, [
-                    'quantity' => [
-                        'relative' => false,
-                        'value' => $newQty,
-                    ],
-                ]);
-            }
+            $this->shoppingCarts()->setProductQuantity($cart, (int) $itemId, $newQty);
 
             $this->forgetCheckoutPending($phoneNumber);
 
@@ -3105,8 +3097,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 : "Quitamos *{$toRemove}* de *{$item->name}* (quedan *{$newQty}*).";
 
             $response = "✅ {$removedPhrase}\n\n";
-            $response .= '🛒 **Total del carrito**: '.$currency.number_format(Cart::getTotal(), 2)."\n";
-            $response .= '📦 **Ítems**: '.Cart::getTotalQuantity()."\n\n";
+            $response .= '🛒 **Total del carrito**: '.$currency.number_format($this->shoppingCarts()->total($cart), 2)."\n";
+            $response .= '📦 **Ítems**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
             $response .= "**Opciones:**\n";
             $response .= "• Escribí *carrito* para ver todos tus productos\n";
             $response .= "• *Comprar* más el producto, o *agregar* cantidad y producto para sumar más\n";
@@ -3157,35 +3149,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return ['success' => false, 'message' => 'Product not found'];
             }
 
-            $cartItems = Cart::getContent();
-            $existingItem = $cartItems->where('id', $product->id)->first();
-
-            if ($existingItem)
-            {
-                Cart::update($product->id, [
-                    'quantity' => [
-                        'relative' => false,
-                        'value' => $existingItem->quantity + $addQuantity,
-                    ],
-                ]);
-                $quantity = $existingItem->quantity + $addQuantity;
-            } else
-            {
-                Cart::add([
-                    'id' => $product->id,
-                    'name' => $product->name,
-                    'price' => $product->currentSellingPrice(),
-                    'quantity' => $addQuantity,
-                    'attributes' => [
-                        'team_id' => $teamId,
-                        'store_id' => $product->store_id,
-                        'currency_id' => $product->currency_id,
-                        'description' => $product->description,
-                        'category_name' => $product->category?->name ?? '',
-                    ],
-                ]);
-                $quantity = $addQuantity;
-            }
+            $cart = $this->shoppingCarts()->forWhatsApp((int) $teamId, (string) $phoneNumber);
+            $line = $this->shoppingCarts()->addProduct($cart, $product, $addQuantity);
+            $quantity = (int) $line->quantity;
 
             $currency = $product->currency ? $product->currency->symbol : '$';
 
@@ -3197,7 +3163,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= "💰 **Precio unitario**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
             $response .= "📦 **Cantidad en carrito**: {$quantity}\n";
             $response .= '🏷️ **Categoría**: '.($product->category?->name ?? 'General')."\n\n";
-            $response .= "🛒 **Total del carrito**: {$currency}".number_format(Cart::getTotal(), 2)."\n\n";
+            $response .= "🛒 **Total del carrito**: {$currency}".number_format($this->shoppingCarts()->total($cart), 2)."\n\n";
             $response .= "**Opciones:**\n";
             $response .= "• Escribí *carrito* para ver todos tus productos\n";
             $response .= "• *Comprar* más el producto, o *agregar* la cantidad y el producto para sumar más\n";
@@ -3214,7 +3180,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'product_name' => $product->name,
                 'quantity' => $quantity,
                 'added' => $addQuantity,
-                'cart_total' => Cart::getTotal(),
+                'cart_total' => $this->shoppingCarts()->total($cart),
             ]);
 
             return ['success' => true, 'message' => 'Product added to cart'];
@@ -3236,7 +3202,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     {
         try
         {
-            $response = WhatsAppCartPresenter::customerMessage(WhatsAppCartSessionKey::fromPhone((string) $phoneNumber));
+            $response = WhatsAppCartPresenter::customerMessage((int) $teamId, (string) $phoneNumber);
 
             $this->sendWhatsApp($phoneNumber, $response);
 
@@ -3258,16 +3224,15 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     /**
      * Clear cart
      */
-    private function clearCart($phoneNumber)
+    private function clearCart($phoneNumber, $teamId)
     {
         try
         {
-            $cartSessionKey = WhatsAppCartSessionKey::fromPhone($phoneNumber);
-            if ($cartSessionKey !== '')
+            $cart = $this->shoppingCarts()->findWhatsApp((int) $teamId, (string) $phoneNumber);
+            if ($cart)
             {
-                Cart::session($cartSessionKey);
+                $this->shoppingCarts()->clear($cart);
             }
-            Cart::clear();
 
             $response = "🗑️ **Carrito vaciado exitosamente**\n\n";
             $response .= "📋 Escribe 'productos' para ver nuestro catálogo\n";
@@ -3294,7 +3259,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     {
         try
         {
-            $cartItems = Cart::getContent();
+            $cart = $this->shoppingCarts()->findWhatsApp((int) $teamId, (string) $phoneNumber);
+            $cartItems = $this->shoppingCarts()->linesOrEmpty($cart);
 
             if ($cartItems->isEmpty())
             {
@@ -3307,7 +3273,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return ['success' => false, 'message' => $response];
             }
 
-            $total = Cart::getTotal();
+            $total = $this->shoppingCarts()->total($cart);
 
             $response = "🛒 **Resumen de tu compra**\n\n";
 
@@ -3317,7 +3283,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
-            $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
+            $response .= '📦 **Items**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
 
             $checkoutStore = $this->resolveStoreForWhatsAppCart($teamId, $cartItems);
             $response .= $this->formatStoreCheckoutOptionsForWhatsApp($checkoutStore);
@@ -3334,7 +3300,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'phone' => $phoneNumber,
                 'items_count' => $cartItems->count(),
                 'total' => $total,
-                'items' => $cartItems->toArray(),
+                'items' => $cartItems->map(fn (object $item): array => (array) $item)->all(),
             ]);
 
             return ['success' => true, 'message' => $response];
@@ -3355,7 +3321,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     {
         try
         {
-            $cartItems = Cart::getContent();
+            $cart = $this->shoppingCarts()->findWhatsApp((int) $teamId, (string) $phoneNumber);
+            $cartItems = $this->shoppingCarts()->linesOrEmpty($cart);
 
             if ($cartItems->isEmpty())
             {
@@ -3368,7 +3335,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return ['success' => false, 'message' => $response];
             }
 
-            $total = Cart::getTotal();
+            $total = $this->shoppingCarts()->total($cart);
             $cleanDigits = preg_replace('/[^0-9]/', '', (string) $phoneNumber);
 
             $checkoutStore = $this->resolveStoreForWhatsAppCart($teamId, $cartItems);
@@ -3406,7 +3373,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
-            $response .= '📦 **Items**: '.Cart::getTotalQuantity()."\n\n";
+            $response .= '📦 **Items**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
 
             $response .= "🧾 **Tu pedido quedó registrado**\n";
             $response .= '• **Nº de orden:** #'.$order->order_number."\n";
@@ -3432,7 +3399,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'total' => $total,
             ]);
 
-            Cart::clear();
+            $this->shoppingCarts()->clear($cart);
             $this->forgetCheckoutPending($phoneNumber);
 
             return ['success' => true, 'message' => $response];
@@ -3467,7 +3434,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             Log::info('User chose to continue shopping', [
                 'phone' => $phoneNumber,
-                'cart_items_count' => Cart::getContent()->count(),
+                'cart_items_count' => $this->shoppingCarts()->whatsAppLines($this->resolveCartTeamId((string) $phoneNumber), (string) $phoneNumber)->count(),
             ]);
 
             return ['success' => true, 'message' => $response];
@@ -3483,7 +3450,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     /**
      * Branch used for checkout copy and {@see Order::store_id} (single store or main when ambiguous / empty).
      *
-     * @param  \Illuminate\Support\Collection|\Darryldecode\Cart\CartCollection  $cartItems
+     * @param  \Illuminate\Support\Collection<int, object>  $cartItems
      */
     private function resolveStoreForWhatsAppCart(int $teamId, $cartItems): ?Store
     {

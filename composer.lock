@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0751be604ede2ac8fa37e642c1a62b5c",
+    "content-hash": "44a4459f21c0769cfa71155a2620ad90",
     "packages": [
         {
             "name": "bacon/bacon-qr-code",
@@ -504,69 +504,6 @@
                 }
             ],
             "time": "2025-08-20T19:15:30+00:00"
-        },
-        {
-            "name": "darryldecode/cart",
-            "version": "4.2.6",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/darryldecode/laravelshoppingcart.git",
-                "reference": "c0d8b5b83ff3e2847d36da4ba0645c2d582d1f18"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/darryldecode/laravelshoppingcart/zipball/c0d8b5b83ff3e2847d36da4ba0645c2d582d1f18",
-                "reference": "c0d8b5b83ff3e2847d36da4ba0645c2d582d1f18",
-                "shasum": ""
-            },
-            "require": {
-                "illuminate/support": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*|5.8.*|^6.0|^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
-                "illuminate/translation": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*|5.8.*|^6.0|^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
-                "illuminate/validation": "5.0.*|5.1.*|5.2.*|5.3.*|5.4.*|5.5.*|5.6.*|5.7.*|5.8.*|^6.0|^7.0|^8.0|^9.0|^10.0|^11.0|^12.0",
-                "php": ">=7.3"
-            },
-            "require-dev": {
-                "mockery/mockery": "^1.4.2",
-                "phpunit/phpunit": "^9.0",
-                "symfony/var-dumper": "5.1.5.*@dev"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "aliases": {
-                        "Cart": "Darryldecode\\Cart\\Facades\\CartFacade"
-                    },
-                    "providers": [
-                        "Darryldecode\\Cart\\CartServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Darryldecode\\": "src/Darryldecode"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Darryl Fernandez",
-                    "email": "engrdarrylfernandez@gmail.com"
-                }
-            ],
-            "description": "Laravel 5 Shopping cart",
-            "keywords": [
-                "cart",
-                "laravel",
-                "shopping cart"
-            ],
-            "support": {
-                "issues": "https://github.com/darryldecode/laravelshoppingcart/issues",
-                "source": "https://github.com/darryldecode/laravelshoppingcart/tree/4.2.6"
-            },
-            "time": "2025-07-24T14:58:41+00:00"
         },
         {
             "name": "dasprid/enum",

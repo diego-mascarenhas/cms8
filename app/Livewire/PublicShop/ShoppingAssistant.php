@@ -4,10 +4,11 @@ namespace App\Livewire\PublicShop;
 
 use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
+use App\Models\ShoppingCart;
 use App\Models\Team;
 use App\Services\BusinessAssistantContextService;
+use App\Services\ShoppingCartService;
 use App\Support\AiTasks;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Locked;
@@ -59,23 +60,23 @@ class ShoppingAssistant extends Component
             'role' => 'assistant',
             'content' => __('public_shop.ask_profile'),
         ];
-        $this->bindPublicShopCart();
         $this->syncCartArrayFromCart();
     }
 
-    /**
-     * cart_storage row id: team + Laravel session (WhatsApp cart uses phone as session key).
-     */
-    protected function publicShopCartStorageId(): string
+    protected function shoppingCarts(): ShoppingCartService
     {
-        $team = $this->team();
-
-        return 'pubshop_'.($team?->id ?? '0').'_'.session()->getId();
+        return app(ShoppingCartService::class);
     }
 
-    protected function bindPublicShopCart(): void
+    protected function publicShopCart(): ?ShoppingCart
     {
-        Cart::session($this->publicShopCartStorageId());
+        $team = $this->team();
+        if (! $team)
+        {
+            return null;
+        }
+
+        return $this->shoppingCarts()->forPublicShop((int) $team->id, session()->getId());
     }
 
     /**
@@ -83,9 +84,11 @@ class ShoppingAssistant extends Component
      */
     protected function syncCartArrayFromCart(): array
     {
-        $this->bindPublicShopCart();
         $next = [];
-        foreach (Cart::getContent() as $item)
+        $cart = $this->team()
+            ? $this->shoppingCarts()->findPublicShop((int) $this->team()->id, session()->getId())
+            : null;
+        foreach ($this->shoppingCarts()->linesOrEmpty($cart) as $item)
         {
             $next[(string) $item->id] = (int) $item->quantity;
         }
@@ -312,41 +315,23 @@ TXT;
             return;
         }
 
-        $this->bindPublicShopCart();
-        $existingItem = Cart::getContent()->firstWhere('id', $productId);
-
-        if ($existingItem)
-        {
-            Cart::update($productId, [
-                'quantity' => [
-                    'relative' => false,
-                    'value' => $existingItem->quantity + 1,
-                ],
-            ]);
-        } else
-        {
-            Cart::add([
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->currentSellingPrice(),
-                'quantity' => 1,
-                'attributes' => [
-                    'team_id' => $team->id,
-                    'store_id' => $product->store_id,
-                    'currency_id' => $product->currency_id,
-                    'description' => $product->description,
-                    'category_name' => $product->category->name ?? '',
-                ],
-            ]);
-        }
+        $cart = $this->shoppingCarts()->forPublicShop((int) $team->id, session()->getId());
+        $this->shoppingCarts()->addProduct($cart, $product, 1);
 
         $this->syncCartArrayFromCart();
     }
 
     public function decrementCart(int $productId): void
     {
-        $this->bindPublicShopCart();
-        $item = Cart::getContent()->firstWhere('id', $productId);
+        $cart = $this->publicShopCart();
+        if (! $cart)
+        {
+            $this->syncCartArrayFromCart();
+
+            return;
+        }
+
+        $item = $this->shoppingCarts()->lines($cart)->firstWhere('id', $productId);
         if (! $item)
         {
             $this->syncCartArrayFromCart();
@@ -354,22 +339,7 @@ TXT;
             return;
         }
 
-        $currentQty = (int) $item->quantity;
-        $newQty = $currentQty - 1;
-
-        if ($newQty <= 0)
-        {
-            Cart::remove($productId);
-        } else
-        {
-            Cart::update($productId, [
-                'quantity' => [
-                    'relative' => false,
-                    'value' => $newQty,
-                ],
-            ]);
-        }
-
+        $this->shoppingCarts()->setProductQuantity($cart, $productId, (int) $item->quantity - 1);
         $this->syncCartArrayFromCart();
     }
 
@@ -387,8 +357,8 @@ TXT;
 
             return null;
         }
-        $this->bindPublicShopCart();
-        $cartItems = Cart::getContent();
+        $cart = $this->shoppingCarts()->findPublicShop((int) $team->id, session()->getId());
+        $cartItems = $this->shoppingCarts()->linesOrEmpty($cart);
 
         if ($cartItems->isEmpty())
         {
@@ -415,7 +385,10 @@ TXT;
         $body = __('public_shop.wa_order_intro')."\n\n".implode("\n", $lines)."\n\n".$profile;
         $url = 'https://wa.me/'.$digits.'?text='.rawurlencode($body);
 
-        Cart::clear();
+        if ($cart)
+        {
+            $this->shoppingCarts()->clear($cart);
+        }
         $this->cart = [];
 
         return redirect()->away($url);

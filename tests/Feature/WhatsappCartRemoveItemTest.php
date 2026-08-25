@@ -2,14 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ShoppingCartService;
 use App\Services\WhatsAppMessageOrchestrator;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -29,6 +28,17 @@ class WhatsappCartRemoveItemTest extends TestCase
         $user->assignRole($role);
 
         return $team;
+    }
+
+    private function carts(): ShoppingCartService
+    {
+        return app(ShoppingCartService::class);
+    }
+
+    private function seedWhatsAppCart(Team $team, string $phone, Product $product, int $quantity = 1): void
+    {
+        $cart = $this->carts()->forWhatsApp((int) $team->id, $phone);
+        $this->carts()->addProduct($cart, $product, $quantity);
     }
 
     private function createMidiDressProduct(Team $team): Product
@@ -65,21 +75,8 @@ class WhatsappCartRemoveItemTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createMidiDressProduct($team);
         $phone = '+5491199900011';
-        $sessionKey = WhatsAppCartSessionKey::fromPhone($phone);
 
-        Cart::session($sessionKey)->clear();
-        Cart::session($sessionKey)->add([
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->currentSellingPrice(),
-            'quantity' => 2,
-            'attributes' => [
-                'team_id' => $team->id,
-                'currency_id' => $product->currency_id,
-                'description' => $product->description,
-                'category_name' => $product->category->name ?? '',
-            ],
-        ]);
+        $this->seedWhatsAppCart($team, $phone, $product, 2);
 
         $service = new class($team) extends WhatsAppMessageOrchestrator
         {
@@ -99,8 +96,7 @@ class WhatsappCartRemoveItemTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertTrue($service->sent);
 
-        Cart::session($sessionKey);
-        $item = Cart::getContent()->first();
+        $item = $this->carts()->whatsAppLines((int) $team->id, $phone)->first();
         $this->assertNotNull($item);
         $this->assertSame(1, (int) $item->quantity);
     }
@@ -110,21 +106,8 @@ class WhatsappCartRemoveItemTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createMidiDressProduct($team);
         $phone = '+5491199900012';
-        $sessionKey = WhatsAppCartSessionKey::fromPhone($phone);
 
-        Cart::session($sessionKey)->clear();
-        Cart::session($sessionKey)->add([
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->currentSellingPrice(),
-            'quantity' => 2,
-            'attributes' => [
-                'team_id' => $team->id,
-                'currency_id' => $product->currency_id,
-                'description' => $product->description,
-                'category_name' => $product->category->name ?? '',
-            ],
-        ]);
+        $this->seedWhatsAppCart($team, $phone, $product, 2);
 
         $service = new class($team) extends WhatsAppMessageOrchestrator
         {
@@ -139,8 +122,7 @@ class WhatsappCartRemoveItemTest extends TestCase
         $this->assertIsArray($result);
         $this->assertTrue($result['success']);
 
-        Cart::session($sessionKey);
-        $this->assertTrue(Cart::getContent()->isEmpty());
+        $this->assertTrue($this->carts()->whatsAppLines((int) $team->id, $phone)->isEmpty());
     }
 
     public function test_process_product_commands_does_not_send_catalog_for_quitar_message(): void

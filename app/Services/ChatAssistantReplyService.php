@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Helpers\WhatsAppCartPresenter;
-use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Prompt;
 use App\Models\User;
@@ -282,7 +281,7 @@ class ChatAssistantReplyService
     }
 
     /**
-     * Show the real Darryldecode cart. The model must not invent another WhatsApp number.
+     * Show the real shopping cart. The model must not invent another WhatsApp number.
      *
      * @return array{success: bool, text: string, routed_to: null, usage: array, tool_calls: array, tool_results: array, meta: array}|null
      */
@@ -298,7 +297,7 @@ class ChatAssistantReplyService
             return null;
         }
 
-        $text = WhatsAppCartPresenter::customerMessage(WhatsAppCartSessionKey::fromPhone($contextCustomerPhone));
+        $text = WhatsAppCartPresenter::customerMessage($teamId, $contextCustomerPhone);
 
         return [
             'success' => true,
