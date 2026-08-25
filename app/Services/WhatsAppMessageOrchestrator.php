@@ -3,7 +3,10 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\WhatsAppCartProductFinder;
 use App\Helpers\WhatsAppCartSessionKey;
+use App\Helpers\WhatsAppLastOfferedProduct;
+use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Helpers\WhatsAppOutboundText;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
@@ -2765,8 +2768,20 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 }
             }
 
+            $quantityOnlyAdd = WhatsAppNaturalCartPhrase::quantityOnlyAdd($normalizedMessage);
+            if ($quantityOnlyAdd !== null)
+            {
+                return $this->addToCartFromNeedle($phoneNumber, $teamId, '', $quantityOnlyAdd['quantity']);
+            }
+
+            $buyCommand = WhatsAppNaturalCartPhrase::buyCommand($normalizedMessage);
+            if ($buyCommand !== null)
+            {
+                return $this->addToCartFromNeedle($phoneNumber, $teamId, $buyCommand['needle'], $buyCommand['quantity']);
+            }
+
             // agregar|añadir + cantidad + nombre… (ej. "agregar 3 vestidos iguales al carrito")
-            if (preg_match('/^(agregar|añadir)\s+(\d+)\s+(.+)$/iu', $normalizedMessage, $agregarQtyMatch))
+            if (preg_match('/^(agregar|añadir|agregame|anadime|poneme|mandame|sumame)\s+(\d+)\s+(.+)$/iu', $normalizedMessage, $agregarQtyMatch))
             {
                 $name = $this->sanitizeAgregarProductName($agregarQtyMatch[3]);
                 if ($name !== '')
@@ -2795,14 +2810,6 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 {
                     return $this->addToCart($phoneNumber, $rest, $teamId, 1);
                 }
-            }
-
-            // Check for add to cart commands (comprar, contratar)
-            if (preg_match('/^(comprar|contratar|compra|contrata)\s+(.+)/i', $normalizedMessage, $matches))
-            {
-                $productName = trim($matches[2]);
-
-                return $this->addToCart($phoneNumber, $productName, $teamId, 1);
             }
 
             // Check for cart view commands
@@ -2940,7 +2947,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return 'cart';
         }
 
-        if (preg_match('/^(agregar|anadir)\s+\d+\s+.+/u', $normalized) === 1)
+        if (WhatsAppNaturalCartPhrase::quantityOnlyAdd($normalized) !== null)
+        {
+            return 'cart';
+        }
+
+        if (preg_match('/^(agregar|anadir|agregame|anadime|poneme|mandame|sumame)\s+\d+\s+.+/u', $normalized) === 1)
         {
             return 'cart';
         }
@@ -2979,30 +2991,53 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         return array_values(array_unique(array_filter($variants)));
     }
 
+    /**
+     * @return array{success: bool, message: string}
+     */
+    private function addToCartFromNeedle(string $phoneNumber, int $teamId, string $needle, int $quantity): array
+    {
+        $needle = trim($needle);
+        if ($needle === '')
+        {
+            $lastProductId = WhatsAppLastOfferedProduct::id($phoneNumber, $teamId);
+            if ($lastProductId !== null)
+            {
+                $lastProduct = Product::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('id', $lastProductId)
+                    ->first();
+                if ($lastProduct)
+                {
+                    return $this->addToCart($phoneNumber, $lastProduct->name, $teamId, $quantity);
+                }
+            }
+
+            $this->sendWhatsApp(
+                $phoneNumber,
+                'Decime qué producto y te lo sumo. Por ejemplo el nombre o el código.',
+            );
+
+            return ['success' => false, 'message' => 'No last offered product'];
+        }
+
+        return $this->addToCart($phoneNumber, $needle, $teamId, $quantity);
+    }
+
     private function productForCartNeedle(int $teamId, string $needle): ?\App\Models\Product
     {
+        $found = WhatsAppCartProductFinder::find($teamId, $needle);
+        if ($found)
+        {
+            return $found;
+        }
+
         $variants = $this->productSearchNeedleVariants($needle);
         foreach ($variants as $v)
         {
-            $v = trim($v);
-            if ($v === '')
+            $found = WhatsAppCartProductFinder::find($teamId, $v);
+            if ($found)
             {
-                continue;
-            }
-
-            $product = \App\Models\Product::withoutGlobalScope('team')
-                ->where('team_id', $teamId)
-                ->where('status', true)
-                ->where('whatsapp_enabled', true)
-                ->where(function ($q) use ($v)
-                {
-                    $q->where('name', 'LIKE', '%'.$v.'%')
-                        ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($v)]);
-                })
-                ->first();
-            if ($product)
-            {
-                return $product;
+                return $found;
             }
         }
 
@@ -3159,11 +3194,14 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $addQuantity = max(1, min(500, $addQuantity));
             $product = $this->productForCartNeedle($teamId, $needle);
 
+            if (! $product && preg_match('/^\d+$/', $needle) === 1 && (int) $needle <= 500)
+            {
+                return $this->addToCartFromNeedle((string) $phoneNumber, (int) $teamId, '', (int) $needle);
+            }
+
             if (! $product)
             {
-                $response = "❌ **Producto no encontrado**: '{$productName}'\n\n";
-                $response .= "📋 Escribe 'productos' para ver nuestro catálogo completo\n";
-                $response .= '💡 **Tip**: *comprar* más el nombre, *agregar* cantidad y nombre (ej. agregar 3 panes), o *agregar yerba al carrito*';
+                $response = "No encontré *{$needle}*. Probá con el nombre o el código del producto.";
 
                 $this->sendWhatsApp($phoneNumber, $response);
 
@@ -3218,6 +3256,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             $response .= '• *Finalizar* — cerrar el pedido (luego te pediré *SÍ*)';
 
             $this->sendWhatsApp($phoneNumber, $response);
+
+            WhatsAppLastOfferedProduct::remember((string) $phoneNumber, $teamId, (int) $product->id);
 
             Log::info('Product added to cart', [
                 'phone' => $phoneNumber,

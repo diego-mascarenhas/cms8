@@ -43,7 +43,9 @@ class AssistantPromptCopyTest extends TestCase
         $this->assertStringContainsString('list_product_catalog', $instruction);
         $this->assertStringContainsString('search_products', $instruction);
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
+        $this->assertStringContainsString('agregame 2', $instruction);
         $this->assertStringContainsString('finalizar', $instruction);
+        $this->assertStringNotContainsString('escriba *comprar* más el nombre', $instruction);
     }
 
     public function test_every_default_flow_forbids_making_data_up(): void

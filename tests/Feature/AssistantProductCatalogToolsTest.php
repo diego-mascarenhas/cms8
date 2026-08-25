@@ -183,6 +183,7 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('28356', $golSearch);
         $this->assertStringContainsString((string) $gol->id, $golSearch);
         $this->assertStringNotContainsString('25405', $golSearch);
+        $this->assertStringContainsString('Matches:', $golSearch);
 
         $boraSearch = $service->execute('search_products', ['query' => 'Una bujía para un bora']);
         $this->assertStringContainsString('25405', $boraSearch);
@@ -255,6 +256,74 @@ class AssistantProductCatalogToolsTest extends TestCase
         Cart::session($phone);
         $this->assertSame(1, Cart::getContent()->count());
         $item = Cart::getContent()->first();
+        $this->assertSame(2, (int) $item->quantity);
+    }
+
+    public function test_add_to_whatsapp_cart_uses_last_searched_product_when_only_quantity_is_given(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $category = Category::query()->create([
+            'name' => 'Repuestos',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $product = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'ABRAZADERA 16 X 27',
+            'code' => '21870',
+            'description' => 'Perfecto',
+            'price' => 989.93,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $phone = '5491199988800';
+        Cart::session($phone)->clear();
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, $phone);
+
+        $search = $service->execute('search_products', ['query' => 'Abrazadera 16 x 27']);
+        $this->assertStringContainsString((string) $product->id, $search);
+
+        $msg = $service->execute('add_to_whatsapp_cart', ['quantity' => 2]);
+        $this->assertStringContainsString('ABRAZADERA 16 X 27', $msg);
+        $this->assertStringContainsString('finalizar', $msg);
+
+        Cart::session($phone);
+        $item = Cart::getContent()->first();
+        $this->assertNotNull($item);
+        $this->assertSame((int) $product->id, (int) $item->id);
         $this->assertSame(2, (int) $item->quantity);
     }
 

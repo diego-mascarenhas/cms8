@@ -31,6 +31,33 @@ class SearchNormalizer
     }
 
     /**
+     * Tokens for catalog search, without Spanish/English filler words.
+     *
+     * @return list<string>
+     */
+    public static function significantTokens(string $raw): array
+    {
+        $parts = preg_split('/[\s,.;:\/+]+/u', self::normalize($raw)) ?: [];
+        $stopwords = [
+            'para', 'un', 'una', 'unos', 'unas', 'de', 'del', 'el', 'la', 'los', 'las',
+            'y', 'o', 'en', 'con', 'por', 'a', 'al', 'que', 'se', 'su', 'the', 'for', 'and',
+        ];
+        $tokens = [];
+
+        foreach ($parts as $part)
+        {
+            if ($part === '' || in_array($part, $stopwords, true))
+            {
+                continue;
+            }
+
+            $tokens[] = $part;
+        }
+
+        return $tokens !== [] ? array_values(array_unique($tokens)) : [self::normalize($raw)];
+    }
+
+    /**
      * @internal Testing only
      */
     public static function flushUnaccentCache(): void
