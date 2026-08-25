@@ -47,7 +47,7 @@
 							<h4 class="mb-2">{{ $product->name }}</h4>
 							<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('Store') }}:</span>
-							<span>{{ $product->store?->name ?? '—' }}</span>
+							<span>{{ $product->availabilityLabel() }}</span>
 						</li>
 						@if($product->category)
 								<span class="badge bg-label-info mt-1">{{ $product->category->name }}</span>
@@ -137,7 +137,7 @@
 						@endif
 						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('Store') }}:</span>
-							<span>{{ $product->store?->name ?? '—' }}</span>
+							<span>{{ $product->availabilityLabel() }}</span>
 						</li>
 						@if($product->category)
 							<li class="mb-2 pt-1">

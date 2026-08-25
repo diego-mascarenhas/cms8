@@ -186,7 +186,7 @@ class ProductCsvImportService
                 'description' => 'Docena a elección. Cada gusto es una variante.',
                 'short_description' => 'Docena mixta',
                 'currency' => 'ARS',
-                'store' => 'Principal',
+                'store' => 'todas',
                 'catalog_status' => 'publish',
                 'stock_status' => 'instock',
                 'manage_stock' => '0',
@@ -299,6 +299,8 @@ class ProductCsvImportService
             ->where('code', $code)
             ->first();
 
+        $availability = $this->resolveStoreAvailability($values['store'] ?? null, $teamId);
+
         $payload = [
             'team_id' => $teamId,
             'name' => $name,
@@ -308,7 +310,8 @@ class ProductCsvImportService
             'price' => round($price, 2),
             'sale_price' => $this->parseDecimal($values['sale_price'] ?? null),
             'currency_id' => $this->resolveCurrencyId($values['currency'] ?? null),
-            'store_id' => $this->resolveStoreId($values['store'] ?? null, $teamId),
+            'store_id' => $availability['store_id'],
+            'available_in_all_stores' => $availability['all'],
             'category_id' => $this->resolveCategoryId($values['category'] ?? null, $teamId),
             'brand_id' => $this->resolveBrandId($values['brand'] ?? null, $teamId),
             'catalog_status' => $catalogStatus,
@@ -323,12 +326,14 @@ class ProductCsvImportService
         if ($product === null)
         {
             $product = Product::withoutGlobalScope('team')->create($payload);
+            $product->syncStoreAvailability($availability['all'], $availability['store_ids']);
             $this->syncImportedVariants($product, $values);
 
             return true;
         }
 
         $product->fill($payload)->save();
+        $product->syncStoreAvailability($availability['all'], $availability['store_ids']);
         $this->syncImportedVariants($product, $values);
 
         return false;
@@ -469,6 +474,41 @@ class ProductCsvImportService
         }
 
         return (int) $fallback;
+    }
+
+    /**
+     * Empty / "todas" = every branch. Several names separated by | restrict the product.
+     *
+     * @return array{all: bool, store_id: int, store_ids: list<int>}
+     */
+    private function resolveStoreAvailability(?string $value, int $teamId): array
+    {
+        $mainStoreId = $this->mainStoreIds[$teamId] ??= (int) Store::ensureMainStoreForTeam($teamId)->id;
+        $needle = trim((string) $value);
+        $normalized = mb_strtolower($needle);
+
+        if ($needle === '' || in_array($normalized, ['todas', 'all', '*', 'todas las sucursales'], true))
+        {
+            return [
+                'all' => true,
+                'store_id' => $mainStoreId,
+                'store_ids' => [],
+            ];
+        }
+
+        $ids = [];
+        foreach ($this->parseList($needle) as $name)
+        {
+            $ids[] = $this->resolveStoreId($name, $teamId);
+        }
+
+        $ids = array_values(array_unique($ids));
+
+        return [
+            'all' => false,
+            'store_id' => $ids[0] ?? $mainStoreId,
+            'store_ids' => $ids,
+        ];
     }
 
     /**

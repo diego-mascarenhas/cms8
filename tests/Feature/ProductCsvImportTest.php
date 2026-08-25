@@ -71,6 +71,7 @@ class ProductCsvImportTest extends TestCase
         $this->assertStringContainsString('Nike', $csv);
         $this->assertStringContainsString('Carne|Pollo|JyQ|Cebolla', $csv);
         $this->assertStringContainsString('S|M|L|XL', $csv);
+        $this->assertStringContainsString('todas', $csv);
     }
 
     public function test_import_creates_products_and_categories(): void
@@ -118,6 +119,7 @@ class ProductCsvImportTest extends TestCase
 
         $mainStoreId = Store::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'MAIN')->value('id');
         $this->assertSame((int) $mainStoreId, (int) $remera->store_id);
+        $this->assertTrue($remera->available_in_all_stores);
     }
 
     public function test_import_creates_brand_and_flavor_variants(): void
@@ -143,6 +145,45 @@ class ProductCsvImportTest extends TestCase
         $this->assertSame(1, $pad->variants()->count());
         $this->assertDatabaseHas('brands', ['team_id' => $this->team->id, 'name' => 'Bosch']);
         $this->assertSame('Bosch', $pad->brand?->name);
+        $this->assertTrue($empanada->available_in_all_stores);
+        $this->assertTrue($pad->available_in_all_stores);
+    }
+
+    public function test_import_restricts_product_to_named_stores(): void
+    {
+        Store::withoutGlobalScope('team')->create([
+            'team_id' => $this->team->id,
+            'name' => 'Norte',
+            'code' => 'NORTE',
+            'status' => true,
+            'is_main' => false,
+        ]);
+
+        $csv = <<<'CSV'
+        code,name,price,category,store
+        EMP-012,Docena de empanadas,9800,Comida,todas
+        PAD-N,Pastilla Norte,18900,Autopartes,Norte
+        PAD-BOTH,Pastilla dual,21000,Autopartes,Principal|Norte
+        CSV;
+
+        $this->actingAs($this->user->fresh())->post(route('product.import.store'), [
+            'file' => UploadedFile::fake()->createWithContent('products.csv', $csv),
+        ])->assertRedirect(route('product.index'));
+
+        $empanada = Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'EMP-012')->first();
+        $this->assertNotNull($empanada);
+        $this->assertTrue($empanada->available_in_all_stores);
+        $this->assertSame([], $empanada->availableStoreIds());
+
+        $norte = Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'PAD-N')->first();
+        $this->assertNotNull($norte);
+        $this->assertFalse($norte->available_in_all_stores);
+        $this->assertEqualsCanonicalizing(['Norte'], $norte->stores()->pluck('name')->all());
+
+        $both = Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'PAD-BOTH')->first();
+        $this->assertNotNull($both);
+        $this->assertFalse($both->available_in_all_stores);
+        $this->assertEqualsCanonicalizing(['Principal', 'Norte'], $both->stores()->pluck('name')->all());
     }
 
     public function test_import_updates_an_existing_product_matched_by_code(): void

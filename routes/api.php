@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\Shop\DashboardController as ShopDashboardController
 use App\Http\Controllers\Api\Shop\LookupController as ShopLookupController;
 use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
 use App\Http\Controllers\Api\Shop\ProductController as ShopProductController;
+use App\Http\Controllers\Api\Shop\ProductImageController as ShopProductImageController;
 use App\Http\Controllers\Api\Shop\StoreController as ShopStoreController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
@@ -634,6 +635,7 @@ Route::middleware('auth.api')->group(function ()
 
         Route::get('products/import', [ShopProductController::class, 'importSchema']);
         Route::post('products/import', [ShopProductController::class, 'import']);
+        Route::post('products/images', [ShopProductImageController::class, 'store']);
         Route::get('products', [ShopProductController::class, 'index']);
         Route::post('products', [ShopProductController::class, 'store']);
         Route::get('products/{id}', [ShopProductController::class, 'show'])->whereNumber('id');

@@ -41,7 +41,7 @@ class ProductController extends Controller
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
-        $query = Product::query()->with(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option']);
+        $query = Product::query()->with(['category', 'currency', 'store', 'stores', 'brand', 'options.values', 'variants.optionValues.option']);
 
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
@@ -55,7 +55,7 @@ class ProductController extends Controller
 
         if (! empty($validated['store_id']))
         {
-            $query->where('store_id', $validated['store_id']);
+            $query->availableAt((int) $validated['store_id']);
         }
 
         if (! empty($validated['category_id']))
@@ -101,7 +101,7 @@ class ProductController extends Controller
             return $team;
         }
 
-        $product = Product::query()->with(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option'])->find($id);
+        $product = Product::query()->with(['category', 'currency', 'store', 'stores', 'brand', 'options.values', 'variants.optionValues.option'])->find($id);
         if (! $product)
         {
             return response()->json([
@@ -133,13 +133,14 @@ class ProductController extends Controller
             $this->productPayload($validated),
             ['team_id' => $team->id],
         ));
+        $product->syncStoreAvailabilityFromValidated($validated, true);
         app(ProductVariantCatalogService::class)->sync(
             $product,
             app(ProductVariantCatalogService::class)->optionsFromValidated($validated),
             $validated['variants'] ?? null,
         );
 
-        $product->load(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option']);
+        $product->load(['category', 'currency', 'store', 'stores', 'brand', 'options.values', 'variants.optionValues.option']);
 
         return response()->json([
             'success' => true,
@@ -166,12 +167,13 @@ class ProductController extends Controller
 
         $validated = $request->validated();
         $product->update($this->productPayload($validated));
+        $product->syncStoreAvailabilityFromValidated($validated);
         app(ProductVariantCatalogService::class)->sync(
             $product->fresh(),
             app(ProductVariantCatalogService::class)->optionsFromValidated($validated),
             $validated['variants'] ?? null,
         );
-        $product->load(['category', 'currency', 'store', 'brand', 'options.values', 'variants.optionValues.option']);
+        $product->load(['category', 'currency', 'store', 'stores', 'brand', 'options.values', 'variants.optionValues.option']);
 
         return response()->json([
             'success' => true,

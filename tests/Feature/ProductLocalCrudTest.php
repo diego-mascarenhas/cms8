@@ -11,6 +11,8 @@ use App\Models\Team;
 use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -170,5 +172,32 @@ class ProductLocalCrudTest extends TestCase
         $this->assertTrue($product->manage_stock);
         $this->assertSame(5, $product->stock_quantity);
         $this->assertNull($product->sale_price);
+    }
+
+    public function test_admin_can_upload_product_image_from_backend_form(): void
+    {
+        Storage::fake('public');
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $response = $this->actingAs($user->fresh())
+            ->post(route('product.images.store'), [
+                'name' => 'Camiseta básica',
+                'file' => UploadedFile::fake()->image('foto.jpg', 800, 600),
+            ], ['Accept' => 'application/json']);
+
+        $response->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.original.filename', 'camiseta-basica.jpg')
+            ->assertJsonPath('data.sizes.0.filename', 'camiseta-basica-thumb-300x300.jpg')
+            ->assertJsonPath('data.sizes.1.filename', 'camiseta-basica-square-1080x1080.jpg');
+
+        $this->assertStringContainsString('-square-1080x1080.', (string) $response->json('data.image'));
+        Storage::disk('public')->assertExists((string) $response->json('data.original.path'));
     }
 }

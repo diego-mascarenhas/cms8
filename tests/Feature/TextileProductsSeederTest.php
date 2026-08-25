@@ -58,9 +58,9 @@ class TextileProductsSeederTest extends TestCase
 
         $team = $team->fresh();
         $this->assertNotNull($team);
-        $this->assertFalse($team->hasModule('products'));
-        $this->assertFalse($team->hasModule('stores'));
-        $this->assertFalse($team->hasModule('orders'));
+        $this->assertTrue($team->hasModule('products'));
+        $this->assertTrue($team->hasModule('stores'));
+        $this->assertTrue($team->hasModule('orders'));
 
         $this->assertSame(
             18,

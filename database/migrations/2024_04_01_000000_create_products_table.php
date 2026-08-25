@@ -24,6 +24,7 @@ return new class extends Migration
             $table->unsignedInteger('currency_id');
             $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
             $table->foreignId('store_id')->nullable()->constrained('stores')->nullOnDelete();
+            $table->boolean('available_in_all_stores')->default(true);
             $table->foreignId('brand_id')->nullable()->constrained('brands')->nullOnDelete();
             $table->boolean('status')->default(true);
             $table->string('catalog_status', 20)->default('publish');

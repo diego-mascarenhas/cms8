@@ -49,7 +49,7 @@ class TeamDemoSeeder extends Seeder
      *
      * @var list<string>
      */
-    public const DEMO_DEV_MODULES = ['today', 'performance_insights', 'servers', 'hosting', 'enterprises', 'projects', 'tasks', 'times'];
+    public const DEMO_DEV_MODULES = ['today', 'performance_insights', 'servers', 'hosting', 'enterprises', 'projects', 'tasks', 'times', 'products', 'stores', 'orders'];
 
     private $teamId = 1;
 

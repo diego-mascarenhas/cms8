@@ -179,6 +179,7 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('data.name', 'Camiseta shop')
             ->assertJsonPath('data.code', 'CAM-SHOP-001')
             ->assertJsonPath('data.store_id', $mainStoreId)
+            ->assertJsonPath('data.available_in_all_stores', true)
             ->assertJsonPath('data.manage_stock', true)
             ->assertJsonPath('data.stock_quantity', 8)
             ->assertJsonCount(2, 'data.options')
@@ -225,6 +226,89 @@ class ShopApiTest extends TestCase
         $this->assertDatabaseMissing('products', ['id' => $id]);
     }
 
+    public function test_product_availability_can_target_all_or_specific_stores(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/lookups')
+            ->assertOk();
+
+        $mainStoreId = (int) Store::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('code', 'MAIN')
+            ->value('id');
+
+        $norte = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/stores', [
+                'name' => 'Norte',
+                'code' => 'NORTE',
+                'status' => true,
+                'is_main' => false,
+                'checkout_payment_methods' => ['cash'],
+                'checkout_fulfillment_types' => ['pickup'],
+            ])
+            ->assertCreated()
+            ->json('data');
+
+        $category = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/categories', ['name' => 'Comida'])
+            ->assertCreated()
+            ->json('data');
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        $shared = [
+            'price' => 9800,
+            'currency_id' => $currencyId,
+            'category_id' => $category['id'],
+            'catalog_status' => 'publish',
+            'stock_status' => 'instock',
+            'manage_stock' => false,
+            'whatsapp_enabled' => true,
+        ];
+
+        $empanada = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Docena de empanadas',
+                'code' => 'EMP-ALL',
+                'available_in_all_stores' => true,
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.available_in_all_stores', true)
+            ->json('data');
+
+        $pad = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Pastilla Norte',
+                'code' => 'PAD-NORTE',
+                'available_in_all_stores' => false,
+                'store_ids' => [$norte['id']],
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.available_in_all_stores', false)
+            ->assertJsonPath('data.store_ids.0', $norte['id'])
+            ->json('data');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/products?store_id='.$norte['id'])
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 2);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/products?store_id='.$mainStoreId)
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.id', $empanada['id']);
+
+        $this->assertDatabaseHas('product_store', [
+            'product_id' => $pad['id'],
+            'store_id' => $norte['id'],
+            'team_id' => $team->id,
+        ]);
+    }
+
     public function test_product_import_schema_includes_brand_and_variant_examples(): void
     {
         [, , $token] = $this->adminWithShopModules();
@@ -243,6 +327,7 @@ class ShopApiTest extends TestCase
         $this->assertStringContainsString('Bosch', $sample);
         $this->assertStringContainsString('S|M|L|XL', $sample);
         $this->assertStringContainsString('Carne|Pollo|JyQ|Cebolla', $sample);
+        $this->assertStringContainsString('todas', $sample);
     }
 
     public function test_can_create_brand_and_filter_products(): void

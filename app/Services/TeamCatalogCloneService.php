@@ -52,7 +52,7 @@ class TeamCatalogCloneService
             ->get();
 
         $sourceProducts = Product::withoutGlobalScope('team')
-            ->with(['brand', 'options.values', 'variants.optionValues.option'])
+            ->with(['brand', 'stores', 'options.values', 'variants.optionValues.option'])
             ->where('team_id', $sourceTeamId)
             ->orderBy('id')
             ->get();
@@ -173,6 +173,7 @@ class TeamCatalogCloneService
                     'currency_id' => $product->currency_id,
                     'category_id' => $categoryId,
                     'store_id' => $storeId,
+                    'available_in_all_stores' => (bool) $product->available_in_all_stores,
                     'status' => $product->status,
                     'catalog_status' => $product->catalog_status,
                     'stock_status' => $product->stock_status,
@@ -183,6 +184,14 @@ class TeamCatalogCloneService
                     'whatsapp_enabled' => $product->whatsapp_enabled,
                     'image' => $product->image,
                 ]);
+                $mappedStoreIds = $product->available_in_all_stores
+                    ? []
+                    : $product->stores
+                        ->map(fn (Store $store): ?int => $storeMap[$store->id] ?? null)
+                        ->filter()
+                        ->values()
+                        ->all();
+                $clone->syncStoreAvailability((bool) $product->available_in_all_stores, $mappedStoreIds);
                 $product->loadMissing(['options.values', 'variants.optionValues.option']);
                 app(ProductVariantCatalogService::class)->sync(
                     $clone,

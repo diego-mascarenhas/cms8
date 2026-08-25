@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\ProductOption;
 use App\Models\ProductVariant;
 use App\Models\Store;
+use App\Services\ProductImageService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 trait FormatsShopResources
@@ -33,6 +34,7 @@ trait FormatsShopResources
             'category',
             'currency',
             'store',
+            'stores',
             'brand',
             'options.values',
             'variants.optionValues.option',
@@ -59,6 +61,18 @@ trait FormatsShopResources
                 'id' => $product->store->id,
                 'name' => $product->store->name,
             ] : null,
+            'available_in_all_stores' => (bool) $product->available_in_all_stores,
+            'store_ids' => $product->availableStoreIds(),
+            'stores' => $product->available_in_all_stores
+                ? []
+                : $product->stores
+                    ->map(fn (Store $store): array => [
+                        'id' => $store->id,
+                        'name' => $store->name,
+                    ])
+                    ->values()
+                    ->all(),
+            'availability_label' => $product->availabilityLabel(),
             'category_id' => $product->category_id,
             'category' => $product->category ? [
                 'id' => $product->category->id,
@@ -106,6 +120,7 @@ trait FormatsShopResources
                 ->all(),
             'whatsapp_enabled' => (bool) $product->whatsapp_enabled,
             'image' => $product->image,
+            'images' => app(ProductImageService::class)->variantsForUrl($product->image),
             'status' => (bool) $product->status,
             'updated_at' => $product->updated_at?->toIso8601String(),
         ];

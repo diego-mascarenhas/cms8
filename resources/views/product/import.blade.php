@@ -77,7 +77,7 @@
 				<ul class="mb-0 ps-3 text-muted small">
 					<li>{{ __('code identifies the product: an existing code updates the product, a new one creates it.') }}</li>
 					<li>{{ __('category is created automatically when the name does not exist yet.') }}</li>
-					<li>{{ __('currency uses the ISO code (ARS, USD, EUR); store matches the branch name or code.') }}</li>
+					<li>{{ __('currency uses the ISO code (ARS, USD, EUR). store empty or “todas” means every branch; several names go separated by |.') }}</li>
 					<li>{{ __('catalog_status accepts publish, draft, pending or private; only published products are offered by the assistant.') }}</li>
 					<li>{{ __('whatsapp_enabled defaults to 1 so the product is sellable from the chat.') }}</li>
 					<li>{{ __('brand is created automatically when the name does not exist yet.') }}</li>
