@@ -33,6 +33,7 @@ use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
+use App\Support\SearchNormalizer;
 use App\Support\TeamTaskBoardResolver;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
@@ -860,11 +861,11 @@ class AssistantToolsService
             ],
             [
                 'name' => 'search_products',
-                'description' => 'Search sellable products by name fragment or by internal code (SKU). Use for "busco X", "tenés código ABC", "precio de la camiseta", etc. Returns id, name, code, price, category.',
+                'description' => 'Search sellable products by natural language, name fragments or internal code (SKU). Pass the customer request as-is (e.g. "bujía para un gol", "abrazadera 12 x 22"). Returns id, name, code, price, category.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
-                        'query' => ['type' => 'string', 'description' => 'Text to match against product name (partial) or exact/partial code'],
+                        'query' => ['type' => 'string', 'description' => 'Customer wording, product name fragment, or exact/partial code'],
                     ],
                     'required' => ['query'],
                 ],
@@ -3557,17 +3558,15 @@ class AssistantToolsService
             return 'query is required (product name or code).';
         }
 
-        $products = $this->whatsAppSellableProductsQuery($teamId)
-            ->with(['category:id,name', 'currency:id,symbol'])
-            ->where(function ($q) use ($raw): void
-            {
-                $q->where('name', 'LIKE', '%'.$raw.'%')
-                    ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($raw)])
-                    ->orWhere('code', 'LIKE', '%'.$raw.'%');
-            })
-            ->orderBy('name')
-            ->limit(20)
-            ->get();
+        $tokens = $this->productSearchTokens($raw);
+        $products = $this->productSearchQuery($teamId, $tokens)->limit(20)->get();
+        $closest = false;
+
+        if ($products->isEmpty() && count($tokens) > 1)
+        {
+            $products = $this->productSearchQuery($teamId, [$tokens[0]])->limit(20)->get();
+            $closest = $products->isNotEmpty();
+        }
 
         if ($products->isEmpty())
         {
@@ -3591,7 +3590,58 @@ class AssistantToolsService
             );
         })->implode("\n");
 
-        return $this->truncate("Matches:\n".$lines);
+        $heading = $closest
+            ? 'No exact match for "'.$raw.'". Closest published products:'
+            : 'Matches:';
+
+        return $this->truncate($heading."\n".$lines);
+    }
+
+    /**
+     * Significant tokens from a customer phrase, without Spanish stopwords.
+     *
+     * @return list<string>
+     */
+    private function productSearchTokens(string $raw): array
+    {
+        $parts = preg_split('/[\s,.;:\/+]+/u', SearchNormalizer::normalize($raw)) ?: [];
+        $stopwords = [
+            'para', 'un', 'una', 'unos', 'unas', 'de', 'del', 'el', 'la', 'los', 'las',
+            'y', 'o', 'en', 'con', 'por', 'a', 'al', 'que', 'se', 'su', 'the', 'for', 'and',
+        ];
+        $tokens = [];
+
+        foreach ($parts as $part)
+        {
+            if ($part === '' || in_array($part, $stopwords, true))
+            {
+                continue;
+            }
+
+            $tokens[] = $part;
+        }
+
+        return $tokens !== [] ? array_values(array_unique($tokens)) : [SearchNormalizer::normalize($raw)];
+    }
+
+    /**
+     * @param  list<string>  $tokens
+     * @return \Illuminate\Database\Eloquent\Builder<\App\Models\Product>
+     */
+    private function productSearchQuery(int $teamId, array $tokens): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = $this->whatsAppSellableProductsQuery($teamId)
+            ->with(['category:id,name', 'currency:id,symbol']);
+
+        foreach ($tokens as $token)
+        {
+            $query->where(function ($constraint) use ($token): void
+            {
+                SearchNormalizer::applyColumnsNavbarConditions($constraint, ['name', 'code', 'description'], $token);
+            });
+        }
+
+        return $query->orderBy('name');
     }
 
     /**

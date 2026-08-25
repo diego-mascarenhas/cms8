@@ -83,6 +83,118 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString((string) $product->id, $search);
     }
 
+    public function test_search_products_matches_natural_language_auto_parts(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $bujia = Category::query()->create([
+            'name' => 'Bujia',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+        $abrazadera = Category::query()->create([
+            'name' => 'Abrazadera',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 1,
+        ]);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        $gol = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'BUJIA 3 ELECT VW GOL POLO QUANTUM SAVEIRO 1.0 1.6 1.8 2.0 8V',
+            'code' => '28356',
+            'description' => 'BUJIA 3 ELECT VW GOL. Marca: NGK.',
+            'price' => 12047.85,
+            'currency_id' => $currencyId,
+            'category_id' => $bujia->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+        $bora = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'BUJIA 3 ELECT VW BORA 2.0 CADDY 1.6',
+            'code' => '25405',
+            'description' => 'BUJIA 3 ELECT VW BORA. Marca: NGK.',
+            'price' => 8984.98,
+            'currency_id' => $currencyId,
+            'category_id' => $bujia->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'ABRAZADERA 12 X 22 (MARCA PERFECTO) 9MM',
+            'code' => '25259',
+            'description' => 'ABRAZADERA 12 X 22. Marca: PERFECTO.',
+            'price' => 0,
+            'currency_id' => $currencyId,
+            'category_id' => $abrazadera->id,
+            'catalog_status' => 'draft',
+            'status' => false,
+            'whatsapp_enabled' => true,
+        ]);
+        $otherClamp = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'ABRAZADERA 16 X 27 (MARCA PERFECTO) 9MM',
+            'code' => '21861',
+            'description' => 'ABRAZADERA 16 X 27. Marca: PERFECTO.',
+            'price' => 989.93,
+            'currency_id' => $currencyId,
+            'category_id' => $abrazadera->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, '5491111223344');
+
+        $golSearch = $service->execute('search_products', ['query' => 'bujía para un gol']);
+        $this->assertStringContainsString('28356', $golSearch);
+        $this->assertStringContainsString((string) $gol->id, $golSearch);
+        $this->assertStringNotContainsString('25405', $golSearch);
+
+        $boraSearch = $service->execute('search_products', ['query' => 'Una bujía para un bora']);
+        $this->assertStringContainsString('25405', $boraSearch);
+        $this->assertStringContainsString((string) $bora->id, $boraSearch);
+
+        $clampSearch = $service->execute('search_products', ['query' => 'Una abrazadera 12 x 22']);
+        $this->assertStringContainsString('21861', $clampSearch);
+        $this->assertStringContainsString((string) $otherClamp->id, $clampSearch);
+        $this->assertStringContainsString('Closest published products', $clampSearch);
+        $this->assertStringNotContainsString('25259', $clampSearch);
+    }
+
     public function test_add_to_whatsapp_cart_tool_uses_cart_session(): void
     {
         $this->seed(CurrencySeeder::class);

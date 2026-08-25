@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Enums\ProductCatalogStatus;
 use App\Models\Product;
 use App\Support\DataTableFormatter;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder as QueryBuilder;
 use Yajra\DataTables\EloquentDataTable;
 use Yajra\DataTables\Html\Builder as HtmlBuilder;
@@ -65,6 +66,56 @@ class ProductDataTable extends DataTable
             ->editColumn('category.name', function ($product)
             {
                 return $product->category ? $product->category->name : '—';
+            })
+            ->filterColumn('name', function ($query, $keyword)
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                SearchNormalizer::applyColumnsNavbarConditions($query, ['name'], $keyword);
+            })
+            ->filterColumn('code', function ($query, $keyword)
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                SearchNormalizer::applyColumnsNavbarConditions($query, ['code'], $keyword);
+            })
+            ->filterColumn('store.name', function ($query, $keyword)
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $query->whereHas('store', function ($storeQuery) use ($keyword)
+                {
+                    SearchNormalizer::applyCollaboratorNameCondition($storeQuery, $keyword);
+                });
+            })
+            ->filterColumn('category.name', function ($query, $keyword)
+            {
+                $keyword = trim((string) $keyword);
+
+                if ($keyword === '')
+                {
+                    return;
+                }
+
+                $query->whereHas('category', function ($categoryQuery) use ($keyword)
+                {
+                    SearchNormalizer::applyCollaboratorNameCondition($categoryQuery, $keyword);
+                });
             })
             ->rawColumns(['name', 'status', 'price', 'store.name', 'category.name', 'action'])
             ->addColumn('action', function ($product)
