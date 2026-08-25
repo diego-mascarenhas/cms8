@@ -873,7 +873,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'add_to_whatsapp_cart',
-                'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Use when they confirm after you offered a product: "sí", "dale", "agregalo", "agregame", "agregame 2", "poneme 2", "quiero 2". Pass quantity when they say how many. If they omit the name, pass the last product_id from search_products (or omit identifiers to use that last product). Do not ask a WhatsApp customer to type "comprar" plus the name. Pass at most one of: product_id, product_code, or product_name.',
+                'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Use when they confirm after you offered a product: "sí", "dale", "agregalo", "agregame", "agregame 2", "poneme 2", "quiero 2". Pass quantity when they say how many. If they omit the name, pass the last product_id from search_products (or omit identifiers to use that last product). Never tell a WhatsApp customer to write to another phone number. Pass at most one of: product_id, product_code, or product_name.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -882,6 +882,15 @@ class AssistantToolsService
                         'product_name' => ['type' => 'string', 'description' => 'Product name (partial match, first hit)'],
                         'quantity' => ['type' => 'integer', 'description' => 'Quantity (default 1, min 1)'],
                     ],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'view_whatsapp_cart',
+                'description' => 'Show the WhatsApp customer\'s current shopping cart (items, quantities, total). Use when they ask to see the cart ("carrito", "quiero ver mi carrito"). Never say you cannot show it and never give another WhatsApp number. If the cart is empty, say so and offer to add with add_to_whatsapp_cart.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
                     'required' => [],
                 ],
             ],
@@ -964,6 +973,7 @@ class AssistantToolsService
                 'list_product_catalog' => $this->listProductCatalog($teamId, $input),
                 'search_products' => $this->searchProducts($teamId, $input),
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
+                'view_whatsapp_cart' => $this->viewWhatsAppCart($teamId),
                 'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
                 'get_cms_content' => $this->getCmsContent($teamId, $user, $input),
                 'create_cms_content' => $this->createCmsContent($teamId, $user, $input),
@@ -3919,6 +3929,43 @@ class AssistantToolsService
         return Gate::forUser($user)->allows('viewAny', Post::class);
     }
 
+    private function viewWhatsAppCart(int $teamId): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return 'Cannot read a WhatsApp cart: no customer phone in this session. If this is inbound WhatsApp the phone should already be set — retry view_whatsapp_cart. Do not give the customer another phone number.';
+        }
+
+        Cart::session($this->contextCustomerPhone);
+        $cartItems = Cart::getContent();
+
+        if ($cartItems->isEmpty())
+        {
+            return 'The WhatsApp cart is empty. Tell them that in one sentence and offer to add with add_to_whatsapp_cart. Do not give another phone number.';
+        }
+
+        $lines = ['WhatsApp cart for this customer:'];
+        foreach ($cartItems as $item)
+        {
+            $lines[] = sprintf(
+                '- %s x%d at $%s (line $%s)',
+                $item->name,
+                (int) $item->quantity,
+                number_format((float) $item->price, 2),
+                number_format((float) $item->price * (int) $item->quantity, 2),
+            );
+        }
+        $lines[] = 'Total: $'.number_format((float) Cart::getTotal(), 2).'.';
+        $lines[] = 'Relay this cart in plain language. Then offer *finalizar* to create the order. Do not give another phone number.';
+
+        return $this->truncate(implode("\n", $lines));
+    }
+
     private function addToWhatsAppCart(int $teamId, array $input): string
     {
         if (! $this->teamHasProductsModule($teamId))
@@ -3928,7 +3975,7 @@ class AssistantToolsService
 
         if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
         {
-            return 'Cannot attach to a WhatsApp cart: no customer phone in this session. Tell the customer to write from WhatsApp, or use natural phrases: comprar plus name or code, agregar quantity and name, carrito, quitar quantity and name or quitar todo name, finalizar. If you are in the web assistant with a recipient phone, open the assistant with that recipient selected.';
+            return 'Cannot attach to a WhatsApp cart: no customer phone in this session. If this is inbound WhatsApp the phone should already be set — retry add_to_whatsapp_cart. Do not give the customer another phone number. If this is the web assistant, the operator must select the recipient.';
         }
 
         $product = $this->resolveWhatsAppProduct($teamId, $input);

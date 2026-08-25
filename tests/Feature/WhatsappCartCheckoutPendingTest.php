@@ -180,5 +180,8 @@ class WhatsappCartCheckoutPendingTest extends TestCase
 
         $this->assertSame('assistant', $intent);
         $this->assertSame('cart', $method->invoke($service, 'Agregame 2'));
+        $this->assertSame('cart', $method->invoke($service, 'Quiero ver mi carrito'));
+        $this->assertSame('cart', $method->invoke($service, 'Ver carrito'));
+        $this->assertSame('cart', $method->invoke($service, 'Qué hay en el carrito'));
     }
 }

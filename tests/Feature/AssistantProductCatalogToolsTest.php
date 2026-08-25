@@ -257,6 +257,11 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertSame(1, Cart::getContent()->count());
         $item = Cart::getContent()->first();
         $this->assertSame(2, (int) $item->quantity);
+
+        $cart = $service->execute('view_whatsapp_cart', []);
+        $this->assertStringContainsString('Zapato test', $cart);
+        $this->assertStringContainsString('x2', $cart);
+        $this->assertStringContainsString('finalizar', $cart);
     }
 
     public function test_add_to_whatsapp_cart_uses_last_searched_product_when_only_quantity_is_given(): void

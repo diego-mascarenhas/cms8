@@ -7,6 +7,18 @@ use PHPUnit\Framework\TestCase;
 
 class WhatsAppNaturalCartPhraseTest extends TestCase
 {
+    public function test_view_cart_intent_is_discovered_beyond_the_command(): void
+    {
+        $this->assertTrue(WhatsAppNaturalCartPhrase::isViewCart('Ver carrito'));
+        $this->assertTrue(WhatsAppNaturalCartPhrase::isViewCart('Quiero ver mi carrito'));
+        $this->assertTrue(WhatsAppNaturalCartPhrase::isViewCart('Puedo ver lo que tengo en el carrito?'));
+        $this->assertTrue(WhatsAppNaturalCartPhrase::isViewCart('Qué hay en el carrito'));
+        $this->assertTrue(WhatsAppNaturalCartPhrase::isViewCart('carrito'));
+        $this->assertFalse(WhatsAppNaturalCartPhrase::isViewCart('Agregar 3 vestidos al carrito'));
+        $this->assertFalse(WhatsAppNaturalCartPhrase::isViewCart('vaciar carrito'));
+        $this->assertFalse(WhatsAppNaturalCartPhrase::isViewCart('Agregar cita para hoy'));
+    }
+
     public function test_agregame_two_is_a_quantity_only_add(): void
     {
         $this->assertSame(['quantity' => 2], WhatsAppNaturalCartPhrase::quantityOnlyAdd('Agregame 2'));

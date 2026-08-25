@@ -40,6 +40,7 @@ class AssistantToolAuthorizationService
         'list_product_catalog',
         'search_products',
         'add_to_whatsapp_cart',
+        'view_whatsapp_cart',
     ];
 
     /**
