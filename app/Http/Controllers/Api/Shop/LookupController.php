@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Shop;
 
 use App\Enums\ProductCatalogStatus;
 use App\Enums\ProductStockStatus;
+use App\Enums\ShoppingCartChannel;
 use App\Http\Controllers\Api\Shop\Concerns\ResolvesShopTeam;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
@@ -83,6 +84,7 @@ class LookupController extends Controller
                     ['key' => 'delivered', 'label' => __('Entregado')],
                     ['key' => 'cancelled', 'label' => __('Cancelado')],
                 ],
+                'cart_channels' => $this->enumOptions(ShoppingCartChannel::cases()),
             ],
         ]);
     }

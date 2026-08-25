@@ -45,7 +45,62 @@ class OpenCartListingService
 
     public function countForTeam(int $teamId): int
     {
-        return $this->forTeam($teamId)->count();
+        return $this->shoppingCarts->countOpenForTeam($teamId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toApiArray(ShoppingCart $cart, bool $withItems = false): array
+    {
+        $channel = $cart->channel instanceof ShoppingCartChannel
+            ? $cart->channel
+            : ShoppingCartChannel::WhatsApp;
+        $phone = $channel === ShoppingCartChannel::PublicShop
+            ? ''
+            : WhatsAppCartSessionKey::fromPhone((string) $cart->session_key);
+        $contact = $phone !== ''
+            ? $this->userResolver->findContactInTeamByPhone((int) $cart->team_id, $phone)
+            : null;
+        $items = $cart->relationLoaded('items')
+            ? $cart->items
+            : $cart->items()->withoutGlobalScope('team')->get();
+
+        $payload = [
+            'id' => (int) $cart->id,
+            'channel' => $channel->value,
+            'channel_label' => $channel->label(),
+            'customer' => $contact?->name ?? ($phone !== '' ? $phone : __('Visitante')),
+            'phone' => $phone !== '' ? $phone : null,
+            'contact' => $contact ? [
+                'id' => (int) $contact->id,
+                'name' => $contact->name,
+            ] : null,
+            'items_label' => $items
+                ->map(fn ($item): string => ((int) $item->quantity).' × '.(string) $item->name)
+                ->implode(', '),
+            'quantity' => (int) $items->sum('quantity'),
+            'total' => round((float) $items->sum(fn ($item): float => $item->lineTotal()), 2),
+            'updated_at' => $cart->updated_at?->toIso8601String(),
+        ];
+
+        if ($withItems)
+        {
+            $payload['items'] = $items
+                ->map(fn ($item): array => [
+                    'id' => (int) $item->id,
+                    'product_id' => (int) $item->product_id,
+                    'name' => (string) $item->name,
+                    'quantity' => (int) $item->quantity,
+                    'unit_price' => (float) $item->price,
+                    'line_total' => $item->lineTotal(),
+                    'category_name' => $item->category_name,
+                ])
+                ->values()
+                ->all();
+        }
+
+        return $payload;
     }
 
     /**

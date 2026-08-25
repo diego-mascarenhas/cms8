@@ -7,6 +7,7 @@ use App\Helpers\WhatsAppCartSessionKey;
 use App\Models\Product;
 use App\Models\ShoppingCart;
 use App\Models\ShoppingCartItem;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
@@ -188,12 +189,43 @@ class ShoppingCartService
      */
     public function openCartsForTeam(int $teamId): Collection
     {
-        return ShoppingCart::withoutGlobalScope('team')
-            ->where('team_id', $teamId)
-            ->whereHas('items', fn ($query) => $query->withoutGlobalScope('team'))
+        return $this->openCartsQuery($teamId)
             ->with(['items' => fn ($query) => $query->withoutGlobalScope('team')])
             ->orderByDesc('updated_at')
             ->get();
+    }
+
+    /**
+     * @return Builder<ShoppingCart>
+     */
+    public function openCartsQuery(int $teamId): Builder
+    {
+        return ShoppingCart::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->whereHas('items', fn ($query) => $query->withoutGlobalScope('team'));
+    }
+
+    public function countOpenForTeam(int $teamId): int
+    {
+        if ($teamId < 1)
+        {
+            return 0;
+        }
+
+        return $this->openCartsQuery($teamId)->count();
+    }
+
+    public function findForTeam(int $teamId, int $cartId): ?ShoppingCart
+    {
+        if ($teamId < 1 || $cartId < 1)
+        {
+            return null;
+        }
+
+        return ShoppingCart::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->with(['items' => fn ($query) => $query->withoutGlobalScope('team')])
+            ->find($cartId);
     }
 
     /**

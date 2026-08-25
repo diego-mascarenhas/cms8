@@ -2,11 +2,16 @@
 
 namespace Tests\Feature\Api;
 
+use App\Enums\ShoppingCartChannel;
+use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\Store;
+use App\Models\Team;
 use App\Models\User;
+use App\Services\ShoppingCartService;
 use Database\Seeders\CurrencySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
@@ -98,6 +103,7 @@ class ShopApiTest extends TestCase
                     'fulfillment_types',
                     'payment_statuses',
                     'delivery_statuses',
+                    'cart_channels',
                 ],
             ]);
 
@@ -113,7 +119,8 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.products_count', 0)
             ->assertJsonPath('data.stores_count', 1)
-            ->assertJsonPath('data.orders_count', 0);
+            ->assertJsonPath('data.orders_count', 0)
+            ->assertJsonPath('data.open_carts_count', 0);
     }
 
     public function test_can_crud_product_and_create_category(): void
@@ -321,5 +328,106 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('data.payment_status', 'paid')
             ->assertJsonPath('data.delivery_status', 'dispatched')
             ->assertJsonPath('data.notes', 'Listo para envío');
+    }
+
+    public function test_can_list_show_and_delete_open_carts(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+        $otherTeam = Team::factory()->create();
+
+        $carts = app(ShoppingCartService::class);
+        $ownProduct = $this->createPricedProduct($team, 25);
+        $otherProduct = $this->createPricedProduct($otherTeam, 99);
+        $ownCart = $carts->forWhatsApp((int) $team->id, '5491199908800');
+        $carts->addProduct($ownCart, $ownProduct, 2);
+        $carts->addProduct($carts->forWhatsApp((int) $otherTeam->id, '5491199908801'), $otherProduct, 1);
+        $carts->addProduct($carts->forPublicShop((int) $team->id, 'shop-session-1'), $ownProduct, 1);
+
+        $list = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/carts')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('pagination.total', 2);
+
+        $ids = collect($list->json('data'))->pluck('id')->all();
+        $channels = collect($list->json('data'))->pluck('channel')->all();
+        $this->assertContains($ownCart->id, $ids);
+        $this->assertContains(ShoppingCartChannel::WhatsApp->value, $channels);
+        $this->assertContains(ShoppingCartChannel::PublicShop->value, $channels);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/carts?channel=whatsapp')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.channel', ShoppingCartChannel::WhatsApp->value)
+            ->assertJsonPath('data.0.phone', '5491199908800')
+            ->assertJsonPath('data.0.quantity', 2);
+
+        $show = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/carts/'.$ownCart->id)
+            ->assertOk()
+            ->assertJsonPath('data.id', $ownCart->id)
+            ->assertJsonPath('data.items.0.name', $ownProduct->name)
+            ->assertJsonPath('data.items.0.quantity', 2);
+
+        $this->assertEqualsWithDelta(50.0, (float) $show->json('data.total'), 0.01);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.open_carts_count', 2);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/shop/carts/'.$ownCart->id)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/carts/'.$ownCart->id)
+            ->assertNotFound();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/carts')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1);
+    }
+
+    public function test_carts_require_orders_module(): void
+    {
+        [, , $token] = $this->adminWithShopModules(false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/carts')
+            ->assertForbidden()
+            ->assertJsonPath('success', false);
+    }
+
+    private function createPricedProduct(Team $team, float $price): Product
+    {
+        $currencyId = Currency::query()->firstOrCreate(
+            ['code' => 'ARS'],
+            ['name' => 'Peso argentino', 'symbol' => '$', 'status' => true],
+        )->id;
+
+        $category = Category::withoutGlobalScopes()->create([
+            'name' => 'Shop API',
+            'module_id' => null,
+            'team_id' => $team->id,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        return Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Producto carrito '.$price,
+            'code' => 'CART-'.$team->id.'-'.$price,
+            'description' => 'Test',
+            'price' => $price,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
     }
 }
