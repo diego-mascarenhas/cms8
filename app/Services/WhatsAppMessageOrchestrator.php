@@ -2774,8 +2774,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return $this->addToCartFromNeedle($phoneNumber, $teamId, $addCommand['needle'], $addCommand['quantity']);
             }
 
-            // Check for cart view commands
-            if (in_array($normalizedMessage, ['carrito', 'ver carrito', 'mi carrito', 'cart']))
+            if (WhatsAppNaturalCartPhrase::isViewCart($normalizedMessage))
             {
                 return $this->viewCart($phoneNumber, $teamId);
             }
@@ -2866,11 +2865,12 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return 'service';
         }
 
+        if (WhatsAppNaturalCartPhrase::isViewCart($normalized))
+        {
+            return 'cart';
+        }
+
         $cartExact = [
-            'carrito',
-            'ver carrito',
-            'mi carrito',
-            'cart',
             'vaciar carrito',
             'limpiar carrito',
             'borrar carrito',

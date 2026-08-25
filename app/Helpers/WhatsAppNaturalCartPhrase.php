@@ -34,6 +34,37 @@ class WhatsAppNaturalCartPhrase
     ];
 
     /**
+     * View-cart intent: the customer wants to see what is already in the cart.
+     * Matches natural wording, not only the *carrito* command.
+     */
+    public static function isViewCart(string $message): bool
+    {
+        $ascii = self::normalizedAscii($message);
+        if ($ascii === '')
+        {
+            return false;
+        }
+
+        if (preg_match('/\b(agregar|anadir|agrega|agregame|quitar|eliminar|sacar|vaciar|limpiar|borrar|sumar|poner|poneme)\b/u', $ascii) === 1)
+        {
+            return false;
+        }
+
+        $mentionsCart = preg_match('/\b(carrito|cart)\b/u', $ascii) === 1;
+        if (! $mentionsCart)
+        {
+            return false;
+        }
+
+        if (in_array($ascii, ['carrito', 'cart', 'mi carrito', 'el carrito'], true))
+        {
+            return true;
+        }
+
+        return preg_match('/\b(ver|veo|viste|mostrar|mostrame|mostraros|dame|pasa|pasame|quiero|mira|mirar|listar|revisar|chequear|consultar|decir|decime|tiene|tienen|hay|tengo)\b/u', $ascii) === 1;
+    }
+
+    /**
      * @return array{quantity: int}|null
      */
     public static function quantityOnlyAdd(string $message): ?array

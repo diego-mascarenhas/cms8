@@ -318,6 +318,44 @@ class WhatsappCartAgregarTest extends TestCase
         $this->assertSame(2, (int) $item->quantity);
     }
 
+    public function test_quiero_ver_mi_carrito_shows_cart_contents(): void
+    {
+        $team = $this->createTeamWithOwner();
+        $product = $this->createClampProduct($team);
+        $phone = '5491199900029';
+        Cart::session($phone)->clear();
+        Cart::session($phone)->add([
+            'id' => $product->id,
+            'name' => $product->name,
+            'price' => $product->currentSellingPrice(),
+            'quantity' => 4,
+            'attributes' => [
+                'team_id' => $team->id,
+                'currency_id' => $product->currency_id,
+                'description' => $product->description,
+                'category_name' => $product->category?->name ?? '',
+            ],
+        ]);
+
+        $service = new class($team) extends WhatsAppMessageOrchestrator
+        {
+            public string $lastMessage = '';
+
+            public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
+            {
+                $this->lastMessage = (string) $message;
+
+                return ['success' => true];
+            }
+        };
+
+        $result = $service->processCartCommands($phone, 'Ver carrito');
+
+        $this->assertTrue($result['success'] ?? false);
+        $this->assertStringContainsString('ABRAZADERA 16 X 27', $service->lastMessage);
+        $this->assertStringContainsString('4', $service->lastMessage);
+    }
+
     public function test_agregar_message_does_not_trigger_product_catalog(): void
     {
         $team = $this->createTeamWithOwner();
