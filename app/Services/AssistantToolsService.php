@@ -36,7 +36,6 @@ use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
 use App\Support\TeamTaskBoardResolver;
 use App\Support\WhatsAppProductRelevanceSearch;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -3941,8 +3940,8 @@ class AssistantToolsService
             return 'Cannot read a WhatsApp cart: no customer phone in this session. If this is inbound WhatsApp the phone should already be set — retry view_whatsapp_cart. Do not give the customer another phone number.';
         }
 
-        Cart::session($this->contextCustomerPhone);
-        $cartItems = Cart::getContent();
+        $carts = app(ShoppingCartService::class);
+        $cartItems = $carts->whatsAppLines($teamId, $this->contextCustomerPhone);
 
         if ($cartItems->isEmpty())
         {
@@ -3960,7 +3959,7 @@ class AssistantToolsService
                 number_format((float) $item->price * (int) $item->quantity, 2),
             );
         }
-        $lines[] = 'Total: $'.number_format((float) Cart::getTotal(), 2).'.';
+        $lines[] = 'Total: $'.number_format((float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity), 2).'.';
         $lines[] = 'Relay this cart in plain language. Then offer *finalizar* to create the order. Do not give another phone number.';
 
         return $this->truncate(implode("\n", $lines));
@@ -3995,39 +3994,13 @@ class AssistantToolsService
                 : 1;
         }
 
-        Cart::session($this->contextCustomerPhone);
-        $cartItems = Cart::getContent();
-        $existingItem = $cartItems->where('id', $product->id)->first();
-
-        if ($existingItem)
-        {
-            Cart::update($product->id, [
-                'quantity' => [
-                    'relative' => false,
-                    'value' => (int) $existingItem->quantity + $quantity,
-                ],
-            ]);
-            $newQty = (int) $existingItem->quantity + $quantity;
-        } else
-        {
-            Cart::add([
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->currentSellingPrice(),
-                'quantity' => $quantity,
-                'attributes' => [
-                    'team_id' => $teamId,
-                    'store_id' => $product->store_id,
-                    'currency_id' => $product->currency_id,
-                    'description' => $product->description,
-                    'category_name' => $product->category?->name ?? '',
-                ],
-            ]);
-            $newQty = $quantity;
-        }
+        $carts = app(ShoppingCartService::class);
+        $cart = $carts->forWhatsApp($teamId, $this->contextCustomerPhone);
+        $line = $carts->addProduct($cart, $product, $quantity);
+        $newQty = (int) $line->quantity;
 
         $symbol = $product->currency?->symbol ?? '$';
-        $total = Cart::getTotal();
+        $total = $carts->total($cart);
 
         WhatsAppLastOfferedProduct::remember($this->contextCustomerPhone, $teamId, (int) $product->id);
 

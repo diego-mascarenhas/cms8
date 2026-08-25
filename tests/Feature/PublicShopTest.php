@@ -2,12 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ShoppingCartChannel;
 use App\Livewire\PublicShop\ShoppingAssistant;
 use App\Models\Category;
 use App\Models\Currency;
-use App\Models\DatabaseStorageModel;
 use App\Models\Module;
 use App\Models\Product;
+use App\Models\ShoppingCart;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -175,7 +176,7 @@ class PublicShopTest extends TestCase
             ->assertRedirect();
     }
 
-    public function test_cart_persists_to_cart_storage_table(): void
+    public function test_cart_persists_to_shopping_carts_table(): void
     {
         $team = $this->makeShopTeam();
         $slug = $this->publicShopDomainForTeam($team);
@@ -185,12 +186,13 @@ class PublicShopTest extends TestCase
             ->call('addToCart', (int) $product->id)
             ->assertSet('cart.'.((string) $product->id), 1);
 
-        $ids = DatabaseStorageModel::query()->pluck('id')->all();
-        $this->assertNotEmpty($ids, 'Expected cart_storage to persist the public shop cart.');
+        $cart = ShoppingCart::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('channel', ShoppingCartChannel::PublicShop)
+            ->where('session_key', 'like', 'pubshop_'.$team->id.'_%')
+            ->first();
 
-        $prefix = 'pubshop_'.$team->id.'_';
-        $this->assertTrue(
-            collect($ids)->contains(fn (string $id) => str_starts_with($id, $prefix)),
-        );
+        $this->assertNotNull($cart, 'Expected shopping_carts to persist the public shop cart.');
+        $this->assertTrue($cart->items()->withoutGlobalScope('team')->where('product_id', $product->id)->exists());
     }
 }

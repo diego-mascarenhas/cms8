@@ -26,8 +26,8 @@
 </div>
 
 <div class="card">
-	<div class="card-datatable table-responsive">
-		{{ $dataTable->table(['class' => 'datatables-open-carts table table-hover']) }}
+	<div class="card-body">
+		{{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
 	</div>
 </div>
 @endsection

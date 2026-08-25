@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
+use App\Services\ShoppingCartService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,10 @@ class DashboardController extends Controller
 {
     use FormatsShopResources;
     use ResolvesShopTeam;
+
+    public function __construct(
+        protected ShoppingCartService $shoppingCarts,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -42,6 +47,7 @@ class DashboardController extends Controller
                 'stores_count' => Store::query()->count(),
                 'orders_count' => Order::query()->count(),
                 'pending_orders' => Order::query()->where('payment_status', 'pending')->count(),
+                'open_carts_count' => $this->shoppingCarts->countOpenForTeam((int) $team->id),
                 'recent_orders' => $recentOrders,
             ],
         ]);

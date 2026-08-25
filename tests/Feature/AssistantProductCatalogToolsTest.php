@@ -13,7 +13,7 @@ use App\Services\AgentConversationContextService;
 use App\Services\Assistant\AssistantActorContextService;
 use App\Services\AssistantToolsService;
 use App\Services\ChatAssistantReplyService;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
+use App\Services\ShoppingCartService;
 use Database\Seeders\CurrencySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -247,7 +247,6 @@ class AssistantProductCatalogToolsTest extends TestCase
         ]);
 
         $phone = '5491199988877';
-        Cart::session($phone)->clear();
 
         $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
@@ -256,9 +255,9 @@ class AssistantProductCatalogToolsTest extends TestCase
         $msg = $service->execute('add_to_whatsapp_cart', ['product_code' => 'ZAP-99', 'quantity' => 2]);
         $this->assertStringContainsString('Zapato test', $msg);
 
-        Cart::session($phone);
-        $this->assertSame(1, Cart::getContent()->count());
-        $item = Cart::getContent()->first();
+        $lines = app(ShoppingCartService::class)->whatsAppLines((int) $team->id, $phone);
+        $this->assertSame(1, $lines->count());
+        $item = $lines->first();
         $this->assertSame(2, (int) $item->quantity);
 
         $cart = $service->execute('view_whatsapp_cart', []);
@@ -315,7 +314,6 @@ class AssistantProductCatalogToolsTest extends TestCase
         ]);
 
         $phone = '5491199988800';
-        Cart::session($phone)->clear();
 
         $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
@@ -328,8 +326,7 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('ABRAZADERA 16 X 27', $msg);
         $this->assertStringContainsString('finalizar', $msg);
 
-        Cart::session($phone);
-        $item = Cart::getContent()->first();
+        $item = app(ShoppingCartService::class)->whatsAppLines((int) $team->id, $phone)->first();
         $this->assertNotNull($item);
         $this->assertSame((int) $product->id, (int) $item->id);
         $this->assertSame(2, (int) $item->quantity);
@@ -474,16 +471,14 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertNotNull($currencyId);
 
         $phone = '5491199988811';
-        Cart::session($phone)->clear();
-        Cart::session($phone)->add([
-            'id' => 21861,
+        $cart = app(ShoppingCartService::class)->forWhatsApp((int) $team->id, $phone);
+        $cart->items()->withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'product_id' => 21861,
             'name' => 'ABRAZADERA 8 X 16',
             'price' => 989.43,
             'quantity' => 4,
-            'attributes' => [
-                'team_id' => $team->id,
-                'category_name' => 'Abrazaderas',
-            ],
+            'category_name' => 'Abrazaderas',
         ]);
 
         $service = new class(app(AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
@@ -538,7 +533,6 @@ class AssistantProductCatalogToolsTest extends TestCase
         $user = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $user->id]);
         $phone = '5491199988812';
-        Cart::session($phone)->clear();
 
         $service = new class(app(AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
         {

@@ -9,8 +9,8 @@ use App\Models\Currency;
 use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ShoppingCartService;
 use App\Services\WhatsAppMessageOrchestrator;
-use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -30,6 +30,22 @@ class WhatsappCartAgregarTest extends TestCase
         $user->assignRole($role);
 
         return $team;
+    }
+
+    private function carts(): ShoppingCartService
+    {
+        return app(ShoppingCartService::class);
+    }
+
+    private function firstCartLine(int $teamId, string $phone): ?object
+    {
+        return $this->carts()->whatsAppLines($teamId, $phone)->first();
+    }
+
+    private function seedWhatsAppCart(Team $team, string $phone, Product $product, int $quantity = 1): void
+    {
+        $cart = $this->carts()->forWhatsApp((int) $team->id, $phone);
+        $this->carts()->addProduct($cart, $product, $quantity);
     }
 
     private function silentOrchestrator(Team $team): WhatsAppMessageOrchestrator
@@ -107,19 +123,7 @@ class WhatsappCartAgregarTest extends TestCase
         $product = $this->createMidiDressProduct($team);
         $phone = '5491199900021';
 
-        Cart::session($phone)->clear();
-        Cart::session($phone)->add([
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->currentSellingPrice(),
-            'quantity' => 1,
-            'attributes' => [
-                'team_id' => $team->id,
-                'currency_id' => $product->currency_id,
-                'description' => $product->description,
-                'category_name' => $product->category->name ?? '',
-            ],
-        ]);
+        $this->seedWhatsAppCart($team, $phone, $product, 1);
 
         $service = new class($team) extends WhatsAppMessageOrchestrator
         {
@@ -134,8 +138,7 @@ class WhatsappCartAgregarTest extends TestCase
         $this->assertIsArray($result);
         $this->assertTrue($result['success']);
 
-        Cart::session($phone);
-        $item = Cart::getContent()->first();
+        $item = $this->firstCartLine((int) $team->id, $phone);
         $this->assertNotNull($item);
         $this->assertSame(4, (int) $item->quantity);
     }
@@ -148,22 +151,13 @@ class WhatsappCartAgregarTest extends TestCase
         $intl = '34600000000';
         $national = '600000000';
 
-        Cart::session(WhatsAppCartSessionKey::fromPhone($intl))->clear();
-        Cart::session(WhatsAppCartSessionKey::fromPhone($intl))->add([
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->currentSellingPrice(),
-            'quantity' => 1,
-            'attributes' => [
-                'team_id' => $team->id,
-                'currency_id' => $product->currency_id,
-                'description' => $product->description,
-                'category_name' => $product->category->name ?? '',
-            ],
-        ]);
+        $this->seedWhatsAppCart($team, $intl, $product, 1);
 
-        Cart::session(WhatsAppCartSessionKey::fromPhone($national));
-        $this->assertSame(1, Cart::getContent()->count());
+        $this->assertSame(1, $this->carts()->whatsAppLines((int) $team->id, $national)->count());
+        $this->assertSame(
+            WhatsAppCartSessionKey::fromPhone($intl),
+            WhatsAppCartSessionKey::fromPhone($national),
+        );
     }
 
     public function test_agregame_two_adds_last_offered_product(): void
@@ -172,7 +166,6 @@ class WhatsappCartAgregarTest extends TestCase
         $product = $this->createMidiDressProduct($team);
         $phone = '5491199900023';
 
-        Cart::session($phone)->clear();
         WhatsAppLastOfferedProduct::remember($phone, (int) $team->id, (int) $product->id);
 
         $service = new class($team) extends WhatsAppMessageOrchestrator
@@ -188,8 +181,7 @@ class WhatsappCartAgregarTest extends TestCase
         $this->assertIsArray($result);
         $this->assertTrue($result['success']);
 
-        Cart::session($phone);
-        $item = Cart::getContent()->first();
+        $item = $this->firstCartLine((int) $team->id, $phone);
         $this->assertNotNull($item);
         $this->assertSame((int) $product->id, (int) $item->id);
         $this->assertSame(2, (int) $item->quantity);
@@ -200,21 +192,18 @@ class WhatsappCartAgregarTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createClampProduct($team);
         $phone = '5491199900024';
-        Cart::session($phone)->clear();
 
         $service = $this->silentOrchestrator($team);
 
         $byCode = $service->processCartCommands($phone, 'Comprar producto 21861');
         $this->assertTrue($byCode['success']);
-        Cart::session($phone);
-        $this->assertSame(1, (int) Cart::getContent()->first()->quantity);
+        $this->assertSame(1, (int) $this->firstCartLine((int) $team->id, $phone)->quantity);
 
-        Cart::session($phone)->clear();
+        $this->carts()->clear($this->carts()->forWhatsApp((int) $team->id, $phone));
         $byName = $service->processCartCommands($phone, 'comprar abrazadera 16 x 27');
         $this->assertTrue($byName['success']);
-        Cart::session($phone);
-        $this->assertSame((int) $product->id, (int) Cart::getContent()->first()->id);
-        $this->assertSame(1, (int) Cart::getContent()->first()->quantity);
+        $this->assertSame((int) $product->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
+        $this->assertSame(1, (int) $this->firstCartLine((int) $team->id, $phone)->quantity);
     }
 
     public function test_agregame_abbreviation_and_spanish_quantity_add_clamp(): void
@@ -235,26 +224,22 @@ class WhatsappCartAgregarTest extends TestCase
         $phone = '5491199900027';
         $service = $this->silentOrchestrator($team);
 
-        Cart::session($phone)->clear();
         $short = $service->processCartCommands($phone, 'Agregame 2 abraz de 8');
         $this->assertTrue($short['success'] ?? false);
-        Cart::session($phone);
-        $this->assertSame((int) $eight->id, (int) Cart::getContent()->first()->id);
-        $this->assertSame(2, (int) Cart::getContent()->first()->quantity);
+        $this->assertSame((int) $eight->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
+        $this->assertSame(2, (int) $this->firstCartLine((int) $team->id, $phone)->quantity);
 
-        Cart::session($phone)->clear();
+        $this->carts()->clear($this->carts()->forWhatsApp((int) $team->id, $phone));
         $words = $service->processCartCommands($phone, 'agregame dos ABRAZADERA 8 X 16');
         $this->assertTrue($words['success'] ?? false);
-        Cart::session($phone);
-        $this->assertSame((int) $eight->id, (int) Cart::getContent()->first()->id);
-        $this->assertSame(2, (int) Cart::getContent()->first()->quantity);
+        $this->assertSame((int) $eight->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
+        $this->assertSame(2, (int) $this->firstCartLine((int) $team->id, $phone)->quantity);
 
-        Cart::session($phone)->clear();
+        $this->carts()->clear($this->carts()->forWhatsApp((int) $team->id, $phone));
         $priced = $service->processCartCommands($phone, 'Comprar  2 ABRAZADERA 8 X 16 a $989.43 c/u');
         $this->assertTrue($priced['success'] ?? false);
-        Cart::session($phone);
-        $this->assertSame((int) $eight->id, (int) Cart::getContent()->first()->id);
-        $this->assertSame(2, (int) Cart::getContent()->first()->quantity);
+        $this->assertSame((int) $eight->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
+        $this->assertSame(2, (int) $this->firstCartLine((int) $team->id, $phone)->quantity);
     }
 
     public function test_add_to_cart_succeeds_when_category_was_soft_deleted(): void
@@ -265,13 +250,11 @@ class WhatsappCartAgregarTest extends TestCase
         $product->unsetRelation('category');
 
         $phone = '5491199900028';
-        Cart::session($phone)->clear();
 
         $result = $this->silentOrchestrator($team)->processCartCommands($phone, 'comprar '.$product->code);
 
         $this->assertTrue($result['success'] ?? false);
-        Cart::session($phone);
-        $this->assertSame((int) $product->id, (int) Cart::getContent()->first()->id);
+        $this->assertSame((int) $product->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
     }
 
     public function test_comprar_ranks_closest_size_when_measure_is_off(): void
@@ -290,14 +273,12 @@ class WhatsappCartAgregarTest extends TestCase
             'whatsapp_enabled' => true,
         ]);
         $phone = '5491199900026';
-        Cart::session($phone)->clear();
 
         $result = $this->silentOrchestrator($team)->processCartCommands($phone, 'comprar abrazadera 16 x 28');
 
         $this->assertTrue($result['success']);
-        Cart::session($phone);
-        $this->assertSame((int) $closer->id, (int) Cart::getContent()->first()->id);
-        $this->assertNotSame((int) $farther->id, (int) Cart::getContent()->first()->id);
+        $this->assertSame((int) $closer->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
+        $this->assertNotSame((int) $farther->id, (int) $this->firstCartLine((int) $team->id, $phone)->id);
     }
 
     public function test_comprar_two_of_these_uses_last_offered_product(): void
@@ -305,15 +286,13 @@ class WhatsappCartAgregarTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createClampProduct($team);
         $phone = '5491199900025';
-        Cart::session($phone)->clear();
         WhatsAppLastOfferedProduct::remember($phone, (int) $team->id, (int) $product->id);
 
         $service = $this->silentOrchestrator($team);
         $result = $service->processCartCommands($phone, 'Comprar 2 de estas unidades');
 
         $this->assertTrue($result['success']);
-        Cart::session($phone);
-        $item = Cart::getContent()->first();
+        $item = $this->firstCartLine((int) $team->id, $phone);
         $this->assertSame((int) $product->id, (int) $item->id);
         $this->assertSame(2, (int) $item->quantity);
     }
@@ -323,19 +302,7 @@ class WhatsappCartAgregarTest extends TestCase
         $team = $this->createTeamWithOwner();
         $product = $this->createClampProduct($team);
         $phone = '5491199900029';
-        Cart::session($phone)->clear();
-        Cart::session($phone)->add([
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->currentSellingPrice(),
-            'quantity' => 4,
-            'attributes' => [
-                'team_id' => $team->id,
-                'currency_id' => $product->currency_id,
-                'description' => $product->description,
-                'category_name' => $product->category?->name ?? '',
-            ],
-        ]);
+        $this->seedWhatsAppCart($team, $phone, $product, 4);
 
         $service = new class($team) extends WhatsAppMessageOrchestrator
         {

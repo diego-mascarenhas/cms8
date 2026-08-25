@@ -35,6 +35,7 @@ use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Shop\CartController as ShopCartController;
 use App\Http\Controllers\Api\Shop\CategoryController as ShopCategoryController;
 use App\Http\Controllers\Api\Shop\DashboardController as ShopDashboardController;
 use App\Http\Controllers\Api\Shop\LookupController as ShopLookupController;
@@ -643,6 +644,10 @@ Route::middleware('auth.api')->group(function ()
         Route::get('orders', [ShopOrderController::class, 'index']);
         Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');
         Route::put('orders/{id}', [ShopOrderController::class, 'update'])->whereNumber('id');
+
+        Route::get('carts', [ShopCartController::class, 'index']);
+        Route::get('carts/{id}', [ShopCartController::class, 'show'])->whereNumber('id');
+        Route::delete('carts/{id}', [ShopCartController::class, 'destroy'])->whereNumber('id');
     });
 
     // Contacts - for user-based authentication (Sanctum tokens)

@@ -39,11 +39,12 @@ class OpenCartDataTable extends DataTable
             ->columns($this->getColumns())
             ->minifiedAjax()
             ->orderBy(4, 'desc')
+            ->responsive(true)
+            ->processing(false)
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters([
-                'dom' => '<"card-header d-flex border-top rounded-0 flex-wrap py-2"<"me-5 ms-n2 pe-5"f><"d-flex justify-content-start justify-content-md-end align-items-baseline"<"dt-action-buttons d-flex align-items-start align-items-md-center justify-content-sm-center mb-3 mb-sm-0"lB>>>t<"row mx-2"<"col-sm-12 col-md-6"i><"col-sm-12 col-md-6"p>>',
-                'buttons' => [],
-                'responsive' => true,
+                'pageLength' => 25,
+                'paging' => true,
                 'select' => false,
                 'autoWidth' => false,
             ]);

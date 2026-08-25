@@ -3,7 +3,7 @@
 namespace App\Helpers;
 
 /**
- * Single cart session id for Darryldecode Cart + DB storage across WhatsApp flows
+ * Digits-only session key for WhatsApp shopping carts
  * (inbound commands vs assistant tool add_to_whatsapp_cart).
  *
  * Normalizes Spanish mobiles stored/sent as 9 national digits vs 34 + 9 international.
@@ -11,7 +11,7 @@ namespace App\Helpers;
 class WhatsAppCartSessionKey
 {
     /**
-     * Digits-only key used with Cart::session() for WhatsApp shoppers.
+     * Digits-only key stored on shopping_carts.session_key for WhatsApp shoppers.
      */
     public static function fromPhone(string $phone): string
     {
