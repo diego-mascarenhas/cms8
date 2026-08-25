@@ -13,6 +13,8 @@ class BusinessAssistantContextService
 {
     private const MAX_CHARS = 8000;
 
+    private const COMPACT_MAX_CHARS = 1200;
+
     /** @var array<string, string> */
     private const LABELS = [
         'business_name' => 'Nombre del negocio',
@@ -50,7 +52,7 @@ class BusinessAssistantContextService
     /**
      * Markdown appendix for the assistant, or empty string if nothing is configured.
      */
-    public function buildMarkdownAppendix(?int $teamId): string
+    public function buildMarkdownAppendix(?int $teamId, bool $compact = false): string
     {
         if ($teamId === null || $teamId <= 0)
         {
@@ -73,20 +75,22 @@ class BusinessAssistantContextService
             return '';
         }
 
-        $businessKeys = [
-            'business_name', 'business_industry', 'business_location', 'business_postal_code',
-            'business_phone', 'business_whatsapp', 'business_website', 'business_email',
-            'contact_email', 'business_tagline', 'business_description',
-        ];
-        $ownerKeys = [
+        $businessKeys = $compact
+            ? ['business_name', 'business_industry', 'business_location', 'business_tagline', 'business_description']
+            : [
+                'business_name', 'business_industry', 'business_location', 'business_postal_code',
+                'business_phone', 'business_whatsapp', 'business_website', 'business_email',
+                'contact_email', 'business_tagline', 'business_description',
+            ];
+        $ownerKeys = $compact ? [] : [
             'last_name', 'birth_time', 'country', 'language',
             'address', 'landmark', 'pincode', 'city',
         ];
-        $socialKeys = [
+        $socialKeys = $compact ? [] : [
             'twitter', 'facebook', 'instagram', 'linkedin', 'youtube', 'tiktok',
             'whatsapp_url', 'telegram', 'pinterest', 'threads',
         ];
-        $otherKeys = ['wants_to_deepen'];
+        $otherKeys = $compact ? [] : ['wants_to_deepen'];
 
         $sections = [];
 
@@ -124,10 +128,11 @@ class BusinessAssistantContextService
         $intro .= 'Estos datos vienen de la configuración del negocio en Humano. Úsalos para personalizar tono y respuestas; **no inventes** datos que no aparezcan aquí.'."\n\n";
         $body = implode("\n\n", $sections);
         $out = $intro.$body;
+        $maxChars = $compact ? self::COMPACT_MAX_CHARS : self::MAX_CHARS;
 
-        if (strlen($out) > self::MAX_CHARS)
+        if (strlen($out) > $maxChars)
         {
-            return substr($out, 0, self::MAX_CHARS)."\n\n_(Contenido truncado por límite de tamaño.)_";
+            return substr($out, 0, $maxChars)."\n\n_(Contenido truncado por límite de tamaño.)_";
         }
 
         return $out;

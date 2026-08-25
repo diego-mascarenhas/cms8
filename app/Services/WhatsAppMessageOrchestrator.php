@@ -333,6 +333,36 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $replyResponse
+     * @return array<string, mixed>
+     */
+    private function assistantReplyTokenMetadata(array $replyResponse): array
+    {
+        $usage = is_array($replyResponse['usage'] ?? null) ? $replyResponse['usage'] : [];
+        $tools = $replyResponse['tool_calls'] ?? [];
+        $prompt = (int) ($usage['prompt_tokens'] ?? 0);
+        $completion = (int) ($usage['completion_tokens'] ?? 0);
+        $total = (int) ($usage['total_tokens'] ?? 0);
+        if ($total <= 0)
+        {
+            $total = $prompt + $completion;
+        }
+        if ($total <= 0)
+        {
+            return [];
+        }
+
+        return [
+            'token_usage' => [
+                'prompt_tokens' => $prompt,
+                'completion_tokens' => $completion,
+                'total_tokens' => $total,
+                'tool_calls' => is_countable($tools) ? count($tools) : 0,
+            ],
+        ];
+    }
+
     public function sendSms($to, $message)
     {
         if (! $this->isConfigured())
@@ -1266,7 +1296,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
                         if (trim((string) $aiMessage) !== '')
                         {
-                            $this->sendWhatsApp($cleanFrom, $aiMessage);
+                            $this->sendWhatsApp($cleanFrom, $aiMessage, $this->assistantReplyTokenMetadata($replyResponse));
                             $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse, $assistantTeamId);
 
                             Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));

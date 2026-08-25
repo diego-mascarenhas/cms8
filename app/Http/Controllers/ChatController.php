@@ -14,6 +14,7 @@ use App\Http\Requests\UpdateWhatsAppContactAssistantRequest;
 use App\Http\Requests\UpdateWhatsAppContactCategoriesRequest;
 use App\Http\Requests\UpdateWhatsAppInboxContactRequest;
 use App\Jobs\SendScheduledMessageJob;
+use App\Models\AgentConversationMessage;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
@@ -31,6 +32,7 @@ use App\Services\AssistantPromptCatalog;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\PerformanceInsightSlashDispatcher;
+use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamInboundAssistantPolicy;
 use App\Services\TeamSiteAssistantPromptService;
 use App\Services\TeamWhatsAppChatPresentation;
@@ -1181,9 +1183,10 @@ class ChatController extends Controller
         $messageUsers = User::whereIn('id', $userIds)->get()->keyBy('id');
         $authUser = auth()->user();
         $crm = $team && $normPhone !== '' ? $this->findContactForTeamByChatPhone((int) $team->id, $normPhone) : null;
+        $usageById = $this->whatsAppThreadUsageByMessageId($messages, $team);
 
         return response()->json([
-            'messages' => $messages->map(function ($message) use ($messageUsers, $authUser)
+            'messages' => $messages->map(function ($message) use ($messageUsers, $authUser, $usageById)
             {
                 if (! empty($message->is_scheduled))
                 {
@@ -1203,6 +1206,7 @@ class ChatController extends Controller
                         'transcribed_audio' => false,
                         'from_assistant' => $fromAssistant,
                         'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
+                        'usage' => $usageById[$message->id] ?? null,
                     ];
                 }
 
@@ -1212,6 +1216,7 @@ class ChatController extends Controller
                 $payload['transcribed_audio'] = $message instanceof Conversation
                     ? $message->isTranscribedAudio()
                     : false;
+                $payload['usage'] = $usageById[$message->id] ?? null;
 
                 return $payload;
             })->values()->all(),
@@ -3958,6 +3963,119 @@ class ChatController extends Controller
         $userId = $message->user_id ?? null;
 
         return $direction === 'outbound' && empty($userId);
+    }
+
+    /**
+     * @param  Collection<int, object>  $messages
+     * @return array<int|string, array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tool_calls: int, amount_cents: int}>
+     */
+    private function whatsAppThreadUsageByMessageId(Collection $messages, ?Team $team): array
+    {
+        $byId = [];
+        $needMatch = [];
+
+        foreach ($messages as $message)
+        {
+            if (! $this->whatsAppMessageIsFromAssistant($message))
+            {
+                continue;
+            }
+
+            $fromMeta = $this->presentWhatsAppTokenUsage(
+                is_array($message->metadata ?? null) ? ($message->metadata['token_usage'] ?? null) : null,
+                (int) (is_array($message->metadata ?? null) ? ($message->metadata['token_usage']['tool_calls'] ?? 0) : 0),
+            );
+            if ($fromMeta !== null)
+            {
+                $byId[$message->id] = $fromMeta;
+
+                continue;
+            }
+
+            $body = trim((string) ($message->body ?? ''));
+            if ($body !== '')
+            {
+                $needMatch[$message->id] = $body;
+            }
+        }
+
+        if ($team === null || $needMatch === [])
+        {
+            return $byId;
+        }
+
+        $rows = AgentConversationMessage::query()
+            ->where('role', 'assistant')
+            ->whereIn('content', array_values(array_unique($needMatch)))
+            ->whereHas('conversation', function ($query) use ($team)
+            {
+                $query->where('team_id', $team->id);
+            })
+            ->orderByDesc('created_at')
+            ->get(['content', 'usage', 'tool_calls']);
+
+        $latestByBody = [];
+        foreach ($rows as $row)
+        {
+            $content = trim((string) $row->content);
+            if ($content === '' || isset($latestByBody[$content]))
+            {
+                continue;
+            }
+            $latestByBody[$content] = $row;
+        }
+
+        foreach ($needMatch as $id => $body)
+        {
+            $row = $latestByBody[$body] ?? null;
+            if ($row === null)
+            {
+                continue;
+            }
+
+            $toolCalls = is_array($row->tool_calls) ? count($row->tool_calls) : 0;
+            $presented = $this->presentWhatsAppTokenUsage($row->usage, $toolCalls);
+            if ($presented !== null)
+            {
+                $byId[$id] = $presented;
+            }
+        }
+
+        return $byId;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $usage
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tool_calls: int, amount_cents: int}|null
+     */
+    private function presentWhatsAppTokenUsage(mixed $usage, int $toolCalls = 0): ?array
+    {
+        if (! is_array($usage))
+        {
+            return null;
+        }
+
+        $prompt = (int) ($usage['prompt_tokens'] ?? 0);
+        $completion = (int) ($usage['completion_tokens'] ?? 0);
+        $total = (int) ($usage['total_tokens'] ?? 0);
+        if ($total <= 0)
+        {
+            $total = $prompt + $completion;
+        }
+        if ($total <= 0)
+        {
+            return null;
+        }
+
+        $rate = TeamApiUsageStatsService::sellRatePerMillion();
+
+        return [
+            'prompt_tokens' => $prompt,
+            'completion_tokens' => $completion,
+            'total_tokens' => $total,
+            'tool_calls' => max(0, $toolCalls),
+            'amount_cents' => (int) round(($total / 1_000_000) * $rate * 100),
+        ];
     }
 
     /**

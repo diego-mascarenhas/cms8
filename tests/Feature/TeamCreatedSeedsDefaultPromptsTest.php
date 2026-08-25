@@ -47,11 +47,18 @@ class TeamCreatedSeedsDefaultPromptsTest extends TestCase
         $this->assertContains('email', $keys, 'Contact email prompt missing for a fresh team.');
         $this->assertContains('general', $keys, 'Router prompt missing for a fresh team.');
         $this->assertContains('collections', $keys, 'Collections prompt missing for a fresh team.');
-        $this->assertContains('wordpress', $keys, 'WordPress assistant prompt missing for a fresh team.');
+        $this->assertContains('message', $keys, 'Communications message prompt missing for a fresh team.');
 
         $this->assertContains('assistant_catalogo', $keys, 'Catalog flow missing for a fresh team.');
         $this->assertContains('assistant_embudo', $keys, 'Sales funnel flow missing for a fresh team.');
         $this->assertContains('assistant_citas', $keys, 'Calendar flow missing for a fresh team.');
+        $this->assertContains('assistant_tareas', $keys, 'Tasks flow missing for a fresh team.');
+
+        $this->assertNotContains('wordpress', $keys);
+        $this->assertNotContains('image_analysis', $keys);
+        $this->assertNotContains('voice_summary', $keys);
+        $this->assertNotContains('budget_spec', $keys);
+        $this->assertNotContains('assistant_finanzas', $keys);
     }
 
     public function test_our_own_brand_sales_scripts_do_not_leak_into_client_teams(): void

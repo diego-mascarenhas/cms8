@@ -132,54 +132,6 @@ class PromptSeeder extends Seeder
     {
         $prompts = [];
 
-        // Projects Module
-        if ($module = Module::where('key', 'projects')->first())
-        {
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'description',
-                'section_label' => 'Descripción del proyecto',
-                'prompt_instruction' => "# Descripción del proyecto\n\nDevolvés la descripción lista para pegar en el proyecto. Sin preámbulo, sin explicar qué hiciste y sin comentarios al final.\n\nCubrí objetivo, alcance y entregables, criterios de aceptación y restricciones o dependencias. Si el usuario no dio alguno de esos datos, dejá un marcador entre corchetes como [plazo] en vez de inventarlo.\n\nEscribí en el idioma del usuario, en prosa clara y breve.",
-                'helper_text' => "**Estructura sugerida:**\n\n1. ¿Qué se va a hacer?\n2. ¿Para quién?\n3. ¿Cuáles son los entregables?\n4. ¿Qué criterios definen que está terminado?",
-                'order' => 0,
-                'is_active' => true,
-            ];
-
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'budget_spec',
-                'section_label' => 'Presupuesto: interpretación IA (dimensión, tiempos, recursos, tokens)',
-                'prompt_instruction' => "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": One line per labor with estimated AI tokens, format \"Tokens AI — {title}: {N} K\".\n- \"suggested_tasks\": (optional) Array of suggested tasks; each object: \"title\", \"category_name\" (must match a task category provided in context), \"estimated_hours\" (decimal), \"estimated_tokens\" (integer). Use [] if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs.",
-                'helper_text' => 'Texto del presupuesto recibido del cliente. La IA devuelve JSON con ai_interpretation, dimension, estimated_times, resources, token_consumption. Mayoría para creación de software.',
-                'order' => 1,
-                'is_active' => true,
-            ];
-
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'budget_chat',
-                'section_label' => 'Presupuesto: chat de necesidad (funnel)',
-                'prompt_instruction' => app(\App\Services\ProjectBudgetSpecService::class)->getDefaultBudgetChatPrompt(),
-                'helper_text' => 'Prompt del chat de Necesidad. El paso 1 pide nombre, apellido, email, teléfono, empresa y país (llegan en {intake}; no los vuelvas a preguntar). El chat debe preguntar título, usuarios, integraciones, qué tiene que hacer y plazo. Placeholders: {lead_name}, {requirements_json}, {project_name}, {intake}. La IA debe devolver JSON con assistant_message, requirements, brief, business_name y project_name.',
-                'order' => 2,
-                'is_active' => true,
-            ];
-        }
-
-        // Tasks Module
-        if ($module = Module::where('key', 'tasks')->first())
-        {
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'description',
-                'section_label' => 'Descripción de la tarea',
-                'prompt_instruction' => "# Descripción de la tarea\n\nDevolvés la descripción de la tarea lista para pegar. Sin preámbulo ni comentarios sobre tu propio trabajo.\n\nQue sea accionable: qué hay que hacer, cuál es el resultado que la da por terminada y, si el usuario lo mencionó, plazo o prioridad. No agregues datos que no te dieron.\n\nBreve, en el idioma del usuario. Dos o tres frases suelen alcanzar.",
-                'helper_text' => "**Indica:**\n\n1. Qué hay que hacer\n2. Criterio de completado\n3. Prioridad o plazo (opcional)",
-                'order' => 0,
-                'is_active' => true,
-            ];
-        }
-
         // Contacts Module
         if ($module = Module::where('key', 'contacts')->first())
         {
@@ -262,26 +214,6 @@ class PromptSeeder extends Seeder
                 'prompt_instruction' => "# Mensaje de comunicación\n\nDevolvés un título y el cuerpo del mensaje, listos para enviar. Sin explicar la estrategia detrás.\n\nUna idea por mensaje y **una** llamada a la acción concreta. Escribí como habla la gente, no como un folleto: sin «potenciá tu negocio», sin «solución integral», sin superlativos vacíos.\n\nNo inventes precios, descuentos, plazos ni resultados garantizados. Lo que falte va entre corchetes.\n\nAdaptá el largo al canal: en WhatsApp, dos o tres frases; en email, un párrafo corto.",
                 'helper_text' => '**Indica:** Audiencia, objetivo, tono (formal/casual/urgente)',
                 'order' => 0,
-                'is_active' => true,
-            ];
-
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'image_analysis',
-                'section_label' => 'Análisis de imagen',
-                'prompt_instruction' => "# Análisis de imagen\n\nEl usuario puede **subir una imagen** además de texto.\n\n- Si recibe una imagen: descríbela con detalle (elementos, colores, texto visible, contexto probable) y sugiere mejoras o usos (redes sociales, presentación, documentación).\n- Si solo hay texto: pide una imagen o ayuda a redactar un brief para crear una.\n\nResponde en español, de forma clara y estructurada.",
-                'helper_text' => '**Prueba:** Sube una imagen (captura, logo, foto) y opcionalmente escribe qué quieres que analice o mejore. Usa el botón "Subir imagen" en la prueba.',
-                'order' => 1,
-                'is_active' => true,
-            ];
-
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'voice_summary',
-                'section_label' => 'Resumen para escuchar en audio',
-                'prompt_instruction' => "# Resumen para voz\n\nGenera **textos breves y claros** pensados para ser **leídos en voz alta** (TTS).\n\n- Máximo 2-3 párrafos cortos.\n- Frases directas, sin listas largas.\n- Tono natural y conversacional.\n- Si el usuario pide un resumen de algo largo, condensa lo esencial en formato \"para escuchar\".\n\nEl usuario puede marcar \"Recibir la respuesta en audio\" para obtener la versión en voz.",
-                'helper_text' => '**Prueba:** Escribe un tema o pega un texto largo para resumir. Activa "Recibir la respuesta en audio" para oír la respuesta con TTS (ElevenLabs).',
-                'order' => 2,
                 'is_active' => true,
             ];
         }
@@ -425,89 +357,6 @@ PROMPT,
             ];
         }
 
-        // Services Module
-        if ($module = Module::where('key', 'services')->first())
-        {
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'description',
-                'section_label' => 'Descripción del servicio',
-                'prompt_instruction' => "# Descripción de servicio\n\nAyuda a crear una **descripción atractiva y completa** del servicio.\n\n## Debe incluir:\n\n- Qué incluye el servicio\n- Beneficios para el cliente\n- Duración o modalidad\n- Diferenciadores\n\n---\n\n**Tu objetivo**: Hacer el servicio atractivo y claro para clientes.",
-                'helper_text' => '**Incluye:** Qué es, qué incluye, beneficios, duración',
-                'order' => 0,
-                'is_active' => true,
-            ];
-        }
-
-        // Notes Module
-        if ($module = Module::where('key', 'notes')->first())
-        {
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'content',
-                'section_label' => 'Contenido de la nota',
-                'prompt_instruction' => "# Estructurar nota\n\nAyuda a **organizar y estructurar** notas de forma clara.\n\n## Mejoras:\n\n- Estructura con títulos y secciones\n- Puntos clave destacados\n- Acción items identificados\n- Formato legible\n\n---\n\n**Tu objetivo**: Hacer la nota más útil y fácil de consultar.",
-                'helper_text' => '**La IA:** Estructurará tu nota, destacará puntos clave, identificará tareas',
-                'order' => 0,
-                'is_active' => true,
-            ];
-
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'notes_from_audio',
-                'section_label' => 'Notas desde audio (voz a texto)',
-                'prompt_instruction' => "# Notas a partir de un audio\n\nEl usuario puede **subir un archivo de audio** (reunión, nota de voz, podcast).\n\n- La entrada de audio se transcribe automáticamente.\n- Con el texto transcrito: estructura la información en **notas claras** (títulos, puntos clave, acuerdos, tareas).\n- Si además hay texto escrito, combínalo con lo dicho en el audio.\n\nResponde en español, con formato de notas listas para guardar o compartir.",
-                'helper_text' => '**Prueba:** Sube un audio (mp3, wav, m4a) con el botón "Subir audio". La IA transcribirá y convertirá el contenido en notas estructuradas.',
-                'order' => 1,
-                'is_active' => true,
-            ];
-        }
-
-        // Templates Module
-        if ($module = Module::where('key', 'templates')->first())
-        {
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'content',
-                'section_label' => 'Contenido de plantilla',
-                'prompt_instruction' => "# Plantilla de email/documento\n\nAyuda a crear **plantillas profesionales y reutilizables**.\n\n## Debe incluir:\n\n- Estructura clara con variables\n- Tono apropiado\n- Llamados a la acción\n- Formato profesional\n\n---\n\n**Tu objetivo**: Crear plantillas profesionales y efectivas.",
-                'helper_text' => '**Indica:** Tipo de plantilla, tono, variables necesarias ({{nombre}}, {{empresa}})',
-                'order' => 0,
-                'is_active' => true,
-            ];
-        }
-
-        // Landing / Strategy (12 pasos)
-        $strategyModule = Module::whereIn('key', ['projects', 'contacts', 'tasks'])->first();
-        if ($strategyModule)
-        {
-            $prompts[] = [
-                'module_id' => $strategyModule->id,
-                'section_key' => 'landing',
-                'section_label' => 'Estrategia (12 pasos)',
-                'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
-                'helper_text' => 'Responde en base al manual de 12 pasos. Marca cada requisito con ✓ o ✗.',
-                'order' => 0,
-                'is_active' => true,
-                'own_brand' => true,
-            ];
-        }
-
-        // WordPress Module (uses 'website' module as parent — no dedicated module yet)
-        // section_key 'wordpress' is used directly as promptKey in /assistant/wordpress
-        if ($module = Module::where('key', 'website')->first())
-        {
-            $prompts[] = [
-                'module_id' => $module->id,
-                'section_key' => 'wordpress',
-                'section_label' => 'Asistente WordPress',
-                'prompt_instruction' => $this->getWordPressAssistantPromptInstruction(),
-                'helper_text' => 'Pregunta como comprador: información de un producto, qué productos hay, precios, descripciones, páginas del sitio o cómo encontrar algo.',
-                'order' => 0,
-                'is_active' => true,
-            ];
-        }
-
         return $prompts;
     }
 
@@ -526,88 +375,6 @@ Responde con **exactamente una línea**, sin explicación ni texto adicional, us
 
 Regla: si el usuario habla de **problemas de negocio, estrategia, crecimiento, desorden operativo, automatización, diagnóstico** → responde la clave que corresponda a ese flujo (suele ser contacts:landing).
 Para cualquier otra intención, elige la clave que mejor coincida con la etiqueta. Responde solo la clave, nada más.
-PROMPT;
-    }
-
-    /**
-     * Prompt instruction for landing: analyze business problem against the 12-step manual.
-     * Response must be in Markdown (bold, italic, links), mark each requirement with ✓ or ✗,
-     * and end with the CTA line for the app to show the "profundizar" form.
-     */
-    private function getLandingStrategyPromptInstruction(): string
-    {
-        return <<<'PROMPT'
-Eres un asesor de negocio de Humano.app. Analiza la problemática de negocio que describe el usuario y responde en base al manual de 12 pasos.
-
-## Formato de respuesta obligatorio
-
-- Responde en **Markdown**: usa **negrita**, *cursiva* y [enlaces](https://humano.app) cuando ayuden a hacer la respuesta más clara y amena.
-- Lista los **requisitos** (los 12 pasos) marcando cada uno con **exactamente un** símbolo:
-  - **✓** (uno solo) = necesario o recomendado para esta problemática
-  - **✗** (uno solo) = no aplica o ya está cubierto
-- Usa exactamente los 12 bloques siguientes. No inventes ítems; solo un ✓ o un ✗ por ítem y, si quieres, una frase breve. No uses ✓✓ ni dos tildes.
-- **Al final** de tu respuesta incluye exactamente esta línea (para que la app muestre el formulario de contacto):
-  ¿Te gustaría profundizar en alguno de estos puntos?
-
----
-
-## Los 12 pasos
-
-1. **Tu dossier comercial** (Cliente, Destino, Oferta, Storytelling)
-2. **Tu fachada digital** (Web, RRSS, SEO/SEM, Estrategia contenido)
-3. **Entender tu juego** (Audiencia, Dinero, Contactos)
-4. **Tu embudo en automático** (Doblar lo que funciona)
-5. **Tu embudo de operaciones** (Talento, Herramientas, IA)
-6. **Tu business playbook** (Manual de procesos, Wiki Notion)
-7. **Scale** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
-8. **Simplificar tu negocio** (80/20, 5' business pitch)
-9. **Quitar al fundador** (Auditar Calendar, Buyback your time)
-10. **Crear tus managers** (Liderazgo, Operativa diaria)
-11. **Generar tu cultura** (Visionboard empresa, Visionboard empleados, Retiros de equipo)
-12. **Business exit** (Auditar valor empresa, Plan de salida)
-
----
-
-## Ejemplo de problemáticas de negocio (para orientar tu análisis)
-
-- Falta de **automatización de procesos** que impide crecer de forma ordenada.
-- **Desorden en archivos y documentos**: todo en Excel, correos o carpetas sin criterio.
-- Dependencia de una sola persona que sabe cómo se hace cada cosa.
-- No hay un único lugar donde esté la información de clientes, proyectos o facturación.
-
----
-
-**Objetivo**: Devolver la lista de los 12 pasos con un solo ✓ o un solo ✗ por ítem en Markdown (negrita, cursiva, enlaces). Termina con la línea: ¿Te gustaría profundizar en alguno de estos puntos? Responde en el mismo idioma que use el usuario. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia".
-PROMPT;
-    }
-
-    /**
-     * Prompt instruction for the WordPress assistant.
-     * Bot = negocio (store), user = comprador (buyer). Supply product info when asked.
-     * {{WORDPRESS_CONTEXT}} is replaced at runtime with live data from the team's WordPress site.
-     */
-    private function getWordPressAssistantPromptInstruction(): string
-    {
-        return <<<'PROMPT'
-Sos el negocio atendiendo por su propio sitio web. Quien te escribe es un comprador o un visitante, no alguien del equipo.
-
-{{WORDPRESS_CONTEXT}}
-
----
-
-## Qué hacés
-
-Contestás sobre lo que hay en el sitio (productos, páginas, entradas) y acompañás al comprador hasta el siguiente paso: elegir un producto, entrar a la ficha o dejar una consulta.
-
-- Si preguntan por un producto, por nombre, ID o tipo, buscalo en el contexto de arriba y dale nombre, precio, descripción y disponibilidad reales.
-- Si preguntan en general, ofrecé **tres o cuatro** productos concretos con su precio, no el catálogo entero.
-- Cerrá siempre con un paso concreto: cuál le interesa, si quiere el enlace de la ficha, si prefiere ver otra categoría.
-
-## Límites
-
-- Todo sale del contexto de arriba. **No inventes productos, precios, descripciones, stock, envíos ni plazos.** Si un producto no está, decilo con naturalidad y ofrecé lo más parecido que sí figure.
-- No prometas descuentos ni condiciones que no aparezcan en el contexto.
-- Respondé en el idioma del comprador, en dos a cuatro frases. Listas solo cuando enumeres productos.
 PROMPT;
     }
 }
