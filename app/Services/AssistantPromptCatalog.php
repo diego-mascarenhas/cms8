@@ -7,7 +7,6 @@ use App\Models\Prompt;
 use App\Models\Team;
 use App\Support\CollectionMessagingGuide;
 use App\Support\DatabaseSequence;
-use Database\Seeders\ChatAssistantProactiveDemoPromptsSeeder;
 use Database\Seeders\PromptSeeder;
 use InvalidArgumentException;
 
@@ -54,20 +53,6 @@ class AssistantPromptCatalog
             CollectionMessagingGuide::collectionsAssistantInstruction(),
             false,
         );
-
-        foreach (ChatAssistantProactiveDemoPromptsSeeder::definitions() as $definition)
-        {
-            $items[] = $this->item(
-                'chat:'.$definition['section_key'],
-                'demos',
-                'chat',
-                $definition['section_key'],
-                $definition['section_label'],
-                'Flujo demo de WhatsApp. El original no se pisa: la edición queda en tu equipo.',
-                $definition['instruction'],
-                false,
-            );
-        }
 
         foreach ((new PromptSeeder)->getPromptDefinitions() as $definition)
         {
@@ -129,7 +114,7 @@ class AssistantPromptCatalog
             ];
         }
 
-        $order = ['agenda', 'ventas', 'cobranzas', 'equipo', 'finanzas', 'demos', 'marca'];
+        $order = ['agenda', 'ventas', 'cobranzas', 'equipo', 'marca'];
         uksort($grouped, function (string $left, string $right) use ($order): int
         {
             $leftRank = array_search($left, $order, true);
@@ -303,7 +288,6 @@ class AssistantPromptCatalog
             'assistant_citas' => 'agenda',
             'assistant_embudo', 'assistant_catalogo' => 'ventas',
             'assistant_contactos', 'assistant_tareas', 'assistant_campanas' => 'equipo',
-            'assistant_finanzas' => 'finanzas',
             default => null,
         };
     }
@@ -316,8 +300,6 @@ class AssistantPromptCatalog
             'ventas' => 'Ventas',
             'cobranzas' => 'Cobranzas',
             'equipo' => 'Equipo',
-            'finanzas' => 'Finanzas',
-            'demos' => 'Demos',
             'marca' => 'Nuestros productos',
             default => $group,
         };

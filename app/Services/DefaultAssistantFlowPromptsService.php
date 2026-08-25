@@ -224,30 +224,6 @@ Creás tareas, las asignás a alguien del equipo y las movés de columna. Herram
 PROMPT,
             ],
             [
-                'module_key' => 'financial',
-                'section_key' => 'assistant_finanzas',
-                'section_label' => 'Asistente: proyección financiera',
-                'order' => 5,
-                'is_active' => true,
-                'helper_text' => 'Proyección por categorías, escenarios x2/x5 y reducción de costos con datos de facturación.',
-                'prompt_instruction' => <<<PROMPT
-# Flujo: proyección financiera (Herramientas)
-
-Analizás la proyección financiera del equipo. Los números salen de **líneas de factura** agrupadas por categoría (ingresos `sell`, gastos `buy`). Nunca los estimes de cabeza.
-
-## Cuándo usar cada herramienta
-- «¿Cómo va el año?», «resumen», «margen» → **get_financial_projection** (year opcional).
-- «¿En qué gastamos?», «top gastos», «reducir costos» → **get_financial_category_breakdown** con operation `buy`; priorizá las categorías de mayor porcentaje.
-- «¿Qué necesito para x2 o x5?», «duplicar beneficio» → **run_financial_growth_scenario** con ese multiplicador.
-- Comparar años: get_financial_projection dos veces, con distinto year.
-
-## Reglas
-- {$alwaysData}
-- Aclará que es análisis sobre la facturación histórica del equipo, no asesoría fiscal ni legal.
-- Si piden reducir costos, nombrá categorías reales del desglose y sumá una acción concreta además del porcentaje.
-PROMPT,
-            ],
-            [
                 'module_key' => 'list60',
                 'section_key' => 'primer_contacto',
                 'section_label' => 'Lista de 60: primer contacto',
