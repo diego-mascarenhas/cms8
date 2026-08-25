@@ -217,6 +217,63 @@ class WhatsappCartAgregarTest extends TestCase
         $this->assertSame(1, (int) Cart::getContent()->first()->quantity);
     }
 
+    public function test_agregame_abbreviation_and_spanish_quantity_add_clamp(): void
+    {
+        $team = $this->createTeamWithOwner();
+        $sixteen = $this->createClampProduct($team);
+        $eight = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'ABRAZADERA 8 X 16',
+            'code' => '21870',
+            'description' => 'Marca Perfecto',
+            'price' => 989.43,
+            'currency_id' => $sixteen->currency_id,
+            'category_id' => $sixteen->category_id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+        $phone = '5491199900027';
+        $service = $this->silentOrchestrator($team);
+
+        Cart::session($phone)->clear();
+        $short = $service->processCartCommands($phone, 'Agregame 2 abraz de 8');
+        $this->assertTrue($short['success'] ?? false);
+        Cart::session($phone);
+        $this->assertSame((int) $eight->id, (int) Cart::getContent()->first()->id);
+        $this->assertSame(2, (int) Cart::getContent()->first()->quantity);
+
+        Cart::session($phone)->clear();
+        $words = $service->processCartCommands($phone, 'agregame dos ABRAZADERA 8 X 16');
+        $this->assertTrue($words['success'] ?? false);
+        Cart::session($phone);
+        $this->assertSame((int) $eight->id, (int) Cart::getContent()->first()->id);
+        $this->assertSame(2, (int) Cart::getContent()->first()->quantity);
+
+        Cart::session($phone)->clear();
+        $priced = $service->processCartCommands($phone, 'Comprar  2 ABRAZADERA 8 X 16 a $989.43 c/u');
+        $this->assertTrue($priced['success'] ?? false);
+        Cart::session($phone);
+        $this->assertSame((int) $eight->id, (int) Cart::getContent()->first()->id);
+        $this->assertSame(2, (int) Cart::getContent()->first()->quantity);
+    }
+
+    public function test_add_to_cart_succeeds_when_category_was_soft_deleted(): void
+    {
+        $team = $this->createTeamWithOwner();
+        $product = $this->createClampProduct($team);
+        $product->category->delete();
+        $product->unsetRelation('category');
+
+        $phone = '5491199900028';
+        Cart::session($phone)->clear();
+
+        $result = $this->silentOrchestrator($team)->processCartCommands($phone, 'comprar '.$product->code);
+
+        $this->assertTrue($result['success'] ?? false);
+        Cart::session($phone);
+        $this->assertSame((int) $product->id, (int) Cart::getContent()->first()->id);
+    }
+
     public function test_comprar_ranks_closest_size_when_measure_is_off(): void
     {
         $team = $this->createTeamWithOwner();

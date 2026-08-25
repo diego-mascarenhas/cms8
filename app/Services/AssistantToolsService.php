@@ -3973,7 +3973,7 @@ class AssistantToolsService
                     'store_id' => $product->store_id,
                     'currency_id' => $product->currency_id,
                     'description' => $product->description,
-                    'category_name' => $product->category->name ?? '',
+                    'category_name' => $product->category?->name ?? '',
                 ],
             ]);
             $newQty = $quantity;

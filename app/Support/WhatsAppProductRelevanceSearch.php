@@ -291,7 +291,17 @@ class WhatsAppProductRelevanceSearch
 
         foreach (preg_split('/\s+/', $normalizedName) ?: [] as $word)
         {
-            if ($word === '' || abs(mb_strlen($word) - mb_strlen($token)) > 2)
+            if ($word === '')
+            {
+                continue;
+            }
+
+            if (str_starts_with($word, $token) && mb_strlen($token) >= 4)
+            {
+                return true;
+            }
+
+            if (abs(mb_strlen($word) - mb_strlen($token)) > 2)
             {
                 continue;
             }

@@ -50,6 +50,19 @@ class WhatsAppNaturalCartPhraseTest extends TestCase
             ['quantity' => 2, 'needle' => 'abrazadera 16 x 27'],
             WhatsAppNaturalCartPhrase::buyCommand('comprar 2 abrazadera 16 x 27'),
         );
+        $this->assertSame(
+            ['quantity' => 2, 'needle' => 'abrazadera 8 x 16'],
+            WhatsAppNaturalCartPhrase::addToCartCommand('agregame dos ABRAZADERA 8 X 16'),
+        );
+        $this->assertSame(
+            ['quantity' => 2, 'needle' => 'abraz de 8'],
+            WhatsAppNaturalCartPhrase::addToCartCommand('Agregame 2 abraz de 8'),
+        );
+        $this->assertSame(
+            ['quantity' => 2, 'needle' => 'abrazadera 8 x 16'],
+            WhatsAppNaturalCartPhrase::buyCommand('Comprar  2 ABRAZADERA 8 X 16 a $989.43 c/u'),
+        );
         $this->assertNull(WhatsAppNaturalCartPhrase::buyCommand('comprar todo'));
+        $this->assertNull(WhatsAppNaturalCartPhrase::addToCartCommand('Agregar cita para hoy a las 15 hs'));
     }
 }
