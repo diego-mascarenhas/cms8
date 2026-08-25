@@ -353,13 +353,20 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             return [];
         }
 
+        $tokenUsage = [
+            'prompt_tokens' => $prompt,
+            'completion_tokens' => $completion,
+            'total_tokens' => $total,
+            'tool_calls' => is_countable($tools) ? count($tools) : 0,
+        ];
+        $model = (string) ($usage['model'] ?? ($replyResponse['meta']['model'] ?? ''));
+        if ($model !== '')
+        {
+            $tokenUsage['model'] = $model;
+        }
+
         return [
-            'token_usage' => [
-                'prompt_tokens' => $prompt,
-                'completion_tokens' => $completion,
-                'total_tokens' => $total,
-                'tool_calls' => is_countable($tools) ? count($tools) : 0,
-            ],
+            'token_usage' => $tokenUsage,
         ];
     }
 
