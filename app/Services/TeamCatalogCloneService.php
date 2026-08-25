@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Module;
 use App\Models\Product;
@@ -51,6 +52,7 @@ class TeamCatalogCloneService
             ->get();
 
         $sourceProducts = Product::withoutGlobalScope('team')
+            ->with(['brand', 'options.values', 'variants.optionValues.option'])
             ->where('team_id', $sourceTeamId)
             ->orderBy('id')
             ->get();
@@ -160,7 +162,7 @@ class TeamCatalogCloneService
 
                 $code = $this->uniqueProductCode($product->code, $targetTeamId, $product->id);
 
-                Product::withoutGlobalScope('team')->create([
+                $clone = Product::withoutGlobalScope('team')->create([
                     'team_id' => $targetTeamId,
                     'name' => $product->name,
                     'code' => $code,
@@ -176,16 +178,61 @@ class TeamCatalogCloneService
                     'stock_status' => $product->stock_status,
                     'manage_stock' => $product->manage_stock,
                     'stock_quantity' => $product->stock_quantity,
-                    'size_options' => $product->size_options,
-                    'color_options' => $product->color_options,
+                    'brand_id' => $this->clonedBrandId($product, $targetTeamId),
+                    'assortment_size' => $product->assortment_size,
                     'whatsapp_enabled' => $product->whatsapp_enabled,
                     'image' => $product->image,
                 ]);
+                $product->loadMissing(['options.values', 'variants.optionValues.option']);
+                app(ProductVariantCatalogService::class)->sync(
+                    $clone,
+                    $product->options->map(fn ($option): array => [
+                        'name' => $option->name,
+                        'values' => $option->values->pluck('value')->all(),
+                    ])->values()->all(),
+                    $product->variants->map(fn ($variant): array => [
+                        'sku' => $variant->sku,
+                        'price' => $variant->price,
+                        'sale_price' => $variant->sale_price,
+                        'stock_status' => $variant->stock_status?->value,
+                        'manage_stock' => $variant->manage_stock,
+                        'stock_quantity' => $variant->stock_quantity,
+                        'option_values' => $variant->optionValues
+                            ->mapWithKeys(fn ($value): array => [(string) $value->option?->name => $value->value])
+                            ->all(),
+                    ])->values()->all(),
+                );
                 $stats['products']++;
             }
         });
 
         return $stats;
+    }
+
+    private function clonedBrandId(Product $product, int $targetTeamId): ?int
+    {
+        $name = trim((string) $product->brand?->name);
+        if ($name === '')
+        {
+            return null;
+        }
+
+        $existing = Brand::withoutGlobalScope('team')
+            ->where('team_id', $targetTeamId)
+            ->where('name', $name)
+            ->first();
+
+        if ($existing)
+        {
+            return (int) $existing->id;
+        }
+
+        return (int) Brand::query()->create([
+            'team_id' => $targetTeamId,
+            'name' => $name,
+            'slug' => $product->brand?->slug,
+            'status' => true,
+        ])->id;
     }
 
     private function uniqueStoreCode(string $baseCode, int $targetTeamId): string

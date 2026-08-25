@@ -106,23 +106,6 @@ class StoreController extends Controller
      */
     private function payloadWithCheckoutData(array $validated, ?Store $existing): array
     {
-        $payment = array_values(array_intersect(
-            Store::checkoutPaymentMethodKeys(),
-            $validated['checkout_payment_methods'] ?? [],
-        ));
-        $fulfillment = array_values(array_intersect(
-            Store::checkoutFulfillmentKeys(),
-            $validated['checkout_fulfillment_types'] ?? [],
-        ));
-        unset($validated['checkout_payment_methods'], $validated['checkout_fulfillment_types']);
-
-        $data = is_array($existing?->data) ? $existing->data : [];
-        $data['checkout'] = [
-            'payment_methods' => $payment,
-            'fulfillment_types' => $fulfillment,
-        ];
-        $validated['data'] = $data;
-
-        return $validated;
+        return Store::attributesFromValidated($validated, $existing);
     }
 }

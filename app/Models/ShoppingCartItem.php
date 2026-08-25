@@ -15,7 +15,9 @@ class ShoppingCartItem extends Model
         'shopping_cart_id',
         'team_id',
         'product_id',
+        'product_variant_id',
         'name',
+        'option_label',
         'price',
         'quantity',
         'currency_id',
@@ -55,6 +57,11 @@ class ShoppingCartItem extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+    }
+
     public function currency(): BelongsTo
     {
         return $this->belongsTo(Currency::class);
@@ -77,6 +84,7 @@ class ShoppingCartItem extends Model
     {
         return (object) [
             'id' => (int) $this->product_id,
+            'variant_id' => (int) $this->product_variant_id,
             'name' => (string) $this->name,
             'price' => (float) $this->price,
             'quantity' => (int) $this->quantity,
@@ -86,6 +94,7 @@ class ShoppingCartItem extends Model
                 'currency_id' => $this->currency_id,
                 'description' => $this->description,
                 'category_name' => $this->category_name ?? '',
+                'option_label' => $this->option_label ?? '',
             ],
         ];
     }

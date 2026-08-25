@@ -12,6 +12,7 @@ use App\Models\Module;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\ProductCsvImportService;
+use App\Services\ProductVariantCatalogService;
 use App\Services\WordPressService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -185,7 +186,7 @@ class ProductController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        $product = Product::query()->findOrFail($id);
+        $product = Product::query()->with(['options.values'])->findOrFail($id);
         $this->authorize('update', $product);
 
         $currencies = Currency::query()->where('status', true)->orderBy('code')->get();
@@ -217,10 +218,11 @@ class ProductController extends Controller
 
         $validated = $request->validated();
 
-        Product::query()->create(array_merge(
+        $product = Product::query()->create(array_merge(
             $this->payloadFromValidatedLocalProduct($validated),
             ['team_id' => $team->id],
         ));
+        $this->syncVariants($product, $validated);
 
         return redirect()->route('product.index')->with('success', __('Product created successfully.'));
     }
@@ -241,6 +243,7 @@ class ProductController extends Controller
         $validated = $request->validated();
 
         $product->update($this->payloadFromValidatedLocalProduct($validated));
+        $this->syncVariants($product->fresh(), $validated);
 
         return redirect()->route('product.index')->with('success', __('Product updated successfully.'));
     }
@@ -250,7 +253,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['category', 'currency', 'team', 'store'])->findOrFail($id);
+        $product = Product::with(['category', 'currency', 'team', 'store', 'brand', 'options.values', 'variants.optionValues.option'])->findOrFail($id);
 
         $this->authorize('view', $product);
 
@@ -289,14 +292,29 @@ class ProductController extends Controller
             'currency_id' => (int) $validated['currency_id'],
             'store_id' => isset($validated['store_id']) && $validated['store_id'] !== '' ? (int) $validated['store_id'] : null,
             'category_id' => (int) $validated['category_id'],
+            'brand_id' => isset($validated['brand_id']) && $validated['brand_id'] !== '' ? (int) $validated['brand_id'] : null,
             'catalog_status' => $validated['catalog_status'],
             'stock_status' => $validated['stock_status'],
             'manage_stock' => $manageStock,
             'stock_quantity' => $manageStock ? (int) $validated['stock_quantity'] : null,
-            'size_options' => $validated['size_options'] ?? [],
-            'color_options' => $validated['color_options'] ?? [],
+            'assortment_size' => isset($validated['assortment_size']) && $validated['assortment_size'] !== ''
+                ? (int) $validated['assortment_size']
+                : null,
             'whatsapp_enabled' => (bool) (int) $validated['whatsapp_enabled'],
             'image' => $validated['image'] ?? null,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function syncVariants(Product $product, array $validated): void
+    {
+        $catalog = app(ProductVariantCatalogService::class);
+        $catalog->sync(
+            $product,
+            $catalog->optionsFromValidated($validated),
+            $validated['variants'] ?? null,
+        );
     }
 }

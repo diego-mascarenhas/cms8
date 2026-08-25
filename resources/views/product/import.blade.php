@@ -80,7 +80,9 @@
 					<li>{{ __('currency uses the ISO code (ARS, USD, EUR); store matches the branch name or code.') }}</li>
 					<li>{{ __('catalog_status accepts publish, draft, pending or private; only published products are offered by the assistant.') }}</li>
 					<li>{{ __('whatsapp_enabled defaults to 1 so the product is sellable from the chat.') }}</li>
-					<li>{{ __('size_options and color_options accept several values separated by |.') }}</li>
+					<li>{{ __('brand is created automatically when the name does not exist yet.') }}</li>
+					<li>{{ __('size_options, color_options and flavor_options (gustos / toppings) accept several values separated by |. Shop builds one variant per combination.') }}</li>
+					<li>{{ __('assortment_size is the combo size (e.g. 12 for a dozen). Use it with flavor_options.') }}</li>
 				</ul>
 			</div>
 		</div>

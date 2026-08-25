@@ -26,7 +26,9 @@ return new class extends Migration
             $table->foreignId('shopping_cart_id')->constrained('shopping_carts')->cascadeOnDelete();
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete();
             $table->unsignedBigInteger('product_id');
+            $table->unsignedBigInteger('product_variant_id');
             $table->string('name');
+            $table->string('option_label')->nullable();
             $table->decimal('price', 10, 2)->unsigned()->default(0);
             $table->unsignedInteger('quantity')->default(1);
             $table->unsignedInteger('currency_id')->nullable();
@@ -35,8 +37,10 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->timestamps();
 
-            $table->unique(['shopping_cart_id', 'product_id'], 'shop_cart_item_cart_prod_uq');
+            $table->unique(['shopping_cart_id', 'product_variant_id'], 'shop_cart_item_cart_var_uq');
             $table->index(['team_id', 'product_id'], 'shop_cart_item_team_prod_idx');
+            $table->index(['team_id', 'product_variant_id'], 'shop_cart_item_team_var_idx');
+            $table->foreign('product_variant_id')->references('id')->on('product_variants')->cascadeOnDelete();
             $table->foreign('currency_id')->references('id')->on('currencies')->nullOnDelete();
             $table->foreign('store_id')->references('id')->on('stores')->nullOnDelete();
         });

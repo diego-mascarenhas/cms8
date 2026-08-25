@@ -63,7 +63,14 @@ class ProductCsvImportTest extends TestCase
         $response = $this->actingAs($this->user->fresh())->get(route('product.import.template'));
 
         $response->assertOk();
-        $this->assertStringContainsString('code,name,price,category', $response->streamedContent());
+        $csv = $response->streamedContent();
+        $this->assertStringContainsString('code,name,price,category', $csv);
+        $this->assertStringContainsString('brand,assortment_size,size_options,color_options,flavor_options', $csv);
+        $this->assertStringContainsString('PAS-010', $csv);
+        $this->assertStringContainsString('Bosch', $csv);
+        $this->assertStringContainsString('Nike', $csv);
+        $this->assertStringContainsString('Carne|Pollo|JyQ|Cebolla', $csv);
+        $this->assertStringContainsString('S|M|L|XL', $csv);
     }
 
     public function test_import_creates_products_and_categories(): void
@@ -89,8 +96,11 @@ class ProductCsvImportTest extends TestCase
         $this->assertSame('instock', $remera->stock_status->value);
         $this->assertTrue($remera->manage_stock);
         $this->assertSame(25, $remera->stock_quantity);
-        $this->assertSame(['S', 'M', 'L'], $remera->size_options);
-        $this->assertSame(['Negro', 'Blanco'], $remera->color_options);
+        $this->assertEqualsCanonicalizing(
+            ['Talle', 'Color'],
+            $remera->options()->pluck('name')->all(),
+        );
+        $this->assertSame(6, $remera->variants()->count());
         $this->assertTrue($remera->whatsapp_enabled);
         $this->assertTrue($remera->status);
 
@@ -108,6 +118,31 @@ class ProductCsvImportTest extends TestCase
 
         $mainStoreId = Store::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'MAIN')->value('id');
         $this->assertSame((int) $mainStoreId, (int) $remera->store_id);
+    }
+
+    public function test_import_creates_brand_and_flavor_variants(): void
+    {
+        $csv = <<<'CSV'
+        code,name,price,category,brand,assortment_size,flavor_options
+        EMP-012,Docena de empanadas,9800,Comida,,12,Carne|Pollo|JyQ
+        PAS-010,Pastilla de freno,18900,Autopartes,Bosch,,
+        CSV;
+
+        $this->actingAs($this->user->fresh())->post(route('product.import.store'), [
+            'file' => UploadedFile::fake()->createWithContent('products.csv', $csv),
+        ])->assertRedirect(route('product.index'));
+
+        $empanada = Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'EMP-012')->first();
+        $this->assertNotNull($empanada);
+        $this->assertSame(12, $empanada->assortment_size);
+        $this->assertEqualsCanonicalizing(['Gusto'], $empanada->options()->pluck('name')->all());
+        $this->assertSame(3, $empanada->variants()->count());
+
+        $pad = Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->where('code', 'PAS-010')->first();
+        $this->assertNotNull($pad);
+        $this->assertSame(1, $pad->variants()->count());
+        $this->assertDatabaseHas('brands', ['team_id' => $this->team->id, 'name' => 'Bosch']);
+        $this->assertSame('Bosch', $pad->brand?->name);
     }
 
     public function test_import_updates_an_existing_product_matched_by_code(): void

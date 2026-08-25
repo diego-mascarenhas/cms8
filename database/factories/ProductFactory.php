@@ -64,18 +64,28 @@ class ProductFactory extends Factory
             'short_description' => null,
             'price' => $this->faker->randomElement($prices),
             'sale_price' => null,
-            'currency_id' => Currency::query()->where('code', 'ARS')->value('id')
-                ?? Currency::inRandomOrder()->value('id')
-                ?? 1,
+            'currency_id' => function ()
+            {
+                return Currency::query()->where('code', 'ARS')->value('id')
+                    ?? Currency::query()->firstOrCreate(
+                        ['code' => 'ARS'],
+                        ['name' => 'Peso argentino', 'symbol' => '$', 'status' => true],
+                    )->id;
+            },
             'store_id' => null,
-            'category_id' => Category::inRandomOrder()->first()?->id ?? 1,
+            'brand_id' => null,
+            'category_id' => function (array $attributes)
+            {
+                return Category::factory()->create([
+                    'team_id' => $attributes['team_id'] ?? Team::factory(),
+                ])->id;
+            },
             'status' => true,
             'catalog_status' => ProductCatalogStatus::Publish,
             'stock_status' => ProductStockStatus::InStock,
             'manage_stock' => false,
             'stock_quantity' => null,
-            'size_options' => [],
-            'color_options' => [],
+            'assortment_size' => null,
             'whatsapp_enabled' => true,
             'team_id' => Team::inRandomOrder()->first()?->id ?? 1,
             'image' => null,
@@ -101,5 +111,18 @@ class ProductFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'whatsapp_enabled' => false,
         ]);
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (Product $product): void
+        {
+            if ($product->variants()->withoutGlobalScope('team')->exists())
+            {
+                return;
+            }
+
+            app(\App\Services\ProductVariantCatalogService::class)->ensureDefaultVariant($product->fresh());
+        });
     }
 }

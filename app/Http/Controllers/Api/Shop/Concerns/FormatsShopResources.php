@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api\Shop\Concerns;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductOption;
+use App\Models\ProductVariant;
 use App\Models\Store;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -27,6 +29,15 @@ trait FormatsShopResources
      */
     protected function formatProduct(Product $product): array
     {
+        $product->loadMissing([
+            'category',
+            'currency',
+            'store',
+            'brand',
+            'options.values',
+            'variants.optionValues.option',
+        ]);
+
         return [
             'id' => $product->id,
             'name' => $product->name,
@@ -53,14 +64,46 @@ trait FormatsShopResources
                 'id' => $product->category->id,
                 'name' => $product->category->name,
             ] : null,
+            'brand_id' => $product->brand_id,
+            'brand' => $product->brand ? [
+                'id' => $product->brand->id,
+                'name' => $product->brand->name,
+            ] : null,
             'catalog_status' => $product->catalog_status?->value,
             'catalog_status_label' => $product->catalog_status?->label(),
             'stock_status' => $product->stock_status?->value,
             'stock_status_label' => $product->stock_status?->label(),
             'manage_stock' => (bool) $product->manage_stock,
             'stock_quantity' => $product->stock_quantity,
-            'size_options' => $product->size_options ?? [],
-            'color_options' => $product->color_options ?? [],
+            'assortment_size' => $product->assortment_size,
+            'options' => $product->options
+                ->map(fn (ProductOption $option): array => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'values' => $option->values->pluck('value')->values()->all(),
+                ])
+                ->values()
+                ->all(),
+            'variants' => $product->variants
+                ->map(fn (ProductVariant $variant): array => [
+                    'id' => $variant->id,
+                    'sku' => $variant->sku,
+                    'price' => (float) $variant->price,
+                    'sale_price' => $variant->sale_price !== null ? (float) $variant->sale_price : null,
+                    'selling_price' => $variant->currentSellingPrice(),
+                    'stock_status' => $variant->stock_status?->value,
+                    'manage_stock' => (bool) $variant->manage_stock,
+                    'stock_quantity' => $variant->stock_quantity,
+                    'is_default' => (bool) $variant->is_default,
+                    'option_label' => $variant->optionLabel(),
+                    'option_values' => $variant->optionValues
+                        ->mapWithKeys(fn ($value): array => [
+                            (string) $value->option?->name => $value->value,
+                        ])
+                        ->all(),
+                ])
+                ->values()
+                ->all(),
             'whatsapp_enabled' => (bool) $product->whatsapp_enabled,
             'image' => $product->image,
             'status' => (bool) $product->status,
@@ -83,6 +126,14 @@ trait FormatsShopResources
             'products_count' => $store->products_count ?? $store->products()->count(),
             'checkout_payment_methods' => $store->enabledCheckoutPaymentMethods(),
             'checkout_fulfillment_types' => $store->enabledCheckoutFulfillmentTypes(),
+            'phone' => data_get($store->data, 'phone'),
+            'whatsapp' => data_get($store->data, 'whatsapp'),
+            'hours' => $store->openingHours(),
+            'notes' => data_get($store->data, 'notes'),
+            'maps_url' => data_get($store->data, 'maps_url'),
+            'delivery_area' => data_get($store->data, 'delivery.area'),
+            'delivery_notes' => data_get($store->data, 'delivery.notes'),
+            'delivery_cost' => data_get($store->data, 'delivery.cost'),
             'updated_at' => $store->updated_at?->toIso8601String(),
         ];
     }
@@ -146,12 +197,14 @@ trait FormatsShopResources
             'currency_id' => (int) $validated['currency_id'],
             'store_id' => isset($validated['store_id']) && $validated['store_id'] !== '' ? (int) $validated['store_id'] : null,
             'category_id' => (int) $validated['category_id'],
+            'brand_id' => isset($validated['brand_id']) && $validated['brand_id'] !== '' ? (int) $validated['brand_id'] : null,
             'catalog_status' => $validated['catalog_status'],
             'stock_status' => $validated['stock_status'],
             'manage_stock' => $manageStock,
             'stock_quantity' => $manageStock ? (int) $validated['stock_quantity'] : null,
-            'size_options' => $validated['size_options'] ?? [],
-            'color_options' => $validated['color_options'] ?? [],
+            'assortment_size' => isset($validated['assortment_size']) && $validated['assortment_size'] !== ''
+                ? (int) $validated['assortment_size']
+                : null,
             'whatsapp_enabled' => (bool) (int) $validated['whatsapp_enabled'],
             'image' => $validated['image'] ?? null,
         ];
@@ -163,23 +216,6 @@ trait FormatsShopResources
      */
     protected function storePayload(array $validated, ?Store $existing): array
     {
-        $payment = array_values(array_intersect(
-            Store::checkoutPaymentMethodKeys(),
-            $validated['checkout_payment_methods'] ?? [],
-        ));
-        $fulfillment = array_values(array_intersect(
-            Store::checkoutFulfillmentKeys(),
-            $validated['checkout_fulfillment_types'] ?? [],
-        ));
-        unset($validated['checkout_payment_methods'], $validated['checkout_fulfillment_types']);
-
-        $data = is_array($existing?->data) ? $existing->data : [];
-        $data['checkout'] = [
-            'payment_methods' => $payment,
-            'fulfillment_types' => $fulfillment,
-        ];
-        $validated['data'] = $data;
-
-        return $validated;
+        return Store::attributesFromValidated($validated, $existing);
     }
 }

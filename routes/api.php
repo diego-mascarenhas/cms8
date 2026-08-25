@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\Shop\BrandController as ShopBrandController;
 use App\Http\Controllers\Api\Shop\CartController as ShopCartController;
 use App\Http\Controllers\Api\Shop\CategoryController as ShopCategoryController;
 use App\Http\Controllers\Api\Shop\DashboardController as ShopDashboardController;
@@ -629,6 +630,7 @@ Route::middleware('auth.api')->group(function ()
         Route::get('lookups', [ShopLookupController::class, 'index']);
         Route::get('dashboard', [ShopDashboardController::class, 'index']);
         Route::post('categories', [ShopCategoryController::class, 'store']);
+        Route::post('brands', [ShopBrandController::class, 'store']);
 
         Route::get('products/import', [ShopProductController::class, 'importSchema']);
         Route::post('products/import', [ShopProductController::class, 'import']);

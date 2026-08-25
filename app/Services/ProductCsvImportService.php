@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ProductCatalogStatus;
 use App\Enums\ProductStockStatus;
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
@@ -33,8 +34,11 @@ class ProductCsvImportService
         'stock_status',
         'manage_stock',
         'stock_quantity',
+        'brand',
+        'assortment_size',
         'size_options',
         'color_options',
+        'flavor_options',
         'whatsapp_enabled',
         'image',
     ];
@@ -57,6 +61,9 @@ class ProductCsvImportService
         'moneda' => 'currency',
         'sucursal' => 'store',
         'categoria' => 'category',
+        'marca' => 'brand',
+        'combo' => 'assortment_size',
+        'docena' => 'assortment_size',
         'estado' => 'catalog_status',
         'stock' => 'stock_status',
         'gestionar_stock' => 'manage_stock',
@@ -65,6 +72,8 @@ class ProductCsvImportService
         'talles' => 'size_options',
         'tallas' => 'size_options',
         'colores' => 'color_options',
+        'gustos' => 'flavor_options',
+        'toppings' => 'flavor_options',
         'whatsapp' => 'whatsapp_enabled',
         'imagen' => 'image',
     ];
@@ -133,16 +142,59 @@ class ProductCsvImportService
         $header = array_merge(self::REQUIRED_COLUMNS, self::OPTIONAL_COLUMNS);
 
         $rows = [
-            [
-                'REM-001', 'Remera algodón', '12500.00', 'Indumentaria',
-                'Remera de algodón peinado 24/1.', 'Remera unisex', '9900.00', 'ARS', 'Principal',
-                'publish', 'instock', '1', '25', 'S|M|L|XL', 'Negro|Blanco', '1', 'https://ejemplo.com/remera.jpg',
-            ],
-            [
-                'TAZ-002', 'Taza cerámica', '6800.00', 'Bazar',
-                'Taza de cerámica 350ml.', '', '', 'ARS', 'Principal',
-                'publish', 'instock', '0', '', '', 'Blanco', '1', '',
-            ],
+            $this->templateValues([
+                'code' => 'PAS-010',
+                'name' => 'Pastilla de freno',
+                'price' => '18900.00',
+                'category' => 'Autopartes',
+                'description' => 'Pastilla delantera. El vehículo compatible va en fitment, no acá.',
+                'short_description' => 'Pastilla Bosch',
+                'currency' => 'ARS',
+                'store' => 'Principal',
+                'catalog_status' => 'publish',
+                'stock_status' => 'instock',
+                'manage_stock' => '1',
+                'stock_quantity' => '12',
+                'brand' => 'Bosch',
+                'whatsapp_enabled' => '1',
+            ]),
+            $this->templateValues([
+                'code' => 'REM-001',
+                'name' => 'Remera algodón',
+                'price' => '12500.00',
+                'category' => 'Indumentaria',
+                'description' => 'Remera de algodón peinado 24/1.',
+                'short_description' => 'Remera unisex',
+                'sale_price' => '9900.00',
+                'currency' => 'ARS',
+                'store' => 'Principal',
+                'catalog_status' => 'publish',
+                'stock_status' => 'instock',
+                'manage_stock' => '1',
+                'stock_quantity' => '25',
+                'brand' => 'Nike',
+                'size_options' => 'S|M|L|XL',
+                'color_options' => 'Negro|Blanco',
+                'whatsapp_enabled' => '1',
+                'image' => 'https://ejemplo.com/remera.jpg',
+            ]),
+            $this->templateValues([
+                'code' => 'EMP-012',
+                'name' => 'Docena de empanadas',
+                'price' => '9800.00',
+                'category' => 'Comida',
+                'description' => 'Docena a elección. Cada gusto es una variante.',
+                'short_description' => 'Docena mixta',
+                'currency' => 'ARS',
+                'store' => 'Principal',
+                'catalog_status' => 'publish',
+                'stock_status' => 'instock',
+                'manage_stock' => '0',
+                'brand' => '',
+                'assortment_size' => '12',
+                'flavor_options' => 'Carne|Pollo|JyQ|Cebolla',
+                'whatsapp_enabled' => '1',
+            ]),
         ];
 
         $handle = fopen('php://temp', 'r+');
@@ -156,6 +208,18 @@ class ProductCsvImportService
         fclose($handle);
 
         return $contents;
+    }
+
+    /**
+     * @param  array<string, string>  $values
+     * @return list<string>
+     */
+    private function templateValues(array $values): array
+    {
+        return array_map(
+            fn (string $column): string => $values[$column] ?? '',
+            array_merge(self::REQUIRED_COLUMNS, self::OPTIONAL_COLUMNS),
+        );
     }
 
     /**
@@ -246,24 +310,26 @@ class ProductCsvImportService
             'currency_id' => $this->resolveCurrencyId($values['currency'] ?? null),
             'store_id' => $this->resolveStoreId($values['store'] ?? null, $teamId),
             'category_id' => $this->resolveCategoryId($values['category'] ?? null, $teamId),
+            'brand_id' => $this->resolveBrandId($values['brand'] ?? null, $teamId),
             'catalog_status' => $catalogStatus,
             'stock_status' => $this->parseStockStatus($values['stock_status'] ?? null),
             'manage_stock' => $manageStock,
             'stock_quantity' => $manageStock ? ($stockQuantity ?? 0) : null,
-            'size_options' => $this->parseList($values['size_options'] ?? null),
-            'color_options' => $this->parseList($values['color_options'] ?? null),
+            'assortment_size' => $this->parseInteger($values['assortment_size'] ?? null),
             'whatsapp_enabled' => $this->parseBoolean($values['whatsapp_enabled'] ?? null, true),
             'image' => $this->nullableString($values['image'] ?? null),
         ];
 
         if ($product === null)
         {
-            Product::withoutGlobalScope('team')->create($payload);
+            $product = Product::withoutGlobalScope('team')->create($payload);
+            $this->syncImportedVariants($product, $values);
 
             return true;
         }
 
         $product->fill($payload)->save();
+        $this->syncImportedVariants($product, $values);
 
         return false;
     }
@@ -472,6 +538,45 @@ class ProductCsvImportService
             'status' => true,
             'order' => 0,
         ])->id;
+    }
+
+    private function resolveBrandId(?string $value, int $teamId): ?int
+    {
+        $name = trim((string) $value);
+        if ($name === '')
+        {
+            return null;
+        }
+
+        $existing = Brand::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->get()
+            ->first(fn (Brand $brand): bool => mb_strtolower(trim($brand->name)) === mb_strtolower($name));
+
+        if ($existing)
+        {
+            return (int) $existing->id;
+        }
+
+        return (int) Brand::query()->create([
+            'team_id' => $teamId,
+            'name' => $name,
+            'slug' => Str::slug($name) ?: null,
+            'status' => true,
+        ])->id;
+    }
+
+    /**
+     * @param  array<string, string>  $values
+     */
+    private function syncImportedVariants(Product $product, array $values): void
+    {
+        $catalog = app(ProductVariantCatalogService::class);
+        $catalog->sync($product, $catalog->optionsFromValidated([
+            'size_options' => $this->parseList($values['size_options'] ?? null),
+            'color_options' => $this->parseList($values['color_options'] ?? null),
+            'flavor_options' => $this->parseList($values['flavor_options'] ?? null),
+        ]));
     }
 
     private function parseCatalogStatus(?string $value): ProductCatalogStatus
