@@ -9,7 +9,10 @@ use App\Models\Module;
 use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\AgentConversationContextService;
+use App\Services\Assistant\AssistantActorContextService;
 use App\Services\AssistantToolsService;
+use App\Services\ChatAssistantReplyService;
 use Darryldecode\Cart\Facades\CartFacade as Cart;
 use Database\Seeders\CurrencySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -454,5 +457,126 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('WhatsApp message sent to 34111222333', $first);
         $this->assertStringContainsString('Opening WhatsApp was already sent in this turn', $second);
         $this->assertSame(1, $gateway->sendCount);
+    }
+
+    public function test_ver_carrito_reply_shows_the_real_cart_without_calling_the_model(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        $phone = '5491199988811';
+        Cart::session($phone)->clear();
+        Cart::session($phone)->add([
+            'id' => 21861,
+            'name' => 'ABRAZADERA 8 X 16',
+            'price' => 989.43,
+            'quantity' => 4,
+            'attributes' => [
+                'team_id' => $team->id,
+                'category_name' => 'Abrazaderas',
+            ],
+        ]);
+
+        $service = new class(app(AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
+        {
+            public bool $modelCalled = false;
+
+            public function useStub(?int $teamId = null): bool
+            {
+                return false;
+            }
+
+            protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
+            {
+                $this->modelCalled = true;
+
+                return [
+                    'success' => true,
+                    'text' => 'No puedo mostrar el carrito desde este canal. Continuá en WhatsApp con Repuestos Avenida (1154905633).',
+                    'routed_to' => $routedTo,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
+                    'meta' => [],
+                ];
+            }
+        };
+
+        $reply = $service->getReply(
+            'Ver carrito',
+            [],
+            (int) $team->id,
+            true,
+            $user->id,
+            $phone,
+            null,
+            null,
+            false,
+            AssistantActorContextService::CHANNEL_WHATSAPP,
+        );
+
+        $this->assertFalse($service->modelCalled);
+        $this->assertTrue($reply['success'] ?? false);
+        $this->assertStringContainsString('ABRAZADERA 8 X 16', (string) $reply['text']);
+        $this->assertStringContainsString('4', (string) $reply['text']);
+        $this->assertStringContainsString('finalizar', (string) $reply['text']);
+        $this->assertStringNotContainsString('1154905633', (string) $reply['text']);
+        $this->assertStringNotContainsString('No puedo mostrar', (string) $reply['text']);
+    }
+
+    public function test_ver_carrito_reply_does_not_send_the_customer_to_another_number_when_empty(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $phone = '5491199988812';
+        Cart::session($phone)->clear();
+
+        $service = new class(app(AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
+        {
+            public function useStub(?int $teamId = null): bool
+            {
+                return false;
+            }
+
+            protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
+            {
+                return [
+                    'success' => true,
+                    'text' => 'No puedo mostrar el carrito desde este canal. Continuá en WhatsApp (1154905633).',
+                    'routed_to' => $routedTo,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
+                    'meta' => [],
+                ];
+            }
+        };
+
+        $reply = $service->getReply(
+            'Ver carrito',
+            [],
+            (int) $team->id,
+            true,
+            $user->id,
+            $phone,
+            null,
+            null,
+            false,
+            AssistantActorContextService::CHANNEL_WHATSAPP,
+        );
+
+        $this->assertTrue($reply['success'] ?? false);
+        $this->assertStringContainsString('vacío', mb_strtolower((string) $reply['text']));
+        $this->assertStringNotContainsString('1154905633', (string) $reply['text']);
+        $this->assertStringNotContainsString('No puedo mostrar', (string) $reply['text']);
     }
 }
