@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Contracts\WhatsAppGateway;
 use App\Enums\ShoppingCartChannel;
 use App\Models\Category;
 use App\Models\Currency;
@@ -569,6 +570,174 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('data.notes', 'Listo para envío');
     }
 
+    public function test_can_update_order_items(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+        $spark = $this->createPricedProduct($team, 6900);
+        $kit = $this->createPricedProduct($team, 22900);
+
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'store_id' => null,
+            'order_number' => 'WA-SHOPITEMS01',
+            'contact_id' => null,
+            'total_amount' => 20700,
+            'currency_id' => $spark->currency_id,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'notes' => null,
+            'metadata' => [
+                'phone' => '5491112345678',
+                'checkout_offered' => [
+                    'chosen_fulfillment_label' => 'Retiro en tienda',
+                    'chosen_payment_label' => 'Efectivo',
+                ],
+                'items' => [
+                    [
+                        'product_id' => $spark->id,
+                        'name' => $spark->name,
+                        'quantity' => 3,
+                        'unit_price' => 6900,
+                        'line_total' => 20700,
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/orders/'.$order->id)
+            ->assertOk()
+            ->assertJsonPath('data.customer_phone', '5491112345678')
+            ->assertJsonPath('data.checkout_chosen_fulfillment_label', 'Retiro en tienda')
+            ->assertJsonPath('data.checkout_chosen_payment_label', 'Efectivo');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/shop/orders/'.$order->id, [
+                'items' => [
+                    [
+                        'product_id' => $spark->id,
+                        'name' => $spark->name,
+                        'quantity' => 2,
+                        'unit_price' => 6900,
+                    ],
+                    [
+                        'product_id' => $kit->id,
+                        'quantity' => 1,
+                    ],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.total_amount', 36700)
+            ->assertJsonPath('data.items.0.quantity', 2)
+            ->assertJsonPath('data.items.0.line_total', 13800)
+            ->assertJsonPath('data.items.1.product_id', $kit->id)
+            ->assertJsonPath('data.items.1.name', $kit->name)
+            ->assertJsonPath('data.items.1.quantity', 1)
+            ->assertJsonPath('data.items.1.unit_price', 22900);
+    }
+
+    public function test_product_search_matches_spanish_accents_when_query_has_none(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+        $this->createPricedProduct($team, 6900, 'Bujía de iridio');
+        $this->createPricedProduct($team, 22900, 'Kit de service moto 150cc');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/products?search=bujia')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.name', 'Bujía de iridio');
+    }
+
+    public function test_can_send_order_whatsapp_quote(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+        config(['whatsapp.driver' => 'twilio']);
+
+        $spark = $this->createPricedProduct($team, 6900, 'Bujía de iridio');
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'store_id' => null,
+            'order_number' => 'WA-QUOTE01',
+            'contact_id' => null,
+            'total_amount' => 20700,
+            'currency_id' => $spark->currency_id,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'notes' => null,
+            'metadata' => [
+                'phone' => '5491112345678',
+                'items' => [
+                    [
+                        'product_id' => $spark->id,
+                        'name' => $spark->name,
+                        'quantity' => 3,
+                        'unit_price' => 6900,
+                        'line_total' => 20700,
+                    ],
+                ],
+            ],
+        ]);
+
+        $sent = [];
+        $this->app->instance(WhatsAppGateway::class, new class($sent) implements WhatsAppGateway
+        {
+            /**
+             * @param  array<int, array{to: string, message: string}>  $sent
+             */
+            public function __construct(private array &$sent) {}
+
+            public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+            {
+                $this->sent[] = ['to' => $to, 'message' => $message];
+
+                return 'ok';
+            }
+
+            public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+            {
+                return true;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function getQrUrl(): ?string
+            {
+                return null;
+            }
+
+            public function getConnectionStatus(): ?array
+            {
+                return ['status' => 'connected'];
+            }
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/orders/'.$order->id.'/whatsapp-quote', [
+                'items' => [
+                    [
+                        'product_id' => $spark->id,
+                        'name' => $spark->name,
+                        'quantity' => 2,
+                        'unit_price' => 6900,
+                    ],
+                ],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.total_amount', 13800)
+            ->assertJsonPath('quote.phone', '5491112345678');
+
+        $this->assertCount(1, $sent);
+        $this->assertSame('5491112345678', $sent[0]['to']);
+        $this->assertStringContainsString('Cotización actualizada', $sent[0]['message']);
+        $this->assertStringContainsString('Bujía de iridio', $sent[0]['message']);
+        $this->assertStringContainsString('2 ×', $sent[0]['message']);
+    }
+
     public function test_can_list_show_and_delete_open_carts(): void
     {
         [, $team, $token] = $this->adminWithShopModules();
@@ -641,7 +810,7 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('success', false);
     }
 
-    private function createPricedProduct(Team $team, float $price): Product
+    private function createPricedProduct(Team $team, float $price, ?string $name = null): Product
     {
         $currencyId = Currency::query()->firstOrCreate(
             ['code' => 'ARS'],
@@ -657,10 +826,12 @@ class ShopApiTest extends TestCase
             'order' => 0,
         ]);
 
+        $label = $name ?? 'Producto carrito '.$price;
+
         return Product::withoutGlobalScope('team')->create([
             'team_id' => $team->id,
-            'name' => 'Producto carrito '.$price,
-            'code' => 'CART-'.$team->id.'-'.$price,
+            'name' => $label,
+            'code' => 'CART-'.$team->id.'-'.$price.'-'.substr(md5($label), 0, 6),
             'description' => 'Test',
             'price' => $price,
             'currency_id' => $currencyId,

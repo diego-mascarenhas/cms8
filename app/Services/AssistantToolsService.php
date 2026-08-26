@@ -21,6 +21,7 @@ use App\Models\OpportunityStage;
 use App\Models\Post;
 use App\Models\Product;
 use App\Models\Prompt;
+use App\Models\Store;
 use App\Models\Task;
 use App\Models\TaskStatus;
 use App\Models\Team;
@@ -40,6 +41,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 /**
  * Defines and executes tools available to the chat assistant (create contact, task, send WhatsApp, etc.).
@@ -861,7 +863,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'search_products',
-                'description' => 'Search sellable products by natural language, name fragments or internal code (SKU). Pass the customer request as-is (e.g. "bujía para un gol", "abrazadera 12 x 22"). Returns id, name, code, price, category.',
+                'description' => 'Search sellable products by natural language, name fragments or internal code (SKU). Pass the customer request as-is (e.g. "bujía para un gol", "abrazadera 12 x 22"). Returns id, name, code, category, and price only when the store shows prices.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
@@ -890,6 +892,35 @@ class AssistantToolsService
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'get_store_info',
+                'description' => 'Get the team stores customers can visit: opening hours, payment methods, delivery/pickup, address, phone, WhatsApp, maps, delivery notes, and other customer notes. Call this when they ask horario, horarios, abierto, pagos, medios de pago, entrega, envío, retiro, dirección, dónde quedan, or similar. Never say you lack this information without calling this tool in the same turn.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [],
+                    'required' => [],
+                ],
+            ],
+            [
+                'name' => 'confirm_whatsapp_order',
+                'description' => 'Create a real shop order from the WhatsApp cart and empty the cart. Call this when the customer confirms the purchase: finalizar, sí, dale, confirmo, retiro, envío. Never tell them the order is confirmed unless this tool returned an order number in this turn. Optional: fulfillment_type (pickup or delivery) and payment_method (cash, bank_transfer, card, mercadopago, qr, paypal, bizum).',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'fulfillment_type' => [
+                            'type' => 'string',
+                            'description' => 'pickup (retiro en el local) or delivery (envío a domicilio)',
+                            'enum' => ['pickup', 'delivery'],
+                        ],
+                        'payment_method' => [
+                            'type' => 'string',
+                            'description' => 'How they will pay, from the store enabled methods',
+                            'enum' => ['cash', 'bank_transfer', 'card', 'mercadopago', 'qr', 'paypal', 'bizum'],
+                        ],
+                    ],
                     'required' => [],
                 ],
             ],
@@ -973,6 +1004,8 @@ class AssistantToolsService
                 'search_products' => $this->searchProducts($teamId, $input),
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
                 'view_whatsapp_cart' => $this->viewWhatsAppCart($teamId),
+                'get_store_info' => $this->getStoreInfo($teamId),
+                'confirm_whatsapp_order' => $this->confirmWhatsAppOrder($teamId, $input),
                 'list_cms_content' => $this->listCmsContent($teamId, $user, $input),
                 'get_cms_content' => $this->getCmsContent($teamId, $user, $input),
                 'create_cms_content' => $this->createCmsContent($teamId, $user, $input),
@@ -3540,7 +3573,7 @@ class AssistantToolsService
         }
 
         $query = $this->whatsAppSellableProductsQuery($teamId)
-            ->with(['category:id,name', 'currency:id,symbol', 'store:id,name']);
+            ->with(['category:id,name', 'currency:id,symbol', 'store', 'stores']);
 
         $categoryFilter = isset($input['category_name']) ? trim((string) $input['category_name']) : '';
         if ($categoryFilter !== '')
@@ -3570,18 +3603,16 @@ class AssistantToolsService
             $lines[] = 'Category: '.$categoryName;
             foreach ($group as $product)
             {
-                $symbol = $product->currency?->symbol ?? '$';
-                $price = number_format($product->currentSellingPrice(), 2);
                 $codePart = $product->code ? ' code '.$product->code.',' : '';
                 $storePart = $product->store ? ' store '.($product->store->name).',' : '';
+                $pricePart = $this->catalogPriceSuffix($product);
                 $lines[] = sprintf(
-                    '  id %d:%s%s %s — %s%s',
+                    '  id %d:%s%s %s%s',
                     $product->id,
                     $codePart,
                     $storePart,
                     $product->name,
-                    $symbol,
-                    $price,
+                    $pricePart,
                 );
             }
             $lines[] = '';
@@ -3593,6 +3624,10 @@ class AssistantToolsService
             $lines[] = 'Showing '.$products->count().' of '.$total.'. Use search_products or another category_name for the rest.';
         }
         $lines[] = 'To buy: call add_to_whatsapp_cart with product_id (or omit it to use the last single product you showed) and quantity if they said how many. Then suggest *finalizar* to close, *carrito* to review, *quitar* to remove.';
+        if ($this->anyCatalogHidesPrice($products))
+        {
+            $lines[] = $this->hiddenPricesInstruction();
+        }
 
         return $this->truncate(implode("\n", $lines));
     }
@@ -3647,19 +3682,20 @@ class AssistantToolsService
             return 'No matching WhatsApp-enabled products for: '.$raw.'. Try list_product_catalog or a shorter name.';
         }
 
+        $products->each(fn (Product $product) => $product->loadMissing(['category', 'currency', 'store', 'stores']));
+
         $lines = $products->map(function (Product $product)
         {
-            $symbol = $product->currency?->symbol ?? '$';
-            $price = number_format($product->currentSellingPrice(), 2);
             $code = $product->code ? $product->code : '—';
+            $pricePart = $this->catalogPriceSuffix($product);
+            $priceColumn = $pricePart !== '' ? ' | '.ltrim($pricePart, ' —') : '';
 
             return sprintf(
-                'id %d | code %s | %s | %s%s | category: %s',
+                'id %d | code %s | %s%s | category: %s',
                 $product->id,
                 $code,
                 $product->name,
-                $symbol,
-                $price,
+                $priceColumn,
                 $product->category->name ?? '—',
             );
         })->implode("\n");
@@ -3670,7 +3706,13 @@ class AssistantToolsService
             ? 'No exact match for "'.$raw.'". Closest published products:'
             : 'Matches:';
 
-        return $this->truncate($heading."\n".$lines);
+        $out = $heading."\n".$lines;
+        if ($this->anyCatalogHidesPrice($products))
+        {
+            $out .= "\n".$this->hiddenPricesInstruction();
+        }
+
+        return $this->truncate($out);
     }
 
     /**
@@ -3986,9 +4028,24 @@ class AssistantToolsService
             return 'The WhatsApp cart is empty. Tell them that in one sentence and offer to add with add_to_whatsapp_cart. Do not give another phone number.';
         }
 
+        $productIds = $cartItems->pluck('id')->map(fn ($id): int => (int) $id)->filter()->unique()->values();
+        $products = $this->whatsAppSellableProductsQuery($teamId)
+            ->with(['store', 'stores'])
+            ->whereIn('id', $productIds)
+            ->get()
+            ->keyBy('id');
+        $hidePrices = $products->contains(fn (Product $product): bool => ! $product->catalogShowsPrice());
+
         $lines = ['WhatsApp cart for this customer:'];
         foreach ($cartItems as $item)
         {
+            if ($hidePrices)
+            {
+                $lines[] = sprintf('- %s x%d', $item->name, (int) $item->quantity);
+
+                continue;
+            }
+
             $lines[] = sprintf(
                 '- %s x%d at $%s (line $%s)',
                 $item->name,
@@ -3997,8 +4054,15 @@ class AssistantToolsService
                 number_format((float) $item->price * (int) $item->quantity, 2),
             );
         }
-        $lines[] = 'Total: $'.number_format((float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity), 2).'.';
+        if (! $hidePrices)
+        {
+            $lines[] = 'Total: $'.number_format((float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity), 2).'.';
+        }
         $lines[] = 'Relay this cart in plain language. Then offer *finalizar* to create the order. Do not give another phone number.';
+        if ($hidePrices)
+        {
+            $lines[] = $this->hiddenPricesInstruction();
+        }
 
         return $this->truncate(implode("\n", $lines));
     }
@@ -4021,7 +4085,7 @@ class AssistantToolsService
             return 'Product not found or not available on WhatsApp. Use the last product you showed (omit identifiers) or pass product_id / product_code / product_name.';
         }
 
-        $product->loadMissing(['category', 'currency']);
+        $product->loadMissing(['category', 'currency', 'store', 'stores']);
 
         $quantity = isset($input['quantity']) ? max(1, (int) $input['quantity']) : 0;
         if ($quantity < 1)
@@ -4042,11 +4106,123 @@ class AssistantToolsService
 
         WhatsAppLastOfferedProduct::remember($this->contextCustomerPhone, $teamId, (int) $product->id);
 
-        $msg = "Added to WhatsApp cart for this customer: {$product->name} (id {$product->id}) x{$newQty} at {$symbol}".number_format($product->currentSellingPrice(), 2).'. ';
-        $msg .= 'Cart total: '.$symbol.number_format($total, 2).'. ';
-        $msg .= 'Confirm what you added in plain language (name, quantity, price). Then offer *finalizar* to close the order; mention *carrito* or *quitar* only if useful.';
+        $msg = "Added to WhatsApp cart for this customer: {$product->name} (id {$product->id}) x{$newQty}";
+        if ($product->catalogShowsPrice())
+        {
+            $msg .= ' at '.$symbol.number_format($product->currentSellingPrice(), 2);
+            $msg .= '. Cart total: '.$symbol.number_format($total, 2).'. ';
+            $msg .= 'Confirm what you added in plain language (name, quantity, price). Then offer *finalizar* to close the order; mention *carrito* or *quitar* only if useful.';
+        } else
+        {
+            $msg .= '. ';
+            $msg .= $this->hiddenPricesInstruction().' Confirm name and quantity only. Then offer *finalizar* to close the order; mention *carrito* or *quitar* only if useful.';
+        }
 
         return $this->truncate($msg);
+    }
+
+    private function confirmWhatsAppOrder(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return 'Cannot confirm an order: no customer phone in this session. If this is the web assistant, the operator must select the WhatsApp recipient. Do not tell the customer the order exists.';
+        }
+
+        try
+        {
+            $order = app(WhatsAppCheckoutOrderService::class)->confirmAndClearCart(
+                $teamId,
+                $this->contextCustomerPhone,
+                isset($input['fulfillment_type']) ? (string) $input['fulfillment_type'] : null,
+                isset($input['payment_method']) ? (string) $input['payment_method'] : null,
+            );
+        } catch (InvalidArgumentException $e)
+        {
+            if (str_contains($e->getMessage(), 'empty'))
+            {
+                return 'The WhatsApp cart is empty. Do not say the order is confirmed. Offer to add products with add_to_whatsapp_cart.';
+            }
+
+            return 'Could not create the order: '.$e->getMessage().' Do not say the order is confirmed.';
+        }
+
+        $chosenFulfillment = $order->metadata['checkout_offered']['chosen_fulfillment_label']
+            ?? $order->metadata['checkout_offered']['chosen_fulfillment']
+            ?? null;
+        $chosenPayment = $order->metadata['checkout_offered']['chosen_payment_label']
+            ?? $order->metadata['checkout_offered']['chosen_payment']
+            ?? null;
+        $storeName = $order->metadata['checkout_offered']['store_name'] ?? null;
+
+        $lines = [
+            'Order created. Tell the customer it is confirmed and give them this number.',
+            'Order number: '.$order->order_number,
+            'Total: '.number_format((float) $order->total_amount, 2),
+        ];
+        if (is_string($storeName) && $storeName !== '')
+        {
+            $lines[] = 'Store: '.$storeName;
+        }
+        if (is_string($chosenFulfillment) && $chosenFulfillment !== '')
+        {
+            $lines[] = 'Fulfillment: '.$chosenFulfillment;
+        }
+        if (is_string($chosenPayment) && $chosenPayment !== '')
+        {
+            $lines[] = 'Payment: '.$chosenPayment;
+        }
+        $lines[] = 'The cart is now empty. Mention the order number. Do not invent extra confirmation steps.';
+
+        return $this->truncate(implode("\n", $lines));
+    }
+
+    private function getStoreInfo(int $teamId): string
+    {
+        $stores = Store::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('status', true)
+            ->orderByDesc('is_main')
+            ->orderBy('name')
+            ->get();
+
+        if ($stores->isEmpty())
+        {
+            return 'No stores are configured for this team. Do not invent hours, payment methods, delivery options, address, or notes. Say you do not have the branch profile loaded.';
+        }
+
+        $blocks = $stores->map(fn (Store $store): string => $store->toAssistantText())->implode("\n\n");
+
+        return $this->truncate($blocks."\n\nAnswer the customer from this store data. Do not say you lack hours, payments, or delivery. Do not send them to another channel for these facts.");
+    }
+
+    private function catalogPriceSuffix(Product $product): string
+    {
+        if (! $product->catalogShowsPrice())
+        {
+            return '';
+        }
+
+        $symbol = $product->currency?->symbol ?? '$';
+
+        return ' — '.$symbol.number_format($product->currentSellingPrice(), 2);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Product>  $products
+     */
+    private function anyCatalogHidesPrice($products): bool
+    {
+        return $products->contains(fn (Product $product): bool => ! $product->catalogShowsPrice());
+    }
+
+    private function hiddenPricesInstruction(): string
+    {
+        return 'This store hides catalog prices. Do not mention prices, amounts, or currency to the customer.';
     }
 
     private function truncate(string $s): string

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Contact;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Store;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -54,10 +55,131 @@ class WhatsAppCheckoutOrderService
                 'currency_id' => $currencyId,
                 'payment_status' => 'pending',
                 'delivery_status' => 'processing',
-                'notes' => 'Order placed via WhatsApp',
+                'notes' => 'Pedido realizado por WhatsApp',
                 'metadata' => $metadata,
             ]);
         });
+    }
+
+    /**
+     * Persist the current WhatsApp cart as an order and empty the cart.
+     *
+     * @throws InvalidArgumentException when the cart is empty
+     */
+    public function confirmAndClearCart(
+        int $teamId,
+        string $phoneDigits,
+        ?string $fulfillmentType = null,
+        ?string $paymentMethod = null,
+    ): Order {
+        $carts = app(ShoppingCartService::class);
+        $cart = $carts->findWhatsApp($teamId, $phoneDigits);
+        $items = $carts->linesOrEmpty($cart);
+
+        if ($items->isEmpty())
+        {
+            throw new InvalidArgumentException('The WhatsApp cart is empty.');
+        }
+
+        $store = $this->resolveStoreForCart($teamId, $items);
+        $snapshot = $this->buildCheckoutSnapshot($store);
+        $allowedFulfillment = $store?->enabledCheckoutFulfillmentTypes() ?? Store::checkoutFulfillmentKeys();
+        $allowedPayments = $store?->enabledCheckoutPaymentMethods() ?? Store::checkoutPaymentMethodKeys();
+
+        $fulfillment = is_string($fulfillmentType) ? trim($fulfillmentType) : '';
+        if ($fulfillment !== '' && in_array($fulfillment, $allowedFulfillment, true))
+        {
+            $snapshot['chosen_fulfillment'] = $fulfillment;
+            $snapshot['chosen_fulfillment_label'] = Store::checkoutFulfillmentLabels()[$fulfillment] ?? $fulfillment;
+        }
+
+        $payment = is_string($paymentMethod) ? trim($paymentMethod) : '';
+        if ($payment !== '' && in_array($payment, $allowedPayments, true))
+        {
+            $snapshot['chosen_payment'] = $payment;
+            $snapshot['chosen_payment_label'] = Store::checkoutPaymentMethodLabels()[$payment] ?? $payment;
+        }
+
+        $order = $this->createFromWhatsAppCart(
+            $teamId,
+            preg_replace('/[^0-9]/', '', $phoneDigits) ?: $phoneDigits,
+            $items,
+            (float) $carts->total($cart),
+            $store?->id,
+            $snapshot,
+        );
+
+        if ($cart)
+        {
+            $carts->clear($cart);
+        }
+
+        return $order;
+    }
+
+    /**
+     * @param  iterable<object>  $cartItems
+     */
+    public function resolveStoreForCart(int $teamId, iterable $cartItems): ?Store
+    {
+        $storeIds = [];
+        foreach ($cartItems as $item)
+        {
+            $attrs = $this->normalizeCartItemAttributes($item->attributes ?? null);
+            $sid = isset($attrs['store_id']) && $attrs['store_id'] !== null && $attrs['store_id'] !== ''
+                ? (int) $attrs['store_id']
+                : 0;
+            if ($sid <= 0 && (int) ($item->id ?? 0) > 0)
+            {
+                $sid = (int) (Product::withoutGlobalScope('team')
+                    ->where('team_id', $teamId)
+                    ->where('id', (int) $item->id)
+                    ->value('store_id') ?? 0);
+            }
+            if ($sid > 0)
+            {
+                $storeIds[] = $sid;
+            }
+        }
+        $storeIds = array_values(array_unique($storeIds));
+
+        if (count($storeIds) === 1)
+        {
+            $store = Store::withoutGlobalScope('team')
+                ->where('team_id', $teamId)
+                ->where('id', $storeIds[0])
+                ->first();
+
+            return $store ?? Store::ensureMainStoreForTeam($teamId);
+        }
+
+        return Store::ensureMainStoreForTeam($teamId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function buildCheckoutSnapshot(?Store $store): array
+    {
+        if (! $store)
+        {
+            return [];
+        }
+
+        return [
+            'store_id' => $store->id,
+            'store_name' => $store->name,
+            'payment_methods' => $store->enabledCheckoutPaymentMethods(),
+            'payment_method_labels' => array_map(
+                static fn (string $key): string => (string) (Store::checkoutPaymentMethodLabels()[$key] ?? $key),
+                $store->enabledCheckoutPaymentMethods(),
+            ),
+            'fulfillment_types' => $store->enabledCheckoutFulfillmentTypes(),
+            'fulfillment_labels' => array_map(
+                static fn (string $key): string => (string) (Store::checkoutFulfillmentLabels()[$key] ?? $key),
+                $store->enabledCheckoutFulfillmentTypes(),
+            ),
+        ];
     }
 
     /**

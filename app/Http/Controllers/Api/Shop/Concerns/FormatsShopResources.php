@@ -180,13 +180,24 @@ trait FormatsShopResources
             'contact_id' => $order->contact_id,
             'contact' => $order->contact ? [
                 'id' => $order->contact->id,
-                'name' => $order->contact->name,
+                'name' => trim($order->contact->name.' '.($order->contact->surname ?? '')),
+                'email' => $order->contact->email,
+                'phone' => $order->contact->phone ? (string) $order->contact->phone : null,
             ] : null,
+            'customer_phone' => isset($metadata['phone']) ? (string) $metadata['phone'] : ($order->contact?->phone ? (string) $order->contact->phone : null),
+            'checkout_chosen_fulfillment_label' => is_array($metadata['checkout_offered'] ?? null)
+                ? ($metadata['checkout_offered']['chosen_fulfillment_label'] ?? null)
+                : null,
+            'checkout_chosen_payment_label' => is_array($metadata['checkout_offered'] ?? null)
+                ? ($metadata['checkout_offered']['chosen_payment_label'] ?? null)
+                : null,
             'payment_status' => $order->payment_status,
             'payment_status_label' => $order->payment_status_label,
             'delivery_status' => $order->delivery_status,
             'delivery_status_label' => $order->delivery_status_label,
-            'notes' => $order->notes,
+            'notes' => $order->notes === 'Order placed via WhatsApp'
+                ? 'Pedido realizado por WhatsApp'
+                : $order->notes,
             'items' => is_array($metadata['items'] ?? null) ? $metadata['items'] : [],
             'metadata' => $metadata,
             'checkout_payment_method_labels' => $order->checkoutPaymentMethodDisplayLabels(),

@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Api\Shop;
 use App\Http\Controllers\Api\Shop\Concerns\FormatsShopResources;
 use App\Http\Controllers\Api\Shop\Concerns\ResolvesShopTeam;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\SendShopOrderWhatsAppQuoteRequest;
 use App\Http\Requests\Api\UpdateShopOrderRequest;
 use App\Models\Order;
+use App\Services\ShopOrderItemsService;
+use App\Services\ShopOrderWhatsAppQuoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -114,12 +117,67 @@ class OrderController extends Controller
             ], 404);
         }
 
-        $order->update($request->validated());
-        $order->load(['contact', 'currency', 'store']);
+        $validated = $request->validated();
+        $items = $validated['items'] ?? null;
+        unset($validated['items']);
+
+        if ($validated !== [])
+        {
+            $order->update($validated);
+        }
+
+        if (is_array($items))
+        {
+            app(ShopOrderItemsService::class)->sync($order, $items);
+        }
+
+        $order->refresh()->load(['contact', 'currency', 'store']);
 
         return response()->json([
             'success' => true,
             'data' => $this->formatOrder($order),
+        ]);
+    }
+
+    public function sendWhatsAppQuote(SendShopOrderWhatsAppQuoteRequest $request, int $id): JsonResponse
+    {
+        $team = $this->shopTeam($request, 'orders');
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $order = Order::query()->with(['contact', 'currency', 'store'])->find($id);
+        if (! $order)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Order not found'),
+            ], 404);
+        }
+
+        $user = $request->user();
+        if (! $user)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Unauthenticated.'),
+            ], 401);
+        }
+
+        $sent = app(ShopOrderWhatsAppQuoteService::class)->send(
+            $order,
+            $user,
+            $request->validated('items'),
+        );
+
+        $order->refresh()->load(['contact', 'currency', 'store']);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Cotización enviada por WhatsApp.'),
+            'data' => $this->formatOrder($order),
+            'quote' => $sent,
         ]);
     }
 }

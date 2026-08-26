@@ -339,6 +339,36 @@ class Product extends Model
         return $names->implode(', ') ?: __('All stores');
     }
 
+    /**
+     * Whether customer-facing catalog (shop / WhatsApp) may quote this product's price.
+     * Follows the store «Mostrar precios» flag; unassigned products use the team's main store.
+     */
+    public function catalogShowsPrice(): bool
+    {
+        $this->loadMissing(['store', 'stores']);
+
+        $stores = collect();
+        if ($this->store)
+        {
+            $stores->push($this->store);
+        }
+        $stores = $stores->concat($this->stores)->unique('id')->values();
+
+        if ($this->available_in_all_stores || $stores->isEmpty())
+        {
+            $teamStore = Store::withoutGlobalScope('team')
+                ->where('team_id', (int) $this->team_id)
+                ->where('status', true)
+                ->orderByDesc('is_main')
+                ->orderBy('id')
+                ->first();
+
+            return $teamStore ? $teamStore->showsPrices() : true;
+        }
+
+        return $stores->every(fn (Store $store): bool => $store->showsPrices());
+    }
+
     private function defaultPrimaryStoreId(): ?int
     {
         $teamId = (int) $this->team_id;

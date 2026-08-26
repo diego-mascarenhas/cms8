@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Services\ProductCsvImportService;
 use App\Services\ProductVariantCatalogService;
+use App\Support\SearchNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -46,11 +47,7 @@ class ProductController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
         {
-            $query->where(function ($builder) use ($search)
-            {
-                $builder->where('name', 'like', '%'.$search.'%')
-                    ->orWhere('code', 'like', '%'.$search.'%');
-            });
+            SearchNormalizer::applyColumnsNavbarConditions($query, ['name', 'code'], $search);
         }
 
         if (! empty($validated['store_id']))

@@ -651,6 +651,7 @@ Route::middleware('auth.api')->group(function ()
         Route::get('orders', [ShopOrderController::class, 'index']);
         Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');
         Route::put('orders/{id}', [ShopOrderController::class, 'update'])->whereNumber('id');
+        Route::post('orders/{id}/whatsapp-quote', [ShopOrderController::class, 'sendWhatsAppQuote'])->whereNumber('id');
 
         Route::get('carts', [ShopCartController::class, 'index']);
         Route::get('carts/{id}', [ShopCartController::class, 'show'])->whereNumber('id');

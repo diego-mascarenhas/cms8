@@ -41,6 +41,8 @@ class AssistantToolAuthorizationService
         'search_products',
         'add_to_whatsapp_cart',
         'view_whatsapp_cart',
+        'get_store_info',
+        'confirm_whatsapp_order',
     ];
 
     /**
