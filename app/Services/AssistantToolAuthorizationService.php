@@ -65,6 +65,9 @@ class AssistantToolAuthorizationService
         'get_contact_detail',
         'create_contact',
         'update_contact',
+        'list_contact_categories',
+        'get_contact_categories',
+        'assign_contact_to_category',
     ];
 
     /**
@@ -85,6 +88,7 @@ class AssistantToolAuthorizationService
         'list_contact_categories',
         'list_contact_statuses',
         'get_contact_categories',
+        'assign_contact_to_category',
     ];
 
     /**

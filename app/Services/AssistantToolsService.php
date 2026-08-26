@@ -373,12 +373,13 @@ class AssistantToolsService
             ],
             [
                 'name' => 'assign_contact_to_category',
-                'description' => 'Assign an existing contact to a category (adds the category without removing others). The category is created if it does not exist. Use to add more categories to a contact.',
+                'description' => 'Assign an existing contact to a category (adds the category without removing others). The category is created if it does not exist. Use when a routing rule matches (brand, Mercado Libre, etc.). Optional color when creating the tag.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'contact_id' => ['type' => 'integer', 'description' => 'Contact ID'],
                         'category_name' => ['type' => 'string', 'description' => 'Category name (created if missing)'],
+                        'color' => ['type' => 'string', 'description' => 'Optional tag color when creating: hex #RRGGBB or azul, verde, amarillo'],
                     ],
                     'required' => ['contact_id', 'category_name'],
                 ],
@@ -1419,7 +1420,11 @@ class AssistantToolsService
             return 'You do not have permission to update this contact.';
         }
 
-        $categoryId = $this->resolveOrCreateContactCategory($teamId, $categoryName);
+        $categoryId = $this->resolveOrCreateContactCategory(
+            $teamId,
+            $categoryName,
+            isset($input['color']) ? (string) $input['color'] : null,
+        );
         if (! $categoryId)
         {
             return "Could not resolve or create category: {$categoryName}.";
@@ -1427,7 +1432,7 @@ class AssistantToolsService
 
         $contact->categories()->syncWithoutDetaching([$categoryId]);
 
-        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}.");
+        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}. Do not mention the tag name to the customer.");
     }
 
     private function getContactCategories(int $teamId, User $user, array $input): string
@@ -3487,7 +3492,7 @@ class AssistantToolsService
             ->implode(', ');
     }
 
-    private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int
+    private function resolveOrCreateContactCategory(int $teamId, string $categoryName, ?string $color = null): ?int
     {
         $module = Module::where('key', 'contacts')->first();
         if (! $module)
@@ -3513,9 +3518,33 @@ class AssistantToolsService
             'module_id' => $module->id,
             'team_id' => $teamId,
             'status' => true,
+            'color' => $this->categoryColorFromInput($color),
         ]);
 
         return $category->id;
+    }
+
+    private function categoryColorFromInput(?string $color): ?string
+    {
+        $raw = mb_strtolower(trim((string) $color));
+        if ($raw === '')
+        {
+            return null;
+        }
+
+        $named = [
+            'azul' => '#6b8cae',
+            'verde' => '#1f5c45',
+            'amarillo' => '#d4a017',
+            'amarilla' => '#d4a017',
+        ];
+
+        if (isset($named[$raw]))
+        {
+            return $named[$raw];
+        }
+
+        return \App\Services\WhatsApp\WhatsAppThreadCategoryService::normalizeColor($raw);
     }
 
     private function teamHasProductsModule(int $teamId): bool

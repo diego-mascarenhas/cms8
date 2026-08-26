@@ -464,6 +464,36 @@ class AssistantContactAndCalendarToolsTest extends TestCase
             ->count());
     }
 
+    public function test_assign_contact_to_category_creates_colored_tag(): void
+    {
+        $user = $this->createAdminWithTeam();
+        $this->ensureContactsModule();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Cliente Fiat',
+        ]);
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('assign_contact_to_category', [
+            'contact_id' => $contact->id,
+            'category_name' => 'ESQUINA',
+            'color' => 'azul',
+        ]);
+
+        $this->assertStringContainsString('assigned to category: ESQUINA', $out);
+
+        $category = Category::withoutGlobalScopes()
+            ->where('team_id', $user->currentTeam->id)
+            ->where('name', 'ESQUINA')
+            ->first();
+
+        $this->assertNotNull($category);
+        $this->assertSame('#6b8cae', $category->color);
+        $this->assertTrue($contact->categories()->where('categories.id', $category->id)->exists());
+    }
+
     public function test_whatsapp_inbound_without_humano_user_can_create_a_calendar_event(): void
     {
         $owner = $this->createAdminWithTeam();
