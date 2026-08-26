@@ -132,4 +132,32 @@ class TokenUsageLogServiceTest extends TestCase
 
         $this->assertSame(0, TokenUsageLog::withoutGlobalScopes()->where('team_id', $team->id)->count());
     }
+
+    public function test_usage_with_toon_savings_copies_compression_fields(): void
+    {
+        $usage = TokenUsageLogService::usageWithToonSavings(
+            ['prompt_tokens' => 80, 'completion_tokens' => 20, 'total_tokens' => 100],
+            [
+                'used_toon' => true,
+                'json_tokens' => 140,
+                'toon_tokens' => 100,
+                'tokens_saved' => 40,
+            ],
+        );
+
+        $this->assertSame(40, $usage['tokens_saved']);
+        $this->assertSame(140, $usage['json_tokens']);
+        $this->assertSame(100, $usage['toon_tokens']);
+        $this->assertSame(100, $usage['total_tokens']);
+    }
+
+    public function test_usage_with_toon_savings_leaves_plain_usage_untouched(): void
+    {
+        $original = ['prompt_tokens' => 10, 'total_tokens' => 12];
+
+        $this->assertSame(
+            $original,
+            TokenUsageLogService::usageWithToonSavings($original, ['used_toon' => false, 'tokens_saved' => 0]),
+        );
+    }
 }

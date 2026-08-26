@@ -180,6 +180,54 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(50, $stats['totalTokensWithoutToon']);
     }
 
+    public function test_does_not_double_count_chat_reply_logs_when_conversation_rows_exist(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'ChatAssistantReplyService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 140,
+            'toon_tokens' => 100,
+            'savings_percentage' => 29,
+            'used_toon' => true,
+        ]);
+
+        $conversationId = (string) Str::uuid();
+        AgentConversation::create([
+            'id' => $conversationId,
+            'user_id' => $user->id,
+            'team_id' => $team->id,
+            'title' => 'WhatsApp',
+        ]);
+        AgentConversationMessage::create([
+            'id' => (string) Str::uuid(),
+            'conversation_id' => $conversationId,
+            'user_id' => $user->id,
+            'agent' => 'chat_assistant',
+            'role' => 'assistant',
+            'content' => 'Reply',
+            'attachments' => [],
+            'tool_calls' => [],
+            'tool_results' => [],
+            'usage' => ['total_tokens' => 100],
+            'meta' => [],
+        ]);
+
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+
+        $this->assertSame(1, $stats['totalCalls']);
+        $this->assertSame(100, $stats['totalTokensUsed']);
+        $this->assertSame(40, $stats['totalTokensSaved']);
+        $this->assertSame(140, $stats['totalTokensWithoutToon']);
+        $this->assertSame(28.57, $stats['averageSavings']);
+    }
+
     public function test_by_module_shows_ocr_module_name_for_document_ai_ocr_logs(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

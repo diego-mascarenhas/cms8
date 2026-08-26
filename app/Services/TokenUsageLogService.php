@@ -98,6 +98,29 @@ final class TokenUsageLogService
     }
 
     /**
+     * Attach TOON compression savings onto a reply usage payload so WhatsApp
+     * metadata and the usage table can show the same marked-up euro amount.
+     *
+     * @param  array<string, mixed>  $usage
+     * @param  array{used_toon?: bool, json_tokens?: int, toon_tokens?: int, tokens_saved?: int}  $toon
+     * @return array<string, mixed>
+     */
+    public static function usageWithToonSavings(array $usage, array $toon): array
+    {
+        $tokensSaved = max(0, (int) ($toon['tokens_saved'] ?? 0));
+        if ($tokensSaved <= 0 && ! ($toon['used_toon'] ?? false))
+        {
+            return $usage;
+        }
+
+        $usage['tokens_saved'] = $tokensSaved;
+        $usage['json_tokens'] = (int) ($toon['json_tokens'] ?? 0);
+        $usage['toon_tokens'] = (int) ($toon['toon_tokens'] ?? 0);
+
+        return $usage;
+    }
+
+    /**
      * @param  object|array<string, mixed>|null  $usage
      */
     public static function totalTokensFromUsage(mixed $usage): int

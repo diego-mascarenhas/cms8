@@ -7,15 +7,18 @@ use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\Team;
+use App\Services\Billing\AssistantSubscriptionService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Laravel\Ai\AiManager;
 
 class AssistantWhatsAppUsageByLineService
 {
-    public const PERIOD_DAYS = 30;
-
     private ?string $resolvedCheapest = null;
+
+    public function __construct(
+        private readonly AssistantSubscriptionService $subscriptions,
+    ) {}
 
     /**
      * Token usage per WhatsApp inbox line for the current team.
@@ -27,21 +30,23 @@ class AssistantWhatsAppUsageByLineService
      *     rate_per_million: float,
      *     currency: string,
      *     default_model: string,
-     *     totals: array{lines: int, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, amount_cents: int},
-     *     by_model: list<array{model: string, replies: int, total_tokens: int, amount_cents: int}>,
+     *     totals: array{lines: int, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int},
+     *     by_model: list<array{model: string, replies: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
      *     lines: list<array<string, mixed>>
      * }
      */
-    public function forTeam(Team $team): array
+    public function forTeam(Team $team, ?Carbon $from = null, ?Carbon $to = null): array
     {
-        $from = now()->subDays(self::PERIOD_DAYS)->startOfDay();
-        $to = now();
+        if ($from === null || $to === null)
+        {
+            [$from, $to] = $this->subscriptions->usagePeriod($team);
+        }
         $rate = TeamApiUsageStatsService::sellRatePerMillion();
         $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
         $defaultModel = $this->displayModel(null);
 
-        $buckets = $this->bucketsFromConversationMetadata($team, $from);
-        $this->fillGapsFromAgentConversations($team, $from, $buckets, $defaultModel);
+        $buckets = $this->bucketsFromConversationMetadata($team, $from, $to);
+        $this->fillGapsFromAgentConversations($team, $from, $to, $buckets, $defaultModel);
 
         $contacts = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -54,9 +59,10 @@ class AssistantWhatsAppUsageByLineService
         $prompt = (int) collect($lines)->sum('prompt_tokens');
         $completion = (int) collect($lines)->sum('completion_tokens');
         $tokens = (int) collect($lines)->sum('total_tokens');
+        $tokensSaved = (int) collect($lines)->sum('tokens_saved');
 
         return [
-            'period_days' => self::PERIOD_DAYS,
+            'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
             'rate_per_million' => $rate,
@@ -68,7 +74,9 @@ class AssistantWhatsAppUsageByLineService
                 'prompt_tokens' => $prompt,
                 'completion_tokens' => $completion,
                 'total_tokens' => $tokens,
+                'tokens_saved' => $tokensSaved,
                 'amount_cents' => $this->cents($tokens, $rate),
+                'saved_cents' => $this->cents($tokensSaved, $rate),
             ],
             'by_model' => $byModel,
             'lines' => $lines,
@@ -76,9 +84,9 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @return array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>
+     * @return array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>
      */
-    private function bucketsFromConversationMetadata(Team $team, Carbon $from): array
+    private function bucketsFromConversationMetadata(Team $team, Carbon $from, Carbon $to): array
     {
         $teamNumber = preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom());
         if ($teamNumber === '')
@@ -90,6 +98,7 @@ class AssistantWhatsAppUsageByLineService
             ->where('channel', 'whatsapp')
             ->where('direction', 'outbound')
             ->where('created_at', '>=', $from)
+            ->where('created_at', '<=', $to)
             ->where(function ($query) use ($teamNumber): void
             {
                 $query->where('from', $teamNumber)
@@ -121,13 +130,14 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @param  array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>  $buckets
+     * @param  array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>  $buckets
      */
-    private function fillGapsFromAgentConversations(Team $team, Carbon $from, array &$buckets, string $defaultModel): void
+    private function fillGapsFromAgentConversations(Team $team, Carbon $from, Carbon $to, array &$buckets, string $defaultModel): void
     {
         $messages = AgentConversationMessage::query()
             ->where('role', 'assistant')
             ->where('created_at', '>=', $from)
+            ->where('created_at', '<=', $to)
             ->whereHas('conversation', function ($query) use ($team): void
             {
                 $query->where('team_id', $team->id);
@@ -161,8 +171,8 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @param  array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>  $buckets
-     * @param  array{prompt_tokens: int, completion_tokens: int, total_tokens: int, model: string}  $usage
+     * @param  array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>  $buckets
+     * @param  array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, model: string}  $usage
      */
     private function addToBucket(array &$buckets, string $phone, array $usage, mixed $at, bool $fromMetadata): void
     {
@@ -174,6 +184,7 @@ class AssistantWhatsAppUsageByLineService
                 'prompt_tokens' => 0,
                 'completion_tokens' => 0,
                 'total_tokens' => 0,
+                'tokens_saved' => 0,
                 'models' => [],
                 'last_at' => null,
                 'from_metadata' => $fromMetadata,
@@ -184,6 +195,7 @@ class AssistantWhatsAppUsageByLineService
         $buckets[$phone]['prompt_tokens'] += $usage['prompt_tokens'];
         $buckets[$phone]['completion_tokens'] += $usage['completion_tokens'];
         $buckets[$phone]['total_tokens'] += $usage['total_tokens'];
+        $buckets[$phone]['tokens_saved'] += $usage['tokens_saved'];
         $buckets[$phone]['from_metadata'] = $buckets[$phone]['from_metadata'] || $fromMetadata;
 
         $model = $usage['model'];
@@ -197,7 +209,7 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @param  array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>  $buckets
+     * @param  array<string, array{phone: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, models: array<string, int>, last_at: ?Carbon, from_metadata: bool}>  $buckets
      * @param  Collection<int, Contact>  $contacts
      * @return list<array<string, mixed>>
      */
@@ -226,7 +238,9 @@ class AssistantWhatsAppUsageByLineService
                 'prompt_tokens' => $bucket['prompt_tokens'],
                 'completion_tokens' => $bucket['completion_tokens'],
                 'total_tokens' => $bucket['total_tokens'],
+                'tokens_saved' => $bucket['tokens_saved'],
                 'amount_cents' => $this->cents($bucket['total_tokens'], $rate),
+                'saved_cents' => $this->cents($bucket['tokens_saved'], $rate),
                 'model' => $primary,
                 'models' => $models,
                 'last_at' => $bucket['last_at']?->toIso8601String(),
@@ -241,7 +255,7 @@ class AssistantWhatsAppUsageByLineService
 
     /**
      * @param  list<array<string, mixed>>  $lines
-     * @return list<array{model: string, replies: int, total_tokens: int, amount_cents: int}>
+     * @return list<array{model: string, replies: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int}>
      */
     private function presentByModel(array $lines, float $rate): array
     {
@@ -261,16 +275,19 @@ class AssistantWhatsAppUsageByLineService
                     'model' => $model,
                     'replies' => 0,
                     'total_tokens' => 0,
+                    'tokens_saved' => 0,
                 ];
             }
 
             $grouped[$model]['replies'] += (int) $line['replies'];
             $grouped[$model]['total_tokens'] += (int) $line['total_tokens'];
+            $grouped[$model]['tokens_saved'] += (int) $line['tokens_saved'];
         }
 
         $rows = array_values(array_map(function (array $row) use ($rate): array
         {
             $row['amount_cents'] = $this->cents((int) $row['total_tokens'], $rate);
+            $row['saved_cents'] = $this->cents((int) $row['tokens_saved'], $rate);
 
             return $row;
         }, $grouped));
@@ -314,7 +331,7 @@ class AssistantWhatsAppUsageByLineService
 
     /**
      * @param  array<string, mixed>|null  $metadata
-     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, model: string}|null
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, model: string}|null
      */
     private function usageFromMetadata(mixed $metadata): ?array
     {
@@ -339,7 +356,7 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, model: string}|null
+     * @return array{prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, model: string}|null
      */
     private function usageFromArray(mixed $usage): ?array
     {
@@ -364,6 +381,7 @@ class AssistantWhatsAppUsageByLineService
             'prompt_tokens' => $prompt,
             'completion_tokens' => $completion,
             'total_tokens' => $total,
+            'tokens_saved' => max(0, (int) ($usage['tokens_saved'] ?? 0)),
             'model' => $this->displayModel(is_string($usage['model'] ?? null) ? $usage['model'] : null),
         ];
     }

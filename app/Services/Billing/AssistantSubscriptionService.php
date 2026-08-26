@@ -628,6 +628,24 @@ class AssistantSubscriptionService
     }
 
     /**
+     * Same window the subscription token/WhatsApp widgets use: the paid
+     * Assistant cycle when Stripe has one, otherwise first real use → now.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function usagePeriod(Team $team): array
+    {
+        $subscription = $this->findAssistantSubscription($team);
+        [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
+        $stripe = [
+            'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
+            'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
+        ];
+
+        return $this->tokenUsagePeriod($team, $stripe);
+    }
+
+    /**
      * Paid Assistant cycle when it exists. Pre-plan usage is CAC and stays
      * outside this window. Without a Stripe period, count from the first real
      * use (tokens, chat, WhatsApp) — not the 48h trial stamp.
