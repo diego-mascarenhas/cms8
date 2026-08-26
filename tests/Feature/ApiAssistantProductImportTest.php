@@ -61,7 +61,18 @@ class ApiAssistantProductImportTest extends TestCase
         $this->assertSame(['code', 'name', 'price', 'category'], $response->json('data.required_columns'));
         $this->assertStringContainsString('code,name,price,category', $response->json('data.sample_csv'));
         $this->assertContains('whatsapp_enabled', $response->json('data.optional_columns'));
+        $this->assertContains('brand', $response->json('data.optional_columns'));
+        $this->assertContains('flavor_options', $response->json('data.optional_columns'));
         $this->assertSame(30, $response->json('data.demo_products'));
+        $this->assertSame(
+            ['mixto', 'ropa', 'autopartes', 'restaurante', 'verduleria', 'ferreteria', 'belleza'],
+            array_column($response->json('data.demo_catalogs'), 'key'),
+        );
+        foreach ($response->json('data.demo_catalogs') as $catalog)
+        {
+            $this->assertLessThanOrEqual(30, $catalog['products']);
+            $this->assertGreaterThan(0, $catalog['products']);
+        }
     }
 
     public function test_demo_catalogue_endpoint_returns_a_csv_with_image_urls(): void
@@ -102,6 +113,71 @@ class ApiAssistantProductImportTest extends TestCase
             ->assertJsonPath('data.products_count', 30);
 
         $this->assertSame(30, Product::withoutGlobalScope('team')->where('team_id', $team->id)->count());
+    }
+
+    public function test_unknown_demo_catalogue_falls_back_to_the_mixed_showroom(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/products/import/sample?catalog=no-existe')
+            ->assertOk()
+            ->assertJsonPath('data.key', 'mixto')
+            ->assertJsonPath('data.products', 30);
+    }
+
+    public function test_industry_demo_catalogues_import_with_the_new_columns(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        foreach (['ropa', 'autopartes', 'restaurante', 'verduleria', 'ferreteria', 'belleza'] as $key)
+        {
+            $demo = $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/assistant/products/import/sample?catalog='.$key)
+                ->assertOk()
+                ->json('data');
+
+            $this->assertSame($key, $demo['key']);
+            $this->assertLessThanOrEqual(30, $demo['products']);
+            $this->assertGreaterThan(0, $demo['products']);
+            $this->assertStringContainsString('brand', explode("\n", $demo['csv'])[0]);
+
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->post('/api/assistant/products/import', [
+                    'file' => UploadedFile::fake()->createWithContent($demo['filename'], $demo['csv']),
+                ], ['Accept' => 'application/json'])
+                ->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonPath('data.created', $demo['products'])
+                ->assertJsonPath('data.skipped', 0);
+
+            $this->assertSame(
+                $demo['products'],
+                Product::withoutGlobalScope('team')->where('team_id', $team->id)->count(),
+            );
+
+            if ($key === 'restaurante')
+            {
+                $dozen = Product::withoutGlobalScope('team')
+                    ->where('team_id', $team->id)
+                    ->where('code', 'EMP-010')
+                    ->first();
+                $this->assertNotNull($dozen);
+                $this->assertSame(12, $dozen->assortment_size);
+            }
+
+            if ($key === 'ropa')
+            {
+                $shirt = Product::withoutGlobalScope('team')
+                    ->where('team_id', $team->id)
+                    ->where('code', 'ROP-001')
+                    ->first();
+                $this->assertNotNull($shirt);
+                $this->assertNotNull($shirt->brand_id);
+            }
+
+            Product::withoutGlobalScope('team')->where('team_id', $team->id)->forceDelete();
+        }
     }
 
     public function test_owner_can_import_products_from_the_assistant(): void

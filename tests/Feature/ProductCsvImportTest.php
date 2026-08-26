@@ -55,7 +55,10 @@ class ProductCsvImportTest extends TestCase
         $this->actingAs($this->user->fresh())
             ->get(route('product.import'))
             ->assertOk()
-            ->assertSee('code');
+            ->assertSee('code')
+            ->assertSee('Ropa')
+            ->assertSee('Autopartes')
+            ->assertSee('Verdulería');
     }
 
     public function test_template_download_returns_a_csv_with_the_expected_header(): void

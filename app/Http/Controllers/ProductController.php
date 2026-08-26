@@ -18,6 +18,7 @@ use App\Services\ProductVariantCatalogService;
 use App\Services\WordPressService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -112,10 +113,13 @@ class ProductController extends Controller
             return redirect()->route('error-without-team');
         }
 
+        $importer = app(ProductCsvImportService::class);
+
         return view('product.import', [
             'requiredColumns' => ProductCsvImportService::REQUIRED_COLUMNS,
             'optionalColumns' => ProductCsvImportService::OPTIONAL_COLUMNS,
-            'demoProductCount' => app(ProductCsvImportService::class)->demoCatalog()['products'],
+            'demoProductCount' => $importer->demoCatalog()['products'],
+            'demoCatalogs' => $importer->demoCatalogs(),
         ]);
     }
 
@@ -166,11 +170,12 @@ class ProductController extends Controller
     /**
      * Download the demo catalogue: a full CSV with real product photo URLs.
      */
-    public function importSample(ProductCsvImportService $importer): StreamedResponse
+    public function importSample(Request $request, ProductCsvImportService $importer): StreamedResponse
     {
         $this->authorize('create', Product::class);
 
-        $demo = $importer->demoCatalog();
+        $key = $request->query('catalog');
+        $demo = $importer->demoCatalog(is_string($key) ? $key : null);
 
         return response()->streamDownload(function () use ($demo)
         {

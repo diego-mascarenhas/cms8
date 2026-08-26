@@ -12,9 +12,21 @@
 		<a href="{{ route('product.import.template') }}" class="btn btn-label-secondary">
 			<i class="ti ti-download me-1"></i>{{ __('Download template') }}
 		</a>
-		<a href="{{ route('product.import.sample') }}" class="btn btn-label-secondary">
-			<i class="ti ti-photo me-1"></i>{{ __('Demo catalogue (:count products)', ['count' => $demoProductCount]) }}
-		</a>
+		<div class="btn-group">
+			<button type="button" class="btn btn-label-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+				<i class="ti ti-photo me-1"></i>{{ __('Demo catalogues') }}
+			</button>
+			<ul class="dropdown-menu dropdown-menu-end">
+				@foreach ($demoCatalogs as $catalog)
+					<li>
+						<a class="dropdown-item" href="{{ route('product.import.sample', ['catalog' => $catalog['key']]) }}">
+							{{ $catalog['label'] }}
+							<span class="text-muted">({{ $catalog['products'] }})</span>
+						</a>
+					</li>
+				@endforeach
+			</ul>
+		</div>
 		<a href="{{ route('product.index') }}" class="btn btn-label-secondary">
 			<i class="ti ti-arrow-left me-1"></i>{{ __('Back to products') }}
 		</a>
