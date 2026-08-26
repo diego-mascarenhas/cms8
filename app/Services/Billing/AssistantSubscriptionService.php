@@ -12,6 +12,7 @@ use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamStripeCustomerService;
 use App\Services\TeamWhatsAppUsageStatsService;
+use App\Services\TokenBillingRateService;
 use App\Support\HumanoPricingCatalog;
 use App\Support\StripeErrorMessage;
 use Carbon\Carbon;
@@ -584,8 +585,8 @@ class AssistantSubscriptionService
         }
 
         $tokensUsed = (int) $stats['totalTokensUsed'];
-        $rate = TeamApiUsageStatsService::sellRatePerMillion();
-        $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
+        $rate = TeamApiUsageStatsService::sellRatePerMillion($from);
+        $currency = TokenBillingRateService::displayCurrency();
 
         return [
             'total_calls' => (int) $stats['totalCalls'],
