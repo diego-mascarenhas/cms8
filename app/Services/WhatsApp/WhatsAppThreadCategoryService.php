@@ -16,8 +16,14 @@ use InvalidArgumentException;
  */
 class WhatsAppThreadCategoryService
 {
+    public const SORT_NAME = 'name';
+
+    public const SORT_MANUAL = 'manual';
+
+    public const SORT_SETTING = 'assistant_category_sort';
+
     /**
-     * @return array{contact_id: int|null, selected: list<array{id: int, name: string}>, available: list<array{id: int, name: string}>}
+     * @return array{contact_id: int|null, selected: list<array{id: int, name: string, color: string|null}>, available: list<array{id: int, name: string, color: string|null}>}
      */
     public function present(?Team $team, ?Contact $contact): array
     {
@@ -32,7 +38,7 @@ class WhatsAppThreadCategoryService
      * Attach contacts-module categories without dropping tags other modules may have left.
      *
      * @param  list<int>  $categoryIds
-     * @return array{contact_id: int|null, selected: list<array{id: int, name: string}>, available: list<array{id: int, name: string}>}
+     * @return array{contact_id: int|null, selected: list<array{id: int, name: string, color: string|null}>, available: list<array{id: int, name: string, color: string|null}>}
      */
     public function assign(Team $team, Contact $contact, array $categoryIds): array
     {
@@ -54,7 +60,7 @@ class WhatsAppThreadCategoryService
      * An empty list clears the contact tags.
      *
      * @param  list<int|string>  $categoryIds
-     * @return array{contact_id: int|null, selected: list<array{id: int, name: string}>, available: list<array{id: int, name: string}>}
+     * @return array{contact_id: int|null, selected: list<array{id: int, name: string, color: string|null}>, available: list<array{id: int, name: string, color: string|null}>}
      */
     public function replace(Team $team, Contact $contact, array $categoryIds): array
     {
@@ -72,7 +78,7 @@ class WhatsAppThreadCategoryService
     }
 
     /**
-     * @return array{statuses: list<array{id: int, name: string}>, categories: list<array{id: int, name: string}>}
+     * @return array{statuses: list<array{id: int, name: string}>, categories: list<array{id: int, name: string, color: string|null}>}
      */
     public function catalog(?Team $team): array
     {
@@ -96,9 +102,9 @@ class WhatsAppThreadCategoryService
     }
 
     /**
-     * @return array{id: int, name: string}
+     * @return array{id: int, name: string, color: string|null}
      */
-    public function findOrCreate(Team $team, string $name): array
+    public function findOrCreate(Team $team, string $name, ?string $color = null): array
     {
         $name = trim($name);
         if ($name === '')
@@ -121,19 +127,251 @@ class WhatsAppThreadCategoryService
             }
         }
 
-        $category = DatabaseSequence::retryOnDuplicateId('categories', function () use ($name, $moduleId, $team)
+        $category = DatabaseSequence::retryOnDuplicateId('categories', function () use ($name, $moduleId, $team, $color)
         {
             return Category::query()->create([
                 'name' => $name,
                 'module_id' => $moduleId,
                 'team_id' => $team->id,
                 'parent_id' => null,
-                'order' => 0,
+                'order' => $this->nextManualOrder($team, $moduleId),
                 'status' => 1,
+                'color' => self::normalizeColor($color),
             ]);
         });
 
         return $this->presentCategory($category);
+    }
+
+    /**
+     * Team-owned contact categories for the settings manager.
+     *
+     * @return list<array{id: int, name: string, color: string|null, contacts_count: int}>
+     */
+    public function listForTeam(Team $team): array
+    {
+        $moduleId = $this->contactsModuleId();
+        if ($moduleId === null)
+        {
+            return [];
+        }
+
+        $query = Category::query()
+            ->where('module_id', $moduleId)
+            ->where('team_id', $team->id)
+            ->where('status', '>', 0)
+            ->withCount(['contacts as contacts_count' => function ($query)
+            {
+                $query->withoutGlobalScopes();
+            }]);
+
+        $this->applyCategoryOrder($query, $team);
+
+        return $query
+            ->get()
+            ->map(fn (Category $category): array => array_merge(
+                $this->presentCategory($category),
+                ['contacts_count' => (int) $category->contacts_count],
+            ))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{sort: string, categories: list<array{id: int, name: string, color: string|null, contacts_count: int}>}
+     */
+    public function presentForTeam(Team $team): array
+    {
+        return [
+            'sort' => $this->sortForTeam($team),
+            'categories' => $this->listForTeam($team),
+        ];
+    }
+
+    public function sortForTeam(Team $team): string
+    {
+        $value = (string) $team->getSetting(self::SORT_SETTING, self::SORT_NAME);
+
+        return $value === self::SORT_MANUAL ? self::SORT_MANUAL : self::SORT_NAME;
+    }
+
+    /**
+     * @return array{sort: string, categories: list<array{id: int, name: string, color: string|null, contacts_count: int}>}
+     */
+    public function setSortForTeam(Team $team, string $sort): array
+    {
+        $next = $sort === self::SORT_MANUAL ? self::SORT_MANUAL : self::SORT_NAME;
+        $current = $this->sortForTeam($team);
+
+        if ($next === self::SORT_MANUAL && $current !== self::SORT_MANUAL)
+        {
+            $this->seedManualOrderFromName($team);
+        }
+
+        $team->setSetting(self::SORT_SETTING, $next, [
+            'type' => 'string',
+            'group' => 'assistant',
+        ]);
+
+        return $this->presentForTeam($team);
+    }
+
+    /**
+     * @param  list<int|string>  $ids
+     * @return array{sort: string, categories: list<array{id: int, name: string, color: string|null, contacts_count: int}>}
+     */
+    public function reorderForTeam(Team $team, array $ids): array
+    {
+        $ownedIds = array_column($this->listForTeam($team), 'id');
+        $requested = $this->normalizedIds($ids);
+        $sortedOwned = $ownedIds;
+        $sortedRequested = $requested;
+        sort($sortedOwned);
+        sort($sortedRequested);
+
+        if ($ownedIds === [] || $sortedOwned !== $sortedRequested)
+        {
+            throw new InvalidArgumentException('The selected category is invalid.');
+        }
+
+        if ($this->sortForTeam($team) !== self::SORT_MANUAL)
+        {
+            $team->setSetting(self::SORT_SETTING, self::SORT_MANUAL, [
+                'type' => 'string',
+                'group' => 'assistant',
+            ]);
+        }
+
+        $moduleId = $this->contactsModuleId();
+        foreach ($requested as $index => $id)
+        {
+            Category::query()
+                ->where('module_id', $moduleId)
+                ->where('team_id', $team->id)
+                ->whereKey($id)
+                ->update(['order' => $index + 1]);
+        }
+
+        return $this->presentForTeam($team);
+    }
+
+    /**
+     * @return array{id: int, name: string, color: string|null, contacts_count: int}
+     */
+    public function createForTeam(Team $team, string $name, ?string $color = null): array
+    {
+        $name = trim($name);
+        if ($name === '')
+        {
+            throw new InvalidArgumentException('Enter a category name.');
+        }
+
+        $moduleId = $this->contactsModuleId();
+        if ($moduleId === null)
+        {
+            throw new InvalidArgumentException('The contacts module is not available.');
+        }
+
+        $normalized = mb_strtolower($name);
+        foreach ($this->listForTeam($team) as $row)
+        {
+            if (mb_strtolower($row['name']) === $normalized)
+            {
+                throw new InvalidArgumentException('Ya existe una categoría con ese nombre.');
+            }
+        }
+
+        $category = DatabaseSequence::retryOnDuplicateId('categories', function () use ($name, $moduleId, $team, $color)
+        {
+            return Category::query()->create([
+                'name' => $name,
+                'module_id' => $moduleId,
+                'team_id' => $team->id,
+                'parent_id' => null,
+                'order' => $this->nextManualOrder($team, $moduleId),
+                'status' => 1,
+                'color' => self::normalizeColor($color),
+            ]);
+        });
+
+        return array_merge($this->presentCategory($category), ['contacts_count' => 0]);
+    }
+
+    /**
+     * @param  array{name?: string, color?: string|null}  $attributes
+     * @return array{id: int, name: string, color: string|null, contacts_count: int}
+     */
+    public function updateForTeam(Team $team, Category $category, array $attributes): array
+    {
+        $owned = $this->teamOwnedCategory($team, $category);
+        if ($owned === null)
+        {
+            throw new InvalidArgumentException('The selected category is invalid.');
+        }
+
+        if (array_key_exists('name', $attributes))
+        {
+            $name = trim((string) $attributes['name']);
+            if ($name === '')
+            {
+                throw new InvalidArgumentException('Enter a category name.');
+            }
+
+            $normalized = mb_strtolower($name);
+            foreach ($this->listForTeam($team) as $row)
+            {
+                if ($row['id'] !== (int) $owned->id && mb_strtolower($row['name']) === $normalized)
+                {
+                    throw new InvalidArgumentException('Ya existe una categoría con ese nombre.');
+                }
+            }
+
+            $owned->name = $name;
+        }
+
+        if (array_key_exists('color', $attributes))
+        {
+            $owned->color = self::normalizeColor($attributes['color'] ?? null);
+        }
+
+        $owned->save();
+
+        foreach ($this->listForTeam($team) as $row)
+        {
+            if ($row['id'] === (int) $owned->id)
+            {
+                return $row;
+            }
+        }
+
+        return array_merge($this->presentCategory($owned->fresh()), ['contacts_count' => 0]);
+    }
+
+    public function deleteForTeam(Team $team, Category $category): void
+    {
+        $owned = $this->teamOwnedCategory($team, $category);
+        if ($owned === null)
+        {
+            throw new InvalidArgumentException('The selected category is invalid.');
+        }
+
+        $owned->delete();
+    }
+
+    public static function normalizeColor(mixed $color): ?string
+    {
+        if (! is_string($color))
+        {
+            return null;
+        }
+
+        $value = strtolower(trim($color));
+        if (preg_match('/^#([0-9a-f]{6})$/', $value) !== 1)
+        {
+            return null;
+        }
+
+        return $value;
     }
 
     /**
@@ -161,7 +399,7 @@ class WhatsAppThreadCategoryService
     }
 
     /**
-     * @return list<array{id: int, name: string}>
+     * @return list<array{id: int, name: string, color: string|null}>
      */
     private function selectedFor(Team $team, Contact $contact): array
     {
@@ -171,15 +409,18 @@ class WhatsAppThreadCategoryService
             return [];
         }
 
-        return $contact->categories()
+        $query = $contact->categories()
             ->where('module_id', $moduleId)
             ->where('status', '>', 0)
             ->where(function ($query) use ($team)
             {
                 $query->whereNull('categories.team_id')->orWhere('categories.team_id', $team->id);
-            })
-            ->orderBy('name')
-            ->get(['categories.id', 'categories.name'])
+            });
+
+        $this->applyCategoryOrder($query, $team, 'categories');
+
+        return $query
+            ->get(['categories.id', 'categories.name', 'categories.color'])
             ->unique('id')
             ->values()
             ->map(fn (Category $category): array => $this->presentCategory($category))
@@ -187,7 +428,7 @@ class WhatsAppThreadCategoryService
     }
 
     /**
-     * @return list<array{id: int, name: string}>
+     * @return list<array{id: int, name: string, color: string|null}>
      */
     private function availableFor(Team $team): array
     {
@@ -197,26 +438,100 @@ class WhatsAppThreadCategoryService
             return [];
         }
 
-        return Category::query()
+        $query = Category::query()
             ->where('module_id', $moduleId)
             ->where('status', '>', 0)
             ->where(function ($query) use ($team)
             {
                 $query->whereNull('team_id')->orWhere('team_id', $team->id);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name'])
+            });
+
+        $this->applyCategoryOrder($query, $team);
+
+        return $query
+            ->get(['id', 'name', 'color'])
             ->map(fn (Category $category): array => $this->presentCategory($category))
             ->values()
             ->all();
     }
 
+    private function applyCategoryOrder(mixed $query, Team $team, string $table = ''): void
+    {
+        $prefix = $table !== '' ? $table.'.' : '';
+
+        if ($this->sortForTeam($team) === self::SORT_MANUAL)
+        {
+            $query
+                ->orderByRaw("CASE WHEN {$prefix}team_id IS NULL THEN 1 ELSE 0 END")
+                ->orderBy($prefix.'order')
+                ->orderBy($prefix.'name');
+
+            return;
+        }
+
+        $query->orderBy($prefix.'name');
+    }
+
+    private function seedManualOrderFromName(Team $team): void
+    {
+        $moduleId = $this->contactsModuleId();
+        if ($moduleId === null)
+        {
+            return;
+        }
+
+        $categories = Category::query()
+            ->where('module_id', $moduleId)
+            ->where('team_id', $team->id)
+            ->where('status', '>', 0)
+            ->orderBy('name')
+            ->get();
+
+        foreach ($categories->values() as $index => $category)
+        {
+            $category->forceFill(['order' => $index + 1])->save();
+        }
+    }
+
+    private function nextManualOrder(Team $team, int $moduleId): int
+    {
+        if ($this->sortForTeam($team) !== self::SORT_MANUAL)
+        {
+            return 0;
+        }
+
+        return ((int) Category::query()
+            ->where('module_id', $moduleId)
+            ->where('team_id', $team->id)
+            ->max('order')) + 1;
+    }
+
     /**
-     * @return array{id: int, name: string}
+     * @return array{id: int, name: string, color: string|null}
      */
     private function presentCategory(Category $category): array
     {
-        return ['id' => (int) $category->id, 'name' => (string) $category->name];
+        return [
+            'id' => (int) $category->id,
+            'name' => (string) $category->name,
+            'color' => self::normalizeColor($category->color),
+        ];
+    }
+
+    private function teamOwnedCategory(Team $team, Category $category): ?Category
+    {
+        $moduleId = $this->contactsModuleId();
+        if ($moduleId === null)
+        {
+            return null;
+        }
+
+        if ((int) $category->module_id !== $moduleId || (int) $category->team_id !== (int) $team->id)
+        {
+            return null;
+        }
+
+        return $category;
     }
 
     /**

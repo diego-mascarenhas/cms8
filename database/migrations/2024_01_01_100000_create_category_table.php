@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('module_id')->nullable();
             $table->unsignedBigInteger('team_id')->nullable();
             $table->string('description')->nullable();
+            $table->string('color', 7)->nullable();
             $table->json('data')->nullable();
             $table->unsignedBigInteger('parent_id')->nullable();
             $table->unsignedTinyInteger('order')->nullable();

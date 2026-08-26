@@ -22,6 +22,7 @@ class Category extends Model
         'module_id',
         'team_id',
         'description',
+        'color',
         'data',
         'parent_id',
         'order',

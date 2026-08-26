@@ -40,12 +40,12 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('thread_categories.contact_id', $contact->id);
         $response->assertJsonPath('thread_categories.selected', [
-            ['id' => $shared->id, 'name' => 'Mayorista'],
-            ['id' => $own->id, 'name' => 'Testing'],
+            ['id' => $shared->id, 'name' => 'Mayorista', 'color' => null],
+            ['id' => $own->id, 'name' => 'Testing', 'color' => null],
         ]);
         $response->assertJsonPath('thread_categories.available', [
-            ['id' => $shared->id, 'name' => 'Mayorista'],
-            ['id' => $own->id, 'name' => 'Testing'],
+            ['id' => $shared->id, 'name' => 'Mayorista', 'color' => null],
+            ['id' => $own->id, 'name' => 'Testing', 'color' => null],
         ]);
     }
 
@@ -61,7 +61,7 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $response->assertJsonPath('thread_categories.contact_id', null);
         $response->assertJsonPath('thread_categories.selected', []);
         $response->assertJsonPath('thread_categories.available', [
-            ['id' => $category->id, 'name' => 'Testing'],
+            ['id' => $category->id, 'name' => 'Testing', 'color' => null],
         ]);
     }
 
@@ -81,8 +81,8 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
             ->assertOk()
-            ->assertJsonPath('thread_categories.selected', [['id' => $contactTag->id, 'name' => 'Alfa']])
-            ->assertJsonPath('thread_categories.available', [['id' => $contactTag->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('thread_categories.selected', [['id' => $contactTag->id, 'name' => 'Alfa', 'color' => null]])
+            ->assertJsonPath('thread_categories.available', [['id' => $contactTag->id, 'name' => 'Alfa', 'color' => null]]);
     }
 
     public function test_archived_categories_are_left_out(): void
@@ -96,8 +96,8 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
             ->assertOk()
-            ->assertJsonPath('thread_categories.selected', [['id' => $live->id, 'name' => 'Alfa']])
-            ->assertJsonPath('thread_categories.available', [['id' => $live->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('thread_categories.selected', [['id' => $live->id, 'name' => 'Alfa', 'color' => null]])
+            ->assertJsonPath('thread_categories.available', [['id' => $live->id, 'name' => 'Alfa', 'color' => null]]);
     }
 
     public function test_the_same_category_cannot_be_attached_twice(): void
@@ -141,7 +141,7 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
 
         $categoryId = (int) $response->json('category.id');
         $this->assertContains(
-            ['id' => $categoryId, 'name' => 'Mayorista'],
+            ['id' => $categoryId, 'name' => 'Mayorista', 'color' => null],
             $response->json('available'),
         );
 
@@ -217,7 +217,7 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('contact_id', $contact->id)
-            ->assertJsonPath('selected', [['id' => $category->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('selected', [['id' => $category->id, 'name' => 'Alfa', 'color' => null]]);
 
         $this->assertTrue($contact->fresh()->categories->contains('id', $category->id));
     }
@@ -237,7 +237,7 @@ class ApiChatWhatsAppThreadCategoriesTest extends TestCase
                 'category_ids' => [$contactTag->id],
             ])
             ->assertOk()
-            ->assertJsonPath('selected', [['id' => $contactTag->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('selected', [['id' => $contactTag->id, 'name' => 'Alfa', 'color' => null]]);
 
         $this->assertEqualsCanonicalizing(
             [$contactTag->id, $productTag->id],
