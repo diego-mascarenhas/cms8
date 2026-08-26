@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained('teams')->cascadeOnDelete();
             $table->string('name');
             $table->string('slug', 80)->nullable();
+            $table->string('logo')->nullable();
             $table->boolean('status')->default(true);
             $table->timestamps();
 

@@ -16,6 +16,7 @@ class Brand extends Model
         'team_id',
         'name',
         'slug',
+        'logo',
         'status',
     ];
 

@@ -631,7 +631,11 @@ Route::middleware('auth.api')->group(function ()
         Route::get('lookups', [ShopLookupController::class, 'index']);
         Route::get('dashboard', [ShopDashboardController::class, 'index']);
         Route::post('categories', [ShopCategoryController::class, 'store']);
+        Route::get('brands', [ShopBrandController::class, 'index']);
         Route::post('brands', [ShopBrandController::class, 'store']);
+        Route::put('brands/{id}', [ShopBrandController::class, 'update'])->whereNumber('id');
+        Route::delete('brands/{id}', [ShopBrandController::class, 'destroy'])->whereNumber('id');
+        Route::post('brands/{id}/logo', [ShopBrandController::class, 'logo'])->whereNumber('id');
 
         Route::get('products/import', [ShopProductController::class, 'importSchema']);
         Route::post('products/import', [ShopProductController::class, 'import']);

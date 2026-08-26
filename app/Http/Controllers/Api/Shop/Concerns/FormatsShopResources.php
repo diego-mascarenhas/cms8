@@ -82,6 +82,7 @@ trait FormatsShopResources
             'brand' => $product->brand ? [
                 'id' => $product->brand->id,
                 'name' => $product->brand->name,
+                'logo' => $product->brand->logo,
             ] : null,
             'catalog_status' => $product->catalog_status?->value,
             'catalog_status_label' => $product->catalog_status?->label(),

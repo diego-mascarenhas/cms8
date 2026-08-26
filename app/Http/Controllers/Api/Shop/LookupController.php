@@ -36,10 +36,11 @@ class LookupController extends Controller
 
         $brands = Brand::query()
             ->orderBy('name')
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'logo'])
             ->map(fn (Brand $brand): array => [
                 'id' => $brand->id,
                 'name' => $brand->name,
+                'logo' => $brand->logo,
             ])
             ->values()
             ->all();
