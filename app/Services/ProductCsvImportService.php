@@ -43,6 +43,8 @@ class ProductCsvImportService
         'flavor_options',
         'whatsapp_enabled',
         'image',
+        'barcode',
+        'oem',
     ];
 
     /**
@@ -78,6 +80,13 @@ class ProductCsvImportService
         'toppings' => 'flavor_options',
         'whatsapp' => 'whatsapp_enabled',
         'imagen' => 'image',
+        'ean' => 'barcode',
+        'upc' => 'barcode',
+        'codigo_barras' => 'barcode',
+        'codigo_de_barras' => 'barcode',
+        'nro_oem' => 'oem',
+        'codigo_oem' => 'oem',
+        'nro_original' => 'oem',
     ];
 
     /**
@@ -159,6 +168,8 @@ class ProductCsvImportService
                 'stock_quantity' => '12',
                 'brand' => 'Bosch',
                 'whatsapp_enabled' => '1',
+                'barcode' => '7791234567890',
+                'oem' => '7H0 698 151 D',
             ]),
             $this->templateValues([
                 'code' => 'REM-001',
@@ -393,11 +404,15 @@ class ProductCsvImportService
             ->first();
 
         $availability = $this->resolveStoreAvailability($values['store'] ?? null, $teamId);
+        $barcode = Product::normalizeOptionalIdentifier($values['barcode'] ?? null);
+        $this->assertUniqueBarcode($barcode, $teamId, $product?->id);
 
         $payload = [
             'team_id' => $teamId,
             'name' => $name,
             'code' => $code,
+            'barcode' => $barcode,
+            'oem' => Product::normalizeOptionalIdentifier($values['oem'] ?? null),
             'description' => trim($values['description'] ?? ''),
             'short_description' => $this->nullableString($values['short_description'] ?? null),
             'price' => round($price, 2),
@@ -511,6 +526,25 @@ class ProductCsvImportService
         }
 
         return $headers;
+    }
+
+    private function assertUniqueBarcode(?string $barcode, int $teamId, ?int $ignoreProductId): void
+    {
+        if ($barcode === null)
+        {
+            return;
+        }
+
+        $exists = Product::withoutGlobalScope('team')
+            ->where('team_id', $teamId)
+            ->where('barcode', $barcode)
+            ->when($ignoreProductId !== null, fn ($query) => $query->where('id', '!=', $ignoreProductId))
+            ->exists();
+
+        if ($exists)
+        {
+            throw new \RuntimeException(__('The barcode has already been used in this team.'));
+        }
     }
 
     private function detectDelimiter(string $absolutePath): string

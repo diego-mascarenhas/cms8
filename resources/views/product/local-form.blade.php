@@ -266,6 +266,14 @@
 					value="{{ old('code', $isEdit ? $product->code : '') }}" />
 			</div>
 			<div class="col-md-4">
+				<x-input-general id="barcode" label="{{ __('Barcode') }}"
+					value="{{ old('barcode', $isEdit ? $product->barcode : '') }}" />
+			</div>
+			<div class="col-md-4">
+				<x-input-general id="oem" label="{{ __('OEM') }}"
+					value="{{ old('oem', $isEdit ? $product->oem : '') }}" />
+			</div>
+			<div class="col-md-4">
 				<label for="catalog_status" class="form-label">{{ __('Status') }} (*)</label>
 				<select id="catalog_status" name="catalog_status" class="form-select @error('catalog_status') is-invalid @enderror" required>
 					<option value="publish" {{ $catalogStatusOld === 'publish' ? 'selected' : '' }}>{{ __('Published') }}</option>

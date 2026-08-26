@@ -294,6 +294,10 @@ class ChatAssistantReplyService
                 outputSize: strlen((string) ($reply['text'] ?? '')),
                 toon: $toon,
             );
+            $reply['usage'] = TokenUsageLogService::usageWithToonSavings(
+                is_array($reply['usage'] ?? null) ? $reply['usage'] : [],
+                $toon,
+            );
         }
 
         return $this->mergeFlowPersistMeta($reply, $flowPersistSpecified, $flowPersistKey);

@@ -92,7 +92,7 @@ class AssistantPromptCatalog
 
         foreach ($this->items() as $item)
         {
-            if ($item['own_brand'] && ! $this->teamCanSeeOwnBrand($team, $item))
+            if ($item['own_brand'])
             {
                 continue;
             }
@@ -252,6 +252,16 @@ class AssistantPromptCatalog
         }
 
         return null;
+    }
+
+    public function isSystemDefault(string $routingKey, ?string $sectionKey = null): bool
+    {
+        if ($this->find($routingKey) !== null)
+        {
+            return true;
+        }
+
+        return $this->findBySectionKey($sectionKey ?? $this->sectionKeyFrom($routingKey)) !== null;
     }
 
     /**

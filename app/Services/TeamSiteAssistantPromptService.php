@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\AutomationKind;
 use App\Models\Automation;
+use App\Models\Contact;
 use App\Models\Module;
 use App\Models\Prompt;
 use App\Models\Team;
@@ -27,10 +28,12 @@ class TeamSiteAssistantPromptService
     public const WIDGET_DATA_ATTR = 'data-cms8-widget';
 
     /**
-     * @return list<array{key: string, label: string, section_label: string, prompt_instruction: string}>
+     * @return list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool}>
      */
     public function promptOptions(Team $team): array
     {
+        $catalog = app(AssistantPromptCatalog::class);
+        $hiddenSections = $this->ownBrandSectionKeys();
         $prompts = Prompt::forTeam((int) $team->id)
             ->active()
             ->with('module')
@@ -41,12 +44,18 @@ class TeamSiteAssistantPromptService
         $options = [];
         foreach ($prompts as $prompt)
         {
+            if (in_array((string) $prompt->section_key, $hiddenSections, true))
+            {
+                continue;
+            }
+
             $key = $this->routingKeyFor($prompt);
             $options[] = [
                 'key' => $key,
                 'label' => $prompt->section_label.' ('.$key.')',
                 'section_label' => (string) $prompt->section_label,
                 'prompt_instruction' => (string) $prompt->prompt_instruction,
+                'custom' => ! $catalog->isSystemDefault($key, (string) $prompt->section_key),
             ];
         }
 
@@ -158,10 +167,46 @@ class TeamSiteAssistantPromptService
         return $prompt;
     }
 
+    public function deleteOwned(Team $team, string $routingKey): void
+    {
+        $key = trim($routingKey);
+        if ($key === '' || $key === self::OFF_KEY)
+        {
+            throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
+        }
+
+        $prompt = Prompt::findByRoutingKey($key, (int) $team->id);
+        if (! $prompt || ! $prompt->is_active)
+        {
+            throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
+        }
+
+        $resolvedKey = $this->routingKeyFor($prompt);
+        if (app(AssistantPromptCatalog::class)->isSystemDefault($resolvedKey, (string) $prompt->section_key))
+        {
+            throw new InvalidArgumentException(__('team_settings.site_assistant.cannot_delete'));
+        }
+
+        $selected = $this->selectedRoutingKey($team);
+        $wasSelected = $selected === $resolvedKey || $selected === $key;
+
+        $prompt->delete();
+        $this->clearPinnedPromptKey($team, $resolvedKey);
+        if ($key !== $resolvedKey)
+        {
+            $this->clearPinnedPromptKey($team, $key);
+        }
+
+        if ($wasSelected)
+        {
+            $this->select($team, self::OFF_KEY);
+        }
+    }
+
     /**
      * @return array{
      *     selected_key: string|null,
-     *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string}>,
+     *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool}>,
      *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool}>}>,
      *     default_instruction: string,
      *     recommended_label: string,
@@ -234,7 +279,7 @@ Un saludo suelto («hola», «buenas») no es una consulta: presentate en una fr
 
 ## Catálogo y venta
 
-- Mostrá productos con list_product_catalog o search_products: nombre y precio solo si la herramienta lo trajo, tres o cuatro opciones como mucho. No relistes el catálogo si solo confirman.
+- Mostrá productos con list_product_catalog o search_products: nombre y precio solo si la herramienta lo trajo, tres o cuatro opciones como mucho. No relistes el catálogo si solo confirman. Si piden la foto y has_image es true, **send_product_image**.
 - Horarios, pagos, entrega y notas de la sucursal: **get_store_info**. No digas que no está en el sistema.
 - En cuanto elige uno («sí», «dale», «agregame 2»), add_to_whatsapp_cart en ese mismo turno. Cuando confirman el pedido, **confirm_whatsapp_order**. Sin número de orden no digas que quedó registrado.
 - Si no hay teléfono en contexto (asistente web sin destinatario), el carrito no aplica: pedile que escriba por WhatsApp. En WhatsApp no le pidas *comprar* más el nombre.
@@ -305,6 +350,36 @@ PROMPT;
         }
 
         return Module::query()->orderBy('id')->first();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function ownBrandSectionKeys(): array
+    {
+        return collect(app(AssistantPromptCatalog::class)->items())
+            ->where('own_brand', true)
+            ->pluck('section_key')
+            ->map(fn ($key): string => (string) $key)
+            ->values()
+            ->all();
+    }
+
+    private function clearPinnedPromptKey(Team $team, string $routingKey): void
+    {
+        $contacts = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('data->chat_assistant_prompt_key', $routingKey)
+            ->get();
+
+        foreach ($contacts as $contact)
+        {
+            $data = $contact->data;
+            $payload = is_array($data) ? $data : (array) $data;
+            unset($payload['chat_assistant_prompt_key']);
+            $contact->data = (object) $payload;
+            $contact->save();
+        }
     }
 
     protected function uniqueSectionKey(Team $team, string $label): string

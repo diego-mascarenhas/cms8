@@ -11,6 +11,18 @@ use Illuminate\Database\Eloquent\Builder;
 final class TeamApiUsageStatsService
 {
     /**
+     * Chat replies are billed from {@see AgentConversationMessage} when those
+     * rows exist. Matching {@see TokenUsageLog} services are only a fallback
+     * so the same turn is never counted twice. Their TOON savings still apply.
+     *
+     * @var list<string>
+     */
+    private const CHAT_REPLY_LOG_SERVICES = [
+        'AssistantChatService',
+        'ChatAssistantReplyService',
+    ];
+
+    /**
      * Dashboard widget stats: combines {@see TokenUsageLog} (non-chat API calls) with
      * assistant {@see AgentConversationMessage} rows for the team (chat usage is stored on messages).
      *
@@ -26,18 +38,25 @@ final class TeamApiUsageStatsService
     public static function forTeam(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
     {
         $conversationStats = self::aggregateAssistantConversationUsage($teamId, $from, $to);
+        $chatReplyLogs = self::aggregateChatReplyLogs($teamId, $from, $to);
+        $useConversation = $conversationStats['tokens_used'] > 0 || $conversationStats['calls'] > 0;
+        $chatUsed = $useConversation ? $conversationStats['tokens_used'] : $chatReplyLogs['tokens_used'];
+        $chatCalls = $useConversation ? $conversationStats['calls'] : $chatReplyLogs['calls'];
+        $chatSaved = $chatReplyLogs['tokens_saved'];
 
-        $totalCalls = self::nonChatLogQuery($teamId, $from, $to)->count() + $conversationStats['calls'];
+        $totalCalls = self::nonChatLogQuery($teamId, $from, $to)->count() + $chatCalls;
 
-        $totalTokensSaved = (int) (self::nonChatLogQuery($teamId, $from, $to)
+        $nonChatSaved = (int) (self::nonChatLogQuery($teamId, $from, $to)
             ->where('used_toon', true)
             ->selectRaw('COALESCE(SUM(json_tokens - toon_tokens), 0) as aggregate')
             ->value('aggregate') ?? 0);
+        $totalTokensSaved = $nonChatSaved + $chatSaved;
 
-        $totalTokensUsed = self::sumTokensUsedFromNonChatLogs($teamId, $from, $to) + $conversationStats['tokens_used'];
+        $totalTokensUsed = self::sumTokensUsedFromNonChatLogs($teamId, $from, $to) + $chatUsed;
 
         $totalTokensWithoutToon = (int) self::nonChatLogQuery($teamId, $from, $to)->sum('json_tokens')
-            + $conversationStats['tokens_used'];
+            + $chatUsed
+            + $chatSaved;
 
         $averageSavings = $totalTokensWithoutToon > 0
             ? round(min(100, ($totalTokensSaved / $totalTokensWithoutToon) * 100), 2)
@@ -45,11 +64,15 @@ final class TeamApiUsageStatsService
 
         $byModule = self::callsByModuleFromNonChatLogs($teamId, $from, $to);
 
-        if ($conversationStats['tokens_used'] > 0 || $conversationStats['calls'] > 0)
+        if ($chatUsed > 0 || $chatCalls > 0 || $chatSaved > 0)
         {
             self::mergeAssistantChatConversationUsageIntoByModule(
                 $byModule,
-                $conversationStats,
+                [
+                    'calls' => $chatCalls,
+                    'tokens_used' => $chatUsed,
+                    'tokens_saved' => $chatSaved,
+                ],
             );
         }
 
@@ -101,9 +124,51 @@ final class TeamApiUsageStatsService
     {
         $query = TokenUsageLog::withoutGlobalScopes()
             ->where('team_id', $teamId)
-            ->where('service', '!=', 'AssistantChatService');
+            ->whereNotIn('service', self::CHAT_REPLY_LOG_SERVICES);
 
         return self::constrainPeriod($query, $from, $to);
+    }
+
+    /**
+     * @return Builder<\App\Models\TokenUsageLog>
+     */
+    private static function chatReplyLogQuery(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): Builder
+    {
+        $query = TokenUsageLog::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereIn('service', self::CHAT_REPLY_LOG_SERVICES);
+
+        return self::constrainPeriod($query, $from, $to);
+    }
+
+    /**
+     * @return array{calls: int, tokens_used: int, tokens_saved: int}
+     */
+    private static function aggregateChatReplyLogs(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): array
+    {
+        $logs = self::chatReplyLogQuery($teamId, $from, $to)->get([
+            'json_tokens',
+            'toon_tokens',
+            'used_toon',
+        ]);
+
+        $tokensUsed = 0;
+        $tokensSaved = 0;
+
+        foreach ($logs as $log)
+        {
+            $tokensUsed += $log->used_toon ? (int) $log->toon_tokens : (int) $log->json_tokens;
+            if ($log->used_toon)
+            {
+                $tokensSaved += max(0, (int) $log->json_tokens - (int) $log->toon_tokens);
+            }
+        }
+
+        return [
+            'calls' => $logs->count(),
+            'tokens_used' => $tokensUsed,
+            'tokens_saved' => $tokensSaved,
+        ];
     }
 
     /**
@@ -214,7 +279,7 @@ final class TeamApiUsageStatsService
      * with {@code key} {@code chat} so the donut chart legend does not show the label twice.
      *
      * @param  array<int|string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>  $byModule  Mutated.
-     * @param  array{calls: int, tokens_used: int}  $conversationStats
+     * @param  array{calls: int, tokens_used: int, tokens_saved?: int}  $conversationStats
      */
     private static function mergeAssistantChatConversationUsageIntoByModule(array &$byModule, array $conversationStats): void
     {
@@ -225,7 +290,7 @@ final class TeamApiUsageStatsService
             'module_name' => $chatLabel,
             'count' => $conversationStats['calls'],
             'tokens_used' => $conversationStats['tokens_used'],
-            'tokens_saved' => 0,
+            'tokens_saved' => (int) ($conversationStats['tokens_saved'] ?? 0),
         ];
 
         if ($chatModuleId !== null)

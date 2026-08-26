@@ -66,6 +66,18 @@ class AssistantPromptCatalogTest extends TestCase
         );
     }
 
+    public function test_catalog_hides_own_brand_even_from_an_allowed_team(): void
+    {
+        [$catalog, $team] = $this->catalogForPersonalTeam();
+        config(['humano_pricing.plan_access_team_ids' => [(int) $team->id]]);
+
+        $visible = collect($catalog->groupsFor($team))->flatMap(fn (array $group) => $group['items'])->pluck('key');
+        $this->assertFalse($visible->contains('products:humano_assistant'));
+        $this->assertFalse($visible->contains('products:wapify_me'));
+        $this->assertFalse($visible->contains('products:pumpstall'));
+        $this->assertFalse(collect($catalog->groupsFor($team))->pluck('group')->contains('marca'));
+    }
+
     public function test_apply_overwrites_only_that_team_copy_with_the_php_default(): void
     {
         [$catalog, $team] = $this->catalogForPersonalTeam();
@@ -152,5 +164,15 @@ class AssistantPromptCatalogTest extends TestCase
             ->first();
         $this->assertNotNull($copied);
         $this->assertStringContainsString('https://assistant.idoneo.dev/register', (string) $copied->prompt_instruction);
+    }
+
+    public function test_system_defaults_are_identified_by_routing_or_section_key(): void
+    {
+        $catalog = app(AssistantPromptCatalog::class);
+
+        $this->assertTrue($catalog->isSystemDefault('calendar:assistant_citas'));
+        $this->assertTrue($catalog->isSystemDefault('chat:assistant_citas', 'assistant_citas'));
+        $this->assertTrue($catalog->isSystemDefault('invoices:collections'));
+        $this->assertFalse($catalog->isSystemDefault('chat:mi_flujo', 'mi_flujo'));
     }
 }

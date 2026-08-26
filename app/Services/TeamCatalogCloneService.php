@@ -166,6 +166,8 @@ class TeamCatalogCloneService
                     'team_id' => $targetTeamId,
                     'name' => $product->name,
                     'code' => $code,
+                    'barcode' => $product->barcode,
+                    'oem' => $product->oem,
                     'description' => $product->description,
                     'short_description' => $product->short_description,
                     'price' => $product->price,

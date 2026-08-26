@@ -87,7 +87,7 @@ class ProductDataTable extends DataTable
                     return;
                 }
 
-                SearchNormalizer::applyColumnsNavbarConditions($query, ['code'], $keyword);
+                SearchNormalizer::applyColumnsNavbarConditions($query, ['code', 'barcode', 'oem'], $keyword);
             })
             ->filterColumn('store.name', function ($query, $keyword)
             {

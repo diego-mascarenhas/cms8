@@ -130,6 +130,8 @@ class ProductLocalCrudTest extends TestCase
         $this->actingAs(User::query()->findOrFail($user->id))->post(route('product.store'), [
             'name' => 'Camiseta test',
             'code' => 'CAM-TEST-001',
+            'barcode' => '7791111222333',
+            'oem' => 'CAM-OEM-01',
             'description' => '<p>Algodón</p>',
             'short_description' => '<p>Resumen</p>',
             'price' => '12.50',
@@ -146,12 +148,16 @@ class ProductLocalCrudTest extends TestCase
         $product = Product::withoutGlobalScope('team')->where('team_id', $team->id)->where('name', 'Camiseta test')->first();
         $this->assertNotNull($product);
         $this->assertSame((int) $mainStoreId, (int) $product->store_id);
+        $this->assertSame('7791111222333', $product->barcode);
+        $this->assertSame('CAM-OEM-01', $product->oem);
 
         $this->actingAs(User::query()->findOrFail($user->id))->get(route('product.edit', $product->id))->assertOk();
 
         $this->actingAs(User::query()->findOrFail($user->id))->put(route('product.update', $product->id), [
             'name' => 'Camiseta test actualizada',
             'code' => 'CAM-TEST-001',
+            'barcode' => '7791111222444',
+            'oem' => 'CAM-OEM-02',
             'description' => '<p>Algodón orgánico</p>',
             'short_description' => '<p>Resumen nuevo</p>',
             'price' => '14.00',
@@ -167,6 +173,8 @@ class ProductLocalCrudTest extends TestCase
 
         $product->refresh();
         $this->assertSame('Camiseta test actualizada', $product->name);
+        $this->assertSame('7791111222444', $product->barcode);
+        $this->assertSame('CAM-OEM-02', $product->oem);
         $this->assertFalse($product->whatsapp_enabled);
         $this->assertSame('draft', $product->catalog_status->value);
         $this->assertTrue($product->manage_stock);

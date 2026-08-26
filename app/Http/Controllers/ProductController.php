@@ -318,6 +318,8 @@ class ProductController extends Controller
         return [
             'name' => $validated['name'],
             'code' => $validated['code'],
+            'barcode' => $validated['barcode'] ?? null,
+            'oem' => $validated['oem'] ?? null,
             'description' => $validated['description'] ?? '',
             'short_description' => $validated['short_description'] ?? null,
             'price' => $validated['price'],

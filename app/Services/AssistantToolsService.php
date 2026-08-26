@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ContactInteractionType;
+use App\Enums\ProductCatalogStatus;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppLastOfferedProduct;
 use App\Helpers\WhatsAppOutboundText;
@@ -40,6 +41,7 @@ use App\Support\WhatsAppProductRelevanceSearch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -371,12 +373,13 @@ class AssistantToolsService
             ],
             [
                 'name' => 'assign_contact_to_category',
-                'description' => 'Assign an existing contact to a category (adds the category without removing others). The category is created if it does not exist. Use to add more categories to a contact.',
+                'description' => 'Assign an existing contact to a category (adds the category without removing others). The category is created if it does not exist. Use when a routing rule matches (brand, Mercado Libre, etc.). Optional color when creating the tag.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
                         'contact_id' => ['type' => 'integer', 'description' => 'Contact ID'],
                         'category_name' => ['type' => 'string', 'description' => 'Category name (created if missing)'],
+                        'color' => ['type' => 'string', 'description' => 'Optional tag color when creating: hex #RRGGBB or azul, verde, amarillo'],
                     ],
                     'required' => ['contact_id', 'category_name'],
                 ],
@@ -898,6 +901,19 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'send_product_image',
+                'description' => 'Send this product\'s catalog photo to the current WhatsApp customer. Use when they ask for the photo, image, or "foto" of a product you already showed and has_image is true. If they omit the name, use the last product. Do not invent a photo if this tool says there is none.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'product_id' => ['type' => 'integer', 'description' => 'Product database id (from list_product_catalog or search_products)'],
+                        'product_code' => ['type' => 'string', 'description' => 'Product SKU/code (case-insensitive match)'],
+                        'product_name' => ['type' => 'string', 'description' => 'Product name (partial match, first hit)'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
                 'name' => 'add_to_whatsapp_cart',
                 'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Use when they confirm after you offered a product: "sí", "dale", "agregalo", "agregame", "agregame 2", "poneme 2", "quiero 2". Pass quantity when they say how many. If they omit the name, pass the last product_id from search_products (or omit identifiers to use that last product). Never tell a WhatsApp customer to write to another phone number. Pass at most one of: product_id, product_code, or product_name.',
                 'input_schema' => [
@@ -1027,6 +1043,7 @@ class AssistantToolsService
                 'update_message' => $this->updateMessage($teamId, $user, $input),
                 'list_product_catalog' => $this->listProductCatalog($teamId, $input),
                 'search_products' => $this->searchProducts($teamId, $input),
+                'send_product_image' => $this->sendProductImage($teamId, $input),
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
                 'view_whatsapp_cart' => $this->viewWhatsAppCart($teamId),
                 'get_store_info' => $this->getStoreInfo($teamId),
@@ -1403,7 +1420,11 @@ class AssistantToolsService
             return 'You do not have permission to update this contact.';
         }
 
-        $categoryId = $this->resolveOrCreateContactCategory($teamId, $categoryName);
+        $categoryId = $this->resolveOrCreateContactCategory(
+            $teamId,
+            $categoryName,
+            isset($input['color']) ? (string) $input['color'] : null,
+        );
         if (! $categoryId)
         {
             return "Could not resolve or create category: {$categoryName}.";
@@ -1411,7 +1432,7 @@ class AssistantToolsService
 
         $contact->categories()->syncWithoutDetaching([$categoryId]);
 
-        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}.");
+        return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}. Do not mention the tag name to the customer.");
     }
 
     private function getContactCategories(int $teamId, User $user, array $input): string
@@ -3471,7 +3492,7 @@ class AssistantToolsService
             ->implode(', ');
     }
 
-    private function resolveOrCreateContactCategory(int $teamId, string $categoryName): ?int
+    private function resolveOrCreateContactCategory(int $teamId, string $categoryName, ?string $color = null): ?int
     {
         $module = Module::where('key', 'contacts')->first();
         if (! $module)
@@ -3497,9 +3518,33 @@ class AssistantToolsService
             'module_id' => $module->id,
             'team_id' => $teamId,
             'status' => true,
+            'color' => $this->categoryColorFromInput($color),
         ]);
 
         return $category->id;
+    }
+
+    private function categoryColorFromInput(?string $color): ?string
+    {
+        $raw = mb_strtolower(trim((string) $color));
+        if ($raw === '')
+        {
+            return null;
+        }
+
+        $named = [
+            'azul' => '#6b8cae',
+            'verde' => '#1f5c45',
+            'amarillo' => '#d4a017',
+            'amarilla' => '#d4a017',
+        ];
+
+        if (isset($named[$raw]))
+        {
+            return $named[$raw];
+        }
+
+        return \App\Services\WhatsApp\WhatsAppThreadCategoryService::normalizeColor($raw);
     }
 
     private function teamHasProductsModule(int $teamId): bool
@@ -3516,8 +3561,7 @@ class AssistantToolsService
     {
         return Product::withoutGlobalScope('team')
             ->where('team_id', $teamId)
-            ->active()
-            ->whatsAppEnabled();
+            ->where('catalog_status', ProductCatalogStatus::Publish);
     }
 
     private function resolveWhatsAppProduct(int $teamId, array $input): ?Product
@@ -3613,7 +3657,7 @@ class AssistantToolsService
 
         if ($products->isEmpty())
         {
-            return 'No WhatsApp-enabled products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Enable products for WhatsApp in the catalog or adjust the filter.';
+            return 'No published shop products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Publish products in the shop catalog or adjust the filter.';
         }
 
         $rows = $products->map(function (Product $product)
@@ -3621,12 +3665,15 @@ class AssistantToolsService
             return [
                 'id' => (int) $product->id,
                 'code' => (string) ($product->code ?: ''),
+                'barcode' => (string) ($product->barcode ?: ''),
+                'oem' => (string) ($product->oem ?: ''),
                 'name' => (string) $product->name,
                 'category' => (string) ($product->category?->name ?? 'Sin categoría'),
                 'store' => (string) ($product->store?->name ?? ''),
                 'price' => $this->catalogPriceSuffix($product) !== ''
                     ? ltrim($this->catalogPriceSuffix($product), ' —')
                     : '',
+                'has_image' => filled($product->image),
             ];
         })->values()->all();
 
@@ -3668,7 +3715,7 @@ class AssistantToolsService
         }
 
         return $this->structuredToolResult(
-            $total.' WhatsApp-enabled products. Do not list them all to the customer.'."\n"
+            $total.' published shop products. Do not list them all to the customer.'."\n"
             .'Ask what they need, then search_products or list_product_catalog with category_name.',
             ['categories' => $categories],
         );
@@ -3693,7 +3740,7 @@ class AssistantToolsService
 
         if ($products->isEmpty())
         {
-            return 'No matching WhatsApp-enabled products for: '.$raw.'. Try list_product_catalog or a shorter name.';
+            return 'No matching published shop products for: '.$raw.'. Try list_product_catalog or a shorter name.';
         }
 
         $products->each(fn (Product $product) => $product->loadMissing(['category', 'currency', 'store', 'stores']));
@@ -3705,9 +3752,12 @@ class AssistantToolsService
             return [
                 'id' => (int) $product->id,
                 'code' => $product->code ? (string) $product->code : '—',
+                'barcode' => $product->barcode ? (string) $product->barcode : '',
+                'oem' => $product->oem ? (string) $product->oem : '',
                 'name' => (string) $product->name,
                 'category' => (string) ($product->category->name ?? '—'),
                 'price' => $pricePart !== '' ? ltrim($pricePart, ' —') : '',
+                'has_image' => filled($product->image),
             ];
         })->values()->all();
 
@@ -4072,6 +4122,88 @@ class AssistantToolsService
         }
 
         return $this->truncate(implode("\n", $lines));
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function sendProductImage(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return 'Cannot send a product image: no customer phone in this session. If this is the web assistant, the operator must select the WhatsApp recipient. Do not invent a photo.';
+        }
+
+        $product = $this->resolveWhatsAppProduct($teamId, $input);
+        if (! $product)
+        {
+            return 'Product not found or not available. Use the last product you showed (omit identifiers) or pass product_id / product_code / product_name.';
+        }
+
+        $image = trim((string) ($product->image ?? ''));
+        if ($image === '')
+        {
+            return 'This product has no catalog image. Tell the customer you do not have a photo. Do not invent one or send another product\'s image.';
+        }
+
+        $mediaPath = $this->mediaPathForProductImage($image);
+        if ($mediaPath === null)
+        {
+            return 'This product has an image URL but the file is not available to send. Tell the customer you cannot send the photo right now. Do not invent one.';
+        }
+
+        $gateway = $this->resolveWhatsAppGatewayForToolSend();
+        if (! $gateway->isConfigured())
+        {
+            return 'WhatsApp is not configured for this team. Do not say the photo was sent.';
+        }
+
+        if (! $gateway->sendMedia($this->contextCustomerPhone, $mediaPath, (string) $product->name))
+        {
+            return 'Could not send the product image over WhatsApp. Tell the customer you cannot send the photo right now. Do not invent one.';
+        }
+
+        WhatsAppLastOfferedProduct::remember($this->contextCustomerPhone, $teamId, (int) $product->id);
+
+        return $this->truncate('Product image sent to this WhatsApp chat: '.$product->name.' (id '.$product->id.'). Confirm briefly that you sent the photo. Do not attach a URL.');
+    }
+
+    private function mediaPathForProductImage(string $image): ?string
+    {
+        $image = trim($image);
+        if ($image === '')
+        {
+            return null;
+        }
+
+        $path = $image;
+        if (preg_match('#^https?://#i', $image) === 1)
+        {
+            $parsed = parse_url($image, PHP_URL_PATH);
+            $path = is_string($parsed) ? $parsed : '';
+        }
+
+        $path = ltrim((string) $path, '/');
+        if (str_starts_with($path, 'storage/'))
+        {
+            $relative = substr($path, strlen('storage/'));
+            if (is_string($relative) && $relative !== '' && Storage::disk('public')->exists($relative))
+            {
+                return 'storage/'.$relative;
+            }
+        }
+
+        if ($path !== '' && Storage::disk('public')->exists($path))
+        {
+            return 'storage/'.$path;
+        }
+
+        return null;
     }
 
     private function addToWhatsAppCart(int $teamId, array $input): string

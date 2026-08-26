@@ -39,6 +39,7 @@ class AssistantToolAuthorizationService
     private const WHATSAPP_CART_TOOLS = [
         'list_product_catalog',
         'search_products',
+        'send_product_image',
         'add_to_whatsapp_cart',
         'view_whatsapp_cart',
         'get_store_info',
@@ -64,6 +65,9 @@ class AssistantToolAuthorizationService
         'get_contact_detail',
         'create_contact',
         'update_contact',
+        'list_contact_categories',
+        'get_contact_categories',
+        'assign_contact_to_category',
     ];
 
     /**
@@ -84,6 +88,7 @@ class AssistantToolAuthorizationService
         'list_contact_categories',
         'list_contact_statuses',
         'get_contact_categories',
+        'assign_contact_to_category',
     ];
 
     /**

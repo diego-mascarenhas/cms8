@@ -244,6 +244,8 @@ class ApiSiteAssistantPromptTest extends TestCase
         $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'calendar:assistant_citas'));
         $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'invoices:collections'));
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:humano_assistant'));
+        $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:wapify_me'));
+        $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:pumpstall'));
         $this->assertFalse($items->contains(fn (array $item) => str_starts_with((string) $item['key'], 'list60:')));
     }
 
@@ -290,5 +292,128 @@ class ApiSiteAssistantPromptTest extends TestCase
                 'prompt_key' => 'products:humano_assistant',
             ])
             ->assertStatus(422);
+    }
+
+    public function test_owner_can_delete_a_created_prompt_and_resets_the_selection(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/site-prompt', [
+                'section_label' => 'Mi flujo',
+                'prompt_instruction' => 'Hablá solo de este negocio.',
+            ])
+            ->assertCreated();
+
+        $created = collect(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->putJson('/api/assistant/site-prompt', [
+                    'prompt_key' => 'chat:mi_flujo',
+                ])
+                ->assertOk()
+                ->assertJsonPath('data.selected_key', 'chat:mi_flujo')
+                ->json('data.prompts'),
+        )->firstWhere('key', 'chat:mi_flujo');
+        $this->assertIsArray($created);
+        $this->assertTrue($created['custom']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/assistant/site-prompt', [
+                'prompt_key' => 'chat:mi_flujo',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.selected_key', TeamSiteAssistantPromptService::OFF_KEY);
+
+        $this->assertNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'mi_flujo')
+                ->first(),
+        );
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
+        $this->assertFalse(
+            collect(
+                $this->withHeader('Authorization', 'Bearer '.$token)
+                    ->getJson('/api/assistant/site-prompt')
+                    ->json('data.prompts'),
+            )->contains(fn (array $option) => $option['key'] === 'chat:mi_flujo'),
+        );
+    }
+
+    public function test_owner_cannot_delete_a_system_default_prompt(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/site-prompt/from-catalog', [
+                'prompt_key' => 'calendar:assistant_citas',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.selected_key', 'calendar:assistant_citas');
+
+        $option = collect(
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/assistant/site-prompt')
+                ->json('data.prompts'),
+        )->firstWhere('key', 'calendar:assistant_citas');
+        $this->assertIsArray($option);
+        $this->assertFalse($option['custom']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/assistant/site-prompt', [
+                'prompt_key' => 'calendar:assistant_citas',
+            ])
+            ->assertStatus(422);
+
+        $this->assertNotNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'assistant_citas')
+                ->first(),
+        );
+        $this->assertSame('calendar:assistant_citas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+    }
+
+    public function test_delete_rejects_a_missing_prompt(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->deleteJson('/api/assistant/site-prompt', [
+                'prompt_key' => 'chat:no_existe',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_plain_member_cannot_delete_the_site_prompt(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'mi_flujo',
+            'section_label' => 'Mi flujo',
+            'prompt_instruction' => 'Hablá solo de este negocio.',
+            'is_active' => true,
+            'order' => 10,
+        ]);
+
+        $member = User::factory()->create();
+        $member->teams()->attach($team->id, ['role' => 'editor']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+        $memberToken = $member->refresh()->createToken('assistant-member-delete-test')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$memberToken)
+            ->deleteJson('/api/assistant/site-prompt', [
+                'prompt_key' => 'chat:mi_flujo',
+            ])
+            ->assertStatus(403);
     }
 }

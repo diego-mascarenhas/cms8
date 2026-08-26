@@ -49,6 +49,8 @@ class UpdateLocalProductRequest extends FormRequest
         }
 
         $data['code'] = strtoupper(trim((string) ($this->input('code') ?? '')));
+        $data['barcode'] = Product::normalizeOptionalIdentifier($this->input('barcode'));
+        $data['oem'] = Product::normalizeOptionalIdentifier($this->input('oem'));
         $data['size_options'] = $this->parseCsvOptions($this->input('size_options'));
         $data['color_options'] = $this->parseCsvOptions($this->input('color_options'));
 
@@ -68,6 +70,8 @@ class UpdateLocalProductRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'code' => ['required', 'string', 'max:64'],
+            'barcode' => ['nullable', 'string', 'max:64'],
+            'oem' => ['nullable', 'string', 'max:80'],
             'description' => ['nullable', 'string'],
             'short_description' => ['nullable', 'string'],
             'price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
@@ -153,6 +157,9 @@ class UpdateLocalProductRequest extends FormRequest
         $rules['code'][] = Rule::unique('products', 'code')
             ->ignore($this->route('id'))
             ->where('team_id', $teamId);
+        $rules['barcode'][] = Rule::unique('products', 'barcode')
+            ->ignore($this->route('id'))
+            ->where('team_id', $teamId);
 
         return $rules;
     }
@@ -166,6 +173,7 @@ class UpdateLocalProductRequest extends FormRequest
             'name.required' => __('The name is required.'),
             'code.required' => __('The code is required.'),
             'code.unique' => __('The code has already been used in this team.'),
+            'barcode.unique' => __('The barcode has already been used in this team.'),
             'price.required' => __('The price is required.'),
             'currency_id.required' => __('Please select a currency.'),
             'category_id.required' => __('Please select a category.'),

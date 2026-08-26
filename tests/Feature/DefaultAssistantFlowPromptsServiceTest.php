@@ -34,6 +34,13 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
             ->first();
         $this->assertNotNull($contactos);
 
+        $this->assertNull(
+            \App\Models\Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'assistant_etiquetado')
+                ->first(),
+        );
+
         $list60First = \App\Models\Prompt::withoutGlobalScope('team')
             ->forTeam((int) $team->id)
             ->where('section_key', 'primer_contacto')

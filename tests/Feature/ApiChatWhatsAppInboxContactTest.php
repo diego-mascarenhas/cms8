@@ -120,7 +120,7 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $response->assertOk();
         $this->assertContains('Lead', collect($response->json('contact_catalog.statuses'))->pluck('name')->all());
         $response->assertJsonPath('contact_catalog.categories', [
-            ['id' => $category->id, 'name' => 'Alfa'],
+            ['id' => $category->id, 'name' => 'Alfa', 'color' => null],
         ]);
     }
 
@@ -179,7 +179,7 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
             ->assertJsonPath('contact.phone', self::CLIENT_PHONE)
             ->assertJsonPath('contact.status_id', $cliente->id)
             ->assertJsonPath('thread_contact.name', 'Diego Mascarenhas')
-            ->assertJsonPath('thread_categories.selected', [['id' => $keep->id, 'name' => 'Alfa']]);
+            ->assertJsonPath('thread_categories.selected', [['id' => $keep->id, 'name' => 'Alfa', 'color' => null]]);
 
         $contact->refresh();
         $this->assertSame('Diego', $contact->name);

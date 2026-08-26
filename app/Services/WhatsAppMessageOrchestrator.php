@@ -359,6 +359,13 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             'total_tokens' => $total,
             'tool_calls' => is_countable($tools) ? count($tools) : 0,
         ];
+        $tokensSaved = max(0, (int) ($usage['tokens_saved'] ?? 0));
+        if ($tokensSaved > 0)
+        {
+            $tokenUsage['tokens_saved'] = $tokensSaved;
+            $tokenUsage['json_tokens'] = (int) ($usage['json_tokens'] ?? 0);
+            $tokenUsage['toon_tokens'] = (int) ($usage['toon_tokens'] ?? 0);
+        }
         $model = (string) ($usage['model'] ?? ($replyResponse['meta']['model'] ?? ''));
         if ($model !== '')
         {

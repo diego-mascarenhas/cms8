@@ -88,6 +88,7 @@
 
 				<ul class="mb-0 ps-3 text-muted small">
 					<li>{{ __('code identifies the product: an existing code updates the product, a new one creates it.') }}</li>
+					<li>{{ __('barcode is the EAN/UPC. It must be unique in the team. oem is the original manufacturer part number.') }}</li>
 					<li>{{ __('category is created automatically when the name does not exist yet.') }}</li>
 					<li>{{ __('currency uses the ISO code (ARS, USD, EUR). store empty or “todas” means every branch; several names go separated by |.') }}</li>
 					<li>{{ __('catalog_status accepts publish, draft, pending or private; only published products are offered by the assistant.') }}</li>

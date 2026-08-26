@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\WhatsAppGateway;
+use App\Enums\ProductCatalogStatus;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
@@ -18,6 +19,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\ShoppingCartService;
 use Database\Seeders\CurrencySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -113,6 +115,77 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('Showing 8 of', $filtered);
     }
 
+    public function test_catalog_lists_published_shop_products_even_without_whatsapp_flag(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $category = Category::query()->create([
+            'name' => 'Shop',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Taza shop',
+            'code' => 'TAZA-SHOP',
+            'description' => 'Shop',
+            'price' => 12.00,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'whatsapp_enabled' => false,
+        ]);
+
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Borrador shop',
+            'code' => 'DRAFT-SHOP',
+            'description' => 'Draft',
+            'price' => 9.00,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'catalog_status' => ProductCatalogStatus::Draft,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, '5491111223344');
+
+        $list = $service->execute('list_product_catalog', []);
+        $this->assertStringContainsString('Taza shop', $list);
+        $this->assertStringContainsString('TAZA-SHOP', $list);
+        $this->assertStringNotContainsString('Borrador shop', $list);
+    }
+
     public function test_search_products_matches_natural_language_auto_parts(): void
     {
         $this->seed(CurrencySeeder::class);
@@ -163,6 +236,8 @@ class AssistantProductCatalogToolsTest extends TestCase
             'team_id' => $team->id,
             'name' => 'BUJIA 3 ELECT VW GOL POLO QUANTUM SAVEIRO 1.0 1.6 1.8 2.0 8V',
             'code' => '28356',
+            'barcode' => '7790001000081',
+            'oem' => 'BKR6EIX-11',
             'description' => 'BUJIA 3 ELECT VW GOL. Marca: NGK.',
             'price' => 12047.85,
             'currency_id' => $currencyId,
@@ -224,6 +299,14 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString((string) $otherClamp->id, $clampSearch);
         $this->assertStringContainsString('Closest published products', $clampSearch);
         $this->assertStringNotContainsString('25259', $clampSearch);
+
+        $barcodeSearch = $service->execute('search_products', ['query' => '7790001000081']);
+        $this->assertStringContainsString('28356', $barcodeSearch);
+        $this->assertStringContainsString('7790001000081', $barcodeSearch);
+
+        $oemSearch = $service->execute('search_products', ['query' => 'BKR6EIX-11']);
+        $this->assertStringContainsString('28356', $oemSearch);
+        $this->assertStringContainsString('BKR6EIX-11', $oemSearch);
     }
 
     public function test_add_to_whatsapp_cart_tool_uses_cart_session(): void
@@ -291,6 +374,133 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('Zapato test', $cart);
         $this->assertStringContainsString('x2', $cart);
         $this->assertStringContainsString('finalizar', $cart);
+    }
+
+    public function test_send_product_image_sends_whatsapp_media_when_file_exists(): void
+    {
+        $this->seed(CurrencySeeder::class);
+        Storage::fake('public');
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $category = Category::query()->create([
+            'name' => 'Ropa',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        $relative = 'shop/products/'.$team->id.'/camiseta-square-1080x1080.jpg';
+        Storage::disk('public')->put($relative, 'fake-image');
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Camiseta foto',
+            'code' => 'CAM-FOTO',
+            'description' => 'Cotton',
+            'price' => 25.00,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+            'image' => 'https://humano.test/storage/'.$relative,
+        ]);
+        $withoutImage = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Camiseta sin foto',
+            'code' => 'CAM-NADA',
+            'description' => 'Cotton',
+            'price' => 20.00,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $gateway = new class implements WhatsAppGateway
+        {
+            public ?string $lastTo = null;
+
+            public ?string $lastPath = null;
+
+            public ?string $lastCaption = null;
+
+            public int $sendCount = 0;
+
+            public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+            {
+                return ['ok' => true];
+            }
+
+            public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+            {
+                $this->lastTo = $to;
+                $this->lastPath = $mediaPath;
+                $this->lastCaption = $caption;
+                $this->sendCount++;
+
+                return true;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function getQrUrl(): ?string
+            {
+                return null;
+            }
+
+            public function getConnectionStatus(): ?array
+            {
+                return ['status' => 'connected'];
+            }
+        };
+
+        $phone = '5491111223344';
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setWhatsAppGatewayOverride($gateway);
+        $service->setRequestContext($user->id, $team->id, $phone);
+
+        $search = $service->execute('search_products', ['query' => 'CAM-FOTO']);
+        $this->assertStringContainsString('has_image', $search);
+        $this->assertStringContainsString('true', $search);
+
+        $sent = $service->execute('send_product_image', []);
+        $this->assertStringContainsString('Product image sent', $sent);
+        $this->assertStringContainsString('Camiseta foto', $sent);
+        $this->assertSame(1, $gateway->sendCount);
+        $this->assertSame($phone, $gateway->lastTo);
+        $this->assertSame('storage/'.$relative, $gateway->lastPath);
+        $this->assertSame('Camiseta foto', $gateway->lastCaption);
+
+        $missing = $service->execute('send_product_image', ['product_id' => $withoutImage->id]);
+        $this->assertStringContainsString('has no catalog image', $missing);
+        $this->assertSame(1, $gateway->sendCount);
     }
 
     public function test_add_to_whatsapp_cart_uses_last_searched_product_when_only_quantity_is_given(): void

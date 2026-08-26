@@ -18,6 +18,8 @@ class Product extends Model
     protected $fillable = [
         'name',
         'code',
+        'barcode',
+        'oem',
         'description',
         'short_description',
         'price',
@@ -104,6 +106,21 @@ class Product extends Model
         $sale = $this->sale_price !== null ? (float) $this->sale_price : null;
 
         return $sale !== null && $sale > 0 && $sale < $regular;
+    }
+
+    /**
+     * Empty barcode / OEM values must be null so unique indexes do not collide.
+     */
+    public static function normalizeOptionalIdentifier(mixed $value): ?string
+    {
+        if (! is_scalar($value))
+        {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 
     /**

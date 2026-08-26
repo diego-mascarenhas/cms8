@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AppFeedbackController;
+use App\Http\Controllers\Api\AssistantCategoryController;
 use App\Http\Controllers\Api\AssistantCommercialStatsController;
 use App\Http\Controllers\Api\AssistantList60PromptController;
 use App\Http\Controllers\Api\AssistantProductImportController;
@@ -507,8 +508,15 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
     Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
+    Route::delete('assistant/site-prompt', [SiteAssistantPromptController::class, 'destroy'])->name('api.assistant.site-prompt.destroy');
     Route::get('assistant/commercial-stats', [AssistantCommercialStatsController::class, 'show'])->name('api.assistant.commercial-stats.show');
     Route::get('assistant/usage', [AssistantUsageController::class, 'show'])->name('api.assistant.usage.show');
+    Route::get('assistant/categories', [AssistantCategoryController::class, 'index'])->name('api.assistant.categories.index');
+    Route::post('assistant/categories', [AssistantCategoryController::class, 'store'])->name('api.assistant.categories.store');
+    Route::patch('assistant/categories/sort', [AssistantCategoryController::class, 'updateSort'])->name('api.assistant.categories.sort');
+    Route::put('assistant/categories/order', [AssistantCategoryController::class, 'reorder'])->name('api.assistant.categories.order');
+    Route::patch('assistant/categories/{category}', [AssistantCategoryController::class, 'update'])->name('api.assistant.categories.update');
+    Route::delete('assistant/categories/{category}', [AssistantCategoryController::class, 'destroy'])->name('api.assistant.categories.destroy');
     Route::get('assistant/list60-prompt', [AssistantList60PromptController::class, 'show'])->name('api.assistant.list60-prompt.show');
     Route::patch('assistant/list60-prompt', [AssistantList60PromptController::class, 'update'])->name('api.assistant.list60-prompt.update');
     Route::post('assistant/list60-prompt/review', [AssistantList60PromptController::class, 'review'])->name('api.assistant.list60-prompt.review');
