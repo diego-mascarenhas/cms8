@@ -82,6 +82,7 @@ class UpdateLocalProductRequest extends FormRequest
                 'integer',
                 Rule::exists('stores', 'id')->where('team_id', $teamId),
             ],
+            ...Product::storeAvailabilityValidationRules($teamId),
             'brand_id' => [
                 'nullable',
                 'integer',
@@ -169,7 +170,13 @@ class UpdateLocalProductRequest extends FormRequest
             'currency_id.required' => __('Please select a currency.'),
             'category_id.required' => __('Please select a category.'),
             'sale_price.lte' => __('Sale price must be less than or equal to regular price.'),
+            'store_ids.required' => __('Select at least one store.'),
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        Product::validateStoreAvailability($validator);
     }
 
     /**

@@ -10,10 +10,17 @@ class StoreShopProductRequest extends StoreLocalProductRequest
     {
         parent::prepareForValidation();
 
-        $this->merge([
+        $merged = [
             'manage_stock' => $this->toFlag('manage_stock'),
             'whatsapp_enabled' => $this->toFlag('whatsapp_enabled'),
-        ]);
+        ];
+
+        if ($this->exists('available_in_all_stores'))
+        {
+            $merged['available_in_all_stores'] = $this->toFlag('available_in_all_stores');
+        }
+
+        $this->merge($merged);
     }
 
     private function toFlag(string $key): int

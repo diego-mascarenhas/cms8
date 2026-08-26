@@ -33,6 +33,8 @@ class AssistantPromptCopyTest extends TestCase
         $this->assertStringContainsString('search_products', $instruction);
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
         $this->assertStringContainsString('finalizar', $instruction);
+        $this->assertStringContainsString('confirm_whatsapp_order', $instruction);
+        $this->assertStringContainsString('get_store_info', $instruction);
         $this->assertStringContainsString('Escalera', $instruction);
     }
 
@@ -45,6 +47,9 @@ class AssistantPromptCopyTest extends TestCase
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
         $this->assertStringContainsString('agregame 2', $instruction);
         $this->assertStringContainsString('finalizar', $instruction);
+        $this->assertStringContainsString('confirm_whatsapp_order', $instruction);
+        $this->assertStringContainsString('una sola pregunta corta', $instruction);
+        $this->assertStringContainsString('get_store_info', $instruction);
         $this->assertStringContainsString('No vuelvas a listar el catálogo', $instruction);
         $this->assertStringNotContainsString('escriba *comprar* más el nombre', $instruction);
     }

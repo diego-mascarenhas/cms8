@@ -35,7 +35,9 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertStringContainsString('quien la pide', $instruction);
         $this->assertStringContainsString('nombre, apellido y email', $instruction);
         $this->assertStringContainsString('list_product_catalog', $instruction);
+        $this->assertStringContainsString('get_store_info', $instruction);
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
+        $this->assertStringContainsString('confirm_whatsapp_order', $instruction);
     }
 
     public function test_intent_resolution_falls_back_to_site_prompt(): void

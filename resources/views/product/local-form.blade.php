@@ -108,6 +108,124 @@
 		if ($.fn.select2) {
 			$('#currency_id').select2();
 		}
+
+		var dropZone = document.getElementById('product-image-drop-zone');
+		var fileInput = document.getElementById('product-image-file');
+		var imageInput = document.getElementById('image');
+		var preview = document.getElementById('product-image-preview');
+		var statusEl = document.getElementById('product-image-drop-status');
+		var sizesEl = document.getElementById('product-image-sizes');
+		var nameInput = document.getElementById('name');
+		if (!dropZone || !fileInput || !imageInput) return;
+
+		function csrfToken() {
+			var meta = document.querySelector('meta[name="csrf-token"]');
+			return meta ? meta.getAttribute('content') : '';
+		}
+
+		function setStatus(text, isError) {
+			if (!statusEl) return;
+			statusEl.textContent = text || '';
+			statusEl.classList.toggle('text-danger', !!isError);
+			statusEl.classList.toggle('text-muted', !isError);
+		}
+
+		function renderSizes(sizes) {
+			if (!sizesEl) return;
+			sizesEl.innerHTML = '';
+			(sizes || []).forEach(function (size) {
+				var item = document.createElement('li');
+				var link = document.createElement('a');
+				link.href = size.url;
+				link.target = '_blank';
+				link.rel = 'noreferrer';
+				link.className = 'badge bg-label-secondary';
+				link.textContent = (size.label || size.key) + ' ' + size.width + '×' + size.height;
+				item.appendChild(link);
+				sizesEl.appendChild(item);
+			});
+		}
+
+		function showPreview(url) {
+			if (!preview) return;
+			if (!url) {
+				preview.classList.add('d-none');
+				preview.removeAttribute('src');
+				return;
+			}
+			preview.src = url;
+			preview.classList.remove('d-none');
+		}
+
+		function uploadFile(file) {
+			if (!file || file.type.indexOf('image/') !== 0) return;
+			var body = new FormData();
+			body.append('file', file);
+			if (nameInput && nameInput.value) body.append('name', nameInput.value);
+			setStatus(@json(__('Generating sizes…')));
+			dropZone.classList.add('opacity-50');
+
+			fetch(@json(route('product.images.store')), {
+				method: 'POST',
+				headers: {
+					'Accept': 'application/json',
+					'X-CSRF-TOKEN': csrfToken(),
+					'X-Requested-With': 'XMLHttpRequest'
+				},
+				body: body
+			}).then(function (response) {
+				return response.json().then(function (data) {
+					return { ok: response.ok, data: data };
+				});
+			}).then(function (result) {
+				dropZone.classList.remove('opacity-50');
+				if (!result.ok || !result.data || !result.data.success) {
+					setStatus((result.data && result.data.message) || @json(__('Could not upload the image.')), true);
+					return;
+				}
+				imageInput.value = result.data.data.image;
+				showPreview(result.data.data.image);
+				renderSizes(result.data.data.sizes);
+				setStatus('');
+			}).catch(function () {
+				dropZone.classList.remove('opacity-50');
+				setStatus(@json(__('Could not upload the image.')), true);
+			});
+		}
+
+		dropZone.addEventListener('click', function () {
+			fileInput.click();
+		});
+		dropZone.addEventListener('keydown', function (event) {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				fileInput.click();
+			}
+		});
+		['dragenter', 'dragover'].forEach(function (eventName) {
+			dropZone.addEventListener(eventName, function (event) {
+				event.preventDefault();
+				dropZone.classList.add('border-primary');
+			});
+		});
+		['dragleave', 'drop'].forEach(function (eventName) {
+			dropZone.addEventListener(eventName, function (event) {
+				event.preventDefault();
+				dropZone.classList.remove('border-primary');
+			});
+		});
+		dropZone.addEventListener('drop', function (event) {
+			var file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+			uploadFile(file);
+		});
+		fileInput.addEventListener('change', function () {
+			uploadFile(fileInput.files && fileInput.files[0]);
+			fileInput.value = '';
+		});
+		imageInput.addEventListener('input', function () {
+			showPreview(imageInput.value);
+			renderSizes([]);
+		});
 	});
 </script>
 @endsection
@@ -160,7 +278,32 @@
 				@enderror
 			</div>
 			<div class="col-md-12">
-				<label for="image" class="form-label">{{ __('Product image URL') }}</label>
+				<label class="form-label">{{ __('Product image') }}</label>
+				<input type="file" id="product-image-file" class="d-none" accept="image/jpeg,image/png,image/webp">
+				<div
+					id="product-image-drop-zone"
+					class="border rounded p-4 text-center"
+					style="border-style: dashed !important; cursor: pointer;"
+					role="button"
+					tabindex="0"
+					aria-label="{{ __('Drag files here or click to select') }}"
+				>
+					<img
+						id="product-image-preview"
+						src="{{ old('image', $isEdit ? $product->image : '') }}"
+						alt=""
+						class="rounded mb-3 {{ old('image', $isEdit ? $product->image : '') ? '' : 'd-none' }}"
+						style="width: 96px; height: 96px; object-fit: cover;"
+					>
+					<div class="mb-2">
+						<i class="ti ti-cloud-upload ti-lg text-muted"></i>
+					</div>
+					<p id="product-image-drop-title" class="mb-1 fw-medium">{{ __('Drag files here or click to select') }}</p>
+					<p class="mb-0 text-muted small">{{ \App\Services\ProductImageService::hint() }}</p>
+					<p id="product-image-drop-status" class="mb-0 text-muted small mt-2"></p>
+				</div>
+				<ul id="product-image-sizes" class="list-unstyled d-flex flex-wrap gap-2 mt-2 mb-0"></ul>
+				<label for="image" class="form-label mt-3">{{ __('Product image URL') }}</label>
 				<input type="url" name="image" id="image" class="form-control @error('image') is-invalid @enderror"
 					placeholder="https://"
 					value="{{ old('image', $isEdit ? $product->image : '') }}" />
@@ -242,15 +385,42 @@
 			</div>
 			<div class="col-md-6">
 				@php
-					$storeOptions = ($stores ?? collect())->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values()->all();
+					$availableInAll = (string) old('available_in_all_stores', $isEdit ? ($product->available_in_all_stores ? '1' : '0') : '1') === '1';
+					$selectedStoreIds = collect(old('store_ids', $isEdit ? $product->availableStoreIds() : []))->map(fn ($id) => (int) $id)->all();
 				@endphp
-				<x-input-select
-					id="store_id"
-					label="{{ __('Store') }}"
-					:options="$storeOptions"
-					:value="old('store_id', $isEdit ? $product->store_id : ($defaultStoreId ?? ''))"
-					:placeholder="__('Select')"
-				/>
+				<label class="form-label">{{ __('Availability') }}</label>
+				<div class="form-check mb-2">
+					<input type="hidden" name="available_in_all_stores" value="0">
+					<input
+						type="checkbox"
+						class="form-check-input"
+						id="available_in_all_stores"
+						name="available_in_all_stores"
+						value="1"
+						{{ $availableInAll ? 'checked' : '' }}
+						onchange="document.getElementById('store-ids-wrap').classList.toggle('d-none', this.checked)"
+					>
+					<label class="form-check-label" for="available_in_all_stores">{{ __('Available in all stores') }}</label>
+				</div>
+				<div id="store-ids-wrap" class="d-flex flex-column gap-2 {{ $availableInAll ? 'd-none' : '' }}">
+					@foreach(($stores ?? collect()) as $store)
+						<div class="form-check">
+							<input
+								type="checkbox"
+								class="form-check-input"
+								id="store_ids_{{ $store->id }}"
+								name="store_ids[]"
+								value="{{ $store->id }}"
+								@checked(in_array((int) $store->id, $selectedStoreIds, true))
+							>
+							<label class="form-check-label" for="store_ids_{{ $store->id }}">{{ $store->name }}</label>
+						</div>
+					@endforeach
+					<div class="form-text">{{ __('Uncheck “all stores” to sell this product only in selected branches.') }}</div>
+					@error('store_ids')
+						<div class="invalid-feedback d-block">{{ $message }}</div>
+					@enderror
+				</div>
 			</div>
 			<div class="col-md-6">
 				<x-module-categories-select

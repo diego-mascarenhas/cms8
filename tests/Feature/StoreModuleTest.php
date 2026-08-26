@@ -84,6 +84,43 @@ class StoreModuleTest extends TestCase
             [Store::CHECKOUT_FULFILLMENT_PICKUP],
             data_get($created->data, 'checkout.fulfillment_types'),
         );
+        $this->assertTrue($created->showsPrices());
+        $this->assertTrue($created->whatsappEnabled());
+    }
+
+    public function test_store_can_disable_prices_and_whatsapp(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $store = Store::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Tienda Flags',
+            'code' => 'FLAGS',
+            'status' => true,
+            'is_main' => false,
+        ]);
+
+        $response = $this->actingAs($user)->put(route('store.update', $store->id), [
+            'name' => 'Tienda Flags',
+            'code' => 'FLAGS',
+            'status' => '1',
+            'is_main' => '0',
+            'checkout_payment_methods' => [Store::CHECKOUT_PAYMENT_CASH],
+            'checkout_fulfillment_types' => [Store::CHECKOUT_FULFILLMENT_PICKUP],
+            'show_prices' => '0',
+            'whatsapp_enabled' => '0',
+        ]);
+
+        $response->assertRedirect(route('store.show', $store->id));
+        $store->refresh();
+        $this->assertFalse($store->showsPrices());
+        $this->assertFalse($store->whatsappEnabled());
     }
 
     public function test_store_delete_uses_soft_delete(): void

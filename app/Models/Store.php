@@ -33,7 +33,7 @@ class Store extends Model
         {
             if (auth()->check() && auth()->user()->currentTeam)
             {
-                $builder->where('team_id', auth()->user()->currentTeam->id);
+                $builder->where($builder->getModel()->qualifyColumn('team_id'), auth()->user()->currentTeam->id);
             }
         });
     }
@@ -220,6 +220,14 @@ class Store extends Model
             }
         }
 
+        foreach (['show_prices', 'whatsapp_enabled'] as $flag)
+        {
+            if (array_key_exists($flag, $validated))
+            {
+                $data[$flag] = (bool) $validated[$flag];
+            }
+        }
+
         if (array_key_exists('hours', $validated))
         {
             $data['hours'] = self::normalizeHours($validated['hours'] ?? null);
@@ -249,12 +257,129 @@ class Store extends Model
         return $data;
     }
 
+    public function showsPrices(): bool
+    {
+        $value = data_get($this->data, 'show_prices');
+
+        return $value === null ? true : (bool) $value;
+    }
+
+    public function whatsappEnabled(): bool
+    {
+        $value = data_get($this->data, 'whatsapp_enabled');
+
+        return $value === null ? true : (bool) $value;
+    }
+
     /**
      * @return list<array{day: string, open: string|null, close: string|null, afternoon_open: string|null, afternoon_close: string|null, closed: bool}>
      */
     public function openingHours(): array
     {
         return self::normalizeHours(data_get($this->data, 'hours'));
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function weekdayLabels(): array
+    {
+        return [
+            'mon' => __('Monday'),
+            'tue' => __('Tuesday'),
+            'wed' => __('Wednesday'),
+            'thu' => __('Thursday'),
+            'fri' => __('Friday'),
+            'sat' => __('Saturday'),
+            'sun' => __('Sunday'),
+        ];
+    }
+
+    /**
+     * Customer-facing branch profile for the assistant (hours, payments, delivery, notes).
+     */
+    public function toAssistantText(): string
+    {
+        $lines = [];
+        $lines[] = ($this->is_main ? 'Main store: ' : 'Store: ').$this->name;
+
+        if (is_string($this->address) && trim($this->address) !== '')
+        {
+            $lines[] = 'Address: '.trim($this->address);
+        }
+
+        foreach (['phone' => 'Phone', 'whatsapp' => 'WhatsApp', 'maps_url' => 'Maps'] as $key => $label)
+        {
+            $value = trim((string) data_get($this->data, $key, ''));
+            if ($value !== '')
+            {
+                $lines[] = $label.': '.$value;
+            }
+        }
+
+        $dayLabels = self::weekdayLabels();
+        $lines[] = 'Hours:';
+        foreach ($this->openingHours() as $row)
+        {
+            $day = $dayLabels[$row['day']] ?? $row['day'];
+            if ($row['closed'])
+            {
+                $lines[] = '- '.$day.': closed';
+
+                continue;
+            }
+
+            $range = trim((string) ($row['open'] ?? '')).'–'.trim((string) ($row['close'] ?? ''));
+            $afternoonOpen = trim((string) ($row['afternoon_open'] ?? ''));
+            $afternoonClose = trim((string) ($row['afternoon_close'] ?? ''));
+            if ($afternoonOpen !== '' && $afternoonClose !== '')
+            {
+                $range .= ' and '.$afternoonOpen.'–'.$afternoonClose;
+            }
+            $lines[] = '- '.$day.': '.$range;
+        }
+
+        $paymentLabels = self::checkoutPaymentMethodLabels();
+        $payments = array_map(
+            fn (string $key): string => $paymentLabels[$key] ?? $key,
+            $this->enabledCheckoutPaymentMethods(),
+        );
+        $lines[] = 'Payments: '.implode(', ', $payments);
+
+        $fulfillmentLabels = self::checkoutFulfillmentLabels();
+        $fulfillment = array_map(
+            fn (string $key): string => $fulfillmentLabels[$key] ?? $key,
+            $this->enabledCheckoutFulfillmentTypes(),
+        );
+        $lines[] = 'Delivery: '.implode(', ', $fulfillment);
+
+        $deliveryArea = trim((string) data_get($this->data, 'delivery.area', ''));
+        if ($deliveryArea !== '')
+        {
+            $lines[] = 'Delivery area: '.$deliveryArea;
+        }
+        $deliveryNotes = trim((string) data_get($this->data, 'delivery.notes', ''));
+        if ($deliveryNotes !== '')
+        {
+            $lines[] = 'Delivery notes: '.$deliveryNotes;
+        }
+        $deliveryCost = data_get($this->data, 'delivery.cost');
+        if ($deliveryCost !== null && $deliveryCost !== '')
+        {
+            $lines[] = 'Delivery cost: '.$deliveryCost;
+        }
+
+        $notes = trim((string) data_get($this->data, 'notes', ''));
+        if ($notes !== '')
+        {
+            $lines[] = 'Notes: '.$notes;
+        }
+
+        $lines[] = $this->showsPrices()
+            ? 'Show prices: yes'
+            : 'Show prices: no. Do not mention prices, amounts, or currency to the customer.';
+
+        return implode("\n", $lines);
     }
 
     /**
@@ -269,6 +394,8 @@ class Store extends Model
             $validated['checkout_fulfillment_types'],
             $validated['phone'],
             $validated['whatsapp'],
+            $validated['show_prices'],
+            $validated['whatsapp_enabled'],
             $validated['hours'],
             $validated['notes'],
             $validated['maps_url'],

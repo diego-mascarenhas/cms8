@@ -73,6 +73,7 @@ class ProductFactory extends Factory
                     )->id;
             },
             'store_id' => null,
+            'available_in_all_stores' => true,
             'brand_id' => null,
             'category_id' => function (array $attributes)
             {

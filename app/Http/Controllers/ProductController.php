@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ProductDataTable;
+use App\Http\Requests\Api\StoreShopProductImageRequest;
 use App\Http\Requests\ImportProductCsvRequest;
 use App\Http\Requests\StoreLocalProductRequest;
 use App\Http\Requests\UpdateLocalProductRequest;
@@ -12,9 +13,12 @@ use App\Models\Module;
 use App\Models\Product;
 use App\Models\Store;
 use App\Services\ProductCsvImportService;
+use App\Services\ProductImageService;
 use App\Services\ProductVariantCatalogService;
 use App\Services\WordPressService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -109,10 +113,13 @@ class ProductController extends Controller
             return redirect()->route('error-without-team');
         }
 
+        $importer = app(ProductCsvImportService::class);
+
         return view('product.import', [
             'requiredColumns' => ProductCsvImportService::REQUIRED_COLUMNS,
             'optionalColumns' => ProductCsvImportService::OPTIONAL_COLUMNS,
-            'demoProductCount' => app(ProductCsvImportService::class)->demoCatalog()['products'],
+            'demoProductCount' => $importer->demoCatalog()['products'],
+            'demoCatalogs' => $importer->demoCatalogs(),
         ]);
     }
 
@@ -163,11 +170,12 @@ class ProductController extends Controller
     /**
      * Download the demo catalogue: a full CSV with real product photo URLs.
      */
-    public function importSample(ProductCsvImportService $importer): StreamedResponse
+    public function importSample(Request $request, ProductCsvImportService $importer): StreamedResponse
     {
         $this->authorize('create', Product::class);
 
-        $demo = $importer->demoCatalog();
+        $key = $request->query('catalog');
+        $demo = $importer->demoCatalog(is_string($key) ? $key : null);
 
         return response()->streamDownload(function () use ($demo)
         {
@@ -186,7 +194,7 @@ class ProductController extends Controller
             return redirect()->route('error-without-team');
         }
 
-        $product = Product::query()->with(['options.values'])->findOrFail($id);
+        $product = Product::query()->with(['options.values', 'stores'])->findOrFail($id);
         $this->authorize('update', $product);
 
         $currencies = Currency::query()->where('status', true)->orderBy('code')->get();
@@ -222,6 +230,7 @@ class ProductController extends Controller
             $this->payloadFromValidatedLocalProduct($validated),
             ['team_id' => $team->id],
         ));
+        $product->syncStoreAvailabilityFromValidated($validated, true);
         $this->syncVariants($product, $validated);
 
         return redirect()->route('product.index')->with('success', __('Product created successfully.'));
@@ -243,6 +252,7 @@ class ProductController extends Controller
         $validated = $request->validated();
 
         $product->update($this->payloadFromValidatedLocalProduct($validated));
+        $product->syncStoreAvailabilityFromValidated($validated);
         $this->syncVariants($product->fresh(), $validated);
 
         return redirect()->route('product.index')->with('success', __('Product updated successfully.'));
@@ -253,7 +263,7 @@ class ProductController extends Controller
      */
     public function show(string $id)
     {
-        $product = Product::with(['category', 'currency', 'team', 'store', 'brand', 'options.values', 'variants.optionValues.option'])->findOrFail($id);
+        $product = Product::with(['category', 'currency', 'team', 'store', 'stores', 'brand', 'options.values', 'variants.optionValues.option'])->findOrFail($id);
 
         $this->authorize('view', $product);
 
@@ -272,6 +282,29 @@ class ProductController extends Controller
         $product->delete();
 
         return redirect()->route('product.index')->with('success', __('Product deleted successfully.'));
+    }
+
+    public function storeImage(StoreShopProductImageRequest $request, ProductImageService $images): JsonResponse
+    {
+        $team = auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('The team is required.'),
+            ], 422);
+        }
+
+        $validated = $request->validated();
+
+        return response()->json([
+            'success' => true,
+            'data' => $images->store(
+                $team,
+                $request->file('file'),
+                $validated['name'] ?? $request->input('name'),
+            ),
+        ], 201);
     }
 
     /**

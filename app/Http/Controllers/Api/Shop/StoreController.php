@@ -17,7 +17,7 @@ class StoreController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $team = $this->shopTeam($request, 'stores');
+        $team = $this->shopTeamWithAnyModule($request);
         if ($team instanceof JsonResponse)
         {
             return $team;
@@ -42,7 +42,7 @@ class StoreController extends Controller
 
     public function show(Request $request, int $id): JsonResponse
     {
-        $team = $this->shopTeam($request, 'stores');
+        $team = $this->shopTeamWithAnyModule($request);
         if ($team instanceof JsonResponse)
         {
             return $team;
@@ -65,7 +65,7 @@ class StoreController extends Controller
 
     public function store(StoreRequest $request): JsonResponse
     {
-        $team = $this->shopTeam($request, 'stores');
+        $team = $this->shopTeamWithAnyModule($request);
         if ($team instanceof JsonResponse)
         {
             return $team;
@@ -96,7 +96,7 @@ class StoreController extends Controller
 
     public function update(StoreRequest $request, int $id): JsonResponse
     {
-        $team = $this->shopTeam($request, 'stores');
+        $team = $this->shopTeamWithAnyModule($request);
         if ($team instanceof JsonResponse)
         {
             return $team;
@@ -134,7 +134,7 @@ class StoreController extends Controller
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $team = $this->shopTeam($request, 'stores');
+        $team = $this->shopTeamWithAnyModule($request);
         if ($team instanceof JsonResponse)
         {
             return $team;

@@ -83,6 +83,41 @@ class TokenUsageLogServiceTest extends TestCase
         $this->assertSame(120, $stats['byModule'][$module->name]['tokens_used']);
     }
 
+    public function test_logs_toon_savings_from_tool_compression(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        TokenUsageLogService::logFromAiResponse(
+            (int) $team->id,
+            'ChatAssistantReplyService',
+            ['prompt_tokens' => 80, 'completion_tokens' => 20, 'total_tokens' => 100],
+            moduleKey: 'chat',
+            toon: [
+                'used_toon' => true,
+                'json_size' => 800,
+                'toon_size' => 400,
+                'json_tokens' => 200,
+                'toon_tokens' => 100,
+                'tokens_saved' => 40,
+                'savings_percentage' => 20.0,
+            ],
+        );
+
+        $log = TokenUsageLog::withoutGlobalScopes()->where('team_id', $team->id)->first();
+        $this->assertNotNull($log);
+        $this->assertTrue($log->used_toon);
+        $this->assertSame(140, (int) $log->json_tokens);
+        $this->assertSame(100, (int) $log->toon_tokens);
+
+        $stats = TeamApiUsageStatsService::forTeam((int) $team->id);
+        $this->assertSame(100, $stats['totalTokensUsed']);
+        $this->assertSame(40, $stats['totalTokensSaved']);
+        $this->assertSame(140, $stats['totalTokensWithoutToon']);
+        $this->assertSame(28.57, $stats['averageSavings']);
+    }
+
     public function test_skips_zero_token_logs(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

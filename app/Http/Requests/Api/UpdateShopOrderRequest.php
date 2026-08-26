@@ -37,6 +37,16 @@ class UpdateShopOrderRequest extends FormRequest
                 'integer',
                 Rule::exists('stores', 'id')->where('team_id', $teamId),
             ],
+            'items' => ['sometimes', 'array'],
+            'items.*.product_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('products', 'id')->where('team_id', $teamId),
+            ],
+            'items.*.quantity' => ['required', 'integer', 'min:1', 'max:500'],
+            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.name' => ['nullable', 'string', 'max:255'],
+            'items.*.category_name' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

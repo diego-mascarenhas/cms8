@@ -86,6 +86,7 @@ class WhatsAppCheckoutOrderServiceTest extends TestCase
         $this->assertSame(1, (int) $order->currency_id);
         $this->assertSame('pending', $order->payment_status);
         $this->assertSame('processing', $order->delivery_status);
+        $this->assertSame('Pedido realizado por WhatsApp', $order->notes);
         $this->assertSame(69.0, (float) $order->total_amount);
 
         $contact = Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('phone', 600111222)->first();

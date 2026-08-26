@@ -24,6 +24,8 @@ class ProductCsvImportService
 
     public const DEMO_CATALOG_LIMIT = 30;
 
+    public const DEFAULT_DEMO_CATALOG = 'mixto';
+
     public const OPTIONAL_COLUMNS = [
         'description',
         'short_description',
@@ -186,7 +188,7 @@ class ProductCsvImportService
                 'description' => 'Docena a elección. Cada gusto es una variante.',
                 'short_description' => 'Docena mixta',
                 'currency' => 'ARS',
-                'store' => 'Principal',
+                'store' => 'todas',
                 'catalog_status' => 'publish',
                 'stock_status' => 'instock',
                 'manage_stock' => '0',
@@ -223,25 +225,116 @@ class ProductCsvImportService
     }
 
     /**
+     * Bundled industry catalogues. Keys are used in ?catalog= on the sample endpoint.
+     *
+     * @return array<string, array{file: string, filename: string, label: string, description: string}>
+     */
+    public static function demoCatalogDefinitions(): array
+    {
+        return [
+            'mixto' => [
+                'file' => self::DEMO_CATALOG_PATH,
+                'filename' => 'cms8-catalogo-mixto.csv',
+                'label' => __('Showroom mixto'),
+                'description' => __('Ropa, calzado, deco, belleza y tecnología.'),
+            ],
+            'ropa' => [
+                'file' => 'database/samples/catalogs/ropa.csv',
+                'filename' => 'cms8-catalogo-ropa.csv',
+                'label' => __('Ropa'),
+                'description' => __('Indumentaria, calzado y accesorios con talles y colores.'),
+            ],
+            'autopartes' => [
+                'file' => 'database/samples/catalogs/autopartes.csv',
+                'filename' => 'cms8-catalogo-autopartes.csv',
+                'label' => __('Autopartes'),
+                'description' => __('Frenos, filtros, lubricantes y neumáticos con marca.'),
+            ],
+            'restaurante' => [
+                'file' => 'database/samples/catalogs/restaurante.csv',
+                'filename' => 'cms8-catalogo-restaurante.csv',
+                'label' => __('Restaurante con delivery'),
+                'description' => __('Pizzas, empanadas, combos y gustos. Catálogo para pedidos.'),
+            ],
+            'verduleria' => [
+                'file' => 'database/samples/catalogs/verduleria.csv',
+                'filename' => 'cms8-catalogo-verduleria.csv',
+                'label' => __('Verdulería'),
+                'description' => __('Frutas, verduras y almacén por kilo o bandeja.'),
+            ],
+            'ferreteria' => [
+                'file' => 'database/samples/catalogs/ferreteria.csv',
+                'filename' => 'cms8-catalogo-ferreteria.csv',
+                'label' => __('Ferretería'),
+                'description' => __('Herramientas, pinturería, electricidad y plomería.'),
+            ],
+            'belleza' => [
+                'file' => 'database/samples/catalogs/belleza.csv',
+                'filename' => 'cms8-catalogo-belleza.csv',
+                'label' => __('Belleza y farmacia'),
+                'description' => __('Maquillaje, cuidado de la piel y fragancias.'),
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{key: string, label: string, description: string, filename: string, products: int}>
+     */
+    public function demoCatalogs(): array
+    {
+        $catalogs = [];
+        foreach (array_keys(self::demoCatalogDefinitions()) as $key)
+        {
+            $catalog = $this->demoCatalog($key);
+            $meta = self::demoCatalogDefinitions()[$key];
+            $catalogs[] = [
+                'key' => $key,
+                'label' => $meta['label'],
+                'description' => $meta['description'],
+                'filename' => $catalog['filename'],
+                'products' => $catalog['products'],
+            ];
+        }
+
+        return $catalogs;
+    }
+
+    /**
      * Demo catalogue contents plus how many products it holds.
      *
-     * @return array{filename: string, csv: string, products: int}
+     * @return array{key: string, filename: string, csv: string, products: int, label: string}
      */
-    public function demoCatalog(): array
+    public function demoCatalog(?string $key = null): array
     {
-        $path = base_path(self::DEMO_CATALOG_PATH);
+        $definitions = self::demoCatalogDefinitions();
+        $key = $key ?: self::DEFAULT_DEMO_CATALOG;
+        if (! isset($definitions[$key]))
+        {
+            $key = self::DEFAULT_DEMO_CATALOG;
+        }
+
+        $meta = $definitions[$key];
+        $path = base_path($meta['file']);
 
         if (! is_file($path))
         {
-            return ['filename' => 'cms8-productos-ejemplo.csv', 'csv' => $this->templateContents(), 'products' => 2];
+            return [
+                'key' => $key,
+                'filename' => $meta['filename'],
+                'csv' => $this->templateContents(),
+                'products' => 2,
+                'label' => $meta['label'],
+            ];
         }
 
         $rows = array_slice($this->readRows($path), 0, self::DEMO_CATALOG_LIMIT);
 
         return [
-            'filename' => 'cms8-catalogo-demo.csv',
+            'key' => $key,
+            'filename' => $meta['filename'],
             'csv' => $this->csvFromRows($rows),
             'products' => count($rows),
+            'label' => $meta['label'],
         ];
     }
 
@@ -299,6 +392,8 @@ class ProductCsvImportService
             ->where('code', $code)
             ->first();
 
+        $availability = $this->resolveStoreAvailability($values['store'] ?? null, $teamId);
+
         $payload = [
             'team_id' => $teamId,
             'name' => $name,
@@ -308,7 +403,8 @@ class ProductCsvImportService
             'price' => round($price, 2),
             'sale_price' => $this->parseDecimal($values['sale_price'] ?? null),
             'currency_id' => $this->resolveCurrencyId($values['currency'] ?? null),
-            'store_id' => $this->resolveStoreId($values['store'] ?? null, $teamId),
+            'store_id' => $availability['store_id'],
+            'available_in_all_stores' => $availability['all'],
             'category_id' => $this->resolveCategoryId($values['category'] ?? null, $teamId),
             'brand_id' => $this->resolveBrandId($values['brand'] ?? null, $teamId),
             'catalog_status' => $catalogStatus,
@@ -323,12 +419,14 @@ class ProductCsvImportService
         if ($product === null)
         {
             $product = Product::withoutGlobalScope('team')->create($payload);
+            $product->syncStoreAvailability($availability['all'], $availability['store_ids']);
             $this->syncImportedVariants($product, $values);
 
             return true;
         }
 
         $product->fill($payload)->save();
+        $product->syncStoreAvailability($availability['all'], $availability['store_ids']);
         $this->syncImportedVariants($product, $values);
 
         return false;
@@ -469,6 +567,41 @@ class ProductCsvImportService
         }
 
         return (int) $fallback;
+    }
+
+    /**
+     * Empty / "todas" = every branch. Several names separated by | restrict the product.
+     *
+     * @return array{all: bool, store_id: int, store_ids: list<int>}
+     */
+    private function resolveStoreAvailability(?string $value, int $teamId): array
+    {
+        $mainStoreId = $this->mainStoreIds[$teamId] ??= (int) Store::ensureMainStoreForTeam($teamId)->id;
+        $needle = trim((string) $value);
+        $normalized = mb_strtolower($needle);
+
+        if ($needle === '' || in_array($normalized, ['todas', 'all', '*', 'todas las sucursales'], true))
+        {
+            return [
+                'all' => true,
+                'store_id' => $mainStoreId,
+                'store_ids' => [],
+            ];
+        }
+
+        $ids = [];
+        foreach ($this->parseList($needle) as $name)
+        {
+            $ids[] = $this->resolveStoreId($name, $teamId);
+        }
+
+        $ids = array_values(array_unique($ids));
+
+        return [
+            'all' => false,
+            'store_id' => $ids[0] ?? $mainStoreId,
+            'store_ids' => $ids,
+        ];
     }
 
     /**

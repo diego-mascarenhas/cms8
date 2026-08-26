@@ -198,8 +198,8 @@ class TextileProductsSeeder extends Seeder
     }
 
     /**
-     * Demo catalogue data is seeded without enabling commerce modules in the sidebar
-     * (assistant demo plan excludes products, stores, orders).
+     * Demo catalogue data is seeded, then DEMO_DEV_MODULES re-enables shop modules
+     * (products, stores, orders) after the Humano plan sync.
      */
     private function syncDemoTeamModulesFromPricingPlan(Team $team): void
     {
@@ -221,7 +221,7 @@ class TextileProductsSeeder extends Seeder
             $team->enableModule($moduleKey);
         }
 
-        $this->command?->info("🔧 Demo team modules re-synced to Humano plan «{$planSlug}» (commerce modules stay off assistant).");
+        $this->command?->info("🔧 Demo team modules re-synced to Humano plan «{$planSlug}» (shop modules stay on via DEMO_DEV_MODULES).");
     }
 
     private function restoreTextileCategoriesIfTrashed(int $teamId, int $moduleId): void

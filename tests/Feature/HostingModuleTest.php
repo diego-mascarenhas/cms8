@@ -28,6 +28,9 @@ class HostingModuleTest extends TestCase
     {
         $this->assertContains('hosting', TeamDemoSeeder::DEMO_DEV_MODULES);
         $this->assertContains('servers', TeamDemoSeeder::DEMO_DEV_MODULES);
+        $this->assertContains('products', TeamDemoSeeder::DEMO_DEV_MODULES);
+        $this->assertContains('stores', TeamDemoSeeder::DEMO_DEV_MODULES);
+        $this->assertContains('orders', TeamDemoSeeder::DEMO_DEV_MODULES);
     }
 
     public function test_cpanel_sync_persists_domains_with_server_id(): void

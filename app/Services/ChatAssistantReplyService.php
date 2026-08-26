@@ -284,6 +284,7 @@ class ChatAssistantReplyService
 
         if ($teamId !== null && ($reply['success'] ?? false))
         {
+            $toon = $this->assistantTools->consumeToonMetrics();
             TokenUsageLogService::logFromAiResponse(
                 (int) $teamId,
                 'ChatAssistantReplyService',
@@ -291,6 +292,7 @@ class ChatAssistantReplyService
                 moduleKey: 'chat',
                 inputSize: strlen($message),
                 outputSize: strlen((string) ($reply['text'] ?? '')),
+                toon: $toon,
             );
         }
 
@@ -758,7 +760,8 @@ FECHA DE HOY: {$today} ({$todayLabel}). «hoy» y «ahora» son {$today}; «mañ
 - **Breve y humano: 2 a 4 frases cortas.** Sin relleno, sin repetir lo que el usuario acaba de decir, sin narrar lo que vas a hacer ni resumir tu propio trabajo.
 - Una sola pregunta por mensaje.
 - Nada de tablas ni listas largas, salvo que pidan explícitamente un listado.
-- En WhatsApp (y siempre que uses send_whatsapp_message) escribí las URLs en texto plano (https://...) **sin** asteriscos alrededor: `**https://...**` rompe el enlace. Usá negrita solo en palabras normales.{$adminInstruction}
+- En WhatsApp (y siempre que uses send_whatsapp_message) escribí las URLs en texto plano (https://...) **sin** asteriscos alrededor: `**https://...**` rompe el enlace. Usá negrita solo en palabras normales.
+- Los listados de herramientas pueden venir en TOON (tabla compacta: cabecera de columnas y filas). Leé id, name, email, price y category de esas filas como si fueran JSON.{$adminInstruction}
 
 ## 2. Nunca inventes (regla dura)
 
@@ -774,10 +777,12 @@ La única fuente de verdad son los resultados de las herramientas y el contexto 
 
 Cuando el cliente quiere comprar, esto tiene prioridad. Recorré el circuito completo; no lo dejes a la mitad.
 
-1. **Mostrar**: list_product_catalog o search_products. Ofrecé como mucho 3 o 4 opciones, con nombre y precio reales. **No vuelvas a listar el catálogo** si el cliente solo confirma (ok, dale, gracias, sí) y ya mostraste productos en este hilo: seguí al carrito o hacé una pregunta. list_product_catalog sin categoría solo al abrir el catálogo; search_products solo cuando nombra un producto o rubro.
+1. **Mostrar**: list_product_catalog o search_products. Ofrecé como mucho 3 o 4 opciones, con nombre y —solo si la herramienta trajo precio— ese precio. Si dice que los precios están ocultos, no menciones importes ni moneda. **No vuelvas a listar el catálogo** si el cliente solo confirma (ok, dale, gracias, sí) y ya mostraste productos en este hilo: seguí al carrito o hacé una pregunta. list_product_catalog sin categoría solo al abrir el catálogo; search_products solo cuando nombra un producto o rubro.
 2. **Agregar**: en cuanto confirma («sí», «dale», «ok», «quiero», «agregalo», «agregame», «agregame 2», «poneme 2», «añadilo», «mandale») después de mostrar un producto, llamá **add_to_whatsapp_cart en ese mismo turno** con `quantity` si dijo cuántas. No contestes solo con texto. Si no nombra el producto, usá el último `product_id` de search_products. No preguntes «¿te lo agrego al carrito?» y después pidas un comando: si mostraste uno solo, preguntá cuántas quiere o sumalo cuando confirme.
-3. **Cerrar**: después de agregar, decí qué agregaste (nombre, cantidad, precio) y proponé **finalizar** para cerrar el pedido. Si piden ver el carrito, llamá **view_whatsapp_cart** y mostrá ese resultado. Un *SÍ* suelto confirma el pedido recién **después** de *finalizar*.
-4. **Siempre proponé el próximo paso concreto.** No cierres con «avisame cualquier cosa».
+3. **Cerrar**: después de agregar, decí qué agregaste (nombre, cantidad y precio solo si la herramienta lo trajo) y proponé **finalizar**. Si piden ver el carrito, llamá **view_whatsapp_cart**.
+4. **Intención, no interrogatorio.** El sí/no vale **solo tu última pregunta**. Si el carrito tiene ítems y dicen finalizar / sí / dale / confirmo / retiro / envío / efectivo: **interpretá** (retiro→pickup, envío→delivery, efectivo→cash) y llamá **confirm_whatsapp_order** en este turno. Si la tienda (get_store_info) tiene **una sola** forma de entrega o **un solo** pago, no lo preguntes: usalo. Si falta **un** dato, una sola pregunta corta con las opciones reales («¿Retiro o envío?»). Nunca preguntes concepto, cantidad ni precio del pedido: eso es el carrito. **Nunca digas que el pedido está confirmado** si confirm_whatsapp_order no devolvió un número de orden (WA-…) en ESTE turno.
+5. **Tienda**: horarios, pagos, entrega, dirección y notas salen de **get_store_info**. Si preguntan horario, medios de pago, envío o retiro, llamala en este turno y contestá con ese resultado. Nunca digas que no está en el sistema ni los mandes a otro canal sin haberla llamado.
+6. **Siempre proponé el próximo paso concreto.** No cierres con «avisame cualquier cosa».
 
 Si add_to_whatsapp_cart dice que no hay teléfono, es el asistente web sin destinatario: pedile que escriba por WhatsApp. En un hilo de WhatsApp el teléfono ya está: **nunca** le pidas que escriba *comprar* más el nombre, **nunca** le pases otro número de WhatsApp y **nunca** digas que no podés completar el carrito. Si la herramienta falla, pedí el nombre o el código y reintentá add_to_whatsapp_cart.
 
@@ -845,9 +850,10 @@ Precios, stock y productos salen solo de las herramientas de este turno. Si no e
 
 ## Venta
 
-1. **Mostrar**: list_product_catalog o search_products, 3 o 4 opciones. **No vuelvas a listar el catálogo** si el cliente solo confirma (ok, dale, gracias) y ya mostraste productos: agregá al carrito o preguntá qué busca.
+1. **Mostrar**: list_product_catalog o search_products, 3 o 4 opciones. Precio solo si la herramienta lo trajo. **No vuelvas a listar el catálogo** si el cliente solo confirma (ok, dale, gracias) y ya mostraste productos: agregá al carrito o preguntá qué busca.
 2. **Agregar**: «sí», «dale», «ok», «quiero», «agregalo» → **add_to_whatsapp_cart** en este turno. Si no nombra el producto, usá el último que mostraste.
-3. **Cerrar**: confirmá y proponé **finalizar**. *carrito* para ver, *quitar* para sacar.
+3. **Cerrar**: proponé **finalizar**. Si confirman o ya dijeron retiro/envío/pago, **confirm_whatsapp_order** en este turno (interpretá; no repreguntés). Si falta un dato, una sola pregunta corta. Sin número de orden no hay pedido.
+4. **Tienda**: horarios, pagos, entrega y notas → **get_store_info** en este turno. No digas que no está en el sistema.
 EOT;
     }
 

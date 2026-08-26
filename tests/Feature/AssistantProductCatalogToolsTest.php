@@ -6,7 +6,9 @@ use App\Contracts\WhatsAppGateway;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
+use App\Models\Order;
 use App\Models\Product;
+use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AgentConversationContextService;
@@ -80,6 +82,7 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('CAM-DEMO', $list);
         $this->assertStringContainsString('Camiseta demo', $list);
         $this->assertStringContainsString((string) $product->id, $list);
+        $this->assertStringContainsString('25.00', $list);
 
         $search = $service->execute('search_products', ['query' => 'CAM-DEMO']);
         $this->assertStringContainsString('CAM-DEMO', $search);
@@ -491,19 +494,48 @@ class AssistantProductCatalogToolsTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->assignRole($role);
 
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $category = Category::query()->create([
+            'name' => 'Abrazaderas',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
         $currencyId = Currency::query()->where('code', 'ARS')->value('id');
         $this->assertNotNull($currencyId);
 
-        $phone = '5491199988811';
-        $cart = app(ShoppingCartService::class)->forWhatsApp((int) $team->id, $phone);
-        $cart->items()->withoutGlobalScope('team')->create([
+        $product = Product::withoutGlobalScope('team')->create([
             'team_id' => $team->id,
-            'product_id' => 21861,
             'name' => 'ABRAZADERA 8 X 16',
+            'code' => '21861',
+            'description' => 'Clamp',
             'price' => 989.43,
-            'quantity' => 4,
-            'category_name' => 'Abrazaderas',
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
         ]);
+
+        $phone = '5491199988811';
+        $carts = app(ShoppingCartService::class);
+        $cart = $carts->forWhatsApp((int) $team->id, $phone);
+        $carts->addProduct($cart, $product, 4);
 
         $service = new class(app(AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
         {
@@ -596,5 +628,175 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('vacío', mb_strtolower((string) $reply['text']));
         $this->assertStringNotContainsString('1154905633', (string) $reply['text']);
         $this->assertStringNotContainsString('No puedo mostrar', (string) $reply['text']);
+    }
+
+    public function test_catalog_omits_prices_when_store_hides_them(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $store = Store::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Principal',
+            'code' => 'MAIN',
+            'status' => true,
+            'is_main' => true,
+            'data' => ['show_prices' => false],
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'Encendido',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'store_id' => $store->id,
+            'name' => 'Bujía de iridio',
+            'code' => 'ENC-030',
+            'description' => 'Spark',
+            'price' => 77.77,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, '5491111223344');
+
+        $list = $service->execute('list_product_catalog', []);
+        $this->assertStringContainsString('ENC-030', $list);
+        $this->assertStringNotContainsString('77.77', $list);
+        $this->assertStringContainsString('hides catalog prices', $list);
+
+        $search = $service->execute('search_products', ['query' => 'bujía']);
+        $this->assertStringContainsString('ENC-030', $search);
+        $this->assertStringNotContainsString('77.77', $search);
+
+        $added = $service->execute('add_to_whatsapp_cart', ['product_code' => 'ENC-030', 'quantity' => 1]);
+        $this->assertStringContainsString('Bujía de iridio', $added);
+        $this->assertStringNotContainsString('77.77', $added);
+
+        $cart = $service->execute('view_whatsapp_cart', []);
+        $this->assertStringContainsString('Bujía de iridio', $cart);
+        $this->assertStringNotContainsString('77.77', $cart);
+    }
+
+    public function test_confirm_whatsapp_order_creates_a_shop_order_and_clears_the_cart(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $store = Store::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Principal',
+            'code' => 'MAIN',
+            'status' => true,
+            'is_main' => true,
+            'data' => [
+                'checkout' => [
+                    'payment_methods' => [Store::CHECKOUT_PAYMENT_CASH],
+                    'fulfillment_types' => [Store::CHECKOUT_FULFILLMENT_PICKUP],
+                ],
+            ],
+        ]);
+
+        $category = Category::query()->create([
+            'name' => 'Encendido',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $product = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'store_id' => $store->id,
+            'name' => 'Bujía de iridio',
+            'code' => 'ENC-030',
+            'description' => 'Spark',
+            'price' => 6900,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $phone = '34722372858';
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, $phone);
+
+        $empty = $service->execute('confirm_whatsapp_order', []);
+        $this->assertStringContainsString('empty', $empty);
+
+        $service->execute('add_to_whatsapp_cart', ['product_id' => $product->id, 'quantity' => 1]);
+
+        $out = $service->execute('confirm_whatsapp_order', [
+            'fulfillment_type' => 'pickup',
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertStringContainsString('Order created', $out);
+        $this->assertMatchesRegularExpression('/WA-[A-Z0-9]+/', $out);
+        $this->assertStringContainsString('Retiro en el local', $out);
+
+        $order = Order::withoutGlobalScopes()->where('team_id', $team->id)->first();
+        $this->assertNotNull($order);
+        $this->assertSame($store->id, $order->store_id);
+        $this->assertSame('pickup', $order->metadata['checkout_offered']['chosen_fulfillment'] ?? null);
+        $this->assertSame('cash', $order->metadata['checkout_offered']['chosen_payment'] ?? null);
+
+        $cart = $service->execute('view_whatsapp_cart', []);
+        $this->assertStringContainsString('empty', mb_strtolower($cart));
     }
 }

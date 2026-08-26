@@ -61,7 +61,7 @@ class ProductDataTable extends DataTable
             })
             ->editColumn('store.name', function ($product)
             {
-                return $product->store ? $product->store->name : '—';
+                return $product->availabilityLabel();
             })
             ->editColumn('category.name', function ($product)
             {
@@ -98,9 +98,21 @@ class ProductDataTable extends DataTable
                     return;
                 }
 
-                $query->whereHas('store', function ($storeQuery) use ($keyword)
+                $query->where(function ($builder) use ($keyword)
                 {
-                    SearchNormalizer::applyCollaboratorNameCondition($storeQuery, $keyword);
+                    $builder->whereHas('store', function ($storeQuery) use ($keyword)
+                    {
+                        SearchNormalizer::applyCollaboratorNameCondition($storeQuery, $keyword);
+                    })->orWhereHas('stores', function ($storeQuery) use ($keyword)
+                    {
+                        SearchNormalizer::applyCollaboratorNameCondition($storeQuery, $keyword);
+                    });
+
+                    $allLabel = mb_strtolower((string) __('All stores'));
+                    if ($allLabel !== '' && str_contains($allLabel, mb_strtolower($keyword)))
+                    {
+                        $builder->orWhere('available_in_all_stores', true);
+                    }
                 });
             })
             ->filterColumn('category.name', function ($query, $keyword)
@@ -148,12 +160,12 @@ class ProductDataTable extends DataTable
 
     public function query(Product $model): QueryBuilder
     {
-        $query = $model->newQuery()->with(['category', 'currency', 'store']);
+        $query = $model->newQuery()->with(['category', 'currency', 'store', 'stores']);
 
         $storeId = request()->get('store_id');
         if (is_numeric($storeId) && (int) $storeId > 0)
         {
-            $query->where('store_id', (int) $storeId);
+            $query->availableAt((int) $storeId);
         }
 
         $categoryId = request()->get('category_id');

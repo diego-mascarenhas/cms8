@@ -69,6 +69,22 @@
                             </p>
                         </div>
                         <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('Show prices') }}</h6>
+                            <p class="mb-0">
+                                <span class="badge {{ $store->showsPrices() ? 'bg-label-success' : 'bg-label-secondary' }}">
+                                    {{ $store->showsPrices() ? __('Sí') : __('No') }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
+                            <h6 class="text-muted mb-1">{{ __('WhatsApp') }}</h6>
+                            <p class="mb-0">
+                                <span class="badge {{ $store->whatsappEnabled() ? 'bg-label-success' : 'bg-label-secondary' }}">
+                                    {{ $store->whatsappEnabled() ? __('Sí') : __('No') }}
+                                </span>
+                            </p>
+                        </div>
+                        <div class="col-sm-6 col-lg-4">
                             <h6 class="text-muted mb-1">{{ __('Creada') }}</h6>
                             <p class="mb-0">{{ optional($store->created_at)->format('d/m/Y H:i') }}</p>
                         </div>

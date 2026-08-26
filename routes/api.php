@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\Shop\DashboardController as ShopDashboardController
 use App\Http\Controllers\Api\Shop\LookupController as ShopLookupController;
 use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
 use App\Http\Controllers\Api\Shop\ProductController as ShopProductController;
+use App\Http\Controllers\Api\Shop\ProductImageController as ShopProductImageController;
 use App\Http\Controllers\Api\Shop\StoreController as ShopStoreController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
@@ -630,10 +631,15 @@ Route::middleware('auth.api')->group(function ()
         Route::get('lookups', [ShopLookupController::class, 'index']);
         Route::get('dashboard', [ShopDashboardController::class, 'index']);
         Route::post('categories', [ShopCategoryController::class, 'store']);
+        Route::get('brands', [ShopBrandController::class, 'index']);
         Route::post('brands', [ShopBrandController::class, 'store']);
+        Route::put('brands/{id}', [ShopBrandController::class, 'update'])->whereNumber('id');
+        Route::delete('brands/{id}', [ShopBrandController::class, 'destroy'])->whereNumber('id');
+        Route::post('brands/{id}/logo', [ShopBrandController::class, 'logo'])->whereNumber('id');
 
         Route::get('products/import', [ShopProductController::class, 'importSchema']);
         Route::post('products/import', [ShopProductController::class, 'import']);
+        Route::post('products/images', [ShopProductImageController::class, 'store']);
         Route::get('products', [ShopProductController::class, 'index']);
         Route::post('products', [ShopProductController::class, 'store']);
         Route::get('products/{id}', [ShopProductController::class, 'show'])->whereNumber('id');
@@ -649,6 +655,7 @@ Route::middleware('auth.api')->group(function ()
         Route::get('orders', [ShopOrderController::class, 'index']);
         Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');
         Route::put('orders/{id}', [ShopOrderController::class, 'update'])->whereNumber('id');
+        Route::post('orders/{id}/whatsapp-quote', [ShopOrderController::class, 'sendWhatsAppQuote'])->whereNumber('id');
 
         Route::get('carts', [ShopCartController::class, 'index']);
         Route::get('carts/{id}', [ShopCartController::class, 'show'])->whereNumber('id');

@@ -884,6 +884,7 @@ Route::middleware(['auth'])->group(function ()
     // Product Routes
     Route::get('/product/list', [ProductController::class, 'index'])->name('product.index');
     Route::get('/product/create', [ProductController::class, 'create'])->name('product.create');
+    Route::post('/product/images', [ProductController::class, 'storeImage'])->name('product.images.store');
     Route::get('/product/import', [ProductController::class, 'importForm'])->name('product.import');
     Route::get('/product/import/template', [ProductController::class, 'importTemplate'])->name('product.import.template');
     Route::get('/product/import/sample', [ProductController::class, 'importSample'])->name('product.import.sample');

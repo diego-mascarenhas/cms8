@@ -12,9 +12,21 @@
 		<a href="{{ route('product.import.template') }}" class="btn btn-label-secondary">
 			<i class="ti ti-download me-1"></i>{{ __('Download template') }}
 		</a>
-		<a href="{{ route('product.import.sample') }}" class="btn btn-label-secondary">
-			<i class="ti ti-photo me-1"></i>{{ __('Demo catalogue (:count products)', ['count' => $demoProductCount]) }}
-		</a>
+		<div class="btn-group">
+			<button type="button" class="btn btn-label-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+				<i class="ti ti-photo me-1"></i>{{ __('Demo catalogues') }}
+			</button>
+			<ul class="dropdown-menu dropdown-menu-end">
+				@foreach ($demoCatalogs as $catalog)
+					<li>
+						<a class="dropdown-item" href="{{ route('product.import.sample', ['catalog' => $catalog['key']]) }}">
+							{{ $catalog['label'] }}
+							<span class="text-muted">({{ $catalog['products'] }})</span>
+						</a>
+					</li>
+				@endforeach
+			</ul>
+		</div>
 		<a href="{{ route('product.index') }}" class="btn btn-label-secondary">
 			<i class="ti ti-arrow-left me-1"></i>{{ __('Back to products') }}
 		</a>
@@ -77,7 +89,7 @@
 				<ul class="mb-0 ps-3 text-muted small">
 					<li>{{ __('code identifies the product: an existing code updates the product, a new one creates it.') }}</li>
 					<li>{{ __('category is created automatically when the name does not exist yet.') }}</li>
-					<li>{{ __('currency uses the ISO code (ARS, USD, EUR); store matches the branch name or code.') }}</li>
+					<li>{{ __('currency uses the ISO code (ARS, USD, EUR). store empty or “todas” means every branch; several names go separated by |.') }}</li>
 					<li>{{ __('catalog_status accepts publish, draft, pending or private; only published products are offered by the assistant.') }}</li>
 					<li>{{ __('whatsapp_enabled defaults to 1 so the product is sellable from the chat.') }}</li>
 					<li>{{ __('brand is created automatically when the name does not exist yet.') }}</li>

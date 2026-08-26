@@ -82,6 +82,6 @@ class ProductDataTableStoreColumnTest extends TestCase
         $response->assertOk();
         $row = $response->json('data.0');
         $this->assertNotNull($row);
-        $this->assertSame('—', data_get($row, 'store.name'));
+        $this->assertSame(__('All stores'), data_get($row, 'store.name'));
     }
 }

@@ -22,6 +22,8 @@ class ProductWooCommerceTest extends TestCase
 
         $response->assertOk();
         $response->assertSee(__('Create and edit products stored in Humano. No external store connection required.'), false);
+        $response->assertSee('id="product-image-drop-zone"', false);
+        $response->assertSee(__('Drag files here or click to select'), false);
     }
 
     public function test_product_index_uses_humano_datatable_when_woocommerce_configured(): void

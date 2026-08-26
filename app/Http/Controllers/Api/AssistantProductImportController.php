@@ -36,6 +36,7 @@ class AssistantProductImportController extends Controller
                 'optional_columns' => ProductCsvImportService::OPTIONAL_COLUMNS,
                 'sample_csv' => $importer->templateContents(),
                 'demo_products' => $importer->demoCatalog()['products'],
+                'demo_catalogs' => $importer->demoCatalogs(),
                 'products_count' => Product::withoutGlobalScope('team')->where('team_id', $team->id)->count(),
             ],
         ]);
@@ -56,9 +57,12 @@ class AssistantProductImportController extends Controller
 
         $this->authorize('create', Product::class);
 
+        $key = $request->query('catalog');
+        $catalog = is_string($key) ? $key : null;
+
         return response()->json([
             'success' => true,
-            'data' => $importer->demoCatalog(),
+            'data' => $importer->demoCatalog($catalog),
         ]);
     }
 

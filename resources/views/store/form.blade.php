@@ -121,6 +121,24 @@
                         </div>
                     </div>
 
+                    <div class="col-md-6">
+                        <input type="hidden" name="show_prices" value="0">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="show_prices" name="show_prices" value="1" {{ old('show_prices', $store->showsPrices()) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="show_prices">{{ __('Show prices') }}</label>
+                        </div>
+                        <p class="text-muted small mb-0">{{ __('Uncheck if this store only takes orders.') }}</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <input type="hidden" name="whatsapp_enabled" value="0">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="whatsapp_enabled" name="whatsapp_enabled" value="1" {{ old('whatsapp_enabled', $store->whatsappEnabled()) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="whatsapp_enabled">{{ __('WhatsApp') }}</label>
+                        </div>
+                        <p class="text-muted small mb-0">{{ __('Uncheck to hide WhatsApp sales for this store.') }}</p>
+                    </div>
+
                     <div class="col-12">
                         <hr class="my-2">
                         <h6 class="mb-2">{{ __('Ventas por WhatsApp / tienda') }}</h6>
