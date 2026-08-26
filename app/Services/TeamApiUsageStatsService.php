@@ -88,12 +88,9 @@ final class TeamApiUsageStatsService
         ];
     }
 
-    public static function sellRatePerMillion(): float
+    public static function sellRatePerMillion(\DateTimeInterface|string|null $on = null): float
     {
-        $cost = (float) config('humano_pricing.token_billing.amount_per_million', 6);
-        $markup = max(0, (float) config('humano_pricing.token_billing.markup_percent', 50));
-
-        return round($cost * (1 + ($markup / 100)), 4);
+        return TokenBillingRateService::displaySellRate($on);
     }
 
     /**
@@ -103,7 +100,7 @@ final class TeamApiUsageStatsService
     {
         $tokens = (int) self::forTeam($teamId)['totalTokensUsed'];
         $rate = self::sellRatePerMillion();
-        $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
+        $currency = TokenBillingRateService::displayCurrency();
         $amountCents = (int) round(($tokens / 1_000_000) * $rate * 100);
         $amount = $amountCents / 100;
         $tokenLabel = number_format($tokens, 0, ',', '.');

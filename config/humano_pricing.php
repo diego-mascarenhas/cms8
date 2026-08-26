@@ -68,12 +68,15 @@ return [
     /*
      * | Customer token rate billed on the Assistant subscription period
      * | (calendar month when there is no Stripe period). amount_per_million is
-     * | the estimated provider cost in EUR per 1,000,000 tokens used after TOON.
-     * | markup_percent is added on top for the customer sell rate (default 50%).
+     * | the estimated provider cost in USD per 1,000,000 tokens used after TOON.
+     * | markup_percent is added on top for the USD sell rate (default 50%).
+     * | currency is the display / charge label; USD is converted with
+     * | exchange_rate_histories (or exchange_rates) for that month.
      */
     'token_billing' => [
+        'base_currency' => 'USD',
         'currency' => env('HUMANO_TOKEN_BILLING_CURRENCY', 'EUR'),
-        'amount_per_million' => (float) env('HUMANO_TOKEN_PRICE_PER_MILLION', 6),
+        'amount_per_million' => (float) env('HUMANO_TOKEN_PRICE_PER_MILLION', 10),
         'markup_percent' => (float) env('HUMANO_TOKEN_MARKUP_PERCENT', 50),
     ],
 

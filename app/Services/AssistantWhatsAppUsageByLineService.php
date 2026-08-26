@@ -41,8 +41,8 @@ class AssistantWhatsAppUsageByLineService
         {
             [$from, $to] = $this->subscriptions->usagePeriod($team);
         }
-        $rate = TeamApiUsageStatsService::sellRatePerMillion();
-        $currency = strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
+        $rate = TeamApiUsageStatsService::sellRatePerMillion($from);
+        $currency = TokenBillingRateService::displayCurrency();
         $defaultModel = $this->displayModel(null);
 
         $buckets = $this->bucketsFromConversationMetadata($team, $from, $to);

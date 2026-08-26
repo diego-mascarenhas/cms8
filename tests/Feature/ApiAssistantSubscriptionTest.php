@@ -66,7 +66,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.total_tokens_used', 0);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
-        $response->assertJsonPath('data.token_usage.rate_per_million', 9);
+        $response->assertJsonPath('data.token_usage.rate_per_million', 15);
         $this->assertNotEmpty($response->json('data.token_usage.period_start'));
         $this->assertNotEmpty($response->json('data.token_usage.period_end'));
         $this->assertIsArray($response->json('data.token_usage.by_module'));
