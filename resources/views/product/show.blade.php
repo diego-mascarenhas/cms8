@@ -93,6 +93,14 @@
 							<span>{{ $product->code ?? '—' }}</span>
 						</li>
 						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('Barcode') }}:</span>
+							<span>{{ $product->barcode ?? '—' }}</span>
+						</li>
+						<li class="mb-2 pt-1">
+							<span class="fw-medium me-1">{{ __('OEM') }}:</span>
+							<span>{{ $product->oem ?? '—' }}</span>
+						</li>
+						<li class="mb-2 pt-1">
 							<span class="fw-medium me-1">{{ __('Estado') }}:</span>
 							<span class="badge bg-label-{{ $product->status ? 'success' : 'secondary' }}">
 								{{ $product->catalog_status?->label() ?? ($product->status ? __('Published') : __('Draft')) }}

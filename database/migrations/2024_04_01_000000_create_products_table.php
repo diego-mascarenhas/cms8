@@ -17,6 +17,8 @@ return new class extends Migration
             $table->foreignId('team_id')->constrained('teams')->onDelete('cascade');
             $table->string('name');
             $table->string('code', 64)->nullable();
+            $table->string('barcode', 64)->nullable();
+            $table->string('oem', 80)->nullable();
             $table->text('description');
             $table->text('short_description')->nullable();
             $table->decimal('price', 10, 2);
@@ -39,6 +41,8 @@ return new class extends Migration
             $table->foreign('currency_id')->references('id')->on('currencies')->onDelete('cascade');
 
             $table->unique(['team_id', 'code']);
+            $table->unique(['team_id', 'barcode']);
+            $table->index(['team_id', 'oem']);
             $table->index(['team_id', 'status']);
             $table->index(['team_id', 'store_id']);
             $table->index(['team_id', 'brand_id']);

@@ -71,6 +71,9 @@ class ProductCsvImportTest extends TestCase
         $this->assertStringContainsString('brand,assortment_size,size_options,color_options,flavor_options', $csv);
         $this->assertStringContainsString('PAS-010', $csv);
         $this->assertStringContainsString('Bosch', $csv);
+        $this->assertStringContainsString('7791234567890', $csv);
+        $this->assertStringContainsString('7H0 698 151 D', $csv);
+        $this->assertStringContainsString('barcode,oem', $csv);
         $this->assertStringContainsString('Nike', $csv);
         $this->assertStringContainsString('Carne|Pollo|JyQ|Cebolla', $csv);
         $this->assertStringContainsString('S|M|L|XL', $csv);
@@ -128,9 +131,9 @@ class ProductCsvImportTest extends TestCase
     public function test_import_creates_brand_and_flavor_variants(): void
     {
         $csv = <<<'CSV'
-        code,name,price,category,brand,assortment_size,flavor_options
-        EMP-012,Docena de empanadas,9800,Comida,,12,Carne|Pollo|JyQ
-        PAS-010,Pastilla de freno,18900,Autopartes,Bosch,,
+        code,name,price,category,brand,assortment_size,flavor_options,barcode,oem
+        EMP-012,Docena de empanadas,9800,Comida,,12,Carne|Pollo|JyQ,,
+        PAS-010,Pastilla de freno,18900,Autopartes,Bosch,,,7791234567890,7H0 698 151 D
         CSV;
 
         $this->actingAs($this->user->fresh())->post(route('product.import.store'), [
@@ -148,6 +151,10 @@ class ProductCsvImportTest extends TestCase
         $this->assertSame(1, $pad->variants()->count());
         $this->assertDatabaseHas('brands', ['team_id' => $this->team->id, 'name' => 'Bosch']);
         $this->assertSame('Bosch', $pad->brand?->name);
+        $this->assertSame('7791234567890', $pad->barcode);
+        $this->assertSame('7H0 698 151 D', $pad->oem);
+        $this->assertNull($empanada->barcode);
+        $this->assertNull($empanada->oem);
         $this->assertTrue($empanada->available_in_all_stores);
         $this->assertTrue($pad->available_in_all_stores);
     }
@@ -291,6 +298,28 @@ class ProductCsvImportTest extends TestCase
         $this->assertSame($result['created'], $second['updated']);
         $this->assertSame(
             $products->count(),
+            Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->count(),
+        );
+    }
+
+    public function test_import_rejects_duplicate_barcode(): void
+    {
+        $csv = <<<'CSV'
+        code,name,price,category,barcode
+        PAD-A,Pastilla A,18900,Autopartes,7791234567890
+        PAD-B,Pastilla B,19900,Autopartes,7791234567890
+        CSV;
+
+        $this->actingAs($this->user->fresh())
+            ->from(route('product.import'))
+            ->post(route('product.import.store'), [
+                'file' => UploadedFile::fake()->createWithContent('products.csv', $csv),
+            ])
+            ->assertRedirect(route('product.index'))
+            ->assertSessionHas('import_errors');
+
+        $this->assertSame(
+            1,
             Product::withoutGlobalScope('team')->where('team_id', $this->team->id)->count(),
         );
     }

@@ -235,6 +235,8 @@ class AssistantProductCatalogToolsTest extends TestCase
             'team_id' => $team->id,
             'name' => 'BUJIA 3 ELECT VW GOL POLO QUANTUM SAVEIRO 1.0 1.6 1.8 2.0 8V',
             'code' => '28356',
+            'barcode' => '7790001000081',
+            'oem' => 'BKR6EIX-11',
             'description' => 'BUJIA 3 ELECT VW GOL. Marca: NGK.',
             'price' => 12047.85,
             'currency_id' => $currencyId,
@@ -296,6 +298,14 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString((string) $otherClamp->id, $clampSearch);
         $this->assertStringContainsString('Closest published products', $clampSearch);
         $this->assertStringNotContainsString('25259', $clampSearch);
+
+        $barcodeSearch = $service->execute('search_products', ['query' => '7790001000081']);
+        $this->assertStringContainsString('28356', $barcodeSearch);
+        $this->assertStringContainsString('7790001000081', $barcodeSearch);
+
+        $oemSearch = $service->execute('search_products', ['query' => 'BKR6EIX-11']);
+        $this->assertStringContainsString('28356', $oemSearch);
+        $this->assertStringContainsString('BKR6EIX-11', $oemSearch);
     }
 
     public function test_add_to_whatsapp_cart_tool_uses_cart_session(): void

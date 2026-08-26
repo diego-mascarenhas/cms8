@@ -3621,6 +3621,8 @@ class AssistantToolsService
             return [
                 'id' => (int) $product->id,
                 'code' => (string) ($product->code ?: ''),
+                'barcode' => (string) ($product->barcode ?: ''),
+                'oem' => (string) ($product->oem ?: ''),
                 'name' => (string) $product->name,
                 'category' => (string) ($product->category?->name ?? 'Sin categoría'),
                 'store' => (string) ($product->store?->name ?? ''),
@@ -3705,6 +3707,8 @@ class AssistantToolsService
             return [
                 'id' => (int) $product->id,
                 'code' => $product->code ? (string) $product->code : '—',
+                'barcode' => $product->barcode ? (string) $product->barcode : '',
+                'oem' => $product->oem ? (string) $product->oem : '',
                 'name' => (string) $product->name,
                 'category' => (string) ($product->category->name ?? '—'),
                 'price' => $pricePart !== '' ? ltrim($pricePart, ' —') : '',

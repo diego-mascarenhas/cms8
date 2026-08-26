@@ -8,7 +8,7 @@ use App\Models\Product;
 use Illuminate\Support\Collection;
 
 /**
- * Ranks WhatsApp-sellable products by how well a customer phrase matches name, code, or description.
+ * Ranks WhatsApp-sellable products by how well a customer phrase matches name, code, barcode, OEM, or description.
  */
 class WhatsAppProductRelevanceSearch
 {
@@ -88,7 +88,8 @@ class WhatsAppProductRelevanceSearch
             ->where(function ($query) use ($needle): void
             {
                 $query->where('id', (int) $needle)
-                    ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($needle)]);
+                    ->orWhereRaw('LOWER(code) = ?', [mb_strtolower($needle)])
+                    ->orWhereRaw('LOWER(barcode) = ?', [mb_strtolower($needle)]);
             })
             ->first();
     }
@@ -159,7 +160,7 @@ class WhatsAppProductRelevanceSearch
     {
         $query->where(function ($constraint) use ($token): void
         {
-            SearchNormalizer::applyColumnsNavbarConditions($constraint, ['name', 'code', 'description'], $token);
+            SearchNormalizer::applyColumnsNavbarConditions($constraint, ['name', 'code', 'barcode', 'oem', 'description'], $token);
         });
     }
 
@@ -171,14 +172,29 @@ class WhatsAppProductRelevanceSearch
     {
         $name = SearchNormalizer::normalize((string) $product->name);
         $code = SearchNormalizer::normalize((string) $product->code);
+        $barcode = SearchNormalizer::normalize((string) ($product->barcode ?? ''));
+        $oem = SearchNormalizer::normalize((string) ($product->oem ?? ''));
         $description = SearchNormalizer::normalize((string) ($product->description ?? ''));
+        $normalizedNeedle = SearchNormalizer::normalize($needle);
         $tokenCount = max(1, count($tokens));
         $score = 0;
         $matched = 0;
 
-        if ($code !== '' && ($code === SearchNormalizer::normalize($needle) || in_array($code, $tokens, true)))
+        if ($code !== '' && ($code === $normalizedNeedle || in_array($code, $tokens, true)))
         {
             $score += 1000;
+            $matched++;
+        }
+
+        if ($barcode !== '' && ($barcode === $normalizedNeedle || in_array($barcode, $tokens, true)))
+        {
+            $score += 1000;
+            $matched++;
+        }
+
+        if ($oem !== '' && ($oem === $normalizedNeedle || str_contains($oem, $normalizedNeedle)))
+        {
+            $score += 900;
             $matched++;
         }
 
@@ -193,6 +209,22 @@ class WhatsAppProductRelevanceSearch
             }
 
             if ($code !== '' && str_contains($code, $token))
+            {
+                $score += 10;
+                $matched++;
+
+                continue;
+            }
+
+            if ($barcode !== '' && str_contains($barcode, $token))
+            {
+                $score += 10;
+                $matched++;
+
+                continue;
+            }
+
+            if ($oem !== '' && str_contains($oem, $token))
             {
                 $score += 10;
                 $matched++;

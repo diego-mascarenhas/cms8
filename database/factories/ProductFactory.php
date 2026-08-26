@@ -60,6 +60,8 @@ class ProductFactory extends Factory
         return [
             'name' => $this->faker->randomElement($productNames),
             'code' => strtoupper($this->faker->unique()->bothify('PRD-###??')),
+            'barcode' => null,
+            'oem' => null,
             'description' => $this->faker->randomElement($descriptions),
             'short_description' => null,
             'price' => $this->faker->randomElement($prices),

@@ -358,6 +358,8 @@ class ShopApiTest extends TestCase
             ->postJson('/api/shop/products', [
                 'name' => 'Pastilla de freno',
                 'code' => 'BOSCH-PAD-001',
+                'barcode' => '7791234567890',
+                'oem' => '7H0 698 151 D',
                 'price' => 45,
                 'currency_id' => $currencyId,
                 'category_id' => $category['id'],
@@ -370,6 +372,8 @@ class ShopApiTest extends TestCase
 
         $create->assertCreated()
             ->assertJsonPath('data.brand.name', 'Bosch')
+            ->assertJsonPath('data.barcode', '7791234567890')
+            ->assertJsonPath('data.oem', '7H0 698 151 D')
             ->assertJsonCount(1, 'data.variants')
             ->assertJsonPath('data.variants.0.is_default', true);
 
@@ -382,6 +386,59 @@ class ShopApiTest extends TestCase
             ->getJson('/api/shop/products?brand_id=999999')
             ->assertOk()
             ->assertJsonPath('pagination.total', 0);
+    }
+
+    public function test_product_barcode_is_unique_per_team(): void
+    {
+        [, , $token] = $this->adminWithShopModules();
+
+        $category = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/categories', ['name' => 'Autopartes'])
+            ->assertCreated()
+            ->json('data');
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        $shared = [
+            'price' => 45,
+            'currency_id' => $currencyId,
+            'category_id' => $category['id'],
+            'catalog_status' => 'publish',
+            'stock_status' => 'instock',
+            'manage_stock' => false,
+            'whatsapp_enabled' => true,
+            'barcode' => '7791234567890',
+            'oem' => '7H0 698 151 D',
+        ];
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Pastilla A',
+                'code' => 'PAD-A',
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.barcode', '7791234567890')
+            ->assertJsonPath('data.oem', '7H0 698 151 D');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Pastilla B',
+                'code' => 'PAD-B',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['barcode']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Pastilla C',
+                'code' => 'PAD-C',
+                'barcode' => '',
+                'oem' => '7H0 698 151 D',
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.barcode', null)
+            ->assertJsonPath('data.oem', '7H0 698 151 D');
     }
 
     public function test_store_main_flag_and_cannot_delete_main(): void

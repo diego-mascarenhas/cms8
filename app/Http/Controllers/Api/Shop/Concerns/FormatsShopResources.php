@@ -44,6 +44,8 @@ trait FormatsShopResources
             'id' => $product->id,
             'name' => $product->name,
             'code' => $product->code,
+            'barcode' => $product->barcode,
+            'oem' => $product->oem,
             'description' => $product->description,
             'short_description' => $product->short_description,
             'price' => (float) $product->price,
@@ -219,6 +221,8 @@ trait FormatsShopResources
         return [
             'name' => $validated['name'],
             'code' => $validated['code'],
+            'barcode' => $validated['barcode'] ?? null,
+            'oem' => $validated['oem'] ?? null,
             'description' => $validated['description'] ?? '',
             'short_description' => $validated['short_description'] ?? null,
             'price' => $validated['price'],
