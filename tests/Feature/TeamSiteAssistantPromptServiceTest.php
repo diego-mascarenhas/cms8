@@ -179,6 +179,37 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         );
     }
 
+    public function test_prompt_options_omit_own_brand_sales_scripts(): void
+    {
+        $team = Team::factory()->create();
+        $module = Module::query()->where('key', 'products')->first();
+        $this->assertNotNull($module);
+
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'wapify_me',
+            'section_label' => 'Wapify.Me — venta y suscripción',
+            'prompt_instruction' => 'Vendés Wapify.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'pumpstall',
+            'section_label' => 'Pumpstall — venta y traders',
+            'prompt_instruction' => 'Vendés Pumpstall.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+
+        $keys = collect(app(TeamSiteAssistantPromptService::class)->promptOptions($team))->pluck('key');
+        $this->assertTrue($keys->contains(fn (string $key): bool => str_ends_with($key, ':assistant_catalogo')));
+        $this->assertFalse($keys->contains('products:wapify_me'));
+        $this->assertFalse($keys->contains('products:pumpstall'));
+    }
+
     public function test_select_off_is_a_silent_default_without_a_routing_key(): void
     {
         $team = Team::factory()->create();

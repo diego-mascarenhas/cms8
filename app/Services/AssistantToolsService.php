@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ContactInteractionType;
+use App\Enums\ProductCatalogStatus;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppLastOfferedProduct;
 use App\Helpers\WhatsAppOutboundText;
@@ -3516,8 +3517,7 @@ class AssistantToolsService
     {
         return Product::withoutGlobalScope('team')
             ->where('team_id', $teamId)
-            ->active()
-            ->whatsAppEnabled();
+            ->where('catalog_status', ProductCatalogStatus::Publish);
     }
 
     private function resolveWhatsAppProduct(int $teamId, array $input): ?Product
@@ -3613,7 +3613,7 @@ class AssistantToolsService
 
         if ($products->isEmpty())
         {
-            return 'No WhatsApp-enabled products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Enable products for WhatsApp in the catalog or adjust the filter.';
+            return 'No published shop products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Publish products in the shop catalog or adjust the filter.';
         }
 
         $rows = $products->map(function (Product $product)
@@ -3668,7 +3668,7 @@ class AssistantToolsService
         }
 
         return $this->structuredToolResult(
-            $total.' WhatsApp-enabled products. Do not list them all to the customer.'."\n"
+            $total.' published shop products. Do not list them all to the customer.'."\n"
             .'Ask what they need, then search_products or list_product_catalog with category_name.',
             ['categories' => $categories],
         );
@@ -3693,7 +3693,7 @@ class AssistantToolsService
 
         if ($products->isEmpty())
         {
-            return 'No matching WhatsApp-enabled products for: '.$raw.'. Try list_product_catalog or a shorter name.';
+            return 'No matching published shop products for: '.$raw.'. Try list_product_catalog or a shorter name.';
         }
 
         $products->each(fn (Product $product) => $product->loadMissing(['category', 'currency', 'store', 'stores']));

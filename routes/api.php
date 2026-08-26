@@ -508,6 +508,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');
     Route::post('assistant/site-prompt', [SiteAssistantPromptController::class, 'store'])->name('api.assistant.site-prompt.store');
     Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
+    Route::delete('assistant/site-prompt', [SiteAssistantPromptController::class, 'destroy'])->name('api.assistant.site-prompt.destroy');
     Route::get('assistant/commercial-stats', [AssistantCommercialStatsController::class, 'show'])->name('api.assistant.commercial-stats.show');
     Route::get('assistant/usage', [AssistantUsageController::class, 'show'])->name('api.assistant.usage.show');
     Route::get('assistant/categories', [AssistantCategoryController::class, 'index'])->name('api.assistant.categories.index');

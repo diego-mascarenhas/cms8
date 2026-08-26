@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DestroySiteAssistantPromptRequest;
 use App\Http\Requests\UpdateSiteAssistantPromptContentRequest;
 use App\Services\AssistantPromptCatalog;
 use App\Services\TeamSiteAssistantPromptService;
@@ -177,6 +178,35 @@ class SiteAssistantPromptController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('team_settings.site_assistant.saved'),
+            'data' => $siteAssistant->settingsPayload($team->fresh()),
+        ]);
+    }
+
+    public function destroy(DestroySiteAssistantPromptRequest $request, TeamSiteAssistantPromptService $siteAssistant): JsonResponse
+    {
+        $team = $request->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual.'),
+            ], 422);
+        }
+
+        try
+        {
+            $siteAssistant->deleteOwned($team, $request->validated('prompt_key'));
+        } catch (InvalidArgumentException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => __('team_settings.site_assistant.deleted'),
             'data' => $siteAssistant->settingsPayload($team->fresh()),
         ]);
     }

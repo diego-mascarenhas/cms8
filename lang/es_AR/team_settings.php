@@ -226,6 +226,8 @@ return [
         'saved' => 'Prompt del sitio actualizado. El código de embed ya apunta a este flujo.',
         'created' => 'Prompt creado y seleccionado. Copiá el código de embed en la web del cliente.',
         'updated' => 'Prompt actualizado.',
+        'deleted' => 'Prompt eliminado.',
+        'cannot_delete' => 'Ese prompt no se puede eliminar.',
         'update_submit' => 'Guardar cambios',
         'invalid_prompt' => 'Ese prompt no existe o no está activo en este equipo.',
         'missing_module' => 'No hay un módulo disponible para guardar el prompt.',

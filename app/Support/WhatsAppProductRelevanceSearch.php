@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\ProductCatalogStatus;
 use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Product;
 use Illuminate\Support\Collection;
@@ -322,8 +323,7 @@ class WhatsAppProductRelevanceSearch
     {
         return Product::withoutGlobalScope('team')
             ->where('team_id', $teamId)
-            ->active()
-            ->whatsAppEnabled()
+            ->where('catalog_status', ProductCatalogStatus::Publish)
             ->with(['category:id,name', 'currency:id,symbol']);
     }
 }

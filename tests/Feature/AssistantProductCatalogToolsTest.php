@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\WhatsAppGateway;
+use App\Enums\ProductCatalogStatus;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Module;
@@ -111,6 +112,77 @@ class AssistantProductCatalogToolsTest extends TestCase
         $filtered = $service->execute('list_product_catalog', ['category_name' => 'Ropa']);
         $this->assertStringContainsString('Camiseta demo', $filtered);
         $this->assertStringContainsString('Showing 8 of', $filtered);
+    }
+
+    public function test_catalog_lists_published_shop_products_even_without_whatsapp_flag(): void
+    {
+        $this->seed(CurrencySeeder::class);
+
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $module = Module::query()->create([
+            'name' => 'Products',
+            'key' => 'products',
+            'level' => 1,
+            'icon' => null,
+            'description' => null,
+            'is_core' => false,
+            'group' => null,
+            'order' => 0,
+            'status' => 1,
+        ]);
+        $team->enableModule('products');
+
+        $category = Category::query()->create([
+            'name' => 'Shop',
+            'module_id' => $module->id,
+            'team_id' => $team->id,
+            'description' => null,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Taza shop',
+            'code' => 'TAZA-SHOP',
+            'description' => 'Shop',
+            'price' => 12.00,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'whatsapp_enabled' => false,
+        ]);
+
+        Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Borrador shop',
+            'code' => 'DRAFT-SHOP',
+            'description' => 'Draft',
+            'price' => 9.00,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'catalog_status' => ProductCatalogStatus::Draft,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext($user->id, $team->id, '5491111223344');
+
+        $list = $service->execute('list_product_catalog', []);
+        $this->assertStringContainsString('Taza shop', $list);
+        $this->assertStringContainsString('TAZA-SHOP', $list);
+        $this->assertStringNotContainsString('Borrador shop', $list);
     }
 
     public function test_search_products_matches_natural_language_auto_parts(): void
