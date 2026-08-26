@@ -37,6 +37,7 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertStringContainsString('list_product_catalog', $instruction);
         $this->assertStringContainsString('get_store_info', $instruction);
         $this->assertStringContainsString('add_to_whatsapp_cart', $instruction);
+        $this->assertStringContainsString('send_product_image', $instruction);
         $this->assertStringContainsString('confirm_whatsapp_order', $instruction);
     }
 

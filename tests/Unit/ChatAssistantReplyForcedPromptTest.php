@@ -153,6 +153,7 @@ class ChatAssistantReplyForcedPromptTest extends TestCase
         $this->assertSame('Asistente: catálogo y compra', $reply['routed_to'] ?? null);
         $this->assertContains('list_product_catalog', $service->lastToolNames);
         $this->assertContains('add_to_whatsapp_cart', $service->lastToolNames);
+        $this->assertContains('send_product_image', $service->lastToolNames);
         $this->assertNotContains('get_account_report', $service->lastToolNames);
         $this->assertNotContains('create_message', $service->lastToolNames);
         $this->assertNotContains('send_whatsapp_message', $service->lastToolNames);

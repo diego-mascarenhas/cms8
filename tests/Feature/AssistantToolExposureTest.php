@@ -43,7 +43,7 @@ class AssistantToolExposureTest extends TestCase
         );
 
         $this->assertEqualsCanonicalizing(
-            ['list_product_catalog', 'search_products', 'add_to_whatsapp_cart', 'view_whatsapp_cart', 'get_store_info', 'confirm_whatsapp_order', 'search_contacts', 'get_contact_detail', 'create_contact', 'update_contact'],
+            ['list_product_catalog', 'search_products', 'send_product_image', 'add_to_whatsapp_cart', 'view_whatsapp_cart', 'get_store_info', 'confirm_whatsapp_order', 'search_contacts', 'get_contact_detail', 'create_contact', 'update_contact'],
             $names,
         );
         $this->assertNotContains('get_account_report', $names);

@@ -41,6 +41,7 @@ use App\Support\WhatsAppProductRelevanceSearch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -899,6 +900,19 @@ class AssistantToolsService
                 ],
             ],
             [
+                'name' => 'send_product_image',
+                'description' => 'Send this product\'s catalog photo to the current WhatsApp customer. Use when they ask for the photo, image, or "foto" of a product you already showed and has_image is true. If they omit the name, use the last product. Do not invent a photo if this tool says there is none.',
+                'input_schema' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'product_id' => ['type' => 'integer', 'description' => 'Product database id (from list_product_catalog or search_products)'],
+                        'product_code' => ['type' => 'string', 'description' => 'Product SKU/code (case-insensitive match)'],
+                        'product_name' => ['type' => 'string', 'description' => 'Product name (partial match, first hit)'],
+                    ],
+                    'required' => [],
+                ],
+            ],
+            [
                 'name' => 'add_to_whatsapp_cart',
                 'description' => 'Add a product to the WhatsApp customer\'s shopping cart. Use when they confirm after you offered a product: "sí", "dale", "agregalo", "agregame", "agregame 2", "poneme 2", "quiero 2". Pass quantity when they say how many. If they omit the name, pass the last product_id from search_products (or omit identifiers to use that last product). Never tell a WhatsApp customer to write to another phone number. Pass at most one of: product_id, product_code, or product_name.',
                 'input_schema' => [
@@ -1028,6 +1042,7 @@ class AssistantToolsService
                 'update_message' => $this->updateMessage($teamId, $user, $input),
                 'list_product_catalog' => $this->listProductCatalog($teamId, $input),
                 'search_products' => $this->searchProducts($teamId, $input),
+                'send_product_image' => $this->sendProductImage($teamId, $input),
                 'add_to_whatsapp_cart' => $this->addToWhatsAppCart($teamId, $input),
                 'view_whatsapp_cart' => $this->viewWhatsAppCart($teamId),
                 'get_store_info' => $this->getStoreInfo($teamId),
@@ -3629,6 +3644,7 @@ class AssistantToolsService
                 'price' => $this->catalogPriceSuffix($product) !== ''
                     ? ltrim($this->catalogPriceSuffix($product), ' —')
                     : '',
+                'has_image' => filled($product->image),
             ];
         })->values()->all();
 
@@ -3712,6 +3728,7 @@ class AssistantToolsService
                 'name' => (string) $product->name,
                 'category' => (string) ($product->category->name ?? '—'),
                 'price' => $pricePart !== '' ? ltrim($pricePart, ' —') : '',
+                'has_image' => filled($product->image),
             ];
         })->values()->all();
 
@@ -4076,6 +4093,88 @@ class AssistantToolsService
         }
 
         return $this->truncate(implode("\n", $lines));
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function sendProductImage(int $teamId, array $input): string
+    {
+        if (! $this->teamHasProductsModule($teamId))
+        {
+            return 'The products module is not enabled for this team.';
+        }
+
+        if ($this->contextCustomerPhone === null || $this->contextCustomerPhone === '')
+        {
+            return 'Cannot send a product image: no customer phone in this session. If this is the web assistant, the operator must select the WhatsApp recipient. Do not invent a photo.';
+        }
+
+        $product = $this->resolveWhatsAppProduct($teamId, $input);
+        if (! $product)
+        {
+            return 'Product not found or not available. Use the last product you showed (omit identifiers) or pass product_id / product_code / product_name.';
+        }
+
+        $image = trim((string) ($product->image ?? ''));
+        if ($image === '')
+        {
+            return 'This product has no catalog image. Tell the customer you do not have a photo. Do not invent one or send another product\'s image.';
+        }
+
+        $mediaPath = $this->mediaPathForProductImage($image);
+        if ($mediaPath === null)
+        {
+            return 'This product has an image URL but the file is not available to send. Tell the customer you cannot send the photo right now. Do not invent one.';
+        }
+
+        $gateway = $this->resolveWhatsAppGatewayForToolSend();
+        if (! $gateway->isConfigured())
+        {
+            return 'WhatsApp is not configured for this team. Do not say the photo was sent.';
+        }
+
+        if (! $gateway->sendMedia($this->contextCustomerPhone, $mediaPath, (string) $product->name))
+        {
+            return 'Could not send the product image over WhatsApp. Tell the customer you cannot send the photo right now. Do not invent one.';
+        }
+
+        WhatsAppLastOfferedProduct::remember($this->contextCustomerPhone, $teamId, (int) $product->id);
+
+        return $this->truncate('Product image sent to this WhatsApp chat: '.$product->name.' (id '.$product->id.'). Confirm briefly that you sent the photo. Do not attach a URL.');
+    }
+
+    private function mediaPathForProductImage(string $image): ?string
+    {
+        $image = trim($image);
+        if ($image === '')
+        {
+            return null;
+        }
+
+        $path = $image;
+        if (preg_match('#^https?://#i', $image) === 1)
+        {
+            $parsed = parse_url($image, PHP_URL_PATH);
+            $path = is_string($parsed) ? $parsed : '';
+        }
+
+        $path = ltrim((string) $path, '/');
+        if (str_starts_with($path, 'storage/'))
+        {
+            $relative = substr($path, strlen('storage/'));
+            if (is_string($relative) && $relative !== '' && Storage::disk('public')->exists($relative))
+            {
+                return 'storage/'.$relative;
+            }
+        }
+
+        if ($path !== '' && Storage::disk('public')->exists($path))
+        {
+            return 'storage/'.$path;
+        }
+
+        return null;
     }
 
     private function addToWhatsAppCart(int $teamId, array $input): string
