@@ -18,7 +18,10 @@ class HumanoPricingStripePublisherTest extends TestCase
             $ids,
         );
         $this->assertSame('19', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['monthly_amount']);
+        $this->assertSame('190', collect($publisher->publishablePlans())->firstWhere('id', 'shop_basic')['yearly_amount']);
         $this->assertSame('49', collect($publisher->publishablePlans())->firstWhere('id', 'ads')['monthly_amount']);
+        $this->assertSame('490', collect($publisher->publishablePlans())->firstWhere('id', 'ads')['yearly_amount']);
+        $this->assertSame('290', collect($publisher->publishablePlans())->firstWhere('id', 'projects')['yearly_amount']);
     }
 
     public function test_publishable_plans_skip_affiliates_and_platform(): void
@@ -55,6 +58,8 @@ class HumanoPricingStripePublisherTest extends TestCase
         $this->assertSame('prod_V89Ch5pNA8GG1s', $shop['stripe_product_id'] ?? null);
         $this->assertSame('price_1U7suBRwN51ygFde4qEpYyXf', $shop['stripe_price_monthly_id'] ?? null);
         $this->assertSame('19', $shop['monthly_amount'] ?? null);
+        $this->assertSame('190', $shop['yearly_amount'] ?? null);
+        $this->assertSame('price_1U8cY9RwN51ygFdeLbP98VNT', $shop['stripe_price_yearly_id'] ?? null);
         $this->assertSame('prod_V89CoEJptr2nT5', $ads['stripe_product_id'] ?? null);
         $this->assertSame('49', $ads['monthly_amount'] ?? null);
         $this->assertSame('prod_V8JgY0BNt1q78v', $assistant['stripe_product_id'] ?? null);

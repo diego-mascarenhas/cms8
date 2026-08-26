@@ -750,6 +750,40 @@ class ApiAssistantSubscriptionTest extends TestCase
         );
     }
 
+    public function test_shop_catalog_returns_freelancer_commerce_and_enterprise_plans(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=shop');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.plan.id', 'shop_basic');
+        $response->assertJsonPath('data.plan.name', 'Shop Freelancer');
+        $response->assertJsonPath('data.plan.monthly_amount', '19');
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.can_checkout', true);
+        $this->assertSame(
+            ['shop_basic', 'shop_premium', 'shop_profesional'],
+            collect($response->json('data.plans'))->pluck('id')->all(),
+        );
+        $this->assertSame(
+            ['19', '39', '79'],
+            collect($response->json('data.plans'))->pluck('monthly_amount')->all(),
+        );
+        $this->assertSame(
+            ['190', '390', '790'],
+            collect($response->json('data.plans'))->pluck('yearly_amount')->all(),
+        );
+        $this->assertSame(
+            ['Shop Freelancer', 'Shop Commerce', 'Shop Enterprise'],
+            collect($response->json('data.plans'))->pluck('name')->all(),
+        );
+        $this->assertNotContains('hunter', collect($response->json('data.plans'))->pluck('id')->all());
+        $this->assertNotContains('business', collect($response->json('data.plans'))->pluck('id')->all());
+    }
+
     public function test_mailer_catalog_returns_basic_foundation_and_scale_plans(): void
     {
         [, , $token] = $this->assistantUserWithToken();

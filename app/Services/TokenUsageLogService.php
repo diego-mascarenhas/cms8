@@ -55,6 +55,9 @@ final class TokenUsageLogService
     /**
      * @param  object|array<string, mixed>|null  $usage  Laravel AI usage object or array.
      */
+    /**
+     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, savings_percentage?: float|int, tokens_saved?: int}|null  $toon
+     */
     public static function logFromAiResponse(
         int $teamId,
         string $service,
@@ -63,6 +66,7 @@ final class TokenUsageLogService
         ?string $moduleKey = null,
         int $inputSize = 0,
         int $outputSize = 0,
+        ?array $toon = null,
     ): void {
         $totalTokens = self::totalTokensFromUsage($usage);
         if ($totalTokens <= 0)
@@ -70,14 +74,26 @@ final class TokenUsageLogService
             return;
         }
 
+        $usedToon = (bool) ($toon['used_toon'] ?? false);
+        $tokensSaved = max(0, (int) ($toon['tokens_saved'] ?? 0));
+        $jsonTokens = $usedToon ? $totalTokens + $tokensSaved : $totalTokens;
+        $toonTokens = $usedToon ? $totalTokens : 0;
+        $savings = $jsonTokens > 0 && $usedToon
+            ? (int) round(min(100, ($tokensSaved / $jsonTokens) * 100))
+            : 0;
+
         self::log(
             teamId: $teamId,
             service: $service,
             totalTokens: $totalTokens,
             moduleId: $moduleId,
             moduleKey: $moduleKey,
-            inputSize: $inputSize,
-            outputSize: $outputSize,
+            inputSize: $usedToon ? (int) ($toon['json_size'] ?? $inputSize) : $inputSize,
+            outputSize: $usedToon ? (int) ($toon['toon_size'] ?? $outputSize) : $outputSize,
+            usedToon: $usedToon,
+            jsonTokens: $jsonTokens,
+            toonTokens: $toonTokens,
+            savingsPercentage: $savings,
         );
     }
 

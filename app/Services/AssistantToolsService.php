@@ -89,6 +89,19 @@ class AssistantToolsService
     protected array $toolOutputsInRequest = [];
 
     /**
+     * @var array{used_toon: bool, json_size: int, toon_size: int, json_tokens: int, toon_tokens: int, savings_percentage: float, tokens_saved: int}
+     */
+    protected array $toonMetrics = [
+        'used_toon' => false,
+        'json_size' => 0,
+        'toon_size' => 0,
+        'json_tokens' => 0,
+        'toon_tokens' => 0,
+        'savings_percentage' => 0.0,
+        'tokens_saved' => 0,
+    ];
+
+    /**
      * Test-only or explicit override; production uses {@see resolveWhatsAppGatewayForToolSend()}.
      */
     protected ?WhatsAppGateway $whatsAppGatewayOverride = null;
@@ -119,6 +132,18 @@ class AssistantToolsService
         $this->recentContactIdsInRequest = [];
         $this->executedToolsInRequest = [];
         $this->toolOutputsInRequest = [];
+        $this->toonMetrics = ToonPayloadService::emptyMetrics();
+    }
+
+    /**
+     * @return array{used_toon: bool, json_size: int, toon_size: int, json_tokens: int, toon_tokens: int, savings_percentage: float, tokens_saved: int}
+     */
+    public function consumeToonMetrics(): array
+    {
+        $metrics = $this->toonMetrics;
+        $this->toonMetrics = ToonPayloadService::emptyMetrics();
+
+        return $metrics;
     }
 
     public function wasToolExecuted(string $name): bool
@@ -1121,21 +1146,15 @@ class AssistantToolsService
             );
         }
 
-        $lines = $contacts->map(function (Contact $contact)
+        $rows = $contacts->map(function (Contact $contact)
         {
-            $fullName = trim($contact->name.' '.($contact->surname ?? ''));
-            $parts = ['id '.$contact->id.': '.$fullName];
-            if ($contact->email)
-            {
-                $parts[] = $contact->email;
-            }
-            if ($contact->phone)
-            {
-                $parts[] = 'tel '.$contact->phone;
-            }
-
-            return '  - '.implode(' | ', $parts);
-        })->implode("\n");
+            return [
+                'id' => (int) $contact->id,
+                'name' => trim($contact->name.' '.($contact->surname ?? '')),
+                'email' => (string) ($contact->email ?: ''),
+                'phone' => $contact->phone ? (string) $contact->phone : '',
+            ];
+        })->values()->all();
 
         $count = $contacts->count();
         $header = $count === 1
@@ -1150,7 +1169,7 @@ class AssistantToolsService
             'match_ids' => $contacts->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
         ]);
 
-        return $this->truncate($header."\n".$lines);
+        return $this->structuredToolResult($header, ['contacts' => $rows]);
     }
 
     private function getContactDetail(int $teamId, User $user, array $input): string
@@ -3597,39 +3616,33 @@ class AssistantToolsService
             return 'No WhatsApp-enabled products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Enable products for WhatsApp in the catalog or adjust the filter.';
         }
 
-        $lines = [];
-        foreach ($products->groupBy(fn (Product $p) => $p->category?->name ?? 'Sin categoría') as $categoryName => $group)
+        $rows = $products->map(function (Product $product)
         {
-            $lines[] = 'Category: '.$categoryName;
-            foreach ($group as $product)
-            {
-                $codePart = $product->code ? ' code '.$product->code.',' : '';
-                $storePart = $product->store ? ' store '.($product->store->name).',' : '';
-                $pricePart = $this->catalogPriceSuffix($product);
-                $lines[] = sprintf(
-                    '  id %d:%s%s %s%s',
-                    $product->id,
-                    $codePart,
-                    $storePart,
-                    $product->name,
-                    $pricePart,
-                );
-            }
-            $lines[] = '';
-        }
+            return [
+                'id' => (int) $product->id,
+                'code' => (string) ($product->code ?: ''),
+                'name' => (string) $product->name,
+                'category' => (string) ($product->category?->name ?? 'Sin categoría'),
+                'store' => (string) ($product->store?->name ?? ''),
+                'price' => $this->catalogPriceSuffix($product) !== ''
+                    ? ltrim($this->catalogPriceSuffix($product), ' —')
+                    : '',
+            ];
+        })->values()->all();
 
         $this->rememberLastOfferedProducts($teamId, $products);
+        $footer = [];
         if ($total > $products->count())
         {
-            $lines[] = 'Showing '.$products->count().' of '.$total.'. Use search_products or another category_name for the rest.';
+            $footer[] = 'Showing '.$products->count().' of '.$total.'. Use search_products or another category_name for the rest.';
         }
-        $lines[] = 'To buy: call add_to_whatsapp_cart with product_id (or omit it to use the last single product you showed) and quantity if they said how many. Then suggest *finalizar* to close, *carrito* to review, *quitar* to remove.';
+        $footer[] = 'To buy: call add_to_whatsapp_cart with product_id (or omit it to use the last single product you showed) and quantity if they said how many. Then suggest *finalizar* to close, *carrito* to review, *quitar* to remove.';
         if ($this->anyCatalogHidesPrice($products))
         {
-            $lines[] = $this->hiddenPricesInstruction();
+            $footer[] = $this->hiddenPricesInstruction();
         }
 
-        return $this->truncate(implode("\n", $lines));
+        return $this->structuredToolResult('', ['products' => $rows], implode("\n", $footer));
     }
 
     private function listCatalogCategoriesOverview(int $teamId, int $total): string
@@ -3645,19 +3658,20 @@ class AssistantToolsService
             ->whereIn('id', $rows->pluck('category_id')->filter())
             ->pluck('name', 'id');
 
-        $lines = [
-            $total.' WhatsApp-enabled products. Do not list them all to the customer.',
-            'Ask what they need, then search_products or list_product_catalog with category_name.',
-            'Top categories:',
-        ];
-
+        $categories = [];
         foreach ($rows as $row)
         {
-            $name = $names[$row->category_id] ?? 'Sin categoría';
-            $lines[] = '- '.$name.' ('.(int) $row->products_count.')';
+            $categories[] = [
+                'name' => (string) ($names[$row->category_id] ?? 'Sin categoría'),
+                'count' => (int) $row->products_count,
+            ];
         }
 
-        return implode("\n", $lines);
+        return $this->structuredToolResult(
+            $total.' WhatsApp-enabled products. Do not list them all to the customer.'."\n"
+            .'Ask what they need, then search_products or list_product_catalog with category_name.',
+            ['categories' => $categories],
+        );
     }
 
     private function searchProducts(int $teamId, array $input): string
@@ -3684,21 +3698,18 @@ class AssistantToolsService
 
         $products->each(fn (Product $product) => $product->loadMissing(['category', 'currency', 'store', 'stores']));
 
-        $lines = $products->map(function (Product $product)
+        $rows = $products->map(function (Product $product)
         {
-            $code = $product->code ? $product->code : '—';
             $pricePart = $this->catalogPriceSuffix($product);
-            $priceColumn = $pricePart !== '' ? ' | '.ltrim($pricePart, ' —') : '';
 
-            return sprintf(
-                'id %d | code %s | %s%s | category: %s',
-                $product->id,
-                $code,
-                $product->name,
-                $priceColumn,
-                $product->category->name ?? '—',
-            );
-        })->implode("\n");
+            return [
+                'id' => (int) $product->id,
+                'code' => $product->code ? (string) $product->code : '—',
+                'name' => (string) $product->name,
+                'category' => (string) ($product->category->name ?? '—'),
+                'price' => $pricePart !== '' ? ltrim($pricePart, ' —') : '',
+            ];
+        })->values()->all();
 
         $this->rememberLastOfferedProducts($teamId, $products);
 
@@ -3706,13 +3717,9 @@ class AssistantToolsService
             ? 'No exact match for "'.$raw.'". Closest published products:'
             : 'Matches:';
 
-        $out = $heading."\n".$lines;
-        if ($this->anyCatalogHidesPrice($products))
-        {
-            $out .= "\n".$this->hiddenPricesInstruction();
-        }
+        $footer = $this->anyCatalogHidesPrice($products) ? $this->hiddenPricesInstruction() : '';
 
-        return $this->truncate($out);
+        return $this->structuredToolResult($heading, ['products' => $rows], $footer);
     }
 
     /**
@@ -4223,6 +4230,19 @@ class AssistantToolsService
     private function hiddenPricesInstruction(): string
     {
         return 'This store hides catalog prices. Do not mention prices, amounts, or currency to the customer.';
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function structuredToolResult(string $intro, array $payload, string $footer = ''): string
+    {
+        $encoded = ToonPayloadService::encode($payload);
+        $this->toonMetrics = ToonPayloadService::merge($this->toonMetrics, $encoded);
+
+        $parts = array_filter([$intro, $encoded['text'], $footer], fn (string $part): bool => trim($part) !== '');
+
+        return $this->truncate(implode("\n", $parts));
     }
 
     private function truncate(string $s): string

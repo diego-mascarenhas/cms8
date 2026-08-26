@@ -35,7 +35,7 @@ class AssistantContactAndCalendarToolsTest extends TestCase
     {
         $user = $this->createAdminWithTeam();
 
-        Contact::factory()->create([
+        $contact = Contact::factory()->create([
             'team_id' => $user->currentTeam->id,
             'creator_id' => $user->id,
             'name' => 'Francisco',
@@ -49,7 +49,7 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $this->assertStringContainsString('Found 1 contact', $out);
         $this->assertStringContainsString('Francisco Caballero', $out);
         $this->assertStringContainsString('francisco@example.com', $out);
-        $this->assertMatchesRegularExpression('/id \d+:/', $out);
+        $this->assertStringContainsString((string) $contact->id, $out);
     }
 
     public function test_get_contact_detail_returns_full_contact_data(): void
