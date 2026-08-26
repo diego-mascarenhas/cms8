@@ -52,6 +52,8 @@ class StoreRequest extends FormRequest
             'delivery_cost' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
             'status' => ['required', 'boolean'],
             'is_main' => ['nullable', 'boolean'],
+            'show_prices' => ['nullable', 'boolean'],
+            'whatsapp_enabled' => ['nullable', 'boolean'],
             'checkout_payment_methods' => ['required', 'array', 'min:1'],
             'checkout_payment_methods.*' => ['string', Rule::in(Store::checkoutPaymentMethodKeys())],
             'checkout_fulfillment_types' => ['required', 'array', 'min:1'],

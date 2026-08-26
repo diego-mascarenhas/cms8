@@ -426,6 +426,8 @@ class ShopApiTest extends TestCase
         $create->assertCreated()
             ->assertJsonPath('data.name', 'Sucursal Norte')
             ->assertJsonPath('data.is_main', true)
+            ->assertJsonPath('data.show_prices', true)
+            ->assertJsonPath('data.whatsapp_enabled', true)
             ->assertJsonPath('data.checkout_payment_methods.0', 'cash')
             ->assertJsonPath('data.phone', '1144556677')
             ->assertJsonPath('data.delivery_area', 'CABA')
@@ -468,6 +470,50 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertSoftDeleted('stores', ['id' => $mainId]);
+    }
+
+    public function test_store_can_hide_prices_and_whatsapp(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/stores')
+            ->assertOk();
+
+        $mainId = (int) Store::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('is_main', true)
+            ->value('id');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/shop/stores/'.$mainId, [
+                'name' => 'Principal',
+                'code' => 'MAIN',
+                'status' => true,
+                'is_main' => true,
+                'checkout_payment_methods' => ['cash'],
+                'checkout_fulfillment_types' => ['pickup'],
+                'show_prices' => false,
+                'whatsapp_enabled' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.show_prices', false)
+            ->assertJsonPath('data.whatsapp_enabled', false);
+
+        $store = Store::withoutGlobalScope('team')->find($mainId);
+        $this->assertFalse($store->showsPrices());
+        $this->assertFalse($store->whatsappEnabled());
+    }
+
+    public function test_products_module_is_enough_to_list_stores(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules(false);
+        $this->enableTeamModules($team, ['products']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/shop/stores')
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 
     public function test_can_update_order_status(): void

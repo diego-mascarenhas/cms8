@@ -220,6 +220,14 @@ class Store extends Model
             }
         }
 
+        foreach (['show_prices', 'whatsapp_enabled'] as $flag)
+        {
+            if (array_key_exists($flag, $validated))
+            {
+                $data[$flag] = (bool) $validated[$flag];
+            }
+        }
+
         if (array_key_exists('hours', $validated))
         {
             $data['hours'] = self::normalizeHours($validated['hours'] ?? null);
@@ -249,6 +257,20 @@ class Store extends Model
         return $data;
     }
 
+    public function showsPrices(): bool
+    {
+        $value = data_get($this->data, 'show_prices');
+
+        return $value === null ? true : (bool) $value;
+    }
+
+    public function whatsappEnabled(): bool
+    {
+        $value = data_get($this->data, 'whatsapp_enabled');
+
+        return $value === null ? true : (bool) $value;
+    }
+
     /**
      * @return list<array{day: string, open: string|null, close: string|null, afternoon_open: string|null, afternoon_close: string|null, closed: bool}>
      */
@@ -269,6 +291,8 @@ class Store extends Model
             $validated['checkout_fulfillment_types'],
             $validated['phone'],
             $validated['whatsapp'],
+            $validated['show_prices'],
+            $validated['whatsapp_enabled'],
             $validated['hours'],
             $validated['notes'],
             $validated['maps_url'],

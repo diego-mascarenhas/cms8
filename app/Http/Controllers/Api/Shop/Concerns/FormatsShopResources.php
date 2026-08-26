@@ -143,6 +143,8 @@ trait FormatsShopResources
             'checkout_fulfillment_types' => $store->enabledCheckoutFulfillmentTypes(),
             'phone' => data_get($store->data, 'phone'),
             'whatsapp' => data_get($store->data, 'whatsapp'),
+            'show_prices' => $store->showsPrices(),
+            'whatsapp_enabled' => $store->whatsappEnabled(),
             'hours' => $store->openingHours(),
             'notes' => data_get($store->data, 'notes'),
             'maps_url' => data_get($store->data, 'maps_url'),
