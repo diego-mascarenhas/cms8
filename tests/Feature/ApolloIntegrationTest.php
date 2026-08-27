@@ -74,15 +74,17 @@ class ApolloIntegrationTest extends TestCase
 
     public function test_apollo_index_requires_contact_create_permission(): void
     {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
         $user = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $user->id]);
         $user->teams()->attach($team->id, ['role' => 'guest']);
         $user->current_team_id = $team->id;
         $user->save();
         $user->assignRole(Role::firstOrCreate(['name' => 'guest']));
 
         // Without the module the route 404s before it ever checks permissions, which would make
-        // this test pass for the wrong reason.
+        // this test pass for the wrong reason. The guest must not own the team: owners can
+        // manage contacts even without a create role.
         $this->enableProspectingModule($team);
 
         $this->actingAs($user);
