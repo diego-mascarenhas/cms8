@@ -31,6 +31,8 @@ class AssistantWhatsAppUsageByLineService
      *     currency: string,
      *     default_model: string,
      *     totals: array{lines: int, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int},
+     *     all: array{calls: int, tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int},
+     *     sources: list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
      *     by_model: list<array{model: string, replies: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
      *     lines: list<array<string, mixed>>
      * }
@@ -60,6 +62,10 @@ class AssistantWhatsAppUsageByLineService
         $completion = (int) collect($lines)->sum('completion_tokens');
         $tokens = (int) collect($lines)->sum('total_tokens');
         $tokensSaved = (int) collect($lines)->sum('tokens_saved');
+        $teamUsage = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
+        $sources = $this->presentSources($teamUsage['byModule'], $rate);
+        $allTokens = (int) $teamUsage['totalTokensUsed'];
+        $allSaved = (int) $teamUsage['totalTokensSaved'];
 
         return [
             'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
@@ -78,6 +84,14 @@ class AssistantWhatsAppUsageByLineService
                 'amount_cents' => $this->cents($tokens, $rate),
                 'saved_cents' => $this->cents($tokensSaved, $rate),
             ],
+            'all' => [
+                'calls' => (int) $teamUsage['totalCalls'],
+                'tokens' => $allTokens,
+                'tokens_saved' => $allSaved,
+                'amount_cents' => $this->cents($allTokens, $rate),
+                'saved_cents' => $this->cents($allSaved, $rate),
+            ],
+            'sources' => $sources,
             'by_model' => $byModel,
             'lines' => $lines,
         ];
@@ -311,6 +325,33 @@ class AssistantWhatsAppUsageByLineService
         arsort($models);
 
         return array_values(array_keys($models));
+    }
+
+    /**
+     * @param  array<int|string, array{module_name: string, count: int, tokens_used: int, tokens_saved: int}>  $byModule
+     * @return list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>
+     */
+    private function presentSources(array $byModule, float $rate): array
+    {
+        $sources = [];
+
+        foreach ($byModule as $row)
+        {
+            $tokens = (int) ($row['tokens_used'] ?? 0);
+            $saved = (int) ($row['tokens_saved'] ?? 0);
+            $sources[] = [
+                'module_name' => (string) ($row['module_name'] ?? ''),
+                'count' => (int) ($row['count'] ?? 0),
+                'tokens_used' => $tokens,
+                'tokens_saved' => $saved,
+                'amount_cents' => $this->cents($tokens, $rate),
+                'saved_cents' => $this->cents($saved, $rate),
+            ];
+        }
+
+        usort($sources, fn (array $left, array $right): int => $right['tokens_used'] <=> $left['tokens_used']);
+
+        return $sources;
     }
 
     /**
