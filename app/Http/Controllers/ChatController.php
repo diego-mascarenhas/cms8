@@ -1575,7 +1575,7 @@ class ChatController extends Controller
     }
 
     /**
-     * @return array{prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string}>}
+     * @return array{prompt_key: string|null, default_prompt_key: string|null, prompts: list<array{key: string, label: string, section_label: string, audience: 'customer'|'team', audience_rank: int}>}
      */
     private function whatsAppThreadPromptMeta(?Team $team, ?Contact $contact): array
     {
@@ -1589,6 +1589,8 @@ class ChatController extends Controller
                     'key' => $option['key'],
                     'label' => $option['section_label'],
                     'section_label' => $option['section_label'],
+                    'audience' => $option['audience'],
+                    'audience_rank' => $option['audience_rank'],
                 ];
             }
         }

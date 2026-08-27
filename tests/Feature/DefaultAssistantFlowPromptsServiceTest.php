@@ -26,13 +26,49 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
             ->where('section_key', 'assistant_citas')
             ->first();
         $this->assertNotNull($citas);
-        $this->assertStringContainsString('citas', (string) $citas->section_label);
+        $this->assertSame('Agendar una cita', $citas->section_label);
+
+        $presupuesto = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_presupuesto')
+            ->first();
+        $this->assertNotNull($presupuesto);
+        $this->assertSame('Pedido de presupuesto', $presupuesto->section_label);
+
+        $catalogo = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_catalogo')
+            ->first();
+        $this->assertNotNull($catalogo);
+        $this->assertSame('Venta desde la tienda', $catalogo->section_label);
+
+        $embudo = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_embudo')
+            ->first();
+        $this->assertNotNull($embudo);
+        $this->assertSame('Embudo comercial', $embudo->section_label);
 
         $contactos = \App\Models\Prompt::withoutGlobalScope('team')
             ->forTeam((int) $team->id)
             ->where('section_key', 'assistant_contactos')
             ->first();
         $this->assertNotNull($contactos);
+        $this->assertSame('Contactos y categorías', $contactos->section_label);
+
+        $tareas = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_tareas')
+            ->first();
+        $this->assertNotNull($tareas);
+        $this->assertSame('Tareas y equipo', $tareas->section_label);
+
+        $campanas = \App\Models\Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_campanas')
+            ->first();
+        $this->assertNotNull($campanas);
+        $this->assertSame('Campañas y News', $campanas->section_label);
 
         $this->assertNull(
             \App\Models\Prompt::withoutGlobalScope('team')

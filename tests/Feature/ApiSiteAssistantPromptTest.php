@@ -57,7 +57,7 @@ class ApiSiteAssistantPromptTest extends TestCase
                 'data' => [
                     'prompts',
                     'catalog' => [
-                        ['group', 'group_label', 'items' => [['key', 'section_key', 'label', 'helper', 'section_label', 'prompt_instruction', 'own_brand', 'owned', 'drifted']]],
+                        ['group', 'group_label', 'items' => [['key', 'section_key', 'label', 'helper', 'section_label', 'prompt_instruction', 'own_brand', 'owned', 'drifted', 'audience', 'audience_label', 'audience_rank']]],
                     ],
                     'default_instruction',
                     'recommended_label',
@@ -330,7 +330,14 @@ class ApiSiteAssistantPromptTest extends TestCase
         )->flatMap(fn (array $group) => $group['items']);
 
         $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'calendar:assistant_citas'));
+        $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'chat:citas_y_ventas'));
+        $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'chat:assistant_presupuesto'));
         $this->assertTrue($items->contains(fn (array $item) => $item['key'] === 'invoices:collections'));
+        $agenda = $items->whereIn('key', ['calendar:assistant_citas', 'products:assistant_catalogo', 'invoices:collections'])->sortBy('audience_rank')->values();
+        $this->assertSame(
+            ['calendar:assistant_citas', 'products:assistant_catalogo', 'invoices:collections'],
+            $agenda->pluck('key')->all(),
+        );
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:humano_assistant'));
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:wapify_me'));
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:pumpstall'));

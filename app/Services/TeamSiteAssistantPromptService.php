@@ -30,7 +30,7 @@ class TeamSiteAssistantPromptService
     public const WIDGET_DATA_ATTR = 'data-cms8-widget';
 
     /**
-     * @return list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool}>
+     * @return list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>
      */
     public function promptOptions(Team $team): array
     {
@@ -52,12 +52,16 @@ class TeamSiteAssistantPromptService
             }
 
             $key = $this->routingKeyFor($prompt);
+            $audience = $catalog->audienceFor($key, (string) $prompt->section_key);
             $options[] = [
                 'key' => $key,
                 'label' => $prompt->section_label.' ('.$key.')',
                 'section_label' => (string) $prompt->section_label,
                 'prompt_instruction' => (string) $prompt->prompt_instruction,
                 'custom' => ! $catalog->isSystemDefault($key, (string) $prompt->section_key),
+                'audience' => $audience,
+                'audience_label' => $catalog->audienceLabel($audience),
+                'audience_rank' => $catalog->audienceRank($key, (string) $prompt->section_key),
             ];
         }
 
@@ -129,6 +133,11 @@ class TeamSiteAssistantPromptService
         }
 
         $prompt = Prompt::findByRoutingKey($key, (int) $team->id);
+        if ((! $prompt || ! $prompt->is_active) && app(AssistantPromptCatalog::class)->find($key))
+        {
+            $key = app(AssistantPromptCatalog::class)->ensureOnTeam($team, $key);
+            $prompt = Prompt::findByRoutingKey($key, (int) $team->id);
+        }
         if (! $prompt || ! $prompt->is_active)
         {
             throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
@@ -220,8 +229,8 @@ class TeamSiteAssistantPromptService
     /**
      * @return array{
      *     selected_key: string|null,
-     *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool}>,
-     *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool}>}>,
+     *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>,
+     *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>}>,
      *     default_instruction: string,
      *     recommended_label: string,
      *     embed: array{snippet: string, api_base: string, script_url: string}

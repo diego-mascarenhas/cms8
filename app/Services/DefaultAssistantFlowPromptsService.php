@@ -65,7 +65,7 @@ class DefaultAssistantFlowPromptsService
             [
                 'module_key' => 'calendar',
                 'section_key' => 'assistant_citas',
-                'section_label' => 'Asistente: citas y calendario',
+                'section_label' => 'Agendar una cita',
                 'order' => 0,
                 'is_active' => true,
                 'helper_text' => 'Agendar citas: huecos reales, quién la pide (con email) y, si suman gente, nombre, apellido y email de cada invitado.',
@@ -104,7 +104,7 @@ PROMPT,
             [
                 'module_key' => 'contacts',
                 'section_key' => 'assistant_contactos',
-                'section_label' => 'Asistente: contactos y categorías',
+                'section_label' => 'Contactos y categorías',
                 'order' => 20,
                 'is_active' => true,
                 'helper_text' => 'Alta de contacto, listado de categorías, asignar o consultar categorías; datos reales de CRM.',
@@ -122,7 +122,7 @@ PROMPT,
             [
                 'module_key' => 'products',
                 'section_key' => 'assistant_embudo',
-                'section_label' => 'Venta y embudo comercial',
+                'section_label' => 'Embudo comercial',
                 'order' => 2,
                 'is_active' => true,
                 'helper_text' => 'Captación por WhatsApp: calificar, mostrar el catálogo real y cerrar el pedido en el sistema.',
@@ -157,10 +157,10 @@ PROMPT,
             [
                 'module_key' => 'products',
                 'section_key' => 'assistant_catalogo',
-                'section_label' => 'Asistente: catálogo y compra',
+                'section_label' => 'Venta desde la tienda',
                 'order' => 3,
                 'is_active' => true,
-                'helper_text' => 'Catálogo, búsqueda y carrito WhatsApp; precios reales de productos publicados.',
+                'helper_text' => 'Mostrar el catálogo de la tienda, agregar al carrito y cerrar el pedido.',
                 'prompt_instruction' => <<<PROMPT
 # Flujo: catálogo, búsqueda y compra (Herramientas)
 
@@ -180,9 +180,38 @@ Estás vendiendo. El circuito es **mostrar → agregar al carrito → finalizar 
 PROMPT,
             ],
             [
+                'module_key' => 'chat',
+                'section_key' => 'assistant_presupuesto',
+                'section_label' => 'Pedido de presupuesto',
+                'order' => 4,
+                'is_active' => true,
+                'helper_text' => 'El cliente pide una cotización: recoger alcance y contacto, sin inventar precios.',
+                'prompt_instruction' => <<<PROMPT
+# Flujo: pedido de presupuesto
+
+Atendés a un cliente que quiere un presupuesto. Tu trabajo es entender qué necesita y dejar el pedido armado para que el equipo cotice. No inventes precios, plazos ni descuentos.
+
+## Qué recoger
+- Qué necesita (servicio, producto o proyecto).
+- Alcance aproximado (cantidad, para quién, dónde).
+- Para cuándo lo necesita.
+- Nombre y un dato de contacto (email o teléfono) si no están en la ficha.
+
+## Cómo
+- search_contacts o el contacto del hilo. Si falta email o teléfono, pedilo y **update_contact**.
+- Una pregunta por turno. No pidas todo de golpe.
+- Cuando tengas lo mínimo, confirmá el pedido en una frase y decí que el equipo arma el presupuesto. No cotices vos.
+- Si quieren una llamada para afinar, ofrecé agendar: check_calendar_availability y create_calendar_event, con quien pide en guest_contact_ids.
+
+## Reglas
+- {$alwaysData}
+- No des un importe si no lo trajo una herramienta.
+PROMPT,
+            ],
+            [
                 'module_key' => 'communications',
                 'section_key' => 'assistant_campanas',
-                'section_label' => 'Asistente: campañas y News',
+                'section_label' => 'Campañas y News',
                 'order' => 3,
                 'is_active' => true,
                 'helper_text' => 'Listar plantillas, mensajes (News) y guías de creación/actualización con datos del equipo.',
@@ -209,7 +238,7 @@ PROMPT,
             [
                 'module_key' => 'tasks',
                 'section_key' => 'assistant_tareas',
-                'section_label' => 'Asistente: tareas y equipo',
+                'section_label' => 'Tareas y equipo',
                 'order' => 3,
                 'is_active' => true,
                 'helper_text' => 'Crear tareas, listar equipo para asignar; usa datos reales de la cuenta.',
