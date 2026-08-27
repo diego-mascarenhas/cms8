@@ -167,20 +167,32 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             'email' => $user->email,
         ])->assertOk();
 
-        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user)
+        $accessToken = null;
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user, &$accessToken)
         {
-            $this->postJson('/api/auth/reset-password', [
+            $response = $this->postJson('/api/auth/reset-password', [
                 'token' => $notification->token,
                 'email' => $user->email,
                 'password' => 'New-password-1',
                 'password_confirmation' => 'New-password-1',
-            ])->assertOk()
-                ->assertJsonPath('success', true);
+            ]);
+
+            $response->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonPath('email', $user->email)
+                ->assertJsonStructure(['token', 'user' => ['id', 'email'], 'current_team']);
+
+            $accessToken = $response->json('token');
 
             return true;
         });
 
         $this->assertTrue(Hash::check('New-password-1', $user->fresh()->password));
+        $this->assertIsString($accessToken);
+        $this->withHeader('Authorization', 'Bearer '.$accessToken)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('email', $user->email);
     }
 
     public function test_reset_password_rejects_invalid_token(): void

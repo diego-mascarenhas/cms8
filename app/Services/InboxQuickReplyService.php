@@ -9,7 +9,9 @@ use App\Models\ProductVariant;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\NewUserWelcomeEmailNotifier;
+use App\Support\PasswordResetFrontendUrl;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
@@ -302,29 +304,29 @@ class InboxQuickReplyService
         return ['ok' => true, 'messages' => [$bubble]];
     }
 
-    private function accessBubble(Team $team, ?Contact $contact, bool $skipIfAlreadyHasLogin = false): ?string
+    private function accessBubble(Team $team, ?Contact $contact): ?string
     {
         if ($contact === null)
         {
             return null;
         }
 
-        $loginUrl = rtrim((string) config('app.url'), '/').'/login';
+        $user = $this->ensureContactUser($team, $contact);
+        if ($user === null)
+        {
+            return null;
+        }
 
+        $resetUrl = $this->accessResetUrl($user);
+
+        return 'Te paso el acceso para '.$user->email.'. Elegí tu clave en este enlace y entras directo:'."\n".$resetUrl;
+    }
+
+    private function ensureContactUser(Team $team, Contact $contact): ?User
+    {
         if ($this->contactHasLogin($contact))
         {
-            if ($skipIfAlreadyHasLogin)
-            {
-                return null;
-            }
-
-            $user = User::query()->find($contact->user_id);
-            $email = trim((string) ($user?->email ?? $contact->email ?? ''));
-            $line = $email !== ''
-                ? 'Ya tenés acceso con '.$email.'.'
-                : 'Ya tenés un usuario creado.';
-
-            return $line.' Entrá acá: '.$loginUrl."\nSi no recordás la clave, en esa pantalla tocá «Olvidé mi contraseña» y te llega el mail.";
+            return User::query()->find($contact->user_id);
         }
 
         $email = trim((string) ($contact->email ?? ''));
@@ -342,7 +344,7 @@ class InboxQuickReplyService
                 $existing->teams()->attach($team->id);
             }
 
-            return 'Encontré tu usuario con '.$email.'. Entrá acá: '.$loginUrl."\nSi no recordás la clave, tocá «Olvidé mi contraseña».";
+            return $existing;
         }
 
         $user = User::query()->create([
@@ -356,9 +358,13 @@ class InboxQuickReplyService
         $user->assignRole('client');
         $user->teams()->attach($team->id);
         $contact->update(['user_id' => $user->id]);
-        NewUserWelcomeEmailNotifier::queue($user, $team);
 
-        return 'Te armé un usuario para que puedas entrar a la plataforma. Te acaba de llegar un mail a '.$email.' para elegir tu clave.'."\nCuando la tengas, entrá acá: ".$loginUrl."\nSi no ves el mail, mirá spam o decime y lo reenviamos.";
+        return $user;
+    }
+
+    private function accessResetUrl(User $user): string
+    {
+        return PasswordResetFrontendUrl::urlForUser($user, Password::broker()->createToken($user));
     }
 
     private function contactHasLogin(Contact $contact): bool

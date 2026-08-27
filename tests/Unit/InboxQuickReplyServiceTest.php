@@ -263,8 +263,45 @@ class InboxQuickReplyServiceTest extends TestCase
         $resolved = app(InboxQuickReplyService::class)->resolve($team, 'accesos', null, $contact);
 
         $this->assertTrue($resolved['ok']);
-        $this->assertStringContainsString('Ya tenés acceso', $resolved['messages'][0]);
+        $message = $resolved['messages'][0];
+        $this->assertStringContainsString('ya.tiene@example.com', $message);
+        $this->assertStringContainsString('/reset-password?', $message);
+        $this->assertStringContainsString('token=', $message);
+        $this->assertStringContainsString('email=', $message);
+        $this->assertStringNotContainsString('Olvidé', $message);
+        $this->assertStringNotContainsString('/login', $message);
         $this->assertSame($user->id, $contact->fresh()->user_id);
         $this->assertFalse(NewUserWelcomeEmailNotifier::isPlaceholderInboxEmail('ya.tiene@example.com'));
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'ya.tiene@example.com']);
+    }
+
+    public function test_accesos_creates_a_client_and_sends_a_reset_link_not_a_password(): void
+    {
+        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'email' => 'nuevo.acceso@example.com',
+            'name' => 'Nora',
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'status_id' => 1,
+        ]);
+
+        $resolved = app(InboxQuickReplyService::class)->resolve($team, 'accesos', null, $contact);
+
+        $this->assertTrue($resolved['ok']);
+        $message = $resolved['messages'][0];
+        $created = User::query()->where('email', 'nuevo.acceso@example.com')->first();
+        $this->assertNotNull($created);
+        $this->assertTrue($created->hasRole('client'));
+        $this->assertSame($created->id, $contact->fresh()->user_id);
+        $this->assertStringContainsString('/reset-password?', $message);
+        $this->assertStringContainsString('token=', $message);
+        $this->assertStringNotContainsString('Olvidé', $message);
+        $this->assertStringNotContainsString('spam', mb_strtolower($message));
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'nuevo.acceso@example.com']);
     }
 }

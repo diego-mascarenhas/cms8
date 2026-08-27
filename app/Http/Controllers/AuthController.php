@@ -272,9 +272,26 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $user = User::query()->where('email', $request->string('email')->toString())->first();
+        if ($user === null)
+        {
+            return response()->json([
+                'message' => __('No se pudo restablecer la contraseña. El enlace puede haber caducado.'),
+            ], 422);
+        }
+
+        EnsureRegisteredUserRole::assignIfMissing($user);
+        $user->load(['currentTeam', 'roles']);
+        $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+        $profile = $this->profilePayload($user);
+
         return response()->json([
             'success' => true,
-            'message' => __('Contraseña actualizada. Ya puedes entrar.'),
+            'message' => __('Contraseña actualizada. Ya estás dentro.'),
+            'email' => $user->email,
+            'token' => $token,
+            'user' => $profile,
+            'current_team' => $profile['current_team'],
         ]);
     }
 
