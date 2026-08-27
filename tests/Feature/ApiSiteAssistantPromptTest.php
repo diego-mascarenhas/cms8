@@ -127,6 +127,17 @@ class ApiSiteAssistantPromptTest extends TestCase
         );
         $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
         $this->assertNull(app(TeamSiteAssistantPromptService::class)->resolvedRoutingKey($team->fresh()));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/assistant/site-prompt', [
+                'prompt_key' => TeamSiteAssistantPromptService::FORCE_OFF_KEY,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.selected_key', TeamSiteAssistantPromptService::FORCE_OFF_KEY);
+
+        $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isForceSilent($team->fresh()));
+        $this->assertFalse(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
+        $this->assertNull(app(TeamSiteAssistantPromptService::class)->resolvedRoutingKey($team->fresh()));
         $snippet = $response->json('data.embed.snippet');
         $this->assertIsString($snippet);
         $this->assertStringContainsString('data-cms8-widget="assistant"', $snippet);

@@ -17,6 +17,8 @@ class TeamSiteAssistantPromptService
 
     public const OFF_KEY = '__off__';
 
+    public const FORCE_OFF_KEY = '__off_all__';
+
     public const EMBED_SLUG = 'asistente-web';
 
     public const RECOMMENDED_SECTION_KEY = 'citas_y_ventas';
@@ -69,6 +71,11 @@ class TeamSiteAssistantPromptService
         return $key !== '' ? $key : null;
     }
 
+    public static function isReservedOffKey(?string $key): bool
+    {
+        return $key === self::OFF_KEY || $key === self::FORCE_OFF_KEY;
+    }
+
     /**
      * Team default for chats on Automático (no pinned prompt): stay silent.
      * A contact can still pin a prompt and get replies.
@@ -78,10 +85,19 @@ class TeamSiteAssistantPromptService
         return $this->selectedRoutingKey($team) === self::OFF_KEY;
     }
 
+    /**
+     * Pause inbound replies for every chat, including contacts that already have a prompt.
+     * Pins stay stored so they resume when the team leaves this mode.
+     */
+    public function isForceSilent(Team $team): bool
+    {
+        return $this->selectedRoutingKey($team) === self::FORCE_OFF_KEY;
+    }
+
     public function resolvedRoutingKey(Team $team): ?string
     {
         $key = $this->selectedRoutingKey($team);
-        if ($key === null || $key === self::OFF_KEY)
+        if ($key === null || self::isReservedOffKey($key))
         {
             return null;
         }
@@ -99,7 +115,7 @@ class TeamSiteAssistantPromptService
     {
         $key = $routingKey !== null ? trim($routingKey) : '';
 
-        if ($key === '' || $key === self::OFF_KEY)
+        if ($key === '' || self::isReservedOffKey($key))
         {
             $team->setSetting(self::SETTING_KEY, $key, [
                 'group' => 'chat',
@@ -168,7 +184,7 @@ class TeamSiteAssistantPromptService
     public function deleteOwned(Team $team, string $routingKey): void
     {
         $key = trim($routingKey);
-        if ($key === '' || $key === self::OFF_KEY)
+        if ($key === '' || self::isReservedOffKey($key))
         {
             throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
         }

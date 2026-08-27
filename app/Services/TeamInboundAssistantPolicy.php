@@ -12,6 +12,7 @@ use App\Services\Billing\AssistantSubscriptionService;
  * Precedence: paid plan → blacklist → per-contact opt-out → team global auto-respond (master) → silent team default → admins-when-off exception.
  * Inbox "Sin asistente" blocks WhatsApp auto-reply even for team admins.
  * A silent team default (no responder) still allows a contact with a pinned prompt.
+ * Force-silent overrides those pins without deleting them.
  */
 class TeamInboundAssistantPolicy
 {
@@ -95,7 +96,13 @@ class TeamInboundAssistantPolicy
             return $this->inboundSenderIsTeamAdministrator($inboundSender, $membershipTeamId ?? (int) $team->id);
         }
 
-        if (app(TeamSiteAssistantPromptService::class)->isSilentDefault($team)
+        $siteAssistant = app(TeamSiteAssistantPromptService::class);
+        if ($siteAssistant->isForceSilent($team))
+        {
+            return false;
+        }
+
+        if ($siteAssistant->isSilentDefault($team)
                 && ! $this->contactHasPinnedInboundPrompt((int) $team->id, $inboundSenderPhone))
         {
             return false;
@@ -155,7 +162,7 @@ class TeamInboundAssistantPolicy
 
         $key = app(TeamSiteAssistantPromptService::class)->selectedRoutingKey($team);
 
-        return $key !== null && $key !== TeamSiteAssistantPromptService::OFF_KEY;
+        return $key !== null && ! TeamSiteAssistantPromptService::isReservedOffKey($key);
     }
 
     /**

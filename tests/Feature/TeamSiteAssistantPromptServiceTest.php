@@ -248,4 +248,17 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertSame(TeamSiteAssistantPromptService::OFF_KEY, $service->selectedRoutingKey($team->fresh()));
         $this->assertNull($service->resolvedRoutingKey($team->fresh()));
     }
+
+    public function test_select_force_off_pauses_every_chat_without_a_routing_key(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+
+        $service->select($team, TeamSiteAssistantPromptService::FORCE_OFF_KEY);
+
+        $this->assertFalse($service->isSilentDefault($team->fresh()));
+        $this->assertTrue($service->isForceSilent($team->fresh()));
+        $this->assertSame(TeamSiteAssistantPromptService::FORCE_OFF_KEY, $service->selectedRoutingKey($team->fresh()));
+        $this->assertNull($service->resolvedRoutingKey($team->fresh()));
+    }
 }
