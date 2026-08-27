@@ -6,6 +6,8 @@ use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Module;
+use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\AssistantWhatsAppUsageByLineService;
 use Database\Seeders\ContactStatusSeeder;
@@ -38,6 +40,8 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.totals.lines', 0)
             ->assertJsonPath('data.totals.total_tokens', 0)
+            ->assertJsonPath('data.all.tokens', 0)
+            ->assertJsonPath('data.sources', [])
             ->assertJsonPath('data.lines', []);
     }
 
@@ -219,6 +223,41 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.totals.lines', 1)
             ->assertJsonPath('data.totals.total_tokens', 840)
             ->assertJsonPath('data.totals.replies', 1);
+    }
+
+    public function test_usage_includes_every_team_source_not_only_whatsapp(): void
+    {
+        [$token, , $team] = $this->team();
+
+        $ocr = Module::query()->firstOrCreate(
+            ['key' => 'ocr'],
+            ['name' => 'OCR', 'is_core' => false, 'order' => 0, 'status' => 1],
+        );
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $ocr->id,
+            'service' => 'DocumentAiOcrService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 2000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $this->outboundUsage('34600111222', 800, 40, 840, 'claude-haiku-4-5', 'SM_usage_ocr_wa');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/usage');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.totals.total_tokens', 840);
+        $response->assertJsonPath('data.all.tokens', 2000);
+        $response->assertJsonPath('data.all.calls', 1);
+        $this->assertSame('OCR', $response->json('data.sources.0.module_name'));
+        $this->assertSame(2000, $response->json('data.sources.0.tokens_used'));
+        $this->assertGreaterThan(0, $response->json('data.sources.0.amount_cents'));
     }
 
     public function test_usage_ignores_another_team_whatsapp_line(): void
