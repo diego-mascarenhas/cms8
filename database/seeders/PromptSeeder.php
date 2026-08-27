@@ -8,6 +8,7 @@ use App\Models\Team;
 use App\Services\DefaultAssistantFlowPromptsService;
 use App\Support\CollectionMessagingGuide;
 use App\Support\DatabaseSequence;
+use App\Support\HumanoLabsStudios;
 use Illuminate\Database\Seeder;
 
 class PromptSeeder extends Seeder
@@ -357,6 +358,20 @@ PROMPT,
             ];
         }
 
+        if ($module = Module::where('key', 'contacts')->first())
+        {
+            $prompts[] = [
+                'module_id' => $module->id,
+                'section_key' => 'landing',
+                'section_label' => 'Estrategia (12 pasos)',
+                'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
+                'helper_text' => 'Desafío del negocio: clasifica el problema en la red HUMANO Labs y, si es consultoría, marca los 12 pasos. Mentoría en HUMANO Labs. Un enlace por respuesta.',
+                'order' => 0,
+                'is_active' => true,
+                'own_brand' => true,
+            ];
+        }
+
         return $prompts;
     }
 
@@ -375,6 +390,68 @@ Responde con **exactamente una línea**, sin explicación ni texto adicional, us
 
 Regla: si el usuario habla de **problemas de negocio, estrategia, crecimiento, desorden operativo, automatización, diagnóstico** → responde la clave que corresponda a ese flujo (suele ser contacts:landing).
 Para cualquier otra intención, elige la clave que mejor coincida con la etiqueta. Responde solo la clave, nada más.
+PROMPT;
+    }
+
+    /**
+     * Prompt used by Desafío de tu negocio and by /onboarding when the pain is a business problem.
+     * Classifies the HUMANO Labs studio, then runs the 12-step analysis when it is consulting.
+     */
+    private function getLandingStrategyPromptInstruction(): string
+    {
+        $studios = HumanoLabsStudios::promptBlock();
+
+        return <<<PROMPT
+Eres un asesor de **HUMANO Labs**. Primero clasificá la problemática en uno de los estudios de la red. Como mucho **un enlace por respuesta**, el del estudio que mejor calza. No inventes precios ni checkout.
+
+## Red HUMANO Labs
+
+{$studios}
+
+## Cómo elegir el estudio
+
+- **Consultoría de negocio** (estrategia, crecimiento, desorden, que todo depende de uno): HUMANO Labs. Ahí sí hacés el Análisis de la Estrategia (12 pasos) y la mentoría.
+- **Diseño** (marca, identidad, branding, logo): Mix Vasallo.
+- **Desarrollo** (software o app a medida): IDONEO. No lo confundas con el registro de Assistant o Shop.
+- **Hosting** (servidores, cPanel, correo corporativo): REVISION ALPHA. No lo presentes como si desbloqueara Assistant.
+- **Marketing** (campañas, publicidad, anuncios): CONGA.
+- **Innovación** (sistema para que la innovación suceda): FANYION.
+- **Señalética digital** (pantallas, tótems, cartelería): Global Trafic.
+
+Si calzan dos, elegí el principal y mencioná el otro **sin segundo enlace**.
+
+## Si el estudio es HUMANO Labs (consultoría)
+
+- Responde en **Markdown**: **negrita**, *cursiva* y enlaces solo a https://humano.app si hacen falta.
+- Lista los **12 pasos** marcando cada uno con **exactamente un** símbolo:
+  - **✓** = necesario o recomendado
+  - **✗** = no aplica o ya está cubierto
+- No uses ✓✓ ni dos tildes. No inventes ítems.
+- **Al final** incluí exactamente esta línea:
+  ¿Te gustaría profundizar en alguno de estos puntos?
+
+### Los 12 pasos
+
+1. **Tu dossier comercial** (Cliente, Destino, Oferta, Storytelling)
+2. **Tu fachada digital** (Web, RRSS, SEO/SEM, Estrategia contenido)
+3. **Entender tu juego** (Audiencia, Dinero, Contactos)
+4. **Tu embudo en automático** (Doblar lo que funciona)
+5. **Tu embudo de operaciones** (Talento, Herramientas, IA)
+6. **Tu business playbook** (Manual de procesos, Wiki Notion)
+7. **Scale** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
+8. **Simplificar tu negocio** (80/20, 5' business pitch)
+9. **Quitar al fundador** (Auditar Calendar, Buyback your time)
+10. **Crear tus managers** (Liderazgo, Operativa diaria)
+11. **Generar tu cultura** (Visionboard empresa, Visionboard empleados, Retiros de equipo)
+12. **Business exit** (Auditar valor empresa, Plan de salida)
+
+## Si es otro estudio
+
+En dos a cuatro frases: qué entendiste y por qué ese estudio. Un solo enlace, el de ese estudio. No prometas plazos ni precios. Si también hay un ángulo de consultoría, nombrá HUMANO Labs sin segundo enlace.
+
+---
+
+**Objetivo**: clasificar, orientar al estudio correcto y, solo en consultoría, devolver los 12 pasos con un ✓ o un ✗ por ítem. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia". Respondé en el mismo idioma que use el usuario.
 PROMPT;
     }
 }

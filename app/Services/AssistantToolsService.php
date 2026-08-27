@@ -42,7 +42,6 @@ use App\Support\WhatsAppProductRelevanceSearch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -4220,7 +4219,7 @@ class AssistantToolsService
             return 'This product has no catalog image. Tell the customer you do not have a photo. Do not invent one or send another product\'s image.';
         }
 
-        $mediaPath = $this->mediaPathForProductImage($image);
+        $mediaPath = app(ProductImageService::class)->whatsAppPath($image);
         if ($mediaPath === null)
         {
             return 'This product has an image URL but the file is not available to send. Tell the customer you cannot send the photo right now. Do not invent one.';
@@ -4240,39 +4239,6 @@ class AssistantToolsService
         WhatsAppLastOfferedProduct::remember($this->contextCustomerPhone, $teamId, (int) $product->id);
 
         return $this->truncate('Product image sent to this WhatsApp chat: '.$product->name.' (id '.$product->id.'). Confirm briefly that you sent the photo. Do not attach a URL.');
-    }
-
-    private function mediaPathForProductImage(string $image): ?string
-    {
-        $image = trim($image);
-        if ($image === '')
-        {
-            return null;
-        }
-
-        $path = $image;
-        if (preg_match('#^https?://#i', $image) === 1)
-        {
-            $parsed = parse_url($image, PHP_URL_PATH);
-            $path = is_string($parsed) ? $parsed : '';
-        }
-
-        $path = ltrim((string) $path, '/');
-        if (str_starts_with($path, 'storage/'))
-        {
-            $relative = substr($path, strlen('storage/'));
-            if (is_string($relative) && $relative !== '' && Storage::disk('public')->exists($relative))
-            {
-                return 'storage/'.$relative;
-            }
-        }
-
-        if ($path !== '' && Storage::disk('public')->exists($path))
-        {
-            return 'storage/'.$path;
-        }
-
-        return null;
     }
 
     private function addToWhatsAppCart(int $teamId, array $input): string

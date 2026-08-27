@@ -117,6 +117,42 @@ class ProductImageService
         return [];
     }
 
+    /**
+     * Path or URL the WhatsApp gateway can send. Remote catalog photos stay as https.
+     */
+    public function whatsAppPath(?string $image): ?string
+    {
+        $image = trim((string) $image);
+        if ($image === '')
+        {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $image) === 1)
+        {
+            return $image;
+        }
+
+        $path = ltrim($image, '/');
+        if (str_starts_with($path, 'storage/'))
+        {
+            $relative = substr($path, strlen('storage/'));
+            if ($relative !== '' && Storage::disk(self::DISK)->exists($relative))
+            {
+                return 'storage/'.$relative;
+            }
+
+            return null;
+        }
+
+        if ($path !== '' && Storage::disk(self::DISK)->exists($path))
+        {
+            return 'storage/'.$path;
+        }
+
+        return null;
+    }
+
     public static function hint(): string
     {
         return __('JPG, PNG or WebP. Generates thumb, square, landscape and portrait crops.');

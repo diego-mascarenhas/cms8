@@ -70,6 +70,11 @@ class AssistantPromptCatalogTest extends TestCase
         );
         $this->assertTrue($keys->contains('products:humano_assistant'));
         $this->assertTrue($keys->contains('products:pumpstall'));
+        $this->assertTrue($keys->contains('contacts:landing'));
+        $this->assertSame(
+            'Estrategia (12 pasos)',
+            collect($catalog->items())->firstWhere('key', 'contacts:landing')['section_label'] ?? null,
+        );
         $this->assertFalse($keys->contains('chat:mi-flujo-demo'));
         $this->assertFalse($keys->contains('financial:assistant_finanzas'));
         $this->assertFalse($keys->contains(fn (string $key) => str_starts_with($key, 'list60:')));
@@ -82,6 +87,7 @@ class AssistantPromptCatalogTest extends TestCase
         $this->assertFalse($visible->contains('products:humano_assistant'));
         $this->assertFalse($visible->contains('products:wapify_me'));
         $this->assertFalse($visible->contains('products:pumpstall'));
+        $this->assertFalse($visible->contains('contacts:landing'));
         $this->assertSame(
             ['agenda', 'ventas', 'cobranzas', 'equipo'],
             collect($catalog->groupsFor($team))->pluck('group')->all(),
@@ -97,6 +103,7 @@ class AssistantPromptCatalogTest extends TestCase
         $this->assertFalse($visible->contains('products:humano_assistant'));
         $this->assertFalse($visible->contains('products:wapify_me'));
         $this->assertFalse($visible->contains('products:pumpstall'));
+        $this->assertFalse($visible->contains('contacts:landing'));
         $this->assertFalse(collect($catalog->groupsFor($team))->pluck('group')->contains('marca'));
     }
 
@@ -186,6 +193,18 @@ class AssistantPromptCatalogTest extends TestCase
             ->first();
         $this->assertNotNull($copied);
         $this->assertStringContainsString('https://assistant.idoneo.dev/register', (string) $copied->prompt_instruction);
+
+        $this->assertSame('contacts:landing', $catalog->ensureOnTeam($team, 'contacts:landing'));
+        $strategy = Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'landing')
+            ->first();
+        $this->assertNotNull($strategy);
+        $this->assertStringContainsString('Análisis de la Estrategia', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('¿Te gustaría profundizar en alguno de estos puntos?', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('Mix Vasallo', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('https://somosconga.com', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('https://globaltraffic.com', (string) $strategy->prompt_instruction);
     }
 
     public function test_system_defaults_are_identified_by_routing_or_section_key(): void

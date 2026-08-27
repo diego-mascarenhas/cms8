@@ -771,6 +771,7 @@ Route::middleware('auth.api')->group(function ()
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');
+    Route::get('chat/whatsapp-quick-replies', [ChatController::class, 'quickReplies'])->name('api.chat.whatsapp-quick-replies');
     Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
     Route::post('chat/schedule-message', [ChatController::class, 'scheduleMessage'])->name('api.chat.schedule-message');
     Route::patch('chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'updateScheduledMessage'])->name('api.chat.scheduled-message.update');

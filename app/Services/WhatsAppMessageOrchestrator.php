@@ -508,7 +508,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
     public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
     {
-        $this->sendWhatsAppWithMedia($to, $mediaPath, 'media');
+        $this->sendWhatsAppWithMedia($to, $mediaPath, 'media', $caption);
 
         return true;
     }
@@ -1224,6 +1224,26 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                                     'status' => 'success',
                                     'conversation_id' => $conversation->id,
                                     'auto_ai' => 'system_onboarding_interactive',
+                                ]);
+                            }
+
+                            $productOnboarding = app(InboxProductOnboardingService::class)->tryHandleInbound(
+                                $assistantTeam,
+                                $cleanFrom,
+                                (string) $body,
+                            );
+                            if ($productOnboarding !== null)
+                            {
+                                $productReply = trim((string) ($productOnboarding['message'] ?? ''));
+                                if ($productReply !== '')
+                                {
+                                    $this->sendWhatsApp($cleanFrom, $productReply);
+                                }
+
+                                return response()->json([
+                                    'status' => 'success',
+                                    'conversation_id' => $conversation->id,
+                                    'auto_ai' => 'idoneo_product_onboarding',
                                 ]);
                             }
                         }
