@@ -341,6 +341,7 @@ class ApiSiteAssistantPromptTest extends TestCase
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:humano_assistant'));
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:wapify_me'));
         $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'products:pumpstall'));
+        $this->assertFalse($items->contains(fn (array $item) => $item['key'] === 'contacts:landing'));
         $this->assertFalse($items->contains(fn (array $item) => str_starts_with((string) $item['key'], 'list60:')));
     }
 

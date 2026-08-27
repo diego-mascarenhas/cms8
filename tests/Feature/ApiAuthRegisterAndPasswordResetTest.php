@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Team;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -38,6 +39,25 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
         $this->assertTrue($user->hasRole('admin'));
         $this->assertTrue($user->can('create', \App\Models\Contact::class));
         $this->assertTrue(Hash::check('secret12', $user->password));
+        $this->assertSame('', trim((string) ($user->currentTeam?->referred_by ?? '')));
+    }
+
+    public function test_register_with_ref_marks_the_new_team_as_affiliate(): void
+    {
+        Bus::fake();
+        Team::factory()->create(['stripe_id' => 'cus_referrer_inbox']);
+
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'Luis Gómez',
+            'email' => 'luis.afiliado@example.com',
+            'password' => 'secret12',
+            'ref' => 'cus_referrer_inbox',
+        ]);
+
+        $response->assertOk();
+        $user = User::query()->where('email', 'luis.afiliado@example.com')->first();
+        $this->assertNotNull($user);
+        $this->assertSame('cus_referrer_inbox', $user->currentTeam?->referred_by);
     }
 
     public function test_register_rejects_duplicate_email(): void
@@ -147,20 +167,32 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             'email' => $user->email,
         ])->assertOk();
 
-        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user)
+        $accessToken = null;
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user, &$accessToken)
         {
-            $this->postJson('/api/auth/reset-password', [
+            $response = $this->postJson('/api/auth/reset-password', [
                 'token' => $notification->token,
                 'email' => $user->email,
                 'password' => 'New-password-1',
                 'password_confirmation' => 'New-password-1',
-            ])->assertOk()
-                ->assertJsonPath('success', true);
+            ]);
+
+            $response->assertOk()
+                ->assertJsonPath('success', true)
+                ->assertJsonPath('email', $user->email)
+                ->assertJsonStructure(['token', 'user' => ['id', 'email'], 'current_team']);
+
+            $accessToken = $response->json('token');
 
             return true;
         });
 
         $this->assertTrue(Hash::check('New-password-1', $user->fresh()->password));
+        $this->assertIsString($accessToken);
+        $this->withHeader('Authorization', 'Bearer '.$accessToken)
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('email', $user->email);
     }
 
     public function test_reset_password_rejects_invalid_token(): void

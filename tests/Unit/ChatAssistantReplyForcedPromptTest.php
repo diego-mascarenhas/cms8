@@ -167,6 +167,48 @@ class ChatAssistantReplyForcedPromptTest extends TestCase
         $this->assertCount(2, $service->lastHistory);
     }
 
+    public function test_echoed_flow_committed_marker_is_not_shown_to_the_customer(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        \App\Services\DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+
+        $service = new class(app(\App\Services\AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
+        {
+            public function useStub(?int $teamId = null): bool
+            {
+                return false;
+            }
+
+            protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
+            {
+                return [
+                    'success' => true,
+                    'text' => 'FLOW_COMMITTED:{"routing_key":"chat:assistantpresupuesto","label":"Pedido de presupuesto"}',
+                    'routed_to' => $routedTo,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
+                    'meta' => [],
+                ];
+            }
+        };
+
+        $reply = $service->getReply(
+            'Quiero un presupuesto para el sitio',
+            [],
+            (int) $team->id,
+            true,
+            (int) $user->id,
+        );
+
+        $this->assertTrue($reply['success'] ?? false);
+        $this->assertStringNotContainsString('FLOW_COMMITTED', (string) ($reply['text'] ?? ''));
+        $this->assertStringContainsString('te armo el pedido', (string) ($reply['text'] ?? ''));
+        $this->assertTrue($reply['assistant_flow_routing_key_specified'] ?? false);
+        $this->assertSame('chat:assistant_presupuesto', $reply['assistant_flow_routing_key'] ?? null);
+    }
+
     private function recordingReplyService(): ChatAssistantReplyService
     {
         return new class(app(\App\Services\AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService

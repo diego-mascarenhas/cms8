@@ -85,10 +85,36 @@ class Prompt extends Model
                 return null;
             }
 
-            return $query->where('module_id', $module->id)->where('section_key', trim($sectionKey))->first();
+            $sectionKey = trim($sectionKey);
+            $exact = (clone $query)->where('module_id', $module->id)->where('section_key', $sectionKey)->first();
+            if ($exact)
+            {
+                return $exact;
+            }
+
+            $compact = str_replace('_', '', $sectionKey);
+            if ($compact === '')
+            {
+                return null;
+            }
+
+            return (clone $query)
+                ->where('module_id', $module->id)
+                ->get()
+                ->first(fn (self $prompt): bool => str_replace('_', '', $prompt->section_key) === $compact);
         }
 
-        return $query->where('section_key', $routingKey)->first();
+        $exact = (clone $query)->where('section_key', $routingKey)->first();
+        if ($exact)
+        {
+            return $exact;
+        }
+
+        $compact = str_replace('_', '', $routingKey);
+
+        return $query
+            ->get()
+            ->first(fn (self $prompt): bool => str_replace('_', '', $prompt->section_key) === $compact);
     }
 
     public function isGeneralRouter(): bool

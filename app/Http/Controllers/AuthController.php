@@ -32,6 +32,7 @@ class AuthController extends Controller
             'name' => 'required|string',
             'email' => 'required|string|unique:users',
             'password' => 'required|string|min:6',
+            'ref' => 'nullable|string|max:64',
         ];
 
         $messages = [
@@ -60,6 +61,7 @@ class AuthController extends Controller
         ]);
 
         $this->createPersonalTeamForApiUser($user);
+        $this->applyAffiliateReferralFromRequest($request, $user->fresh());
         event(new Registered($user->fresh()));
 
         $user->load(['currentTeam', 'roles']);
@@ -270,9 +272,26 @@ class AuthController extends Controller
             ], 422);
         }
 
+        $user = User::query()->where('email', $request->string('email')->toString())->first();
+        if ($user === null)
+        {
+            return response()->json([
+                'message' => __('No se pudo restablecer la contraseña. El enlace puede haber caducado.'),
+            ], 422);
+        }
+
+        EnsureRegisteredUserRole::assignIfMissing($user);
+        $user->load(['currentTeam', 'roles']);
+        $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+        $profile = $this->profilePayload($user);
+
         return response()->json([
             'success' => true,
-            'message' => __('Contraseña actualizada. Ya puedes entrar.'),
+            'message' => __('Contraseña actualizada. Ya estás dentro.'),
+            'email' => $user->email,
+            'token' => $token,
+            'user' => $profile,
+            'current_team' => $profile['current_team'],
         ]);
     }
 
@@ -477,5 +496,33 @@ class AuthController extends Controller
             $team,
             (string) config('humano_pricing.registration_team_plan_slug', 'hunter'),
         );
+    }
+
+    private function applyAffiliateReferralFromRequest(Request $request, ?User $user): void
+    {
+        if ($user === null)
+        {
+            return;
+        }
+
+        $ref = trim((string) $request->input('ref', ''));
+        if ($ref === '' || ! str_starts_with(strtolower($ref), 'cus_'))
+        {
+            return;
+        }
+
+        $referrer = Team::findByStripeCustomerId($ref);
+        $team = $user->currentTeam;
+        if ($referrer === null || $team === null || (int) $team->id === (int) $referrer->id)
+        {
+            return;
+        }
+
+        if (trim((string) ($team->referred_by ?? '')) !== '')
+        {
+            return;
+        }
+
+        $team->forceFill(['referred_by' => $ref])->save();
     }
 }

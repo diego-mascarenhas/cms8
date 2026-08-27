@@ -29,7 +29,7 @@ class DocumentAiOcrService
                 true,
             );
 
-            $ocrPrompt = 'Extract all visible text from this document. Return only plain text, preserving line breaks.';
+            $ocrPrompt = 'Extract all visible text from this document or spare-part photo. Return only plain text, preserving line breaks. Include brand names, part numbers, OEM codes, and references exactly as printed.';
             $ocrAgent = agent(
                 instructions: 'You are an OCR engine. Return only extracted text.',
                 messages: [],

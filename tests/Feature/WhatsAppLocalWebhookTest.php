@@ -2,13 +2,20 @@
 
 namespace Tests\Feature;
 
+use App\Helpers\AssistantSparePartNote;
 use App\Jobs\FetchWhatsAppProfilePhotoJob;
+use App\Models\Category;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\Currency;
 use App\Models\DocumentIngestion;
+use App\Models\Module;
+use App\Models\Product;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\ChatAssistantReplyService;
+use App\Services\DocumentIngestionService;
+use App\Services\TeamSiteAssistantPromptService;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -412,7 +419,7 @@ class WhatsAppLocalWebhookTest extends TestCase
             'to' => '34600000001',
             'body' => '[Image]',
             'id' => 'msg_media_assistant_on_1',
-            'mediaUrl' => 'https://cdn.example.com/card.png',
+            'mediaUrl' => 'https://cdn.example.com/pieza.png',
             'mediaContentType' => 'image/png',
         ]);
 
@@ -421,7 +428,159 @@ class WhatsAppLocalWebhookTest extends TestCase
             'status' => 'success',
             'document_ingestion' => true,
         ]);
-        $this->assertSame(1, $this->documentIngestionAcknowledgementCount());
+        $this->assertSame(0, $this->documentIngestionAcknowledgementCount());
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'to' => '34600000099',
+            'body' => AssistantSparePartNote::customerReply(),
+        ]);
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'from' => '34600000001',
+            'to' => '34600000099',
+            'body' => AssistantSparePartNote::unidentifiedInboxBody(),
+            'status' => 'internal',
+        ]);
+        Http::assertNotSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && (str_contains($body, 'Esto detecté') || str_contains($body, 'Sin clasificar'));
+        });
+    }
+
+    public function test_webhook_posts_internal_spare_part_note_and_does_not_tell_the_customer(): void
+    {
+        $ingestion = new DocumentIngestion;
+        $ingestion->extracted_data = [
+            'part' => [
+                'description' => 'Filtro De Aceite',
+                'code' => 'W 719/45',
+                'brand' => 'Mann',
+            ],
+        ];
+
+        $this->mock(DocumentIngestionService::class, function ($mock) use ($ingestion): void
+        {
+            $mock->shouldReceive('ingestFromConversationMedia')
+                ->once()
+                ->andReturn([$ingestion]);
+        });
+
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        $currencyId = Currency::query()->firstOrCreate(
+            ['code' => 'ARS'],
+            ['name' => 'Peso argentino', 'symbol' => '$', 'status' => true],
+        )->id;
+        $category = Category::withoutGlobalScopes()->create([
+            'name' => 'Repuestos',
+            'module_id' => null,
+            'team_id' => $team->id,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Filtro aceite Gol',
+            'code' => 'W 719/45',
+            'price' => 100,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'ack_part_1'], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000096',
+            'to' => '34600000001',
+            'body' => '[Image]',
+            'id' => 'msg_media_part_ocr_1',
+            'mediaUrl' => 'https://cdn.example.com/filtro.jpg',
+            'mediaContentType' => 'image/jpeg',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'from' => '34600000001',
+            'to' => '34600000096',
+            'body' => "Pieza detectada: Mann · Filtro De Aceite · W 719/45\nCatálogo: Filtro aceite Gol",
+            'status' => 'internal',
+        ]);
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'to' => '34600000096',
+            'body' => AssistantSparePartNote::customerReply(),
+        ]);
+
+        Http::assertSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && $body === AssistantSparePartNote::customerReply()
+                && ! str_contains($body, 'W 719')
+                && ! str_contains($body, 'Pieza detectada');
+        });
+        Http::assertNotSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && str_contains($body, 'Pieza detectada');
+        });
+    }
+
+    public function test_webhook_posts_internal_spare_part_note_when_assistant_is_off(): void
+    {
+        $ingestion = new DocumentIngestion;
+        $ingestion->extracted_data = [
+            'part' => [
+                'description' => 'Pastilla De Freno',
+                'code' => '0986424791',
+                'brand' => 'Bosch',
+            ],
+        ];
+
+        $this->mock(DocumentIngestionService::class, function ($mock) use ($ingestion): void
+        {
+            $mock->shouldReceive('ingestFromConversationMedia')
+                ->once()
+                ->andReturn([$ingestion]);
+        });
+
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Http::fake();
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000095',
+            'to' => '34600000001',
+            'body' => '[Image]',
+            'id' => 'msg_media_part_ocr_off_1',
+            'mediaUrl' => 'https://cdn.example.com/pastilla.jpg',
+            'mediaContentType' => 'image/jpeg',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'to' => '34600000095',
+            'body' => 'Pieza detectada: Bosch · Pastilla De Freno · 0986424791',
+            'status' => 'internal',
+        ]);
+        Http::assertNotSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/send-message');
+        });
     }
 
     public function test_webhook_skips_auto_ai_when_contact_disables_assistant_even_if_team_enabled(): void
@@ -1207,6 +1366,98 @@ class WhatsAppLocalWebhookTest extends TestCase
 
             return str_contains($request->url(), '/send-message')
                 && $body === 'Hola, ¿en qué te puedo ayudar?'
+                && ! str_contains($body, 'ESQUINA');
+        });
+    }
+
+    public function test_webhook_tags_from_flow_prompt_when_the_model_skips_the_tool(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Dale, ¿qué modelo y año tenés?',
+                    'tool_results' => [],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'contacts'],
+            [
+                'name' => 'Contacts',
+                'icon' => 'users',
+                'description' => 'Contacts module',
+                'is_core' => true,
+                'status' => 1,
+            ],
+        );
+
+        $prompts = app(TeamSiteAssistantPromptService::class);
+        $prompt = $prompts->create(
+            $team,
+            'Bienvenida',
+            <<<'PROMPT'
+1. Fiat, Renault, Peugeot, Chevrolet o Nissan → ESQUINA, color azul.
+PROMPT
+        );
+        $prompts->select($team, $prompts->routingKeyFor($prompt));
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000097',
+            'name' => 'Diego',
+            'email' => 'diego.fiat@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'msg_category_server_prev',
+            'channel' => 'whatsapp',
+            'from' => '34600000097',
+            'to' => '34600000001',
+            'body' => 'ayer',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'wa_out_fiat'], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000097',
+            'to' => '34600000001',
+            'body' => 'Fiat',
+            'id' => 'msg_category_server_fiat',
+        ])->assertOk();
+
+        $this->assertTrue($contact->categories()->where('categories.name', 'ESQUINA')->exists());
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'to' => '34600000097',
+            'body' => 'Contacto asignado a la categoría: ESQUINA',
+            'status' => 'internal',
+        ]);
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'to' => '34600000097',
+            'body' => 'Dale, ¿qué modelo y año tenés?',
+        ]);
+
+        Http::assertSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && $body === 'Dale, ¿qué modelo y año tenés?'
                 && ! str_contains($body, 'ESQUINA');
         });
     }

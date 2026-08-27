@@ -31,6 +31,7 @@ use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantPromptCatalog;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
+use App\Services\InboxQuickReplyService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamInboundAssistantPolicy;
@@ -1142,6 +1143,110 @@ class ChatController extends Controller
         }
 
         return app(UserResolverService::class)->findContactInTeamByPhone($teamId, $digits);
+    }
+
+    public function quickReplies(): \Illuminate\Http\JsonResponse
+    {
+        return response()->json([
+            'items' => app(InboxQuickReplyService::class)->catalog(),
+        ]);
+    }
+
+    /**
+     * @param  array{key: string, argument: ?string}  $quickReply
+     */
+    private function sendInboxQuickReply(Request $request, WhatsAppGateway $gateway, array $quickReply): \Illuminate\Http\JsonResponse
+    {
+        $team = auth()->user()?->currentTeam;
+        if ($team === null)
+        {
+            return response()->json(['success' => false, 'error' => __('No team context.')], 403);
+        }
+
+        $digits = preg_replace('/[^0-9]/', '', (string) $request->input('to', '')) ?? '';
+        $contact = $request->filled('contact_id')
+            ? Contact::withoutGlobalScopes()->where('team_id', $team->id)->find((int) $request->input('contact_id'))
+            : $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+
+        $resolved = app(InboxQuickReplyService::class)->resolve(
+            $team,
+            $quickReply['key'],
+            $quickReply['argument'],
+            $contact,
+        );
+        if (! ($resolved['ok'] ?? false))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => (string) ($resolved['error'] ?? __('No se pudo armar la respuesta.')),
+            ], 422);
+        }
+
+        $to = (string) $request->input('to');
+        $mediaPath = trim((string) ($resolved['media'] ?? ''));
+        $sent = 0;
+
+        foreach ($resolved['messages'] as $index => $bubble)
+        {
+            if ($index > 0 && ! app()->environment('testing'))
+            {
+                usleep(450_000);
+            }
+
+            if ($index === 0 && $mediaPath !== '' && $gateway->sendMedia($to, $mediaPath, $bubble))
+            {
+                $this->recordInboxQuickReplyMedia($team, $to, $bubble, $mediaPath, $quickReply['key']);
+                $sent++;
+
+                continue;
+            }
+
+            $gateway->sendMessage(
+                $to,
+                $bubble,
+                [
+                    'source' => 'inbox_quick_reply',
+                    'quick_reply' => $quickReply['key'],
+                ],
+                auth()->id(),
+            );
+            $sent++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Message sent',
+            'quick_reply' => $quickReply['key'],
+            'messages_sent' => $sent,
+        ]);
+    }
+
+    private function recordInboxQuickReplyMedia(Team $team, string $to, string $caption, string $mediaPath, string $slash): void
+    {
+        $cleanTo = preg_replace('/[^0-9]/', '', $to) ?? '';
+        $cleanFrom = preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) ?? '';
+        $url = preg_match('#^https?://#i', $mediaPath) === 1 ? $mediaPath : asset($mediaPath);
+        $name = basename(parse_url($mediaPath, PHP_URL_PATH) ?: 'producto.jpg');
+
+        Conversation::create([
+            'message_sid' => 'wa_producto_'.uniqid('', true),
+            'channel' => 'whatsapp',
+            'from' => $cleanFrom,
+            'to' => $cleanTo,
+            'body' => $caption,
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'media' => [[
+                'url' => $url,
+                'content_type' => 'image/jpeg',
+                'name' => $name !== '' ? $name : 'producto.jpg',
+            ]],
+            'user_id' => auth()->id(),
+            'metadata' => [
+                'source' => 'inbox_quick_reply',
+                'quick_reply' => $slash,
+            ],
+        ]);
     }
 
     public function getMessages(Request $request, $phone)
@@ -2488,6 +2593,10 @@ class ChatController extends Controller
                 (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
                 $replyResponse['assistant_flow_routing_key'] ?? null,
             );
+            $contextService->persistCommittedFlowOnContact(
+                $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
+                $replyResponse,
+            );
         }
 
         $payload = [
@@ -2943,6 +3052,7 @@ class ChatController extends Controller
             'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'use_ai' => 'boolean',
             'contact_id' => 'nullable|integer|exists:contacts,id',
+            'prompt_key' => 'nullable|string|max:255',
         ], [
             'audio.mimes' => __('Documento no permitido.'),
             'audio.max' => __('Archivo demasiado pesado.'),
@@ -2989,6 +3099,12 @@ class ChatController extends Controller
             if ($hasAttachments)
             {
                 return $this->sendWhatsAppAttachments($request, $gateway, $userResolver, $contextService, $message);
+            }
+
+            $quickReply = app(InboxQuickReplyService::class)->parse($message);
+            if ($quickReply !== null)
+            {
+                return $this->sendInboxQuickReply($request, $gateway, $quickReply);
             }
 
             // Check if AI assistance was requested

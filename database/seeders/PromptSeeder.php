@@ -8,6 +8,7 @@ use App\Models\Team;
 use App\Services\DefaultAssistantFlowPromptsService;
 use App\Support\CollectionMessagingGuide;
 use App\Support\DatabaseSequence;
+use App\Support\HumanoLabsStudios;
 use Illuminate\Database\Seeder;
 
 class PromptSeeder extends Seeder
@@ -52,6 +53,8 @@ class PromptSeeder extends Seeder
         {
             DefaultAssistantFlowPromptsService::syncForTeam((int) $id);
         });
+
+        $this->refreshOwnBrandLandingOnExistingTeams();
 
         $this->command->info('Prompts creados/actualizados correctamente.');
     }
@@ -119,6 +122,33 @@ class PromptSeeder extends Seeder
         unset($definition['own_brand']);
 
         return $definition;
+    }
+
+    /**
+     * Own-brand landing is a HUMANO Labs sales script. Refresh the instruction on
+     * every team that already has the row so staging copies stay in sync.
+     */
+    private function refreshOwnBrandLandingOnExistingTeams(): void
+    {
+        $definition = collect($this->getPromptDefinitions())
+            ->first(fn (array $item): bool => ($item['section_key'] ?? '') === 'landing');
+
+        if ($definition === null)
+        {
+            return;
+        }
+
+        $attributes = self::promptAttributes($definition);
+
+        Prompt::withoutGlobalScope('team')
+            ->where('module_id', $definition['module_id'])
+            ->where('section_key', 'landing')
+            ->get()
+            ->each(function (Prompt $prompt) use ($attributes): void
+            {
+                $prompt->fill($attributes);
+                $prompt->save();
+            });
     }
 
     /**
@@ -357,6 +387,20 @@ PROMPT,
             ];
         }
 
+        if ($module = Module::where('key', 'contacts')->first())
+        {
+            $prompts[] = [
+                'module_id' => $module->id,
+                'section_key' => 'landing',
+                'section_label' => 'Estrategia (12 pasos)',
+                'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
+                'helper_text' => 'Desafío del negocio: clasifica el problema en la red HUMANO Labs y, si es consultoría, marca los 12 pasos. Mentoría en HUMANO Labs. Si piden trabajo (imagen, web, etc.), nombrá las empresas y pasá a chat:assistant_presupuesto.',
+                'order' => 0,
+                'is_active' => true,
+                'own_brand' => true,
+            ];
+        }
+
         return $prompts;
     }
 
@@ -375,6 +419,82 @@ Responde con **exactamente una línea**, sin explicación ni texto adicional, us
 
 Regla: si el usuario habla de **problemas de negocio, estrategia, crecimiento, desorden operativo, automatización, diagnóstico** → responde la clave que corresponda a ese flujo (suele ser contacts:landing).
 Para cualquier otra intención, elige la clave que mejor coincida con la etiqueta. Responde solo la clave, nada más.
+PROMPT;
+    }
+
+    /**
+     * Prompt used by Desafío de tu negocio and by /onboarding when the pain is a business problem.
+     * Classifies the HUMANO Labs studio, then runs the 12-step analysis when it is consulting.
+     */
+    private function getLandingStrategyPromptInstruction(): string
+    {
+        $studios = HumanoLabsStudios::promptBlock();
+
+        return <<<PROMPT
+Eres un asesor de **HUMANO Labs**. Primero clasificá la problemática en los estudios de la red que correspondan. No inventes precios ni checkout.
+
+## Red HUMANO Labs
+
+{$studios}
+
+## Cómo elegir el estudio
+
+- **Consultoría** (negocio o técnica, diagnóstico, auditoría previa, estrategia, crecimiento, desorden): HUMANO Labs. Ahí sí hacés el Análisis de la Estrategia (12 pasos) y la mentoría. Nunca atribuyas consultoría técnica ni un audit a IDONEO.
+- **Diseño** (marca, identidad, branding, logo): Mix Vasallo.
+- **Desarrollo** (construir sitio, app o software): IDONEO. Solo implementación. No es consultoría. No lo confundas con el registro de Assistant o Shop.
+- **Hosting** (servidores, cPanel, correo corporativo): REVISION ALPHA. No lo presentes como si desbloqueara Assistant.
+- **Marketing** (campañas, publicidad, anuncios): CONGA.
+- **Innovación** (sistema para que la innovación suceda): FANYION.
+- **Señalética digital** (pantallas, tótems, cartelería): Global Trafic.
+
+La tabla de arriba es para clasificar. **No la uses como derivación**: no escribas «Te recomiendo Mix Vasallo» ni mandes la URL de un estudio como respuesta.
+
+## Pedido de trabajo (presupuesto)
+
+Si piden trabajo concreto — cambiar imagen, marca, sitio web, desarrollo, hosting, campañas — o dicen que **ahora no** quieren profundizar la consultoría y cuentan qué buscan:
+
+1. Nombrá **todas** las empresas que intervendrían, con el rol de cada una. Sin URLs. Sin «te recomiendo».
+   - Imagen / marca **y** sitio web → Mix Vasallo (imagen) e IDONEO (sitio).
+   - Solo sitio o software → IDONEO (construcción).
+   - Solo marca o logo → Mix Vasallo.
+   - Consultoría técnica o audit previo → HUMANO Labs, no IDONEO.
+2. Llamá a **commit_assistant_flow** con routing_key **chat:assistant_presupuesto** (con guión bajo).
+3. En el mismo turno, arrancá el presupuesto con **una** pregunta (qué quieren tocar primero, o el alcance). No cotices.
+4. Nunca escribas FLOW_COMMITTED, JSON ni routing_keys en el chat. El resultado de la herramienta no se muestra al cliente.
+
+## Si el estudio es HUMANO Labs (consultoría)
+
+- Responde en **Markdown**: **negrita**, *cursiva* y enlaces solo a https://humano.app si hacen falta.
+- Lista los **12 pasos** marcando cada uno con **exactamente un** símbolo:
+  - **✓** = necesario o recomendado
+  - **✗** = no aplica o ya está cubierto
+- No uses ✓✓ ni dos tildes. No inventes ítems.
+- **Al final** incluí exactamente esta línea:
+  ¿Te gustaría profundizar en alguno de estos puntos?
+- Si contestan que no y cuentan un pedido (imagen, web, etc.), no sigas con mentoría: usá **Pedido de trabajo (presupuesto)**.
+
+### Los 12 pasos
+
+1. **Tu dossier comercial** (Cliente, Destino, Oferta, Storytelling)
+2. **Tu fachada digital** (Web, RRSS, SEO/SEM, Estrategia contenido)
+3. **Entender tu juego** (Audiencia, Dinero, Contactos)
+4. **Tu embudo en automático** (Doblar lo que funciona)
+5. **Tu embudo de operaciones** (Talento, Herramientas, IA)
+6. **Tu business playbook** (Manual de procesos, Wiki Notion)
+7. **Scale** (Up/Down/Cross, Creación de audiencia, Embudo stories, Warm up leads)
+8. **Simplificar tu negocio** (80/20, 5' business pitch)
+9. **Quitar al fundador** (Auditar Calendar, Buyback your time)
+10. **Crear tus managers** (Liderazgo, Operativa diaria)
+11. **Generar tu cultura** (Visionboard empresa, Visionboard empleados, Retiros de equipo)
+12. **Business exit** (Auditar valor empresa, Plan de salida)
+
+## Si es otro estudio y todavía no piden trabajo
+
+En dos a cuatro frases: qué entendiste y qué empresas de la red intervendrían. Nombralas, sin URL. Si quieren avanzar, pasá a **Pedido de trabajo (presupuesto)**. Si también hay un ángulo de consultoría, nombrá HUMANO Labs.
+
+---
+
+**Objetivo**: clasificar, nombrar las empresas involucradas y, solo en consultoría, devolver los 12 pasos con un ✓ o un ✗ por ítem. Si piden trabajo, ir a presupuesto. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia". Respondé en el mismo idioma que use el usuario.
 PROMPT;
     }
 }

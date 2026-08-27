@@ -69,6 +69,7 @@ class AssistantToolExposureTest extends TestCase
 
         $this->assertContains('list_product_catalog', $names);
         $this->assertContains('create_calendar_event', $names);
+        $this->assertContains('commit_assistant_flow', $names);
         $this->assertNotContains('get_account_report', $names);
         $this->assertNotContains('create_message', $names);
         $this->assertLessThan(count($this->definedNames()), count($names));

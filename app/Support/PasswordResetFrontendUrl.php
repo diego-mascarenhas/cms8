@@ -37,6 +37,29 @@ class PasswordResetFrontendUrl
         ]));
     }
 
+    public static function urlForUser(User $user, string $token): string
+    {
+        $email = $user->getEmailForPasswordReset();
+        $frontend = rtrim((string) config('services.assistant.url'), '/');
+        if ($frontend === '')
+        {
+            $frontend = self::allowed()[0] ?? '';
+        }
+
+        if ($frontend !== '')
+        {
+            return $frontend.'/reset-password?'.http_build_query([
+                'token' => $token,
+                'email' => $email,
+            ]);
+        }
+
+        return url(route('password.reset', [
+            'token' => $token,
+            'email' => $email,
+        ]));
+    }
+
     public static function resolve(Request $request): ?string
     {
         $requested = rtrim((string) $request->input('frontend_url', ''), '/');

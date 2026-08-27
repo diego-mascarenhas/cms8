@@ -1738,7 +1738,7 @@
   "Colors": "Colores",
   "Comma separated values.": "Valores separados por comas.",
   "The code is required.": "El código es obligatorio.",
-  "The code has already been used in this team.": "Ese código ya está en uso en este equipo.",
+  "The code has already been used in this team.": "Este código ya existe.",
   "The barcode has already been used in this team.": "Ese código de barras ya está en uso en este equipo.",
   "barcode is the EAN/UPC. It must be unique in the team. oem is the original manufacturer part number.": "barcode es el EAN/UPC. Debe ser único en el equipo. oem es el número original del fabricante.",
   "Product created successfully.": "Producto creado correctamente.",

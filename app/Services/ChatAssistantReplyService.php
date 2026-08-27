@@ -8,6 +8,7 @@ use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Prompt;
 use App\Models\User;
 use App\Services\Assistant\AssistantActorContextService;
+use App\Support\AssistantCustomerText;
 use App\Tools\AssistantTool;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -273,13 +274,31 @@ class ChatAssistantReplyService
             $tools,
             $flowRoutedTo,
         );
-        if ($withTools && ($reply['success'] ?? false))
+        if ($reply['success'] ?? false)
         {
+            $rawText = (string) ($reply['text'] ?? '');
+            $committedFromText = AssistantCustomerText::parseCommittedPayload($rawText);
+            $reply['text'] = AssistantCustomerText::stripMachineMarkers($rawText);
             $committedKey = $this->routingKeyCommittedViaTools($reply['tool_results'] ?? []);
+            if ($committedKey === null && $teamId !== null && isset($committedFromText['routing_key']))
+            {
+                $committedKey = $this->canonicalCommittedRoutingKey(
+                    (string) $committedFromText['routing_key'],
+                    (int) $teamId,
+                );
+            }
             if ($committedKey !== null)
             {
                 $flowPersistSpecified = true;
                 $flowPersistKey = $committedKey;
+            }
+            if (trim((string) ($reply['text'] ?? '')) === '')
+            {
+                $reply['text'] = AssistantCustomerText::afterCommitFallback(
+                    $committedKey !== null
+                        ? ['routing_key' => $committedKey, 'label' => (string) ($committedFromText['label'] ?? '')]
+                        : $committedFromText,
+                );
             }
         }
 
@@ -622,6 +641,11 @@ EOT;
                 continue;
             }
 
+            if (str_starts_with($out, 'FLOW_COMMITTED:'))
+            {
+                continue;
+            }
+
             if ($customerOutput === '')
             {
                 $customerOutput = $out;
@@ -828,7 +852,7 @@ Las descripciones de cada herramienta dicen qué hace; esto es el orden en que h
 - **Nunca le pidas un ID al usuario.** Resolvelo con search_contacts, search_tasks, search_products, list_calendar_events, list_templates, list_messages o list_cms_content.
 - Buscar antes de crear: search_contacts antes de create_contact. Si no hay coincidencia, creá el contacto **solo con el nombre**; email y teléfono son opcionales y no los pidas antes de intentarlo. Si create_contact responde que ya existe, usá ese id.
 - Interacciones y categorías de un contacto: resolvé la persona primero, después create_contact_interaction o assign_contact_to_category con el contact_id. En WhatsApp, assign_contact_to_category puede ir sin contact_id: usa a la persona de este chat.
-- Si el flujo del equipo pide etiquetar (assign_contact_to_category), hacelo en este mismo turno aunque el cliente no lo haya pedido. No le nombres la etiqueta ni copies el resultado de la herramienta.
+- Si el flujo del equipo pide etiquetar (assign_contact_to_category o reglas «marca → CATEGORÍA»), llamá la herramienta en ESTE turno en cuanto el mensaje matchee. No esperes al siguiente. No le nombres la etiqueta ni copies el resultado de la herramienta.
 - Agenda: check_calendar_availability antes de confirmar un hueco. El evento incluye a **quien la pide**, no solo al agente: guest_contact_ids. Si esa persona no tiene email, pedilo y update_contact antes de crear (la invitación va por email). Preguntá si quieren sumar a más gente; para cada extra pedí nombre, apellido y email, create_contact si no existen, y agregalos a guest_contact_ids. Recién entonces create_calendar_event o update_calendar_event. Si falta la fecha o la hora, pedilas en un mensaje corto (1 hora de duración si no dicen fin). El sí/no del usuario vale **solo para tu última pregunta**: si preguntaste extras («¿ubicación, notas, alguien más?») y dice no / no gracias, **creá la cita igual** en ese turno; no está rechazando el alta. Si preguntaste «¿agendo?» o «¿cancelo?» y dice no, no llames create_calendar_event.
 - Plantillas: modificar no es crear. create_template solo si piden una nueva. Para renombrar o activar, list_templates y después update_template o update_template_status. Para cambios de diseño o contenido, pasales el enlace del editor.
 - Campañas (News): create_message solo cuando tengas asunto, destinatarios y texto. Los destinatarios son **dos filtros independientes**: categoría de contactos (list_contact_categories) y estado del contacto en el CRM (list_contact_statuses, nombres exactos en contact_status_name), o todos los contactos sin filtro. Si falta algo, preguntalo en un solo mensaje. Para cambiar una campaña existente usá list_messages y update_message, nunca create_message otra vez: duplicaría.
@@ -890,7 +914,7 @@ Precios, stock y productos salen solo de las herramientas de este turno. Si no e
 2. **Agregar**: «sí», «dale», «ok», «quiero», «agregalo» → **add_to_whatsapp_cart** en este turno. Si no nombra el producto, usá el último que mostraste.
 3. **Cerrar**: proponé **finalizar**. Si confirman o ya dijeron retiro/envío/pago, **confirm_whatsapp_order** en este turno (interpretá; no repreguntés). Si falta un dato, una sola pregunta corta. Sin número de orden no hay pedido.
 4. **Tienda**: horarios, pagos, entrega y notas → **get_store_info** en este turno. No digas que no está en el sistema.
-5. **Etiquetas**: si el flujo del equipo pide assign_contact_to_category, llamala en este turno aunque el cliente no lo pida. En WhatsApp podés omitir contact_id (es la persona de este chat). No le nombres la etiqueta ni copies el resultado de la herramienta.
+5. **Etiquetas**: si el flujo del equipo pide assign_contact_to_category o tiene reglas «marca → CATEGORÍA», llamala en este turno en cuanto matchee. En WhatsApp podés omitir contact_id (es la persona de este chat). No le nombres la etiqueta ni copies el resultado de la herramienta.
 EOT;
     }
 
@@ -929,6 +953,7 @@ No team flow is locked to this thread yet (or the thread was reset).
 - Ask **one** short question in Spanish to confirm what the user needs, with options grounded in the list below (adapt labels to sound natural).
 - If they already stated intent clearly (e.g. pagar facturas, catálogo, agendar), **skip** the question: call **commit_assistant_flow** with the matching routing_key, then answer in that lane.
 - After you commit, keep helping in that same topic until they finish or explicitly want to change topic (use commit again or team reset phrases).
+- Never write FLOW_COMMITTED, JSON, or routing_keys in the user-visible message. Call the tool, then speak naturally.
 - Never invent routing_keys — only use keys from this list:
 
 {$keys}
@@ -983,6 +1008,21 @@ EOT;
         }
 
         return null;
+    }
+
+    private function canonicalCommittedRoutingKey(string $raw, int $teamId): ?string
+    {
+        $prompt = Prompt::findByRoutingKey(trim($raw), $teamId);
+        if (! $prompt || ! $prompt->is_active || $prompt->isGeneralRouter())
+        {
+            return null;
+        }
+
+        $prompt->loadMissing('module');
+
+        return $prompt->module
+            ? $prompt->module->key.':'.$prompt->section_key
+            : $prompt->section_key;
     }
 
     private function toolResultToString(mixed $item): string

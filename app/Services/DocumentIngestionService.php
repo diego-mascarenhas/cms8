@@ -15,6 +15,8 @@ use App\Models\Source;
 use App\Models\Team;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class DocumentIngestionService
@@ -359,7 +361,13 @@ class DocumentIngestionService
             ];
         }
 
+        $downloadedPath = null;
         $localPath = $this->resolveLocalPathFromUrl($fileUrl);
+        if ($localPath === null)
+        {
+            $downloadedPath = $this->downloadRemoteFileForOcr($fileUrl);
+            $localPath = $downloadedPath;
+        }
         if ($localPath === null)
         {
             return [
@@ -370,60 +378,69 @@ class DocumentIngestionService
             ];
         }
 
-        $mode = $this->resolveOcrMode($teamId);
-        $localText = null;
-        $aiText = null;
-        $enginesRan = [];
+        try
+        {
+            $mode = $this->resolveOcrMode($teamId);
+            $localText = null;
+            $aiText = null;
+            $enginesRan = [];
 
-        if ($mode === 'local' || $mode === 'hybrid')
-        {
-            $localText = $this->ocrService->extractTextFromLocalFile($localPath);
-            $enginesRan[] = 'local';
-        }
-
-        if ($mode === 'ai' || $mode === 'hybrid')
-        {
-            $aiText = $this->aiOcrService->extractTextFromLocalFile($localPath, $teamId);
-            $enginesRan[] = 'ai';
-        }
-
-        if ($mode === 'ai' && $aiText === null)
-        {
-            $localText = $this->ocrService->extractTextFromLocalFile($localPath);
-            $enginesRan[] = 'local_fallback';
-        }
-
-        $chosenText = null;
-        $engineUsed = null;
-        if ($mode === 'local')
-        {
-            $chosenText = $localText;
-            $engineUsed = $localText !== null ? 'local' : null;
-        } elseif ($mode === 'ai')
-        {
-            $chosenText = $aiText ?? $localText;
-            $engineUsed = $aiText !== null ? 'ai' : ($localText !== null ? 'local_fallback' : null);
-        } else
-        {
-            $localLen = mb_strlen((string) ($localText ?? ''));
-            $aiLen = mb_strlen((string) ($aiText ?? ''));
-            if ($aiLen > $localLen)
+            if ($mode === 'local' || $mode === 'hybrid')
             {
-                $chosenText = $aiText;
-                $engineUsed = $aiText !== null ? 'ai' : null;
+                $localText = $this->ocrService->extractTextFromLocalFile($localPath);
+                $enginesRan[] = 'local';
+            }
+
+            if ($mode === 'ai' || $mode === 'hybrid')
+            {
+                $aiText = $this->aiOcrService->extractTextFromLocalFile($localPath, $teamId);
+                $enginesRan[] = 'ai';
+            }
+
+            if ($mode === 'ai' && $aiText === null)
+            {
+                $localText = $this->ocrService->extractTextFromLocalFile($localPath);
+                $enginesRan[] = 'local_fallback';
+            }
+
+            $chosenText = null;
+            $engineUsed = null;
+            if ($mode === 'local')
+            {
+                $chosenText = $localText;
+                $engineUsed = $localText !== null ? 'local' : null;
+            } elseif ($mode === 'ai')
+            {
+                $chosenText = $aiText ?? $localText;
+                $engineUsed = $aiText !== null ? 'ai' : ($localText !== null ? 'local_fallback' : null);
             } else
             {
-                $chosenText = $localText ?? $aiText;
-                $engineUsed = $localText !== null ? 'local' : ($aiText !== null ? 'ai' : null);
+                $localLen = mb_strlen((string) ($localText ?? ''));
+                $aiLen = mb_strlen((string) ($aiText ?? ''));
+                if ($aiLen > $localLen)
+                {
+                    $chosenText = $aiText;
+                    $engineUsed = $aiText !== null ? 'ai' : null;
+                } else
+                {
+                    $chosenText = $localText ?? $aiText;
+                    $engineUsed = $localText !== null ? 'local' : ($aiText !== null ? 'ai' : null);
+                }
+            }
+
+            return [
+                'text' => $chosenText,
+                'mode' => $mode,
+                'engine_used' => $engineUsed,
+                'engines_ran' => $enginesRan,
+            ];
+        } finally
+        {
+            if ($downloadedPath !== null && is_file($downloadedPath))
+            {
+                @unlink($downloadedPath);
             }
         }
-
-        return [
-            'text' => $chosenText,
-            'mode' => $mode,
-            'engine_used' => $engineUsed,
-            'engines_ran' => $enginesRan,
-        ];
     }
 
     private function resolveOcrMode(?int $teamId): string
@@ -453,9 +470,18 @@ class DocumentIngestionService
         if (Str::startsWith($path, '/storage/'))
         {
             $relative = ltrim(Str::after($path, '/storage/'), '/');
-            $candidate = public_path('storage/'.$relative);
+            foreach ([
+                public_path('storage/'.$relative),
+                storage_path('app/public/'.$relative),
+            ] as $candidate)
+            {
+                if (is_file($candidate))
+                {
+                    return $candidate;
+                }
+            }
 
-            return is_file($candidate) ? $candidate : null;
+            return null;
         }
 
         $appHost = parse_url((string) config('app.url'), PHP_URL_HOST);
@@ -463,11 +489,74 @@ class DocumentIngestionService
         if ($appHost !== null && $urlHost !== null && strcasecmp((string) $appHost, (string) $urlHost) === 0)
         {
             $candidate = public_path(ltrim($path, '/'));
-
-            return is_file($candidate) ? $candidate : null;
+            if (is_file($candidate))
+            {
+                return $candidate;
+            }
         }
 
         return null;
+    }
+
+    private function downloadRemoteFileForOcr(string $fileUrl): ?string
+    {
+        if (! preg_match('#^https?://#i', $fileUrl))
+        {
+            return null;
+        }
+
+        $path = (string) parse_url($fileUrl, PHP_URL_PATH);
+        if (! Str::contains($path, '/inbound-media/'))
+        {
+            return null;
+        }
+
+        try
+        {
+            $response = Http::timeout(20)
+                ->connectTimeout(5)
+                ->withHeaders(['User-Agent' => 'IDONEO-OCR/1.0'])
+                ->get($fileUrl);
+            if (! $response->successful())
+            {
+                return null;
+            }
+
+            $body = $response->body();
+            if ($body === '' || strlen($body) > 12_000_000)
+            {
+                return null;
+            }
+
+            $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+            if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'pdf'], true))
+            {
+                $extension = 'jpg';
+            }
+
+            $temp = tempnam(sys_get_temp_dir(), 'ocr_');
+            if ($temp === false)
+            {
+                return null;
+            }
+
+            $target = $temp.'.'.$extension;
+            @unlink($temp);
+            if (file_put_contents($target, $body) === false)
+            {
+                return null;
+            }
+
+            return $target;
+        } catch (\Throwable $e)
+        {
+            Log::warning('OCR remote download failed', [
+                'url' => $fileUrl,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
@@ -492,6 +581,7 @@ class DocumentIngestionService
         }
 
         $invoice = $this->extractInvoiceData($text, $company);
+        $part = $this->extractSparePartData($text, is_array($invoice) ? $invoice : null);
 
         return [
             'phones' => $phones,
@@ -501,6 +591,7 @@ class DocumentIngestionService
             'title' => $title,
             'company' => $company,
             'invoice' => $invoice,
+            'part' => $part,
         ];
     }
 
@@ -716,6 +807,156 @@ class DocumentIngestionService
     }
 
     /**
+     * @param  array<string, mixed>|null  $invoice
+     * @return array{description?: string, code?: string, brand?: string, oem?: string}|null
+     */
+    private function extractSparePartData(string $text, ?array $invoice): ?array
+    {
+        if ($this->invoiceLooksStrongerThanPart($invoice))
+        {
+            return null;
+        }
+
+        $normalized = Str::lower(Str::ascii($text));
+        $description = $this->extractSparePartDescription($text, $normalized);
+        $code = $this->extractSparePartCode($text);
+        $brand = $this->extractSparePartBrand($text);
+        $oem = $this->extractSparePartOem($text, $code);
+
+        if ($description === null && $code === null)
+        {
+            return null;
+        }
+
+        return array_filter([
+            'description' => $description,
+            'code' => $code,
+            'brand' => $brand,
+            'oem' => $oem,
+        ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $invoice
+     */
+    private function invoiceLooksStrongerThanPart(?array $invoice): bool
+    {
+        if (! is_array($invoice) || $invoice === [])
+        {
+            return false;
+        }
+
+        $hasInvoiceNumber = filled($invoice['document_number'] ?? null);
+        $hasTotal = (float) ($invoice['total_amount'] ?? 0) > 0;
+        $hasKeywords = ! empty($invoice['has_invoice_keywords']);
+
+        return ($hasInvoiceNumber && $hasTotal) || ($hasKeywords && $hasInvoiceNumber);
+    }
+
+    private function extractSparePartDescription(string $text, string $normalized): ?string
+    {
+        $keywords = [
+            'filtro', 'pastilla', 'bujia', 'disco', 'correa', 'bomba', 'radiador',
+            'embrague', 'amortiguador', 'rodamiento', 'junta', 'sensor', 'inyector',
+            'alternador', 'arranque', 'habitaculo', 'combustible', 'repuesto', 'pieza',
+            'kit de', 'aceite', 'lubricante', 'helix', '10w', '5w', '15w', '20w',
+        ];
+        $lines = preg_split('/\R+/', $text) ?: [];
+        foreach ($lines as $line)
+        {
+            $candidate = trim($line);
+            if ($candidate === '' || mb_strlen($candidate) > 80)
+            {
+                continue;
+            }
+
+            $lineNormalized = Str::lower(Str::ascii($candidate));
+            foreach ($keywords as $keyword)
+            {
+                if (str_contains($lineNormalized, $keyword))
+                {
+                    return Str::title($candidate);
+                }
+            }
+        }
+
+        foreach ($keywords as $keyword)
+        {
+            if (str_contains($normalized, $keyword))
+            {
+                return Str::title($keyword);
+            }
+        }
+
+        return null;
+    }
+
+    private function extractSparePartCode(string $text): ?string
+    {
+        if (preg_match('/\b(?:ref(?:erencia)?|p\/n|pn|oem|n[ºo°]|c[oó]digo)\s*[:.]?\s*([A-Z0-9][A-Z0-9.\/\-]{3,24})/iu', $text, $match))
+        {
+            return strtoupper(trim($match[1]));
+        }
+
+        if (preg_match('/\b(\d{3}[A-Z]\d{6}[A-Z]?)\b/u', $text, $match))
+        {
+            return strtoupper(trim($match[1]));
+        }
+
+        if (preg_match('/\b([A-Z]{1,4}\s?\d{2,5}(?:[\/.]\d{1,4})?[A-Z]?)\b/iu', $text, $match))
+        {
+            return strtoupper(trim($match[1]));
+        }
+
+        if (preg_match('/\b(HX\s?\d)\b/iu', $text, $line) === 1 && preg_match('/\b(\d{1,2}W-?\d{2})\b/iu', $text, $visc) === 1)
+        {
+            return strtoupper(trim($line[1]).' '.$visc[1]);
+        }
+
+        if (preg_match('/\b(\d{1,2}W-?\d{2})\b/iu', $text, $match))
+        {
+            return strtoupper(trim($match[1]));
+        }
+
+        return null;
+    }
+
+    private function extractSparePartBrand(string $text): ?string
+    {
+        $brands = [
+            'MANN', 'BOSCH', 'VALEO', 'SKF', 'SACHS', 'LUK', 'TRW', 'ATE', 'NGK',
+            'DENSO', 'GATES', 'DAYCO', 'MAHLE', 'FEBI', 'SWAG', 'KYB', 'MONROE',
+            'PURFLUX', 'FRAM', 'FILTRON', 'UFI', 'SOFIMA', 'MAGNETI', 'FIAT',
+            'SHELL', 'CASTROL', 'MOBIL', 'ELF', 'TOTAL', 'YPF', 'PETRONAS',
+            'REPSOL', 'VALVOLINE',
+        ];
+        $upper = mb_strtoupper($text);
+        foreach ($brands as $brand)
+        {
+            if (preg_match('/\b'.preg_quote($brand, '/').'\b/u', $upper))
+            {
+                return Str::title($brand);
+            }
+        }
+
+        return null;
+    }
+
+    private function extractSparePartOem(string $text, ?string $code): ?string
+    {
+        if (preg_match('/\b(?:oem|orig(?:inal)?)\s*[:.]?\s*([A-Z0-9][A-Z0-9.\/\-]{4,24})/iu', $text, $match))
+        {
+            $oem = strtoupper(trim($match[1]));
+            if ($code === null || strcasecmp($oem, $code) !== 0)
+            {
+                return $oem;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array{document_type:string,classification_status:string,classification_confidence:float,reason:string}  $classification
      * @param  array<string,mixed>  $extractedData
      * @return array{document_type:string,classification_status:string,classification_confidence:float,reason:string}
@@ -743,6 +984,12 @@ class DocumentIngestionService
                 'classification_confidence' => 0.84,
                 'reason' => 'OCR extracted invoice-like fields.',
             ];
+        }
+
+        $part = is_array($extractedData['part'] ?? null) ? $extractedData['part'] : [];
+        if (filled($part['code'] ?? null) || filled($part['description'] ?? null))
+        {
+            return $classification;
         }
 
         $hasEmail = ! empty($extractedData['emails']);

@@ -12,6 +12,7 @@ use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -222,5 +223,170 @@ class DocumentIngestionServiceTest extends TestCase
         $this->assertSame('buy', $invoice->operation);
         $this->assertSame('YC260001189727', $invoice->number);
         $this->assertSame('16.00', number_format((float) $invoice->total_amount, 2, '.', ''));
+    }
+
+    /**
+     * @test
+     */
+    public function it_extracts_spare_part_fields_from_ocr_text(): void
+    {
+        $ocrMock = $this->mock(DocumentOcrService::class);
+        $ocrMock->shouldReceive('extractTextFromLocalFile')
+            ->andReturn(implode("\n", [
+                'MANN FILTER',
+                'Filtro de aceite',
+                'Ref: W 719/45',
+            ]));
+
+        $team = Team::factory()->create();
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+        $relative = 'temp/chat-attachments/filtro-pieza.jpg';
+        $resolved = public_path('storage/'.$relative);
+        if (! is_dir(dirname($resolved)))
+        {
+            mkdir(dirname($resolved), 0755, true);
+        }
+        file_put_contents($resolved, 'fake-image-bytes');
+
+        $conversation = Conversation::create([
+            'message_sid' => 'wa-msg-part-1',
+            'channel' => 'whatsapp',
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => 'esta es la pieza',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => '/storage/'.$relative,
+                    'content_type' => 'image/jpeg',
+                ],
+            ],
+        ]);
+
+        $records = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+            $conversation,
+            'WhatsApp',
+            'wa-msg-part-1',
+            $team->id,
+        );
+
+        $this->assertCount(1, $records);
+        $ingestion = $records[0];
+        $this->assertSame('unknown', $ingestion->document_type);
+        $this->assertSame('Filtro De Aceite', $ingestion->extracted_data['part']['description'] ?? null);
+        $this->assertSame('W 719/45', $ingestion->extracted_data['part']['code'] ?? null);
+        $this->assertSame('Mann', $ingestion->extracted_data['part']['brand'] ?? null);
+
+        @unlink($resolved);
+    }
+
+    /**
+     * @test
+     */
+    public function it_reads_whatsapp_inbound_storage_and_extracts_oil_label(): void
+    {
+        $ocrMock = $this->mock(DocumentOcrService::class);
+        $ocrMock->shouldReceive('extractTextFromLocalFile')
+            ->once()
+            ->andReturn(implode("\n", [
+                'Shell',
+                'HELIX',
+                'HX7',
+                '10W-40',
+                'LUBRICANTE DE MOTOR CON TECNOLOGÍA SINTÉTICA',
+            ]));
+
+        $team = Team::factory()->create();
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+        $relative = 'whatsapp-inbound/2026/08/27/helix-hx7.jpg';
+        $resolved = storage_path('app/public/'.$relative);
+        if (! is_dir(dirname($resolved)))
+        {
+            mkdir(dirname($resolved), 0755, true);
+        }
+        file_put_contents($resolved, 'fake-image-bytes');
+
+        $conversation = Conversation::create([
+            'message_sid' => 'wa-msg-oil-1',
+            'channel' => 'whatsapp',
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => '[Image]',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => 'https://cms8.test/storage/'.$relative,
+                    'content_type' => 'image/jpeg',
+                ],
+            ],
+        ]);
+
+        $records = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+            $conversation,
+            'WhatsApp',
+            'wa-msg-oil-1',
+            $team->id,
+        );
+
+        $this->assertCount(1, $records);
+        $ingestion = $records[0];
+        $this->assertSame('Shell', $ingestion->extracted_data['part']['brand'] ?? null);
+        $this->assertSame('HX7 10W-40', $ingestion->extracted_data['part']['code'] ?? null);
+        $this->assertNotEmpty($ingestion->extracted_data['part']['description'] ?? null);
+
+        @unlink($resolved);
+    }
+
+    /**
+     * @test
+     */
+    public function it_downloads_inbound_media_urls_for_ocr(): void
+    {
+        Http::fake([
+            'https://wa.example.test/inbound-media/filtro.jpg' => Http::response('fake-image-bytes', 200),
+        ]);
+
+        $ocrMock = $this->mock(DocumentOcrService::class);
+        $ocrMock->shouldReceive('extractTextFromLocalFile')
+            ->once()
+            ->andReturn(implode("\n", [
+                'MANN FILTER',
+                'Filtro de aceite',
+                'Ref: W 719/45',
+            ]));
+
+        $team = Team::factory()->create();
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        $conversation = Conversation::create([
+            'message_sid' => 'wa-msg-part-remote-1',
+            'channel' => 'whatsapp',
+            'from' => '34600000000',
+            'to' => '34600000001',
+            'body' => '[Image]',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => 'https://wa.example.test/inbound-media/filtro.jpg',
+                    'content_type' => 'image/jpeg',
+                ],
+            ],
+        ]);
+
+        $records = app(DocumentIngestionService::class)->ingestFromConversationMedia(
+            $conversation,
+            'WhatsApp',
+            'wa-msg-part-remote-1',
+            $team->id,
+        );
+
+        $this->assertCount(1, $records);
+        $ingestion = $records[0];
+        $this->assertSame('Filtro De Aceite', $ingestion->extracted_data['part']['description'] ?? null);
+        $this->assertSame('W 719/45', $ingestion->extracted_data['part']['code'] ?? null);
+        Http::assertSent(fn ($request): bool => $request->url() === 'https://wa.example.test/inbound-media/filtro.jpg');
     }
 }
