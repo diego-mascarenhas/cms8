@@ -161,12 +161,16 @@ class SiteAssistantPromptController extends Controller
 
         $validated = $request->validate([
             'prompt_key' => ['required', 'string', 'max:255'],
+            'select' => ['sometimes', 'boolean'],
         ]);
 
         try
         {
             $key = $catalog->apply($team, $validated['prompt_key']);
-            $siteAssistant->select($team->fresh(), $key);
+            if ($request->boolean('select', true))
+            {
+                $siteAssistant->select($team->fresh(), $key);
+            }
         } catch (InvalidArgumentException $e)
         {
             return response()->json([

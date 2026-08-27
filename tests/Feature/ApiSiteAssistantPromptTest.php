@@ -162,7 +162,7 @@ class ApiSiteAssistantPromptTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.selected_key', 'chat:citas_y_ventas');
+            ->assertJsonPath('data.selected_key', null);
 
         $option = collect($response->json('data.prompts'))->firstWhere('key', 'chat:citas_y_ventas');
         $this->assertIsArray($option);
@@ -176,7 +176,84 @@ class ApiSiteAssistantPromptTest extends TestCase
         $this->assertNotNull($prompt);
         $this->assertSame('Citas y tienda', $prompt->section_label);
         $this->assertSame('Reservá citas y mostrá el catálogo actualizado.', $prompt->prompt_instruction);
-        $this->assertSame('chat:citas_y_ventas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertNull($team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+    }
+
+    public function test_update_content_does_not_change_the_selected_site_prompt(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'citas_y_ventas',
+            'section_label' => 'Citas y ventas',
+            'prompt_instruction' => 'Citas y catálogo.',
+            'is_active' => true,
+            'order' => 0,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/assistant/site-prompt', [
+                'prompt_key' => TeamSiteAssistantPromptService::OFF_KEY,
+            ])
+            ->assertOk();
+
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'otro_flujo',
+            'section_label' => 'Otro flujo',
+            'prompt_instruction' => 'Texto viejo.',
+            'is_active' => true,
+            'order' => 1,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/assistant/site-prompt', [
+                'prompt_key' => 'chat:otro_flujo',
+                'section_label' => 'Otro flujo',
+                'prompt_instruction' => 'Texto nuevo.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.selected_key', TeamSiteAssistantPromptService::OFF_KEY);
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
+    }
+
+    public function test_from_catalog_can_copy_without_selecting(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/assistant/site-prompt', [
+                'prompt_key' => TeamSiteAssistantPromptService::OFF_KEY,
+            ])
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/assistant/site-prompt/from-catalog', [
+                'prompt_key' => 'calendar:assistant_citas',
+                'select' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.selected_key', TeamSiteAssistantPromptService::OFF_KEY);
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
+        $this->assertNotNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'assistant_citas')
+                ->first(),
+        );
     }
 
     public function test_update_content_requires_fields(): void

@@ -162,8 +162,6 @@ class TeamSiteAssistantPromptService
         $prompt->prompt_instruction = trim($instruction);
         $prompt->save();
 
-        $this->select($team, $this->routingKeyFor($prompt->load('module')));
-
         return $prompt;
     }
 

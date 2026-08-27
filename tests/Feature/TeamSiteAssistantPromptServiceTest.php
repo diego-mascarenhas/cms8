@@ -157,7 +157,33 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertNotNull($option);
         $this->assertSame('Agenda y tienda', $option['section_label']);
         $this->assertSame('Texto nuevo.', $option['prompt_instruction']);
-        $this->assertSame('chat:citas_y_ventas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertNull($team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+    }
+
+    public function test_update_content_does_not_change_the_selected_site_prompt(): void
+    {
+        $team = Team::factory()->create();
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+        $service = app(TeamSiteAssistantPromptService::class);
+        $service->select($team, TeamSiteAssistantPromptService::OFF_KEY);
+
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'otro_flujo',
+            'section_label' => 'Otro flujo',
+            'prompt_instruction' => 'Texto viejo.',
+            'is_active' => true,
+            'order' => 1,
+        ]);
+
+        $service->updateContent($team, 'chat:otro_flujo', 'Otro flujo', 'Texto nuevo.');
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
     }
 
     public function test_create_does_not_change_the_selected_site_prompt(): void
