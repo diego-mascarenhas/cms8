@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\AssistantCategoryAssignmentNote;
+use App\Helpers\AssistantSparePartNote;
 use App\Helpers\ShopCustomerPrices;
 use App\Helpers\WhatsAppCartPresenter;
 use App\Helpers\WhatsAppCartProductFinder;
@@ -879,14 +880,48 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     ]);
                 }
 
+                $part = AssistantSparePartNote::extractPartFromIngestions($ingestions);
+                $treatAsSparePartPhoto = $part !== null
+                    || AssistantSparePartNote::ingestionsAreUnclassifiedImages($ingestions);
+                if ($part !== null)
+                {
+                    if ($resolvedInboundTeamId !== null)
+                    {
+                        $part = $this->appendCatalogMatchToSparePart((int) $resolvedInboundTeamId, $part);
+                    }
+
+                    $this->persistInternalInboxNote(
+                        $cleanFrom,
+                        AssistantSparePartNote::inboxBody($part),
+                        ['source' => 'assistant_spare_part_ocr'],
+                        $cleanTo,
+                    );
+                } elseif ($treatAsSparePartPhoto)
+                {
+                    $this->persistInternalInboxNote(
+                        $cleanFrom,
+                        AssistantSparePartNote::unidentifiedInboxBody(
+                            AssistantSparePartNote::ocrTextFromIngestions($ingestions),
+                        ),
+                        ['source' => 'assistant_spare_part_ocr'],
+                        $cleanTo,
+                    );
+                }
+
                 if ($channel === 'whatsapp' && ! $this->shouldSkipLinkedPeerAutoReply($request, $cleanFrom) && $this->inboundAssistantMayAutoReply($cleanFrom, $cleanTo))
                 {
                     try
                     {
-                        $this->sendWhatsApp(
-                            $cleanFrom,
-                            $this->buildDocumentIngestionWhatsAppReply($ingestions),
-                        );
+                        if ($treatAsSparePartPhoto)
+                        {
+                            $this->sendWhatsApp($cleanFrom, AssistantSparePartNote::customerReply());
+                        } else
+                        {
+                            $this->sendWhatsApp(
+                                $cleanFrom,
+                                $this->buildDocumentIngestionWhatsAppReply($ingestions),
+                            );
+                        }
                     } catch (\Throwable $e)
                     {
                         Log::warning('Document ingestion acknowledgement send failed', [
@@ -1293,6 +1328,27 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         $replyResponse['tool_results'] = $toolResults;
                     }
 
+                    $serverCategoryApply = $assistantTeamId !== null
+                        ? app(\App\Services\Assistant\AssistantInboundCategoryAssignmentService::class)->tryApplyFromUserMessage(
+                            $contextUser,
+                            (int) $assistantTeamId,
+                            (string) $body,
+                            $forcedFlowRoutingKey,
+                            $contextContactId !== null ? (int) $contextContactId : null,
+                            $cleanFrom,
+                            $toolResults,
+                        )
+                        : null;
+
+                    if ($serverCategoryApply !== null)
+                    {
+                        foreach ($serverCategoryApply['tool_results'] as $categoryToolResult)
+                        {
+                            $toolResults[] = $categoryToolResult;
+                        }
+                        $replyResponse['tool_results'] = $toolResults;
+                    }
+
                     if ($replyResponse['success'] ?? false)
                     {
                         $aiMessage = $replyResponse['text'] ?? '';
@@ -1325,6 +1381,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                                 $cleanFrom,
                                 AssistantCategoryAssignmentNote::inboxBody($categoryNames),
                                 $customerMessage === '' ? $this->assistantReplyTokenMetadata($replyResponse) : null,
+                                $cleanTo,
                             );
                         }
 
@@ -3758,11 +3815,26 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
     /**
      * @param  array<string, mixed>|null  $metadata
      */
-    private function persistInternalInboxNote(string $to, string $body, ?array $metadata = null): void
+    private function persistInternalInboxNote(string $to, string $body, ?array $metadata = null, ?string $from = null): void
     {
         $cleanTo = preg_replace('/[^0-9]/', '', $to) ?? '';
-        $cleanFrom = preg_replace('/[^0-9]/', '', (string) ($this->config['whatsapp_from'] ?? $this->team?->getWhatsAppFrom() ?? '')) ?? '';
+        $cleanFrom = preg_replace('/[^0-9]/', '', (string) (
+            $from
+            ?: $this->team?->getWhatsAppFrom()
+            ?: ($this->config['whatsapp_from'] ?? '')
+        )) ?? '';
         if ($cleanTo === '' || trim($body) === '')
+        {
+            return;
+        }
+
+        $alreadyNoted = Conversation::query()
+            ->where('channel', 'whatsapp')
+            ->where('to', $cleanTo)
+            ->where('status', 'internal')
+            ->where('body', $body)
+            ->exists();
+        if ($alreadyNoted)
         {
             return;
         }
@@ -3776,11 +3848,44 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             'status' => 'internal',
             'direction' => 'outbound',
             'user_id' => null,
-            'metadata' => array_merge($metadata ?? [], [
+            'metadata' => array_merge([
                 'internal_only' => true,
                 'source' => 'assistant_category_assignment',
-            ]),
+            ], $metadata ?? []),
         ]);
+    }
+
+    /**
+     * @param  array{description?: string, code?: string, brand?: string, oem?: string}  $part
+     * @return array{description?: string, code?: string, brand?: string, oem?: string, catalog_name?: string}
+     */
+    private function appendCatalogMatchToSparePart(int $teamId, array $part): array
+    {
+        $needles = array_values(array_filter([
+            trim((string) ($part['code'] ?? '')),
+            trim((string) ($part['oem'] ?? '')),
+        ]));
+        if ($needles === [])
+        {
+            return $part;
+        }
+
+        $product = Product::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($needles)
+            {
+                $query->whereIn('code', $needles)
+                    ->orWhereIn('oem', $needles)
+                    ->orWhereIn('barcode', $needles);
+            })
+            ->first();
+
+        if ($product?->name)
+        {
+            $part['catalog_name'] = trim((string) $product->name);
+        }
+
+        return $part;
     }
 
     /**

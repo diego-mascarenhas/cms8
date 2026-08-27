@@ -388,6 +388,46 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('pagination.total', 0);
     }
 
+    public function test_product_code_is_unique_per_team(): void
+    {
+        [, , $token] = $this->adminWithShopModules();
+
+        $category = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/categories', ['name' => 'Ropa'])
+            ->assertCreated()
+            ->json('data');
+
+        $currencyId = Currency::query()->where('code', 'ARS')->value('id');
+        $this->assertNotNull($currencyId);
+
+        $shared = [
+            'price' => 12.5,
+            'currency_id' => $currencyId,
+            'category_id' => $category['id'],
+            'catalog_status' => 'publish',
+            'stock_status' => 'instock',
+            'manage_stock' => false,
+            'whatsapp_enabled' => true,
+        ];
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Camiseta A',
+                'code' => 'CAM-DUP-001',
+            ]))
+            ->assertCreated()
+            ->assertJsonPath('data.code', 'CAM-DUP-001');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/products', array_merge($shared, [
+                'name' => 'Camiseta B',
+                'code' => 'cam-dup-001',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['code'])
+            ->assertJsonPath('errors.code.0', __('The code has already been used in this team.'));
+    }
+
     public function test_product_barcode_is_unique_per_team(): void
     {
         [, , $token] = $this->adminWithShopModules();
