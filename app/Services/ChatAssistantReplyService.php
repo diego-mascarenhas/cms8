@@ -8,6 +8,7 @@ use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Prompt;
 use App\Models\User;
 use App\Services\Assistant\AssistantActorContextService;
+use App\Support\AssistantCustomerText;
 use App\Tools\AssistantTool;
 use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
@@ -273,13 +274,31 @@ class ChatAssistantReplyService
             $tools,
             $flowRoutedTo,
         );
-        if ($withTools && ($reply['success'] ?? false))
+        if ($reply['success'] ?? false)
         {
+            $rawText = (string) ($reply['text'] ?? '');
+            $committedFromText = AssistantCustomerText::parseCommittedPayload($rawText);
+            $reply['text'] = AssistantCustomerText::stripMachineMarkers($rawText);
             $committedKey = $this->routingKeyCommittedViaTools($reply['tool_results'] ?? []);
+            if ($committedKey === null && $teamId !== null && isset($committedFromText['routing_key']))
+            {
+                $committedKey = $this->canonicalCommittedRoutingKey(
+                    (string) $committedFromText['routing_key'],
+                    (int) $teamId,
+                );
+            }
             if ($committedKey !== null)
             {
                 $flowPersistSpecified = true;
                 $flowPersistKey = $committedKey;
+            }
+            if (trim((string) ($reply['text'] ?? '')) === '')
+            {
+                $reply['text'] = AssistantCustomerText::afterCommitFallback(
+                    $committedKey !== null
+                        ? ['routing_key' => $committedKey, 'label' => (string) ($committedFromText['label'] ?? '')]
+                        : $committedFromText,
+                );
             }
         }
 
@@ -622,6 +641,11 @@ EOT;
                 continue;
             }
 
+            if (str_starts_with($out, 'FLOW_COMMITTED:'))
+            {
+                continue;
+            }
+
             if ($customerOutput === '')
             {
                 $customerOutput = $out;
@@ -929,6 +953,7 @@ No team flow is locked to this thread yet (or the thread was reset).
 - Ask **one** short question in Spanish to confirm what the user needs, with options grounded in the list below (adapt labels to sound natural).
 - If they already stated intent clearly (e.g. pagar facturas, catálogo, agendar), **skip** the question: call **commit_assistant_flow** with the matching routing_key, then answer in that lane.
 - After you commit, keep helping in that same topic until they finish or explicitly want to change topic (use commit again or team reset phrases).
+- Never write FLOW_COMMITTED, JSON, or routing_keys in the user-visible message. Call the tool, then speak naturally.
 - Never invent routing_keys — only use keys from this list:
 
 {$keys}
@@ -983,6 +1008,21 @@ EOT;
         }
 
         return null;
+    }
+
+    private function canonicalCommittedRoutingKey(string $raw, int $teamId): ?string
+    {
+        $prompt = Prompt::findByRoutingKey(trim($raw), $teamId);
+        if (! $prompt || ! $prompt->is_active || $prompt->isGeneralRouter())
+        {
+            return null;
+        }
+
+        $prompt->loadMissing('module');
+
+        return $prompt->module
+            ? $prompt->module->key.':'.$prompt->section_key
+            : $prompt->section_key;
     }
 
     private function toolResultToString(mixed $item): string

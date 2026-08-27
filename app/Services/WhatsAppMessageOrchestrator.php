@@ -1409,6 +1409,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         {
                             $this->sendWhatsApp($cleanFrom, $customerMessage, $this->assistantReplyTokenMetadata($replyResponse));
                             $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $customerMessage, $replyResponse, $assistantTeamId);
+                            app(AgentConversationContextService::class)->persistCommittedFlowOnContact(
+                                $contextContactId !== null ? (int) $contextContactId : null,
+                                $replyResponse,
+                            );
 
                             Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($customerMessage, 100));
                             $this->maybeSendCollectionPaymentLinksFollowUp(

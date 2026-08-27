@@ -203,6 +203,11 @@ class AssistantPromptCatalogTest extends TestCase
         $this->assertStringContainsString('Análisis de la Estrategia', (string) $strategy->prompt_instruction);
         $this->assertStringContainsString('¿Te gustaría profundizar en alguno de estos puntos?', (string) $strategy->prompt_instruction);
         $this->assertStringContainsString('Mix Vasallo', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('chat:assistant_presupuesto', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('commit_assistant_flow', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('Nunca escribas FLOW_COMMITTED', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('Consultoría técnica o audit previo → HUMANO Labs, no IDONEO', (string) $strategy->prompt_instruction);
+        $this->assertStringContainsString('no escribas «Te recomiendo Mix Vasallo»', (string) $strategy->prompt_instruction);
         $this->assertStringContainsString('https://somosconga.com', (string) $strategy->prompt_instruction);
         $this->assertStringContainsString('https://globaltraffic.com', (string) $strategy->prompt_instruction);
     }

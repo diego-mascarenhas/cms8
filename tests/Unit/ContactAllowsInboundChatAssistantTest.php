@@ -54,4 +54,15 @@ class ContactAllowsInboundChatAssistantTest extends TestCase
 
         $this->assertSame('chat:citas_y_ventas', $contact->inboundChatAssistantPromptKey());
     }
+
+    public function test_pin_inbound_prompt_replaces_previous_key(): void
+    {
+        $contact = new Contact;
+        $contact->data = (object) ['chat_assistant_prompt_key' => 'contacts:landing'];
+
+        $contact->pinInboundChatAssistantPrompt('chat:assistant_presupuesto');
+
+        $this->assertSame('chat:assistant_presupuesto', $contact->inboundChatAssistantPromptKey());
+        $this->assertTrue($contact->allowsInboundChatAssistant());
+    }
 }

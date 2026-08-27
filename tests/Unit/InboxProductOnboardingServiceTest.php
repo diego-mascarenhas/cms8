@@ -27,7 +27,7 @@ class InboxProductOnboardingServiceTest extends TestCase
         $this->assertTrue($started['ok']);
         $this->assertCount(1, $started['messages']);
         $this->assertStringContainsString('Soy IDONEO, un artesano del software', $started['messages'][0]);
-        $this->assertStringContainsString('¿Les resuena centralizar', $started['messages'][0]);
+        $this->assertStringContainsString('¿Les cuesta centralizar', $started['messages'][0]);
         $this->assertLessThan(180, mb_strlen($started['messages'][0]));
         $this->assertStringNotContainsString('idoneo.dev/register', $started['messages'][0]);
 

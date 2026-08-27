@@ -34,6 +34,8 @@ class DefaultAssistantFlowPromptsServiceTest extends TestCase
             ->first();
         $this->assertNotNull($presupuesto);
         $this->assertSame('Pedido de presupuesto', $presupuesto->section_label);
+        $this->assertStringContainsString('Consultoría de negocio o técnica', (string) $presupuesto->prompt_instruction);
+        $this->assertStringContainsString('Nunca IDONEO', (string) $presupuesto->prompt_instruction);
 
         $catalogo = \App\Models\Prompt::withoutGlobalScope('team')
             ->forTeam((int) $team->id)

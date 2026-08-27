@@ -36,6 +36,7 @@ class HumanoLabsStudiosTest extends TestCase
             ['un sistema de innovacion tipo fanyion', 'innovation', 'https://fanyion.com'],
             ['necesitamos desarrollo de software a medida', 'development', 'https://idoneo.dev'],
             ['hay desorden y no logramos crecer', 'consulting', 'https://humano.app'],
+            ['hace falta consultoria tecnica y un audit previo', 'consulting', 'https://humano.app'],
         ];
     }
 
@@ -56,5 +57,28 @@ class HumanoLabsStudiosTest extends TestCase
         $studio = HumanoLabsStudios::match('hay desorden y tambien senaletica digital');
 
         $this->assertSame('signage', $studio['key'] ?? null);
+    }
+
+    public function test_imagen_and_sitio_web_involve_design_and_development(): void
+    {
+        $keys = array_column(
+            HumanoLabsStudios::matchAll('estoy buscando cambiar mi imagen y sitio web'),
+            'key',
+        );
+
+        $this->assertContains('design', $keys);
+        $this->assertContains('development', $keys);
+    }
+
+    public function test_development_handoff_uses_natural_language(): void
+    {
+        $studio = HumanoLabsStudios::match('necesitamos un sitio web');
+        $this->assertNotNull($studio);
+        $message = HumanoLabsStudios::handoffMessage($studio);
+
+        $this->assertStringContainsString('Eso es un sitio o software a medida: lo vemos en IDONEO.', $message);
+        $this->assertStringContainsString('https://idoneo.dev', $message);
+        $this->assertStringContainsString('¿Qué les gustaría cambiar?', $message);
+        $this->assertStringNotContainsString('Eso lo ve IDONEO', $message);
     }
 }

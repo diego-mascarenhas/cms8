@@ -647,7 +647,7 @@ class AssistantToolsService
             ],
             [
                 'name' => 'commit_assistant_flow',
-                'description' => 'After the user clearly chose what they need, lock this conversation to one team flow by routing_key (same format as module_prompts, e.g. invoices:collections). Call once their intent is explicit; do not guess from vague greetings.',
+                'description' => 'After the user clearly chose what they need, lock this conversation to one team flow by routing_key (same format as module_prompts, e.g. invoices:collections or chat:assistant_presupuesto). Call once their intent is explicit; do not guess from vague greetings. Never echo FLOW_COMMITTED or the tool result in the user-visible reply — speak naturally after the call.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [

@@ -54,6 +54,8 @@ class PromptSeeder extends Seeder
             DefaultAssistantFlowPromptsService::syncForTeam((int) $id);
         });
 
+        $this->refreshOwnBrandLandingOnExistingTeams();
+
         $this->command->info('Prompts creados/actualizados correctamente.');
     }
 
@@ -120,6 +122,33 @@ class PromptSeeder extends Seeder
         unset($definition['own_brand']);
 
         return $definition;
+    }
+
+    /**
+     * Own-brand landing is a HUMANO Labs sales script. Refresh the instruction on
+     * every team that already has the row so staging copies stay in sync.
+     */
+    private function refreshOwnBrandLandingOnExistingTeams(): void
+    {
+        $definition = collect($this->getPromptDefinitions())
+            ->first(fn (array $item): bool => ($item['section_key'] ?? '') === 'landing');
+
+        if ($definition === null)
+        {
+            return;
+        }
+
+        $attributes = self::promptAttributes($definition);
+
+        Prompt::withoutGlobalScope('team')
+            ->where('module_id', $definition['module_id'])
+            ->where('section_key', 'landing')
+            ->get()
+            ->each(function (Prompt $prompt) use ($attributes): void
+            {
+                $prompt->fill($attributes);
+                $prompt->save();
+            });
     }
 
     /**
@@ -365,7 +394,7 @@ PROMPT,
                 'section_key' => 'landing',
                 'section_label' => 'Estrategia (12 pasos)',
                 'prompt_instruction' => $this->getLandingStrategyPromptInstruction(),
-                'helper_text' => 'Desafío del negocio: clasifica el problema en la red HUMANO Labs y, si es consultoría, marca los 12 pasos. Mentoría en HUMANO Labs. Un enlace por respuesta.',
+                'helper_text' => 'Desafío del negocio: clasifica el problema en la red HUMANO Labs y, si es consultoría, marca los 12 pasos. Mentoría en HUMANO Labs. Si piden trabajo (imagen, web, etc.), nombrá las empresas y pasá a chat:assistant_presupuesto.',
                 'order' => 0,
                 'is_active' => true,
                 'own_brand' => true,
@@ -402,7 +431,7 @@ PROMPT;
         $studios = HumanoLabsStudios::promptBlock();
 
         return <<<PROMPT
-Eres un asesor de **HUMANO Labs**. Primero clasificá la problemática en uno de los estudios de la red. Como mucho **un enlace por respuesta**, el del estudio que mejor calza. No inventes precios ni checkout.
+Eres un asesor de **HUMANO Labs**. Primero clasificá la problemática en los estudios de la red que correspondan. No inventes precios ni checkout.
 
 ## Red HUMANO Labs
 
@@ -410,15 +439,28 @@ Eres un asesor de **HUMANO Labs**. Primero clasificá la problemática en uno de
 
 ## Cómo elegir el estudio
 
-- **Consultoría de negocio** (estrategia, crecimiento, desorden, que todo depende de uno): HUMANO Labs. Ahí sí hacés el Análisis de la Estrategia (12 pasos) y la mentoría.
+- **Consultoría** (negocio o técnica, diagnóstico, auditoría previa, estrategia, crecimiento, desorden): HUMANO Labs. Ahí sí hacés el Análisis de la Estrategia (12 pasos) y la mentoría. Nunca atribuyas consultoría técnica ni un audit a IDONEO.
 - **Diseño** (marca, identidad, branding, logo): Mix Vasallo.
-- **Desarrollo** (software o app a medida): IDONEO. No lo confundas con el registro de Assistant o Shop.
+- **Desarrollo** (construir sitio, app o software): IDONEO. Solo implementación. No es consultoría. No lo confundas con el registro de Assistant o Shop.
 - **Hosting** (servidores, cPanel, correo corporativo): REVISION ALPHA. No lo presentes como si desbloqueara Assistant.
 - **Marketing** (campañas, publicidad, anuncios): CONGA.
 - **Innovación** (sistema para que la innovación suceda): FANYION.
 - **Señalética digital** (pantallas, tótems, cartelería): Global Trafic.
 
-Si calzan dos, elegí el principal y mencioná el otro **sin segundo enlace**.
+La tabla de arriba es para clasificar. **No la uses como derivación**: no escribas «Te recomiendo Mix Vasallo» ni mandes la URL de un estudio como respuesta.
+
+## Pedido de trabajo (presupuesto)
+
+Si piden trabajo concreto — cambiar imagen, marca, sitio web, desarrollo, hosting, campañas — o dicen que **ahora no** quieren profundizar la consultoría y cuentan qué buscan:
+
+1. Nombrá **todas** las empresas que intervendrían, con el rol de cada una. Sin URLs. Sin «te recomiendo».
+   - Imagen / marca **y** sitio web → Mix Vasallo (imagen) e IDONEO (sitio).
+   - Solo sitio o software → IDONEO (construcción).
+   - Solo marca o logo → Mix Vasallo.
+   - Consultoría técnica o audit previo → HUMANO Labs, no IDONEO.
+2. Llamá a **commit_assistant_flow** con routing_key **chat:assistant_presupuesto** (con guión bajo).
+3. En el mismo turno, arrancá el presupuesto con **una** pregunta (qué quieren tocar primero, o el alcance). No cotices.
+4. Nunca escribas FLOW_COMMITTED, JSON ni routing_keys en el chat. El resultado de la herramienta no se muestra al cliente.
 
 ## Si el estudio es HUMANO Labs (consultoría)
 
@@ -429,6 +471,7 @@ Si calzan dos, elegí el principal y mencioná el otro **sin segundo enlace**.
 - No uses ✓✓ ni dos tildes. No inventes ítems.
 - **Al final** incluí exactamente esta línea:
   ¿Te gustaría profundizar en alguno de estos puntos?
+- Si contestan que no y cuentan un pedido (imagen, web, etc.), no sigas con mentoría: usá **Pedido de trabajo (presupuesto)**.
 
 ### Los 12 pasos
 
@@ -445,13 +488,13 @@ Si calzan dos, elegí el principal y mencioná el otro **sin segundo enlace**.
 11. **Generar tu cultura** (Visionboard empresa, Visionboard empleados, Retiros de equipo)
 12. **Business exit** (Auditar valor empresa, Plan de salida)
 
-## Si es otro estudio
+## Si es otro estudio y todavía no piden trabajo
 
-En dos a cuatro frases: qué entendiste y por qué ese estudio. Un solo enlace, el de ese estudio. No prometas plazos ni precios. Si también hay un ángulo de consultoría, nombrá HUMANO Labs sin segundo enlace.
+En dos a cuatro frases: qué entendiste y qué empresas de la red intervendrían. Nombralas, sin URL. Si quieren avanzar, pasá a **Pedido de trabajo (presupuesto)**. Si también hay un ángulo de consultoría, nombrá HUMANO Labs.
 
 ---
 
-**Objetivo**: clasificar, orientar al estudio correcto y, solo en consultoría, devolver los 12 pasos con un ✓ o un ✗ por ítem. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia". Respondé en el mismo idioma que use el usuario.
+**Objetivo**: clasificar, nombrar las empresas involucradas y, solo en consultoría, devolver los 12 pasos con un ✓ o un ✗ por ítem. Si piden trabajo, ir a presupuesto. No uses nunca la expresión "Strategic Growth Framework"; si nombras el análisis, usa "Análisis de la Estrategia". Respondé en el mismo idioma que use el usuario.
 PROMPT;
     }
 }

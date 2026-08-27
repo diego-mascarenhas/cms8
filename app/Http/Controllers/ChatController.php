@@ -2593,6 +2593,10 @@ class ChatController extends Controller
                 (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false),
                 $replyResponse['assistant_flow_routing_key'] ?? null,
             );
+            $contextService->persistCommittedFlowOnContact(
+                $request->filled('contact_id') ? (int) $request->input('contact_id') : null,
+                $replyResponse,
+            );
         }
 
         $payload = [

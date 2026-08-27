@@ -108,6 +108,29 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * Pin (or clear) the inbound WhatsApp prompt after the assistant commits a flow.
+     */
+    public function pinInboundChatAssistantPrompt(?string $routingKey): void
+    {
+        $data = $this->chatAssistantData();
+        $key = $routingKey !== null ? trim($routingKey) : '';
+        if ($key !== '')
+        {
+            $data['chat_assistant_prompt_key'] = $key;
+            $data['chat_assistant_ai_enabled'] = true;
+        } else
+        {
+            unset($data['chat_assistant_prompt_key']);
+        }
+
+        $this->data = (object) $data;
+        if ($this->exists)
+        {
+            $this->save();
+        }
+    }
+
+    /**
      * WhatsApp profile photo when we have one for this phone; otherwise generated initials.
      */
     public function avatarUrl(int $size = 100): string

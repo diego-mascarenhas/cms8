@@ -248,6 +248,29 @@ class AgentConversationContextService
         }
     }
 
+    /**
+     * When the model commits a flow, keep the contact pin in sync so the next
+     * inbound WhatsApp turn uses that prompt instead of a previous pin.
+     *
+     * @param  array<string, mixed>  $replyResponse
+     */
+    public function persistCommittedFlowOnContact(?int $contactId, array $replyResponse): void
+    {
+        if (! (bool) ($replyResponse['assistant_flow_routing_key_specified'] ?? false))
+        {
+            return;
+        }
+
+        $key = trim((string) ($replyResponse['assistant_flow_routing_key'] ?? ''));
+        if ($contactId === null || $contactId < 1 || $key === '')
+        {
+            return;
+        }
+
+        $contact = \App\Models\Contact::withoutGlobalScopes()->find($contactId);
+        $contact?->pinInboundChatAssistantPrompt($key);
+    }
+
     private function activeAssistantConversationQuery(int $userId, ?int $teamId = null): Builder
     {
         $teamId = $this->resolveTeamId($teamId);

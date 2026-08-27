@@ -95,4 +95,24 @@ class CommitAssistantFlowToolTest extends TestCase
 
         $this->assertStringStartsWith('Error:', $out);
     }
+
+    public function test_commit_assistant_flow_accepts_section_key_without_underscores(): void
+    {
+        $this->seed(\Database\Seeders\ModuleSeeder::class);
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        \App\Services\DefaultAssistantFlowPromptsService::syncForTeam((int) $team->id);
+
+        $agentUser = User::factory()->create();
+        $agentUser->teams()->attach($team->id, ['role' => 'admin']);
+        $agentUser->forceFill(['current_team_id' => $team->id])->save();
+
+        $tools = app(AssistantToolsService::class);
+        $tools->setRequestContext($agentUser->id, (int) $team->id, null);
+
+        $out = $tools->execute('commit_assistant_flow', ['routing_key' => 'chat:assistantpresupuesto']);
+
+        $this->assertStringStartsWith('FLOW_COMMITTED:', $out);
+        $this->assertStringContainsString('"routing_key":"chat:assistant_presupuesto"', $out);
+    }
 }

@@ -146,7 +146,7 @@ class InboxProductOnboardingService
             return $this->assistantMoreMessage();
         }
 
-        return '¿Les resuena lo de centralizar, o es más un tema del negocio?';
+        return '¿Les cuesta lo de centralizar, o es más un tema del negocio?';
     }
 
     /**
@@ -451,7 +451,7 @@ class InboxProductOnboardingService
         $first = $this->firstName($contact);
         $hello = $first !== '' ? 'Hola '.$first : 'Hola';
 
-        return $hello.'. Soy IDONEO, un artesano del software. ¿Les resuena centralizar, atender en equipo o un embudo con intención y emoción?';
+        return $hello.'. Soy IDONEO, un artesano del software. ¿Les cuesta centralizar, atender en equipo o tener un embudo con intención y emoción?';
     }
 
     private function assistantMoreMessage(): string
@@ -517,7 +517,7 @@ class InboxProductOnboardingService
     {
         if ($studio !== null && $studio['key'] !== 'consulting')
         {
-            return 'Eso lo ve '.$studio['name'].".\n".$studio['url']."\n\n¿Qué les gustaría cambiar?";
+            return HumanoLabsStudios::handoffMessage($studio);
         }
 
         return 'Contame el desafío: ¿qué les está trabando hoy?';

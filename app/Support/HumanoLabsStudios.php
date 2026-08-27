@@ -57,6 +57,7 @@ class HumanoLabsStudios
                     'logo',
                     'la marca',
                     'cambio de imagen',
+                    'cambiar mi imagen',
                     'imagen de marca',
                     'mix vasallo',
                     'mixvasallo',
@@ -97,6 +98,9 @@ class HumanoLabsStudios
                     'software a medida',
                     'app a medida',
                     'aplicacion a medida',
+                    'sitio web',
+                    'pagina web',
+                    'website',
                     'idoneo.dev',
                 ],
             ],
@@ -118,6 +122,9 @@ class HumanoLabsStudios
                     '12 pasos',
                     'problematica',
                     'consultoria',
+                    'consultoria tecnica',
+                    'auditoria',
+                    'audit previo',
                     'humano labs',
                     'depende de una',
                     'depende de uno',
@@ -146,6 +153,28 @@ class HumanoLabsStudios
         }
 
         return null;
+    }
+
+    /**
+     * @return list<array{key: string, area: string, name: string, url: string, keywords: list<string>}>
+     */
+    public static function matchAll(string $normalized): array
+    {
+        $hits = [];
+
+        foreach (self::all() as $studio)
+        {
+            foreach ($studio['keywords'] as $keyword)
+            {
+                if ($keyword !== '' && str_contains($normalized, $keyword))
+                {
+                    $hits[] = $studio;
+                    break;
+                }
+            }
+        }
+
+        return $hits;
     }
 
     public static function offerLine(): string
@@ -177,5 +206,24 @@ class HumanoLabsStudios
         }
 
         return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array{key: string, area: string, name: string, url: string, keywords: list<string>}  $studio
+     */
+    public static function handoffMessage(array $studio): string
+    {
+        $line = match ($studio['key'])
+        {
+            'design' => 'Eso es marca e identidad visual: lo vemos con '.$studio['name'].'.',
+            'development' => 'Eso es un sitio o software a medida: lo vemos en '.$studio['name'].'.',
+            'hosting' => 'Eso es infraestructura: lo vemos en '.$studio['name'].'.',
+            'marketing' => 'Eso es campañas y publicidad: lo vemos en '.$studio['name'].'.',
+            'innovation' => 'Eso es innovación de proceso: lo vemos en '.$studio['name'].'.',
+            'signage' => 'Eso es señalética digital: lo vemos en '.$studio['name'].'.',
+            default => 'Eso lo vemos en '.$studio['name'].'.',
+        };
+
+        return $line."\n".$studio['url']."\n\n¿Qué les gustaría cambiar?";
     }
 }
