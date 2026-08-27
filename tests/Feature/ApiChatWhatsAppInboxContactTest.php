@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\FetchWhatsAppProfilePhotoJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactSentimentHistory;
@@ -15,6 +16,7 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
@@ -187,6 +189,27 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $this->assertSame(self::CLIENT_PHONE, (string) $contact->phone);
         $this->assertSame($cliente->id, $contact->status_id);
         $this->assertEqualsCanonicalizing([$keep->id], $contact->categories->pluck('id')->all());
+    }
+
+    public function test_update_fetches_whatsapp_profile_photo(): void
+    {
+        Bus::fake();
+
+        [$token, , $team] = $this->inbox();
+        $this->crmContact($team, ['name' => 'Diego', 'surname' => 'Mascarenhas', 'status_id' => 1]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Diego Mascarenhas',
+                'status_id' => 1,
+            ])
+            ->assertOk();
+
+        Bus::assertDispatched(FetchWhatsAppProfilePhotoJob::class, function (FetchWhatsAppProfilePhotoJob $job) use ($team): bool
+        {
+            return $job->teamId === (int) $team->id && $job->phone === self::CLIENT_PHONE;
+        });
     }
 
     public function test_update_saves_clears_and_validates_email(): void

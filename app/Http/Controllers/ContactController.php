@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ContactDataTable;
 use App\Enums\MessageDeliverySendProfile;
 use App\Http\Requests\UpdateContactRequest;
+use App\Jobs\FetchWhatsAppProfilePhotoJob;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactIntent;
@@ -640,6 +641,7 @@ class ContactController extends Controller
 
         $contact = Contact::with(['user.roles', 'user.currentTeam.settings'])->findOrFail($id);
         $contact->update($contactData);
+        FetchWhatsAppProfilePhotoJob::dispatchForContact($contact->fresh() ?? $contact);
 
         // Sync enterprise relationship (many-to-many)
         if (isset($data['enterprise']['enterprise_id']))

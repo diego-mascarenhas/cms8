@@ -2,6 +2,7 @@
 
 namespace App\Services\WhatsApp;
 
+use App\Jobs\FetchWhatsAppProfilePhotoJob;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Team;
@@ -140,6 +141,7 @@ class WhatsAppInboxContactStarter
             $values['email'] = $this->normalizedEmail($email);
         }
         $contact->forceFill($values)->save();
+        FetchWhatsAppProfilePhotoJob::dispatchForContact($contact);
 
         $digits = self::normalizeInboxPhone((string) $contact->phone);
         $categories = app(WhatsAppThreadCategoryService::class)->replace($team, $contact, $categoryIds);

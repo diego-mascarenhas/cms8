@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Helpers\AvatarHelper;
+use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use App\Traits\HasSourceIcons;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -103,6 +105,27 @@ class Contact extends Model implements HasMedia
         $key = trim((string) $data['chat_assistant_prompt_key']);
 
         return $key !== '' ? $key : null;
+    }
+
+    /**
+     * WhatsApp profile photo when we have one for this phone; otherwise generated initials.
+     */
+    public function avatarUrl(int $size = 100): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', (string) ($this->phone ?? '')) ?? '';
+        $teamId = (int) ($this->team_id ?? 0);
+        if ($phone !== '' && $teamId > 0)
+        {
+            $url = app(WhatsAppProfilePhotoStore::class)->publicUrl($teamId, $phone);
+            if ($url !== null)
+            {
+                return $url;
+            }
+        }
+
+        $name = trim((string) $this->name.' '.(string) ($this->surname ?? ''));
+
+        return AvatarHelper::generate($name !== '' ? $name : 'Contacto', $size);
     }
 
     /**

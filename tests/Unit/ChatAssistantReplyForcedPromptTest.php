@@ -161,6 +161,7 @@ class ChatAssistantReplyForcedPromptTest extends TestCase
         $this->assertLessThan(16, count($service->lastToolNames));
         $this->assertStringContainsString('Vendé el catálogo real.', $service->lastInstructions);
         $this->assertStringContainsString('No vuelvas a listar el catálogo', $service->lastInstructions);
+        $this->assertStringContainsString('assign_contact_to_category', $service->lastInstructions);
         $this->assertStringNotContainsString('Importar en lote', $service->lastInstructions);
         $this->assertStringNotContainsString('Conversation flow (discovery mode)', $service->lastInstructions);
         $this->assertCount(2, $service->lastHistory);
