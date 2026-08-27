@@ -1,5 +1,6 @@
 @php
     $offKey = \App\Services\TeamSiteAssistantPromptService::OFF_KEY;
+    $forceOffKey = \App\Services\TeamSiteAssistantPromptService::FORCE_OFF_KEY;
     $selectedKey = $siteAssistantSelectedKey ?? '';
     $catalogItems = collect($siteAssistantCatalog ?? [])->flatMap(fn (array $group) => $group['items'] ?? []);
     $teamOptions = $siteAssistantPromptOptions ?? [];
@@ -14,6 +15,7 @@
         data-save-url="{{ route('chat.team-site-assistant-prompt') }}">
         <optgroup label="{{ __('team_settings.site_assistant.select_group_start') }}">
             <option value="{{ $offKey }}" @selected($selectedKey === $offKey)>{{ __('team_settings.site_assistant.select_off') }}</option>
+            <option value="{{ $forceOffKey }}" @selected($selectedKey === $forceOffKey)>{{ __('team_settings.site_assistant.select_off_all') }}</option>
             <option value="" @selected($selectedKey === '')>{{ __('team_settings.site_assistant.select_empty') }}</option>
         </optgroup>
         @if($catalogItems->isNotEmpty())

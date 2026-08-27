@@ -52,6 +52,7 @@ class TeamCreatedSeedsDefaultPromptsTest extends TestCase
         $this->assertContains('assistant_catalogo', $keys, 'Catalog flow missing for a fresh team.');
         $this->assertContains('assistant_embudo', $keys, 'Sales funnel flow missing for a fresh team.');
         $this->assertContains('assistant_citas', $keys, 'Calendar flow missing for a fresh team.');
+        $this->assertContains('assistant_presupuesto', $keys, 'Quote request flow missing for a fresh team.');
         $this->assertContains('assistant_tareas', $keys, 'Tasks flow missing for a fresh team.');
 
         $this->assertNotContains('wordpress', $keys);

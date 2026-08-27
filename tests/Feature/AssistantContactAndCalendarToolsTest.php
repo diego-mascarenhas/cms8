@@ -483,6 +483,7 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         ]);
 
         $this->assertStringContainsString('assigned to category: ESQUINA', $out);
+        $this->assertSame(['ESQUINA'], $service->pullInternalCategoryAssignments());
 
         $category = Category::withoutGlobalScopes()
             ->where('team_id', $user->currentTeam->id)
@@ -492,6 +493,67 @@ class AssistantContactAndCalendarToolsTest extends TestCase
         $this->assertNotNull($category);
         $this->assertSame('#6b8cae', $category->color);
         $this->assertTrue($contact->categories()->where('categories.id', $category->id)->exists());
+    }
+
+    public function test_assign_contact_to_category_uses_whatsapp_thread_contact_when_id_omitted(): void
+    {
+        $user = $this->createAdminWithTeam();
+        $this->ensureContactsModule();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Cliente VW',
+            'phone' => 5491100000001,
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext(null, (int) $user->currentTeam->id, '5491100000001');
+
+        $out = $service->execute('assign_contact_to_category', [
+            'category_name' => 'VW',
+            'color' => 'verde',
+        ]);
+
+        $this->assertStringContainsString('assigned to category: VW', $out);
+        $this->assertTrue($contact->categories()->where('categories.name', 'VW')->exists());
+    }
+
+    public function test_assign_contact_to_category_uses_context_contact_id_when_id_omitted(): void
+    {
+        $user = $this->createAdminWithTeam();
+        $this->ensureContactsModule();
+
+        $contact = Contact::factory()->create([
+            'team_id' => $user->currentTeam->id,
+            'creator_id' => $user->id,
+            'name' => 'Cliente ML',
+        ]);
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setRequestContext(null, (int) $user->currentTeam->id, '5491199988877', (int) $contact->id);
+
+        $out = $service->execute('assign_contact_to_category', [
+            'category_name' => 'ML',
+        ]);
+
+        $this->assertStringContainsString('assigned to category: ML', $out);
+        $this->assertTrue($contact->categories()->where('categories.name', 'ML')->exists());
+    }
+
+    public function test_assign_contact_to_category_without_thread_contact_requires_id(): void
+    {
+        $user = $this->createAdminWithTeam();
+        $this->ensureContactsModule();
+
+        $service = $this->assistantTools($user);
+        $out = $service->execute('assign_contact_to_category', [
+            'category_name' => 'ESQUINA',
+        ]);
+
+        $this->assertStringContainsString('contact_id is required', $out);
     }
 
     public function test_whatsapp_inbound_without_humano_user_can_create_a_calendar_event(): void

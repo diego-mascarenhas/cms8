@@ -110,13 +110,32 @@ class TeamSettingsSiteAssistantPromptTest extends TestCase
 
         $this->assertSame(TeamSiteAssistantPromptService::OFF_KEY, $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
         $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
-        $this->assertStringContainsString(
-            __('team_settings.site_assistant.select_off'),
-            $this->actingAs($user)
-                ->get(route('team-settings.edit', ['team' => $team, 'group' => 'chat']))
-                ->assertOk()
-                ->getContent(),
+        $html = $this->actingAs($user)
+            ->get(route('team-settings.edit', ['team' => $team, 'group' => 'chat']))
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString(__('team_settings.site_assistant.select_off'), $html);
+        $this->assertStringContainsString(__('team_settings.site_assistant.select_off_all'), $html);
+    }
+
+    public function test_owner_can_select_force_silent_default(): void
+    {
+        [$user, $team] = $this->actingTeamAdmin();
+        $this->createTeamPrompt($team);
+
+        $this->actingAs($user)
+            ->post(route('team-settings.chat.site-assistant-prompt', $team), [
+                'prompt_key' => TeamSiteAssistantPromptService::FORCE_OFF_KEY,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::FORCE_OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
         );
+        $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isForceSilent($team->fresh()));
+        $this->assertFalse(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
     }
 
     public function test_chat_settings_always_shows_cms8_embed_snippet(): void

@@ -19,13 +19,7 @@ $configData = Helper::appClasses();
     <!-- Reset Password -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
       <div class="w-px-400 mx-auto">
-        <!-- Logo -->
-        <div class="app-brand mb-4">
-          <a href="{{url('/')}}" class="app-brand-link">
-            @include('auth.partials.logo-full')
-          </a>
-        </div>
-        <!-- /Logo -->
+        @include('auth.partials.logo-full')
         <h3 class="mb-1">{{ __('auth.reset_password.heading') }}</h3>
         <form id="formAuthentication" class="mb-3" action="{{ route('password.update') }}" method="POST">
           @csrf

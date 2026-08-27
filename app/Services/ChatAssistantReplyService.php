@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Helpers\AssistantCategoryAssignmentNote;
 use App\Helpers\WhatsAppCartPresenter;
 use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Prompt;
@@ -63,7 +64,7 @@ class ChatAssistantReplyService
         $this->assistantTools->clearRequestContext();
         if ($withTools && $teamId !== null)
         {
-            $this->assistantTools->setRequestContext($contextUserId, $teamId, $contextCustomerPhone);
+            $this->assistantTools->setRequestContext($contextUserId, $teamId, $contextCustomerPhone, $contactId);
             if ($singleCustomerWhatsAppSendPerTurn)
             {
                 $this->assistantTools->setWhatsAppToolSingleCustomerSendPerTurn(true);
@@ -602,12 +603,42 @@ EOT;
     protected function fallbackTextFromToolOutputs(): string
     {
         $outputs = $this->assistantTools->getToolOutputsInRequest();
-        if ($outputs === [])
+        $assignmentNames = [];
+        $customerOutput = '';
+
+        for ($i = count($outputs) - 1; $i >= 0; $i--)
         {
-            return '';
+            $out = trim((string) $outputs[$i]);
+            if ($out === '')
+            {
+                continue;
+            }
+
+            $names = AssistantCategoryAssignmentNote::extractCategoryNames($out);
+            if ($names !== [])
+            {
+                $assignmentNames = array_merge($names, $assignmentNames);
+
+                continue;
+            }
+
+            if ($customerOutput === '')
+            {
+                $customerOutput = $out;
+            }
         }
 
-        return trim((string) end($outputs));
+        if ($customerOutput !== '')
+        {
+            return $customerOutput;
+        }
+
+        if ($assignmentNames !== [])
+        {
+            return AssistantCategoryAssignmentNote::inboxBody($assignmentNames);
+        }
+
+        return '';
     }
 
     /**
@@ -796,7 +827,8 @@ Las descripciones de cada herramienta dicen qué hace; esto es el orden en que h
 
 - **Nunca le pidas un ID al usuario.** Resolvelo con search_contacts, search_tasks, search_products, list_calendar_events, list_templates, list_messages o list_cms_content.
 - Buscar antes de crear: search_contacts antes de create_contact. Si no hay coincidencia, creá el contacto **solo con el nombre**; email y teléfono son opcionales y no los pidas antes de intentarlo. Si create_contact responde que ya existe, usá ese id.
-- Interacciones y categorías de un contacto: resolvé la persona primero, después create_contact_interaction o assign_contact_to_category con el contact_id.
+- Interacciones y categorías de un contacto: resolvé la persona primero, después create_contact_interaction o assign_contact_to_category con el contact_id. En WhatsApp, assign_contact_to_category puede ir sin contact_id: usa a la persona de este chat.
+- Si el flujo del equipo pide etiquetar (assign_contact_to_category), hacelo en este mismo turno aunque el cliente no lo haya pedido. No le nombres la etiqueta ni copies el resultado de la herramienta.
 - Agenda: check_calendar_availability antes de confirmar un hueco. El evento incluye a **quien la pide**, no solo al agente: guest_contact_ids. Si esa persona no tiene email, pedilo y update_contact antes de crear (la invitación va por email). Preguntá si quieren sumar a más gente; para cada extra pedí nombre, apellido y email, create_contact si no existen, y agregalos a guest_contact_ids. Recién entonces create_calendar_event o update_calendar_event. Si falta la fecha o la hora, pedilas en un mensaje corto (1 hora de duración si no dicen fin). El sí/no del usuario vale **solo para tu última pregunta**: si preguntaste extras («¿ubicación, notas, alguien más?») y dice no / no gracias, **creá la cita igual** en ese turno; no está rechazando el alta. Si preguntaste «¿agendo?» o «¿cancelo?» y dice no, no llames create_calendar_event.
 - Plantillas: modificar no es crear. create_template solo si piden una nueva. Para renombrar o activar, list_templates y después update_template o update_template_status. Para cambios de diseño o contenido, pasales el enlace del editor.
 - Campañas (News): create_message solo cuando tengas asunto, destinatarios y texto. Los destinatarios son **dos filtros independientes**: categoría de contactos (list_contact_categories) y estado del contacto en el CRM (list_contact_statuses, nombres exactos en contact_status_name), o todos los contactos sin filtro. Si falta algo, preguntalo en un solo mensaje. Para cambiar una campaña existente usá list_messages y update_message, nunca create_message otra vez: duplicaría.
@@ -806,7 +838,7 @@ Las descripciones de cada herramienta dicen qué hace; esto es el orden en que h
 
 ## 5. Alcance de este turno
 
-- Ejecutá herramientas solo para lo que pide el **mensaje actual**. No arrastres acciones pendientes de turnos anteriores (si este mensaje solo agrega el contacto B, no crees además la tarea del contacto A).
+- Ejecutá herramientas solo para lo que pide el **mensaje actual**, salvo etiquetas internas del flujo del equipo (assign_contact_to_category). No arrastres acciones pendientes de turnos anteriores (si este mensaje solo agrega el contacto B, no crees además la tarea del contacto A).
 - El historial es contexto, no una cola de tareas. Sin una confirmación clara o un pedido explícito en **este** mensaje, no ejecutes nada de otros temas.
 - Un «no» no cancela una acción ya acordada si tu última pregunta era opcional (agregar nota, otro invitado, «¿algo más?»). Eso significa seguir **sin** ese extra.
 - Al confirmar, mencioná solo las herramientas que salieron bien en **este** mensaje. Nunca mezcles resultados de un pedido anterior.
@@ -858,6 +890,7 @@ Precios, stock y productos salen solo de las herramientas de este turno. Si no e
 2. **Agregar**: «sí», «dale», «ok», «quiero», «agregalo» → **add_to_whatsapp_cart** en este turno. Si no nombra el producto, usá el último que mostraste.
 3. **Cerrar**: proponé **finalizar**. Si confirman o ya dijeron retiro/envío/pago, **confirm_whatsapp_order** en este turno (interpretá; no repreguntés). Si falta un dato, una sola pregunta corta. Sin número de orden no hay pedido.
 4. **Tienda**: horarios, pagos, entrega y notas → **get_store_info** en este turno. No digas que no está en el sistema.
+5. **Etiquetas**: si el flujo del equipo pide assign_contact_to_category, llamala en este turno aunque el cliente no lo pida. En WhatsApp podés omitir contact_id (es la persona de este chat). No le nombres la etiqueta ni copies el resultado de la herramienta.
 EOT;
     }
 

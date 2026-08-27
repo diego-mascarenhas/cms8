@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Helpers\AssistantCategoryAssignmentNote;
+use App\Helpers\ShopCustomerPrices;
 use App\Helpers\WhatsAppCartPresenter;
 use App\Helpers\WhatsAppCartProductFinder;
 use App\Helpers\WhatsAppCartSessionKey;
@@ -911,7 +913,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 'body_preview' => mb_substr((string) $body, 0, 120),
             ]);
 
-            if ($channel === 'whatsapp' && $this->team)
+            $contactTeamId = $resolvedInboundTeamId ?? $this->team?->id;
+            if ($channel === 'whatsapp' && $contactTeamId !== null && (int) $contactTeamId > 0)
             {
                 $waProfileName = $request->input('WaProfileName');
                 $waProfileName = is_string($waProfileName) ? $waProfileName : null;
@@ -920,9 +923,9 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                     $fallbackProfile = $request->input('ProfileName');
                     $waProfileName = is_string($fallbackProfile) && $fallbackProfile !== '' ? $fallbackProfile : null;
                 }
-                app(UserResolverService::class)->linkPhoneToContactInTeam($this->team->id, $cleanFrom, $waProfileName);
+                app(UserResolverService::class)->linkPhoneToContactInTeam((int) $contactTeamId, $cleanFrom, $waProfileName);
 
-                $teamId = (int) $this->team->id;
+                $teamId = (int) $contactTeamId;
                 $sheetUser = app(UserResolverService::class)->resolveUserForConversation($cleanFrom, null, $teamId);
                 $sheetReply = app(WhatsAppInvoiceSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
                     ?? app(WhatsAppContactSheetImportService::class)->tryHandle((string) $body, $sheetUser, $teamId)
@@ -1098,6 +1101,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                         ->sortBy('created_at')
                         ->values()
                         ->toArray();
+                    $history = $this->rejectInternalOnlyHistory($history);
 
                     $replyService = app(\App\Services\ChatAssistantReplyService::class);
                     $assistantTeamId = Team::resolveInboundWebhookTeamId($this->team?->id, $cleanTo);
@@ -1308,20 +1312,42 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                                 ->applyContactOnlyReplyIfApplicable((string) $body, $toolResults, (string) $aiMessage);
                         }
 
-                        if (trim((string) $aiMessage) !== '')
-                        {
-                            $this->sendWhatsApp($cleanFrom, $aiMessage, $this->assistantReplyTokenMetadata($replyResponse));
-                            $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $aiMessage, $replyResponse, $assistantTeamId);
+                        $categoryNames = array_values(array_unique(array_merge(
+                            app(AssistantToolsService::class)->pullInternalCategoryAssignments(),
+                            AssistantCategoryAssignmentNote::extractCategoryNames((string) $aiMessage),
+                            AssistantCategoryAssignmentNote::extractCategoryNamesFromToolResults($toolResults),
+                        )));
+                        $customerMessage = AssistantCategoryAssignmentNote::stripFromCustomerText((string) $aiMessage);
 
-                            Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($aiMessage, 100));
+                        if ($categoryNames !== [])
+                        {
+                            $this->persistInternalInboxNote(
+                                $cleanFrom,
+                                AssistantCategoryAssignmentNote::inboxBody($categoryNames),
+                                $customerMessage === '' ? $this->assistantReplyTokenMetadata($replyResponse) : null,
+                            );
+                        }
+
+                        if (trim($customerMessage) !== '')
+                        {
+                            $this->sendWhatsApp($cleanFrom, $customerMessage, $this->assistantReplyTokenMetadata($replyResponse));
+                            $this->persistWhatsAppExchangeToAgentContext($cleanFrom, $body, $customerMessage, $replyResponse, $assistantTeamId);
+
+                            Log::info("Auto AI response sent to {$cleanFrom}: ".\Illuminate\Support\Str::limit($customerMessage, 100));
                             $this->maybeSendCollectionPaymentLinksFollowUp(
                                 $cleanFrom,
                                 $assistantTeamId,
                                 $contextContactId !== null ? (int) $contextContactId : null,
                                 $forcedFlowRoutingKey,
                                 (string) $body,
-                                (string) $aiMessage,
+                                $customerMessage,
                             );
+                        } elseif ($categoryNames !== [])
+                        {
+                            Log::info('Auto AI tagged contact without customer reply', [
+                                'from' => $cleanFrom,
+                                'categories' => $categoryNames,
+                            ]);
                         } else
                         {
                             $this->sendWhatsApp($cleanFrom, 'Recibi tu mensaje, pero no pude generar respuesta en este intento. Enviamelo de nuevo por favor.');
@@ -3109,7 +3135,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 : "Quitamos *{$toRemove}* de *{$item->name}* (quedan *{$newQty}*).";
 
             $response = "✅ {$removedPhrase}\n\n";
-            $response .= '🛒 **Total del carrito**: '.$currency.number_format($this->shoppingCarts()->total($cart), 2)."\n";
+            if (ShopCustomerPrices::cartShows((int) $teamId, $this->shoppingCarts()->linesOrEmpty($cart)))
+            {
+                $response .= '🛒 **Total del carrito**: '.$currency.number_format($this->shoppingCarts()->total($cart), 2)."\n";
+            }
             $response .= '📦 **Ítems**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
             $response .= "**Opciones:**\n";
             $response .= "• Escribí *carrito* para ver todos tus productos\n";
@@ -3172,10 +3201,19 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 : "**{$product->name}** agregado al carrito";
 
             $response = "✅ {$addedPhrase}\n\n";
-            $response .= "💰 **Precio unitario**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
+            if (ShopCustomerPrices::productShows($product))
+            {
+                $response .= "💰 **Precio unitario**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
+            }
             $response .= "📦 **Cantidad en carrito**: {$quantity}\n";
             $response .= '🏷️ **Categoría**: '.($product->category?->name ?? 'General')."\n\n";
-            $response .= "🛒 **Total del carrito**: {$currency}".number_format($this->shoppingCarts()->total($cart), 2)."\n\n";
+            if (ShopCustomerPrices::productShows($product))
+            {
+                $response .= "🛒 **Total del carrito**: {$currency}".number_format($this->shoppingCarts()->total($cart), 2)."\n\n";
+            } else
+            {
+                $response .= "\n";
+            }
             $response .= "**Opciones:**\n";
             $response .= "• Escribí *carrito* para ver todos tus productos\n";
             $response .= "• *Comprar* más el producto, o *agregar* la cantidad y el producto para sumar más\n";
@@ -3286,15 +3324,20 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             $total = $this->shoppingCarts()->total($cart);
+            $showPrices = ShopCustomerPrices::cartShows((int) $teamId, $cartItems);
 
             $response = "🛒 **Resumen de tu compra**\n\n";
 
             foreach ($cartItems as $item)
             {
-                $response .= "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n";
+                $response .= $showPrices
+                    ? "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n"
+                    : "• {$item->name} x{$item->quantity}\n";
             }
 
-            $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
+            $response .= $showPrices
+                ? "\n💰 **TOTAL: \$".number_format($total, 2)."**\n"
+                : "\n";
             $response .= '📦 **Items**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
 
             $checkoutStore = $this->resolveStoreForWhatsAppCart($teamId, $cartItems);
@@ -3376,15 +3419,21 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return ['success' => false, 'message' => 'Order create failed'];
             }
 
+            $showPrices = ShopCustomerPrices::storeShows($checkoutStore);
+
             $response = "✅ **¡Compra confirmada!**\n\n";
             $response .= "📋 **Resumen del pedido:**\n";
 
             foreach ($cartItems as $item)
             {
-                $response .= "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n";
+                $response .= $showPrices
+                    ? "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n"
+                    : "• {$item->name} x{$item->quantity}\n";
             }
 
-            $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
+            $response .= $showPrices
+                ? "\n💰 **TOTAL: \$".number_format($total, 2)."**\n"
+                : "\n";
             $response .= '📦 **Items**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
 
             $response .= "🧾 **Tu pedido quedó registrado**\n";
@@ -3683,10 +3732,65 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
      * @param  array<int, array<string, mixed>>  $rows
      * @return array<int, array{direction: string, body: string}>
      */
+    /**
+     * @param  array<int, array<string, mixed>>  $history
+     * @return array<int, array<string, mixed>>
+     */
+    private function rejectInternalOnlyHistory(array $history): array
+    {
+        return array_values(array_filter($history, function ($row): bool
+        {
+            $meta = $row['metadata'] ?? [];
+            if (is_string($meta))
+            {
+                $decoded = json_decode($meta, true);
+                $meta = is_array($decoded) ? $decoded : [];
+            }
+            if (! is_array($meta))
+            {
+                return true;
+            }
+
+            return empty($meta['internal_only']);
+        }));
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $metadata
+     */
+    private function persistInternalInboxNote(string $to, string $body, ?array $metadata = null): void
+    {
+        $cleanTo = preg_replace('/[^0-9]/', '', $to) ?? '';
+        $cleanFrom = preg_replace('/[^0-9]/', '', (string) ($this->config['whatsapp_from'] ?? $this->team?->getWhatsAppFrom() ?? '')) ?? '';
+        if ($cleanTo === '' || trim($body) === '')
+        {
+            return;
+        }
+
+        Conversation::create([
+            'message_sid' => 'wa_internal_'.uniqid('', true),
+            'channel' => 'whatsapp',
+            'from' => $cleanFrom,
+            'to' => $cleanTo,
+            'body' => $body,
+            'status' => 'internal',
+            'direction' => 'outbound',
+            'user_id' => null,
+            'metadata' => array_merge($metadata ?? [], [
+                'internal_only' => true,
+                'source' => 'assistant_category_assignment',
+            ]),
+        ]);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return list<array{direction: string, body: string}>
+     */
     private function conversationRowsToPromptHistory(array $rows): array
     {
         $out = [];
-        foreach ($rows as $row)
+        foreach ($this->rejectInternalOnlyHistory($rows) as $row)
         {
             $direction = ($row['direction'] ?? '') === 'inbound' ? 'inbound' : 'outbound';
             $body = trim((string) ($row['body'] ?? ''));

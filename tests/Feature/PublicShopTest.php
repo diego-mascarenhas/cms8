@@ -9,6 +9,7 @@ use App\Models\Currency;
 use App\Models\Module;
 use App\Models\Product;
 use App\Models\ShoppingCart;
+use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -174,6 +175,30 @@ class PublicShopTest extends TestCase
             ->assertSet('cart.'.((string) $product->id), 1)
             ->call('checkoutWhatsApp')
             ->assertRedirect();
+    }
+
+    public function test_checkout_whatsapp_omits_prices_when_store_hides_them(): void
+    {
+        $team = $this->makeShopTeam();
+        Store::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Principal',
+            'code' => 'MAIN',
+            'status' => true,
+            'is_main' => true,
+            'data' => ['show_prices' => false],
+        ]);
+        $slug = $this->publicShopDomainForTeam($team);
+        $product = Product::withoutGlobalScope('team')->where('team_id', $team->id)->firstOrFail();
+
+        $component = Livewire::test(ShoppingAssistant::class, ['slug' => $slug])
+            ->call('addToCart', (int) $product->id);
+        $component->call('checkoutWhatsApp')->assertRedirect();
+
+        $target = (string) ($component->effects['redirect'] ?? '');
+        $this->assertStringContainsString('wa.me', $target);
+        $this->assertStringContainsString('Alpha', urldecode($target));
+        $this->assertStringNotContainsString('10', urldecode($target));
     }
 
     public function test_cart_persists_to_shopping_carts_table(): void

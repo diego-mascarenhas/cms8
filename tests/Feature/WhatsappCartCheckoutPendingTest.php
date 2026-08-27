@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Currency;
 use App\Models\Product;
+use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ShoppingCartService;
 use App\Services\WhatsAppMessageOrchestrator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -241,5 +243,70 @@ class WhatsappCartCheckoutPendingTest extends TestCase
         $this->assertStringContainsString('qué buscás', mb_strtolower((string) $service->sent));
         $this->assertStringNotContainsString('Pastilla secreto 1', (string) $service->sent);
         $this->assertNull($service->processProductCommands('+5491199900099', 'Quiero un pedido urgente'));
+    }
+
+    public function test_checkout_confirmation_omits_prices_when_store_hides_them(): void
+    {
+        $owner = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $store = Store::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'name' => 'Principal',
+            'code' => 'MAIN',
+            'status' => true,
+            'is_main' => true,
+            'data' => ['show_prices' => false],
+        ]);
+        $currencyId = Currency::query()->firstOrCreate(
+            ['code' => 'ARS'],
+            ['name' => 'Peso argentino', 'symbol' => '$', 'status' => true],
+        )->id;
+        $category = Category::withoutGlobalScopes()->create([
+            'name' => 'Encendido',
+            'module_id' => null,
+            'team_id' => $team->id,
+            'parent_id' => null,
+            'status' => true,
+            'order' => 0,
+        ]);
+        $product = Product::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'store_id' => $store->id,
+            'name' => 'Bujía de iridio',
+            'code' => 'ENC-030',
+            'description' => 'Spark',
+            'price' => 77.77,
+            'currency_id' => $currencyId,
+            'category_id' => $category->id,
+            'status' => true,
+            'whatsapp_enabled' => true,
+        ]);
+
+        $phone = '+5491100000001';
+        $carts = app(ShoppingCartService::class);
+        $carts->addProduct($carts->forWhatsApp((int) $team->id, $phone), $product, 1);
+
+        $service = new class($team) extends WhatsAppMessageOrchestrator
+        {
+            public string $lastMessage = '';
+
+            public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
+            {
+                $this->lastMessage = (string) $message;
+
+                return ['success' => true];
+            }
+        };
+
+        $service->processCartCommands($phone, 'finalizar');
+        $this->assertStringContainsString('Bujía de iridio', $service->lastMessage);
+        $this->assertStringNotContainsString('77.77', $service->lastMessage);
+        $this->assertStringNotContainsString('TOTAL', $service->lastMessage);
+
+        $service->processCartCommands($phone, 'SÍ');
+        $this->assertStringContainsString('confirmada', mb_strtolower($service->lastMessage));
+        $this->assertStringContainsString('Bujía de iridio', $service->lastMessage);
+        $this->assertStringNotContainsString('77.77', $service->lastMessage);
+        $this->assertStringNotContainsString('TOTAL', $service->lastMessage);
     }
 }

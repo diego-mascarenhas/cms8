@@ -205,7 +205,7 @@ class AssistantCommercialStatsService
     private function aiConversions(Team $team, Collection $contacts): array
     {
         $teamDefault = $this->siteAssistant->selectedRoutingKey($team);
-        $off = $teamDefault === TeamSiteAssistantPromptService::OFF_KEY;
+        $off = TeamSiteAssistantPromptService::isReservedOffKey($teamDefault);
 
         $groups = [];
         foreach ($contacts as $contact)

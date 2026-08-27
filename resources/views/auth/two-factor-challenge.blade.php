@@ -19,13 +19,7 @@ $configData = Helper::appClasses();
     <!-- Two Steps Verification -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-4 p-sm-5">
       <div class="w-px-400 mx-auto">
-        <!-- Logo -->
-        <div class="app-brand mb-4">
-          <a href="{{url('/')}}" class="app-brand-link">
-            @include('auth.partials.logo-full')
-          </a>
-        </div>
-        <!-- /Logo -->
+        @include('auth.partials.logo-full')
         <h3 class="mb-1">{{ __('auth.two_factor.heading') }}</h3>
         <div x-data="{ recovery: false }">
           <div class="mb-3" x-show="! recovery">

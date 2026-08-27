@@ -22,6 +22,9 @@
                         <option value="{{ \App\Services\TeamSiteAssistantPromptService::OFF_KEY }}" @selected(($siteAssistantSelectedKey ?? '') === \App\Services\TeamSiteAssistantPromptService::OFF_KEY)>
                             {{ __('team_settings.site_assistant.select_off') }}
                         </option>
+                        <option value="{{ \App\Services\TeamSiteAssistantPromptService::FORCE_OFF_KEY }}" @selected(($siteAssistantSelectedKey ?? '') === \App\Services\TeamSiteAssistantPromptService::FORCE_OFF_KEY)>
+                            {{ __('team_settings.site_assistant.select_off_all') }}
+                        </option>
                         <option value="" @selected(($siteAssistantSelectedKey ?? '') === '')>{{ __('team_settings.site_assistant.select_empty') }}</option>
                         @foreach($siteAssistantPromptOptions as $option)
                             <option value="{{ $option['key'] }}" @selected(($siteAssistantSelectedKey ?? '') === $option['key'])>

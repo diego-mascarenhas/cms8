@@ -42,10 +42,32 @@ class AssistantPromptCatalogTest extends TestCase
 
         $keys = collect($catalog->items())->pluck('key');
         $this->assertTrue($keys->contains('calendar:assistant_citas'));
+        $this->assertFalse($keys->contains('chat:citas_y_ventas'));
+        $this->assertTrue($keys->contains('chat:assistant_presupuesto'));
         $this->assertTrue($keys->contains('products:assistant_catalogo'));
+        $this->assertSame(
+            'Venta desde la tienda',
+            collect($catalog->items())->firstWhere('key', 'products:assistant_catalogo')['section_label'] ?? null,
+        );
         $this->assertTrue($keys->contains('products:assistant_embudo'));
+        $this->assertSame(
+            'Embudo comercial',
+            collect($catalog->items())->firstWhere('key', 'products:assistant_embudo')['section_label'] ?? null,
+        );
         $this->assertTrue($keys->contains('invoices:collections'));
         $this->assertTrue($keys->contains('communications:assistant_campanas'));
+        $this->assertSame(
+            'Tareas y equipo',
+            collect($catalog->items())->firstWhere('key', 'tasks:assistant_tareas')['section_label'] ?? null,
+        );
+        $this->assertSame(
+            'Contactos y categorías',
+            collect($catalog->items())->firstWhere('key', 'contacts:assistant_contactos')['section_label'] ?? null,
+        );
+        $this->assertSame(
+            'Campañas y News',
+            collect($catalog->items())->firstWhere('key', 'communications:assistant_campanas')['section_label'] ?? null,
+        );
         $this->assertTrue($keys->contains('products:humano_assistant'));
         $this->assertTrue($keys->contains('products:pumpstall'));
         $this->assertFalse($keys->contains('chat:mi-flujo-demo'));
@@ -121,7 +143,7 @@ class AssistantPromptCatalogTest extends TestCase
 
         $this->assertSame('documentation:assistant_citas', $catalog->apply($team, 'documentation:assistant_citas'));
         $this->assertStringContainsString('create_calendar_event', (string) $prompt->fresh()->prompt_instruction);
-        $this->assertSame('Asistente: citas y calendario', $prompt->fresh()->section_label);
+        $this->assertSame('Agendar una cita', $prompt->fresh()->section_label);
     }
 
     public function test_apply_rejects_own_brand_for_a_regular_team(): void

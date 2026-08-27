@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ContactInteractionType;
 use App\Enums\ProductCatalogStatus;
+use App\Helpers\ShopCustomerPrices;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppLastOfferedProduct;
 use App\Helpers\WhatsAppOutboundText;
@@ -60,6 +61,9 @@ class AssistantToolsService
     /** Digits-only WhatsApp number of the customer (inbound thread), for cart session. */
     protected ?string $contextCustomerPhone = null;
 
+    /** CRM contact of the current WhatsApp/web thread, when already resolved. */
+    protected ?int $contextContactId = null;
+
     /**
      * When true, only the first {@see sendWhatsAppMessage()} in this request actually sends; further calls are no-ops
      * (stops duplicate customer messages when the model calls the tool twice, e.g. opening + meta confirmation).
@@ -89,6 +93,13 @@ class AssistantToolsService
      * @var list<string>
      */
     protected array $toolOutputsInRequest = [];
+
+    /**
+     * Category names assigned this request (inbox-only; never sent to the customer).
+     *
+     * @var list<string>
+     */
+    protected array $internalCategoryAssignments = [];
 
     /**
      * @var array{used_toon: bool, json_size: int, toon_size: int, json_tokens: int, toon_tokens: int, savings_percentage: float, tokens_saved: int}
@@ -128,12 +139,14 @@ class AssistantToolsService
         $this->contextUserId = null;
         $this->contextTeamId = null;
         $this->contextCustomerPhone = null;
+        $this->contextContactId = null;
         $this->whatsappToolSingleCustomerSendPerTurn = false;
         $this->whatsappToolSendCount = 0;
         $this->whatsAppGatewayOverride = null;
         $this->recentContactIdsInRequest = [];
         $this->executedToolsInRequest = [];
         $this->toolOutputsInRequest = [];
+        $this->internalCategoryAssignments = [];
         $this->toonMetrics = ToonPayloadService::emptyMetrics();
     }
 
@@ -171,6 +184,17 @@ class AssistantToolsService
         return $this->toolOutputsInRequest;
     }
 
+    /**
+     * @return list<string>
+     */
+    public function pullInternalCategoryAssignments(): array
+    {
+        $names = $this->internalCategoryAssignments;
+        $this->internalCategoryAssignments = [];
+
+        return $names;
+    }
+
     private function recordExecutedTool(string $name): void
     {
         if (! in_array($name, $this->executedToolsInRequest, true))
@@ -182,14 +206,16 @@ class AssistantToolsService
     /**
      * Set user and team context for tool execution when not in an HTTP auth context (e.g. WhatsApp webhook).
      * Optional customer phone (digits) links add_to_whatsapp_cart to the correct Cart session.
+     * Optional contact id is the person in this thread (used when the model omits contact_id).
      */
-    public function setRequestContext(?int $userId, ?int $teamId, ?string $customerPhoneDigits = null): void
+    public function setRequestContext(?int $userId, ?int $teamId, ?string $customerPhoneDigits = null, ?int $contactId = null): void
     {
         $this->contextUserId = $userId;
         $this->contextTeamId = $teamId;
         $this->contextCustomerPhone = $customerPhoneDigits !== null && $customerPhoneDigits !== ''
             ? WhatsAppCartSessionKey::fromPhone($customerPhoneDigits)
             : null;
+        $this->contextContactId = $contactId !== null && $contactId > 0 ? $contactId : null;
     }
 
     /**
@@ -373,15 +399,15 @@ class AssistantToolsService
             ],
             [
                 'name' => 'assign_contact_to_category',
-                'description' => 'Assign an existing contact to a category (adds the category without removing others). The category is created if it does not exist. Use when a routing rule matches (brand, Mercado Libre, etc.). Optional color when creating the tag.',
+                'description' => 'Assign a contact to a category (adds the category without removing others). The category is created if it does not exist. Use when a team-flow routing rule matches (brand, Mercado Libre, etc.), even if the customer did not ask to be tagged. On WhatsApp, omit contact_id to tag the person in this chat. Optional color when creating the tag.',
                 'input_schema' => [
                     'type' => 'object',
                     'properties' => [
-                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID'],
+                        'contact_id' => ['type' => 'integer', 'description' => 'Contact ID. Optional on WhatsApp: defaults to the person in this chat.'],
                         'category_name' => ['type' => 'string', 'description' => 'Category name (created if missing)'],
                         'color' => ['type' => 'string', 'description' => 'Optional tag color when creating: hex #RRGGBB or azul, verde, amarillo'],
                     ],
-                    'required' => ['contact_id', 'category_name'],
+                    'required' => ['category_name'],
                 ],
             ],
             [
@@ -1398,12 +1424,17 @@ class AssistantToolsService
 
     private function assignContactToCategory(int $teamId, User $user, array $input): string
     {
-        $contactId = (int) ($input['contact_id'] ?? 0);
         $categoryName = trim((string) ($input['category_name'] ?? ''));
+        $contactId = $this->resolveConversationContactId($teamId, $input);
 
-        if ($contactId < 1 || $categoryName === '')
+        if ($categoryName === '')
         {
-            return 'contact_id and category_name are required.';
+            return 'category_name is required.';
+        }
+
+        if ($contactId < 1)
+        {
+            return 'contact_id is required unless this WhatsApp thread already has a CRM contact.';
         }
 
         $contact = Contact::withoutGlobalScopes()
@@ -1415,7 +1446,7 @@ class AssistantToolsService
             return "Contact with id {$contactId} not found.";
         }
 
-        if (! Gate::forUser($user)->allows('update', $contact))
+        if (! $this->assistantMayUpdateContact($user, $teamId, $contact))
         {
             return 'You do not have permission to update this contact.';
         }
@@ -1431,6 +1462,7 @@ class AssistantToolsService
         }
 
         $contact->categories()->syncWithoutDetaching([$categoryId]);
+        $this->internalCategoryAssignments[] = $categoryName;
 
         return $this->truncate("Contact {$contact->name} (id: {$contact->id}) assigned to category: {$categoryName}. Do not mention the tag name to the customer.");
     }
@@ -3313,6 +3345,43 @@ class AssistantToolsService
         })->implode("\n");
     }
 
+    private function resolveConversationContactId(int $teamId, array $input): int
+    {
+        $fromInput = (int) ($input['contact_id'] ?? 0);
+        if ($fromInput > 0)
+        {
+            return $fromInput;
+        }
+
+        if ($this->contextContactId !== null && $this->contextContactId > 0)
+        {
+            return $this->contextContactId;
+        }
+
+        if ($this->contextCustomerPhone !== null && $this->contextCustomerPhone !== '')
+        {
+            $contact = app(UserResolverService::class)
+                ->findContactInTeamByPhone($teamId, $this->contextCustomerPhone);
+
+            if ($contact !== null)
+            {
+                return (int) $contact->id;
+            }
+        }
+
+        return 0;
+    }
+
+    private function assistantMayUpdateContact(User $user, int $teamId, Contact $contact): bool
+    {
+        if ($this->isWhatsAppInboundCustomer($user, $teamId))
+        {
+            return true;
+        }
+
+        return Gate::forUser($user)->allows('update', $contact);
+    }
+
     private function registerRecentContactId(int $contactId): void
     {
         if ($contactId < 1)
@@ -4290,6 +4359,9 @@ class AssistantToolsService
             return 'Could not create the order: '.$e->getMessage().' Do not say the order is confirmed.';
         }
 
+        $order->loadMissing('store');
+        $hidePrices = ! ShopCustomerPrices::orderShows($order);
+
         $chosenFulfillment = $order->metadata['checkout_offered']['chosen_fulfillment_label']
             ?? $order->metadata['checkout_offered']['chosen_fulfillment']
             ?? null;
@@ -4301,8 +4373,11 @@ class AssistantToolsService
         $lines = [
             'Order created. Tell the customer it is confirmed and give them this number.',
             'Order number: '.$order->order_number,
-            'Total: '.number_format((float) $order->total_amount, 2),
         ];
+        if (! $hidePrices)
+        {
+            $lines[] = 'Total: '.number_format((float) $order->total_amount, 2);
+        }
         if (is_string($storeName) && $storeName !== '')
         {
             $lines[] = 'Store: '.$storeName;
@@ -4316,6 +4391,10 @@ class AssistantToolsService
             $lines[] = 'Payment: '.$chosenPayment;
         }
         $lines[] = 'The cart is now empty. Mention the order number. Do not invent extra confirmation steps.';
+        if ($hidePrices)
+        {
+            $lines[] = $this->hiddenPricesInstruction();
+        }
 
         return $this->truncate(implode("\n", $lines));
     }

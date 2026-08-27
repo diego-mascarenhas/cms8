@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\FetchWhatsAppProfilePhotoJob;
 use App\Models\Contact;
 use App\Models\Conversation;
 use App\Models\DocumentIngestion;
@@ -11,6 +12,7 @@ use App\Services\ChatAssistantReplyService;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -173,6 +175,35 @@ class WhatsAppLocalWebhookTest extends TestCase
         $this->assertSame(34600000099, (int) $contact->phone);
     }
 
+    public function test_webhook_creates_contact_automatically_on_first_inbound(): void
+    {
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '5491100000099',
+            'to' => '34600000001',
+            'body' => 'Hola, busco un filtro',
+            'id' => 'msg_auto_contact_1',
+        ]);
+
+        $response->assertStatus(200);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('phone', 5491100000099)
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame('Contacto 5491100000099', $contact->name);
+        $this->assertSame($team->user_id, $contact->creator_id);
+    }
+
     public function test_webhook_stores_whatsapp_profile_photo(): void
     {
         Storage::fake('public');
@@ -198,6 +229,54 @@ class WhatsAppLocalWebhookTest extends TestCase
 
         $response->assertStatus(200);
         Storage::disk('public')->assertExists('whatsapp/avatars/'.$team->id.'/34600000099.jpg');
+    }
+
+    public function test_webhook_does_not_fetch_avatar_when_payload_has_no_photo(): void
+    {
+        Bus::fake();
+
+        $team = Team::factory()->create();
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '0');
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $response = $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '5491100000099',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_fetch_avatar_1',
+        ]);
+
+        $response->assertStatus(200);
+        Bus::assertNotDispatched(FetchWhatsAppProfilePhotoJob::class);
+    }
+
+    public function test_fetch_whatsapp_profile_photo_job_stores_avatar(): void
+    {
+        Storage::fake('public');
+
+        $team = Team::factory()->create();
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+        Http::fake([
+            'localhost:3000/*' => Http::response([
+                'pictures' => [
+                    '5491100000099' => [
+                        'profile_pic_base64' => $png,
+                        'profile_pic_content_type' => 'image/png',
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        (new FetchWhatsAppProfilePhotoJob((int) $team->id, '5491100000099'))->handle(
+            app(\App\Services\WhatsApp\WhatsAppProfilePhotoStore::class),
+        );
+
+        Storage::disk('public')->assertExists('whatsapp/avatars/'.$team->id.'/5491100000099.jpg');
     }
 
     public function test_webhook_creates_document_ingestion_for_incoming_media(): void
@@ -989,6 +1068,147 @@ class WhatsAppLocalWebhookTest extends TestCase
         $this->assertDatabaseMissing('conversations', [
             'message_sid' => 'msg_blacklist_skip_1',
         ]);
+    }
+
+    public function test_webhook_keeps_category_assignment_in_inbox_and_does_not_send_it(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'text' => 'Contact Diego (id: 122) assigned to category: ESQUINA. Do not mention the tag name to the customer.',
+                    'tool_results' => [
+                        'Contact Diego (id: 122) assigned to category: ESQUINA. Do not mention the tag name to the customer.',
+                    ],
+                    'usage' => [
+                        'prompt_tokens' => 100,
+                        'completion_tokens' => 20,
+                        'total_tokens' => 120,
+                    ],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000099',
+            'name' => 'Diego',
+            'email' => 'diego.categoria@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'msg_category_internal_prev',
+            'channel' => 'whatsapp',
+            'from' => '34600000099',
+            'to' => '34600000001',
+            'body' => 'ayer',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000099',
+            'to' => '34600000001',
+            'body' => 'Hola, tengo un Fiat',
+            'id' => 'msg_category_internal_1',
+        ])->assertOk();
+
+        $note = Conversation::query()
+            ->where('direction', 'outbound')
+            ->where('to', '34600000099')
+            ->first();
+
+        $this->assertNotNull($note);
+        $this->assertSame('Contacto asignado a la categoría: ESQUINA', $note->body);
+        $this->assertTrue((bool) ($note->metadata['internal_only'] ?? false));
+        $this->assertSame('internal', $note->status);
+
+        Http::assertNotSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && (str_contains($body, 'assigned to category')
+                    || str_contains($body, 'ESQUINA')
+                    || str_contains($body, 'Contacto asignado'));
+        });
+    }
+
+    public function test_webhook_sends_customer_reply_without_the_category_assignment_echo(): void
+    {
+        $this->mock(ChatAssistantReplyService::class, function ($mock): void
+        {
+            $mock->shouldReceive('getReply')
+                ->once()
+                ->andReturn([
+                    'success' => true,
+                    'text' => "Hola, ¿en qué te puedo ayudar?\n\nContact Diego (id: 122) assigned to category: ESQUINA. Do not mention the tag name to the customer.",
+                    'tool_results' => [],
+                ]);
+        });
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('whatsapp_from', '34600000001');
+        $team->setSetting('assistant_auto_respond', '1');
+        config(['humano_pricing.plan_access_team_ids' => []]);
+
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000098',
+            'name' => 'Diego',
+            'email' => 'diego.mixed@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+        Conversation::create([
+            'message_sid' => 'msg_category_mixed_prev',
+            'channel' => 'whatsapp',
+            'from' => '34600000098',
+            'to' => '34600000001',
+            'body' => 'ayer',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        Http::fake([
+            'localhost:3000/*' => Http::response(['success' => true, 'id' => 'wa_out_1'], 200),
+        ]);
+
+        $this->postJson(route('webhook.whatsapp-local'), [
+            'from' => '34600000098',
+            'to' => '34600000001',
+            'body' => 'Hola',
+            'id' => 'msg_category_mixed_1',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('conversations', [
+            'direction' => 'outbound',
+            'to' => '34600000098',
+            'body' => 'Contacto asignado a la categoría: ESQUINA',
+            'status' => 'internal',
+        ]);
+
+        Http::assertSent(function ($request): bool
+        {
+            $body = (string) ($request['body'] ?? '');
+
+            return str_contains($request->url(), '/send-message')
+                && $body === 'Hola, ¿en qué te puedo ayudar?'
+                && ! str_contains($body, 'ESQUINA');
+        });
     }
 
     private function documentIngestionAcknowledgementCount(): int

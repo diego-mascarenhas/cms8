@@ -88,6 +88,38 @@ class TeamInboundAssistantPolicyTest extends TestCase
         $this->assertTrue($policy->autoReplyPreferencesAllow($team, null, (int) $team->id, '34600000002'));
     }
 
+    public function test_force_silent_team_default_overrides_pinned_prompts_without_clearing_them(): void
+    {
+        $this->seed([
+            \Database\Seeders\CountrySeeder::class,
+            \Database\Seeders\LanguageSeeder::class,
+            \Database\Seeders\ContactStatusSeeder::class,
+        ]);
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $team->setSetting('assistant_auto_respond', '1');
+        $team->setSetting(\App\Services\TeamSiteAssistantPromptService::SETTING_KEY, \App\Services\TeamSiteAssistantPromptService::FORCE_OFF_KEY);
+
+        $pinned = \App\Models\Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '34600000003',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'chat_assistant_ai_enabled' => true,
+                'chat_assistant_prompt_key' => 'chat:citas_y_ventas',
+            ],
+        ]);
+
+        $policy = app(TeamInboundAssistantPolicy::class);
+
+        $this->assertTrue(app(\App\Services\TeamSiteAssistantPromptService::class)->isForceSilent($team->fresh()));
+        $this->assertFalse($policy->autoReplyPreferencesAllow($team, null, (int) $team->id, '34600000003'));
+        $this->assertFalse($policy->autoReplyPreferencesAllow($team, null, (int) $team->id, '34600000998'));
+        $this->assertSame('chat:citas_y_ventas', $pinned->fresh()->inboundChatAssistantPromptKey());
+    }
+
     public function test_contact_opt_out_blocks_reply_even_when_team_auto_respond_is_on(): void
     {
         $this->seed([

@@ -17,6 +17,8 @@ class TeamSiteAssistantPromptService
 
     public const OFF_KEY = '__off__';
 
+    public const FORCE_OFF_KEY = '__off_all__';
+
     public const EMBED_SLUG = 'asistente-web';
 
     public const RECOMMENDED_SECTION_KEY = 'citas_y_ventas';
@@ -28,7 +30,7 @@ class TeamSiteAssistantPromptService
     public const WIDGET_DATA_ATTR = 'data-cms8-widget';
 
     /**
-     * @return list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool}>
+     * @return list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>
      */
     public function promptOptions(Team $team): array
     {
@@ -50,12 +52,16 @@ class TeamSiteAssistantPromptService
             }
 
             $key = $this->routingKeyFor($prompt);
+            $audience = $catalog->audienceFor($key, (string) $prompt->section_key);
             $options[] = [
                 'key' => $key,
                 'label' => $prompt->section_label.' ('.$key.')',
                 'section_label' => (string) $prompt->section_label,
                 'prompt_instruction' => (string) $prompt->prompt_instruction,
                 'custom' => ! $catalog->isSystemDefault($key, (string) $prompt->section_key),
+                'audience' => $audience,
+                'audience_label' => $catalog->audienceLabel($audience),
+                'audience_rank' => $catalog->audienceRank($key, (string) $prompt->section_key),
             ];
         }
 
@@ -69,6 +75,11 @@ class TeamSiteAssistantPromptService
         return $key !== '' ? $key : null;
     }
 
+    public static function isReservedOffKey(?string $key): bool
+    {
+        return $key === self::OFF_KEY || $key === self::FORCE_OFF_KEY;
+    }
+
     /**
      * Team default for chats on Automático (no pinned prompt): stay silent.
      * A contact can still pin a prompt and get replies.
@@ -78,10 +89,19 @@ class TeamSiteAssistantPromptService
         return $this->selectedRoutingKey($team) === self::OFF_KEY;
     }
 
+    /**
+     * Pause inbound replies for every chat, including contacts that already have a prompt.
+     * Pins stay stored so they resume when the team leaves this mode.
+     */
+    public function isForceSilent(Team $team): bool
+    {
+        return $this->selectedRoutingKey($team) === self::FORCE_OFF_KEY;
+    }
+
     public function resolvedRoutingKey(Team $team): ?string
     {
         $key = $this->selectedRoutingKey($team);
-        if ($key === null || $key === self::OFF_KEY)
+        if ($key === null || self::isReservedOffKey($key))
         {
             return null;
         }
@@ -99,7 +119,7 @@ class TeamSiteAssistantPromptService
     {
         $key = $routingKey !== null ? trim($routingKey) : '';
 
-        if ($key === '' || $key === self::OFF_KEY)
+        if ($key === '' || self::isReservedOffKey($key))
         {
             $team->setSetting(self::SETTING_KEY, $key, [
                 'group' => 'chat',
@@ -113,6 +133,11 @@ class TeamSiteAssistantPromptService
         }
 
         $prompt = Prompt::findByRoutingKey($key, (int) $team->id);
+        if ((! $prompt || ! $prompt->is_active) && app(AssistantPromptCatalog::class)->find($key))
+        {
+            $key = app(AssistantPromptCatalog::class)->ensureOnTeam($team, $key);
+            $prompt = Prompt::findByRoutingKey($key, (int) $team->id);
+        }
         if (! $prompt || ! $prompt->is_active)
         {
             throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
@@ -162,15 +187,13 @@ class TeamSiteAssistantPromptService
         $prompt->prompt_instruction = trim($instruction);
         $prompt->save();
 
-        $this->select($team, $this->routingKeyFor($prompt->load('module')));
-
         return $prompt;
     }
 
     public function deleteOwned(Team $team, string $routingKey): void
     {
         $key = trim($routingKey);
-        if ($key === '' || $key === self::OFF_KEY)
+        if ($key === '' || self::isReservedOffKey($key))
         {
             throw new InvalidArgumentException(__('team_settings.site_assistant.invalid_prompt'));
         }
@@ -206,8 +229,8 @@ class TeamSiteAssistantPromptService
     /**
      * @return array{
      *     selected_key: string|null,
-     *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool}>,
-     *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool}>}>,
+     *     prompts: list<array{key: string, label: string, section_label: string, prompt_instruction: string, custom: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>,
+     *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>}>,
      *     default_instruction: string,
      *     recommended_label: string,
      *     embed: array{snippet: string, api_base: string, script_url: string}

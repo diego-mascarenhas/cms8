@@ -123,6 +123,7 @@ class ChatTeamSettingsSidebarTest extends TestCase
         $this->assertStringContainsString('id="sidebar-team-prompt-key"', $html);
         $this->assertStringContainsString(__('team_settings.site_assistant.select_empty'), $html);
         $this->assertStringContainsString(__('team_settings.site_assistant.select_off'), $html);
+        $this->assertStringContainsString(__('team_settings.site_assistant.select_off_all'), $html);
         $this->assertStringContainsString('catalog:calendar:assistant_citas', $html);
         $this->assertStringNotContainsString('id="sidebar-ai-replies-toggle"', $html);
         $this->assertStringNotContainsString('id="sidebar-default-assistant-flow-toggle"', $html);
@@ -145,6 +146,15 @@ class ChatTeamSettingsSidebarTest extends TestCase
         $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
 
         $this->actingAs($user)->patchJson(route('chat.team-site-assistant-prompt'), [
+            'prompt_key' => TeamSiteAssistantPromptService::FORCE_OFF_KEY,
+        ])->assertOk()->assertJson([
+            'success' => true,
+            'selected_key' => TeamSiteAssistantPromptService::FORCE_OFF_KEY,
+        ]);
+
+        $this->assertTrue(app(TeamSiteAssistantPromptService::class)->isForceSilent($team->fresh()));
+
+        $this->actingAs($user)->patchJson(route('chat.team-site-assistant-prompt'), [
             'prompt_key' => '',
         ])->assertOk()->assertJson([
             'success' => true,
@@ -152,6 +162,7 @@ class ChatTeamSettingsSidebarTest extends TestCase
         ]);
 
         $this->assertFalse(app(TeamSiteAssistantPromptService::class)->isSilentDefault($team->fresh()));
+        $this->assertFalse(app(TeamSiteAssistantPromptService::class)->isForceSilent($team->fresh()));
         $this->assertNull(app(TeamSiteAssistantPromptService::class)->selectedRoutingKey($team->fresh()));
     }
 

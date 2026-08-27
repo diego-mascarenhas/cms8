@@ -84,7 +84,7 @@ class AssistantPromptCatalog
     }
 
     /**
-     * @return list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool}>}>
+     * @return list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>}>
      */
     public function groupsFor(Team $team): array
     {
@@ -101,6 +101,7 @@ class AssistantPromptCatalog
                 ?? $this->teamPrompt($team, $item['module_key'], $item['section_key']);
             $grouped[$item['group']]['group'] = $item['group'];
             $grouped[$item['group']]['group_label'] = $item['group_label'];
+            $audience = $this->audienceFor($item['key'], $item['section_key']);
             $grouped[$item['group']]['items'][] = [
                 'key' => $item['key'],
                 'section_key' => $item['section_key'],
@@ -111,6 +112,9 @@ class AssistantPromptCatalog
                 'own_brand' => $item['own_brand'],
                 'owned' => $owned !== null,
                 'drifted' => $owned !== null && trim((string) $owned->prompt_instruction) !== trim($item['prompt_instruction']),
+                'audience' => $audience,
+                'audience_label' => $this->audienceLabel($audience),
+                'audience_rank' => $this->audienceRank($item['key'], $item['section_key']),
             ];
         }
 
@@ -122,6 +126,12 @@ class AssistantPromptCatalog
 
             return ($leftRank === false ? 99 : $leftRank) <=> ($rightRank === false ? 99 : $rightRank);
         });
+
+        foreach ($grouped as &$group)
+        {
+            usort($group['items'], fn (array $left, array $right): int => $left['audience_rank'] <=> $right['audience_rank']);
+        }
+        unset($group);
 
         return array_values($grouped);
     }
@@ -265,6 +275,85 @@ class AssistantPromptCatalog
     }
 
     /**
+     * Customer prompts answer WhatsApp / the site widget. Team prompts are for admins
+     * and collaborators (tasks, campaigns, CRM, Lista 60) and do not get those tools
+     * on a customer WhatsApp thread.
+     *
+     * @return 'customer'|'team'
+     */
+    public function audienceFor(string $routingKey, ?string $sectionKey = null): string
+    {
+        $section = trim((string) $sectionKey);
+        if ($section === '')
+        {
+            $section = $this->sectionKeyFrom($routingKey);
+        }
+
+        if ($this->groupForSection($section) === 'equipo')
+        {
+            return 'team';
+        }
+
+        $module = str_contains($routingKey, ':') ? explode(':', $routingKey, 2)[0] : '';
+        if ($module === 'list60' || in_array($section, ['primer_contacto', 'seguimiento', 'alta'], true))
+        {
+            return 'team';
+        }
+
+        if (in_array($section, ['notes', 'email', 'description', 'message'], true))
+        {
+            return 'team';
+        }
+
+        return 'customer';
+    }
+
+    public function audienceLabel(string $audience): string
+    {
+        return $audience === 'team' ? 'Para el equipo' : 'Para el cliente';
+    }
+
+    /**
+     * Customer order: bienvenida → agenda → ventas → cobranzas → router.
+     * Team order: contactos → tareas → campañas → Lista 60.
+     */
+    public function audienceRank(string $routingKey, ?string $sectionKey = null): int
+    {
+        $section = trim((string) $sectionKey);
+        if ($section === '')
+        {
+            $section = $this->sectionKeyFrom($routingKey);
+        }
+
+        $ranks = [
+            'bienvenida' => 1,
+            'assistant_citas' => 2,
+            'assistant_catalogo' => 3,
+            'assistant_presupuesto' => 4,
+            'assistant_embudo' => 5,
+            'collections' => 6,
+            'general' => 7,
+            'assistant_contactos' => 110,
+            'assistant_tareas' => 120,
+            'assistant_campanas' => 130,
+            'message' => 140,
+            'notes' => 150,
+            'email' => 151,
+            'description' => 160,
+            'alta' => 170,
+            'primer_contacto' => 171,
+            'seguimiento' => 172,
+        ];
+
+        if (isset($ranks[$section]))
+        {
+            return $ranks[$section];
+        }
+
+        return $this->audienceFor($routingKey, $section) === 'team' ? 190 : 90;
+    }
+
+    /**
      * @param  array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}  $item
      * @return array{key: string, group: string, group_label: string, own_brand: bool, module_key: string, section_key: string, section_label: string, helper_text: string, prompt_instruction: string}
      */
@@ -295,8 +384,8 @@ class AssistantPromptCatalog
     {
         return match ($sectionKey)
         {
-            'assistant_citas' => 'agenda',
-            'assistant_embudo', 'assistant_catalogo' => 'ventas',
+            'assistant_citas', 'citas_y_ventas' => 'agenda',
+            'assistant_embudo', 'assistant_catalogo', 'assistant_presupuesto' => 'ventas',
             'assistant_contactos', 'assistant_tareas', 'assistant_campanas' => 'equipo',
             default => null,
         };

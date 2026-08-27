@@ -157,7 +157,36 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertNotNull($option);
         $this->assertSame('Agenda y tienda', $option['section_label']);
         $this->assertSame('Texto nuevo.', $option['prompt_instruction']);
-        $this->assertSame('chat:citas_y_ventas', $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+        $this->assertSame('customer', $option['audience']);
+        $this->assertSame('Para el cliente', $option['audience_label']);
+        $this->assertSame(3, $option['audience_rank']);
+        $this->assertNull($team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
+    }
+
+    public function test_update_content_does_not_change_the_selected_site_prompt(): void
+    {
+        $team = Team::factory()->create();
+        $module = Module::query()->where('key', 'chat')->first();
+        $this->assertNotNull($module);
+        $service = app(TeamSiteAssistantPromptService::class);
+        $service->select($team, TeamSiteAssistantPromptService::OFF_KEY);
+
+        Prompt::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'section_key' => 'otro_flujo',
+            'section_label' => 'Otro flujo',
+            'prompt_instruction' => 'Texto viejo.',
+            'is_active' => true,
+            'order' => 1,
+        ]);
+
+        $service->updateContent($team, 'chat:otro_flujo', 'Otro flujo', 'Texto nuevo.');
+
+        $this->assertSame(
+            TeamSiteAssistantPromptService::OFF_KEY,
+            $team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY),
+        );
     }
 
     public function test_create_does_not_change_the_selected_site_prompt(): void
@@ -221,5 +250,39 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertTrue($service->isSilentDefault($team->fresh()));
         $this->assertSame(TeamSiteAssistantPromptService::OFF_KEY, $service->selectedRoutingKey($team->fresh()));
         $this->assertNull($service->resolvedRoutingKey($team->fresh()));
+    }
+
+    public function test_select_force_off_pauses_every_chat_without_a_routing_key(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+
+        $service->select($team, TeamSiteAssistantPromptService::FORCE_OFF_KEY);
+
+        $this->assertFalse($service->isSilentDefault($team->fresh()));
+        $this->assertTrue($service->isForceSilent($team->fresh()));
+        $this->assertSame(TeamSiteAssistantPromptService::FORCE_OFF_KEY, $service->selectedRoutingKey($team->fresh()));
+        $this->assertNull($service->resolvedRoutingKey($team->fresh()));
+    }
+
+    public function test_select_copies_a_catalog_quote_prompt_when_the_team_has_no_row(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+
+        Prompt::withoutGlobalScope('team')
+            ->forTeam((int) $team->id)
+            ->where('section_key', 'assistant_presupuesto')
+            ->delete();
+
+        $service->select($team, 'chat:assistant_presupuesto');
+
+        $this->assertSame('chat:assistant_presupuesto', $service->selectedRoutingKey($team->fresh()));
+        $this->assertNotNull(
+            Prompt::withoutGlobalScope('team')
+                ->forTeam((int) $team->id)
+                ->where('section_key', 'assistant_presupuesto')
+                ->first(),
+        );
     }
 }

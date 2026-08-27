@@ -16,11 +16,7 @@ $configData = Helper::appClasses();
   <div class="authentication-inner row justify-content-center">
     <div class="d-flex col-12 col-md-10 col-lg-7 col-xl-6 align-items-center p-sm-5 p-4">
       <section class="w-100" aria-labelledby="registration-payment-heading">
-        <div class="app-brand mb-4">
-          <a href="{{ url('/') }}" class="app-brand-link gap-2">
-            @include('auth.partials.logo-full')
-          </a>
-        </div>
+        @include('auth.partials.logo-full')
         <h4 id="registration-payment-heading" class="mb-1">{{ __('auth.registration.billing_heading') }}</h4>
         <p class="text-muted mb-4">{{ __('auth.registration.billing_description') }}</p>
 

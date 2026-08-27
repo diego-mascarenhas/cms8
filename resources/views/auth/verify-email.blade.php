@@ -20,11 +20,7 @@ $configData = Helper::appClasses();
     <!--  Verify email -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-4 p-sm-5">
       <div class="w-px-400 mx-auto">
-        <div class="app-brand mb-4">
-          <a href="{{url('/')}}" class="app-brand-link gap-2">
-            @include('auth.partials.logo-full')
-          </a>
-        </div>
+        @include('auth.partials.logo-full')
         <h3 class="mb-1">Verify your email ✉️</h3>
         @if (session('status') == 'verification-link-sent')
           <div class="alert alert-success" role="alert">
