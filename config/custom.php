@@ -36,6 +36,7 @@ return [
         'TeamManager' => false,
         'animateLogo' => true, // options[Boolean]: true(default), false // To enable or disable logo animation
         'authMinimalLayout' => env('AUTH_MINIMAL_LAYOUT', false), // true = auth pages without left illustration panel
+        'showAuthLogo' => env('AUTH_SHOW_LOGO', false), // false = hide the brand logo on login and related auth screens
         'showSearch' => true, // options[Boolean]: true(default), false // To enable or disable the search bar
         'showQuickAccess' => false, // options[Boolean]: true(default), false // Navbar shortcuts grid (calendar, prospección, etc.)
         'showLanguageSelector' => true, // options[Boolean]: true(default), false // To enable or disable the language selector

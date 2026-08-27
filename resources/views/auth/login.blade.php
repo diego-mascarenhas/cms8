@@ -20,9 +20,7 @@ $configData = Helper::appClasses();
     <!-- Login -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
       <div class="w-px-400 mx-auto">
-        <div class="app-brand mb-4">
-            @include('auth.partials.logo-full', ['logoId' => 'logo'])
-        </div>
+        @include('auth.partials.logo-full', ['logoId' => 'logo'])
         <h3 class="mb-1">
             {{ \App\Helpers\TranslationHelper::transGroup('welcome', 'auth', ['name' => config('variables.templateName')]) }}
         </h3>
@@ -105,15 +103,17 @@ $configData = Helper::appClasses();
   }
 </style>
 
+@if (config('custom.custom.showAuthLogo') && config('custom.custom.animateLogo'))
 <script>
-  const animateLogo = {{ config('custom.custom.animateLogo') ? 'true' : 'false' }};
-  if (animateLogo) {
-    setInterval(() => {
-      const logo = document.getElementById('logo');
-      logo.classList.add('vibrate');
-      setTimeout(() => {
-        logo.classList.remove('vibrate');
-      }, 500);
-    }, 300000);
-  }
+  setInterval(() => {
+    const logo = document.getElementById('logo');
+    if (!logo) {
+      return;
+    }
+    logo.classList.add('vibrate');
+    setTimeout(() => {
+      logo.classList.remove('vibrate');
+    }, 500);
+  }, 300000);
 </script>
+@endif

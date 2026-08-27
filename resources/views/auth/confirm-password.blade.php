@@ -20,13 +20,7 @@ $configData = Helper::appClasses();
     <!--  password confirm -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
       <div class="w-px-400 mx-auto">
-        <!-- Logo -->
-        <div class="app-brand mb-4">
-          <a href="{{url('/')}}" class="app-brand-link">
-            @include('auth.partials.logo-full')
-          </a>
-        </div>
-        <!-- /Logo -->
+        @include('auth.partials.logo-full')
         <h3 class="mb-1">{{ __('auth.confirm_password.title') }}</h3>
         <p class="text-start mb-4">{{ __('auth.confirm_password.description') }}</p>
         <form id="twoStepsForm" action="{{ route('password.confirm') }}" method="POST">

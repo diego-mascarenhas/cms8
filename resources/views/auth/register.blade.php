@@ -20,13 +20,7 @@ $configData = Helper::appClasses();
     <!-- Register -->
     <div class="d-flex col-12 col-lg-5 align-items-center p-sm-5 p-4">
       <div class="w-px-400 mx-auto">
-        <!-- Logo -->
-        <div class="app-brand mb-4">
-          <a href="{{url('/')}}" class="app-brand-link gap-2">
-            @include('auth.partials.logo-full')
-          </a>
-        </div>
-        <!-- /Logo -->
+        @include('auth.partials.logo-full')
         @if (! empty($teamInvitation))
         <h3 class="mb-1">{{ __('auth.register.invitation_heading', ['team' => $teamInvitation->team->name]) }}</h3>
         <p class="mb-4">{{ __('auth.register.invitation_description') }}</p>
