@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
 use App\Helpers\AssistantCategoryAssignmentNote;
+use App\Helpers\ShopCustomerPrices;
 use App\Helpers\WhatsAppCartPresenter;
 use App\Helpers\WhatsAppCartProductFinder;
 use App\Helpers\WhatsAppCartSessionKey;
@@ -3134,7 +3135,10 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 : "Quitamos *{$toRemove}* de *{$item->name}* (quedan *{$newQty}*).";
 
             $response = "✅ {$removedPhrase}\n\n";
-            $response .= '🛒 **Total del carrito**: '.$currency.number_format($this->shoppingCarts()->total($cart), 2)."\n";
+            if (ShopCustomerPrices::cartShows((int) $teamId, $this->shoppingCarts()->linesOrEmpty($cart)))
+            {
+                $response .= '🛒 **Total del carrito**: '.$currency.number_format($this->shoppingCarts()->total($cart), 2)."\n";
+            }
             $response .= '📦 **Ítems**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
             $response .= "**Opciones:**\n";
             $response .= "• Escribí *carrito* para ver todos tus productos\n";
@@ -3197,10 +3201,19 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 : "**{$product->name}** agregado al carrito";
 
             $response = "✅ {$addedPhrase}\n\n";
-            $response .= "💰 **Precio unitario**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
+            if (ShopCustomerPrices::productShows($product))
+            {
+                $response .= "💰 **Precio unitario**: {$currency}".number_format($product->currentSellingPrice(), 2)."\n";
+            }
             $response .= "📦 **Cantidad en carrito**: {$quantity}\n";
             $response .= '🏷️ **Categoría**: '.($product->category?->name ?? 'General')."\n\n";
-            $response .= "🛒 **Total del carrito**: {$currency}".number_format($this->shoppingCarts()->total($cart), 2)."\n\n";
+            if (ShopCustomerPrices::productShows($product))
+            {
+                $response .= "🛒 **Total del carrito**: {$currency}".number_format($this->shoppingCarts()->total($cart), 2)."\n\n";
+            } else
+            {
+                $response .= "\n";
+            }
             $response .= "**Opciones:**\n";
             $response .= "• Escribí *carrito* para ver todos tus productos\n";
             $response .= "• *Comprar* más el producto, o *agregar* la cantidad y el producto para sumar más\n";
@@ -3311,15 +3324,20 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
             }
 
             $total = $this->shoppingCarts()->total($cart);
+            $showPrices = ShopCustomerPrices::cartShows((int) $teamId, $cartItems);
 
             $response = "🛒 **Resumen de tu compra**\n\n";
 
             foreach ($cartItems as $item)
             {
-                $response .= "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n";
+                $response .= $showPrices
+                    ? "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n"
+                    : "• {$item->name} x{$item->quantity}\n";
             }
 
-            $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
+            $response .= $showPrices
+                ? "\n💰 **TOTAL: \$".number_format($total, 2)."**\n"
+                : "\n";
             $response .= '📦 **Items**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
 
             $checkoutStore = $this->resolveStoreForWhatsAppCart($teamId, $cartItems);
@@ -3401,15 +3419,21 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 return ['success' => false, 'message' => 'Order create failed'];
             }
 
+            $showPrices = ShopCustomerPrices::storeShows($checkoutStore);
+
             $response = "✅ **¡Compra confirmada!**\n\n";
             $response .= "📋 **Resumen del pedido:**\n";
 
             foreach ($cartItems as $item)
             {
-                $response .= "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n";
+                $response .= $showPrices
+                    ? "• {$item->name} x{$item->quantity} - \$".number_format($item->price * $item->quantity, 2)."\n"
+                    : "• {$item->name} x{$item->quantity}\n";
             }
 
-            $response .= "\n💰 **TOTAL: \$".number_format($total, 2)."**\n";
+            $response .= $showPrices
+                ? "\n💰 **TOTAL: \$".number_format($total, 2)."**\n"
+                : "\n";
             $response .= '📦 **Items**: '.$this->shoppingCarts()->quantity($cart)."\n\n";
 
             $response .= "🧾 **Tu pedido quedó registrado**\n";

@@ -28,13 +28,20 @@ class WhatsAppCartPresenter
                 .'📋 *comprar* o *agregar* cantidad y nombre | *productos* catálogo.';
         }
 
+        $showPrices = ShopCustomerPrices::cartShows($teamId, $cartItems);
         $response = "🛒 **Tu Carrito de Compras**\n\n";
 
         foreach ($cartItems as $item)
         {
             $response .= "• **{$item->name}**\n";
-            $response .= '  💰 $'.number_format((float) $item->price, 2)." x {$item->quantity}\n";
-            $response .= '  💵 Subtotal: $'.number_format((float) $item->price * (int) $item->quantity, 2)."\n";
+            if ($showPrices)
+            {
+                $response .= '  💰 $'.number_format((float) $item->price, 2)." x {$item->quantity}\n";
+                $response .= '  💵 Subtotal: $'.number_format((float) $item->price * (int) $item->quantity, 2)."\n";
+            } else
+            {
+                $response .= "  📦 Cantidad: {$item->quantity}\n";
+            }
 
             $categoryName = $item->attributes->category_name ?? '';
             if ($categoryName !== '')
@@ -47,7 +54,10 @@ class WhatsAppCartPresenter
         $total = (float) $cartItems->sum(fn (object $item): float => (float) $item->price * (int) $item->quantity);
         $quantity = (int) $cartItems->sum(fn (object $item): int => (int) $item->quantity);
 
-        $response .= '💰 **TOTAL: $'.number_format($total, 2)."**\n";
+        if ($showPrices)
+        {
+            $response .= '💰 **TOTAL: $'.number_format($total, 2)."**\n";
+        }
         $response .= '📦 **Items**: '.$quantity."\n\n";
         $response .= "**Siguiente paso:**\n";
         $response .= "• *finalizar* — total y confirmación con *SÍ*\n";

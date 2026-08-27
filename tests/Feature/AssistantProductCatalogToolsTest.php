@@ -917,6 +917,12 @@ class AssistantProductCatalogToolsTest extends TestCase
         $cart = $service->execute('view_whatsapp_cart', []);
         $this->assertStringContainsString('Bujía de iridio', $cart);
         $this->assertStringNotContainsString('77.77', $cart);
+
+        $confirmed = $service->execute('confirm_whatsapp_order', []);
+        $this->assertMatchesRegularExpression('/WA-[A-Z0-9]+/', $confirmed);
+        $this->assertStringNotContainsString('77.77', $confirmed);
+        $this->assertStringNotContainsString('Total:', $confirmed);
+        $this->assertStringContainsString('hides catalog prices', $confirmed);
     }
 
     public function test_confirm_whatsapp_order_creates_a_shop_order_and_clears_the_cart(): void

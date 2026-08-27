@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ContactInteractionType;
 use App\Enums\ProductCatalogStatus;
+use App\Helpers\ShopCustomerPrices;
 use App\Helpers\WhatsAppCartSessionKey;
 use App\Helpers\WhatsAppLastOfferedProduct;
 use App\Helpers\WhatsAppOutboundText;
@@ -4358,6 +4359,9 @@ class AssistantToolsService
             return 'Could not create the order: '.$e->getMessage().' Do not say the order is confirmed.';
         }
 
+        $order->loadMissing('store');
+        $hidePrices = ! ShopCustomerPrices::orderShows($order);
+
         $chosenFulfillment = $order->metadata['checkout_offered']['chosen_fulfillment_label']
             ?? $order->metadata['checkout_offered']['chosen_fulfillment']
             ?? null;
@@ -4369,8 +4373,11 @@ class AssistantToolsService
         $lines = [
             'Order created. Tell the customer it is confirmed and give them this number.',
             'Order number: '.$order->order_number,
-            'Total: '.number_format((float) $order->total_amount, 2),
         ];
+        if (! $hidePrices)
+        {
+            $lines[] = 'Total: '.number_format((float) $order->total_amount, 2);
+        }
         if (is_string($storeName) && $storeName !== '')
         {
             $lines[] = 'Store: '.$storeName;
@@ -4384,6 +4391,10 @@ class AssistantToolsService
             $lines[] = 'Payment: '.$chosenPayment;
         }
         $lines[] = 'The cart is now empty. Mention the order number. Do not invent extra confirmation steps.';
+        if ($hidePrices)
+        {
+            $lines[] = $this->hiddenPricesInstruction();
+        }
 
         return $this->truncate(implode("\n", $lines));
     }

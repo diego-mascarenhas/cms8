@@ -3,6 +3,7 @@
 namespace App\Livewire\PublicShop;
 
 use App\Enums\ProductCatalogStatus;
+use App\Helpers\ShopCustomerPrices;
 use App\Models\Product;
 use App\Models\ShoppingCart;
 use App\Models\Team;
@@ -377,9 +378,15 @@ TXT;
                 continue;
             }
             $qty = (int) $row->quantity;
-            $price = $p->currentSellingPrice();
-            $code = $p->currency?->code ?? 'ARS';
-            $lines[] = $qty.' × '.$p->name.' — '.$price.' '.$code;
+            if (ShopCustomerPrices::productShows($p))
+            {
+                $price = $p->currentSellingPrice();
+                $code = $p->currency?->code ?? 'ARS';
+                $lines[] = $qty.' × '.$p->name.' — '.$price.' '.$code;
+            } else
+            {
+                $lines[] = $qty.' × '.$p->name;
+            }
         }
         $profile = 'Cliente: edad ~'.($this->shopperAge ?: '?').'. Notas: '.($this->shopperNotes ?: '—');
         $body = __('public_shop.wa_order_intro')."\n\n".implode("\n", $lines)."\n\n".$profile;
