@@ -351,6 +351,7 @@ class AssistantCommercialStatsService
                     'contact_id' => $contact?->id,
                     'name' => $contact ? trim($contact->name.' '.($contact->surname ?? '')) : $peer,
                     'email' => $this->contactEmail($contact),
+                    'status' => $contact?->status?->name,
                     'status_id' => $contact?->status_id,
                     'category_ids' => $contact?->relationLoaded('categories')
                         ? $contact->categories->pluck('id')->map(fn ($id): int => (int) $id)->values()->all()

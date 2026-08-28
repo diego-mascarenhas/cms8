@@ -123,6 +123,8 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $response->assertOk();
         $this->assertContains('Lead', collect($response->json('contact_catalog.statuses'))->pluck('name')->all());
         $this->assertNotContains('Finalizado', collect($response->json('contact_catalog.statuses'))->pluck('name')->all());
+        $lead = collect($response->json('contact_catalog.statuses'))->firstWhere('name', 'Lead');
+        $this->assertSame('#28c76f', $lead['color']);
         $response->assertJsonPath('contact_catalog.categories', [
             ['id' => $category->id, 'name' => 'Alfa', 'color' => null],
         ]);

@@ -187,7 +187,7 @@ class InboxQuickReplySendTest extends TestCase
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
 
-        $user = User::factory()->withPersonalTeam()->create();
+        $user = User::factory()->withPersonalTeam()->create(['name' => 'Ana Gómez']);
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
@@ -224,8 +224,8 @@ class InboxQuickReplySendTest extends TestCase
             ->values();
 
         $this->assertCount(1, $sentBodies);
-        $this->assertStringContainsString('Soy IDONEO, un artesano del software', $sentBodies[0]);
-        $this->assertStringContainsString('centralizar', $sentBodies[0]);
+        $this->assertStringContainsString('Hola Diego, soy Ana y quería recomendarte este asistente', $sentBodies[0]);
+        $this->assertStringContainsString('¿Estás necesitando centralizar', $sentBodies[0]);
         $this->assertStringNotContainsString('assistant.idoneo.dev/register', $sentBodies[0]);
         $this->assertStringNotContainsString('shop.idoneo.dev/register', $sentBodies[0]);
         $this->assertFalse($sentBodies->contains('/recomendar'));
