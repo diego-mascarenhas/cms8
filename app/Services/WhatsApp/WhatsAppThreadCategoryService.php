@@ -78,7 +78,7 @@ class WhatsAppThreadCategoryService
     }
 
     /**
-     * @return array{statuses: list<array{id: int, name: string}>, categories: list<array{id: int, name: string, color: string|null}>}
+     * @return array{statuses: list<array{id: int, name: string, color: string|null}>, categories: list<array{id: int, name: string, color: string|null}>}
      */
     public function catalog(?Team $team): array
     {
@@ -91,15 +91,31 @@ class WhatsAppThreadCategoryService
             'statuses' => ContactStatus::query()
                 ->where('name', '!=', 'Finalizado')
                 ->orderBy('id')
-                ->get(['id', 'name'])
+                ->get(['id', 'name', 'label_class'])
                 ->map(fn (ContactStatus $status): array => [
                     'id' => (int) $status->id,
                     'name' => (string) $status->name,
+                    'color' => $this->statusTone($status->label_class),
                 ])
                 ->values()
                 ->all(),
             'categories' => $this->availableFor($team),
         ];
+    }
+
+    private function statusTone(?string $labelClass): ?string
+    {
+        return match ($labelClass)
+        {
+            'bg-label-success' => '#28c76f',
+            'bg-label-warning' => '#ffab00',
+            'bg-label-info' => '#00cfe8',
+            'bg-label-primary' => '#696cff',
+            'bg-label-danger' => '#ea5455',
+            'bg-label-dark' => '#4b4b4b',
+            'bg-label-secondary' => '#82868b',
+            default => null,
+        };
     }
 
     /**

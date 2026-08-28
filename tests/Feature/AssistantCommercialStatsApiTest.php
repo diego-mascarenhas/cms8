@@ -212,6 +212,7 @@ class AssistantCommercialStatsApiTest extends TestCase
         $this->assertArrayHasKey('photo_url', $waiting);
         $this->assertArrayHasKey('sentiment', $waiting);
         $this->assertArrayHasKey('status_id', $waiting);
+        $this->assertSame('Lead', $waiting['status']);
         $this->assertArrayHasKey('categories', $waiting);
         $this->assertSame('Preguntó por stock.'."\n".'Espera precio.'."\n".'Retomar hoy.', $waiting['summary']);
         $this->assertSame('buy', $waiting['intent']['key']);
@@ -222,6 +223,8 @@ class AssistantCommercialStatsApiTest extends TestCase
         $this->assertTrue(collect($advisors)->contains('id', $user->id));
         $this->assertArrayHasKey('statuses', $response->json('data.contact_catalog'));
         $this->assertNotContains('Finalizado', collect($response->json('data.contact_catalog.statuses'))->pluck('name')->all());
+        $lead = collect($response->json('data.contact_catalog.statuses'))->firstWhere('name', 'Lead');
+        $this->assertSame('#28c76f', $lead['color']);
     }
 
     /**
