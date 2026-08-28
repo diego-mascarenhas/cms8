@@ -66,15 +66,17 @@ class InboxProductOnboardingService
         }
 
         $flow = $this->flow($contact);
-        if (! ($flow['active'] ?? false))
-        {
-            return null;
-        }
-
         $step = (string) ($flow['step'] ?? self::STEP_CHOOSE);
-        if ($step === self::STEP_DONE)
+        if (! ($flow['active'] ?? false) || $step === self::STEP_DONE)
         {
-            return null;
+            if (! $this->isStartCommand($body))
+            {
+                return null;
+            }
+
+            $started = $this->start($contact);
+
+            return $started['ok'] ? ['message' => $started['messages'][0] ?? ''] : null;
         }
 
         $normalized = $this->normalize($body);
@@ -584,6 +586,21 @@ class InboxProductOnboardingService
         }
 
         return explode(' ', $name, 2)[0];
+    }
+
+    private function isStartCommand(string $body): bool
+    {
+        $normalized = $this->normalize($body);
+        if ($normalized === '/onboarding' || $normalized === 'onboarding' || str_starts_with($normalized, '/onboarding '))
+        {
+            return true;
+        }
+        if ($normalized === '/recomendar' || $normalized === 'recomendar' || str_starts_with($normalized, '/recomendar '))
+        {
+            return true;
+        }
+
+        return $normalized === 'crea tu asistente' || $normalized === 'crear tu asistente';
     }
 
     private function normalize(string $body): string
