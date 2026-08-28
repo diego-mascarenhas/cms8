@@ -234,6 +234,42 @@ class InboxProductOnboardingServiceTest extends TestCase
         $this->assertStringNotContainsString('assistant.idoneo.dev/register', $reply['message']);
     }
 
+    public function test_inbound_onboarding_slash_starts_the_funnel(): void
+    {
+        $contact = $this->makeContact();
+        $team = Team::withoutGlobalScopes()->find($contact->team_id);
+        $service = app(InboxProductOnboardingService::class);
+
+        $reply = $service->tryHandleInbound($team, '34600111001', '/onboarding');
+
+        $this->assertNotNull($reply);
+        $this->assertStringContainsString('Soy IDONEO, un artesano del software', $reply['message']);
+        $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+    }
+
+    public function test_inbound_crea_tu_asistente_starts_the_funnel(): void
+    {
+        $contact = $this->makeContact();
+        $team = Team::withoutGlobalScopes()->find($contact->team_id);
+        $service = app(InboxProductOnboardingService::class);
+
+        $reply = $service->tryHandleInbound($team, '34600111001', 'Creá tu asistente');
+
+        $this->assertNotNull($reply);
+        $this->assertStringContainsString('¿Les cuesta centralizar', $reply['message']);
+        $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+    }
+
+    public function test_inbound_unrelated_message_does_not_start_the_funnel(): void
+    {
+        $contact = $this->makeContact();
+        $team = Team::withoutGlobalScopes()->find($contact->team_id);
+        $service = app(InboxProductOnboardingService::class);
+
+        $this->assertNull($service->tryHandleInbound($team, '34600111001', 'Hola, ¿están abiertos?'));
+        $this->assertFalse((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+    }
+
     private function makeContact(): Contact
     {
         $this->seed([
