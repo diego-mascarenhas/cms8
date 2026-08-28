@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Contact;
 use App\Models\Prompt;
 use App\Models\Team;
+use App\Models\User;
 use App\Support\HumanoLabsStudios;
 use Illuminate\Support\Str;
 
@@ -33,7 +34,7 @@ class InboxProductOnboardingService
     /**
      * @return array{ok: bool, messages: list<string>, error?: string}
      */
-    public function start(?Contact $contact): array
+    public function start(?Contact $contact, ?User $recommender = null): array
     {
         if ($contact === null)
         {
@@ -51,7 +52,7 @@ class InboxProductOnboardingService
             'started_at' => now()->toIso8601String(),
         ]);
 
-        return ['ok' => true, 'messages' => [$this->chooseMessage($contact)]];
+        return ['ok' => true, 'messages' => [$this->chooseMessage($contact, $recommender)]];
     }
 
     /**
@@ -448,12 +449,37 @@ class InboxProductOnboardingService
         ]);
     }
 
-    private function chooseMessage(Contact $contact): string
+    private function chooseMessage(Contact $contact, ?User $recommender = null): string
     {
         $first = $this->firstName($contact);
         $hello = $first !== '' ? 'Hola '.$first : 'Hola';
+        $from = $this->recommenderFirstName($contact, $recommender);
 
-        return $hello.'. Soy IDONEO, un artesano del software. ¿Les cuesta centralizar, atender en equipo o tener un embudo con intención y emoción?';
+        return $hello.', soy '.$from.' y quería recomendarte este asistente. ¿Estás necesitando centralizar, atender en equipo o tener un embudo con intención y emoción?';
+    }
+
+    private function recommenderFirstName(Contact $contact, ?User $recommender = null): string
+    {
+        $user = $recommender
+            ?? (auth()->user() instanceof User ? auth()->user() : null)
+            ?? $contact->responsible
+            ?? $contact->creator
+            ?? Team::withoutGlobalScopes()->find((int) $contact->team_id)?->owner;
+
+        $name = $this->personFirstName((string) ($user?->name ?? ''));
+
+        return $name !== '' ? $name : 'IDONEO';
+    }
+
+    private function personFirstName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '')
+        {
+            return '';
+        }
+
+        return explode(' ', $name, 2)[0];
     }
 
     private function assistantMoreMessage(): string
@@ -579,13 +605,7 @@ class InboxProductOnboardingService
 
     private function firstName(Contact $contact): string
     {
-        $name = trim((string) ($contact->name ?? ''));
-        if ($name === '')
-        {
-            return '';
-        }
-
-        return explode(' ', $name, 2)[0];
+        return $this->personFirstName((string) ($contact->name ?? ''));
     }
 
     private function isStartCommand(string $body): bool
@@ -600,7 +620,11 @@ class InboxProductOnboardingService
             return true;
         }
 
-        return $normalized === 'crea tu asistente' || $normalized === 'crear tu asistente';
+        return in_array($normalized, [
+            'crear mi asistente',
+            'crea tu asistente',
+            'crear tu asistente',
+        ], true);
     }
 
     private function normalize(string $body): string

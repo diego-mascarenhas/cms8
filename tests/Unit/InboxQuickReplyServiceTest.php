@@ -217,8 +217,9 @@ class InboxQuickReplyServiceTest extends TestCase
     public function test_onboarding_opens_as_idoneo_and_asks_about_pains(): void
     {
         $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['name' => 'Ana Gómez']);
         $team = Team::factory()->create(['user_id' => $owner->id]);
+        $this->actingAs($owner);
         $contact = Contact::factory()->create([
             'team_id' => $team->id,
             'user_id' => null,
@@ -234,8 +235,7 @@ class InboxQuickReplyServiceTest extends TestCase
         $this->assertTrue($resolved['ok']);
         $this->assertCount(1, $resolved['messages']);
         $opening = $resolved['messages'][0];
-        $this->assertStringContainsString('Hola Diego', $opening);
-        $this->assertStringContainsString('Soy IDONEO, un artesano del software', $opening);
+        $this->assertStringContainsString('Hola Diego, soy Ana y quería recomendarte este asistente', $opening);
         $this->assertStringContainsString('centralizar', $opening);
         $this->assertStringContainsString('embudo', $opening);
         $this->assertStringContainsString('intención', $opening);

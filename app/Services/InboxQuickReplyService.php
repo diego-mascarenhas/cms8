@@ -106,7 +106,10 @@ class InboxQuickReplyService
                 $contact,
                 auth()->user() instanceof User ? auth()->user() : null,
             ),
-            'recomendar', 'onboarding' => app(InboxProductOnboardingService::class)->start($contact),
+            'recomendar', 'onboarding' => app(InboxProductOnboardingService::class)->start(
+                $contact,
+                auth()->user() instanceof User ? auth()->user() : null,
+            ),
             'accesos' => $this->accessMessages($team, $contact),
             default => ['ok' => false, 'messages' => [], 'error' => 'No conozco ese comando.'],
         };

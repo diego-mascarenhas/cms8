@@ -26,8 +26,8 @@ class InboxProductOnboardingServiceTest extends TestCase
 
         $this->assertTrue($started['ok']);
         $this->assertCount(1, $started['messages']);
-        $this->assertStringContainsString('Soy IDONEO, un artesano del software', $started['messages'][0]);
-        $this->assertStringContainsString('¿Les cuesta centralizar', $started['messages'][0]);
+        $this->assertStringContainsString('Hola Diego, soy Ana y quería recomendarte este asistente', $started['messages'][0]);
+        $this->assertStringContainsString('¿Estás necesitando centralizar', $started['messages'][0]);
         $this->assertLessThan(180, mb_strlen($started['messages'][0]));
         $this->assertStringNotContainsString('idoneo.dev/register', $started['messages'][0]);
 
@@ -243,7 +243,8 @@ class InboxProductOnboardingServiceTest extends TestCase
         $reply = $service->tryHandleInbound($team, '34600111001', '/onboarding');
 
         $this->assertNotNull($reply);
-        $this->assertStringContainsString('Soy IDONEO, un artesano del software', $reply['message']);
+        $this->assertStringContainsString('quería recomendarte este asistente', $reply['message']);
+        $this->assertStringContainsString('soy Ana', $reply['message']);
         $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
     }
 
@@ -256,7 +257,7 @@ class InboxProductOnboardingServiceTest extends TestCase
         $reply = $service->tryHandleInbound($team, '34600111001', 'Creá tu asistente');
 
         $this->assertNotNull($reply);
-        $this->assertStringContainsString('¿Les cuesta centralizar', $reply['message']);
+        $this->assertStringContainsString('¿Estás necesitando centralizar', $reply['message']);
         $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
     }
 
@@ -270,6 +271,19 @@ class InboxProductOnboardingServiceTest extends TestCase
         $this->assertFalse((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
     }
 
+    public function test_inbound_crear_mi_asistente_starts_the_funnel(): void
+    {
+        $contact = $this->makeContact();
+        $team = Team::withoutGlobalScopes()->find($contact->team_id);
+        $service = app(InboxProductOnboardingService::class);
+
+        $reply = $service->tryHandleInbound($team, '34600111001', 'Crear mi asistente');
+
+        $this->assertNotNull($reply);
+        $this->assertStringContainsString('quería recomendarte este asistente', $reply['message']);
+        $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+    }
+
     private function makeContact(): Contact
     {
         $this->seed([
@@ -278,7 +292,7 @@ class InboxProductOnboardingServiceTest extends TestCase
             ContactStatusSeeder::class,
             \Database\Seeders\ModuleSeeder::class,
         ]);
-        $owner = User::factory()->create();
+        $owner = User::factory()->create(['name' => 'Ana Gómez']);
         $team = Team::factory()->create([
             'user_id' => $owner->id,
             'stripe_id' => 'cus_recomendar_flow',
