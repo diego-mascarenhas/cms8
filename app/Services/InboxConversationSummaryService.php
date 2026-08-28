@@ -22,6 +22,8 @@ class InboxConversationSummaryService
     private const INSTRUCTIONS = <<<'PROMPT'
 You write a CRM follow-up digest from a WhatsApp thread (client and team).
 
+The thread is a compact TOON table under messages (columns: who, at, text). Read it in chronological order.
+
 Write summary: at most 3 short lines separated by \n, in the message language. Cover what they asked, where the thread stands, and what to do next. No greeting. Max 280 characters.
 
 Commercial intent (intent_key), exactly one:
@@ -46,16 +48,17 @@ PROMPT;
      */
     public function summarize(Team $team, Contact $contact): array
     {
-        $thread = $this->threadText($team, $contact);
-        if ($thread === '')
+        $rows = $this->threadRows($team, $contact);
+        if ($rows === [])
         {
             throw new InvalidArgumentException(__('No hay mensajes para resumir.'));
         }
 
-        $parsed = $this->summarizeWithAi($thread, (int) $team->id);
+        $encoded = ToonPayloadService::encode(['messages' => $rows]);
+        $parsed = $this->summarizeWithAi($encoded['text'], (int) $team->id, $encoded);
         $summary = $parsed['summary'] !== ''
             ? $parsed['summary']
-            : $this->sentimentAnalysisService->clampSummary($this->fallbackSummary($thread));
+            : $this->sentimentAnalysisService->clampSummary($this->fallbackSummary($rows));
 
         if ($summary === '')
         {
@@ -71,9 +74,10 @@ PROMPT;
     }
 
     /**
+     * @param  array{used_toon?: bool, json_size?: int, toon_size?: int, json_tokens?: int, toon_tokens?: int, savings_percentage?: float|int, tokens_saved?: int}  $toon
      * @return array{summary: string, intent_key: string|null}
      */
-    private function summarizeWithAi(string $thread, int $teamId): array
+    private function summarizeWithAi(string $thread, int $teamId, array $toon): array
     {
         try
         {
@@ -89,7 +93,8 @@ PROMPT;
                 service: 'InboxConversationSummaryService',
                 usage: $response->usage ?? null,
                 moduleKey: 'assistant',
-                inputSize: strlen($thread),
+                inputSize: (int) ($toon['json_size'] ?? strlen($thread)),
+                toon: $toon,
             );
 
             $raw = trim((string) ($response->text ?? ''));
@@ -116,12 +121,15 @@ PROMPT;
         }
     }
 
-    private function threadText(Team $team, Contact $contact): string
+    /**
+     * @return list<array{who: string, at: string, text: string}>
+     */
+    private function threadRows(Team $team, Contact $contact): array
     {
         $phone = preg_replace('/[^0-9]/', '', (string) ($contact->phone ?? ''));
         if ($phone === '')
         {
-            return '';
+            return [];
         }
 
         $messages = $this->digestCollector
@@ -141,10 +149,10 @@ PROMPT;
 
         if ($messages->isEmpty())
         {
-            return '';
+            return [];
         }
 
-        $parts = [];
+        $rows = [];
         foreach ($messages->reverse() as $message)
         {
             if (! $message instanceof Conversation)
@@ -163,26 +171,30 @@ PROMPT;
                 $body = rtrim(mb_substr($body, 0, self::MAX_BODY_CHARS - 1)).'…';
             }
 
-            $who = $message->direction === 'outbound' ? 'Equipo' : 'Cliente';
-            $at = $message->created_at?->toDateTimeString() ?? '';
-            $parts[] = sprintf('[%s %s]'."\n".'%s', $who, $at, $body);
+            $rows[] = [
+                'who' => $message->direction === 'outbound' ? 'Equipo' : 'Cliente',
+                'at' => $message->created_at?->toDateTimeString() ?? '',
+                'text' => $body,
+            ];
         }
 
-        return implode("\n\n", $parts);
+        return $rows;
     }
 
-    private function fallbackSummary(string $thread): string
+    /**
+     * @param  list<array{who: string, at: string, text: string}>  $rows
+     */
+    private function fallbackSummary(array $rows): string
     {
-        $chunks = preg_split('/\n\n+/', trim($thread)) ?: [];
         $lines = [];
-        foreach (array_reverse($chunks) as $chunk)
+        foreach (array_reverse($rows) as $row)
         {
-            if (str_contains((string) $chunk, '[Equipo '))
+            if (($row['who'] ?? '') === 'Equipo')
             {
                 continue;
             }
 
-            $text = trim((string) preg_replace('/^\[[^\]]+\]\s*/u', '', (string) $chunk));
+            $text = trim((string) ($row['text'] ?? ''));
             if ($text === '')
             {
                 continue;

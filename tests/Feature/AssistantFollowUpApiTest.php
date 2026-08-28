@@ -140,6 +140,15 @@ class AssistantFollowUpApiTest extends TestCase
             'direction' => 'inbound',
             'at' => now()->subHours(2),
         ]);
+        $this->whatsappMessage([
+            'message_sid' => 'SM_sum_3',
+            'from' => self::TEAM_NUMBER,
+            'to' => self::CLIENT_PHONE,
+            'body' => 'Te paso el precio del plan y el límite de usuarios.',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'at' => now()->subHour(),
+        ]);
 
         AnonymousAgent::fake([
             '{"summary":"Pidió precio.\\nPreguntó por usuarios.\\nResponder hoy.","intent_key":"buy"}',

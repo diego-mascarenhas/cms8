@@ -31,6 +31,27 @@ class ToonPayloadServiceTest extends TestCase
         $this->assertGreaterThan(0, $encoded['savings_percentage']);
     }
 
+    public function test_whatsapp_thread_payload_uses_toon(): void
+    {
+        $rows = [];
+        for ($i = 1; $i <= 8; $i++)
+        {
+            $rows[] = [
+                'who' => $i % 2 === 0 ? 'Equipo' : 'Cliente',
+                'at' => now()->subMinutes(20 - $i)->toDateTimeString(),
+                'text' => 'Mensaje de seguimiento número '.$i.' sobre precio y cuántos usuarios caben',
+            ];
+        }
+
+        $encoded = ToonPayloadService::encode(['messages' => $rows]);
+
+        $this->assertTrue($encoded['used_toon']);
+        $this->assertStringContainsString('Cliente', $encoded['text']);
+        $this->assertStringContainsString('precio', $encoded['text']);
+        $this->assertGreaterThan(0, $encoded['tokens_saved']);
+        $this->assertLessThan($encoded['json_tokens'], $encoded['toon_tokens']);
+    }
+
     public function test_merge_accumulates_savings(): void
     {
         $first = ToonPayloadService::encode(['contacts' => [
