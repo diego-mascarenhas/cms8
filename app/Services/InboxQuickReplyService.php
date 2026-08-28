@@ -31,6 +31,13 @@ class InboxQuickReplyService
                 'needs_argument' => true,
             ],
             [
+                'key' => 'list',
+                'slash' => '/list',
+                'label' => 'Lista de seguimiento',
+                'hint' => '/list nota para el seguimiento',
+                'needs_argument' => true,
+            ],
+            [
                 'key' => 'recomendar',
                 'slash' => '/recomendar',
                 'label' => 'Recomendar y sumar puntos',
@@ -63,7 +70,7 @@ class InboxQuickReplyService
             return null;
         }
 
-        if (preg_match('#^/(producto|sku|recomendar|onboarding|accesos)(?:\s+(.+))?$#iu', $trim, $match) !== 1)
+        if (preg_match('#^/(producto|sku|list|lista|recomendar|onboarding|accesos)(?:\s+(.+))?$#iu', $trim, $match) !== 1)
         {
             return null;
         }
@@ -72,6 +79,10 @@ class InboxQuickReplyService
         if ($key === 'sku')
         {
             $key = 'producto';
+        }
+        if ($key === 'lista')
+        {
+            $key = 'list';
         }
         $argument = isset($match[2]) ? trim((string) $match[2]) : '';
 
@@ -82,13 +93,19 @@ class InboxQuickReplyService
     }
 
     /**
-     * @return array{ok: bool, messages: list<string>, media?: string, error?: string}
+     * @return array{ok: bool, messages: list<string>, media?: string, silent?: bool, notice?: string, error?: string}
      */
     public function resolve(Team $team, string $key, ?string $argument = null, ?Contact $contact = null): array
     {
         return match ($key)
         {
             'producto' => $this->productMessages($team, $argument),
+            'list' => app(InboxList60SlashService::class)->enroll(
+                $team,
+                $argument,
+                $contact,
+                auth()->user() instanceof User ? auth()->user() : null,
+            ),
             'recomendar', 'onboarding' => app(InboxProductOnboardingService::class)->start($contact),
             'accesos' => $this->accessMessages($team, $contact),
             default => ['ok' => false, 'messages' => [], 'error' => 'No conozco ese comando.'],
@@ -110,7 +127,7 @@ class InboxQuickReplyService
             ];
         }
 
-        $found = $this->findShopProduct($team, $needle);
+        $found = $this->findPublishedShopProduct($team, $needle);
         if ($found === null)
         {
             return [
@@ -136,7 +153,7 @@ class InboxQuickReplyService
     /**
      * @return array{product: Product, variant: ?ProductVariant}|null
      */
-    private function findShopProduct(Team $team, string $needle): ?array
+    public function findPublishedShopProduct(Team $team, string $needle): ?array
     {
         $normalized = mb_strtolower(trim($needle));
         if ($normalized === '')

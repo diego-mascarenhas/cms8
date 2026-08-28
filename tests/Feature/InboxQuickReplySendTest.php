@@ -4,11 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\List60;
+use App\Models\Module;
 use App\Models\Product;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\List60StatusesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
@@ -244,10 +248,88 @@ class InboxQuickReplySendTest extends TestCase
             ->getJson('/api/chat/whatsapp-quick-replies')
             ->assertOk()
             ->assertJsonFragment(['slash' => '/producto'])
+            ->assertJsonFragment(['slash' => '/list'])
             ->assertJsonFragment(['slash' => '/recomendar'])
             ->assertJsonFragment(['label' => 'Recomendar y sumar puntos'])
+            ->assertJsonFragment(['label' => 'Lista de seguimiento'])
             ->assertJsonMissing(['slash' => '/onboarding'])
             ->assertJsonMissing(['slash' => '/cbu'])
             ->assertJsonMissing(['slash' => '/horarios']);
+    }
+
+    public function test_whatsapp_list_slash_enrolls_contact_without_sending(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+            'http://127.0.0.1:3000/send-message' => Http::response(['success' => true, 'id' => 'wa-list-1'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+            EnterpriseTypeSeeder::class,
+            List60StatusesSeeder::class,
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'list60'],
+            [
+                'name' => 'List 60',
+                'icon' => 'list',
+                'description' => 'Test',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34999000111');
+        $team->enableModule('list60');
+
+        $clientPhone = '34600111777';
+        Contact::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'name' => 'Diego Lista',
+            'phone' => $clientPhone,
+            'email' => 'diego.list@example.com',
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/whatsapp-send', [
+                'to' => $clientPhone,
+                'message' => '/list assistant',
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'quick_reply' => 'list',
+                'messages_sent' => 0,
+            ])
+            ->assertJsonFragment(['notice' => 'Diego Lista quedó en la lista de seguimiento: Assistant.']);
+
+        $this->assertDatabaseHas('list60', [
+            'contact_id' => Contact::query()->where('phone', $clientPhone)->value('id'),
+        ]);
+        $this->assertSame(1, List60::query()->count());
+
+        Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
     }
 }

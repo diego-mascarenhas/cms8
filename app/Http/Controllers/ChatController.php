@@ -1182,6 +1182,17 @@ class ChatController extends Controller
             ], 422);
         }
 
+        if ($resolved['silent'] ?? false)
+        {
+            return response()->json([
+                'success' => true,
+                'message' => (string) ($resolved['notice'] ?? 'Listo.'),
+                'quick_reply' => $quickReply['key'],
+                'messages_sent' => 0,
+                'notice' => (string) ($resolved['notice'] ?? ''),
+            ]);
+        }
+
         $to = (string) $request->input('to');
         $mediaPath = trim((string) ($resolved['media'] ?? ''));
         $sent = 0;

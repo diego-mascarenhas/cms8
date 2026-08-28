@@ -89,6 +89,7 @@ class WhatsAppThreadCategoryService
 
         return [
             'statuses' => ContactStatus::query()
+                ->where('name', '!=', 'Finalizado')
                 ->orderBy('id')
                 ->get(['id', 'name'])
                 ->map(fn (ContactStatus $status): array => [

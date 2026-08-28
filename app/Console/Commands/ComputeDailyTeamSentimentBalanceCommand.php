@@ -10,7 +10,7 @@ class ComputeDailyTeamSentimentBalanceCommand extends Command
 {
     protected $signature = 'sentiment:compute-daily {--team=}';
 
-    protected $description = 'Analyze the full inbound chat and email context from the last 24 hours per active contact.';
+    protected $description = 'Analyze the last 24 hours of inbound chat and email, then store a 3-line digest on the contact.';
 
     public function handle(ContactDailySentimentService $service): int
     {
@@ -25,13 +25,14 @@ class ComputeDailyTeamSentimentBalanceCommand extends Command
 
         foreach ($teams as $team)
         {
-            if (! $team->hasModule('insights'))
+            $contacts = $service->processTeam($team);
+            if ($contacts < 1)
             {
                 continue;
             }
 
             $teamsProcessed++;
-            $contactsProcessed += $service->processTeam($team);
+            $contactsProcessed += $contacts;
         }
 
         $this->info("Processed {$contactsProcessed} contact(s) across {$teamsProcessed} team(s).");

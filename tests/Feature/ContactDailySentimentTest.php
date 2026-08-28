@@ -219,6 +219,7 @@ class ContactDailySentimentTest extends TestCase
                     }),
                     'daily',
                 );
+            $mock->shouldReceive('storeInboxDigest')->zeroOrMoreTimes();
         });
 
         app(ContactDailySentimentService::class)->processTeam($team, Carbon::parse('2026-06-15 06:30:00'));
@@ -262,6 +263,7 @@ class ContactDailySentimentTest extends TestCase
                     \Mockery::on(fn (string $context): bool => str_contains($context, 'Tienen el vidrio')),
                     'daily',
                 );
+            $mock->shouldReceive('storeInboxDigest')->zeroOrMoreTimes();
         });
 
         $processed = app(ContactDailySentimentService::class)->processTeam($team, Carbon::parse('2026-06-15 06:30:00'));
@@ -271,14 +273,14 @@ class ContactDailySentimentTest extends TestCase
         Carbon::setTestNow();
     }
 
-    public function test_daily_processing_skips_when_insights_module_is_off(): void
+    public function test_daily_processing_stores_digest_when_insights_module_is_off(): void
     {
         [$user, $team] = $this->createAdminWithContactsModule();
         $team->disableModule('insights');
         $team = $team->fresh();
         $this->assertFalse($team->hasModule('insights'));
 
-        $this->createContact([
+        $contact = $this->createContact([
             'name' => 'Skipped Contact',
             'phone' => '5491150639323',
         ], $user, $team);
@@ -296,13 +298,13 @@ class ContactDailySentimentTest extends TestCase
             'updated_at' => now()->subHour(),
         ]);
 
-        $this->mock(ContactSentimentAnalysisService::class, function ($mock): void
-        {
-            $mock->shouldNotReceive('recordForContact');
-        });
-
         $processed = app(ContactDailySentimentService::class)->processTeam($team);
 
-        $this->assertSame(0, $processed);
+        $this->assertSame(1, $processed);
+        $this->assertSame(0, ContactSentimentHistory::query()->where('contact_id', $contact->id)->count());
+        $this->assertStringContainsString(
+            'Quiero comprar',
+            (string) ($contact->fresh()->data->inbox_digest->summary ?? ''),
+        );
     }
 }

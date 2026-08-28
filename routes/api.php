@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AffiliateController;
 use App\Http\Controllers\Api\AppFeedbackController;
 use App\Http\Controllers\Api\AssistantCategoryController;
 use App\Http\Controllers\Api\AssistantCommercialStatsController;
+use App\Http\Controllers\Api\AssistantFollowUpController;
 use App\Http\Controllers\Api\AssistantList60PromptController;
 use App\Http\Controllers\Api\AssistantProductImportController;
 use App\Http\Controllers\Api\AssistantSubscriptionController;
@@ -510,6 +511,11 @@ Route::middleware('auth.api')->group(function ()
     Route::post('assistant/site-prompt/from-catalog', [SiteAssistantPromptController::class, 'applyCatalog'])->name('api.assistant.site-prompt.from-catalog');
     Route::delete('assistant/site-prompt', [SiteAssistantPromptController::class, 'destroy'])->name('api.assistant.site-prompt.destroy');
     Route::get('assistant/commercial-stats', [AssistantCommercialStatsController::class, 'show'])->name('api.assistant.commercial-stats.show');
+    Route::patch('assistant/list60/{id}/responsible', [AssistantFollowUpController::class, 'updateResponsible'])
+        ->whereNumber('id')
+        ->name('api.assistant.list60.responsible');
+    Route::post('assistant/follow-up/finish', [AssistantFollowUpController::class, 'finish'])->name('api.assistant.follow-up.finish');
+    Route::post('assistant/follow-up/summarize', [AssistantFollowUpController::class, 'summarize'])->name('api.assistant.follow-up.summarize');
     Route::get('assistant/usage', [AssistantUsageController::class, 'show'])->name('api.assistant.usage.show');
     Route::get('assistant/categories', [AssistantCategoryController::class, 'index'])->name('api.assistant.categories.index');
     Route::post('assistant/categories', [AssistantCategoryController::class, 'store'])->name('api.assistant.categories.store');
