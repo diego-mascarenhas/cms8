@@ -7,6 +7,7 @@ use App\Models\ServiceSync;
 use App\Models\SubscriptionChange;
 use App\Models\Team;
 use App\Services\Stripe\StripeSubscriptionService;
+use App\Support\DatabaseSequence;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 
@@ -21,6 +22,10 @@ class SyncStripeSubscriptions
      */
     public function handle(?Team $syncingTeam = null, ?int $limit = null): int
     {
+        DatabaseSequence::sync('subscription_changes');
+        DatabaseSequence::sync('service_syncs');
+        DatabaseSequence::sync('invoice_syncs');
+
         $processed = 0;
 
         foreach ($this->stripe->subscriptions() as $stripeSubscription)
@@ -61,16 +66,12 @@ class SyncStripeSubscriptions
                 $this->updateSubscription($subscription, $mapped);
             } else
             {
-                $subscription = ServiceSync::create($mapped + ['last_synced_at' => now()]);
+                $subscription = DatabaseSequence::retryOnDuplicateId('service_syncs', function () use ($mapped)
+                {
+                    return ServiceSync::create($mapped + ['last_synced_at' => now()]);
+                });
 
-                SubscriptionChange::create([
-                    'subscription_id' => $subscription->id,
-                    'source' => 'stripe',
-                    'changed_fields' => array_keys($mapped),
-                    'previous_values' => null,
-                    'current_values' => Arr::only($subscription->toArray(), array_keys($mapped)),
-                    'detected_at' => now(),
-                ]);
+                $this->recordChange($subscription, array_keys($mapped), null, Arr::only($subscription->toArray(), array_keys($mapped)));
             }
 
             $this->syncLatestInvoiceFromSubscription(
@@ -127,14 +128,32 @@ class SyncStripeSubscriptions
 
         $subscription->save();
 
-        SubscriptionChange::create([
-            'subscription_id' => $subscription->id,
-            'source' => 'stripe',
-            'changed_fields' => array_keys($dirty),
-            'previous_values' => $original,
-            'current_values' => Arr::only($subscription->fresh()->toArray(), array_keys($dirty)),
-            'detected_at' => now(),
-        ]);
+        $this->recordChange(
+            $subscription,
+            array_keys($dirty),
+            $original,
+            Arr::only($subscription->fresh()->toArray(), array_keys($dirty)),
+        );
+    }
+
+    /**
+     * @param  list<string>  $changedFields
+     * @param  array<string, mixed>|null  $previous
+     * @param  array<string, mixed>  $current
+     */
+    private function recordChange(ServiceSync $subscription, array $changedFields, ?array $previous, array $current): void
+    {
+        DatabaseSequence::retryOnDuplicateId('subscription_changes', function () use ($subscription, $changedFields, $previous, $current): void
+        {
+            SubscriptionChange::create([
+                'subscription_id' => $subscription->id,
+                'source' => 'stripe',
+                'changed_fields' => $changedFields,
+                'previous_values' => $previous,
+                'current_values' => $current,
+                'detected_at' => now(),
+            ]);
+        });
     }
 
     private function mapSubscription(array $payload): array
@@ -367,73 +386,76 @@ class SyncStripeSubscriptions
             }
         }
 
-        InvoiceSync::updateOrCreate(
-            [
-                'team_id' => $teamId,
-                'provider' => 'stripe',
-                'external_id' => $externalId,
-            ],
-            [
-                'stripe_subscription_id' => Arr::get($subscriptionPayload, 'id'),
-                'customer_id' => $customerId,
-                'customer_email' => Arr::get($invoicePayload, 'customer_email')
-                    ?? Arr::get($invoicePayload, 'customer_details.email')
-                    ?? Arr::get($customerData, 'email'),
-                'customer_name' => Arr::get($invoicePayload, 'customer_name')
-                    ?? Arr::get($invoicePayload, 'customer_details.name')
-                    ?? Arr::get($customerData, 'name'),
-                'customer_description' => Arr::get($customerData, 'description'),
-                'customer_tax_id' => Arr::get($invoicePayload, 'customer_tax_ids.0.value')
-                    ?? Arr::get($invoicePayload, 'customer_details.tax_ids.0.value'),
-                'customer_address_country' => strtoupper((string) (Arr::get($invoicePayload, 'customer_address.country')
-                    ?? Arr::get($invoicePayload, 'customer_details.address.country')
-                    ?? Arr::get($customerData, 'address.country'))) ?: null,
-                'number' => Arr::get($invoicePayload, 'number'),
-                'status' => Arr::get($invoicePayload, 'status'),
-                'billing_reason' => Arr::get($invoicePayload, 'billing_reason'),
-                'closed' => (bool) Arr::get($invoicePayload, 'closed', false),
-                'currency' => strtolower((string) Arr::get($invoicePayload, 'currency', 'usd')),
-                'amount_due' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'amount_due_decimal'),
-                    Arr::get($invoicePayload, 'amount_due'),
-                ),
-                'amount_paid' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'amount_paid_decimal'),
-                    Arr::get($invoicePayload, 'amount_paid'),
-                ),
-                'amount_remaining' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'amount_remaining_decimal'),
-                    Arr::get($invoicePayload, 'amount_remaining'),
-                ),
-                'subtotal' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'subtotal_excluding_tax_decimal')
-                    ?? Arr::get($invoicePayload, 'subtotal_decimal'),
-                    Arr::get($invoicePayload, 'subtotal_excluding_tax')
-                    ?? Arr::get($invoicePayload, 'subtotal'),
-                ),
-                'tax' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'tax_decimal'),
-                    Arr::get($invoicePayload, 'tax'),
-                ),
-                'total' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'total_decimal'),
-                    Arr::get($invoicePayload, 'total'),
-                ),
-                'total_discount_amount' => $this->normalizeAmount(
-                    Arr::get($invoicePayload, 'total_discount_amounts.0.amount_excluding_tax_decimal')
-                    ?? Arr::get($invoicePayload, 'total_discount_amounts.0.amount_decimal'),
-                    Arr::get($invoicePayload, 'total_discount_amounts.0.amount_excluding_tax')
-                    ?? Arr::get($invoicePayload, 'total_discount_amounts.0.amount'),
-                ),
-                'applied_coupons' => $discountLabels === [] ? null : implode(', ', $discountLabels),
-                'invoice_created_at' => $this->normalizeTimestamp(Arr::get($invoicePayload, 'created')),
-                'invoice_due_date' => $this->normalizeTimestamp(Arr::get($invoicePayload, 'due_date')),
-                'paid' => (bool) Arr::get($invoicePayload, 'paid', false),
-                'hosted_invoice_url' => Arr::get($invoicePayload, 'hosted_invoice_url'),
-                'invoice_pdf' => Arr::get($invoicePayload, 'invoice_pdf'),
-                'last_synced_at' => now(),
-                'raw_payload' => $invoicePayload,
-            ],
-        );
+        DatabaseSequence::retryOnDuplicateId('invoice_syncs', function () use ($teamId, $externalId, $subscriptionPayload, $invoicePayload, $customerId, $customerData, $discountLabels): void
+        {
+            InvoiceSync::updateOrCreate(
+                [
+                    'team_id' => $teamId,
+                    'provider' => 'stripe',
+                    'external_id' => $externalId,
+                ],
+                [
+                    'stripe_subscription_id' => Arr::get($subscriptionPayload, 'id'),
+                    'customer_id' => $customerId,
+                    'customer_email' => Arr::get($invoicePayload, 'customer_email')
+                        ?? Arr::get($invoicePayload, 'customer_details.email')
+                        ?? Arr::get($customerData, 'email'),
+                    'customer_name' => Arr::get($invoicePayload, 'customer_name')
+                        ?? Arr::get($invoicePayload, 'customer_details.name')
+                        ?? Arr::get($customerData, 'name'),
+                    'customer_description' => Arr::get($customerData, 'description'),
+                    'customer_tax_id' => Arr::get($invoicePayload, 'customer_tax_ids.0.value')
+                        ?? Arr::get($invoicePayload, 'customer_details.tax_ids.0.value'),
+                    'customer_address_country' => strtoupper((string) (Arr::get($invoicePayload, 'customer_address.country')
+                        ?? Arr::get($invoicePayload, 'customer_details.address.country')
+                        ?? Arr::get($customerData, 'address.country'))) ?: null,
+                    'number' => Arr::get($invoicePayload, 'number'),
+                    'status' => Arr::get($invoicePayload, 'status'),
+                    'billing_reason' => Arr::get($invoicePayload, 'billing_reason'),
+                    'closed' => (bool) Arr::get($invoicePayload, 'closed', false),
+                    'currency' => strtolower((string) Arr::get($invoicePayload, 'currency', 'usd')),
+                    'amount_due' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'amount_due_decimal'),
+                        Arr::get($invoicePayload, 'amount_due'),
+                    ),
+                    'amount_paid' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'amount_paid_decimal'),
+                        Arr::get($invoicePayload, 'amount_paid'),
+                    ),
+                    'amount_remaining' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'amount_remaining_decimal'),
+                        Arr::get($invoicePayload, 'amount_remaining'),
+                    ),
+                    'subtotal' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'subtotal_excluding_tax_decimal')
+                        ?? Arr::get($invoicePayload, 'subtotal_decimal'),
+                        Arr::get($invoicePayload, 'subtotal_excluding_tax')
+                        ?? Arr::get($invoicePayload, 'subtotal'),
+                    ),
+                    'tax' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'tax_decimal'),
+                        Arr::get($invoicePayload, 'tax'),
+                    ),
+                    'total' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'total_decimal'),
+                        Arr::get($invoicePayload, 'total'),
+                    ),
+                    'total_discount_amount' => $this->normalizeAmount(
+                        Arr::get($invoicePayload, 'total_discount_amounts.0.amount_excluding_tax_decimal')
+                        ?? Arr::get($invoicePayload, 'total_discount_amounts.0.amount_decimal'),
+                        Arr::get($invoicePayload, 'total_discount_amounts.0.amount_excluding_tax')
+                        ?? Arr::get($invoicePayload, 'total_discount_amounts.0.amount'),
+                    ),
+                    'applied_coupons' => $discountLabels === [] ? null : implode(', ', $discountLabels),
+                    'invoice_created_at' => $this->normalizeTimestamp(Arr::get($invoicePayload, 'created')),
+                    'invoice_due_date' => $this->normalizeTimestamp(Arr::get($invoicePayload, 'due_date')),
+                    'paid' => (bool) Arr::get($invoicePayload, 'paid', false),
+                    'hosted_invoice_url' => Arr::get($invoicePayload, 'hosted_invoice_url'),
+                    'invoice_pdf' => Arr::get($invoicePayload, 'invoice_pdf'),
+                    'last_synced_at' => now(),
+                    'raw_payload' => $invoicePayload,
+                ],
+            );
+        });
     }
 }

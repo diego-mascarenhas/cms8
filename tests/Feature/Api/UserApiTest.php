@@ -3,7 +3,10 @@
 namespace Tests\Feature\Api;
 
 use App\Models\User;
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -225,5 +228,95 @@ class UserApiTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertFalse($member->fresh()->teams->contains('id', $team->id));
+    }
+
+    public function test_update_changes_team_member_profile_and_role(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $member = User::factory()->create([
+            'name' => 'Viejo Nombre',
+            'email' => 'viejo@example.com',
+        ]);
+        $team->users()->attach($member, ['role' => 'collaborator']);
+        $member->assignRole('collaborator');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/users/'.$member->id, [
+                'name' => 'Nuevo Nombre',
+                'email' => 'nuevo@example.com',
+                'role' => 'admin',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('user.name', 'Nuevo Nombre')
+            ->assertJsonPath('user.email', 'nuevo@example.com')
+            ->assertJsonPath('user.role', 'admin')
+            ->assertJsonPath('user.is_owner', false);
+
+        $member->refresh();
+        $this->assertSame('Nuevo Nombre', $member->name);
+        $this->assertSame('nuevo@example.com', $member->email);
+        $this->assertTrue($member->hasRole('admin'));
+        $this->assertFalse($member->hasRole('collaborator'));
+        $this->assertSame('admin', $member->teams()->first()?->pivot?->role);
+    }
+
+    public function test_update_password_changes_team_member_password(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $member = User::factory()->create(['password' => Hash::make('old-secret')]);
+        $team->users()->attach($member, ['role' => 'collaborator']);
+        $member->assignRole('collaborator');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/users/'.$member->id.'/password', [
+                'password' => 'new-secret12',
+                'password_confirmation' => 'new-secret12',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue(Hash::check('new-secret12', $member->fresh()->password));
+    }
+
+    public function test_update_password_rejects_user_outside_team(): void
+    {
+        [, , $token] = $this->adminWithToken();
+        $outsider = User::factory()->create();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/users/'.$outsider->id.'/password', [
+                'password' => 'new-secret12',
+                'password_confirmation' => 'new-secret12',
+            ])
+            ->assertNotFound();
+    }
+
+    public function test_send_password_reset_notifies_team_member(): void
+    {
+        Notification::fake();
+        config(['services.assistant.url' => 'https://idoneo-assistant.test']);
+
+        [, $team, $token] = $this->adminWithToken();
+        $member = User::factory()->create(['email' => 'colab.reset@example.com']);
+        $team->users()->attach($member, ['role' => 'collaborator']);
+        $member->assignRole('collaborator');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/users/'.$member->id.'/password-reset', [
+                'frontend_url' => 'https://idoneo-assistant.test',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        Notification::assertSentTo($member, ResetPassword::class, function (ResetPassword $notification) use ($member)
+        {
+            $mail = $notification->toMail($member);
+
+            return str_contains((string) $mail->actionUrl, 'https://idoneo-assistant.test/reset-password?')
+                && str_contains((string) $mail->actionUrl, 'email='.urlencode($member->email));
+        });
     }
 }

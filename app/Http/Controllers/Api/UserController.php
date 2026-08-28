@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreTeamUserRequest;
+use App\Http\Requests\Api\UpdateTeamUserPasswordRequest;
+use App\Http\Requests\Api\UpdateTeamUserRequest;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\AssignableTeamUsers;
@@ -11,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -36,7 +39,7 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
-            'users' => $teamUsers->map(fn (User $teamUser) => $this->presentUser($teamUser))->values(),
+            'users' => $teamUsers->map(fn (User $teamUser) => $this->presentUser($teamUser, $team))->values(),
         ]);
     }
 
@@ -76,29 +79,98 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
-            'user' => $this->presentUser($user),
+            'user' => $this->presentUser($user, $team),
         ], 201);
+    }
+
+    public function update(UpdateTeamUserRequest $request, User $user): JsonResponse
+    {
+        $managed = $this->managedTeamUser($request, $user);
+        if ($managed instanceof JsonResponse)
+        {
+            return $managed;
+        }
+
+        [, $team] = $managed;
+        $validated = $request->validated();
+        $isOwner = (int) $team->user_id === (int) $user->id;
+
+        $user->forceFill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ]);
+
+        if (! empty($validated['password']))
+        {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        if (! $isOwner && ! empty($validated['role']))
+        {
+            $role = $validated['role'];
+            Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+            $user->syncRoles([$role]);
+            $user->teams()->updateExistingPivot($team->id, ['role' => $role]);
+        }
+
+        $user->load('roles');
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Usuario actualizado.'),
+            'user' => $this->presentUser($user, $team),
+        ]);
+    }
+
+    public function updatePassword(UpdateTeamUserPasswordRequest $request, User $user): JsonResponse
+    {
+        $managed = $this->managedTeamUser($request, $user);
+        if ($managed instanceof JsonResponse)
+        {
+            return $managed;
+        }
+
+        $user->forceFill([
+            'password' => Hash::make($request->validated()['password']),
+        ])->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Contraseña actualizada.'),
+        ]);
+    }
+
+    public function sendPasswordReset(Request $request, User $user): JsonResponse
+    {
+        $managed = $this->managedTeamUser($request, $user);
+        if ($managed instanceof JsonResponse)
+        {
+            return $managed;
+        }
+
+        $request->validate([
+            'frontend_url' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        Password::sendResetLink(['email' => $user->email]);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Enviamos un enlace para restablecer la contraseña.'),
+        ]);
     }
 
     public function destroy(Request $request, User $user): JsonResponse
     {
-        $actor = $request->user();
-        $team = $this->currentTeam($actor);
-        if (! $team)
+        $managed = $this->managedTeamUser($request, $user);
+        if ($managed instanceof JsonResponse)
         {
-            return response()->json([
-                'success' => false,
-                'message' => __('No hay equipo actual.'),
-            ], 422);
+            return $managed;
         }
 
-        if (! $this->canManageTeamUsers($actor, $team))
-        {
-            return response()->json([
-                'success' => false,
-                'message' => __('No tenés permiso para quitar usuarios.'),
-            ], 403);
-        }
+        [$actor, $team] = $managed;
 
         if ((int) $user->id === (int) $actor->id)
         {
@@ -114,14 +186,6 @@ class UserController extends Controller
                 'success' => false,
                 'message' => __('No se puede quitar al dueño del equipo.'),
             ], 422);
-        }
-
-        if (! $team->allUsers()->contains('id', $user->id))
-        {
-            return response()->json([
-                'success' => false,
-                'message' => __('Ese usuario no pertenece a este equipo.'),
-            ], 404);
         }
 
         $user->teams()->detach($team->id);
@@ -153,6 +217,40 @@ class UserController extends Controller
     private function canManageTeamUsers(User $actor, Team $team): bool
     {
         return $actor->canManageTeam($team);
+    }
+
+    /**
+     * @return array{0: User, 1: Team}|JsonResponse
+     */
+    private function managedTeamUser(Request $request, User $user): array|JsonResponse
+    {
+        $actor = $request->user();
+        $team = $this->currentTeam($actor);
+        if (! $actor || ! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual.'),
+            ], 422);
+        }
+
+        if (! $this->canManageTeamUsers($actor, $team))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tenés permiso para gestionar usuarios.'),
+            ], 403);
+        }
+
+        if (! $team->allUsers()->contains('id', $user->id))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Ese usuario no pertenece a este equipo.'),
+            ], 404);
+        }
+
+        return [$actor, $team];
     }
 
     /**
@@ -196,9 +294,9 @@ class UserController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string, email: string, role: ?string, roles: list<string>}
+     * @return array{id: int, name: string, email: string, role: ?string, roles: list<string>, is_owner: bool}
      */
-    private function presentUser(User $user): array
+    private function presentUser(User $user, Team $team): array
     {
         $roleNames = $user->roles->pluck('name')->values()->all();
 
@@ -208,6 +306,7 @@ class UserController extends Controller
             'email' => $user->email,
             'role' => $roleNames[0] ?? 'admin',
             'roles' => $roleNames !== [] ? $roleNames : ['admin'],
+            'is_owner' => (int) $team->user_id === (int) $user->id,
         ];
     }
 }
