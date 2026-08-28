@@ -107,8 +107,43 @@ class AssistantCommercialStatsApiTest extends TestCase
         $resume = $response->json('data.list60_resume.0');
         $this->assertSame($lead->id, $resume['contact_id']);
         $this->assertSame('Sin respuesta', $resume['status']);
+        $this->assertSame('Esperando respuesta', $resume['reason']);
         $this->assertStringContainsString('sin respuesta', mb_strtolower($resume['suggestion']));
+        $this->assertStringContainsString('Esperando respuesta', $resume['suggestion']);
         $this->assertSame('/inbox?phone=34600000001&suggest=list60', $resume['inbox_href']);
+    }
+
+    public function test_list60_resume_shows_inbox_list_topic(): void
+    {
+        [$token, $user] = $this->team();
+
+        $contact = $this->crmContact($user->currentTeam, $user, [
+            'name' => 'Diego',
+            'surname' => null,
+            'phone' => '34600000077',
+            'status_id' => 1,
+            'data' => (object) ['notes' => "Nota previa\nInbox /list: Assistant — abordar más tarde"],
+        ]);
+
+        $sinContactar = List60Status::query()->where('name', 'Sin contactar')->firstOrFail();
+        List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => now()->addDays(7)->toDateString(),
+            'status_id' => $sinContactar->id,
+            'responsible_id' => $user->id,
+            'notes' => 'Inbox /list: Assistant — abordar más tarde',
+        ]);
+
+        $resume = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/commercial-stats')
+            ->assertOk()
+            ->json('data.list60_resume.0');
+
+        $this->assertSame($contact->id, $resume['contact_id']);
+        $this->assertSame('Assistant', $resume['reason']);
+        $this->assertStringContainsString('Assistant', $resume['suggestion']);
+        $this->assertStringContainsString('Diego quedó en la lista de seguimiento para Assistant', $resume['suggestion']);
     }
 
     public function test_commercial_stats_measure_agent_response_and_waiting_inbox(): void
@@ -118,6 +153,13 @@ class AssistantCommercialStatsApiTest extends TestCase
             'name' => 'Ana',
             'surname' => 'Pérez',
             'phone' => self::CLIENT_PHONE,
+            'data' => (object) [
+                'inbox_digest' => [
+                    'date' => now()->toDateString(),
+                    'summary' => "Preguntó por stock.\nEspera precio.\nRetomar hoy.",
+                    'intent_key' => 'buy',
+                ],
+            ],
         ]);
 
         $this->whatsappMessage([
@@ -167,6 +209,19 @@ class AssistantCommercialStatsApiTest extends TestCase
         $this->assertSame('Ana Pérez', $waiting['name']);
         $this->assertTrue($waiting['unread']);
         $this->assertSame('/inbox?phone='.self::CLIENT_PHONE, $waiting['inbox_href']);
+        $this->assertArrayHasKey('photo_url', $waiting);
+        $this->assertArrayHasKey('sentiment', $waiting);
+        $this->assertArrayHasKey('status_id', $waiting);
+        $this->assertArrayHasKey('categories', $waiting);
+        $this->assertSame('Preguntó por stock.'."\n".'Espera precio.'."\n".'Retomar hoy.', $waiting['summary']);
+        $this->assertSame('buy', $waiting['intent']['key']);
+        $this->assertSame('🛒', $waiting['intent']['emoji']);
+
+        $advisors = $response->json('data.advisors');
+        $this->assertIsArray($advisors);
+        $this->assertTrue(collect($advisors)->contains('id', $user->id));
+        $this->assertArrayHasKey('statuses', $response->json('data.contact_catalog'));
+        $this->assertNotContains('Finalizado', collect($response->json('data.contact_catalog.statuses'))->pluck('name')->all());
     }
 
     /**

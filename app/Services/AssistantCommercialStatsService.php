@@ -10,6 +10,8 @@ use App\Models\Conversation;
 use App\Models\List60;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
+use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -53,8 +55,8 @@ class AssistantCommercialStatsService
         $since = now()->subDays(self::PERIOD_DAYS)->startOfDay();
         $contacts = Contact::withoutGlobalScopes()
             ->where('team_id', $team->id)
-            ->with(['status:id,name', 'currentSentiment.sentiment'])
-            ->get(['id', 'name', 'surname', 'phone', 'email', 'status_id', 'data', 'created_at', 'responsible_id']);
+            ->with(['status:id,name', 'currentSentiment.sentiment', 'currentSentiment.intent', 'categories:id,name,color', 'user:id,profile_photo_path'])
+            ->get(['id', 'name', 'surname', 'phone', 'email', 'status_id', 'data', 'created_at', 'responsible_id', 'user_id']);
 
         $pipeline = $this->pipeline($contacts);
         $whatsapp = $this->whatsappMetrics($team, $contacts, $since);
@@ -79,6 +81,8 @@ class AssistantCommercialStatsService
             'ai_conversions' => $this->aiConversions($team, $contacts),
             'inbox_waiting' => $whatsapp['inbox_waiting'],
             'list60_resume' => $this->list60Resume($team),
+            'advisors' => $this->advisors($team),
+            'contact_catalog' => app(WhatsAppThreadCategoryService::class)->catalog($team),
         ];
     }
 
@@ -337,10 +341,25 @@ class AssistantCommercialStatsService
             if ($last instanceof Conversation && $last->direction === 'inbound')
             {
                 $contact = $this->matchContact($contacts, $peer);
+                if (in_array($contact?->status?->name, ['Finalizado', 'Perdido'], true))
+                {
+                    continue;
+                }
+
                 $waiting[] = [
                     'phone' => $peer,
                     'contact_id' => $contact?->id,
                     'name' => $contact ? trim($contact->name.' '.($contact->surname ?? '')) : $peer,
+                    'email' => $this->contactEmail($contact),
+                    'status_id' => $contact?->status_id,
+                    'category_ids' => $contact?->relationLoaded('categories')
+                        ? $contact->categories->pluck('id')->map(fn ($id): int => (int) $id)->values()->all()
+                        : [],
+                    'categories' => $this->contactCategories($contact),
+                    'intent' => $this->contactIntent($contact),
+                    'summary' => $this->contactInboxSummary($contact),
+                    'photo_url' => $this->contactPhotoUrl($team, $contact, $peer),
+                    'sentiment' => $this->contactSentiment($contact),
                     'preview' => mb_substr(trim((string) $last->body), 0, 140),
                     'waiting_seconds' => max(0, $last->created_at->diffInSeconds(now())),
                     'waiting_label' => $this->humanDuration($last->created_at->diffInSeconds(now())),
@@ -397,9 +416,11 @@ class AssistantCommercialStatsService
         return List60::query()
             ->with([
                 'contact' => fn ($query) => $query->withoutGlobalScopes()->select([
-                    'id', 'name', 'surname', 'phone', 'email', 'team_id',
+                    'id', 'name', 'surname', 'phone', 'email', 'team_id', 'data', 'status_id', 'user_id',
                 ]),
                 'contact.currentSentiment.sentiment',
+                'contact.categories:id',
+                'contact.user:id,profile_photo_path',
                 'status:id,name,label_class',
                 'responsible:id,name',
             ])
@@ -419,25 +440,36 @@ class AssistantCommercialStatsService
             ->limit(30)
             ->get()
             ->filter(fn (List60 $entry) => $entry->contact !== null)
-            ->map(function (List60 $entry)
+            ->map(function (List60 $entry) use ($team)
             {
                 $contact = $entry->contact;
                 $phone = preg_replace('/[^0-9]/', '', (string) $contact->phone);
                 $days = $entry->date_next
                     ? (int) $entry->date_next->startOfDay()->diffInDays(now()->startOfDay(), false)
                     : 0;
+                $reason = $this->resumeReason($entry);
+                $sentiment = $this->contactSentiment($contact);
 
                 return [
                     'id' => $entry->id,
                     'contact_id' => $contact->id,
                     'name' => trim($contact->name.' '.($contact->surname ?? '')),
                     'phone' => $phone !== '' ? $phone : null,
+                    'email' => $this->contactEmail($contact),
                     'status' => $entry->status?->name,
+                    'status_id' => $contact->status_id,
+                    'category_ids' => $contact->relationLoaded('categories')
+                        ? $contact->categories->pluck('id')->map(fn ($id): int => (int) $id)->values()->all()
+                        : [],
                     'responsible' => $entry->responsible?->name,
+                    'responsible_id' => $entry->responsible_id,
                     'date_next' => $entry->date_next?->toDateString(),
                     'overdue_days' => max(0, $days),
-                    'suggestion' => $this->resumeSuggestion($entry, $days),
-                    'sentiment_emoji' => $contact->currentSentiment?->sentiment?->emoji,
+                    'reason' => $reason,
+                    'suggestion' => $this->resumeSuggestion($entry, $days, $reason),
+                    'photo_url' => $this->contactPhotoUrl($team, $contact, $phone !== '' ? $phone : null),
+                    'sentiment' => $sentiment,
+                    'sentiment_emoji' => $sentiment['emoji'] ?? null,
                     'inbox_href' => $phone !== ''
                         ? '/inbox?phone='.rawurlencode($phone).'&suggest=list60'
                         : null,
@@ -476,27 +508,260 @@ class AssistantCommercialStatsService
             ->count();
     }
 
-    private function resumeSuggestion(List60 $entry, int $days): string
+    private function resumeSuggestion(List60 $entry, int $days, ?string $reason = null): string
     {
         $name = trim((string) ($entry->contact?->name ?? 'este contacto'));
         $status = (string) ($entry->status?->name ?? '');
+        $for = $reason !== null && $reason !== '' ? ' para '.$reason : '';
 
         if ($status === 'Sin contactar')
         {
-            return 'Todavía no hubo primer toque con '.$name.'. Escribí hoy para abrir el hilo.';
+            return $name.' quedó en la lista de seguimiento'.$for.'. Todavía no hubo primer toque. Escribí hoy para abrir el hilo.';
         }
 
         if ($status === 'Sin respuesta')
         {
-            return $name.' está en Lista 60 sin respuesta. Retomá con un mensaje corto y una pregunta concreta.';
+            return $name.' está en la lista de seguimiento'.$for.' sin respuesta. Retomá con un mensaje corto y una pregunta concreta.';
         }
 
         if ($days > 0)
         {
-            return 'El próximo contacto de '.$name.' venció hace '.$days.' '.($days === 1 ? 'día' : 'días').'. Retomá el diálogo hoy.';
+            return 'El próximo contacto de '.$name.$for.' venció hace '.$days.' '.($days === 1 ? 'día' : 'días').'. Retomá el diálogo hoy.';
         }
 
-        return 'Hoy toca seguimiento con '.$name.'.';
+        return 'Hoy toca seguimiento con '.$name.$for.'.';
+    }
+
+    private function resumeReason(List60 $entry): ?string
+    {
+        $labels = $this->listInterestLabels((string) ($entry->notes ?? ''));
+        $contactNotes = '';
+        if (is_object($entry->contact?->data) && isset($entry->contact->data->notes))
+        {
+            $contactNotes = (string) $entry->contact->data->notes;
+        }
+        $labels = array_values(array_unique(array_merge($labels, $this->listInterestLabels($contactNotes))));
+
+        if ($labels !== [])
+        {
+            return implode(' · ', $labels);
+        }
+
+        $fallback = trim((string) ($entry->notes ?? ''));
+        if ($fallback === '')
+        {
+            $fallback = trim($contactNotes);
+        }
+
+        return $fallback !== '' ? $fallback : null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function listInterestLabels(string $text): array
+    {
+        if ($text === '')
+        {
+            return [];
+        }
+
+        if (preg_match_all('/Inbox \/list:\s*(.+?)(?:\s+[—-]\s+abordar más tarde)?(?:\n|$)/iu', $text, $matches) < 1)
+        {
+            return [];
+        }
+
+        $labels = [];
+        foreach ($matches[1] as $label)
+        {
+            $clean = trim((string) $label);
+            if ($clean !== '')
+            {
+                $labels[] = $clean;
+            }
+        }
+
+        return array_values(array_unique($labels));
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    private function advisors(Team $team): array
+    {
+        $members = User::query()
+            ->where(function ($query) use ($team): void
+            {
+                $query->whereHas('teams', function ($teams) use ($team): void
+                {
+                    $teams->where('team_id', $team->id);
+                })->orWhere('id', $team->user_id);
+            })
+            ->whereHas('roles', function ($query): void
+            {
+                $query->whereIn('name', ['admin', 'collaborator', 'employee']);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $owner = $team->user_id ? User::query()->find($team->user_id, ['id', 'name']) : null;
+        if ($owner instanceof User && ! $members->contains('id', $owner->id))
+        {
+            $members->push($owner);
+        }
+
+        return $members
+            ->unique('id')
+            ->sortBy('name')
+            ->values()
+            ->map(fn (User $user): array => [
+                'id' => (int) $user->id,
+                'name' => (string) $user->name,
+            ])
+            ->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, emoji: string}|null
+     */
+    private function contactSentiment(?Contact $contact): ?array
+    {
+        $mood = $contact?->currentSentiment?->sentiment;
+        if ($mood === null)
+        {
+            return null;
+        }
+
+        return [
+            'id' => (int) $mood->id,
+            'name' => (string) $mood->name,
+            'emoji' => (string) $mood->emoji,
+        ];
+    }
+
+    /**
+     * @return list<array{id: int, name: string, color: string|null}>
+     */
+    private function contactCategories(?Contact $contact): array
+    {
+        if ($contact === null || ! $contact->relationLoaded('categories'))
+        {
+            return [];
+        }
+
+        return $contact->categories
+            ->map(fn ($category): array => [
+                'id' => (int) $category->id,
+                'name' => (string) $category->name,
+                'color' => is_string($category->color) && $category->color !== '' ? $category->color : null,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{id: int|null, key: string, name: string, emoji: string}|null
+     */
+    private function contactIntent(?Contact $contact): ?array
+    {
+        $intent = $contact?->currentSentiment?->intent;
+        $key = is_string($intent?->key) ? $intent->key : $this->inboxDigestIntentKey($contact);
+        if ($key === null || $key === '')
+        {
+            return null;
+        }
+
+        return [
+            'id' => $intent?->id !== null ? (int) $intent->id : null,
+            'key' => $key,
+            'name' => $this->intentLabel($key, $intent?->name),
+            'emoji' => (string) ($intent?->emoji ?: $this->intentEmoji($key)),
+        ];
+    }
+
+    private function contactInboxSummary(?Contact $contact): ?string
+    {
+        $digest = $this->inboxDigest($contact);
+        $summary = trim((string) ($digest['summary'] ?? ''));
+
+        return $summary !== '' ? $summary : null;
+    }
+
+    private function inboxDigestIntentKey(?Contact $contact): ?string
+    {
+        $key = trim((string) ($this->inboxDigest($contact)['intent_key'] ?? ''));
+
+        return $key !== '' ? $key : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function inboxDigest(?Contact $contact): array
+    {
+        $data = $contact?->data;
+        $digest = is_object($data) ? ($data->inbox_digest ?? null) : (is_array($data) ? ($data['inbox_digest'] ?? null) : null);
+        if (is_object($digest))
+        {
+            return get_object_vars($digest);
+        }
+
+        return is_array($digest) ? $digest : [];
+    }
+
+    private function intentLabel(string $key, ?string $fallback = null): string
+    {
+        return match ($key)
+        {
+            'buy' => 'Comprar',
+            'update' => 'Actualizar',
+            'work' => 'Resolver',
+            'cancel' => 'Cancelar',
+            'other' => 'Otro',
+            'unclear' => 'Poco clara',
+            default => $fallback !== null && $fallback !== '' ? $fallback : $key,
+        };
+    }
+
+    private function intentEmoji(string $key): string
+    {
+        return match ($key)
+        {
+            'buy' => '🛒',
+            'update' => '🔄',
+            'work' => '🔧',
+            'cancel' => '🚪',
+            'other' => '💬',
+            default => '❔',
+        };
+    }
+
+    private function contactEmail(?Contact $contact): ?string
+    {
+        $email = trim((string) ($contact?->email ?? ''));
+        if ($email === '' || str_ends_with(strtolower($email), '@chat.placeholder'))
+        {
+            return null;
+        }
+
+        return $email;
+    }
+
+    private function contactPhotoUrl(Team $team, ?Contact $contact, ?string $phone): ?string
+    {
+        $digits = preg_replace('/[^0-9]/', '', (string) $phone) ?? '';
+        if ($digits !== '')
+        {
+            $whatsapp = app(WhatsAppProfilePhotoStore::class)->publicUrl((int) $team->id, $digits);
+            if (is_string($whatsapp) && $whatsapp !== '')
+            {
+                return $whatsapp;
+            }
+        }
+
+        $userPhoto = $contact?->user?->profile_photo_url;
+
+        return is_string($userPhoto) && $userPhoto !== '' ? $userPhoto : null;
     }
 
     /**

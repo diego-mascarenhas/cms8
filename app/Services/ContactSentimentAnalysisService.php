@@ -59,14 +59,16 @@ cancel = wants to unsubscribe, cancel, or leave
 other = a clear request that is none of the above
 unclear = greeting, noise, or no actionable intent
 
-Respond with ONLY a valid JSON object, no markdown. Example:
-{"sentiment_id": 4, "intent_key": "work", "reason": "Pasó de quejarse a pedir que hagan la reparación"}
+Also write a daily thread digest (summary): at most 3 short lines separated by \\n, in the message language. Cover what they asked, where the thread stands, and what to do next. No greeting. Max 280 characters.
 
-Valid keys: sentiment_id (integer 1-5), intent_key (buy|update|work|cancel|other|unclear), reason (short string in the messages language).
+Respond with ONLY a valid JSON object, no markdown. Example:
+{"sentiment_id": 4, "intent_key": "work", "reason": "Pasó de quejarse a pedir que hagan la reparación", "summary": "Pidió reparación del vidrio.\\nAyer se enojó por la demora.\\nHoy agradece y quiere fecha."}
+
+Valid keys: sentiment_id (integer 1-5), intent_key (buy|update|work|cancel|other|unclear), reason (short string in the messages language), summary (up to 3 lines).
 PROMPT;
 
     /**
-     * @return array{id: int, name: string, reason: string, intent_id: int|null, intent_key: string}|null
+     * @return array{id: int, name: string, reason: string, intent_id: int|null, intent_key: string, summary: string|null}|null
      */
     public function analyzeWithAi(string $text, ?int $teamId = null, ?string $instructions = null): ?array
     {
@@ -131,6 +133,9 @@ PROMPT;
             $reason = isset($data['reason']) && is_string($data['reason'])
                 ? trim($data['reason'])
                 : 'Análisis automático';
+            $summary = isset($data['summary']) && is_string($data['summary'])
+                ? $this->clampSummary($data['summary'])
+                : null;
 
             return [
                 'id' => $id,
@@ -138,6 +143,7 @@ PROMPT;
                 'reason' => $reason,
                 'intent_id' => $intent?->id,
                 'intent_key' => $intentKey,
+                'summary' => $summary,
             ];
         } catch (\Throwable $e)
         {
@@ -170,11 +176,61 @@ PROMPT;
             'notes' => sprintf('Análisis automático de %s: %s', $channel, $result['reason']),
         ]);
 
+        if ($channel === 'daily')
+        {
+            $this->storeInboxDigest($contact, $result['summary'] ?? $result['reason'], $result['intent_key']);
+        }
+
         Log::info('Contact sentiment recorded', [
             'contact_id' => $contact->id,
             'sentiment_id' => $result['id'],
             'intent_id' => $result['intent_id'],
             'channel' => $channel,
         ]);
+    }
+
+    public function storeInboxDigest(Contact $contact, string $summary, ?string $intentKey = null): void
+    {
+        $clean = $this->clampSummary($summary);
+        if ($clean === '')
+        {
+            return;
+        }
+
+        $data = $contact->data;
+        $payload = is_array($data) ? $data : (is_object($data) ? get_object_vars($data) : []);
+        $payload['inbox_digest'] = [
+            'date' => now()->toDateString(),
+            'summary' => $clean,
+            'intent_key' => $intentKey,
+        ];
+        $contact->update(['data' => $payload]);
+    }
+
+    public function clampSummary(string $text): string
+    {
+        $lines = preg_split('/\r\n|\n|\r/', trim($text)) ?: [];
+        $kept = [];
+        foreach ($lines as $line)
+        {
+            $line = trim($line);
+            if ($line === '')
+            {
+                continue;
+            }
+            $kept[] = mb_strlen($line) > 120 ? rtrim(mb_substr($line, 0, 117)).'…' : $line;
+            if (count($kept) >= 3)
+            {
+                break;
+            }
+        }
+
+        $summary = implode("\n", $kept);
+        if (mb_strlen($summary) > 280)
+        {
+            $summary = rtrim(mb_substr($summary, 0, 277)).'…';
+        }
+
+        return $summary;
     }
 }

@@ -27,6 +27,8 @@ class InboxQuickReplyServiceTest extends TestCase
 
         $this->assertSame(['key' => 'producto', 'argument' => 'REM-001'], $service->parse('/producto REM-001'));
         $this->assertSame(['key' => 'producto', 'argument' => 'SKU-99'], $service->parse('/sku SKU-99'));
+        $this->assertSame(['key' => 'list', 'argument' => 'assistant'], $service->parse('/list assistant'));
+        $this->assertSame(['key' => 'list', 'argument' => 'shop'], $service->parse('/lista shop'));
         $this->assertSame(['key' => 'recomendar', 'argument' => null], $service->parse('/recomendar'));
         $this->assertSame(['key' => 'onboarding', 'argument' => null], $service->parse('/onboarding'));
         $this->assertNull($service->parse('/cbu'));

@@ -56,6 +56,7 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $response->assertJsonPath('thread_contact.status_id', $status->id);
         $response->assertJsonPath('thread_contact.email', null);
         $this->assertContains('Lead', collect($response->json('thread_contact.statuses'))->pluck('name')->all());
+        $this->assertNotContains('Finalizado', collect($response->json('thread_contact.statuses'))->pluck('name')->all());
     }
 
     public function test_thread_exposes_contact_email_and_hides_placeholder(): void
@@ -121,6 +122,7 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
 
         $response->assertOk();
         $this->assertContains('Lead', collect($response->json('contact_catalog.statuses'))->pluck('name')->all());
+        $this->assertNotContains('Finalizado', collect($response->json('contact_catalog.statuses'))->pluck('name')->all());
         $response->assertJsonPath('contact_catalog.categories', [
             ['id' => $category->id, 'name' => 'Alfa', 'color' => null],
         ]);

@@ -30,14 +30,10 @@ class ContactDailySentimentService
      */
     public function processTeam(Team $team, ?CarbonInterface $since = null): int
     {
-        if (! $team->hasModule('insights'))
-        {
-            return 0;
-        }
-
         $since ??= now()->subDay();
         $contextByContact = $this->collectRecentInboundContextByContact($team, $since);
         $processed = 0;
+        $recordSentiment = $team->hasModule('insights');
 
         foreach ($contextByContact as $contactId => $contextText)
         {
@@ -48,11 +44,51 @@ class ContactDailySentimentService
                 continue;
             }
 
-            $this->sentimentAnalysisService->recordForContact($contact, $contextText, 'daily');
+            if ($recordSentiment)
+            {
+                $this->sentimentAnalysisService->recordForContact($contact, $contextText, 'daily');
+            }
+
+            $this->ensureInboxDigest($contact, $contextText);
             $processed++;
         }
 
         return $processed;
+    }
+
+    private function ensureInboxDigest(Contact $contact, string $contextText): void
+    {
+        $data = $contact->fresh()?->data;
+        $digest = is_object($data) ? ($data->inbox_digest ?? null) : (is_array($data) ? ($data['inbox_digest'] ?? null) : null);
+        $date = is_object($digest) ? ($digest->date ?? null) : (is_array($digest) ? ($digest['date'] ?? null) : null);
+        if ($date === now()->toDateString())
+        {
+            return;
+        }
+
+        $this->sentimentAnalysisService->storeInboxDigest($contact, $this->fallbackDigest($contextText));
+    }
+
+    private function fallbackDigest(string $contextText): string
+    {
+        $chunks = preg_split('/\n\n+/', trim($contextText)) ?: [];
+        $lines = [];
+        foreach (array_reverse($chunks) as $chunk)
+        {
+            $text = trim((string) preg_replace('/^\[[^\]]+\]\s*/u', '', (string) $chunk));
+            $text = trim(preg_replace('/\s+/u', ' ', $text) ?? '');
+            if ($text === '')
+            {
+                continue;
+            }
+            array_unshift($lines, $text);
+            if (count($lines) >= 3)
+            {
+                break;
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
