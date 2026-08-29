@@ -65,6 +65,7 @@ class InboxQuickReplySendTest extends TestCase
             'responsible_id' => $user->id,
             'status_id' => 1,
         ]);
+        $this->createRecentInbound($clientPhone);
 
         $token = $user->createToken('test')->plainTextToken;
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -134,6 +135,7 @@ class InboxQuickReplySendTest extends TestCase
             'responsible_id' => $user->id,
             'status_id' => 1,
         ]);
+        $this->createRecentInbound($clientPhone);
 
         $token = $user->createToken('test')->plainTextToken;
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -164,7 +166,7 @@ class InboxQuickReplySendTest extends TestCase
         $this->assertSame($photo, $conversation->media[0]['url'] ?? null);
     }
 
-    public function test_whatsapp_onboarding_sends_one_opening_as_idoneo(): void
+    public function test_whatsapp_recomendar_slash_is_paused(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -212,23 +214,17 @@ class InboxQuickReplySendTest extends TestCase
                 'message' => '/recomendar',
             ]);
 
-        $response->assertOk()->assertJson([
-            'success' => true,
-            'quick_reply' => 'recomendar',
+        $response->assertStatus(422)->assertJson([
+            'success' => false,
         ]);
-        $this->assertSame(1, (int) $response->json('messages_sent'));
+        $this->assertStringContainsString('pausado', (string) $response->json('error'));
 
         $sentBodies = collect(Http::recorded())
             ->filter(fn (array $pair): bool => str_contains($pair[0]->url(), '/send-message'))
             ->map(fn (array $pair): string => (string) ($pair[0]['body'] ?? ''))
             ->values();
 
-        $this->assertCount(1, $sentBodies);
-        $this->assertStringContainsString('Hola Diego, soy Ana y quería recomendarte este asistente', $sentBodies[0]);
-        $this->assertStringContainsString('¿Estás necesitando centralizar', $sentBodies[0]);
-        $this->assertStringNotContainsString('assistant.idoneo.dev/register', $sentBodies[0]);
-        $this->assertStringNotContainsString('shop.idoneo.dev/register', $sentBodies[0]);
-        $this->assertFalse($sentBodies->contains('/recomendar'));
+        $this->assertCount(0, $sentBodies);
     }
 
     public function test_quick_replies_catalog_is_available(): void
@@ -249,9 +245,9 @@ class InboxQuickReplySendTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['slash' => '/producto'])
             ->assertJsonFragment(['slash' => '/list'])
-            ->assertJsonFragment(['slash' => '/recomendar'])
-            ->assertJsonFragment(['label' => 'Recomendar y sumar puntos'])
             ->assertJsonFragment(['label' => 'Lista de seguimiento'])
+            ->assertJsonMissing(['slash' => '/recomendar'])
+            ->assertJsonMissing(['slash' => '/accesos'])
             ->assertJsonMissing(['slash' => '/onboarding'])
             ->assertJsonMissing(['slash' => '/cbu'])
             ->assertJsonMissing(['slash' => '/horarios']);
@@ -331,5 +327,18 @@ class InboxQuickReplySendTest extends TestCase
         $this->assertSame(1, List60::query()->count());
 
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
+    }
+
+    private function createRecentInbound(string $from): void
+    {
+        Conversation::create([
+            'message_sid' => 'wa_quick_'.uniqid(),
+            'channel' => 'whatsapp',
+            'from' => $from,
+            'to' => '34999000111',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
     }
 }

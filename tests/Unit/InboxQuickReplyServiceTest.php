@@ -3,16 +3,11 @@
 namespace Tests\Unit;
 
 use App\Enums\ProductCatalogStatus;
-use App\Models\Contact;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\InboxQuickReplyService;
-use App\Support\NewUserWelcomeEmailNotifier;
-use Database\Seeders\ContactStatusSeeder;
-use Database\Seeders\CountrySeeder;
-use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -31,6 +26,7 @@ class InboxQuickReplyServiceTest extends TestCase
         $this->assertSame(['key' => 'list', 'argument' => 'shop'], $service->parse('/lista shop'));
         $this->assertSame(['key' => 'recomendar', 'argument' => null], $service->parse('/recomendar'));
         $this->assertSame(['key' => 'onboarding', 'argument' => null], $service->parse('/onboarding'));
+        $this->assertSame(['key' => 'accesos', 'argument' => null], $service->parse('/accesos'));
         $this->assertNull($service->parse('/cbu'));
         $this->assertNull($service->parse('/sucursal centro'));
         $this->assertNull($service->parse('/enviar-onboarding +34600111222'));
@@ -214,96 +210,28 @@ class InboxQuickReplyServiceTest extends TestCase
         $this->assertStringContainsString('BOL-TOT-001', (string) $resolved['error']);
     }
 
-    public function test_onboarding_opens_as_idoneo_and_asks_about_pains(): void
+    public function test_catalog_omits_paused_funnel_slashes(): void
     {
-        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
-        $owner = User::factory()->create(['name' => 'Ana Gómez']);
-        $team = Team::factory()->create(['user_id' => $owner->id]);
-        $this->actingAs($owner);
-        $contact = Contact::factory()->create([
-            'team_id' => $team->id,
-            'user_id' => null,
-            'name' => 'Diego Pérez',
-            'email' => 'diego.cliente@example.com',
-            'creator_id' => $owner->id,
-            'responsible_id' => $owner->id,
-            'status_id' => 1,
-        ]);
+        $keys = collect(app(InboxQuickReplyService::class)->catalog())->pluck('key');
 
-        $resolved = app(InboxQuickReplyService::class)->resolve($team, 'recomendar', null, $contact);
-
-        $this->assertTrue($resolved['ok']);
-        $this->assertCount(1, $resolved['messages']);
-        $opening = $resolved['messages'][0];
-        $this->assertStringContainsString('Hola Diego, soy Ana y quería recomendarte este asistente', $opening);
-        $this->assertStringContainsString('centralizar', $opening);
-        $this->assertStringContainsString('embudo', $opening);
-        $this->assertStringContainsString('intención', $opening);
-        $this->assertStringNotContainsString('https://assistant.idoneo.dev/register', $opening);
-        $this->assertStringNotContainsString('https://shop.idoneo.dev/register', $opening);
-        $this->assertStringNotContainsString('stripe', mb_strtolower($opening));
-        $this->assertStringNotContainsString('49', $opening);
-        $this->assertNull($contact->fresh()->user_id);
-        $this->assertTrue((bool) data_get($contact->fresh()->data, 'idoneo_product_onboarding.active'));
+        $this->assertTrue($keys->contains('producto'));
+        $this->assertTrue($keys->contains('list'));
+        $this->assertFalse($keys->contains('recomendar'));
+        $this->assertFalse($keys->contains('accesos'));
+        $this->assertFalse($keys->contains('onboarding'));
     }
 
-    public function test_accesos_does_not_recreate_an_existing_user(): void
+    public function test_paused_slashes_do_not_expand(): void
     {
-        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
         $team = Team::factory()->create();
-        $user = User::factory()->create(['email' => 'ya.tiene@example.com']);
-        $contact = Contact::factory()->create([
-            'team_id' => $team->id,
-            'user_id' => $user->id,
-            'email' => 'ya.tiene@example.com',
-            'name' => 'Paola',
-            'creator_id' => $user->id,
-            'responsible_id' => $user->id,
-            'status_id' => 1,
-        ]);
 
-        $resolved = app(InboxQuickReplyService::class)->resolve($team, 'accesos', null, $contact);
+        foreach (['recomendar', 'onboarding', 'accesos'] as $key)
+        {
+            $resolved = app(InboxQuickReplyService::class)->resolve($team, $key);
 
-        $this->assertTrue($resolved['ok']);
-        $message = $resolved['messages'][0];
-        $this->assertStringContainsString('ya.tiene@example.com', $message);
-        $this->assertStringContainsString('/reset-password?', $message);
-        $this->assertStringContainsString('token=', $message);
-        $this->assertStringContainsString('email=', $message);
-        $this->assertStringNotContainsString('Olvidé', $message);
-        $this->assertStringNotContainsString('/login', $message);
-        $this->assertSame($user->id, $contact->fresh()->user_id);
-        $this->assertFalse(NewUserWelcomeEmailNotifier::isPlaceholderInboxEmail('ya.tiene@example.com'));
-        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'ya.tiene@example.com']);
-    }
-
-    public function test_accesos_creates_a_client_and_sends_a_reset_link_not_a_password(): void
-    {
-        $this->seed([CountrySeeder::class, LanguageSeeder::class, ContactStatusSeeder::class]);
-        $owner = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $owner->id]);
-        $contact = Contact::factory()->create([
-            'team_id' => $team->id,
-            'user_id' => null,
-            'email' => 'nuevo.acceso@example.com',
-            'name' => 'Nora',
-            'creator_id' => $owner->id,
-            'responsible_id' => $owner->id,
-            'status_id' => 1,
-        ]);
-
-        $resolved = app(InboxQuickReplyService::class)->resolve($team, 'accesos', null, $contact);
-
-        $this->assertTrue($resolved['ok']);
-        $message = $resolved['messages'][0];
-        $created = User::query()->where('email', 'nuevo.acceso@example.com')->first();
-        $this->assertNotNull($created);
-        $this->assertTrue($created->hasRole('client'));
-        $this->assertSame($created->id, $contact->fresh()->user_id);
-        $this->assertStringContainsString('/reset-password?', $message);
-        $this->assertStringContainsString('token=', $message);
-        $this->assertStringNotContainsString('Olvidé', $message);
-        $this->assertStringNotContainsString('spam', mb_strtolower($message));
-        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'nuevo.acceso@example.com']);
+            $this->assertFalse($resolved['ok'], $key);
+            $this->assertSame([], $resolved['messages']);
+            $this->assertStringContainsString('pausado', (string) $resolved['error']);
+        }
     }
 }
