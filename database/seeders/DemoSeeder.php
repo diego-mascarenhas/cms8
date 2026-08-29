@@ -33,6 +33,7 @@ class DemoSeeder extends Seeder
         DemoDataService::createClientsAndProjects($team->id, $this->command);
 
         DemoMailCampaignData::seed($team, $this->command);
+        MailerDemoSeeder::seed($team, $this->command);
 
         $this->call(DemoWhatsAppConversationsSeeder::class);
 

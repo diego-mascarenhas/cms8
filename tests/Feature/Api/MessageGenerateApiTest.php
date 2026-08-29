@@ -124,4 +124,15 @@ JSON);
         $this->assertSame('Vista previa', $parsed['text']);
         $this->assertSame('<p>Hola</p>', $parsed['html']);
     }
+
+    public function test_parse_keeps_img_tags(): void
+    {
+        $service = app(MailerNewsGenerationService::class);
+
+        $parsed = $service->parse(<<<'JSON'
+{"name":"Asunto","text":"Vista previa","html":"<p><img src=\"https://picsum.photos/id/1015/1200/480\" alt=\"Hero\"></p><p>Hola</p>","css":""}
+JSON);
+
+        $this->assertSame('<p><img src="https://picsum.photos/id/1015/1200/480" alt="Hero"></p><p>Hola</p>', $parsed['html']);
+    }
 }

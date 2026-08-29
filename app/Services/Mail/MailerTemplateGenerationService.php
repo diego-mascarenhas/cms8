@@ -6,6 +6,7 @@ use App\Models\Team;
 use App\Services\Business\BusinessProfileService;
 use App\Services\TokenUsageLogService;
 use App\Support\AiTasks;
+use App\Support\MailerStockImages;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -60,7 +61,10 @@ class MailerTemplateGenerationService
             outputSize: strlen($text),
         );
 
-        return $this->parse($text);
+        $parsed = $this->parse($text);
+        $parsed['html'] = MailerStockImages::ensureHero($parsed['html'], $prompt.' '.$parsed['name']);
+
+        return $parsed;
     }
 
     /**
@@ -139,7 +143,9 @@ Sos un diseñador de emails para Idoneo Mailer. Respondé SOLO un JSON válido, 
 
 Reglas:
 - name: título corto de la plantilla, máximo 75 caracteres, en el idioma del pedido (español por defecto).
-- html: SOLO el cuerpo (sin doctype, html, head ni body). Usá HTML simple que TipTap pueda editar: h2, p, ul/li, strong, em, a, br.
+- html: SOLO el cuerpo (sin doctype, html, head ni body). HTML simple para TipTap: h2, p, ul/li, strong, em, a, br, img.
+- Incluí UNA imagen de cabecera al inicio: <img src="https://images.unsplash.com/..." alt="..." width="600" style="width:100%;max-width:600px;height:auto;border:0;display:block;">
+- Usá solo URLs públicas de images.unsplash.com o picsum.photos. Nada de data URI ni dominios desconocidos.
 - Incluí merge tags cuando sumen: {{name}}, {{nombre}}, {{email}}, {{phone}}.
 - Empezá con un saludo personalizado (Hola {{name}}) salvo que el pedido pida otra cosa.
 - Cerrá con un llamado a la acción claro (un enlace <a href="#">).

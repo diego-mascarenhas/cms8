@@ -101,12 +101,12 @@ class TemplateGenerateApiTest extends TestCase
 
         $parsed = $service->parse(<<<'JSON'
 ```json
-{"name":"Promo verano","html":"<html><body><h2>Oferta</h2><script>alert(1)</script><p>Aprovechá hoy.</p></body></html>","css":"h2{color:red}"}
+{"name":"Promo verano","html":"<html><body><p><img src=\"https://picsum.photos/id/1015/1200/480\" alt=\"Hero\"></p><h2>Oferta</h2><script>alert(1)</script><p>Aprovechá hoy.</p></body></html>","css":"h2{color:red}"}
 ```
 JSON);
 
         $this->assertSame('Promo verano', $parsed['name']);
-        $this->assertSame('<h2>Oferta</h2><p>Aprovechá hoy.</p>', $parsed['html']);
+        $this->assertSame('<p><img src="https://picsum.photos/id/1015/1200/480" alt="Hero"></p><h2>Oferta</h2><p>Aprovechá hoy.</p>', $parsed['html']);
         $this->assertSame('h2{color:red}', $parsed['css']);
     }
 }
