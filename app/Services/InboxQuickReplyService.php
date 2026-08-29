@@ -17,6 +17,9 @@ use Spatie\Permission\Models\Role;
 
 class InboxQuickReplyService
 {
+    /** Operator slashes hidden until the official-API / automation path is settled. */
+    private const PAUSED_KEYS = ['recomendar', 'onboarding', 'accesos'];
+
     /**
      * @return list<array{key: string, slash: string, label: string, hint: string, needs_argument: bool}>
      */
@@ -36,20 +39,6 @@ class InboxQuickReplyService
                 'label' => 'Lista de seguimiento',
                 'hint' => '/list nota para el seguimiento',
                 'needs_argument' => true,
-            ],
-            [
-                'key' => 'recomendar',
-                'slash' => '/recomendar',
-                'label' => 'Recomendar y sumar puntos',
-                'hint' => 'El mismo recorrido. El customer va en el registro',
-                'needs_argument' => false,
-            ],
-            [
-                'key' => 'accesos',
-                'slash' => '/accesos',
-                'label' => 'Accesos',
-                'hint' => 'Login solo si todavía no tiene cuenta',
-                'needs_argument' => false,
             ],
         ];
     }
@@ -97,6 +86,15 @@ class InboxQuickReplyService
      */
     public function resolve(Team $team, string $key, ?string $argument = null, ?Contact $contact = null): array
     {
+        if (in_array($key, self::PAUSED_KEYS, true))
+        {
+            return [
+                'ok' => false,
+                'messages' => [],
+                'error' => 'Este comando está pausado. Escribí a mano o usá /producto o /list.',
+            ];
+        }
+
         return match ($key)
         {
             'producto' => $this->productMessages($team, $argument),
