@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\WhatsAppSessionWindowClosedException;
 use App\Http\Controllers\Controller;
 use App\Models\Team;
 use App\Services\TeamWhatsAppConnectionSync;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +66,17 @@ class TeamWhatsAppController extends Controller
                     ], 503);
                 }
             }
+        }
+
+        try
+        {
+            app(WhatsAppCustomerServiceWindow::class)->assertOpen($digits);
+        } catch (WhatsAppSessionWindowClosedException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => WhatsAppSendExceptionPresenter::messageForUser($e),
+            ], 422);
         }
 
         try

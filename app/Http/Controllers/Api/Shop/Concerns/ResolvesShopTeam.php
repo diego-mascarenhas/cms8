@@ -43,9 +43,11 @@ trait ResolvesShopTeam
             }
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => __('Este módulo no está disponible en tu plan.'),
-        ], 403);
+        if ($denied = $this->ensureTeamModule($team, 'products'))
+        {
+            return $denied;
+        }
+
+        return $team;
     }
 }

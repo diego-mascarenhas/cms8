@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ContactInteractionType;
+use App\Exceptions\WhatsAppSessionWindowClosedException;
 use App\Helpers\WhatsAppOutboundText;
 use App\Jobs\SendNotificationJob;
 use App\Models\Contact;
@@ -12,6 +13,7 @@ use App\Models\Notification;
 use App\Models\NotificationType;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -115,6 +117,16 @@ class ContactOutreachService
         {
             throw ValidationException::withMessages([
                 'message' => [__('validation.required', ['attribute' => __('app.list60_outreach_message')])],
+            ]);
+        }
+
+        try
+        {
+            app(WhatsAppCustomerServiceWindow::class)->assertOpen($phone);
+        } catch (WhatsAppSessionWindowClosedException)
+        {
+            throw ValidationException::withMessages([
+                'channel' => [__('whatsapp.send.error.session_window_closed')],
             ]);
         }
 

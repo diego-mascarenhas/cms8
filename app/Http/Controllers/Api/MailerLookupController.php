@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\ContactStatus;
 use App\Models\Module;
 use App\Models\Template;
+use App\Support\MessageTemplateMergeFields;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -55,12 +56,28 @@ class MailerLookupController extends Controller
             ->values()
             ->all();
 
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        $emailConfig = $team->getOutgoingEmailConfig();
+
         return response()->json([
             'success' => true,
             'data' => [
                 'categories' => $categories,
                 'contact_statuses' => $contactStatuses,
                 'templates' => $templates,
+                'merge_fields' => MessageTemplateMergeFields::forUi(),
+                'merge_sample' => MessageTemplateMergeFields::sampleValues(),
+                'sender' => [
+                    'from_name' => trim((string) ($emailConfig['from_name'] ?? '')),
+                    'from_address' => trim((string) ($emailConfig['from_address'] ?? '')),
+                    'configured' => $team->hasOutgoingEmailSenderConfigured(),
+                    'can_update' => (bool) $request->user()?->can('update', $team),
+                ],
+                'usage' => $team->getMailerUsageSummary(),
             ],
         ]);
     }

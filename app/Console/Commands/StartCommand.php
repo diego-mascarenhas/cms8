@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Team;
 use App\Services\DemoDataService;
 use Database\Seeders\DemoMailCampaignData;
+use Database\Seeders\MailerDemoSeeder;
 use Illuminate\Console\Command;
 
 class StartCommand extends Command
@@ -215,6 +216,7 @@ class StartCommand extends Command
 
         DemoDataService::createClientsAndProjects($team->id, $this);
         DemoMailCampaignData::seed($team, $this);
+        MailerDemoSeeder::seed($team, $this);
 
         return self::SUCCESS;
     }

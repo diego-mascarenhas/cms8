@@ -7,6 +7,7 @@ use App\Models\SubscriptionProduct;
 enum EmailPlan: string
 {
     case FREE = 'free';
+    case PAYG = 'payg';
     case BASIC = 'basic';
     case FOUNDATION = 'foundation';
     case SCALE = 'scale';
@@ -16,6 +17,7 @@ enum EmailPlan: string
         return match ($this)
         {
             self::FREE => 'Free',
+            self::PAYG => 'Pay as you go',
             self::BASIC => 'Basic',
             self::FOUNDATION => 'Foundation',
             self::SCALE => 'Scale',
@@ -27,6 +29,7 @@ enum EmailPlan: string
         return match ($this)
         {
             self::FREE => 'Plan gratuito con límites básicos',
+            self::PAYG => 'Pagás solo los emails que enviás',
             self::BASIC => 'Ideal para comenzar',
             self::FOUNDATION => 'Para empresas en crecimiento',
             self::SCALE => 'Para grandes empresas',
@@ -38,6 +41,7 @@ enum EmailPlan: string
         return match ($this)
         {
             self::FREE => 2000,
+            self::PAYG => 0,
             self::BASIC => 10000,
             self::FOUNDATION => 50000,
             self::SCALE => 100000,
@@ -51,7 +55,7 @@ enum EmailPlan: string
             self::FREE => 100,
             self::BASIC => 500,
             self::FOUNDATION => 2000,
-            self::SCALE => null, // Sin límite diario
+            self::PAYG, self::SCALE => null,
         };
     }
 
@@ -62,14 +66,20 @@ enum EmailPlan: string
             self::FREE => 100,
             self::BASIC => 3000,
             self::FOUNDATION => 20000,
-            self::SCALE => 50000,
+            self::PAYG, self::SCALE => 100000,
         };
+    }
+
+    public function usesPrepaidCredits(): bool
+    {
+        return $this === self::PAYG;
     }
 
     public static function getAll(): array
     {
         return [
             self::FREE,
+            self::PAYG,
             self::BASIC,
             self::FOUNDATION,
             self::SCALE,
@@ -97,7 +107,7 @@ enum EmailPlan: string
      */
     public function getStripeProductId(): ?string
     {
-        if ($this === self::FREE)
+        if ($this === self::FREE || $this === self::PAYG)
         {
             return null;
         }
@@ -116,7 +126,7 @@ enum EmailPlan: string
      */
     public function getStripePriceId(): ?string
     {
-        if ($this === self::FREE)
+        if ($this === self::FREE || $this === self::PAYG)
         {
             return null;
         }

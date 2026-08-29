@@ -78,31 +78,40 @@ return [
                 'Metrics, reports, and the DAGMA method to implement and evolve',
             ],
         ],
+        'mailer_payg' => [
+            'name' => 'Pay as you go',
+            'description' => 'No monthly fee. Buy credits and pay only for emails you send.',
+            'features' => [
+                '€0.01 per email sent',
+                'Buy credits when you need them',
+                'No fixed monthly quota',
+            ],
+        ],
         'mailer_basic' => [
             'name' => 'Mailer Basic',
             'description' => 'Best for small businesses getting started with email marketing.',
             'features' => [
-                'Up to 10,000 emails per month',
-                'Up to 3,000 contacts',
-                'A good starting point',
+                'Up to 3,000 subscribers',
+                '10,000 emails included each month',
+                'Extra emails at €0.01, billed separately from tokens',
             ],
         ],
         'mailer_foundation' => [
             'name' => 'Mailer Foundation',
             'description' => 'For teams that need to scale email campaigns.',
             'features' => [
-                'Up to 50,000 emails per month',
-                'Up to 20,000 contacts',
-                'Built for growing companies',
+                'Up to 20,000 subscribers',
+                '50,000 emails included each month',
+                'Extra emails at €0.01, billed separately from tokens',
             ],
         ],
         'mailer_scale' => [
             'name' => 'Mailer Scale',
             'description' => 'Full email marketing for teams that need more volume and support.',
             'features' => [
-                'Up to 100,000 emails per month',
-                'Up to 50,000 contacts',
-                'For larger organizations',
+                'Up to 50,000 subscribers',
+                '100,000 emails included each month',
+                'Extra emails at €0.01, billed separately from tokens',
             ],
         ],
         'shop_basic' => [

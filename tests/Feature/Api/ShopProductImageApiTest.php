@@ -99,18 +99,22 @@ class ShopProductImageApiTest extends TestCase
         Storage::disk('public')->assertExists((string) $response->json('data.original.path'));
     }
 
-    public function test_upload_requires_products_module(): void
+    public function test_upload_auto_enables_products_module(): void
     {
         Storage::fake('public');
 
-        [, , $token] = $this->adminWithProductsModule(false);
+        [, $team, $token] = $this->adminWithProductsModule(false);
+
+        $this->assertFalse($team->hasModule('products'));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->post('/api/shop/products/images', [
                 'file' => UploadedFile::fake()->image('foto.jpg', 400, 400),
             ], ['Accept' => 'application/json'])
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertCreated()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue($team->fresh()->hasModule('products'));
     }
 
     public function test_variants_for_url_rewrites_sibling_sizes(): void

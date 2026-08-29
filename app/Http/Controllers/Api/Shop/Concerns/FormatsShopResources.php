@@ -8,6 +8,7 @@ use App\Models\ProductOption;
 use App\Models\ProductVariant;
 use App\Models\Store;
 use App\Services\ProductImageService;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 trait FormatsShopResources
@@ -164,6 +165,10 @@ trait FormatsShopResources
     protected function formatOrder(Order $order): array
     {
         $metadata = is_array($order->metadata) ? $order->metadata : [];
+        $customerPhone = isset($metadata['phone'])
+            ? (string) $metadata['phone']
+            : ($order->contact?->phone ? (string) $order->contact->phone : '');
+        $whatsappSession = app(WhatsAppCustomerServiceWindow::class)->describe($customerPhone);
 
         return [
             'id' => $order->id,
@@ -187,7 +192,9 @@ trait FormatsShopResources
                 'email' => $order->contact->email,
                 'phone' => $order->contact->phone ? (string) $order->contact->phone : null,
             ] : null,
-            'customer_phone' => isset($metadata['phone']) ? (string) $metadata['phone'] : ($order->contact?->phone ? (string) $order->contact->phone : null),
+            'customer_phone' => $customerPhone !== '' ? $customerPhone : null,
+            'whatsapp_session_open' => $whatsappSession['open'],
+            'whatsapp_session_last_inbound_at' => $whatsappSession['last_inbound_at'],
             'checkout_chosen_fulfillment_label' => is_array($metadata['checkout_offered'] ?? null)
                 ? ($metadata['checkout_offered']['chosen_fulfillment_label'] ?? null)
                 : null,

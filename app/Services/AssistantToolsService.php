@@ -34,6 +34,7 @@ use App\Models\User;
 use App\Services\Contacts\TeamContactMatcher;
 use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\CalendarEventDateTimeParser;
@@ -1933,6 +1934,11 @@ class AssistantToolsService
         if (! $gateway->isConfigured())
         {
             return 'WhatsApp is not configured for this team.';
+        }
+
+        if (! app(WhatsAppCustomerServiceWindow::class)->isOpen((string) $phone))
+        {
+            return 'Cannot send WhatsApp: more than 24 hours since the customer last wrote. Wait for them to message first.';
         }
 
         $outbound = WhatsAppOutboundText::stripInternalQaMarkers(WhatsAppOutboundText::sanitize($message));

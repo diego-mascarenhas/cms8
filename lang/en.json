@@ -1878,6 +1878,7 @@
   "whatsapp.send.error.local_unreachable": "Cannot reach the local WhatsApp service. Start the whatsapp-service project (for example npm start) on the configured port and try again.",
   "whatsapp.send.error.not_connected": "WhatsApp is not connected. Scan the QR code in Settings to link your number.",
   "whatsapp.send.error.not_ready": "WhatsApp is still connecting. Wait a few seconds and try again.",
+  "whatsapp.send.error.session_window_closed": "You cannot message this number: more than 24 hours have passed since their last message. Wait until the customer writes again.",
   "This approved budget is locked. Only the project status can be changed.": "This approved budget is locked. Only the project status can be changed.",
   "Change status": "Change status",
   "Register time": "Register time",

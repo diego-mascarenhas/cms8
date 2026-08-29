@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\GenerateMailerNewsRequest;
 use App\Http\Requests\Api\StoreMessageApiRequest;
 use App\Http\Requests\Api\TestMessageApiRequest;
 use App\Http\Requests\Api\UpdateMessageApiRequest;
@@ -11,6 +12,7 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\Team;
 use App\Services\Mail\CampaignMessageApiService;
+use App\Services\Mail\MailerNewsGenerationService;
 use App\Services\Mail\MessageCampaignActivationService;
 use App\Services\Mail\MessageCampaignTestSendService;
 use App\Support\MessageTemplateMergeFields;
@@ -19,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class MessageController extends Controller
 {
@@ -118,13 +121,7 @@ class MessageController extends Controller
 
         $message = $this->persistMessage($request, $team, null);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->campaignMessages->formatForShow(
-                $this->campaignMessages->findForTeam($team, $message->id),
-                $team,
-            ),
-        ], 201);
+        return $this->respondAfterPersist($request, $team, $message, 201);
     }
 
     public function update(UpdateMessageApiRequest $request, int $id): JsonResponse
@@ -154,13 +151,7 @@ class MessageController extends Controller
 
         $message = $this->persistMessage($request, $team, $existing);
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->campaignMessages->formatForShow(
-                $this->campaignMessages->findForTeam($team, $message->id),
-                $team,
-            ),
-        ]);
+        return $this->respondAfterPersist($request, $team, $message, 200);
     }
 
     public function destroy(Request $request, int $id): JsonResponse
@@ -397,6 +388,113 @@ class MessageController extends Controller
         ]);
     }
 
+    public function deliveries(Request $request, int $id): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $message = Message::query()
+            ->where('team_id', $team->id)
+            ->find($id);
+
+        if (! $message)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Message not found'),
+            ], 404);
+        }
+
+        $validated = $request->validate([
+            'search' => 'nullable|string|max:255',
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:50',
+        ]);
+
+        $paginator = $this->campaignMessages->paginateDeliveries(
+            $message,
+            trim((string) ($validated['search'] ?? '')),
+            (int) ($validated['page'] ?? 1),
+            (int) ($validated['per_page'] ?? 10),
+        );
+        $paginator->setPath($request->url());
+        $paginator->appends($request->query());
+
+        return response()->json([
+            'success' => true,
+            'data' => $paginator->getCollection()->values()->all(),
+            'pagination' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+            ],
+        ]);
+    }
+
+    private function respondAfterPersist(
+        StoreMessageApiRequest|UpdateMessageApiRequest $request,
+        Team $team,
+        Message $message,
+        int $status,
+    ): JsonResponse {
+        $saveIntent = (string) $request->input('save_intent', 'save');
+        if (! in_array($saveIntent, ['save', 'save_send', 'save_schedule'], true))
+        {
+            $saveIntent = 'save';
+        }
+
+        $flash = (string) __('Record saved successfully.');
+
+        if ($saveIntent === 'save_send')
+        {
+            $fresh = Message::query()
+                ->with(['deliveries', 'team.settings', 'campaigns'])
+                ->where('team_id', $team->id)
+                ->findOrFail($message->id);
+            $activation = $this->activation->activate($fresh, $team);
+            if (! $activation['success'])
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => $activation['message'],
+                    'data' => $this->campaignMessages->formatForShow(
+                        $this->campaignMessages->findForTeam($team, $message->id),
+                        $team,
+                    ),
+                ], 400);
+            }
+
+            $flash = (string) __('app.message_save_send_success');
+        }
+
+        if ($saveIntent === 'save_schedule')
+        {
+            $message->refresh();
+            $dtLabel = $message->scheduled_send_at
+                ? $message->scheduled_send_at->clone()->timezone(config('app.timezone'))->locale(app()->getLocale())->translatedFormat('d M Y H:i')
+                : '';
+            $flash = (string) __('app.message_save_schedule_success', ['datetime' => $dtLabel]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $flash,
+            'data' => $this->campaignMessages->formatForShow(
+                $this->campaignMessages->findForTeam($team, $message->id),
+                $team,
+            ),
+        ], $status);
+    }
+
     private function persistMessage(StoreMessageApiRequest|UpdateMessageApiRequest $request, Team $team, ?Message $existing): Message
     {
         $validated = $request->validated();
@@ -523,5 +621,35 @@ class MessageController extends Controller
         });
 
         return $messageModel->fresh();
+    }
+
+    public function generate(GenerateMailerNewsRequest $request, MailerNewsGenerationService $generator): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        try
+        {
+            $data = $generator->generate($team, $request->validated());
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
     }
 }

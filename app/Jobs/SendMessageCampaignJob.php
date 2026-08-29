@@ -129,6 +129,18 @@ class SendMessageCampaignJob implements ShouldQueue
             return false;
         }
 
+        $team = $this->messageDelivery->team;
+        if ($team && ! $team->canSendEmails(1))
+        {
+            Log::info('Message delivery skipped: mailer quota or credits exhausted', [
+                'delivery_id' => $this->messageDelivery->id,
+                'team_id' => $team->id,
+                'sendable_remaining' => $team->getSendableEmailCount(),
+            ]);
+
+            return false;
+        }
+
         return true;
     }
 
@@ -211,7 +223,7 @@ class SendMessageCampaignJob implements ShouldQueue
             'provider_data' => $result['data'] ?? null,
         ]);
 
-        $this->messageDelivery->team->incrementEmailUsage();
+        $this->messageDelivery->team->recordSuccessfulMailerSend();
     }
 
     /**
@@ -239,6 +251,8 @@ class SendMessageCampaignJob implements ShouldQueue
             'delivery_status' => 'delivered',
             'status_id' => 3,
         ]);
+
+        $this->messageDelivery->team->recordSuccessfulMailerSend();
     }
 
     /**

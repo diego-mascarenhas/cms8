@@ -78,31 +78,40 @@ return [
                 'Métricas, reportes y método DAGMA para implementar y evolucionar',
             ],
         ],
+        'mailer_payg' => [
+            'name' => 'Pay as you go',
+            'description' => 'Sin cuota mensual. Comprás créditos y pagás solo los emails que enviás.',
+            'features' => [
+                '0,01 € por email enviado',
+                'Comprá créditos cuando los necesites',
+                'Sin cupo mensual fijo',
+            ],
+        ],
         'mailer_basic' => [
             'name' => 'Mailer Basic',
             'description' => 'Perfecto para pequeñas empresas que están comenzando con email marketing.',
             'features' => [
-                'Hasta 10.000 emails al mes',
-                'Hasta 3.000 contactos',
-                'Ideal para comenzar',
+                'Hasta 3.000 suscriptores',
+                '10.000 emails incluidos al mes',
+                'Emails extra a 0,01 €, aparte de los tokens',
             ],
         ],
         'mailer_foundation' => [
             'name' => 'Mailer Foundation',
             'description' => 'Ideal para empresas que necesitan escalar sus campañas de email marketing.',
             'features' => [
-                'Hasta 50.000 emails al mes',
-                'Hasta 20.000 contactos',
-                'Para empresas en crecimiento',
+                'Hasta 20.000 suscriptores',
+                '50.000 emails incluidos al mes',
+                'Emails extra a 0,01 €, aparte de los tokens',
             ],
         ],
         'mailer_scale' => [
             'name' => 'Mailer Scale',
             'description' => 'Solución completa para empresas que requieren máxima personalización y soporte.',
             'features' => [
-                'Hasta 100.000 emails al mes',
-                'Hasta 50.000 contactos',
-                'Para grandes empresas',
+                'Hasta 50.000 suscriptores',
+                '100.000 emails incluidos al mes',
+                'Emails extra a 0,01 €, aparte de los tokens',
             ],
         ],
         'shop_basic' => [

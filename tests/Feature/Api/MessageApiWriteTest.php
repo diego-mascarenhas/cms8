@@ -265,10 +265,130 @@ class MessageApiWriteTest extends TestCase
                     'categories',
                     'contact_statuses',
                     'templates',
+                    'merge_fields',
+                    'merge_sample',
+                    'sender' => ['from_name', 'from_address', 'configured', 'can_update'],
+                    'usage',
                 ],
             ]);
 
         $this->assertNotEmpty($response->json('data.contact_statuses'));
+        $this->assertFalse($response->json('data.sender.configured'));
+    }
+
+    public function test_can_read_and_update_mailer_sender(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/sender')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.configured', false);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/sender', [
+                'mail_from_name' => 'Campaña Idoneo',
+                'mail_from_address' => 'news@example.test',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.configured', true)
+            ->assertJsonPath('data.from_name', 'Campaña Idoneo')
+            ->assertJsonPath('data.from_address', 'news@example.test');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/sender')
+            ->assertOk()
+            ->assertJsonPath('data.configured', true);
+    }
+
+    public function test_save_send_fails_without_sender_and_succeeds_when_configured(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $blocked = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'News campaign',
+                'text' => 'Preview text here',
+                'mail_html' => '<p>Hello</p>',
+                'save_intent' => 'save_send',
+            ]);
+
+        $blocked->assertStatus(400)
+            ->assertJsonPath('success', false);
+        $this->assertNotNull($blocked->json('data.id'));
+        $this->assertFalse((bool) Message::withoutGlobalScopes()->find($blocked->json('data.id'))?->status_id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/sender', [
+                'mail_from_name' => 'Campaña Idoneo',
+                'mail_from_address' => 'news@example.test',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.configured', true);
+
+        $ok = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Ready news campaign',
+                'text' => 'Preview text here',
+                'mail_html' => '<p>Hello</p>',
+                'save_intent' => 'save_send',
+            ]);
+
+        $ok->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.status.key', 'sending');
+    }
+
+    public function test_save_schedule_requires_datetime_and_stores_it(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $missing = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Scheduled news',
+                'text' => 'Preview text here',
+                'save_intent' => 'save_schedule',
+            ]);
+
+        $missing->assertStatus(422)
+            ->assertJsonValidationErrors(['scheduled_send_at']);
+
+        $when = now()->addDay()->startOfMinute()->format('Y-m-d H:i');
+
+        $ok = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/message', [
+                'name' => 'Scheduled news',
+                'text' => 'Preview text here',
+                'save_intent' => 'save_schedule',
+                'schedule_send_at' => $when,
+            ]);
+
+        $ok->assertCreated()
+            ->assertJsonPath('success', true);
+        $this->assertNotNull($ok->json('data.scheduled_send_at'));
+    }
+
+    public function test_can_list_message_deliveries(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'With deliveries',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Hi</p>',
+        ]);
+
+        $empty = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/message/'.$message->id.'/deliveries');
+
+        $empty->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('pagination.total', 0);
     }
 
     public function test_unauthenticated_cannot_write_messages(): void

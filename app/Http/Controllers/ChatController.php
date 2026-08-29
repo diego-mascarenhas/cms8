@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\WhatsAppGateway;
+use App\Exceptions\WhatsAppSessionWindowClosedException;
 use App\Helpers\PhoneHelper;
 use App\Helpers\TextHelper;
 use App\Helpers\WhatsAppOutboundText;
@@ -42,6 +43,7 @@ use App\Services\UserResolverService;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppChatArchiveService;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Services\WhatsApp\WhatsAppInboundContactRegistrationService;
 use App\Services\WhatsApp\WhatsAppInboxContactStarter;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
@@ -964,6 +966,10 @@ class ChatController extends Controller
             ? $this->resolveLeadContactStatusId()
             : null;
 
+        $whatsappSession = (! ($viewAssistant ?? false) && filled($selectedPhone))
+            ? app(WhatsAppCustomerServiceWindow::class)->describe((string) $selectedPhone)
+            : ['open' => true, 'last_inbound_at' => null];
+
         $chatMessageAvatars = ChatMessageAvatar::contextForChat(
             viewAssistant: (bool) $viewAssistant,
             authUser: auth()->user(),
@@ -973,7 +979,7 @@ class ChatController extends Controller
             selectedPhone: $selectedPhone,
         );
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'siteAssistantSelectedKey', 'siteAssistantPromptOptions', 'siteAssistantCatalog', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars'));
+        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'siteAssistantSelectedKey', 'siteAssistantPromptOptions', 'siteAssistantCatalog', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars', 'whatsappSession'));
     }
 
     /**
@@ -1340,6 +1346,7 @@ class ChatController extends Controller
             'thread_categories' => app(WhatsAppThreadCategoryService::class)->present($team, $crm),
             'thread_contact' => $this->whatsAppThreadContactMeta($team, $crm, $normPhone),
             'thread_clock' => $this->whatsAppThreadClock($team, $normPhone),
+            'whatsapp_session' => app(WhatsAppCustomerServiceWindow::class)->describe($normPhone),
         ]);
     }
 
@@ -3169,12 +3176,20 @@ class ChatController extends Controller
             }
 
             return response()->json(['success' => true, 'message' => 'Message sent']);
+        } catch (WhatsAppSessionWindowClosedException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => WhatsAppSendExceptionPresenter::messageForUser($e),
+            ], 422);
         } catch (\Exception $e)
         {
-            // If it fails because it's outside the 24-hour window, try sending with template
-            if (strpos($e->getMessage(), '63016') !== false)
+            if (str_contains($e->getMessage(), '63016'))
             {
-                return $this->sendWithTemplate($request);
+                return response()->json([
+                    'success' => false,
+                    'error' => __('whatsapp.send.error.session_window_closed'),
+                ], 422);
             }
 
             Log::warning('Chat sendMessage failed', [

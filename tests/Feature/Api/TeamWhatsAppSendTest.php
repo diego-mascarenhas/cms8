@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Conversation;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,6 +88,16 @@ class TeamWhatsAppSendTest extends TestCase
         $token = $this->teamApiToken($team);
 
         $recipient = '34600111222';
+
+        Conversation::create([
+            'message_sid' => 'wa_team_api_in_1',
+            'channel' => 'whatsapp',
+            'from' => $recipient,
+            'to' => '34999000111',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
 
         $response = $this->postJson('/api/team/whatsapp/send', [
             'to' => $recipient,

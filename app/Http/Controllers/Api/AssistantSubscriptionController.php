@@ -46,6 +46,7 @@ class AssistantSubscriptionController extends Controller
             (string) $request->validated('cancel_url'),
             (string) ($request->validated('plan') ?? 'assistant'),
             (int) $request->user()->id,
+            $request->validated('pack'),
         );
 
         if (! $result['success'])

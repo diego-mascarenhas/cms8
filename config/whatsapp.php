@@ -31,4 +31,18 @@ return [
         'webhook_secret' => env('WHATSAPP_LOCAL_WEBHOOK_SECRET'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Customer service window
+    |--------------------------------------------------------------------------
+    |
+    | Block free-form outbound WhatsApp unless the customer wrote in within
+    | this many hours. Prevents business-initiated chats that Meta flags.
+    |
+    */
+    'customer_service_window' => [
+        'enabled' => env('WHATSAPP_ENFORCE_SESSION_WINDOW', true),
+        'hours' => (int) env('WHATSAPP_SESSION_WINDOW_HOURS', 24),
+    ],
+
 ];

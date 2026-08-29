@@ -46,6 +46,8 @@ class LocalWhatsAppGateway implements WhatsAppGateway
             throw new \RuntimeException('Local WhatsApp service is not configured (check WHATSAPP_LOCAL_BASE_URL).');
         }
 
+        app(WhatsAppCustomerServiceWindow::class)->assertOpen($to);
+
         $message = WhatsAppOutboundText::sanitize($message);
 
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
@@ -108,6 +110,8 @@ class LocalWhatsAppGateway implements WhatsAppGateway
 
             return false;
         }
+
+        app(WhatsAppCustomerServiceWindow::class)->assertOpen($to);
 
         $cleanTo = preg_replace('/[^0-9]/', '', $to);
         $url = str_starts_with($mediaPath, 'http') ? $mediaPath : url($mediaPath);

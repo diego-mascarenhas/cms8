@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Exceptions\WhatsAppSessionWindowClosedException;
+
 /**
  * Maps WhatsApp gateway / HTTP failures to short Spanish messages for the UI.
  */
@@ -57,9 +59,9 @@ class WhatsAppSendExceptionPresenter
             return __('whatsapp.send.error.local_http_rejected');
         }
 
-        if (str_contains($raw, '63016'))
+        if ($e instanceof WhatsAppSessionWindowClosedException || str_contains($raw, '63016'))
         {
-            return $raw;
+            return __('whatsapp.send.error.session_window_closed');
         }
 
         return __('whatsapp.send.error.generic');

@@ -9,6 +9,7 @@ use App\Models\Prompt;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -83,6 +84,15 @@ class AdminProactiveWhatsAppOutreachExecutor
             return [
                 'success' => false,
                 'message' => 'No active prompt matches keyword «'.trim($keyword).'».'.$hintText,
+                '_http_status' => 422,
+            ];
+        }
+
+        if (! app(WhatsAppCustomerServiceWindow::class)->isOpen($digits))
+        {
+            return [
+                'success' => false,
+                'message' => __('whatsapp.send.error.session_window_closed'),
                 '_http_status' => 422,
             ];
         }

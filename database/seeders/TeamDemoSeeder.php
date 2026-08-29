@@ -222,6 +222,7 @@ class TeamDemoSeeder extends Seeder
         DemoDataService::createClientsAndProjects($team->id, $this->command);
         $console = $this->command instanceof Command ? $this->command : null;
         DemoMailCampaignData::seed($team, $console);
+        MailerDemoSeeder::seed($team, $console);
     }
 
     /**

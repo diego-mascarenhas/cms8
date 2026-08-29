@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Contracts\WhatsAppGateway;
+use App\Models\Conversation;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\AssistantToolsService;
@@ -33,6 +34,8 @@ class WhatsAppLocalTeamScopedSendTest extends TestCase
 
         $this->actingAs($user->refresh());
 
+        $this->createRecentInbound('5491199988877');
+
         app(WhatsAppGateway::class)->sendMessage('5491199988877', 'Hola');
 
         Http::assertSent(function ($request) use ($team): bool
@@ -60,6 +63,8 @@ class WhatsAppLocalTeamScopedSendTest extends TestCase
         $team = Team::factory()->create(['user_id' => $user->id]);
         $team->setSetting('whatsapp_from', '5491111223344');
         $team->setSetting('whatsapp_service_url', 'http://baileys.test');
+
+        $this->createRecentInbound('5491199988877');
 
         $service = new WhatsAppMessageService($team);
         $service->sendWhatsApp('5491199988877', 'Hola');
@@ -96,6 +101,8 @@ class WhatsAppLocalTeamScopedSendTest extends TestCase
         $user->assignRole($role);
         $team->setSetting('whatsapp_service_url', 'http://baileys.test');
 
+        $this->createRecentInbound('5491199988877');
+
         $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
         $service->setRequestContext($user->id, (int) $team->id, '5491199988877');
@@ -118,5 +125,18 @@ class WhatsAppLocalTeamScopedSendTest extends TestCase
             return (int) ($data['team_id'] ?? 0) === $team->id
                 && ($data['to'] ?? '') === '5491199988877';
         });
+    }
+
+    private function createRecentInbound(string $from): void
+    {
+        Conversation::create([
+            'message_sid' => 'wa_scoped_'.uniqid(),
+            'channel' => 'whatsapp',
+            'from' => $from,
+            'to' => '34900000000',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
     }
 }
