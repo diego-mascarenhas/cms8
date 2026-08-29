@@ -78,6 +78,9 @@ class AssistantSubscriptionService
             'subscription_code' => $this->shareableSubscriptionCode($team, $subscription),
             'token_usage' => $this->tokenUsagePayload($team, $stripe),
             'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
+            'mailer_usage' => $catalog === HumanoPricingCatalog::MAILER
+                ? $this->mailerUsagePayload($team)
+                : null,
         ];
     }
 
@@ -91,6 +94,7 @@ class AssistantSubscriptionService
         string $cancelUrl,
         string $planId = 'assistant',
         ?int $actingUserId = null,
+        ?string $pack = null,
     ): array {
         $planId = $this->normalizePlanId($planId);
         $plan = $this->planConfigById($planId);
@@ -263,6 +267,14 @@ class AssistantSubscriptionService
         }
 
         if ($session->mode === 'subscription' && ! in_array($session->status, ['complete', 'open'], true))
+        {
+            return [
+                'success' => false,
+                'message' => __('El pago todavía no está completo.'),
+            ];
+        }
+
+        if ($session->mode === 'payment' && ($session->payment_status ?? '') !== 'paid')
         {
             return [
                 'success' => false,
@@ -808,6 +820,14 @@ class AssistantSubscriptionService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function mailerUsagePayload(Team $team): array
+    {
+        return $team->getMailerUsageSummary();
+    }
+
+    /**
      * @param  list<array<string, mixed>>  $plans
      */
     private function catalogIsFree(array $plans): bool
@@ -858,6 +878,8 @@ class AssistantSubscriptionService
             'description' => $description,
             'monthly_amount' => (string) ($plan['monthly_amount'] ?? ''),
             'yearly_amount' => (string) ($plan['yearly_amount'] ?? ''),
+            'unit_amount' => (string) ($plan['unit_amount'] ?? ''),
+            'billing_model' => 'subscription',
             'currency' => 'EUR',
             'checkout_available' => (bool) ($plan['checkout_available'] ?? false),
         ];
@@ -898,6 +920,7 @@ class AssistantSubscriptionService
         $planId = strtolower(trim($planId));
         $planId = match ($planId)
         {
+            'payg' => 'mailer_payg',
             'basic' => 'mailer_basic',
             'foundation' => 'mailer_foundation',
             'scale' => 'mailer_scale',
@@ -952,6 +975,11 @@ class AssistantSubscriptionService
         }
 
         if ($this->catalogHasActiveSubscription($team, $catalog))
+        {
+            return $this->accessPayload(true, 'paid', $trialEnds);
+        }
+
+        if ($catalog === HumanoPricingCatalog::MAILER && $team->getPurchasedMailerCredits() > 0)
         {
             return $this->accessPayload(true, 'paid', $trialEnds);
         }

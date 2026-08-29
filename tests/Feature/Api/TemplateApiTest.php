@@ -147,7 +147,7 @@ class TemplateApiTest extends TestCase
         $this->assertSoftDeleted('templates', ['id' => $templateId]);
     }
 
-    public function test_templates_require_templates_module(): void
+    public function test_templates_auto_enable_templates_module(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -170,12 +170,38 @@ class TemplateApiTest extends TestCase
             ],
         );
 
+        $this->assertFalse($team->fresh()->hasModule('templates'));
+
         $token = $user->createToken('no-module')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/templates')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue($team->fresh()->hasModule('templates'));
+    }
+
+    public function test_templates_forbidden_when_catalog_module_missing(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $token = $user->createToken('no-catalog')->plainTextToken;
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/templates')
             ->assertForbidden()
             ->assertJsonPath('success', false);
+
+        $this->assertFalse($team->fresh()->hasModule('templates'));
     }
 
     public function test_unauthenticated_cannot_access_templates(): void

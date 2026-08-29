@@ -798,6 +798,8 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.plan.monthly_amount', '15.99');
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.can_checkout', true);
+        $response->assertJsonPath('data.mailer_usage.price_per_email', '0.01');
+        $response->assertJsonPath('data.mailer_usage.emails_included', 10000);
         $this->assertSame(
             ['mailer_basic', 'mailer_foundation', 'mailer_scale'],
             collect($response->json('data.plans'))->pluck('id')->all(),

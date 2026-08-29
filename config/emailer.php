@@ -224,4 +224,18 @@ return [
         'api_endpoints' => env('EMAILER_API_ENDPOINTS', false),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Overage (emails beyond the plan include)
+    |--------------------------------------------------------------------------
+    |
+    | Paid plans cap subscribers. Included monthly emails are part of the plan;
+    | extra sends are billed per email, separately from AI tokens.
+    |
+    */
+    'payg' => [
+        'price_per_email' => env('MAILER_PAYG_PRICE_PER_EMAIL', '0.01'),
+        'currency' => env('MAILER_PAYG_CURRENCY', 'EUR'),
+    ],
+
 ];

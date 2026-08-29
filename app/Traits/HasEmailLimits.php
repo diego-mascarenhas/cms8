@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Enums\EmailPlan;
+use App\Support\MailerPaygPricing;
 use Carbon\Carbon;
 
 trait HasEmailLimits
@@ -25,11 +26,139 @@ trait HasEmailLimits
     {
         $this->resetLimitsIfNeeded();
 
-        $remaining = $this->getRemainingEmails();
+        if ($this->contacts()->count() > $this->getContactLimit())
+        {
+            return false;
+        }
 
-        return $remaining['monthly_remaining'] >= $count &&
-               $remaining['daily_remaining'] >= $count &&
-               $this->contacts()->count() <= $this->getContactLimit();
+        if ($this->allowsMailerOverage())
+        {
+            return true;
+        }
+
+        return $this->hasMailerSendQuota($count);
+    }
+
+    public function allowsMailerOverage(): bool
+    {
+        return $this->getEmailPlan()->isPaid();
+    }
+
+    public function getMailerOverageEmails(): int
+    {
+        if (! $this->allowsMailerOverage())
+        {
+            return 0;
+        }
+
+        $used = $this->getActualEmailUsage()['monthly_used'];
+        $limit = (int) $this->getSetting('email_monthly_limit', $this->getEmailPlan()->getMonthlyLimit());
+
+        return max(0, $used - $limit);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getMailerUsageSummary(): array
+    {
+        $this->resetLimitsIfNeeded();
+        $remaining = $this->getRemainingEmails();
+        $overage = $this->getMailerOverageEmails();
+
+        $plan = $this->getEmailPlan();
+
+        return [
+            'plan_id' => $plan->value,
+            'plan_name' => $plan->getDisplayName(),
+            'subscribers_used' => $this->contacts()->count(),
+            'subscribers_limit' => $this->getContactLimit(),
+            'emails_used' => $remaining['monthly_used'],
+            'emails_included' => $remaining['monthly_limit'],
+            'daily_used' => $remaining['daily_used'],
+            'daily_limit' => $remaining['daily_limit'],
+            'overage_emails' => $overage,
+            'allows_overage' => $this->allowsMailerOverage(),
+            'amount_due_cents' => MailerPaygPricing::overageDueCents($overage),
+            'price_per_email' => MailerPaygPricing::pricePerEmail(),
+            'currency' => MailerPaygPricing::currency(),
+        ];
+    }
+
+    public function hasMailerSendQuota(int $count = 1): bool
+    {
+        $this->resetLimitsIfNeeded();
+
+        if ($this->hasMonthlyEmailsAvailable($count) && $this->hasDailyEmailsAvailable($count))
+        {
+            return true;
+        }
+
+        return $this->getPurchasedMailerCredits() >= $count
+            && $this->hasDailyEmailsAvailable($count);
+    }
+
+    public function getPurchasedMailerCredits(): int
+    {
+        return max(0, (int) $this->getSetting('mailer_credits_purchased', 0));
+    }
+
+    public function addMailerCreditsFromPurchase(int $credits): void
+    {
+        if ($credits < 1)
+        {
+            return;
+        }
+
+        $current = $this->getPurchasedMailerCredits();
+        $this->setSetting('mailer_credits_purchased', $current + $credits, ['type' => 'integer', 'group' => 'email']);
+        $this->unsetRelation('settings');
+
+        if ($this->getEmailPlan() === EmailPlan::FREE)
+        {
+            $this->assignEmailPlan(EmailPlan::PAYG, null);
+        }
+    }
+
+    public function consumePurchasedMailerCredits(int $credits): bool
+    {
+        if ($credits < 1)
+        {
+            return true;
+        }
+
+        $current = $this->getPurchasedMailerCredits();
+        if ($current < $credits)
+        {
+            return false;
+        }
+
+        $this->setSetting('mailer_credits_purchased', $current - $credits, ['type' => 'integer', 'group' => 'email']);
+        $this->unsetRelation('settings');
+
+        return true;
+    }
+
+    public function getSendableEmailCount(): int
+    {
+        $this->resetLimitsIfNeeded();
+
+        $remaining = $this->getRemainingEmails();
+        $fromPlan = 0;
+        if ($this->hasDailyEmailsAvailable(1))
+        {
+            $fromPlan = $remaining['monthly_remaining'];
+        }
+
+        return $fromPlan + $this->getPurchasedMailerCredits();
+    }
+
+    /**
+     * Record a successfully sent campaign email against monthly quota or prepaid credits.
+     */
+    public function recordSuccessfulMailerSend(int $count = 1): bool
+    {
+        return $this->incrementEmailUsage($count);
     }
 
     /**
@@ -253,6 +382,8 @@ trait HasEmailLimits
         $assignedBy = $assignedByUserId ? \App\Models\User::find($assignedByUserId) : null;
 
         return array_merge($plan->getConfig(), $remaining, [
+            'purchased_credits' => $this->getPurchasedMailerCredits(),
+            'sendable_remaining' => $this->getSendableEmailCount(),
             'assigned_at' => $assignedAt ? Carbon::parse($assignedAt) : null,
             'assigned_by' => $assignedBy?->name,
         ]);

@@ -78,6 +78,15 @@ return [
                 'Métricas, reportes y método DAGMA para implementar y evolucionar',
             ],
         ],
+        'mailer_payg' => [
+            'name' => 'Pay as you go',
+            'description' => 'Sin cuota mensual. Comprás créditos y pagás solo los emails que enviás.',
+            'features' => [
+                '0,01 € por email enviado',
+                'Comprá créditos cuando los necesites',
+                'Sin cupo mensual fijo',
+            ],
+        ],
         'mailer_basic' => [
             'name' => 'Mailer Basic',
             'description' => 'Perfecto para pequeñas empresas que están comenzando con email marketing.',

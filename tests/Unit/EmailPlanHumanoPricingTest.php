@@ -25,4 +25,14 @@ class EmailPlanHumanoPricingTest extends TestCase
         $this->assertSame(EmailPlan::BASIC, EmailPlan::tryFromStripeProductId('prod_from_pricing'));
         $this->assertSame(EmailPlan::BASIC, EmailPlan::fromStripePriceId('price_from_pricing'));
     }
+
+    public function test_payg_plan_has_no_stripe_ids_and_uses_credits(): void
+    {
+        $this->assertTrue(EmailPlan::PAYG->usesPrepaidCredits());
+        $this->assertSame(0, EmailPlan::PAYG->getMonthlyLimit());
+        $this->assertNull(EmailPlan::PAYG->getDailyLimit());
+        $this->assertNull(EmailPlan::PAYG->getStripeProductId());
+        $this->assertNull(EmailPlan::PAYG->getStripePriceId());
+        $this->assertSame('Pay as you go', EmailPlan::PAYG->getDisplayName());
+    }
 }

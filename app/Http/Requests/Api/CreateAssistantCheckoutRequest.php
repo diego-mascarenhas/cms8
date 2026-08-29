@@ -21,6 +21,7 @@ class CreateAssistantCheckoutRequest extends FormRequest
         return [
             'interval' => ['required', 'string', Rule::in(['monthly', 'yearly'])],
             'plan' => ['nullable', 'string', Rule::in($this->allowedPlanIds())],
+            'pack' => ['nullable', 'string', 'max:32'],
             'catalog' => ['nullable', 'string', Rule::in(HumanoPricingCatalog::all())],
             'success_url' => ['required', 'url', 'max:2048'],
             'cancel_url' => ['required', 'url', 'max:2048'],
@@ -53,7 +54,7 @@ class CreateAssistantCheckoutRequest extends FormRequest
             ->pluck('id')
             ->map(fn (mixed $id): string => strtolower(trim((string) $id)))
             ->filter()
-            ->merge(['basic', 'foundation', 'scale'])
+            ->merge(['payg', 'basic', 'foundation', 'scale'])
             ->unique()
             ->values()
             ->all();

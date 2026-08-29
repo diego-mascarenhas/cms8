@@ -70,19 +70,23 @@ class ShopApiTest extends TestCase
         return [$user->fresh(), $team->fresh(), $token];
     }
 
-    public function test_module_missing_returns_forbidden(): void
+    public function test_module_missing_auto_enables_shop_modules(): void
     {
-        [, , $token] = $this->adminWithShopModules(false);
+        [, $team, $token] = $this->adminWithShopModules(false);
+
+        $this->assertFalse($team->hasModule('products'));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/shop/products')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue($team->fresh()->hasModule('products'));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/shop/lookups')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 
     public function test_lookups_and_dashboard(): void
@@ -897,14 +901,18 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('pagination.total', 1);
     }
 
-    public function test_carts_require_orders_module(): void
+    public function test_carts_auto_enable_orders_module(): void
     {
-        [, , $token] = $this->adminWithShopModules(false);
+        [, $team, $token] = $this->adminWithShopModules(false);
+
+        $this->assertFalse($team->hasModule('orders'));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/shop/carts')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue($team->fresh()->hasModule('orders'));
     }
 
     private function createPricedProduct(Team $team, float $price, ?string $name = null): Product

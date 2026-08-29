@@ -65,14 +65,18 @@ class PaidAdApiTest extends TestCase
         return [$user, $team->fresh(), $token];
     }
 
-    public function test_module_missing_returns_forbidden(): void
+    public function test_module_missing_auto_enables_paid_ads(): void
     {
-        [, , $token] = $this->adminWithToken(false);
+        [, $team, $token] = $this->adminWithToken(false);
+
+        $this->assertFalse($team->hasModule('paid_ads'));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/paid-ads')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue($team->fresh()->hasModule('paid_ads'));
     }
 
     public function test_can_crud_campaign_and_publish(): void

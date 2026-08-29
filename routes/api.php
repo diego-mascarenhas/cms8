@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MailerLookupController;
+use App\Http\Controllers\Api\MailerSenderController;
 use App\Http\Controllers\Api\MailInboxController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
@@ -596,7 +597,10 @@ Route::middleware('auth.api')->group(function ()
     Route::post('message/{id}/pause', [MessageController::class, 'pause'])->whereNumber('id');
     Route::post('message/{id}/test', [MessageController::class, 'test'])->whereNumber('id');
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->whereNumber('id');
+    Route::get('message/{id}/deliveries', [MessageController::class, 'deliveries'])->whereNumber('id');
     Route::get('mailer/lookups', [MailerLookupController::class, 'index']);
+    Route::get('mailer/sender', [MailerSenderController::class, 'show']);
+    Route::put('mailer/sender', [MailerSenderController::class, 'update']);
 
     // Templates (idoneo-mailer SPA)
     Route::get('templates', [TemplateController::class, 'index']);

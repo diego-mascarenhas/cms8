@@ -4,6 +4,7 @@ namespace App\Services\Mail;
 
 use App\Models\Category;
 use App\Models\Message;
+use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryStat;
 use App\Models\Team;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -28,6 +29,94 @@ class CampaignMessageApiService
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->paginate($perPage, ['*'], 'page', $page);
+    }
+
+    public function paginateDeliveries(Message $message, string $search, int $page, int $perPage): LengthAwarePaginator
+    {
+        $perPage = min(max($perPage, 1), 50);
+
+        $query = MessageDelivery::query()
+            ->with('contact')
+            ->where('message_id', $message->id);
+
+        if ($search !== '')
+        {
+            $query->whereHas('contact', function (Builder $contactQuery) use ($search): void
+            {
+                $contactQuery->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%');
+            });
+        }
+
+        $paginator = $query
+            ->orderByDesc('created_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $paginator->setCollection(
+            $paginator->getCollection()->map(fn (MessageDelivery $delivery): array => $this->formatDelivery($delivery)),
+        );
+
+        return $paginator;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function formatDelivery(MessageDelivery $delivery): array
+    {
+        return [
+            'id' => $delivery->id,
+            'contact_id' => $delivery->contact?->id,
+            'contact_name' => $delivery->contact?->name ?: '—',
+            'contact_email' => $delivery->contact?->email ?: '—',
+            'sent_at' => $delivery->sent_at?->toIso8601String(),
+            'delivered_at' => $delivery->delivered_at?->toIso8601String(),
+            'opened_at' => $delivery->opened_at?->toIso8601String(),
+            'clicked_at' => $delivery->clicked_at?->toIso8601String(),
+            'status_key' => $this->deliveryStatusKey($delivery),
+            'status_text' => $this->deliveryStatusText($delivery),
+            'has_opened' => $delivery->opened_at !== null,
+            'has_clicked' => $delivery->clicked_at !== null,
+        ];
+    }
+
+    private function deliveryStatusKey(MessageDelivery $delivery): string
+    {
+        if ((int) $delivery->status_id === 4)
+        {
+            return 'failed';
+        }
+        if ($delivery->delivered_at)
+        {
+            return 'delivered';
+        }
+        if ((int) $delivery->status_id === 3)
+        {
+            return 'sending';
+        }
+        if ($delivery->sent_at?->isFuture())
+        {
+            return 'scheduled';
+        }
+        if ($delivery->sent_at)
+        {
+            return 'sent';
+        }
+
+        return 'pending';
+    }
+
+    private function deliveryStatusText(MessageDelivery $delivery): string
+    {
+        return match ($this->deliveryStatusKey($delivery))
+        {
+            'failed' => 'Fallido',
+            'delivered' => 'Entregado',
+            'sending' => 'Enviando',
+            'scheduled' => 'Programado',
+            'sent' => 'Enviado',
+            default => 'Pendiente',
+        };
     }
 
     public function findForTeam(Team $team, int $id): ?Message
@@ -120,6 +209,9 @@ class CampaignMessageApiService
                 'from_address' => $fromAddress,
                 'configured' => $senderConfigured,
             ],
+            'has_deliveries' => $message->relationLoaded('deliveries')
+                ? $message->deliveries->isNotEmpty()
+                : MessageDelivery::query()->where('message_id', $message->id)->exists(),
             'scheduled_send_at' => $message->scheduled_send_at?->toIso8601String(),
             'started_at' => $message->started_at?->toIso8601String(),
             'updated_at' => $message->updated_at?->toIso8601String(),

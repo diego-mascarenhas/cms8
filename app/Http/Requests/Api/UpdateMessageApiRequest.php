@@ -28,6 +28,11 @@ class UpdateMessageApiRequest extends FormRequest
         {
             $this->merge(['message_category_ids' => []]);
         }
+
+        if ($this->filled('schedule_send_at') && ! $this->filled('scheduled_send_at'))
+        {
+            $this->merge(['scheduled_send_at' => $this->input('schedule_send_at')]);
+        }
     }
 
     /**
@@ -54,7 +59,9 @@ class UpdateMessageApiRequest extends FormRequest
             'send_allowed_weekdays.*' => ['integer', 'between:1,7', 'distinct'],
             'send_window_start' => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/', 'required_with:send_window_end'],
             'send_window_end' => ['nullable', 'string', 'regex:/^\d{2}:\d{2}$/', 'required_with:send_window_start'],
-            'scheduled_send_at' => ['nullable', 'date', 'after:now'],
+            'scheduled_send_at' => ['nullable', 'date', 'after:now', 'required_if:save_intent,save_schedule'],
+            'schedule_send_at' => ['nullable', 'date', 'after:now'],
+            'save_intent' => ['nullable', 'in:save,save_send,save_schedule'],
         ];
     }
 

@@ -23,10 +23,23 @@ trait ChecksTeamModule
         return $team;
     }
 
+    /**
+     * Activate a catalog module for the team when missing.
+     *
+     * These flags drive the Humano backend menu. Idoneo apps should not
+     * be blocked by them — first API use turns the module on.
+     */
     protected function ensureTeamModule(Team $team, string $moduleKey): ?JsonResponse
     {
         if ($team->hasModule($moduleKey))
         {
+            return null;
+        }
+
+        if ($team->enableModule($moduleKey))
+        {
+            $team->unsetRelation('modules');
+
             return null;
         }
 

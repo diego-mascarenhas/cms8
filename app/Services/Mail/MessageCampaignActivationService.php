@@ -16,16 +16,30 @@ class MessageCampaignActivationService
     {
         try
         {
-            if (! $team->relationLoaded('settings'))
-            {
-                $team->load('settings');
-            }
+            $team->unsetRelation('settings');
+            $team->load('settings');
 
             if (! $team->hasOutgoingEmailSenderConfigured())
             {
                 return [
                     'success' => false,
                     'message' => __('app.email_sender_activation_blocked'),
+                ];
+            }
+
+            if (! $team->canSendEmails(1))
+            {
+                if ($team->contacts()->count() > $team->getContactLimit())
+                {
+                    return [
+                        'success' => false,
+                        'message' => __('Alcanzaste el límite de suscriptores del plan. Actualizá el plan para enviar a más contactos.'),
+                    ];
+                }
+
+                return [
+                    'success' => false,
+                    'message' => __('No quedan emails incluidos en el plan. Contratá Basic, Foundation o Scale.'),
                 ];
             }
 
