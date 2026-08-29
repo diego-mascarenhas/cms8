@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\GenerateMailerNewsRequest;
 use App\Http\Requests\Api\StoreMessageApiRequest;
 use App\Http\Requests\Api\TestMessageApiRequest;
 use App\Http\Requests\Api\UpdateMessageApiRequest;
@@ -11,6 +12,7 @@ use App\Models\Message;
 use App\Models\MessageDelivery;
 use App\Models\Team;
 use App\Services\Mail\CampaignMessageApiService;
+use App\Services\Mail\MailerNewsGenerationService;
 use App\Services\Mail\MessageCampaignActivationService;
 use App\Services\Mail\MessageCampaignTestSendService;
 use App\Support\MessageTemplateMergeFields;
@@ -19,6 +21,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class MessageController extends Controller
 {
@@ -618,5 +621,35 @@ class MessageController extends Controller
         });
 
         return $messageModel->fresh();
+    }
+
+    public function generate(GenerateMailerNewsRequest $request, MailerNewsGenerationService $generator): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        try
+        {
+            $data = $generator->generate($team, $request->validated());
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
     }
 }

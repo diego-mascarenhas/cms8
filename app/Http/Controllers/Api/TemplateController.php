@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\GenerateMailerTemplateRequest;
 use App\Http\Requests\Api\StoreTemplateApiRequest;
 use App\Http\Requests\Api\UpdateTemplateApiRequest;
 use App\Models\Template;
+use App\Services\Mail\MailerTemplateGenerationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class TemplateController extends Controller
 {
@@ -259,5 +262,35 @@ class TemplateController extends Controller
             'success' => true,
             'data' => $copy->fresh()->toApiArray(),
         ], 201);
+    }
+
+    public function generate(GenerateMailerTemplateRequest $request, MailerTemplateGenerationService $generator): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'templates'))
+        {
+            return $denied;
+        }
+
+        try
+        {
+            $data = $generator->generate($team, $request->validated());
+        } catch (RuntimeException $exception)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
     }
 }

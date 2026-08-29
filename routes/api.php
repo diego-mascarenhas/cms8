@@ -590,6 +590,7 @@ Route::middleware('auth.api')->group(function ()
     // Message / Mailer (idoneo-mailer SPA)
     Route::get('message', [MessageController::class, 'index']);
     Route::post('message', [MessageController::class, 'store']);
+    Route::post('message/generate', [MessageController::class, 'generate']);
     Route::get('message/{id}', [MessageController::class, 'show'])->whereNumber('id');
     Route::put('message/{id}', [MessageController::class, 'update'])->whereNumber('id');
     Route::delete('message/{id}', [MessageController::class, 'destroy'])->whereNumber('id');
@@ -605,6 +606,7 @@ Route::middleware('auth.api')->group(function ()
     // Templates (idoneo-mailer SPA)
     Route::get('templates', [TemplateController::class, 'index']);
     Route::post('templates', [TemplateController::class, 'store']);
+    Route::post('templates/generate', [TemplateController::class, 'generate']);
     Route::get('templates/{id}', [TemplateController::class, 'show'])->whereNumber('id');
     Route::put('templates/{id}', [TemplateController::class, 'update'])->whereNumber('id');
     Route::delete('templates/{id}', [TemplateController::class, 'destroy'])->whereNumber('id');
