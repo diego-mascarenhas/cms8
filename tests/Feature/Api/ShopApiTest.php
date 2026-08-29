@@ -5,6 +5,7 @@ namespace Tests\Feature\Api;
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ShoppingCartChannel;
 use App\Models\Category;
+use App\Models\Conversation;
 use App\Models\Currency;
 use App\Models\Module;
 use App\Models\Order;
@@ -709,6 +710,7 @@ class ShopApiTest extends TestCase
             ->getJson('/api/shop/orders/'.$order->id)
             ->assertOk()
             ->assertJsonPath('data.customer_phone', '5491112345678')
+            ->assertJsonPath('data.whatsapp_session_open', false)
             ->assertJsonPath('data.checkout_chosen_fulfillment_label', 'Retiro en tienda')
             ->assertJsonPath('data.checkout_chosen_payment_label', 'Efectivo');
 
@@ -780,6 +782,16 @@ class ShopApiTest extends TestCase
             ],
         ]);
 
+        Conversation::create([
+            'message_sid' => 'wa_quote_in_1',
+            'channel' => 'whatsapp',
+            'from' => '5491112345678',
+            'to' => '34900000000',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
         $sent = [];
         $this->app->instance(WhatsAppGateway::class, new class($sent) implements WhatsAppGateway
         {
@@ -830,6 +842,7 @@ class ShopApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.total_amount', 13800)
+            ->assertJsonPath('data.whatsapp_session_open', true)
             ->assertJsonPath('quote.phone', '5491112345678');
 
         $this->assertCount(1, $sent);
@@ -837,6 +850,80 @@ class ShopApiTest extends TestCase
         $this->assertStringContainsString('Cotización actualizada', $sent[0]['message']);
         $this->assertStringContainsString('Bujía de iridio', $sent[0]['message']);
         $this->assertStringContainsString('2 ×', $sent[0]['message']);
+    }
+
+    public function test_whatsapp_quote_is_blocked_outside_the_24_hour_window(): void
+    {
+        [, $team, $token] = $this->adminWithShopModules();
+        config(['whatsapp.driver' => 'twilio']);
+
+        $spark = $this->createPricedProduct($team, 6900, 'Bujía de iridio');
+        $order = Order::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'store_id' => null,
+            'order_number' => 'WA-QUOTE02',
+            'contact_id' => null,
+            'total_amount' => 6900,
+            'currency_id' => $spark->currency_id,
+            'payment_status' => 'pending',
+            'delivery_status' => 'processing',
+            'notes' => null,
+            'metadata' => [
+                'phone' => '5491112345678',
+                'items' => [
+                    [
+                        'product_id' => $spark->id,
+                        'name' => $spark->name,
+                        'quantity' => 1,
+                        'unit_price' => 6900,
+                        'line_total' => 6900,
+                    ],
+                ],
+            ],
+        ]);
+
+        $sent = [];
+        $this->app->instance(WhatsAppGateway::class, new class($sent) implements WhatsAppGateway
+        {
+            /**
+             * @param  array<int, array{to: string, message: string}>  $sent
+             */
+            public function __construct(private array &$sent) {}
+
+            public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+            {
+                $this->sent[] = ['to' => $to, 'message' => $message];
+
+                return 'ok';
+            }
+
+            public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+            {
+                return true;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function getQrUrl(): ?string
+            {
+                return null;
+            }
+
+            public function getConnectionStatus(): ?array
+            {
+                return ['status' => 'connected'];
+            }
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/shop/orders/'.$order->id.'/whatsapp-quote')
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['channel']);
+
+        $this->assertSame([], $sent);
     }
 
     public function test_can_list_show_and_delete_open_carts(): void

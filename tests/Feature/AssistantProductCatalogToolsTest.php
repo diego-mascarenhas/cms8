@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Contracts\WhatsAppGateway;
 use App\Enums\ProductCatalogStatus;
 use App\Models\Category;
+use App\Models\Conversation;
 use App\Models\Currency;
 use App\Models\Module;
 use App\Models\Order;
@@ -610,6 +611,16 @@ class AssistantProductCatalogToolsTest extends TestCase
             }
         };
 
+        Conversation::create([
+            'message_sid' => 'wa_tool_in_1',
+            'channel' => 'whatsapp',
+            'from' => '5491111223344',
+            'to' => '34900000000',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
         $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
         $service->setWhatsAppGatewayOverride($gateway);
@@ -673,6 +684,16 @@ class AssistantProductCatalogToolsTest extends TestCase
 
         $this->actingAs($user);
 
+        Conversation::create([
+            'message_sid' => 'wa_tool_in_2',
+            'channel' => 'whatsapp',
+            'from' => '34111222333',
+            'to' => '34900000000',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
         $service = app(AssistantToolsService::class);
         $service->clearRequestContext();
         $service->setWhatsAppGatewayOverride($gateway);
@@ -691,6 +712,61 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('WhatsApp message sent to 34111222333', $first);
         $this->assertStringContainsString('Opening WhatsApp was already sent in this turn', $second);
         $this->assertSame(1, $gateway->sendCount);
+    }
+
+    public function test_send_whatsapp_message_is_blocked_outside_the_24_hour_window(): void
+    {
+        $role = Role::firstOrCreate(['name' => 'admin']);
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->assignRole($role);
+
+        $gateway = new class implements WhatsAppGateway
+        {
+            public int $sendCount = 0;
+
+            public function sendMessage(string $to, string $message, ?array $metadata = null, ?int $userId = null): mixed
+            {
+                $this->sendCount++;
+
+                return ['ok' => true];
+            }
+
+            public function sendMedia(string $to, string $mediaPath, ?string $caption = null): bool
+            {
+                return true;
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function getQrUrl(): ?string
+            {
+                return null;
+            }
+
+            public function getConnectionStatus(): ?array
+            {
+                return ['status' => 'connected'];
+            }
+        };
+
+        $service = app(AssistantToolsService::class);
+        $service->clearRequestContext();
+        $service->setWhatsAppGatewayOverride($gateway);
+        $service->setRequestContext($user->id, $team->id, null);
+
+        $result = $service->execute('send_whatsapp_message', [
+            'phone' => '34111222333',
+            'message' => 'Hola',
+        ]);
+
+        $this->assertStringContainsString('more than 24 hours', $result);
+        $this->assertSame(0, $gateway->sendCount);
     }
 
     public function test_ver_carrito_reply_shows_the_real_cart_without_calling_the_model(): void

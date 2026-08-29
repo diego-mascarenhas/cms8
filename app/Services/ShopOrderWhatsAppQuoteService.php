@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Contracts\WhatsAppGateway;
+use App\Exceptions\WhatsAppSessionWindowClosedException;
 use App\Helpers\WhatsAppOutboundText;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use Illuminate\Validation\ValidationException;
 
 class ShopOrderWhatsAppQuoteService
@@ -38,6 +40,16 @@ class ShopOrderWhatsAppQuoteService
         {
             throw ValidationException::withMessages([
                 'items' => [__('El pedido no tiene ítems para cotizar.')],
+            ]);
+        }
+
+        try
+        {
+            app(WhatsAppCustomerServiceWindow::class)->assertOpen($phone);
+        } catch (WhatsAppSessionWindowClosedException)
+        {
+            throw ValidationException::withMessages([
+                'channel' => [__('whatsapp.send.error.session_window_closed')],
             ]);
         }
 

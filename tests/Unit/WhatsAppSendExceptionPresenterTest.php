@@ -32,11 +32,16 @@ class WhatsAppSendExceptionPresenterTest extends TestCase
         $this->assertSame(__('whatsapp.send.error.local_not_configured'), WhatsAppSendExceptionPresenter::messageForUser($e));
     }
 
-    public function test_preserves_twilio_63016_message(): void
+    public function test_maps_closed_session_window_and_twilio_63016(): void
     {
-        $raw = 'Twilio error 63016 outside window';
-        $e = new \RuntimeException($raw);
-        $this->assertSame($raw, WhatsAppSendExceptionPresenter::messageForUser($e));
+        $this->assertSame(
+            __('whatsapp.send.error.session_window_closed'),
+            WhatsAppSendExceptionPresenter::messageForUser(new \App\Exceptions\WhatsAppSessionWindowClosedException),
+        );
+        $this->assertSame(
+            __('whatsapp.send.error.session_window_closed'),
+            WhatsAppSendExceptionPresenter::messageForUser(new \RuntimeException('Twilio error 63016 outside window')),
+        );
     }
 
     public function test_maps_not_connected_message(): void

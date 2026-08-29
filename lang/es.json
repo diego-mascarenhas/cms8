@@ -1947,6 +1947,7 @@
   "whatsapp.send.error.generic": "No se pudo enviar el mensaje de WhatsApp. Intentá de nuevo; si sigue fallando, revisá la configuración del proveedor.",
   "whatsapp.send.error.not_connected": "WhatsApp no está conectado. Escaneá el código QR en Configuración para vincular tu número.",
   "whatsapp.send.error.not_ready": "WhatsApp está conectando. Esperá unos segundos y volvé a intentar.",
+  "whatsapp.send.error.session_window_closed": "No se puede escribir a este número: pasaron más de 24 horas desde su último mensaje. Esperá a que el cliente escriba de nuevo.",
   "chat.send.error.no_recipient": "Seleccioná una conversación de WhatsApp antes de enviar.",
   "Invalid phone number.": "Número de teléfono no válido.",
   "No CRM contact is linked to this number. Create or link a contact in Humano to use this option.": "No hay un contacto CRM vinculado a este número. Crea o vinculá un contacto en Humano para usar esta opción.",

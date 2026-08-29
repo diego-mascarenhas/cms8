@@ -1720,5 +1720,6 @@
     "whatsapp.send.error.local_not_configured": "WhatsApp local no está configurado. Revisá WHATSAPP_LOCAL_BASE_URL en .env o usa el driver Twilio.",
     "whatsapp.send.error.local_timeout": "El servicio de WhatsApp local tardó demasiado en responder. Comprueba que esté en marcha y que la red sea estable.",
     "whatsapp.send.error.local_unreachable": "No hay conexión con el servicio de WhatsApp local. Arrancá el proyecto «whatsapp-service» (por ejemplo con npm start) en el puerto configurado y volvé a intentar.",
-    "whatsapp.send.error.not_connected": "WhatsApp no está conectado. Escanea el código QR en el panel del chat para vincular tu número."
+    "whatsapp.send.error.not_connected": "WhatsApp no está conectado. Escanea el código QR en el panel del chat para vincular tu número.",
+    "whatsapp.send.error.session_window_closed": "No se puede escribir a este número: pasaron más de 24 horas desde su último mensaje. Esperá a que el cliente escriba de nuevo."
 }

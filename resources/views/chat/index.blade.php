@@ -288,6 +288,30 @@
             }
             return '{{ __("whatsapp.send.error.generic") }}';
         }
+        var whatsappSessionOpen = @json((bool) ($whatsappSession['open'] ?? true));
+
+        function chatWhatsAppSessionBlocksSend() {
+            var body = document.getElementById('chat-history-body');
+            var isAssistant = body && body.getAttribute('data-view-assistant') === '1';
+            return !isAssistant && whatsappSessionOpen === false;
+        }
+
+        function applyWhatsAppSession(session) {
+            if (!session || typeof session.open === 'undefined') {
+                return;
+            }
+            whatsappSessionOpen = session.open !== false;
+            var bar = document.getElementById('chat-session-window-bar');
+            if (bar) {
+                bar.classList.toggle('d-none', whatsappSessionOpen);
+            }
+            var scheduleItem = document.getElementById('chat-schedule-menu-item');
+            if (scheduleItem) {
+                scheduleItem.classList.toggle('d-none', !whatsappSessionOpen);
+            }
+            updateChatSendButtonsState();
+        }
+
         const recipientInput = document.getElementById('recipient');
         const attachmentInput = document.getElementById('chat-attachments');
         const attachmentCount = document.getElementById('chat-attachment-count');
@@ -343,7 +367,7 @@
             messageInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    if (chatSendActionsCanSubmit()) {
+                    if (chatSendActionsCanSubmit() && !chatWhatsAppSessionBlocksSend()) {
                         formSendMessage.requestSubmit();
                     }
                 }
@@ -368,7 +392,7 @@
             if (!form) {
                 return;
             }
-            var canSubmit = chatSendActionsCanSubmit();
+            var canSubmit = chatSendActionsCanSubmit() && !chatWhatsAppSessionBlocksSend();
             form.querySelectorAll('.chat-send-primary-btn, [name="send_intent"]').forEach(function (btn) {
                 btn.disabled = !canSubmit;
             });
@@ -776,6 +800,12 @@
 
             if (!isAssistantViewForm && waDriverLocal && !waTeamConnected) {
                 showChatSendErrorBar(@json(__('whatsapp.send.error.not_connected')));
+                reenableSend();
+                return;
+            }
+
+            if (!isAssistantViewForm && sendIntent !== 'suggest' && chatWhatsAppSessionBlocksSend()) {
+                showChatSendErrorBar(@json(__('whatsapp.send.error.session_window_closed')));
                 reenableSend();
                 return;
             }
@@ -1257,6 +1287,7 @@
 
                 if (!replyBody) { alert('{{ __("No hay respuesta para programar.") }}'); return; }
                 if (!cleanTo) { alert('{{ __("No hay destinatario.") }}'); return; }
+                if (chatWhatsAppSessionBlocksSend()) { alert(@json(__('whatsapp.send.error.session_window_closed'))); return; }
                 if (!selectedDates.length) { alert('{{ __("Selecciona la fecha y hora de envío.") }}'); return; }
 
                 var scheduledAt = selectedDates[0].toISOString();
@@ -1868,7 +1899,10 @@
             function fetchContactMessages() {
                 fetch(messagesUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
-                    .then(function (data) { renderContactMessages(data.messages || []); })
+                    .then(function (data) {
+                        renderContactMessages(data.messages || []);
+                        applyWhatsAppSession(data.whatsapp_session);
+                    })
                     .catch(function () {});
             }
             setInterval(fetchContactMessages, 4000);
@@ -3279,6 +3313,9 @@
                     </div>
                     <!-- Chat message form -->
                     <div class="chat-history-footer d-flex flex-column">
+                        <div id="chat-session-window-bar"
+                            class="alert alert-warning py-2 px-3 mb-2 w-100 small {{ ($whatsappSession['open'] ?? true) ? 'd-none' : '' }}"
+                            role="status">{{ __('whatsapp.send.error.session_window_closed') }}</div>
                         <div id="chat-send-error-bar"
                             class="alert alert-danger py-2 px-3 mb-2 d-none w-100 small"
                             role="alert"
@@ -3347,7 +3384,7 @@
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
                                         @if (!($viewAssistant ?? false) && ($selectedPhone ?? null))
-                                            <li>
+                                            <li id="chat-schedule-menu-item" class="{{ ($whatsappSession['open'] ?? true) ? '' : 'd-none' }}">
                                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#chatScheduleModal">
                                                     <i class="ti ti-calendar-time me-1"></i>{{ __('Programar') }}
                                                 </button>

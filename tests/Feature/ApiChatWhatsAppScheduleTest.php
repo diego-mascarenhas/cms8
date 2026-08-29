@@ -82,10 +82,23 @@ class ApiChatWhatsAppScheduleTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('thread_clock.recipient.timezone', 'America/Argentina/Buenos_Aires');
         $response->assertJsonPath('thread_clock.sender.timezone', 'Europe/Madrid');
+        $response->assertJsonPath('whatsapp_session.open', true);
+        $this->assertNotEmpty($response->json('whatsapp_session.last_inbound_at'));
         $this->assertTrue(collect($response->json('messages'))->contains(
             fn (array $message): bool => ($message['is_scheduled'] ?? false) === true
                 && $message['body'] === 'Programado para Argentina',
         ));
+    }
+
+    public function test_thread_reports_closed_whatsapp_session_without_recent_inbound(): void
+    {
+        [$token] = $this->inbox();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/5491100000000')
+            ->assertOk()
+            ->assertJsonPath('whatsapp_session.open', false)
+            ->assertJsonPath('whatsapp_session.last_inbound_at', null);
     }
 
     public function test_scheduled_message_can_be_rescheduled_and_cancelled_via_api(): void

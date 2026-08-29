@@ -26,6 +26,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppContactSheetImportService;
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Services\WhatsApp\WhatsAppInvoiceSheetImportService;
 use App\Services\WhatsApp\WhatsAppTaskSheetImportService;
 use App\Support\NewUserWelcomeEmailNotifier;
@@ -525,6 +526,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
     public function sendWhatsApp($to, $message, $metadata = null, $userId = null)
     {
+        app(WhatsAppCustomerServiceWindow::class)->assertOpen((string) $to);
+
         $message = WhatsAppOutboundText::sanitize((string) $message);
 
         if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
@@ -1665,6 +1668,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
      */
     public function sendWhatsAppTemplate($to, $templateName, $parameters = [])
     {
+        app(WhatsAppCustomerServiceWindow::class)->assertOpen((string) $to);
+
         if (! $this->isConfigured())
         {
             throw new \Exception('Twilio not configured for team: '.($this->team ? $this->team->name : 'No team'));
@@ -2483,6 +2488,8 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
      */
     private function doSendWhatsAppWithMedia($phoneNumber, $mediaPath, $type, $caption = null)
     {
+        app(WhatsAppCustomerServiceWindow::class)->assertOpen((string) $phoneNumber);
+
         try
         {
             $fullMediaPath = public_path($mediaPath);

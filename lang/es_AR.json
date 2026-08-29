@@ -1977,6 +1977,7 @@
   "whatsapp.send.error.local_unreachable": "No hay conexión con el servicio de WhatsApp local. Arrancá el proyecto «whatsapp-service» (por ejemplo con npm start) en el puerto configurado y volvé a intentar.",
   "whatsapp.send.error.not_connected": "WhatsApp no está conectado. Escaneá el código QR en Configuración para vincular tu número.",
   "whatsapp.send.error.not_ready": "WhatsApp está conectando. Esperá unos segundos y volvé a intentar.",
+  "whatsapp.send.error.session_window_closed": "No se puede escribir a este número: pasaron más de 24 horas desde su último mensaje. Esperá a que el cliente escriba de nuevo.",
   "VAT current month": "I.V.A. mes actual",
   "VAT current quarter": "I.V.A. trimestre actual",
   "Output VAT for tax filing": "I.V.A. repercutido para impuestos",
