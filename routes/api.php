@@ -800,6 +800,9 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('chat/site-assistant-messages/{sessionKey}/assistant', [SiteAssistantInboxController::class, 'updateAssistant'])
         ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
         ->name('api.chat.site-assistant-messages.assistant');
+    Route::post('chat/site-assistant-messages/{sessionKey}/identity', [SiteAssistantInboxController::class, 'assignIdentity'])
+        ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
+        ->name('api.chat.site-assistant-messages.identity');
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')

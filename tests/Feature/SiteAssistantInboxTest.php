@@ -127,6 +127,7 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('contacts.0.user_name', 'Lucía Pérez')
             ->assertJsonPath('contacts.0.channel', 'web')
             ->assertJsonPath('contacts.0.has_web', true)
+            ->assertJsonPath('contacts.0.last_channel', 'web')
             ->assertJsonPath('contacts.0.session_key', 'web-session-lucia');
     }
 
@@ -182,6 +183,11 @@ class SiteAssistantInboxTest extends TestCase
             ->where('role', 'visitor')
             ->value('contact_id'));
 
+        SiteAssistantMessage::withoutGlobalScopes()
+            ->where('session_key', 'web-session-merge')
+            ->where('role', 'visitor')
+            ->update(['created_at' => now()->addSecond()]);
+
         $token = $owner->createToken('admin-inbox')->plainTextToken;
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-list')
@@ -189,11 +195,14 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('total', 1)
             ->assertJsonPath('contacts.0.from', $clientPhone)
             ->assertJsonPath('contacts.0.has_web', true)
+            ->assertJsonPath('contacts.0.last_channel', 'web')
             ->assertJsonPath('contacts.0.contact_id', $contact->id);
 
         $thread = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/chat/whatsapp-messages/'.$clientPhone)
             ->assertOk()
+            ->assertJsonPath('reply_target.channel', 'web')
+            ->assertJsonPath('reply_target.session_key', 'web-session-merge')
             ->json('messages');
 
         $bodies = collect($thread)->pluck('body')->all();
@@ -201,6 +210,69 @@ class SiteAssistantInboxTest extends TestCase
         $this->assertContains('Hola desde la web', $bodies);
         $this->assertContains('Dale', $bodies);
         $this->assertTrue(collect($thread)->contains(fn ($message) => ($message['channel'] ?? null) === 'web'));
+    }
+
+    public function test_merged_thread_replies_on_the_last_inbound_channel(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, $team, $automation] = $this->teamWithWebAssistant();
+        $teamWa = '34999000111';
+        $clientPhone = '34600111333';
+        $team->setSetting('whatsapp_from', $teamWa);
+
+        Http::fake(['*' => Http::response(['pictures' => []], 200)]);
+
+        $contact = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Lucía',
+            'surname' => 'Pérez',
+            'email' => 'lucia.channel@example.com',
+            'phone' => $clientPhone,
+            'status_id' => ContactStatus::query()->where('name', 'Lead')->value('id'),
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+        ]);
+
+        $this->fakeAssistantReply('Dale');
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'lucia.channel@example.com',
+            'name' => 'Lucía Pérez',
+            'session_key' => 'web-session-channel',
+        ])->assertOk();
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Hola desde la web',
+            'session_key' => 'web-session-channel',
+        ])->assertOk();
+
+        $later = Conversation::create([
+            'message_sid' => 'SM_web_channel_later',
+            'channel' => 'whatsapp',
+            'from' => $clientPhone,
+            'to' => $teamWa,
+            'body' => 'Ahora por WhatsApp',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+        $later->forceFill([
+            'created_at' => now()->addSecond(),
+            'updated_at' => now()->addSecond(),
+        ])->save();
+
+        $this->assertSame($contact->id, SiteAssistantMessage::withoutGlobalScopes()
+            ->where('session_key', 'web-session-channel')
+            ->where('role', 'visitor')
+            ->value('contact_id'));
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.$clientPhone)
+            ->assertOk()
+            ->assertJsonPath('reply_target.channel', 'whatsapp')
+            ->assertJsonPath('reply_target.phone', $clientPhone);
     }
 
     public function test_client_does_not_see_anonymous_web_chats(): void
@@ -371,6 +443,111 @@ class SiteAssistantInboxTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('reply', 'Te ayudo con eso');
+    }
+
+    public function test_identificar_slash_asks_for_contact_data(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, , $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Hola');
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Hola',
+            'session_key' => 'web-identificar',
+        ])->assertOk();
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/site-assistant-messages/web-identificar', [
+                'message' => '/identificar',
+            ])
+            ->assertOk()
+            ->assertJsonPath('message.role', 'staff')
+            ->assertJsonPath('message.body', __('Para seguir, ¿me pasás tu nombre, email y teléfono?'));
+    }
+
+    public function test_staff_can_link_a_suggested_contact_from_visitor_data(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, $team, $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Hola');
+
+        $contact = Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'Pérez',
+            'email' => 'ana.perez@example.com',
+            'phone' => '34600111222',
+            'status_id' => ContactStatus::query()->where('name', 'Lead')->value('id'),
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+        ]);
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Soy Ana Pérez, ana.perez@example.com',
+            'session_key' => 'web-link-ana',
+        ])->assertOk();
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/web-link-ana')
+            ->assertOk()
+            ->assertJsonPath('identity.identified', false)
+            ->assertJsonPath('identity.extracted.email', 'ana.perez@example.com')
+            ->assertJsonPath('identity.suggestions.0.id', $contact->id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/site-assistant-messages/web-link-ana/identity', [
+                'contact_id' => $contact->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('identity.identified', true)
+            ->assertJsonPath('contact.id', $contact->id)
+            ->assertJsonPath('visitor.email', 'ana.perez@example.com');
+
+        $this->assertSame(
+            $contact->id,
+            SiteAssistantMessage::withoutGlobalScopes()
+                ->where('session_key', 'web-link-ana')
+                ->where('role', 'visitor')
+                ->value('contact_id'),
+        );
+    }
+
+    public function test_staff_can_create_a_lead_from_extracted_visitor_data(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, $team, $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Hola');
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Luis Mora luis.mora@example.com +34 611 222 333',
+            'session_key' => 'web-create-luis',
+        ])->assertOk();
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/site-assistant-messages/web-create-luis/identity', [
+                'create' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('identity.identified', true)
+            ->assertJsonPath('contact.email', 'luis.mora@example.com');
+
+        $this->assertSame(1, Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'luis.mora@example.com')->count());
     }
 
     public function test_updating_the_web_thread_prompt_requires_authentication(): void

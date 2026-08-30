@@ -9,6 +9,7 @@ use App\Models\ContactStatus;
 use App\Models\SiteAssistantMessage;
 use App\Models\Team;
 use App\Services\AssistantChatService;
+use App\Services\SiteAssistantInboxIdentityService;
 use App\Services\TeamSiteAssistantPromptService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
@@ -216,6 +217,69 @@ class PublicSiteAssistantIdentifyTest extends TestCase
         $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
             'name' => 'Ana',
         ])->assertStatus(422);
+    }
+
+    public function test_client_claim_asks_for_identity_without_the_model(): void
+    {
+        [, $automation] = $this->webAssistant();
+
+        $this->mock(AssistantChatService::class, function ($mock): void
+        {
+            $mock->shouldReceive('run')->never();
+        });
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Ya soy cliente',
+            'session_key' => 'claim-session',
+        ])
+            ->assertOk()
+            ->assertJsonPath('reply', app(SiteAssistantInboxIdentityService::class)->askMessage())
+            ->assertJsonPath('visitor.identified', false);
+
+        $this->assertSame(
+            'Ya soy cliente',
+            SiteAssistantMessage::withoutGlobalScopes()
+                ->where('session_key', 'claim-session')
+                ->where('role', 'visitor')
+                ->value('body'),
+        );
+    }
+
+    public function test_identity_reply_after_the_ask_identifies_the_visitor(): void
+    {
+        [$team, $automation] = $this->webAssistant();
+        $identity = app(SiteAssistantInboxIdentityService::class);
+
+        $this->mock(AssistantChatService::class, function ($mock): void
+        {
+            $mock->shouldReceive('run')->never();
+        });
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Ya soy cliente',
+            'session_key' => 'claim-identify',
+        ])->assertOk();
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Ana Pérez, ana.perez@example.com',
+            'session_key' => 'claim-identify',
+        ])
+            ->assertOk()
+            ->assertJsonPath('reply', $identity->identifiedMessage())
+            ->assertJsonPath('visitor.identified', true)
+            ->assertJsonPath('visitor.first_name', 'Ana');
+
+        $this->assertNotNull(
+            Contact::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('email', 'ana.perez@example.com')
+                ->first(),
+        );
+
+        $this->getJson(route('api.embed.automation.messages', $automation->public_token).'?session_key=claim-identify')
+            ->assertOk()
+            ->assertJsonPath('visitor.identified', true)
+            ->assertJsonPath('visitor.first_name', 'Ana');
     }
 
     /**

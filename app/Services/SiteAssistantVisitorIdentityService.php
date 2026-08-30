@@ -149,11 +149,16 @@ class SiteAssistantVisitorIdentityService
         ];
     }
 
-    private function upsertVisitorContact(int $teamId, string $email, ?string $name, ?string $phone, int $ownerUserId): Contact
+    public function upsertVisitorContact(int $teamId, string $email, ?string $name, ?string $phone, int $ownerUserId): Contact
     {
         $normalizedEmail = strtolower(trim($email));
         $phoneDigits = $this->digitsOrNull($phone);
-        $existing = $this->contacts->findExisting($teamId, $normalizedEmail, null, null);
+        $existing = $this->contacts->findExisting(
+            $teamId,
+            $normalizedEmail !== '' ? $normalizedEmail : null,
+            $phoneDigits,
+            null,
+        );
 
         if ($existing)
         {
@@ -173,7 +178,7 @@ class SiteAssistantVisitorIdentityService
             'team_id' => $teamId,
             'name' => $firstName,
             'surname' => $surname,
-            'email' => $normalizedEmail,
+            'email' => $normalizedEmail !== '' ? $normalizedEmail : null,
             'phone' => $phoneDigits,
             'status_id' => $this->leadStatusId(),
             'creator_id' => $ownerUserId,

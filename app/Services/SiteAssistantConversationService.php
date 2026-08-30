@@ -157,7 +157,9 @@ class SiteAssistantConversationService
             'visitor' => $this->visitorLabel($contact),
             'contact_id' => $contact?->id,
             'thread_assistant' => $this->threadAssistantMeta($team, $sessionKey, $contact),
+            'identity' => app(SiteAssistantInboxIdentityService::class)->present($team, $messages, $contact),
             'messages' => $this->presentInboxMessages($messages),
+            'reply_target' => app(InboxReplyTargetService::class)->forWebSession($sessionKey),
         ];
     }
 
@@ -325,7 +327,7 @@ class SiteAssistantConversationService
         ?array $allowedContactIds = null,
         ?User $actor = null,
     ): ?SiteAssistantMessage {
-        $body = trim($body);
+        $body = app(SiteAssistantInboxIdentityService::class)->staffReplyBody($body);
         if ($body === '' || ! $this->threadForTeam($team, $sessionKey, $allowedContactIds))
         {
             return null;
@@ -387,6 +389,24 @@ class SiteAssistantConversationService
                 'created_at' => optional($message->created_at)?->toIso8601String(),
             ])
             ->all();
+    }
+
+    public function lastTeamBody(Automation $automation, string $sessionKey): ?string
+    {
+        $sessionKey = trim($sessionKey);
+        if ($sessionKey === '')
+        {
+            return null;
+        }
+
+        $body = SiteAssistantMessage::withoutGlobalScopes()
+            ->where('automation_id', $automation->id)
+            ->where('session_key', $sessionKey)
+            ->whereIn('role', [SiteAssistantMessage::ROLE_ASSISTANT, SiteAssistantMessage::ROLE_STAFF])
+            ->orderByDesc('id')
+            ->value('body');
+
+        return $body !== null ? trim((string) $body) : null;
     }
 
     /**

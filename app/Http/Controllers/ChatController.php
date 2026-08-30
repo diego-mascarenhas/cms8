@@ -33,6 +33,7 @@ use App\Services\AssistantPromptCatalog;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\InboxQuickReplyService;
+use App\Services\InboxReplyTargetService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\SiteAssistantConversationService;
 use App\Services\TeamApiUsageStatsService;
@@ -1317,6 +1318,7 @@ class ChatController extends Controller
                 return [
                     'id' => $message->id,
                     'direction' => 'outbound',
+                    'channel' => $message->channel ?: 'whatsapp',
                     'body' => $message->body,
                     'status' => 'scheduled',
                     'is_scheduled' => true,
@@ -1333,6 +1335,7 @@ class ChatController extends Controller
             }
 
             $payload = $message->toArray();
+            $payload['channel'] = $message->channel ?: 'whatsapp';
             $payload['from_assistant'] = $this->whatsAppMessageIsFromAssistant($message);
             $payload['sender_avatar'] = $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser);
             $payload['transcribed_audio'] = $message instanceof Conversation
@@ -1363,6 +1366,13 @@ class ChatController extends Controller
             'thread_contact' => $this->whatsAppThreadContactMeta($team, $crm, $normPhone),
             'thread_clock' => $this->whatsAppThreadClock($team, $normPhone),
             'whatsapp_session' => app(WhatsAppCustomerServiceWindow::class)->describe($normPhone),
+            'reply_target' => $team
+                ? app(InboxReplyTargetService::class)->forWhatsAppThread($team, $normPhone, $crm)
+                : [
+                    'channel' => InboxReplyTargetService::CHANNEL_WHATSAPP,
+                    'session_key' => null,
+                    'phone' => $normPhone !== '' ? $normPhone : null,
+                ],
         ]);
     }
 
@@ -1884,6 +1894,10 @@ class ChatController extends Controller
                 {
                     $item['last_message'] = $web['last_message'];
                     $item['last_message_time'] = $web['last_message_time'];
+                    $item['last_channel'] = InboxReplyTargetService::CHANNEL_WEB;
+                } else
+                {
+                    $item['last_channel'] = InboxReplyTargetService::CHANNEL_WHATSAPP;
                 }
                 $item['has_web'] = true;
             }
@@ -2004,6 +2018,7 @@ class ChatController extends Controller
             $item['channel'] = 'web';
             $item['session_key'] = $web['session_key'];
         }
+        $item['last_channel'] = InboxReplyTargetService::CHANNEL_WEB;
 
         return $item;
     }

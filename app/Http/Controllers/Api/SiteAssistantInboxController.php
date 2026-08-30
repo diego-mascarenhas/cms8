@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\AssignSiteAssistantIdentityRequest;
 use App\Http\Requests\Api\SendSiteAssistantInboxReplyRequest;
 use App\Http\Requests\Api\UpdateSiteAssistantThreadPromptRequest;
 use App\Models\Prompt;
 use App\Services\AssistantPromptCatalog;
 use App\Services\SiteAssistantConversationService;
+use App\Services\SiteAssistantInboxIdentityService;
 use App\Services\TeamSiteAssistantPromptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -189,6 +191,60 @@ class SiteAssistantInboxController extends Controller
 
         return response()->json([
             'success' => true,
+            ...($thread ?? []),
+        ]);
+    }
+
+    public function assignIdentity(
+        AssignSiteAssistantIdentityRequest $request,
+        string $sessionKey,
+        SiteAssistantConversationService $conversations,
+        SiteAssistantInboxIdentityService $identity,
+    ): JsonResponse {
+        $team = $request->user()?->currentTeam;
+        if (! $team)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No hay equipo actual.'),
+            ], 422);
+        }
+
+        $allowed = $conversations->allowedContactIdsFor($request->user());
+        if (! $conversations->threadForTeam($team, $sessionKey, $allowed))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Conversation not found.'),
+            ], 404);
+        }
+
+        $contact = $identity->assign(
+            $team,
+            $sessionKey,
+            $request->filled('contact_id') ? (int) $request->integer('contact_id') : null,
+            $request->boolean('create'),
+            $allowed,
+            $request->user(),
+        );
+        if (! $contact)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No encontramos datos suficientes para vincular este visitante.'),
+            ], 422);
+        }
+
+        $thread = $conversations->threadForTeam($team, $sessionKey, $allowed);
+
+        return response()->json([
+            'success' => true,
+            'contact' => [
+                'id' => $contact->id,
+                'name' => trim((string) $contact->name.' '.(string) ($contact->surname ?? '')),
+                'email' => $contact->email,
+                'phone' => $contact->phone ? (string) $contact->phone : null,
+            ],
             ...($thread ?? []),
         ]);
     }
