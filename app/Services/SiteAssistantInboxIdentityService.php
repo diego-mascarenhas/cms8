@@ -58,6 +58,7 @@ class SiteAssistantInboxIdentityService
         string $message,
         SiteAssistantVisitorIdentityService $identity,
         SiteAssistantConversationService $conversations,
+        ?string $channel = null,
     ): ?array {
         $visitor = $identity->visitorFor($automation, $sessionKey);
         if ($visitor['identified'])
@@ -68,7 +69,7 @@ class SiteAssistantInboxIdentityService
         if ($this->isClientClaim($message))
         {
             $reply = $this->askMessage();
-            $conversations->recordTurn($automation, $sessionKey, $message, $reply);
+            $conversations->recordTurn($automation, $sessionKey, $message, $reply, $channel);
 
             return [
                 'reply' => $reply,
@@ -95,7 +96,7 @@ class SiteAssistantInboxIdentityService
             $hints['phone'],
         );
         $reply = $this->identifiedMessage();
-        $conversations->recordTurn($automation, $sessionKey, $message, $reply);
+        $conversations->recordTurn($automation, $sessionKey, $message, $reply, $channel);
 
         return [
             'reply' => $reply,

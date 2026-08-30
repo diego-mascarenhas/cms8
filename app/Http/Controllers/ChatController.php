@@ -1894,7 +1894,7 @@ class ChatController extends Controller
                 {
                     $item['last_message'] = $web['last_message'];
                     $item['last_message_time'] = $web['last_message_time'];
-                    $item['last_channel'] = InboxReplyTargetService::CHANNEL_WEB;
+                    $item['last_channel'] = $web['channel'] ?? InboxReplyTargetService::CHANNEL_WEB;
                 } else
                 {
                     $item['last_channel'] = InboxReplyTargetService::CHANNEL_WHATSAPP;
@@ -1923,7 +1923,7 @@ class ChatController extends Controller
 
     /**
      * @param  list<array{digits: string, phone: string, last_at: int, unread: int, crm: ?Contact}>  $index
-     * @param  array<int, array{contact: Contact, last_at: int, last_message: string, last_message_time: string, session_key: string}>  $webByContact
+     * @param  array<int, array{contact: Contact, last_at: int, last_message: string, last_message_time: string, session_key: string, channel: string}>  $webByContact
      * @return list<array<string, mixed>>
      */
     private function mergeIdentifiedWebIntoInboxIndex(array $index, array $webByContact, Request $request): array
@@ -2018,7 +2018,7 @@ class ChatController extends Controller
             $item['channel'] = 'web';
             $item['session_key'] = $web['session_key'];
         }
-        $item['last_channel'] = InboxReplyTargetService::CHANNEL_WEB;
+        $item['last_channel'] = $web['channel'] ?? InboxReplyTargetService::CHANNEL_WEB;
 
         return $item;
     }

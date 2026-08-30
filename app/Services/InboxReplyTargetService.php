@@ -13,6 +13,8 @@ class InboxReplyTargetService
 
     public const CHANNEL_WEB = 'web';
 
+    public const CHANNEL_MOBILE = 'mobile';
+
     /**
      * @return array{channel: string, session_key: string|null, phone: string|null}
      */
@@ -135,7 +137,7 @@ class InboxReplyTargetService
         }
 
         return [
-            'channel' => self::CHANNEL_WEB,
+            'channel' => $message->originChannel(),
             'session_key' => trim((string) $message->session_key) !== '' ? (string) $message->session_key : null,
             'phone' => null,
             'at' => $message->created_at?->getTimestamp() ?? 0,

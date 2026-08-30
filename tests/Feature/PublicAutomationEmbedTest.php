@@ -63,6 +63,38 @@ class PublicAutomationEmbedTest extends TestCase
             ]);
     }
 
+    public function test_public_chat_stores_mobile_origin(): void
+    {
+        $team = Team::factory()->create();
+        $automation = Automation::factory()->create([
+            'team_id' => $team->id,
+            'entry_prompt_key' => 'contacts:landing',
+            'channels' => Automation::normalizeChannels(['api' => true]),
+        ]);
+
+        $this->mock(AssistantChatService::class, function ($mock): void
+        {
+            $mock->shouldReceive('run')
+                ->once()
+                ->andReturn([
+                    'response' => 'Sure',
+                    'routed_to' => 'contacts:landing',
+                ]);
+        });
+
+        $this->withHeader('User-Agent', 'Dart/3.5 (dart:io)')
+            ->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+                'message' => 'Desde Mobile!',
+                'session_key' => 'mobile-ua',
+            ])
+            ->assertOk();
+
+        $this->assertSame('mobile', \App\Models\SiteAssistantMessage::withoutGlobalScopes()
+            ->where('session_key', 'mobile-ua')
+            ->where('role', 'visitor')
+            ->value('channel'));
+    }
+
     public function test_public_chat_404_for_invalid_token(): void
     {
         $this->postJson(route('api.embed.automation.assistant', 'invalidtokeninvalidtokeninvalidtokeninvalidtokeninvalidtoken12'), [

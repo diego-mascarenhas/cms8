@@ -18,11 +18,13 @@ return new class extends Migration
             $table->unsignedBigInteger('contact_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
             $table->string('role', 16);
+            $table->string('channel', 16)->default('web');
             $table->text('body');
             $table->timestamps();
 
             $table->index(['team_id', 'session_key', 'id'], 'sam_team_session_idx');
             $table->index(['team_id', 'created_at'], 'sam_team_created_idx');
+            $table->index(['team_id', 'channel', 'id'], 'sam_team_channel_idx');
             $table->foreign('team_id')->references('id')->on('teams')->cascadeOnDelete();
             $table->foreign('automation_id')->references('id')->on('automations')->cascadeOnDelete();
             $table->foreign('session_id')->references('id')->on('automation_flow_sessions')->nullOnDelete();

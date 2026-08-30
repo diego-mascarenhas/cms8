@@ -24,6 +24,7 @@ class SiteAssistantConversationService
         string $sessionKey,
         string $visitorMessage,
         string $assistantReply,
+        ?string $channel = null,
     ): void {
         $session = $this->flowEngine->sessionFor(
             $automation,
@@ -31,13 +32,14 @@ class SiteAssistantConversationService
             $sessionKey,
         );
         $contactId = $this->contactIdFromSession($session);
+        $origin = SiteAssistantMessage::normalizeOrigin($channel);
 
-        $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_VISITOR, $visitorMessage, $contactId);
+        $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_VISITOR, $visitorMessage, $contactId, $origin);
 
         $reply = trim($assistantReply);
         if ($reply !== '')
         {
-            $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_ASSISTANT, $reply, $contactId);
+            $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_ASSISTANT, $reply, $contactId, $origin);
         }
 
         $session->last_message_at = now();
@@ -413,7 +415,7 @@ class SiteAssistantConversationService
      * Latest web turn per identified contact, for merging into the main inbox.
      *
      * @param  list<int>|null  $allowedContactIds
-     * @return array<int, array{contact: Contact, last_at: int, last_message: string, last_message_time: string, session_key: string}>
+     * @return array<int, array{contact: Contact, last_at: int, last_message: string, last_message_time: string, session_key: string, channel: string}>
      */
     public function lastActivityByContactId(Team $team, ?array $allowedContactIds = null): array
     {
@@ -468,6 +470,7 @@ class SiteAssistantConversationService
                 'last_message' => (string) $message->body,
                 'last_message_time' => optional($message->created_at)?->diffForHumans() ?? '',
                 'session_key' => (string) $message->session_key,
+                'channel' => $message->originChannel(),
             ];
         }
 
@@ -505,7 +508,7 @@ class SiteAssistantConversationService
                     'user_id' => $presented['user_id'],
                     'media' => [],
                     'from_assistant' => $presented['from_assistant'],
-                    'channel' => 'web',
+                    'channel' => $presented['channel'],
                     'sender_avatar' => $presented['sender_avatar'],
                     'usage' => null,
                 ];
@@ -547,7 +550,7 @@ class SiteAssistantConversationService
 
     /**
      * @param  Collection<int, User>  $users
-     * @return array{id: int, role: string, body: string, created_at: string|null, user_id: int|null, from_assistant: bool, sender_avatar: array<string, mixed>|null}
+     * @return array{id: int, role: string, body: string, created_at: string|null, user_id: int|null, from_assistant: bool, channel: string, sender_avatar: array<string, mixed>|null}
      */
     private function presentInboxMessage(SiteAssistantMessage $message, Collection $users): array
     {
@@ -569,6 +572,7 @@ class SiteAssistantConversationService
             'created_at' => optional($message->created_at)?->toIso8601String(),
             'user_id' => $message->user_id ? (int) $message->user_id : null,
             'from_assistant' => $fromAssistant,
+            'channel' => $message->originChannel(),
             'sender_avatar' => $senderAvatar,
         ];
     }
@@ -640,6 +644,7 @@ class SiteAssistantConversationService
         string $role,
         string $body,
         ?int $contactId,
+        string $channel = SiteAssistantMessage::CHANNEL_WEB,
     ): SiteAssistantMessage {
         return SiteAssistantMessage::withoutGlobalScopes()->create([
             'team_id' => $automation->team_id,
@@ -648,6 +653,7 @@ class SiteAssistantConversationService
             'session_key' => $sessionKey,
             'contact_id' => $contactId,
             'role' => $role,
+            'channel' => SiteAssistantMessage::normalizeOrigin($channel),
             'body' => $body,
         ]);
     }
@@ -675,6 +681,7 @@ class SiteAssistantConversationService
             'last_message' => $message->body,
             'last_message_time' => optional($message->created_at)?->diffForHumans() ?? '',
             'last_message_at' => optional($message->created_at)?->toIso8601String(),
+            'last_channel' => $message->originChannel(),
         ];
     }
 
