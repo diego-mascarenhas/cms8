@@ -28,6 +28,7 @@ class SiteAssistantMessageFactory extends Factory
             'contact_id' => null,
             'user_id' => null,
             'role' => SiteAssistantMessage::ROLE_VISITOR,
+            'channel' => SiteAssistantMessage::CHANNEL_WEB,
             'body' => fake()->sentence(),
         ];
     }

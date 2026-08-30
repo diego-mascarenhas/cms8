@@ -212,6 +212,48 @@ class SiteAssistantInboxTest extends TestCase
         $this->assertTrue(collect($thread)->contains(fn ($message) => ($message['channel'] ?? null) === 'web'));
     }
 
+    public function test_mobile_origin_shows_as_mobile_in_the_assistant_inbox(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, , $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Desde la app');
+
+        $this->postJson(route('api.embed.automation.identify', $automation->public_token), [
+            'email' => 'mobile@example.com',
+            'name' => 'Móvil Pérez',
+            'session_key' => 'mobile-session-lucia',
+        ])->assertOk();
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Desde Mobile!',
+            'session_key' => 'mobile-session-lucia',
+            'channel' => 'mobile',
+        ])->assertOk();
+
+        $this->assertSame('mobile', SiteAssistantMessage::withoutGlobalScopes()
+            ->where('session_key', 'mobile-session-lucia')
+            ->where('role', 'visitor')
+            ->value('channel'));
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list')
+            ->assertOk()
+            ->assertJsonPath('contacts.0.channel', 'web')
+            ->assertJsonPath('contacts.0.has_web', true)
+            ->assertJsonPath('contacts.0.last_channel', 'mobile');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/mobile-session-lucia')
+            ->assertOk()
+            ->assertJsonPath('messages.0.channel', 'mobile')
+            ->assertJsonPath('messages.1.channel', 'mobile');
+    }
+
     public function test_merged_thread_replies_on_the_last_inbound_channel(): void
     {
         if (! Features::hasTeamFeatures())

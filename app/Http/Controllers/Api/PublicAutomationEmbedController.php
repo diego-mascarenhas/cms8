@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\IdentifySiteAssistantVisitorRequest;
 use App\Models\Automation;
+use App\Models\SiteAssistantMessage;
 use App\Services\AssistantAutomationRunner;
 use App\Services\SiteAssistantConversationService;
 use App\Services\SiteAssistantInboxIdentityService;
@@ -33,7 +34,9 @@ class PublicAutomationEmbedController extends Controller
         $validated = $request->validate([
             'message' => 'required|string|max:2000',
             'session_key' => 'nullable|string|max:191',
+            'channel' => 'nullable|string|in:web,mobile',
         ]);
+        $origin = $this->originChannel($request, $validated['channel'] ?? null);
 
         $automation = $runner->findByPublicToken($token);
         if (! $automation)
@@ -55,6 +58,7 @@ class PublicAutomationEmbedController extends Controller
             $validated['message'],
             $identity,
             $conversations,
+            $origin,
         );
         if ($handled !== null)
         {
@@ -89,6 +93,7 @@ class PublicAutomationEmbedController extends Controller
                 $sessionKey,
                 $validated['message'],
                 '',
+                $origin,
             );
 
             return response()->json([
@@ -129,6 +134,7 @@ class PublicAutomationEmbedController extends Controller
             $sessionKey,
             $validated['message'],
             (string) ($result['response'] ?? ''),
+            $origin,
         );
 
         return response()->json([
@@ -256,5 +262,21 @@ class PublicAutomationEmbedController extends Controller
             'welcome_message' => $welcome,
             'has_flow' => $automation->hasFlowGraph(),
         ]);
+    }
+
+    private function originChannel(Request $request, mixed $channel): string
+    {
+        if (is_string($channel) && trim($channel) !== '')
+        {
+            return SiteAssistantMessage::normalizeOrigin($channel);
+        }
+
+        $agent = strtolower((string) $request->userAgent());
+        if (str_contains($agent, 'dart/') || str_contains($agent, 'wapify'))
+        {
+            return SiteAssistantMessage::CHANNEL_MOBILE;
+        }
+
+        return SiteAssistantMessage::CHANNEL_WEB;
     }
 }

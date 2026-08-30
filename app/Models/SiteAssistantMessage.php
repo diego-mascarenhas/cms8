@@ -17,6 +17,10 @@ class SiteAssistantMessage extends Model
 
     public const ROLE_STAFF = 'staff';
 
+    public const CHANNEL_WEB = 'web';
+
+    public const CHANNEL_MOBILE = 'mobile';
+
     protected $fillable = [
         'team_id',
         'automation_id',
@@ -25,8 +29,21 @@ class SiteAssistantMessage extends Model
         'contact_id',
         'user_id',
         'role',
+        'channel',
         'body',
     ];
+
+    public static function normalizeOrigin(?string $channel): string
+    {
+        $channel = strtolower(trim((string) $channel));
+
+        return $channel === self::CHANNEL_MOBILE ? self::CHANNEL_MOBILE : self::CHANNEL_WEB;
+    }
+
+    public function originChannel(): string
+    {
+        return self::normalizeOrigin($this->channel);
+    }
 
     protected static function booted(): void
     {
