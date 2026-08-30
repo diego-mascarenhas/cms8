@@ -355,6 +355,7 @@ return [
         'embed_name' => 'Asistente web',
         'embed_description' => 'Asistente embebible: citas, catálogo y ventas.',
         'welcome_message' => 'Hola, ¿reservamos una cita o te muestro el catálogo?',
+        'paused_reply' => 'We received your message. Someone from the team will reply shortly.',
     ],
     'list60_prompt' => [
         'updated' => 'List 60 inbox prompt updated.',

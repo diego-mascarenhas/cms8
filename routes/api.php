@@ -37,6 +37,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
+use App\Http\Controllers\Api\PublicSiteAssistantController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\Shop\BrandController as ShopBrandController;
@@ -48,6 +49,7 @@ use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
 use App\Http\Controllers\Api\Shop\ProductController as ShopProductController;
 use App\Http\Controllers\Api\Shop\ProductImageController as ShopProductImageController;
 use App\Http\Controllers\Api\Shop\StoreController as ShopStoreController;
+use App\Http\Controllers\Api\SiteAssistantInboxController;
 use App\Http\Controllers\Api\SiteAssistantPromptController;
 use App\Http\Controllers\Api\SoftwareController;
 use App\Http\Controllers\Api\TaskController;
@@ -107,7 +109,13 @@ Route::prefix('embed/automation/{token}')->middleware('throttle:60,1')->group(fu
     Route::post('chat', [PublicAutomationEmbedController::class, 'chat'])->name('api.embed.automation.chat');
     // Alias matching cms8-widgets.js fetch(base + '/assistant')
     Route::post('assistant', [PublicAutomationEmbedController::class, 'chat'])->name('api.embed.automation.assistant');
+    Route::post('identify', [PublicAutomationEmbedController::class, 'identify'])->name('api.embed.automation.identify');
+    Route::get('messages', [PublicAutomationEmbedController::class, 'messages'])->name('api.embed.automation.messages');
 });
+
+Route::get('embed/site/{teamSlug}', [PublicSiteAssistantController::class, 'show'])
+    ->middleware('throttle:60,1')
+    ->name('api.embed.site');
 
 // Public CMS read API (anonymous, resolved by team slug; opt-in via cms_public_enabled)
 Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function ()
@@ -782,6 +790,16 @@ Route::middleware('auth.api')->group(function ()
     ]);
 
     // WhatsApp inbox (idoneo-assistant SPA) — same handlers as web /chat/list, /chat/messages, /chat/send, /chat/whatsapp-status.
+    Route::get('chat/site-assistant-list', [SiteAssistantInboxController::class, 'index'])->name('api.chat.site-assistant-list');
+    Route::get('chat/site-assistant-messages/{sessionKey}', [SiteAssistantInboxController::class, 'show'])
+        ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
+        ->name('api.chat.site-assistant-messages');
+    Route::post('chat/site-assistant-messages/{sessionKey}', [SiteAssistantInboxController::class, 'store'])
+        ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
+        ->name('api.chat.site-assistant-messages.store');
+    Route::patch('chat/site-assistant-messages/{sessionKey}/assistant', [SiteAssistantInboxController::class, 'updateAssistant'])
+        ->where('sessionKey', '[A-Za-z0-9._-]{8,191}')
+        ->name('api.chat.site-assistant-messages.assistant');
     Route::get('chat/whatsapp-list', [ChatController::class, 'getChatList'])->name('api.chat.whatsapp-list');
     Route::get('chat/whatsapp-messages/{phone}', [ChatController::class, 'getMessages'])
         ->where('phone', '[0-9]+')

@@ -70,9 +70,13 @@ class BusinessAssistantContextService
         {
             $config = json_decode($config, true) ?: [];
         }
-        if (! is_array($config) || $config === [])
+        if (! is_array($config))
         {
-            return '';
+            $config = [];
+        }
+        if (trim((string) ($config['business_name'] ?? '')) === '')
+        {
+            $config['business_name'] = $team->name;
         }
 
         $businessKeys = $compact
@@ -125,7 +129,7 @@ class BusinessAssistantContextService
 
         $intro = '### Contexto del negocio (configuración del equipo)'."\n\n";
         $intro .= 'Equipo: **'.$team->name."**.\n\n";
-        $intro .= 'Estos datos vienen de la configuración del negocio en Humano. Úsalos para personalizar tono y respuestas; **no inventes** datos que no aparezcan aquí.'."\n\n";
+        $intro .= 'Estos datos vienen de la configuración del negocio. Presentate como parte de este equipo; **no inventes** otra marca ni datos que no aparezcan aquí.'."\n\n";
         $body = implode("\n\n", $sections);
         $out = $intro.$body;
         $maxChars = $compact ? self::COMPACT_MAX_CHARS : self::MAX_CHARS;

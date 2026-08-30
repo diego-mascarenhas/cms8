@@ -20,13 +20,16 @@ class BusinessAssistantContextServiceTest extends TestCase
         $this->assertSame('', $service->buildMarkdownAppendix(0));
     }
 
-    public function test_returns_empty_when_no_business_config(): void
+    public function test_falls_back_to_team_name_when_no_business_config(): void
     {
         $owner = User::factory()->create();
-        $team = Team::factory()->create(['user_id' => $owner->id]);
+        $team = Team::factory()->create(['user_id' => $owner->id, 'name' => "REVISION ALPHA's Team"]);
         $service = app(BusinessAssistantContextService::class);
+        $markdown = $service->buildMarkdownAppendix($team->id);
 
-        $this->assertSame('', $service->buildMarkdownAppendix($team->id));
+        $this->assertStringContainsString("REVISION ALPHA's Team", $markdown);
+        $this->assertStringContainsString('Nombre del negocio', $markdown);
+        $this->assertStringNotContainsString('en Humano', $markdown);
     }
 
     public function test_includes_configured_fields_in_markdown(): void

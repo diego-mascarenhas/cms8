@@ -98,6 +98,44 @@ class TeamSiteAssistantPromptService
         return $this->selectedRoutingKey($team) === self::FORCE_OFF_KEY;
     }
 
+    public function allowsPublicEmbedReply(Team $team, ?int $contactId = null, ?string $sessionPromptKey = null): bool
+    {
+        if ($this->isForceSilent($team))
+        {
+            return false;
+        }
+
+        $sessionKey = $sessionPromptKey !== null ? trim($sessionPromptKey) : '';
+        if ($sessionKey !== '' && self::isReservedOffKey($sessionKey))
+        {
+            return false;
+        }
+
+        $contact = null;
+        if ($contactId !== null && $contactId > 0)
+        {
+            $contact = Contact::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->find($contactId);
+            if ($contact && ! $contact->allowsInboundChatAssistant())
+            {
+                return false;
+            }
+        }
+
+        if (! $this->isSilentDefault($team))
+        {
+            return true;
+        }
+
+        if ($sessionKey !== '')
+        {
+            return true;
+        }
+
+        return $contact !== null && $contact->inboundChatAssistantPromptKey() !== null;
+    }
+
     public function resolvedRoutingKey(Team $team): ?string
     {
         $key = $this->selectedRoutingKey($team);
@@ -233,13 +271,15 @@ class TeamSiteAssistantPromptService
      *     catalog: list<array{group: string, group_label: string, items: list<array{key: string, section_key: string, label: string, helper: string, section_label: string, prompt_instruction: string, own_brand: bool, owned: bool, drifted: bool, audience: 'customer'|'team', audience_label: string, audience_rank: int}>}>,
      *     default_instruction: string,
      *     recommended_label: string,
-     *     embed: array{snippet: string, api_base: string, script_url: string}
+     *     embed: array{snippet: string, api_base: string, script_url: string, welcome_message: string|null}
      * }
      */
     public function settingsPayload(Team $team): array
     {
         $automation = $this->syncEmbedAutomation($team, $this->resolvedRoutingKey($team));
-        $apiBase = url('/api/embed/automation/'.$automation->public_token);
+        $welcome = is_array($automation->settings)
+            ? ($automation->settings['welcome_message'] ?? null)
+            : null;
 
         return [
             'selected_key' => $this->selectedRoutingKey($team),
@@ -249,8 +289,9 @@ class TeamSiteAssistantPromptService
             'recommended_label' => __('team_settings.site_assistant.recommended_label'),
             'embed' => [
                 'snippet' => (string) $this->embedSnippet($automation),
-                'api_base' => $apiBase,
-                'script_url' => url(self::WIDGET_SCRIPT),
+                'api_base' => $this->embedApiBase((string) $automation->public_token),
+                'script_url' => $this->embedScriptUrl(),
+                'welcome_message' => is_string($welcome) && trim($welcome) !== '' ? trim($welcome) : null,
             ],
         ];
     }
@@ -262,6 +303,72 @@ class TeamSiteAssistantPromptService
             ->first();
     }
 
+    /**
+     * @return array{api_base: string, script_url: string, welcome_message: string|null, name: string}|null
+     */
+    public function publicEmbedForSlug(string $slug): ?array
+    {
+        $team = $this->findTeamByPublicSlug($slug);
+        if (! $team)
+        {
+            return null;
+        }
+
+        $automation = Automation::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('slug', self::EMBED_SLUG)
+            ->first();
+
+        if (! $automation || ! $automation->is_active || $automation->public_token === null || $automation->public_token === '')
+        {
+            return null;
+        }
+
+        if (! $automation->allowsChannel(Automation::CHANNEL_API))
+        {
+            return null;
+        }
+
+        $welcome = is_array($automation->settings)
+            ? ($automation->settings['welcome_message'] ?? null)
+            : null;
+        $businessName = $team->getDecodedBusinessConfig()['business_name'] ?? null;
+        $name = trim((string) ((is_string($businessName) && trim($businessName) !== '') ? $businessName : $team->name));
+
+        return [
+            'api_base' => $this->embedApiBase((string) $automation->public_token),
+            'script_url' => $this->embedScriptUrl(),
+            'welcome_message' => is_string($welcome) && trim($welcome) !== '' ? trim($welcome) : null,
+            'name' => $name !== '' ? $name : $team->name,
+        ];
+    }
+
+    public function findTeamByPublicSlug(string $slug): ?Team
+    {
+        $requested = Str::slug($slug);
+        if ($requested === '')
+        {
+            return null;
+        }
+
+        $matches = Team::query()
+            ->get()
+            ->filter(function (Team $team) use ($requested): bool
+            {
+                if (Str::slug((string) $team->name) === $requested)
+                {
+                    return true;
+                }
+
+                $businessName = $team->getDecodedBusinessConfig()['business_name'] ?? null;
+
+                return is_string($businessName) && Str::slug($businessName) === $requested;
+            })
+            ->values();
+
+        return $matches->count() === 1 ? $matches->first() : null;
+    }
+
     public function embedSnippet(?Automation $automation): ?string
     {
         if (! $automation || $automation->public_token === null || $automation->public_token === '')
@@ -269,8 +376,8 @@ class TeamSiteAssistantPromptService
             return null;
         }
 
-        $base = url('/api/embed/automation/'.$automation->public_token);
-        $script = url(self::WIDGET_SCRIPT);
+        $base = $this->embedApiBase((string) $automation->public_token);
+        $script = $this->embedScriptUrl();
         $jsonFlags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
 
         return '<div '.self::WIDGET_DATA_ATTR.'="assistant"></div>'."\n"
@@ -278,6 +385,27 @@ class TeamSiteAssistantPromptService
             .'  window.'.self::WIDGET_GLOBAL.' = '.json_encode($base, $jsonFlags).';'."\n"
             .'</script>'."\n"
             .'<script src='.json_encode($script, $jsonFlags).' async></script>';
+    }
+
+    public function embedApiBase(string $publicToken): string
+    {
+        return $this->embedPublicRoot().'/api/embed/automation/'.$publicToken;
+    }
+
+    public function embedScriptUrl(): string
+    {
+        return $this->embedPublicRoot().self::WIDGET_SCRIPT;
+    }
+
+    public function embedPublicRoot(): string
+    {
+        $request = request();
+        if ($request instanceof \Illuminate\Http\Request && $request->getHost() !== '')
+        {
+            return $request->getSchemeAndHttpHost();
+        }
+
+        return rtrim((string) config('app.url'), '/');
     }
 
     public function defaultInstruction(): string

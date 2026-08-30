@@ -18,6 +18,7 @@ class AssistantAutomationRunner
         protected AssistantChatService $assistantChat,
         protected AutomationFlowEngine $flowEngine,
         protected AutomationFunnelCompletionNotifier $funnelCompletionNotifier,
+        protected SiteAssistantVisitorIdentityService $visitorIdentity,
     ) {}
 
     public function findById(int $id, ?int $teamId = null): ?Automation
@@ -398,6 +399,14 @@ class AssistantAutomationRunner
         }
 
         $promptKey = $automation->resolvedEntryPromptKey();
+        if ($channel === Automation::CHANNEL_API && $sessionKey)
+        {
+            $pinned = app(SiteAssistantConversationService::class)->inboundPromptKeyFor($automation, $sessionKey);
+            if ($pinned !== null && $pinned !== '' && ! TeamSiteAssistantPromptService::isReservedOffKey($pinned))
+            {
+                $promptKey = $pinned;
+            }
+        }
         $runMessage = $message;
         $stepKey = null;
         $session = null;
@@ -501,6 +510,12 @@ class AssistantAutomationRunner
                     $runMessage = $appendix."\n\n---\n".__('Mensaje del usuario').":\n".$message;
                 }
             }
+        }
+
+        $identityAppendix = $this->visitorIdentity->messageAppendix($automation, $sessionKey);
+        if ($identityAppendix !== '')
+        {
+            $runMessage = $identityAppendix."\n\n---\n".$runMessage;
         }
 
         $result = $this->assistantChat->run(

@@ -34,6 +34,7 @@ use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
 use App\Services\InboxQuickReplyService;
 use App\Services\PerformanceInsightSlashDispatcher;
+use App\Services\SiteAssistantConversationService;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamInboundAssistantPolicy;
 use App\Services\TeamSiteAssistantPromptService;
@@ -1307,41 +1308,56 @@ class ChatController extends Controller
         $crm = $team && $normPhone !== '' ? $this->findContactForTeamByChatPhone((int) $team->id, $normPhone) : null;
         $usageById = $this->whatsAppThreadUsageByMessageId($messages, $team);
 
-        return response()->json([
-            'messages' => $messages->map(function ($message) use ($messageUsers, $authUser, $usageById)
+        $mapped = $messages->map(function ($message) use ($messageUsers, $authUser, $usageById)
+        {
+            if (! empty($message->is_scheduled))
             {
-                if (! empty($message->is_scheduled))
-                {
-                    $fromAssistant = $this->whatsAppMessageIsFromAssistant($message);
+                $fromAssistant = $this->whatsAppMessageIsFromAssistant($message);
 
-                    return [
-                        'id' => $message->id,
-                        'direction' => 'outbound',
-                        'body' => $message->body,
-                        'status' => 'scheduled',
-                        'is_scheduled' => true,
-                        'scheduled_at' => $message->scheduled_at?->toIso8601String(),
-                        'scheduled_message_id' => $message->scheduled_message_id,
-                        'created_at' => $message->scheduled_at?->toIso8601String(),
-                        'user_id' => $message->user_id,
-                        'media' => [],
-                        'transcribed_audio' => false,
-                        'from_assistant' => $fromAssistant,
-                        'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
-                        'usage' => $usageById[$message->id] ?? null,
-                    ];
-                }
+                return [
+                    'id' => $message->id,
+                    'direction' => 'outbound',
+                    'body' => $message->body,
+                    'status' => 'scheduled',
+                    'is_scheduled' => true,
+                    'scheduled_at' => $message->scheduled_at?->toIso8601String(),
+                    'scheduled_message_id' => $message->scheduled_message_id,
+                    'created_at' => $message->scheduled_at?->toIso8601String(),
+                    'user_id' => $message->user_id,
+                    'media' => [],
+                    'transcribed_audio' => false,
+                    'from_assistant' => $fromAssistant,
+                    'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
+                    'usage' => $usageById[$message->id] ?? null,
+                ];
+            }
 
-                $payload = $message->toArray();
-                $payload['from_assistant'] = $this->whatsAppMessageIsFromAssistant($message);
-                $payload['sender_avatar'] = $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser);
-                $payload['transcribed_audio'] = $message instanceof Conversation
-                    ? $message->isTranscribedAudio()
-                    : false;
-                $payload['usage'] = $usageById[$message->id] ?? null;
+            $payload = $message->toArray();
+            $payload['from_assistant'] = $this->whatsAppMessageIsFromAssistant($message);
+            $payload['sender_avatar'] = $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser);
+            $payload['transcribed_audio'] = $message instanceof Conversation
+                ? $message->isTranscribedAudio()
+                : false;
+            $payload['usage'] = $usageById[$message->id] ?? null;
 
-                return $payload;
-            })->values()->all(),
+            return $payload;
+        })->values()->all();
+
+        if ($team && $crm)
+        {
+            $mapped = array_merge(
+                $mapped,
+                app(SiteAssistantConversationService::class)->presentThreadMessagesForContact($team, (int) $crm->id),
+            );
+            usort($mapped, function (array $left, array $right): int
+            {
+                return (strtotime((string) ($left['created_at'] ?? '')) ?: 0)
+                    <=> (strtotime((string) ($right['created_at'] ?? '')) ?: 0);
+            });
+        }
+
+        return response()->json([
+            'messages' => $mapped,
             'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone, $crm),
             'thread_categories' => app(WhatsAppThreadCategoryService::class)->present($team, $crm),
             'thread_contact' => $this->whatsAppThreadContactMeta($team, $crm, $normPhone),
@@ -1772,6 +1788,16 @@ class ChatController extends Controller
 
         $index = $this->whatsAppConversationIndex($request);
         $team = auth()->user()?->currentTeam;
+        $webByContact = [];
+        if ($team)
+        {
+            $siteAssistant = app(SiteAssistantConversationService::class);
+            $webByContact = $siteAssistant->lastActivityByContactId(
+                $team,
+                $siteAssistant->allowedContactIdsFor($request->user()),
+            );
+            $index = $this->mergeIdentifiedWebIntoInboxIndex($index, $webByContact, $request);
+        }
         $archivedPhones = $team ? $archives->archivedPhoneSet((int) $team->id) : [];
         $archivedCount = 0;
         $archivedUnread = 0;
@@ -1798,9 +1824,27 @@ class ChatController extends Controller
         $offset = $request->integer('offset');
         $page = $limit === null ? array_slice($index, $offset) : array_slice($index, $offset, $limit);
 
-        $contacts = $this->hydrateWhatsAppContacts($page);
-        $list = $contacts->map(function ($c) use ($archivedPhones)
+        $whatsAppPage = array_values(array_filter(
+            $page,
+            fn (array $row): bool => ($row['channel'] ?? 'whatsapp') === 'whatsapp',
+        ));
+        $hydrated = $this->hydrateWhatsAppContacts($whatsAppPage)->keyBy(fn ($contact) => (string) $contact->from);
+        $list = [];
+        foreach ($page as $row)
         {
+            if (($row['channel'] ?? 'whatsapp') !== 'whatsapp')
+            {
+                $list[] = $this->presentIdentifiedWebInboxRow($row, $archivedPhones);
+
+                continue;
+            }
+
+            $c = $hydrated->get((string) $row['digits']);
+            if (! $c)
+            {
+                continue;
+            }
+
             $item = [
                 'from' => $c->from,
                 'last_message' => $c->last_message ?? '',
@@ -1831,9 +1875,21 @@ class ChatController extends Controller
             {
                 $item['sentiment'] = $c->sentiment;
             }
+            $contactId = (int) ($c->contact_id ?? 0);
+            if ($contactId > 0 && isset($webByContact[$contactId]))
+            {
+                $web = $webByContact[$contactId];
+                $whatsAppAt = isset($c->last_message_at) ? $c->last_message_at->getTimestamp() : 0;
+                if ($web['last_at'] >= $whatsAppAt)
+                {
+                    $item['last_message'] = $web['last_message'];
+                    $item['last_message_time'] = $web['last_message_time'];
+                }
+                $item['has_web'] = true;
+            }
 
-            return $item;
-        })->values()->all();
+            $list[] = $item;
+        }
 
         $nextOffset = $offset + count($page);
 
@@ -1849,6 +1905,107 @@ class ChatController extends Controller
             'next_offset' => $nextOffset,
             'contact_catalog' => $catalog,
         ]);
+    }
+
+    /**
+     * @param  list<array{digits: string, phone: string, last_at: int, unread: int, crm: ?Contact}>  $index
+     * @param  array<int, array{contact: Contact, last_at: int, last_message: string, last_message_time: string, session_key: string}>  $webByContact
+     * @return list<array<string, mixed>>
+     */
+    private function mergeIdentifiedWebIntoInboxIndex(array $index, array $webByContact, Request $request): array
+    {
+        $remaining = $webByContact;
+        foreach ($index as $i => $row)
+        {
+            $contactId = $row['crm']?->id;
+            if (! $contactId || ! isset($remaining[$contactId]))
+            {
+                continue;
+            }
+
+            if ($remaining[$contactId]['last_at'] > $row['last_at'])
+            {
+                $index[$i]['last_at'] = $remaining[$contactId]['last_at'];
+            }
+            unset($remaining[$contactId]);
+        }
+
+        $filter = $this->resolveWhatsAppListCrmStatusFilter($request);
+        $leadStatusId = $filter['mode'] === 'all' ? null : $this->resolveLeadContactStatusId();
+        $categoryId = $request->integer('category_id');
+
+        foreach ($remaining as $web)
+        {
+            $contact = $web['contact'];
+            $statusRow = (object) [
+                'crm_has_contact' => true,
+                'crm_status_id' => $contact->status_id,
+            ];
+            if ($filter['mode'] !== 'all' && ! $this->contactRowMatchesCrmStatusFilter($statusRow, (int) ($filter['status_id'] ?? 0), $leadStatusId))
+            {
+                continue;
+            }
+            if ($categoryId > 0 && ! $this->contactRowMatchesCategoryFilter($contact, $categoryId))
+            {
+                continue;
+            }
+
+            $phone = preg_replace('/[^0-9]/', '', (string) ($contact->phone ?? ''));
+            $index[] = [
+                'digits' => $phone !== '' ? $phone : 'web-'.$contact->id,
+                'phone' => $phone,
+                'last_at' => $web['last_at'],
+                'unread' => 0,
+                'crm' => $contact,
+                'channel' => $phone !== '' ? 'web-phone' : 'web',
+                'web' => $web,
+            ];
+        }
+
+        usort($index, fn (array $left, array $right): int => $right['last_at'] <=> $left['last_at']);
+
+        return $index;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  array<string, true>  $archivedPhones
+     * @return array<string, mixed>
+     */
+    private function presentIdentifiedWebInboxRow(array $row, array $archivedPhones): array
+    {
+        $web = $row['web'];
+        $contact = $web['contact'];
+        $name = trim((string) $contact->name.' '.(string) ($contact->surname ?? ''));
+        $phone = (string) ($row['phone'] ?? '');
+        $item = [
+            'from' => $phone !== '' ? (string) ($row['digits'] ?: $phone) : '',
+            'last_message' => $web['last_message'],
+            'last_message_time' => $web['last_message_time'],
+            'unread_count' => 0,
+            'is_archived' => $phone !== '' && isset($archivedPhones[$phone]),
+            'contact_id' => (int) $contact->id,
+            'has_web' => true,
+            'assistant_toggle_available' => false,
+            'assistant_inbound_enabled' => false,
+            'assistant_contact_enabled' => true,
+            'assistant_plan_active' => true,
+            'assistant_locked_reason' => null,
+            'category_ids' => $contact->relationLoaded('categories')
+                ? $contact->categories->pluck('id')->map(fn ($id): int => (int) $id)->values()->all()
+                : [],
+        ];
+        if ($name !== '')
+        {
+            $item['user_name'] = $name;
+        }
+        if ($phone === '')
+        {
+            $item['channel'] = 'web';
+            $item['session_key'] = $web['session_key'];
+        }
+
+        return $item;
     }
 
     public function updateWhatsAppChatArchive(UpdateWhatsAppChatArchiveRequest $request, WhatsAppChatArchiveService $archives): \Illuminate\Http\JsonResponse
