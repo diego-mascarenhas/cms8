@@ -31,6 +31,11 @@ class SiteAssistantMessage extends Model
         'role',
         'channel',
         'body',
+        'media',
+    ];
+
+    protected $casts = [
+        'media' => 'array',
     ];
 
     public static function normalizeOrigin(?string $channel): string

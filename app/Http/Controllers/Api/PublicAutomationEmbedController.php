@@ -9,11 +9,13 @@ use App\Models\SiteAssistantMessage;
 use App\Services\AssistantAutomationRunner;
 use App\Services\SiteAssistantConversationService;
 use App\Services\SiteAssistantInboxIdentityService;
+use App\Services\SiteAssistantMediaStore;
 use App\Services\SiteAssistantVisitorIdentityService;
 use App\Services\TeamSiteAssistantPromptService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -32,11 +34,19 @@ class PublicAutomationEmbedController extends Controller
         SiteAssistantInboxIdentityService $inboxIdentity,
     ): JsonResponse {
         $validated = $request->validate([
-            'message' => 'required|string|max:2000',
+            'message' => 'nullable|string|max:2000',
             'session_key' => 'nullable|string|max:191',
             'channel' => 'nullable|string|in:web,mobile',
+            'image' => 'nullable|image|max:10240',
         ]);
         $origin = $this->originChannel($request, $validated['channel'] ?? null);
+        $message = trim((string) ($validated['message'] ?? ''));
+        if ($message === '' && ! $request->hasFile('image'))
+        {
+            throw ValidationException::withMessages([
+                'message' => [__('The message field is required.')],
+            ]);
+        }
 
         $automation = $runner->findByPublicToken($token);
         if (! $automation)
@@ -52,10 +62,49 @@ class PublicAutomationEmbedController extends Controller
             : (string) Str::uuid();
 
         $automation->loadMissing('team');
+        $media = null;
+        if ($request->hasFile('image'))
+        {
+            $media = app(SiteAssistantMediaStore::class)->store($automation, $request->file('image'));
+            if ($message === '')
+            {
+                $message = '[Foto]';
+            }
+        }
+
+        if ($media !== null && $this->isPhotoPlaceholder($message))
+        {
+            try
+            {
+                $runner->requireActive($automation, Automation::CHANNEL_API);
+            } catch (NotFoundHttpException $e)
+            {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 404);
+            } catch (AccessDeniedHttpException $e)
+            {
+                return response()->json(['success' => false, 'message' => $e->getMessage()], 403);
+            }
+
+            $conversations->recordVisitorMedia($automation, $sessionKey, $message, $origin, $media);
+
+            return response()->json([
+                'success' => true,
+                'reply' => '',
+                'response' => '',
+                'routed_to' => null,
+                'automation_slug' => $automation->slug,
+                'step_key' => null,
+                'flow_completed' => false,
+                'session_key' => $sessionKey,
+                'visitor' => $identity->publicVisitor($identity->visitorFor($automation, $sessionKey)),
+                'demo' => false,
+            ]);
+        }
+
         $handled = $inboxIdentity->handlePublicMessage(
             $automation,
             $sessionKey,
-            $validated['message'],
+            $message,
             $identity,
             $conversations,
             $origin,
@@ -91,9 +140,10 @@ class PublicAutomationEmbedController extends Controller
             $conversations->recordTurn(
                 $automation,
                 $sessionKey,
-                $validated['message'],
+                $message,
                 '',
                 $origin,
+                $media,
             );
 
             return response()->json([
@@ -115,7 +165,7 @@ class PublicAutomationEmbedController extends Controller
             $result = $runner->run(
                 $automation,
                 Automation::CHANNEL_API,
-                $validated['message'],
+                $message,
                 null,
                 null,
                 false,
@@ -132,9 +182,10 @@ class PublicAutomationEmbedController extends Controller
         $conversations->recordTurn(
             $automation,
             $sessionKey,
-            $validated['message'],
+            $message,
             (string) ($result['response'] ?? ''),
             $origin,
+            $media,
         );
 
         return response()->json([
@@ -262,6 +313,13 @@ class PublicAutomationEmbedController extends Controller
             'welcome_message' => $welcome,
             'has_flow' => $automation->hasFlowGraph(),
         ]);
+    }
+
+    private function isPhotoPlaceholder(string $message): bool
+    {
+        $normalized = mb_strtolower(trim($message));
+
+        return in_array($normalized, ['[foto]', 'foto', '[imagen]', 'imagen'], true);
     }
 
     private function originChannel(Request $request, mixed $channel): string

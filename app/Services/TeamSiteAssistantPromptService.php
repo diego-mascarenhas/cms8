@@ -319,6 +319,27 @@ class TeamSiteAssistantPromptService
             ->where('slug', self::EMBED_SLUG)
             ->first();
 
+        return $this->publicEmbedPayload($team, $automation);
+    }
+
+    /**
+     * @return array{api_base: string, script_url: string, welcome_message: string|null, name: string}|null
+     */
+    public function publicEmbedForTeam(Team $team): ?array
+    {
+        $automation = Automation::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('slug', self::EMBED_SLUG)
+            ->first();
+
+        return $this->publicEmbedPayload($team, $automation);
+    }
+
+    /**
+     * @return array{api_base: string, script_url: string, welcome_message: string|null, name: string}|null
+     */
+    private function publicEmbedPayload(Team $team, ?Automation $automation): ?array
+    {
         if (! $automation || ! $automation->is_active || $automation->public_token === null || $automation->public_token === '')
         {
             return null;

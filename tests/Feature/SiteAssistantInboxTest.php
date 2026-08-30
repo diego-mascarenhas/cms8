@@ -254,6 +254,37 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('messages.1.channel', 'mobile');
     }
 
+    public function test_inbox_thread_includes_visitor_photo_media(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, , $automation] = $this->teamWithWebAssistant();
+        SiteAssistantMessage::withoutGlobalScopes()->create([
+            'team_id' => $automation->team_id,
+            'automation_id' => $automation->id,
+            'session_key' => 'mobile-photo-lucia',
+            'role' => SiteAssistantMessage::ROLE_VISITOR,
+            'channel' => SiteAssistantMessage::CHANNEL_MOBILE,
+            'body' => '[Foto]',
+            'media' => [[
+                'url' => 'https://cms8.test/storage/site-assistant/1/foto.jpg',
+                'content_type' => 'image/jpeg',
+                'name' => 'foto.jpg',
+            ]],
+        ]);
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/mobile-photo-lucia')
+            ->assertOk()
+            ->assertJsonPath('messages.0.body', '[Foto]')
+            ->assertJsonPath('messages.0.media.0.name', 'foto.jpg')
+            ->assertJsonPath('messages.0.media.0.url', 'https://cms8.test/storage/site-assistant/1/foto.jpg');
+    }
+
     public function test_merged_thread_replies_on_the_last_inbound_channel(): void
     {
         if (! Features::hasTeamFeatures())
