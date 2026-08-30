@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\TeamModulesByPricingPlanSyncer;
+use App\Services\TeamSiteAssistantPromptService;
 use App\Support\AuthIntendedUrlGuard;
 use App\Support\ChatMessageAvatar;
 use App\Support\EnsureRegisteredUserRole;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -301,6 +303,8 @@ class AuthController extends Controller
     private function profilePayload(User $user): array
     {
         $user->loadMissing(['currentTeam', 'roles']);
+        $team = $user->currentTeam;
+        $embed = $team ? app(TeamSiteAssistantPromptService::class)->publicEmbedForTeam($team) : null;
 
         return [
             'id' => $user->id,
@@ -309,12 +313,14 @@ class AuthController extends Controller
             'phone' => $user->phone !== null ? (string) $user->phone : null,
             'role' => $this->formatUserRoleLabel($user),
             'profile_photo_url' => ChatMessageAvatar::forUser($user)['photo_url'] ?? null,
-            'current_team' => $user->currentTeam ? [
-                'id' => $user->currentTeam->id,
-                'name' => $user->currentTeam->name,
-                'is_owner' => $user->ownsTeam($user->currentTeam),
-                'can_manage' => $user->canManageTeam($user->currentTeam),
-                'apps' => app(AssistantSubscriptionService::class)->appsPayload($user->currentTeam),
+            'current_team' => $team ? [
+                'id' => $team->id,
+                'name' => $team->name,
+                'slug' => Str::slug($team->name),
+                'embed_api_base' => $embed['api_base'] ?? null,
+                'is_owner' => $user->ownsTeam($team),
+                'can_manage' => $user->canManageTeam($team),
+                'apps' => app(AssistantSubscriptionService::class)->appsPayload($team),
             ] : null,
         ];
     }

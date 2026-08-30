@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('role', 16);
             $table->string('channel', 16)->default('web');
             $table->text('body');
+            $table->json('media')->nullable();
             $table->timestamps();
 
             $table->index(['team_id', 'session_key', 'id'], 'sam_team_session_idx');

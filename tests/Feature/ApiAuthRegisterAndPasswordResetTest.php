@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Automation;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\TeamSiteAssistantPromptService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -193,6 +195,54 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             ->getJson('/api/auth/user')
             ->assertOk()
             ->assertJsonPath('email', $user->email);
+    }
+
+    public function test_login_rejects_wrong_password(): void
+    {
+        User::factory()->create([
+            'email' => 'ana@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'ana@example.com',
+            'password' => 'otra-clave',
+        ])->assertStatus(401)
+            ->assertJsonPath('message', 'Los datos de acceso son incorrectos');
+    }
+
+    public function test_login_returns_embed_api_base_when_web_assistant_exists(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create([
+            'email' => 'ana@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+
+        $automation = Automation::factory()->create([
+            'team_id' => $team->id,
+            'slug' => TeamSiteAssistantPromptService::EMBED_SLUG,
+            'is_active' => true,
+            'channels' => Automation::normalizeChannels(['api' => true]),
+        ]);
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'ana@example.com',
+            'password' => 'secret12',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('email', 'ana@example.com')
+            ->assertJsonPath('user.email', 'ana@example.com')
+            ->assertJsonPath('current_team.id', $team->id)
+            ->assertJsonPath('current_team.slug', \Illuminate\Support\Str::slug($team->name))
+            ->assertJsonStructure(['token']);
+
+        $this->assertStringEndsWith(
+            '/api/embed/automation/'.$automation->public_token,
+            (string) $response->json('current_team.embed_api_base'),
+        );
     }
 
     public function test_reset_password_rejects_invalid_token(): void

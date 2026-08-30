@@ -19,12 +19,16 @@ class SiteAssistantConversationService
         protected AutomationFlowEngine $flowEngine,
     ) {}
 
+    /**
+     * @param  list<array<string, mixed>>|null  $visitorMedia
+     */
     public function recordTurn(
         Automation $automation,
         string $sessionKey,
         string $visitorMessage,
         string $assistantReply,
         ?string $channel = null,
+        ?array $visitorMedia = null,
     ): void {
         $session = $this->flowEngine->sessionFor(
             $automation,
@@ -34,7 +38,7 @@ class SiteAssistantConversationService
         $contactId = $this->contactIdFromSession($session);
         $origin = SiteAssistantMessage::normalizeOrigin($channel);
 
-        $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_VISITOR, $visitorMessage, $contactId, $origin);
+        $this->store($automation, $session, $sessionKey, SiteAssistantMessage::ROLE_VISITOR, $visitorMessage, $contactId, $origin, $visitorMedia);
 
         $reply = trim($assistantReply);
         if ($reply !== '')
@@ -44,6 +48,19 @@ class SiteAssistantConversationService
 
         $session->last_message_at = now();
         $session->save();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $media
+     */
+    public function recordVisitorMedia(
+        Automation $automation,
+        string $sessionKey,
+        string $body,
+        ?string $channel,
+        array $media,
+    ): void {
+        $this->recordTurn($automation, $sessionKey, $body, '', $channel, $media);
     }
 
     public function bindContactToSessionMessages(int $teamId, string $sessionKey, Contact $contact): void
@@ -389,6 +406,9 @@ class SiteAssistantConversationService
                 'role' => (string) $message->role,
                 'body' => (string) $message->body,
                 'created_at' => optional($message->created_at)?->toIso8601String(),
+                'media' => app(SiteAssistantMediaStore::class)->present(
+                    is_array($message->media) ? $message->media : null,
+                ),
             ])
             ->all();
     }
@@ -506,7 +526,9 @@ class SiteAssistantConversationService
                     'status' => $message->role === SiteAssistantMessage::ROLE_VISITOR ? 'received' : 'sent',
                     'created_at' => $presented['created_at'],
                     'user_id' => $presented['user_id'],
-                    'media' => [],
+                    'media' => app(SiteAssistantMediaStore::class)->present(
+                        is_array($message->media) ? $message->media : null,
+                    ),
                     'from_assistant' => $presented['from_assistant'],
                     'channel' => $presented['channel'],
                     'sender_avatar' => $presented['sender_avatar'],
@@ -574,6 +596,9 @@ class SiteAssistantConversationService
             'from_assistant' => $fromAssistant,
             'channel' => $message->originChannel(),
             'sender_avatar' => $senderAvatar,
+            'media' => app(SiteAssistantMediaStore::class)->present(
+                is_array($message->media) ? $message->media : null,
+            ),
         ];
     }
 
@@ -637,6 +662,9 @@ class SiteAssistantConversationService
             ->all();
     }
 
+    /**
+     * @param  list<array<string, mixed>>|null  $media
+     */
     private function store(
         Automation $automation,
         AutomationFlowSession $session,
@@ -645,6 +673,7 @@ class SiteAssistantConversationService
         string $body,
         ?int $contactId,
         string $channel = SiteAssistantMessage::CHANNEL_WEB,
+        ?array $media = null,
     ): SiteAssistantMessage {
         return SiteAssistantMessage::withoutGlobalScopes()->create([
             'team_id' => $automation->team_id,
@@ -655,6 +684,7 @@ class SiteAssistantConversationService
             'role' => $role,
             'channel' => SiteAssistantMessage::normalizeOrigin($channel),
             'body' => $body,
+            'media' => $media,
         ]);
     }
 
