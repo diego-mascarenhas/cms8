@@ -46,6 +46,21 @@ class AutomationFlowEngine
         return $session->fresh(['currentStep']);
     }
 
+    public function existingSession(Automation $automation, string $channel, string $externalKey): ?AutomationFlowSession
+    {
+        $externalKey = trim($externalKey);
+        if ($externalKey === '')
+        {
+            return null;
+        }
+
+        return AutomationFlowSession::query()
+            ->where('automation_id', $automation->id)
+            ->where('channel', $channel)
+            ->where('external_key', $externalKey)
+            ->first();
+    }
+
     public function resetSession(AutomationFlowSession $session): AutomationFlowSession
     {
         $entry = $session->automation?->entryStep()
@@ -56,6 +71,9 @@ class AutomationFlowEngine
             'awaiting_reply' => false,
             'completion_email_sent_at' => $previousMeta['completion_email_sent_at'] ?? null,
             'completion_email_to' => $previousMeta['completion_email_to'] ?? null,
+            'contact_id' => $previousMeta['contact_id'] ?? null,
+            'visitor_email' => $previousMeta['visitor_email'] ?? null,
+            'inbound_prompt_key' => $previousMeta['inbound_prompt_key'] ?? null,
         ], fn ($value) => $value !== null);
         $session->last_message_at = now();
         $session->save();

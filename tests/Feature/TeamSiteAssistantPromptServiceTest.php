@@ -123,6 +123,7 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertStringContainsString('/js/cms8-widgets.js', $payload['embed']['snippet']);
         $this->assertStringNotContainsString('HUMANO', $payload['embed']['snippet']);
         $this->assertStringContainsString('/js/cms8-widgets.js', $payload['embed']['script_url']);
+        $this->assertNotSame('', (string) $payload['embed']['welcome_message']);
 
         $automation = Automation::withoutGlobalScope('team')
             ->where('team_id', $team->id)
@@ -263,6 +264,28 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertTrue($service->isForceSilent($team->fresh()));
         $this->assertSame(TeamSiteAssistantPromptService::FORCE_OFF_KEY, $service->selectedRoutingKey($team->fresh()));
         $this->assertNull($service->resolvedRoutingKey($team->fresh()));
+        $this->assertFalse($service->allowsPublicEmbedReply($team->fresh()));
+    }
+
+    public function test_silent_default_blocks_anonymous_web_replies(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+
+        $service->select($team, TeamSiteAssistantPromptService::OFF_KEY);
+
+        $this->assertFalse($service->allowsPublicEmbedReply($team->fresh()));
+        $this->assertFalse($service->allowsPublicEmbedReply($team->fresh(), null));
+        $this->assertTrue($service->allowsPublicEmbedReply($team->fresh(), null, 'contacts:landing'));
+        $this->assertFalse($service->allowsPublicEmbedReply($team->fresh(), null, TeamSiteAssistantPromptService::OFF_KEY));
+    }
+
+    public function test_router_allows_public_embed_replies(): void
+    {
+        $team = Team::factory()->create();
+        $service = app(TeamSiteAssistantPromptService::class);
+
+        $this->assertTrue($service->allowsPublicEmbedReply($team));
     }
 
     public function test_select_copies_a_catalog_quote_prompt_when_the_team_has_no_row(): void

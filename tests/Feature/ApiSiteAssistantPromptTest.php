@@ -61,17 +61,20 @@ class ApiSiteAssistantPromptTest extends TestCase
                     ],
                     'default_instruction',
                     'recommended_label',
-                    'embed' => ['snippet', 'api_base', 'script_url'],
+                    'embed' => ['snippet', 'api_base', 'script_url', 'welcome_message'],
                 ],
             ]);
 
         $snippet = $list->json('data.embed.snippet');
+        $apiBase = $list->json('data.embed.api_base');
         $this->assertIsString($snippet);
+        $this->assertIsString($apiBase);
         $this->assertNotSame('', $snippet);
         $this->assertStringContainsString('data-cms8-widget="assistant"', $snippet);
         $this->assertStringContainsString('CMS8_WIDGETS_API_BASE', $snippet);
         $this->assertStringContainsString('/js/cms8-widgets.js', $snippet);
         $this->assertStringNotContainsString('HUMANO', $snippet);
+        $this->assertStringContainsString('/api/embed/automation/', $apiBase);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/assistant/site-prompt', [

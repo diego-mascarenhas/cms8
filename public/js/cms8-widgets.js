@@ -188,8 +188,11 @@
                         window.CMS8_WIDGET_SESSION_KEY = data.session_key;
                     }
                     var reply = data.reply || data.response || '';
-                    log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, reply));
-                    log.scrollTop = log.scrollHeight;
+                    if (reply)
+                    {
+                        log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, reply));
+                        log.scrollTop = log.scrollHeight;
+                    }
                 })
                 .catch(function (err)
                 {
@@ -208,6 +211,47 @@
                 send.click();
             }
         });
+
+        var lastPolledId = 0;
+        var pollPrimed = false;
+        window.setInterval(function ()
+        {
+            var sessionKey = window.CMS8_WIDGET_SESSION_KEY || window.HUMANO_WIDGET_SESSION_KEY;
+            if (! sessionKey)
+            {
+                return;
+            }
+
+            fetch(base + '/messages?session_key=' + encodeURIComponent(sessionKey) + '&after_id=' + lastPolledId, {
+                headers: { Accept: 'application/json' },
+                credentials: 'omit',
+            })
+                .then(function (r)
+                {
+                    return r.ok ? r.json() : null;
+                })
+                .then(function (data)
+                {
+                    if (! data || ! data.messages)
+                    {
+                        return;
+                    }
+
+                    data.messages.forEach(function (message)
+                    {
+                        lastPolledId = Math.max(lastPolledId, Number(message.id) || 0);
+                        if (! pollPrimed || message.role !== 'staff')
+                        {
+                            return;
+                        }
+
+                        log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, message.body || ''));
+                    });
+                    pollPrimed = true;
+                    log.scrollTop = log.scrollHeight;
+                })
+                .catch(function () {});
+        }, 4000);
 
         container.appendChild(title);
         container.appendChild(log);

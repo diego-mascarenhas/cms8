@@ -188,8 +188,11 @@
                         window.CMS8_WIDGET_SESSION_KEY = data.session_key;
                     }
                     var reply = data.reply || data.response || '';
-                    log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, reply));
-                    log.scrollTop = log.scrollHeight;
+                    if (reply)
+                    {
+                        log.appendChild(el('div', { class: 'humano-widget-msg humano-widget-msg-bot' }, reply));
+                        log.scrollTop = log.scrollHeight;
+                    }
                 })
                 .catch(function (err)
                 {
