@@ -12,10 +12,12 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class ProjectController extends Controller
 {
@@ -391,6 +393,45 @@ class ProjectController extends Controller
             'success' => true,
             'message' => 'Project deleted successfully',
         ]);
+    }
+
+    public function authorizeBudget(
+        Request $request,
+        string $id,
+        ProjectBudgetQuoteMailService $mailService,
+        ProjectBudgetSpecService $budgetService,
+    ): JsonResponse {
+        $user = $request->user();
+
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $project = Project::with(['enterprise.contacts', 'team', 'status'])->findOrFail($id);
+        $this->authorize('update', $project);
+
+        try
+        {
+            $project = $mailService->authorizeAndSend($project, $user);
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        $project->load(['client', 'responsible', 'status', 'board']);
+
+        return response()->json($this->projectBudgetResponse(
+            $project,
+            $budgetService,
+            __('Quote authorized and emailed to the enterprise contact.'),
+        ));
     }
 
     /**

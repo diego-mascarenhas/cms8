@@ -494,6 +494,10 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.funnel.chat-prompt.show');
     Route::put('projects/funnel/chat-prompt', [ProjectFunnelController::class, 'updateChatPrompt'])
         ->name('api.projects.funnel.chat-prompt.update');
+    Route::get('projects/funnel/sender', [ProjectFunnelController::class, 'showSender'])
+        ->name('api.projects.funnel.sender.show');
+    Route::put('projects/funnel/sender', [ProjectFunnelController::class, 'updateSender'])
+        ->name('api.projects.funnel.sender.update');
 
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
@@ -724,6 +728,8 @@ Route::middleware('auth.api')->group(function ()
     Route::get('projects', [ProjectController::class, 'index']);
     Route::post('projects', [ProjectController::class, 'store']);
     Route::get('projects/{id}', [ProjectController::class, 'show']);
+    Route::post('projects/{id}/authorize-budget', [ProjectController::class, 'authorizeBudget'])
+        ->name('api.projects.authorize-budget');
     Route::put('projects/{id}', [ProjectController::class, 'update']);
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);

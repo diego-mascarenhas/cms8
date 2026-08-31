@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\Team;
 use App\Models\TokenUsageLog;
 use App\Services\HumanoPricingPlanResolver;
+use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
@@ -80,6 +81,9 @@ class AssistantSubscriptionService
             'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
             'mailer_usage' => $catalog === HumanoPricingCatalog::MAILER
                 ? $this->mailerUsagePayload($team)
+                : null,
+            'estimator_usage' => $catalog === HumanoPricingCatalog::ESTIMATOR
+                ? $this->estimatorUsagePayload($team, $stripe)
                 : null,
         ];
     }
@@ -825,6 +829,23 @@ class AssistantSubscriptionService
     private function mailerUsagePayload(Team $team): array
     {
         return $team->getMailerUsageSummary();
+    }
+
+    /**
+     * @param  array<string, mixed>  $stripe
+     * @return array{emails_sent: int}
+     */
+    private function estimatorUsagePayload(Team $team, array $stripe): array
+    {
+        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+
+        return [
+            'emails_sent' => app(ProjectBudgetQuoteMailService::class)->countSentForTeam(
+                (int) $team->id,
+                $from,
+                $to,
+            ),
+        ];
     }
 
     /**
