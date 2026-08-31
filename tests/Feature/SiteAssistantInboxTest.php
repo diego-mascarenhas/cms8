@@ -129,6 +129,18 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('contacts.0.has_web', true)
             ->assertJsonPath('contacts.0.last_channel', 'web')
             ->assertJsonPath('contacts.0.session_key', 'web-session-lucia');
+
+        $lucia = Contact::withoutGlobalScopes()->where('team_id', $automation->team_id)->where('email', 'lucia@example.com')->first();
+        $this->assertNotNull($lucia);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/web-session-lucia')
+            ->assertOk()
+            ->assertJsonPath('contact_id', $lucia->id)
+            ->assertJsonPath('thread_contact.contact_id', $lucia->id)
+            ->assertJsonPath('thread_contact.name', 'Lucía Pérez')
+            ->assertJsonPath('thread_contact.email', 'lucia@example.com')
+            ->assertJsonPath('thread_categories.contact_id', $lucia->id);
     }
 
     public function test_identified_web_messages_join_the_whatsapp_thread(): void

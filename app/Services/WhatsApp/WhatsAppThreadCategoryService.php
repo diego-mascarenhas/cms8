@@ -35,6 +35,39 @@ class WhatsAppThreadCategoryService
     }
 
     /**
+     * @return array{contact_id: int|null, name: string, phone: string, email: string|null, status_id: int|null, statuses: list<array{id: int, name: string, color: string|null}>}
+     */
+    public function contactMeta(?Team $team, ?Contact $contact, string $digits = ''): array
+    {
+        $phone = preg_replace('/[^0-9]/', '', $digits) ?? '';
+        if ($phone === '' && $contact?->phone)
+        {
+            $phone = preg_replace('/[^0-9]/', '', (string) $contact->phone) ?? '';
+        }
+
+        $name = '';
+        if ($contact !== null)
+        {
+            $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
+        }
+
+        $email = trim((string) ($contact?->email ?? ''));
+        if ($email !== '' && str_ends_with(strtolower($email), '@chat.placeholder'))
+        {
+            $email = '';
+        }
+
+        return [
+            'contact_id' => $contact !== null ? (int) $contact->id : null,
+            'name' => $name,
+            'phone' => $phone,
+            'email' => $email !== '' ? $email : null,
+            'status_id' => $contact?->status_id !== null ? (int) $contact->status_id : null,
+            'statuses' => $this->catalog($team)['statuses'],
+        ];
+    }
+
+    /**
      * Attach contacts-module categories without dropping tags other modules may have left.
      *
      * @param  list<int>  $categoryIds

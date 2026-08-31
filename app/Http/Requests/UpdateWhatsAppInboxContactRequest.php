@@ -30,7 +30,8 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'phone' => ['required', 'string'],
+            'phone' => ['required_without:contact_id', 'nullable', 'string'],
+            'contact_id' => ['required_without:phone', 'nullable', 'integer', 'min:1'],
             'name' => ['required', 'string', 'max:255'],
             'email' => ['sometimes', 'nullable', 'email:rfc', 'max:255'],
             'status_id' => ['required', 'integer', 'exists:contact_statuses,id'],
@@ -46,6 +47,8 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
     {
         return [
             'phone.required' => __('Invalid phone number.'),
+            'phone.required_without' => __('Invalid phone number.'),
+            'contact_id.required_without' => __('No CRM contact is linked to this number. Create or link a contact in Humano to use this option.'),
             'name.required' => __('El nombre es obligatorio.'),
             'email.email' => __('Introduce un email válido.'),
             'status_id.required' => __('The selected status is invalid.'),

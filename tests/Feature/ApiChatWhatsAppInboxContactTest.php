@@ -337,6 +337,44 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_update_by_contact_id_edits_a_web_only_contact(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $cliente = ContactStatus::query()->where('name', 'Cliente')->first();
+        $this->assertNotNull($cliente);
+        $category = $this->contactsCategory('Alfa', $team);
+        $contact = $this->crmContact($team, [
+            'name' => 'Ana',
+            'surname' => 'Pérez',
+            'phone' => null,
+            'email' => 'ana.verify@example.com',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'contact_id' => $contact->id,
+                'name' => 'Ana Perez',
+                'email' => 'ana.perez@example.com',
+                'status_id' => $cliente->id,
+                'category_ids' => [$category->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('contact.name', 'Ana Perez')
+            ->assertJsonPath('contact.email', 'ana.perez@example.com')
+            ->assertJsonPath('contact.status_id', $cliente->id)
+            ->assertJsonPath('thread_contact.contact_id', $contact->id)
+            ->assertJsonPath('thread_contact.phone', '')
+            ->assertJsonPath('thread_categories.selected.0.id', $category->id);
+
+        $contact->refresh();
+        $this->assertSame('Ana', $contact->name);
+        $this->assertSame('Perez', $contact->surname);
+        $this->assertNull($contact->phone);
+        $this->assertSame('ana.perez@example.com', $contact->email);
+        $this->assertSame($cliente->id, $contact->status_id);
+    }
+
     public function test_update_without_a_crm_contact_is_refused(): void
     {
         [$token] = $this->inbox();
