@@ -732,7 +732,6 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.authorize-budget');
     Route::put('projects/{id}', [ProjectController::class, 'update']);
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
-    Route::post('projects/{id}/authorize-budget', [ProjectController::class, 'authorizeBudget']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);
     Route::get('projects/{id}/board', [ProjectController::class, 'board']);
     Route::put('projects/{id}/board/reorder', [ProjectController::class, 'reorderBoard']);
