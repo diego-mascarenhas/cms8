@@ -209,6 +209,46 @@ class ChatAssistantReplyForcedPromptTest extends TestCase
         $this->assertSame('chat:assistant_presupuesto', $reply['assistant_flow_routing_key'] ?? null);
     }
 
+    public function test_leaked_calendar_tool_json_is_not_shown_to_the_customer(): void
+    {
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+
+        $service = new class(app(\App\Services\AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService
+        {
+            public function useStub(?int $teamId = null): bool
+            {
+                return false;
+            }
+
+            protected function getReplyWithLaravelAi(string $message, array $history, string $instructions, array $tools = [], ?string $routedTo = null): array
+            {
+                return [
+                    'success' => true,
+                    'text' => "Voy a consultar la disponibilidad de mañana en la agenda. Dame un momento.\n\n```json\n{\"tool\": \"check_calendar_availability\", \"date\": \"2025-07-16\"}\n```",
+                    'routed_to' => $routedTo,
+                    'usage' => [],
+                    'tool_calls' => [],
+                    'tool_results' => [],
+                    'meta' => [],
+                ];
+            }
+        };
+
+        $reply = $service->getReply(
+            'tendrás horario para mañana?',
+            [],
+            (int) $team->id,
+            true,
+            (int) $user->id,
+        );
+
+        $this->assertTrue($reply['success'] ?? false);
+        $this->assertStringNotContainsString('check_calendar_availability', (string) ($reply['text'] ?? ''));
+        $this->assertStringNotContainsString('```', (string) ($reply['text'] ?? ''));
+        $this->assertStringContainsString('horario', (string) ($reply['text'] ?? ''));
+    }
+
     private function recordingReplyService(): ChatAssistantReplyService
     {
         return new class(app(\App\Services\AssistantToolsService::class), app(\App\Services\AssistantToolIntentPromptService::class), app(AgentConversationContextService::class), app(\App\Services\CollectionAssistantContextService::class), app(\App\Services\ContactAssistantContextService::class), app(\App\Services\AssistantToolAuthorizationService::class), app(AssistantActorContextService::class), app(\App\Services\BusinessAssistantContextService::class)) extends ChatAssistantReplyService

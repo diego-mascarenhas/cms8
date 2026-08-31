@@ -10,12 +10,13 @@ class AssistantCustomerText
     public static function stripMachineMarkers(string $text): string
     {
         $text = preg_replace('/FLOW_COMMITTED:\s*\{[^{}]*\}/u', '', $text) ?? $text;
+        $text = self::stripLeakedToolJson($text);
         $lines = preg_split('/\R/u', $text) ?: [];
         $kept = [];
         foreach ($lines as $line)
         {
             $trimmed = trim($line);
-            if ($trimmed === '' || str_starts_with($trimmed, 'FLOW_COMMITTED:'))
+            if ($trimmed === '' || $trimmed === '```' || str_starts_with($trimmed, 'FLOW_COMMITTED:'))
             {
                 continue;
             }
@@ -29,6 +30,50 @@ class AssistantCustomerText
         }
 
         return $out;
+    }
+
+    public static function leakedToolName(string $text): ?string
+    {
+        if (preg_match('/\{\s*"(?:tool|name)"\s*:\s*"([a-z0-9_]+)"/u', $text, $matches))
+        {
+            return $matches[1];
+        }
+
+        return null;
+    }
+
+    public static function looksLikeToolStall(string $text): bool
+    {
+        $normalized = mb_strtolower(trim($text));
+        if ($normalized === '')
+        {
+            return true;
+        }
+
+        return (bool) preg_match(
+            '/dame un momento|un segundo|voy a consultar|déjame (?:revisar|consultar)|espera(?:me)? un momento|let me (?:check|look)/u',
+            $normalized,
+        );
+    }
+
+    public static function afterLeakedToolFallback(?string $toolName): string
+    {
+        $tool = mb_strtolower((string) $toolName);
+        if (str_contains($tool, 'calendar'))
+        {
+            return '¿Qué horario te viene bien? Decime día y hora y lo confirmo en la agenda.';
+        }
+
+        return 'Dale. ¿Me contás un poco más para seguir?';
+    }
+
+    private static function stripLeakedToolJson(string $text): string
+    {
+        $text = preg_replace('/```(?:json|javascript|js)?\s*\{\s*"(?:tool|name)"\s*:[\s\S]*?\}\s*```/u', '', $text) ?? $text;
+        $text = preg_replace('/\{\s*"tool"\s*:\s*"[a-z0-9_]+"[^{}]*\}/u', '', $text) ?? $text;
+        $text = preg_replace('/\{\s*"name"\s*:\s*"[a-z0-9_]+"\s*,\s*"arguments"\s*:\s*\{[^{}]*\}\s*\}/u', '', $text) ?? $text;
+
+        return $text;
     }
 
     /**
