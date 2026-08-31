@@ -375,6 +375,116 @@ class ApiChatWhatsAppInboxContactTest extends TestCase
         $this->assertSame($cliente->id, $contact->status_id);
     }
 
+    public function test_thread_exposes_linked_user_on_the_contact(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $user = User::factory()->create(['email' => 'ana.login@example.com']);
+        $this->crmContact($team, [
+            'email' => 'ana.login@example.com',
+            'user_id' => $user->id,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-messages/'.self::CLIENT_PHONE)
+            ->assertOk()
+            ->assertJsonPath('thread_contact.user.id', $user->id)
+            ->assertJsonPath('thread_contact.user.email', 'ana.login@example.com')
+            ->assertJsonPath('thread_contact.user.staff', false);
+    }
+
+    public function test_update_creates_a_client_user_sets_password_and_can_send_access(): void
+    {
+        Bus::fake();
+
+        [$token, , $team] = $this->inbox();
+        $contact = $this->crmContact($team, ['email' => 'ana.verify@example.com']);
+        $this->assertNull($contact->user_id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Ana Perez',
+                'email' => 'ana.verify@example.com',
+                'status_id' => 1,
+                'password' => 'clave-segura',
+                'send_access' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('access.created', true)
+            ->assertJsonPath('access.sent', true)
+            ->assertJsonPath('thread_contact.user.email', 'ana.verify@example.com')
+            ->assertJsonPath('thread_contact.user.staff', false);
+
+        $contact->refresh();
+        $this->assertNotNull($contact->user_id);
+        $user = User::query()->find($contact->user_id);
+        $this->assertNotNull($user);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('clave-segura', $user->password));
+        $this->assertTrue($user->hasRole('client'));
+        Bus::assertDispatched(\App\Jobs\SendNewUserWelcomeEmail::class);
+    }
+
+    public function test_update_changes_password_for_an_existing_client(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $user = User::factory()->create([
+            'email' => 'pepe@example.com',
+            'password' => \Illuminate\Support\Facades\Hash::make('vieja-clave'),
+        ]);
+        Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+        $user->assignRole('client');
+        $this->crmContact($team, [
+            'email' => 'pepe@example.com',
+            'user_id' => $user->id,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Pepe',
+                'status_id' => 1,
+                'password' => 'nueva-clave',
+            ])
+            ->assertOk()
+            ->assertJsonPath('access.created', false);
+
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('nueva-clave', $user->fresh()->password));
+    }
+
+    public function test_update_refuses_password_change_on_team_staff(): void
+    {
+        [$token, $owner, $team] = $this->inbox();
+        $this->crmContact($team, [
+            'email' => $owner->email,
+            'user_id' => $owner->id,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Diego Mascarenhas',
+                'status_id' => 1,
+                'password' => 'no-deberia',
+            ])
+            ->assertStatus(422);
+    }
+
+    public function test_update_refuses_access_without_email(): void
+    {
+        [$token, , $team] = $this->inbox();
+        $this->crmContact($team, ['email' => null]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->patchJson('/api/chat/whatsapp-contact', [
+                'phone' => self::CLIENT_PHONE,
+                'name' => 'Ana Perez',
+                'status_id' => 1,
+                'send_access' => true,
+            ])
+            ->assertStatus(422);
+    }
+
     public function test_update_without_a_crm_contact_is_refused(): void
     {
         [$token] = $this->inbox();

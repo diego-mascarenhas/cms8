@@ -8,9 +8,11 @@ use App\Http\Requests\Api\SendSiteAssistantInboxReplyRequest;
 use App\Http\Requests\Api\UpdateSiteAssistantThreadPromptRequest;
 use App\Models\Prompt;
 use App\Services\AssistantPromptCatalog;
+use App\Services\InboxContactAccessService;
 use App\Services\SiteAssistantConversationService;
 use App\Services\SiteAssistantInboxIdentityService;
 use App\Services\TeamSiteAssistantPromptService;
+use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use InvalidArgumentException;
@@ -219,6 +221,7 @@ class SiteAssistantInboxController extends Controller
             ], 404);
         }
 
+        $validated = $request->validated();
         $contact = $identity->assign(
             $team,
             $sessionKey,
@@ -226,6 +229,11 @@ class SiteAssistantInboxController extends Controller
             $request->boolean('create'),
             $allowed,
             $request->user(),
+            [
+                'name' => $validated['name'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+            ],
         );
         if (! $contact)
         {
@@ -235,7 +243,42 @@ class SiteAssistantInboxController extends Controller
             ], 422);
         }
 
+        if (isset($validated['status_id']) && $validated['status_id'] !== null)
+        {
+            $contact->forceFill(['status_id' => (int) $validated['status_id']])->save();
+        }
+
+        $categoryIds = $validated['category_ids'] ?? [];
+        if ($categoryIds !== [])
+        {
+            $categories = app(WhatsAppThreadCategoryService::class);
+            try
+            {
+                $categories->assign($team, $contact, $categoryIds);
+            } catch (InvalidArgumentException $exception)
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __($exception->getMessage()),
+                ], 422);
+            }
+        }
+
+        $password = isset($validated['password']) ? trim((string) $validated['password']) : '';
+        $sendAccess = (bool) ($validated['send_access'] ?? false);
+        $access = null;
+        if ($password !== '' || $sendAccess)
+        {
+            $access = app(InboxContactAccessService::class)->apply(
+                $team,
+                $contact->fresh() ?? $contact,
+                $password !== '' ? $password : null,
+                $sendAccess,
+            );
+        }
+
         $thread = $conversations->threadForTeam($team, $sessionKey, $allowed);
+        $contact = $contact->fresh() ?? $contact;
 
         return response()->json([
             'success' => true,
@@ -245,6 +288,7 @@ class SiteAssistantInboxController extends Controller
                 'email' => $contact->email,
                 'phone' => $contact->phone ? (string) $contact->phone : null,
             ],
+            'access' => $access,
             ...($thread ?? []),
         ]);
     }

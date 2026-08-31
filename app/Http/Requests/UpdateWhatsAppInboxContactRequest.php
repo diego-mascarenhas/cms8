@@ -37,6 +37,8 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
             'status_id' => ['required', 'integer', 'exists:contact_statuses,id'],
             'category_ids' => ['sometimes', 'array'],
             'category_ids.*' => ['integer', 'distinct', 'min:1'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8'],
+            'send_access' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -53,6 +55,7 @@ class UpdateWhatsAppInboxContactRequest extends FormRequest
             'email.email' => __('Introduce un email válido.'),
             'status_id.required' => __('The selected status is invalid.'),
             'status_id.exists' => __('The selected status is invalid.'),
+            'password.min' => __('La contraseña debe tener al menos 8 caracteres.'),
         ];
     }
 }

@@ -32,6 +32,7 @@ use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantPromptCatalog;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
+use App\Services\InboxContactAccessService;
 use App\Services\InboxQuickReplyService;
 use App\Services\InboxReplyTargetService;
 use App\Services\PerformanceInsightSlashDispatcher;
@@ -1680,8 +1681,22 @@ class ChatController extends Controller
             array_key_exists('email', $validated),
         );
 
+        $password = isset($validated['password']) ? trim((string) $validated['password']) : '';
+        $sendAccess = (bool) ($validated['send_access'] ?? false);
+        $access = null;
+        if ($password !== '' || $sendAccess)
+        {
+            $access = app(InboxContactAccessService::class)->apply(
+                $team,
+                $contact->fresh(),
+                $password !== '' ? $password : null,
+                $sendAccess,
+            );
+        }
+
         return response()->json(array_merge(['success' => true], $result, [
             'thread_contact' => app(WhatsAppThreadCategoryService::class)->contactMeta($team, $contact->fresh(), $digits),
+            'access' => $access,
         ]));
     }
 
