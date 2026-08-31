@@ -36,7 +36,7 @@ Logo paths and fallbacks are in `config/variables.php` under the `logo` key:
 - `path_iso_dark` — Iso for dark UI (default: `assets/logo-iso-dark.svg`).
 - `fallback` — Fallback for full logo (default: `assets/logo.svg`).
 - `iso_fallback` — Fallback for iso (default: `assets/logo-iso.svg`).
-- `budget_path` — Optional override for budget/quote logos (`APP_LOGO_BUDGET_PATH`). Empty = same as `path_light` (menu light logo) via `Helpers::budgetLogoAsset()`.
+- `budget_path` — Optional override for budget/quote logos (`APP_LOGO_BUDGET_PATH`). Accepts a public path or an absolute URL. Empty = same as `path_light` via `Helpers::budgetLogoAsset()`.
 
 You can override any path via `.env` (e.g. `APP_LOGO_PATH_LIGHT`, `APP_LOGO_PATH_DARK`, `APP_LOGO_FALLBACK`).
 

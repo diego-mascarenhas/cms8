@@ -381,23 +381,28 @@ class Helpers
 
     /**
      * Logo for budget/quote sheets and emails.
-     * Uses APP_LOGO_BUDGET_PATH when set; otherwise the same light-theme logo as the app menu.
+     * Uses APP_LOGO_BUDGET_PATH when set (absolute URL or public file); otherwise the light-theme logo.
      */
     public static function budgetLogoAsset(): string
     {
         $override = trim((string) config('variables.logo.budget_path', ''));
 
-        if ($override !== '')
+        if ($override === '')
         {
-            $path = ltrim($override, '/');
-            $fullPath = public_path($path);
-
-            return file_exists($fullPath)
-                ? asset($path)
-                : self::logoAsset('light');
+            return self::logoAsset('light');
         }
 
-        return self::logoAsset('light');
+        if (filter_var($override, FILTER_VALIDATE_URL))
+        {
+            return $override;
+        }
+
+        $path = ltrim($override, '/');
+        $fullPath = public_path($path);
+
+        return file_exists($fullPath)
+            ? asset($path)
+            : self::logoAsset('light');
     }
 
     /**

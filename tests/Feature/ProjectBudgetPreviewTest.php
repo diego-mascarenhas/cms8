@@ -84,6 +84,7 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertSee('report-header', false);
         $response->assertSee('highlight', false);
         $response->assertSee('logo-light.svg', false);
+        $response->assertDontSee('mi.humano.app', false);
         $response->assertSee(__('Discount on labor'), false);
         $response->assertSee('30%', false);
         $response->assertDontSee('layout-wrapper', false);
@@ -103,6 +104,19 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertDontSee('ahorro estimado', false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_uses_budget_logo_url_from_config(): void
+    {
+        config(['variables.logo.budget_path' => 'https://mi.humano.app/assets/logo-dark.svg']);
+
+        $token = $this->createBudgetPreviewProject()['token'];
+
+        $this->get(route('project.budget-preview', $token))
+            ->assertOk()
+            ->assertSee('https://mi.humano.app/assets/logo-dark.svg', false)
+            ->assertDontSee('logo-light.svg', false);
     }
 
     #[Test]

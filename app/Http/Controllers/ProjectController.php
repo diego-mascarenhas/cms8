@@ -227,7 +227,7 @@ class ProjectController extends Controller
     /**
      * Public budget preview by token (no auth). Shows module, level, value table.
      */
-    public function budgetPreview(string $token)
+    public function budgetPreview(Request $request, string $token)
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
 
@@ -239,6 +239,7 @@ class ProjectController extends Controller
             'project' => $project,
             'suggestedTasks' => $suggestedTasks,
             'budgetToken' => $token,
+            'autoPrint' => $request->boolean('download'),
             'clientResponse' => is_array(data_get($project->data, 'budget_client_response'))
                 ? data_get($project->data, 'budget_client_response')
                 : null,
