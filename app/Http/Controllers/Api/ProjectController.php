@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\AuthorizeProjectBudgetRequest;
 use App\Http\Requests\Api\StoreProjectApiRequest;
 use App\Http\Requests\Api\UpdateProjectApiRequest;
 use App\Models\Enterprise;
@@ -12,10 +13,12 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class ProjectController extends Controller
 {
@@ -244,7 +247,7 @@ class ProjectController extends Controller
                 });
             }
 
-            return response()->json([
+            return response()->json(array_merge([
                 'success' => true,
                 'data' => array_merge($project->toArray(), [
                     'tasks' => $tasks,
@@ -254,7 +257,7 @@ class ProjectController extends Controller
                     'total_time_hours' => round($totalSeconds / 3600, 2),
                 ]),
                 'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
-            ]);
+            ], $this->budgetPublicUrls($project)));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)
         {
             return response()->json([
@@ -365,6 +368,57 @@ class ProjectController extends Controller
         $project->load(['client', 'responsible', 'status', 'board']);
 
         return response()->json($this->projectBudgetResponse($project, $budgetService, 'Project updated successfully'));
+    }
+
+    /**
+     * Mark the quote as authorized and email the public preview to the enterprise contact.
+     */
+    public function authorizeBudget(AuthorizeProjectBudgetRequest $request, string $id, ProjectBudgetQuoteMailService $mailService): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $project = Project::with(['enterprise.contacts', 'team', 'status', 'client', 'responsible'])->findOrFail($id);
+
+        if (! $user->hasRole('admin'))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Only admins can send the quote email.',
+            ], 403);
+        }
+
+        if ((int) $project->status_id === ProjectStatus::STATUS_BUDGET)
+        {
+            $project->status_id = ProjectStatus::STATUS_BUDGETED;
+            $project->save();
+        }
+
+        try
+        {
+            $project = $mailService->authorizeAndSend($project, $user);
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        $project->load(['client', 'responsible', 'status', 'board']);
+
+        return response()->json($this->projectBudgetResponse(
+            $project,
+            app(ProjectBudgetSpecService::class),
+            __('Quote authorized and emailed to the enterprise contact.'),
+        ));
     }
 
     /**
@@ -707,20 +761,38 @@ class ProjectController extends Controller
     }
 
     /**
+     * @return array{preview_url: string|null, download_url: string|null}
+     */
+    private function budgetPublicUrls(Project $project): array
+    {
+        $token = data_get($project->data, 'budget_preview_token');
+
+        if (! is_string($token) || $token === '')
+        {
+            return [
+                'preview_url' => null,
+                'download_url' => null,
+            ];
+        }
+
+        $previewUrl = route('project.budget-preview', $token, true);
+
+        return [
+            'preview_url' => $previewUrl,
+            'download_url' => $previewUrl.'?download=1',
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function projectBudgetResponse(Project $project, ProjectBudgetSpecService $budgetService, string $message): array
     {
-        $token = data_get($project->data, 'budget_preview_token');
-
-        return [
+        return array_merge([
             'success' => true,
             'data' => $project,
             'message' => $message,
-            'preview_url' => is_string($token) && $token !== ''
-                ? route('project.budget-preview', $token, true)
-                : null,
             'totals' => $budgetService->computeQuoteTotals($project),
-        ];
+        ], $this->budgetPublicUrls($project));
     }
 }

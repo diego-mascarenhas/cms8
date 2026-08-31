@@ -512,6 +512,8 @@ class ProjectFunnelController extends Controller
                     $project->update(['board_id' => $board->id]);
                 }
 
+                $previewToken = (string) ($projectData['budget_preview_token'] ?? '');
+
                 return [
                     'contact_id' => $contact->id,
                     'enterprise_id' => $enterprise->id,
@@ -519,6 +521,7 @@ class ProjectFunnelController extends Controller
                     'project_name' => $project->name,
                     'tasks_count' => count($includedTasks),
                     'total_hours' => collect($includedTasks)->sum(fn ($t) => (float) ($t['estimated_hours'] ?? 0)),
+                    ...$this->publicBudgetUrls($previewToken),
                 ];
             });
         } catch (\Throwable $e)
@@ -992,5 +995,26 @@ class ProjectFunnelController extends Controller
         }
 
         return $decoded;
+    }
+
+    /**
+     * @return array{preview_url: string|null, download_url: string|null}
+     */
+    private function publicBudgetUrls(string $token): array
+    {
+        if ($token === '')
+        {
+            return [
+                'preview_url' => null,
+                'download_url' => null,
+            ];
+        }
+
+        $previewUrl = route('project.budget-preview', $token, true);
+
+        return [
+            'preview_url' => $previewUrl,
+            'download_url' => $previewUrl.'?download=1',
+        ];
     }
 }

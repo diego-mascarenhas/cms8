@@ -2,8 +2,12 @@
 
 namespace App\Support;
 
+use App\Helpers\WhatsAppOutboundText;
+
 class AssistantCustomerText
 {
+    private const TOOL_NAME_PATTERN = 'search_contacts|get_contact_detail|create_contact|update_contact|check_calendar_availability|create_calendar_event|list_calendar_events|update_calendar_event|list_product_catalog|search_products|add_to_whatsapp_cart|view_whatsapp_cart|confirm_whatsapp_order|commit_assistant_flow';
+
     /**
      * Remove tool machine markers the model sometimes echoes as the reply.
      */
@@ -16,7 +20,10 @@ class AssistantCustomerText
         foreach ($lines as $line)
         {
             $trimmed = trim($line);
-            if ($trimmed === '' || $trimmed === '```' || str_starts_with($trimmed, 'FLOW_COMMITTED:'))
+            if ($trimmed === ''
+                || preg_match('/^```(?:json|javascript|js)?$/i', $trimmed)
+                || str_starts_with($trimmed, 'FLOW_COMMITTED:')
+                || preg_match('/^(?:'.self::TOOL_NAME_PATTERN.')\s*\([^)]*\)\s*;?$/u', $trimmed))
             {
                 continue;
             }
@@ -29,12 +36,16 @@ class AssistantCustomerText
             return '';
         }
 
-        return $out;
+        return WhatsAppOutboundText::sanitize($out);
     }
 
     public static function leakedToolName(string $text): ?string
     {
         if (preg_match('/\{\s*"(?:tool|name)"\s*:\s*"([a-z0-9_]+)"/u', $text, $matches))
+        {
+            return $matches[1];
+        }
+        if (preg_match('/\b('.self::TOOL_NAME_PATTERN.')\s*\(/u', $text, $matches))
         {
             return $matches[1];
         }
@@ -51,7 +62,7 @@ class AssistantCustomerText
         }
 
         return (bool) preg_match(
-            '/dame un momento|un segundo|voy a consultar|déjame (?:revisar|consultar)|espera(?:me)? un momento|let me (?:check|look)/u',
+            '/dame un momento|un segundo|voy a (?:consultar|buscar)|déjame (?:revisar|consultar)|espera(?:me)? un momento|paso\s*\d+|let me (?:check|look)/u',
             $normalized,
         );
     }
@@ -70,6 +81,7 @@ class AssistantCustomerText
     private static function stripLeakedToolJson(string $text): string
     {
         $text = preg_replace('/```(?:json|javascript|js)?\s*\{\s*"(?:tool|name)"\s*:[\s\S]*?\}\s*```/u', '', $text) ?? $text;
+        $text = preg_replace('/```(?:json|javascript|js)?\s*(?:'.self::TOOL_NAME_PATTERN.')\s*\([^)]*\)\s*```/u', '', $text) ?? $text;
         $text = preg_replace('/\{\s*"tool"\s*:\s*"[a-z0-9_]+"[^{}]*\}/u', '', $text) ?? $text;
         $text = preg_replace('/\{\s*"name"\s*:\s*"[a-z0-9_]+"\s*,\s*"arguments"\s*:\s*\{[^{}]*\}\s*\}/u', '', $text) ?? $text;
 

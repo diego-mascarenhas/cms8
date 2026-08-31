@@ -208,9 +208,12 @@ class WhatsAppOutboundText
 
     private static function normalizeEmphasisForWhatsApp(string $text): string
     {
-        $patterns = [
-            '/\*\*([^*\n]+)\*\*/u',
-            '/__([^_\n]+)__/u',
+        $replacements = [
+            '/\*\*([^*\n]+?)([:;,.!?])\*\*/u' => '*$1*$2',
+            '/\*\*([^*\n]+)\*\*/u' => '*$1*',
+            '/__([^_\n]+?)([:;,.!?])__/u' => '*$1*$2',
+            '/__([^_\n]+)__/u' => '*$1*',
+            '/(?<!\*)\*([^*\n]+?)([:;,.!?])\*(?!\*)/u' => '*$1*$2',
         ];
 
         $previous = null;
@@ -218,9 +221,9 @@ class WhatsAppOutboundText
         while ($maxPasses-- > 0 && $text !== $previous)
         {
             $previous = $text;
-            foreach ($patterns as $pattern)
+            foreach ($replacements as $pattern => $replacement)
             {
-                $text = preg_replace($pattern, '*$1*', $text) ?? $text;
+                $text = preg_replace($pattern, $replacement, $text) ?? $text;
             }
         }
 
