@@ -78,6 +78,15 @@ class WhatsAppOutboundTextTest extends TestCase
         $this->assertSame('Son 3 facturas pendientes por un total de *62.727,27 ARS*.', $out);
     }
 
+    public function test_moves_trailing_colon_outside_whatsapp_bold(): void
+    {
+        $in = '**Paso 1:** Busco el contacto "Tester App".';
+        $out = WhatsAppOutboundText::sanitize($in);
+
+        $this->assertSame('*Paso 1*: Busco el contacto "Tester App".', $out);
+        $this->assertStringNotContainsString('**', $out);
+    }
+
     public function test_strip_internal_qa_markers_removes_demo_flow_tags(): void
     {
         $in = 'Hola mundo [DEMO_FLOW:demo]';

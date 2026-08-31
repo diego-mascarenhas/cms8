@@ -46,4 +46,16 @@ class AssistantCustomerTextTest extends TestCase
         $this->assertSame('Tenemos hueco a las 10.', AssistantCustomerText::stripMachineMarkers($raw));
         $this->assertFalse(AssistantCustomerText::looksLikeToolStall(AssistantCustomerText::stripMachineMarkers($raw)));
     }
+
+    public function test_strips_leaked_search_contacts_fence_and_converts_paso_bold(): void
+    {
+        $raw = "Voy a buscar el contacto en el CRM.\n\n**Paso 1:** Busco el contacto \"Tester App\".\n\n```json\nsearch_contacts(\"Tester App\")\n```";
+
+        $this->assertSame('search_contacts', AssistantCustomerText::leakedToolName($raw));
+        $stripped = AssistantCustomerText::stripMachineMarkers($raw);
+        $this->assertStringNotContainsString('search_contacts', $stripped);
+        $this->assertStringNotContainsString('```', $stripped);
+        $this->assertStringNotContainsString('**', $stripped);
+        $this->assertTrue(AssistantCustomerText::looksLikeToolStall($stripped));
+    }
 }
