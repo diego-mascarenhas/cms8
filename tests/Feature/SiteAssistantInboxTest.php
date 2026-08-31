@@ -129,6 +129,18 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('contacts.0.has_web', true)
             ->assertJsonPath('contacts.0.last_channel', 'web')
             ->assertJsonPath('contacts.0.session_key', 'web-session-lucia');
+
+        $lucia = Contact::withoutGlobalScopes()->where('team_id', $automation->team_id)->where('email', 'lucia@example.com')->first();
+        $this->assertNotNull($lucia);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/site-assistant-messages/web-session-lucia')
+            ->assertOk()
+            ->assertJsonPath('contact_id', $lucia->id)
+            ->assertJsonPath('thread_contact.contact_id', $lucia->id)
+            ->assertJsonPath('thread_contact.name', 'Lucía Pérez')
+            ->assertJsonPath('thread_contact.email', 'lucia@example.com')
+            ->assertJsonPath('thread_categories.contact_id', $lucia->id);
     }
 
     public function test_identified_web_messages_join_the_whatsapp_thread(): void
@@ -621,6 +633,78 @@ class SiteAssistantInboxTest extends TestCase
             ->assertJsonPath('contact.email', 'luis.mora@example.com');
 
         $this->assertSame(1, Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'luis.mora@example.com')->count());
+    }
+
+    public function test_staff_can_register_a_visitor_without_extracted_data(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        \Illuminate\Support\Facades\Bus::fake();
+
+        [$owner, $team, $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Hola');
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'ok!',
+            'session_key' => 'web-register-visitante',
+        ])->assertOk();
+
+        $this->assertSame(0, Contact::withoutGlobalScopes()->where('team_id', $team->id)->count());
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/site-assistant-messages/web-register-visitante/identity', [
+                'create' => true,
+                'name' => 'Visita Nueva',
+                'email' => 'visita.nueva@example.com',
+                'status_id' => ContactStatus::query()->where('name', 'Lead')->value('id'),
+                'password' => 'clave-segura',
+                'send_access' => true,
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('identity.identified', true)
+            ->assertJsonPath('contact.email', 'visita.nueva@example.com')
+            ->assertJsonPath('thread_contact.user.email', 'visita.nueva@example.com')
+            ->assertJsonPath('thread_contact.user.staff', false)
+            ->assertJsonPath('access.created', true)
+            ->assertJsonPath('access.sent', true);
+
+        $contact = Contact::withoutGlobalScopes()->where('team_id', $team->id)->where('email', 'visita.nueva@example.com')->first();
+        $this->assertNotNull($contact);
+        $this->assertSame('Visita', $contact->name);
+        $this->assertNotNull($contact->user_id);
+        $user = User::query()->find($contact->user_id);
+        $this->assertNotNull($user);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('clave-segura', $user->password));
+        \Illuminate\Support\Facades\Bus::assertDispatched(\App\Jobs\SendNewUserWelcomeEmail::class);
+    }
+
+    public function test_registering_a_visitor_requires_email_or_phone(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [$owner, , $automation] = $this->teamWithWebAssistant();
+        $this->fakeAssistantReply('Hola');
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'ok!',
+            'session_key' => 'web-register-empty',
+        ])->assertOk();
+
+        $token = $owner->createToken('admin-inbox')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/chat/site-assistant-messages/web-register-empty/identity', [
+                'create' => true,
+                'name' => 'Sin Datos',
+            ])
+            ->assertStatus(422);
     }
 
     public function test_updating_the_web_thread_prompt_requires_authentication(): void

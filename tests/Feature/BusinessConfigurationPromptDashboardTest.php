@@ -203,6 +203,7 @@ class BusinessConfigurationPromptDashboardTest extends TestCase
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
         $team->setSetting('business_config', ['business_name' => 'Acme Corp'], [
             'type' => 'json',
             'group' => 'business-config',

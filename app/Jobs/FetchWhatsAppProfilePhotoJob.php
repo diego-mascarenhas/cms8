@@ -38,14 +38,9 @@ class FetchWhatsAppProfilePhotoJob implements ShouldQueue
             return;
         }
 
-        if (config('whatsapp.driver') !== 'local')
-        {
-            return;
-        }
-
         $team = Team::withoutGlobalScopes()->find($this->teamId);
         $baseUrl = $team?->getWhatsAppServiceBaseUrl() ?? '';
-        if ($team === null || $baseUrl === '')
+        if ($team === null || ! $team->usesLocalWhatsApp() || $baseUrl === '')
         {
             return;
         }

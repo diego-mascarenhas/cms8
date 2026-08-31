@@ -756,6 +756,8 @@ class ShopApiTest extends TestCase
     {
         [, $team, $token] = $this->adminWithShopModules();
         config(['whatsapp.driver' => 'twilio']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
+        $team->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
 
         $spark = $this->createPricedProduct($team, 6900, 'Bujía de iridio');
         $order = Order::withoutGlobalScopes()->create([
@@ -856,6 +858,8 @@ class ShopApiTest extends TestCase
     {
         [, $team, $token] = $this->adminWithShopModules();
         config(['whatsapp.driver' => 'twilio']);
+        config(['whatsapp.customer_service_window.enabled' => true]);
+        $team->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
 
         $spark = $this->createPricedProduct($team, 6900, 'Bujía de iridio');
         $order = Order::withoutGlobalScopes()->create([

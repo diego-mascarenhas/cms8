@@ -28,6 +28,10 @@ class TeamSettingsChatTogglesTest extends TestCase
             ->assertOk()
             ->getContent();
 
+        $this->assertStringContainsString('name="chat[whatsapp_driver]"', $html);
+        $this->assertStringContainsString(__('Meta Cloud API'), $html);
+        $this->assertStringContainsString(__('360dialog'), $html);
+        $this->assertStringContainsString(__('MessageBird'), $html);
         $this->assertStringContainsString('name="chat[assistant_auto_respond]"', $html);
         $this->assertStringContainsString('name="chat[assistant_chat_stub]"', $html);
         $this->assertStringContainsString('name="chat[assistant_keyword_intent_routing]"', $html);

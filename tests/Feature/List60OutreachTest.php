@@ -70,6 +70,8 @@ class List60OutreachTest extends TestCase
     public function test_send_outreach_whatsapp_records_interaction(): void
     {
         config(['whatsapp.driver' => 'twilio']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
+        $this->user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
 
         $sent = false;
 

@@ -41,6 +41,7 @@ class ChatSendWhatsAppConnectionTest extends TestCase
     {
         config(['whatsapp.driver' => 'local']);
         config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
 
         Http::fake([
             'http://127.0.0.1:3000/status*' => Http::response(['status' => 'disconnected', 'number' => null], 200),
@@ -66,6 +67,7 @@ class ChatSendWhatsAppConnectionTest extends TestCase
     {
         config(['whatsapp.driver' => 'local']);
         config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
 
         Http::fake([
             'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '5491111223344'], 200),

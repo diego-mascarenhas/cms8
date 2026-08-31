@@ -429,7 +429,7 @@ class SystemOnboardingWhatsAppService
 
     protected function gatewayForTeam(Team $team): WhatsAppGateway
     {
-        if (config('whatsapp.driver') === 'local')
+        if ($team->usesLocalWhatsApp())
         {
             $baseUrl = $team->getWhatsAppServiceBaseUrl();
             if ($baseUrl !== '')

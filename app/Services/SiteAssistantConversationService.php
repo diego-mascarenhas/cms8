@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Models\SiteAssistantMessage;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use App\Support\ChatMessageAvatar;
 use Illuminate\Support\Collection;
 
@@ -171,11 +172,15 @@ class SiteAssistantConversationService
             ? Contact::withoutGlobalScopes()->where('team_id', $team->id)->find($contactId)
             : null;
 
+        $categories = app(WhatsAppThreadCategoryService::class);
+
         return [
             'session_key' => $sessionKey,
             'visitor' => $this->visitorLabel($contact),
             'contact_id' => $contact?->id,
             'thread_assistant' => $this->threadAssistantMeta($team, $sessionKey, $contact),
+            'thread_contact' => $categories->contactMeta($team, $contact, (string) ($contact?->phone ?? '')),
+            'thread_categories' => $categories->present($team, $contact),
             'identity' => app(SiteAssistantInboxIdentityService::class)->present($team, $messages, $contact),
             'messages' => $this->presentInboxMessages($messages),
             'reply_target' => app(InboxReplyTargetService::class)->forWebSession($sessionKey),

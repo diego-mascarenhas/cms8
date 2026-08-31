@@ -530,7 +530,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
         $message = WhatsAppOutboundText::sanitize((string) $message);
 
-        if (config('whatsapp.driver') === 'local' && app()->bound(WhatsAppGateway::class))
+        if (($this->team?->usesLocalWhatsApp() ?? true) && app()->bound(WhatsAppGateway::class))
         {
             $sender = $this->getSender();
             if ($sender !== $this)
@@ -661,7 +661,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                 $channel = 'whatsapp';
             }
 
-            if ($channel === 'whatsapp' && config('whatsapp.driver') === 'local')
+            if ($channel === 'whatsapp' && ($this->team?->usesLocalWhatsApp() ?? false))
             {
                 if ($this->team === null || $cleanTo === '' || strlen($cleanTo) < 8)
                 {

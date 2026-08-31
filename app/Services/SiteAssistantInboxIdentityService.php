@@ -133,6 +133,7 @@ class SiteAssistantInboxIdentityService
 
     /**
      * @param  list<int>|null  $allowedContactIds
+     * @param  array{name?: string|null, email?: string|null, phone?: string|null}|null  $fields
      */
     public function assign(
         Team $team,
@@ -141,6 +142,7 @@ class SiteAssistantInboxIdentityService
         bool $create,
         ?array $allowedContactIds,
         ?User $actor,
+        ?array $fields = null,
     ): ?Contact {
         $messages = SiteAssistantMessage::withoutGlobalScopes()
             ->where('team_id', $team->id)
@@ -178,7 +180,10 @@ class SiteAssistantInboxIdentityService
         } elseif ($create)
         {
             $extracted = $this->extractHints($this->visitorBodies($messages));
-            if ($extracted['email'] === null && $extracted['phone'] === null)
+            $name = $this->filledString($fields['name'] ?? null) ?? $extracted['name'];
+            $email = $this->filledString($fields['email'] ?? null) ?? $extracted['email'];
+            $phone = $this->filledString($fields['phone'] ?? null) ?? $extracted['phone'];
+            if ($email === null && $phone === null)
             {
                 return null;
             }
@@ -186,9 +191,9 @@ class SiteAssistantInboxIdentityService
             $ownerId = (int) ($actor?->id ?: $team->user_id);
             $contact = $identity->upsertVisitorContact(
                 (int) $team->id,
-                (string) ($extracted['email'] ?? ''),
-                $extracted['name'],
-                $extracted['phone'],
+                (string) ($email ?? ''),
+                $name,
+                $phone,
                 $ownerId,
             );
         } else
@@ -309,6 +314,18 @@ class SiteAssistantInboxIdentityService
             'email' => $contact->email ? strtolower(trim((string) $contact->email)) : null,
             'phone' => $contact->phone ? (string) $contact->phone : null,
         ];
+    }
+
+    private function filledString(mixed $value): ?string
+    {
+        if (! is_string($value))
+        {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed !== '' ? $trimmed : null;
     }
 
     private function usableName(?string $value): ?string

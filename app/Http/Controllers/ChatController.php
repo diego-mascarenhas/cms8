@@ -32,6 +32,7 @@ use App\Services\Assistant\AssistantInboundTaskStatusService;
 use App\Services\AssistantPromptCatalog;
 use App\Services\ChatAssistantReplyService;
 use App\Services\DocumentIngestionService;
+use App\Services\InboxContactAccessService;
 use App\Services\InboxQuickReplyService;
 use App\Services\InboxReplyTargetService;
 use App\Services\PerformanceInsightSlashDispatcher;
@@ -56,6 +57,7 @@ use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\ChatMessageAvatar;
+use App\Support\WhatsAppDriver;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -208,9 +210,14 @@ class ChatController extends Controller
     /**
      * When driver is local, return a gateway for the current team's Node instance (one per team = no disconnects).
      */
+    private function currentTeamUsesLocalWhatsApp(): bool
+    {
+        return WhatsAppDriver::isLocal(auth()->user()?->currentTeam);
+    }
+
     private function getLocalGatewayForCurrentTeam(): ?WhatsAppGateway
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return null;
         }
@@ -1363,7 +1370,7 @@ class ChatController extends Controller
             'messages' => $mapped,
             'thread_assistant' => $this->whatsAppThreadAssistantMetaForDigits($normPhone, $crm),
             'thread_categories' => app(WhatsAppThreadCategoryService::class)->present($team, $crm),
-            'thread_contact' => $this->whatsAppThreadContactMeta($team, $crm, $normPhone),
+            'thread_contact' => app(WhatsAppThreadCategoryService::class)->contactMeta($team, $crm, $normPhone),
             'thread_clock' => $this->whatsAppThreadClock($team, $normPhone),
             'whatsapp_session' => app(WhatsAppCustomerServiceWindow::class)->describe($normPhone),
             'reply_target' => $team
@@ -1611,28 +1618,46 @@ class ChatController extends Controller
             return response()->json(['success' => false], 401);
         }
 
+        $team = auth()->user()->currentTeam;
+        $validated = $request->validated();
         $allowedPhones = $this->allowedExternalPhonesForChat();
-        $digits = preg_replace('/[^0-9]/', '', $request->string('phone')->toString());
-        if ($digits === '')
+        $digits = preg_replace('/[^0-9]/', '', (string) ($validated['phone'] ?? ''));
+        $contactId = isset($validated['contact_id']) ? (int) $validated['contact_id'] : 0;
+        $contact = $contactId > 0
+            ? Contact::withoutGlobalScopes()->where('team_id', $team->id)->find($contactId)
+            : $this->findContactForTeamByChatPhone((int) $team->id, $digits);
+
+        if ($contactId < 1)
         {
-            return response()->json([
-                'success' => false,
-                'message' => __('Invalid phone number.'),
-            ], 422);
-        }
-        if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
-        {
-            return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+            if ($digits === '')
+            {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Invalid phone number.'),
+                ], 422);
+            }
+            if ($allowedPhones !== null && ! in_array($digits, $allowedPhones, true))
+            {
+                return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+            }
         }
 
-        $team = auth()->user()->currentTeam;
-        $contact = $this->findContactForTeamByChatPhone((int) $team->id, $digits);
         if (! $contact)
         {
             return response()->json([
                 'success' => false,
                 'message' => __('No CRM contact is linked to this number. Create or link a contact in Humano to use this option.'),
             ], 422);
+        }
+
+        $contactDigits = preg_replace('/[^0-9]/', '', (string) ($contact->phone ?? '')) ?? '';
+        if ($allowedPhones !== null && $contactDigits !== '' && ! in_array($contactDigits, $allowedPhones, true))
+        {
+            return response()->json(['success' => false, 'message' => __('Forbidden')], 403);
+        }
+        if ($digits === '')
+        {
+            $digits = $contactDigits;
         }
 
         $categoryIds = $request->validated('category_ids') ?? [];
@@ -1645,7 +1670,6 @@ class ChatController extends Controller
             ], 422);
         }
 
-        $validated = $request->validated();
         $result = $starter->update(
             auth()->user(),
             $team,
@@ -1657,37 +1681,23 @@ class ChatController extends Controller
             array_key_exists('email', $validated),
         );
 
+        $password = isset($validated['password']) ? trim((string) $validated['password']) : '';
+        $sendAccess = (bool) ($validated['send_access'] ?? false);
+        $access = null;
+        if ($password !== '' || $sendAccess)
+        {
+            $access = app(InboxContactAccessService::class)->apply(
+                $team,
+                $contact->fresh(),
+                $password !== '' ? $password : null,
+                $sendAccess,
+            );
+        }
+
         return response()->json(array_merge(['success' => true], $result, [
-            'thread_contact' => $this->whatsAppThreadContactMeta($team, $contact->fresh(), $digits),
+            'thread_contact' => app(WhatsAppThreadCategoryService::class)->contactMeta($team, $contact->fresh(), $digits),
+            'access' => $access,
         ]));
-    }
-
-    /**
-     * @return array{contact_id: int|null, name: string, phone: string, email: string|null, status_id: int|null, statuses: list<array{id: int, name: string}>}
-     */
-    private function whatsAppThreadContactMeta(?Team $team, ?Contact $contact, string $digits): array
-    {
-        $catalog = app(WhatsAppThreadCategoryService::class)->catalog($team);
-        $name = '';
-        if ($contact !== null)
-        {
-            $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
-        }
-
-        $email = trim((string) ($contact?->email ?? ''));
-        if ($email !== '' && str_ends_with(strtolower($email), '@chat.placeholder'))
-        {
-            $email = '';
-        }
-
-        return [
-            'contact_id' => $contact !== null ? (int) $contact->id : null,
-            'name' => $name,
-            'phone' => $digits,
-            'email' => $email !== '' ? $email : null,
-            'status_id' => $contact?->status_id !== null ? (int) $contact->status_id : null,
-            'statuses' => $catalog['statuses'],
-        ];
     }
 
     /**
@@ -3204,7 +3214,7 @@ class ChatController extends Controller
 
     public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
     {
-        if (config('whatsapp.driver') === 'local')
+        if ($this->currentTeamUsesLocalWhatsApp())
         {
             $teamGateway = $this->getLocalGatewayForCurrentTeam();
             if ($teamGateway !== null)
@@ -3717,7 +3727,7 @@ class ChatController extends Controller
 
     public function whatsappStatus()
     {
-        $driver = config('whatsapp.driver');
+        $driver = WhatsAppDriver::forTeam(auth()->user()?->currentTeam);
         $status = null;
         $number = null;
         $numberFormatted = null;
@@ -3773,7 +3783,7 @@ class ChatController extends Controller
      */
     public function whatsappQrImage(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return $this->missingQrImageResponse();
         }
@@ -3853,7 +3863,7 @@ class ChatController extends Controller
      */
     public function whatsappRefreshQr(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return $request->expectsJson()
                 ? response()->json(['ok' => false], 400)
@@ -3920,7 +3930,7 @@ class ChatController extends Controller
      */
     public function whatsappWarmupQr(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return response()->json(['ok' => false], 400);
         }
@@ -3991,7 +4001,7 @@ class ChatController extends Controller
      */
     public function whatsappDisconnect(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return $request->expectsJson()
                 ? response()->json(['ok' => false], 400)
@@ -4117,7 +4127,7 @@ class ChatController extends Controller
         {
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
         }
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return response()->json(['ok' => false, 'error' => 'Only for local driver'], 400);
         }

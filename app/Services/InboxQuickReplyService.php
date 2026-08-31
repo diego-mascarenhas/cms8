@@ -8,12 +8,9 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Team;
 use App\Models\User;
-use App\Support\NewUserWelcomeEmailNotifier;
 use App\Support\PasswordResetFrontendUrl;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Spatie\Permission\Models\Role;
 
 class InboxQuickReplyService
 {
@@ -342,51 +339,11 @@ class InboxQuickReplyService
 
     private function ensureContactUser(Team $team, Contact $contact): ?User
     {
-        if ($this->contactHasLogin($contact))
-        {
-            return User::query()->find($contact->user_id);
-        }
-
-        $email = trim((string) ($contact->email ?? ''));
-        if ($email === '' || NewUserWelcomeEmailNotifier::isPlaceholderInboxEmail($email))
-        {
-            return null;
-        }
-
-        $existing = User::query()->where('email', $email)->first();
-        if ($existing !== null)
-        {
-            $contact->update(['user_id' => $existing->id]);
-            if (! $existing->teams->contains($team->id))
-            {
-                $existing->teams()->attach($team->id);
-            }
-
-            return $existing;
-        }
-
-        $user = User::query()->create([
-            'name' => trim((string) $contact->name) !== '' ? trim((string) $contact->name) : 'Cliente',
-            'email' => $email,
-            'phone' => preg_replace('/[^0-9]/', '', (string) ($contact->phone ?? '')) ?: null,
-            'password' => Hash::make(Str::random(24)),
-        ]);
-        $user->forceFill(['current_team_id' => $team->id])->save();
-        Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
-        $user->assignRole('client');
-        $user->teams()->attach($team->id);
-        $contact->update(['user_id' => $user->id]);
-
-        return $user;
+        return app(InboxContactAccessService::class)->ensureUser($team, $contact);
     }
 
     private function accessResetUrl(User $user): string
     {
         return PasswordResetFrontendUrl::urlForUser($user, Password::broker()->createToken($user));
-    }
-
-    private function contactHasLogin(Contact $contact): bool
-    {
-        return filled($contact->user_id);
     }
 }

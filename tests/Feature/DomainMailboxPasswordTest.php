@@ -53,6 +53,7 @@ class DomainMailboxPasswordTest extends TestCase
         ]);
 
         config(['whatsapp.driver' => 'twilio']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
 
         $sent = [];
 
@@ -89,6 +90,7 @@ class DomainMailboxPasswordTest extends TestCase
         });
 
         [$user, $domain, $contact] = $this->createDomainWithClientContact();
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
 
         $response = $this->actingAs($user)->post(route('domain.email-password', $domain->id), [
             'email' => 'info@example.test',

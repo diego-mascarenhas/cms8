@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Support\TeamSettingsLabels;
+use App\Support\WhatsAppDriver;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTeamSettingsRequest extends FormRequest
@@ -53,6 +54,7 @@ class UpdateTeamSettingsRequest extends FormRequest
             'notifications.notifications_from_email' => 'nullable|email|max:255',
 
             // Chat / Assistant settings
+            'chat.whatsapp_driver' => 'nullable|string|in:'.implode(',', WhatsAppDriver::allowed()),
             'chat.assistant_auto_respond' => 'nullable|in:0,1',
             'chat.assistant_auto_respond_admins_when_off' => 'nullable|in:0,1',
             'chat.assistant_chat_stub' => 'nullable|in:0,1',
