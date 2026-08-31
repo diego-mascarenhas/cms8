@@ -56,6 +56,7 @@ use App\Services\WhatsApp\WhatsAppThreadCategoryService;
 use App\Support\AssistantCreatedMessageRedirect;
 use App\Support\AssistantTaskStatusUpdate;
 use App\Support\ChatMessageAvatar;
+use App\Support\WhatsAppDriver;
 use App\Support\WhatsAppSendExceptionPresenter;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -208,9 +209,14 @@ class ChatController extends Controller
     /**
      * When driver is local, return a gateway for the current team's Node instance (one per team = no disconnects).
      */
+    private function currentTeamUsesLocalWhatsApp(): bool
+    {
+        return WhatsAppDriver::isLocal(auth()->user()?->currentTeam);
+    }
+
     private function getLocalGatewayForCurrentTeam(): ?WhatsAppGateway
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return null;
         }
@@ -3204,7 +3210,7 @@ class ChatController extends Controller
 
     public function sendMessage(Request $request, WhatsAppGateway $gateway, ChatAssistantReplyService $replyService, UserResolverService $userResolver, AgentConversationContextService $contextService)
     {
-        if (config('whatsapp.driver') === 'local')
+        if ($this->currentTeamUsesLocalWhatsApp())
         {
             $teamGateway = $this->getLocalGatewayForCurrentTeam();
             if ($teamGateway !== null)
@@ -3717,7 +3723,7 @@ class ChatController extends Controller
 
     public function whatsappStatus()
     {
-        $driver = config('whatsapp.driver');
+        $driver = WhatsAppDriver::forTeam(auth()->user()?->currentTeam);
         $status = null;
         $number = null;
         $numberFormatted = null;
@@ -3773,7 +3779,7 @@ class ChatController extends Controller
      */
     public function whatsappQrImage(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return $this->missingQrImageResponse();
         }
@@ -3853,7 +3859,7 @@ class ChatController extends Controller
      */
     public function whatsappRefreshQr(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return $request->expectsJson()
                 ? response()->json(['ok' => false], 400)
@@ -3920,7 +3926,7 @@ class ChatController extends Controller
      */
     public function whatsappWarmupQr(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return response()->json(['ok' => false], 400);
         }
@@ -3991,7 +3997,7 @@ class ChatController extends Controller
      */
     public function whatsappDisconnect(Request $request)
     {
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return $request->expectsJson()
                 ? response()->json(['ok' => false], 400)
@@ -4117,7 +4123,7 @@ class ChatController extends Controller
         {
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
         }
-        if (config('whatsapp.driver') !== 'local')
+        if (! $this->currentTeamUsesLocalWhatsApp())
         {
             return response()->json(['ok' => false, 'error' => 'Only for local driver'], 400);
         }

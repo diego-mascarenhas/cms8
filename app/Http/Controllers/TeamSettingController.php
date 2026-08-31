@@ -25,6 +25,7 @@ use App\Support\AffiliateCommission;
 use App\Support\AiTasks;
 use App\Support\TeamDefaultShortcuts;
 use App\Support\TeamSettingsLabels;
+use App\Support\WhatsAppDriver;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -885,6 +886,14 @@ class TeamSettingController extends Controller
                 'title' => __('Chat / Asistente'),
                 'icon' => 'ti ti-lifebuoy',
                 'settings' => [
+                    'whatsapp_driver' => [
+                        'label' => __('WhatsApp channel'),
+                        'type' => 'select',
+                        'options' => WhatsAppDriver::selectOptions(),
+                        'value' => $team->getWhatsAppDriver(),
+                        'is_encrypted' => false,
+                        'help' => __('New teams start with Baileys. Official APIs (Meta Cloud API, Twilio, 360dialog, MessageBird) can be selected per team. Sending on Meta and BSP channels is next.'),
+                    ],
                     'assistant_auto_respond' => [
                         'label' => __('Humano Assistant replies'),
                         'type' => 'checkbox',

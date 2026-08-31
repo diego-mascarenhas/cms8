@@ -90,7 +90,7 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         $inboundMessageService = new WhatsAppInboundMessageService($team);
-        $gateway = $team && config('whatsapp.driver') === 'local' && $team->getWhatsAppServiceBaseUrl() !== ''
+        $gateway = $team && $team->usesLocalWhatsApp() && $team->getWhatsAppServiceBaseUrl() !== ''
             ? new LocalWhatsAppGateway($team->getWhatsAppServiceBaseUrl(), config('whatsapp.local.webhook_secret'), $team->id)
             : app(WhatsAppGateway::class);
 

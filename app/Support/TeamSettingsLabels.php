@@ -243,7 +243,7 @@ class TeamSettingsLabels
             'mercadopago' => ['mercadopago_access_token', 'mercadopago_public_key'],
             'categories' => ['categories_default_status', 'categories_require_approval', 'categories_max_depth', 'categories_allow_multiple_parents', 'categories_default_ordering'],
             'notifications' => ['notifications_email_enabled', 'notifications_sms_enabled', 'performance_insights_in_app_notification', 'notifications_from_name', 'notifications_from_email'],
-            'chat' => ['assistant_auto_respond', 'assistant_auto_respond_admins_when_off', 'assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'assistant_whatsapp_blacklist_numbers'],
+            'chat' => ['whatsapp_driver', 'assistant_auto_respond', 'assistant_auto_respond_admins_when_off', 'assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'assistant_whatsapp_blacklist_numbers'],
             'documents' => ['documents_ocr_mode'],
             'finance' => ['finance_reporting_currency'],
             'twilio' => ['twilio_sid', 'twilio_token', 'twilio_sms_from', 'twilio_whatsapp_from'],

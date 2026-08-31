@@ -27,7 +27,9 @@ use App\Services\Stripe\StripeCheckoutSessionRetriever;
 use App\Services\Stripe\StripeProductService;
 use App\Services\WhatsApp\CloudWhatsAppGateway;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
+use App\Services\WhatsApp\UnimplementedWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppMessageService;
+use App\Support\WhatsAppDriver;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -66,16 +68,25 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->bind(WhatsAppGateway::class, function ($app)
         {
-            if (config('whatsapp.driver') === 'local')
+            $team = auth()->user()?->currentTeam;
+            $driver = WhatsAppDriver::forTeam($team);
+            if ($driver === WhatsAppDriver::LOCAL)
             {
+                $baseUrl = $team?->getWhatsAppServiceBaseUrl() ?: config('whatsapp.local.base_url', '');
+
                 return new LocalWhatsAppGateway(
-                    config('whatsapp.local.base_url', ''),
+                    $baseUrl,
                     config('whatsapp.local.webhook_secret'),
-                    auth()->user()?->currentTeam?->id,
+                    $team?->id,
                 );
             }
 
-            return new CloudWhatsAppGateway(WhatsAppMessageService::forCurrentUser());
+            if ($driver === WhatsAppDriver::TWILIO)
+            {
+                return new CloudWhatsAppGateway(WhatsAppMessageService::forCurrentUser());
+            }
+
+            return new UnimplementedWhatsAppGateway($driver);
         });
     }
 

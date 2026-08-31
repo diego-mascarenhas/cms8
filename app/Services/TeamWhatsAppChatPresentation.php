@@ -8,6 +8,7 @@ use App\Helpers\PhoneHelper;
 use App\Models\Team;
 use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Support\DemoTeam;
+use App\Support\WhatsAppDriver;
 
 final class TeamWhatsAppChatPresentation
 {
@@ -26,7 +27,7 @@ final class TeamWhatsAppChatPresentation
      */
     public static function resolveForTeam(?Team $team): array
     {
-        $whatsappDriver = (string) config('whatsapp.driver', 'twilio');
+        $whatsappDriver = WhatsAppDriver::forTeam($team);
         $whatsappStatus = null;
         $teamWhatsAppNumber = null;
         $teamWhatsAppNumberFormatted = null;

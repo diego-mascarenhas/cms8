@@ -101,7 +101,7 @@ class ContactOutreachService
             ]);
         }
 
-        if (config('whatsapp.driver') === 'local')
+        if ($user->currentTeam?->usesLocalWhatsApp())
         {
             $status = $gateway->getConnectionStatus();
             if (($status['status'] ?? '') !== 'connected')
@@ -185,7 +185,7 @@ class ContactOutreachService
 
     private function resolveWhatsAppGateway(User $user): WhatsAppGateway
     {
-        if (config('whatsapp.driver') === 'local')
+        if ($user->currentTeam?->usesLocalWhatsApp())
         {
             $team = $user->currentTeam;
             $baseUrl = $team?->getWhatsAppServiceBaseUrl();

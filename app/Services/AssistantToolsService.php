@@ -304,10 +304,10 @@ class AssistantToolsService
             return $this->whatsAppGatewayOverride;
         }
 
-        if (config('whatsapp.driver') === 'local' && $this->contextTeamId !== null)
+        if ($this->contextTeamId !== null)
         {
             $team = Team::withoutGlobalScopes()->find($this->contextTeamId);
-            if ($team !== null && $team->getWhatsAppServiceBaseUrl() !== '')
+            if ($team !== null && $team->usesLocalWhatsApp() && $team->getWhatsAppServiceBaseUrl() !== '')
             {
                 return new LocalWhatsAppGateway(
                     $team->getWhatsAppServiceBaseUrl(),

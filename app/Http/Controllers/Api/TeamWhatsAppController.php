@@ -42,7 +42,7 @@ class TeamWhatsAppController extends Controller
             ], 422);
         }
 
-        if (config('whatsapp.driver') === 'local')
+        if ($team->usesLocalWhatsApp())
         {
             $baseUrl = $team->getWhatsAppServiceBaseUrl();
             if ($baseUrl !== '')

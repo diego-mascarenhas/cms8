@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\WhatsAppDriver;
 use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -669,6 +670,21 @@ class Team extends JetstreamTeam
     public function getWhatsAppFrom(): ?string
     {
         return $this->getSetting('whatsapp_from') ?: $this->getSetting('twilio_whatsapp_from');
+    }
+
+    /**
+     * WhatsApp channel for this team. Unset teams default to Baileys (local).
+     */
+    public function getWhatsAppDriver(): string
+    {
+        $raw = $this->getSetting(WhatsAppDriver::SETTING_KEY);
+
+        return WhatsAppDriver::normalize(is_string($raw) ? $raw : null);
+    }
+
+    public function usesLocalWhatsApp(): bool
+    {
+        return $this->getWhatsAppDriver() === WhatsAppDriver::LOCAL;
     }
 
     /**

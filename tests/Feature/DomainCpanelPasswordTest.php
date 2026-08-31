@@ -50,6 +50,7 @@ class DomainCpanelPasswordTest extends TestCase
         ]);
 
         config(['whatsapp.driver' => 'twilio']);
+        config(['whatsapp.customer_service_window.enabled' => false]);
 
         $sent = [];
 
@@ -86,6 +87,7 @@ class DomainCpanelPasswordTest extends TestCase
         });
 
         [$user, $domain, $contact] = $this->createDomainWithClientContact();
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio', ['group' => 'chat']);
 
         $response = $this->actingAs($user)->post(route('domain.cpanel-password', $domain->id), [
             'password' => 'NewSecure123!',

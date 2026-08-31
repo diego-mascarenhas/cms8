@@ -7,13 +7,15 @@ return [
     | WhatsApp Driver
     |--------------------------------------------------------------------------
     |
-    | Supported: "twilio", "local"
+    | Fallback when no team is in context (console commands, etc).
+    | Each team chooses its channel via the "whatsapp_driver" setting
+    | (default: local / Baileys). Prefer Team::getWhatsAppDriver().
     |
-    | - twilio: Use Twilio WhatsApp API (requires TWILIO_* env vars).
-    | - local:  Use self-hosted Node.js service (Baileys) with QR linking.
+    | Implemented: local (Baileys), twilio.
+    | Selectable, gateway next: meta, 360dialog, messagebird.
     |
     */
-    'driver' => env('WHATSAPP_DRIVER', 'twilio'),
+    'driver' => env('WHATSAPP_DRIVER', 'local'),
 
     /*
     |--------------------------------------------------------------------------
