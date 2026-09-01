@@ -152,14 +152,21 @@ class TaxIdentifierService
             $control = 0;
         }
         $last = $cif[8];
-        $map = 'JABCDEFGHI';
+        $controlDigit = (string) $control;
+        $controlLetter = 'JABCDEFGHI'[$control];
         $type = $cif[0];
+
         if (in_array($type, ['A', 'B', 'E', 'H'], true))
         {
-            return isset($map[$control]) && $last === $map[$control];
+            return $last === $controlDigit;
         }
 
-        return (string) $control === $last;
+        if (in_array($type, ['K', 'P', 'Q', 'S'], true))
+        {
+            return $last === $controlLetter;
+        }
+
+        return $last === $controlDigit || $last === $controlLetter;
     }
 
     /**
