@@ -20,6 +20,8 @@ class HumanoPricingCatalog
 
     public const ESTIMATOR = 'estimator';
 
+    public const INNOVATION = 'innovation';
+
     /**
      * @return list<string>
      */
@@ -34,6 +36,7 @@ class HumanoPricingCatalog
             self::PROJECTS,
             self::AFFILIATES,
             self::ESTIMATOR,
+            self::INNOVATION,
         ];
     }
 

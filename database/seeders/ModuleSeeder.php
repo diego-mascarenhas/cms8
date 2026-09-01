@@ -412,6 +412,13 @@ class ModuleSeeder extends Seeder
             'order' => 11,
         ],
         // INNOVATION GROUP
+        'innovation' => [
+            'name' => 'Innovation',
+            'icon' => 'bulb',
+            'description' => 'Generic Fanyion / innovation AI usage',
+            'group' => 'innovation',
+            'order' => 0,
+        ],
         'proposals' => [
             'name' => 'Proposals',
             'icon' => 'bulb',

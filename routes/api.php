@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AiCompletionController;
 use App\Http\Controllers\Api\AppFeedbackController;
 use App\Http\Controllers\Api\AssistantCategoryController;
 use App\Http\Controllers\Api\AssistantCommercialStatsController;
@@ -133,6 +134,7 @@ Route::prefix('projects/funnel')->group(function ()
         Route::get('requirements', [ProjectFunnelController::class, 'requirements'])->name('api.projects.funnel.requirements');
         Route::get('strategy-tips', [ProjectFunnelController::class, 'strategyTips'])->name('api.projects.funnel.strategy-tips');
         Route::get('quote/status', [ProjectFunnelController::class, 'quoteStatus'])->name('api.projects.funnel.quote.status');
+        Route::get('budget/{token}', [ProjectFunnelController::class, 'showPublicBudget'])->name('api.projects.funnel.budget.show');
     });
 
     Route::middleware('throttle:30,1')->group(function ()
@@ -142,6 +144,8 @@ Route::prefix('projects/funnel')->group(function ()
         Route::post('guide', [ProjectFunnelController::class, 'guide'])->name('api.projects.funnel.guide');
         Route::post('quote', [ProjectFunnelController::class, 'quote'])->name('api.projects.funnel.quote');
         Route::post('submit', [ProjectFunnelController::class, 'submit'])->name('api.projects.funnel.submit');
+        Route::post('budget/{token}/accept', [ProjectFunnelController::class, 'acceptPublicBudget'])->name('api.projects.funnel.budget.accept');
+        Route::post('budget/{token}/reformulate', [ProjectFunnelController::class, 'reformulatePublicBudget'])->name('api.projects.funnel.budget.reformulate');
     });
 });
 
@@ -508,6 +512,7 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
+    Route::post('ai/complete', [AiCompletionController::class, 'complete'])->name('api.ai.complete');
     Route::get('team/business-profile', [BusinessProfileController::class, 'show'])->name('api.team.business-profile.show');
     Route::put('team/business-profile', [BusinessProfileController::class, 'update'])->name('api.team.business-profile.update');
     Route::get('team/business-profile/assets', [BusinessProfileController::class, 'showAsset'])->name('api.team.business-profile.assets.show');
@@ -736,6 +741,8 @@ Route::middleware('auth.api')->group(function ()
     Route::get('projects/{id}', [ProjectController::class, 'show']);
     Route::post('projects/{id}/authorize-budget', [ProjectController::class, 'authorizeBudget'])
         ->name('api.projects.authorize-budget');
+    Route::post('projects/{id}/regenerate-budget', [ProjectController::class, 'regenerateBudget'])
+        ->name('api.projects.regenerate-budget');
     Route::put('projects/{id}', [ProjectController::class, 'update']);
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);

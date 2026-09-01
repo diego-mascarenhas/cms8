@@ -345,4 +345,34 @@ class ProjectBudgetPreviewTest extends TestCase
 
         return ['token' => $token, 'project' => $project];
     }
+
+    #[Test]
+    public function public_budget_preview_api_returns_computed_rows(): void
+    {
+        $created = $this->createBudgetPreviewProject();
+
+        $this->getJson('/api/projects/funnel/budget/'.$created['token'])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Store publish project')
+            ->assertJsonPath('data.rows.0.title', 'iOS signing')
+            ->assertJsonPath('data.quote_closed', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_api_accepts_quote(): void
+    {
+        $created = $this->createBudgetPreviewProject();
+
+        $this->postJson('/api/projects/funnel/budget/'.$created['token'].'/accept', [
+            'accepted_by_name' => 'Ana',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.quote_accepted', true);
+
+        $this->assertSame(
+            'accepted',
+            data_get($created['project']->fresh()->data, 'budget_client_response.status'),
+        );
+    }
 }

@@ -53,6 +53,7 @@ return [
         'projects' => (int) env('CMS8_APP_TRIAL_HOURS_PROJECTS', 48),
         'affiliates' => (int) env('CMS8_APP_TRIAL_HOURS_AFFILIATES', 0),
         'estimator' => (int) env('CMS8_APP_TRIAL_HOURS_ESTIMATOR', 48),
+        'innovation' => (int) env('CMS8_APP_TRIAL_HOURS_INNOVATION', 48),
     ],
 
     /*
@@ -573,6 +574,24 @@ return [
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_ESTIMATOR_CHECKOUT_AVAILABLE', 'true'),
+                FILTER_VALIDATE_BOOLEAN,
+            ),
+        ],
+        [
+            'id' => 'fanyion',
+            'catalog' => 'innovation',
+            'public' => false,
+            'subscription_type' => 'innovation',
+            'checkout_url' => env('HUMANO_PRICING_FANYION_CHECKOUT_URL', ''),
+            'checkout_url_yearly' => '',
+            'stripe_product_id' => env('HUMANO_PRICING_FANYION_STRIPE_PRODUCT_ID', ''),
+            'stripe_price_monthly_id' => env('HUMANO_PRICING_FANYION_PRICE_MONTHLY_ID', ''),
+            'stripe_price_yearly_id' => '',
+            'monthly_amount' => env('HUMANO_PRICING_FANYION_MONTHLY_AMOUNT', '0'),
+            'yearly_amount' => env('HUMANO_PRICING_FANYION_YEARLY_AMOUNT', '0'),
+            'popular' => false,
+            'checkout_available' => filter_var(
+                (string) env('HUMANO_PRICING_FANYION_CHECKOUT_AVAILABLE', 'true'),
                 FILTER_VALIDATE_BOOLEAN,
             ),
         ],

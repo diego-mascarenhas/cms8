@@ -185,6 +185,15 @@ return [
                 'Gemeinsame Abrechnung mit den anderen Idoneo-Apps',
             ],
         ],
+        'fanyion' => [
+            'name' => 'Humano.app Innovation',
+            'description' => 'Organisationales Innovationssystem. Der Plan ist kostenlos; nur KI-Tokens werden berechnet.',
+            'features' => [
+                'Vorschläge, Herausforderungen und KI-gestützte Zusammenarbeit',
+                '0-€-Plan; die Karte dient nur der Token-Abrechnung',
+                'Gemeinsame Abrechnung mit den anderen Idoneo-Apps',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

@@ -3,13 +3,18 @@
 namespace Tests\Feature;
 
 use App\Models\Conversation;
+use App\Models\Enterprise;
+use App\Models\Project;
 use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamBillingDataService;
 use Carbon\Carbon;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
 use ReflectionMethod;
@@ -97,6 +102,40 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.estimator_usage.emails_sent', 0);
     }
 
+    public function test_estimator_usage_counts_sent_quote_emails(): void
+    {
+        [$user, $team, $token] = $this->assistantUserWithToken();
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            ProjectStatusSeeder::class,
+        ]);
+
+        $enterprise = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($team->id)->create([
+            'type_id' => 1,
+            'status_id' => 1,
+            'payment_type_id' => null,
+            'invoice_type_id' => null,
+        ]));
+
+        Project::withoutEvents(fn () => Project::factory()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'responsible_id' => $user->id,
+            'status_id' => 2,
+            'data' => [
+                'budget_email' => [
+                    'sent_at' => now()->toIso8601String(),
+                ],
+            ],
+        ]));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=estimator')
+            ->assertOk()
+            ->assertJsonPath('data.estimator_usage.emails_sent', 1);
+    }
+
     public function test_estimator_checkout_does_not_require_a_stripe_price(): void
     {
         [, $team] = $this->assistantUserWithToken();
@@ -107,6 +146,49 @@ class ApiAssistantSubscriptionTest extends TestCase
             'https://estimator.test/profile',
             'https://estimator.test/profile',
             'estimator',
+        );
+
+        if ($result['success'])
+        {
+            $this->assertNotEmpty($result['url'] ?? null);
+
+            return;
+        }
+
+        $this->assertStringNotContainsString(
+            'precio de Stripe configurado',
+            (string) ($result['message'] ?? ''),
+        );
+    }
+
+    public function test_innovation_catalog_is_free_and_ready_for_token_billing(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=innovation');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.plan.id', 'fanyion');
+        $response->assertJsonPath('data.plan.monthly_amount', '0');
+        $response->assertJsonPath('data.plan.yearly_amount', '0');
+        $response->assertJsonPath('data.plan.checkout_available', true);
+        $response->assertJsonPath('data.can_checkout', true);
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
+    }
+
+    public function test_fanyion_checkout_does_not_require_a_stripe_price(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $result = app(AssistantSubscriptionService::class)->createCheckout(
+            $team,
+            'monthly',
+            'https://fanyion.test/admin/plan-and-billing',
+            'https://fanyion.test/admin/plan-and-billing',
+            'fanyion',
         );
 
         if ($result['success'])

@@ -39,6 +39,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         ]);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        config(['projects.budget_preview_base_url' => null]);
     }
 
     #[Test]
@@ -77,6 +78,24 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
                 && str_contains($html, 'REVISION ALPHA')
                 && ! str_contains($html, 'humano');
         });
+    }
+
+    #[Test]
+    public function failed_send_does_not_mark_email_as_sent(): void
+    {
+        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('SMTP rejected'));
+
+        [$user, $project] = $this->createBudgetedProject();
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->post(route('project.authorize-budget', $project->id))
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('error');
+
+        $project->refresh();
+        $this->assertNull(data_get($project->data, 'budget_email.sent_at'));
+        $this->assertSame(ProjectStatus::STATUS_BUDGETED, (int) $project->status_id);
     }
 
     #[Test]
