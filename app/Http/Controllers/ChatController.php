@@ -2235,7 +2235,7 @@ class ChatController extends Controller
     public function updateChatTeamSettingsSidebar(Request $request)
     {
         $request->validate([
-            'key' => ['required', 'string', 'in:assistant_auto_respond,assistant_auto_respond_admins_when_off,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked,chat_show_assistant_conversations,chat_show_whatsapp_conversations'],
+            'key' => ['required', 'string', 'in:assistant_auto_respond,assistant_auto_respond_admins_when_off,notify_new_contact_email,assistant_chat_stub,assistant_keyword_intent_routing,chat_ai_assistance_blocked,chat_show_assistant_conversations,chat_show_whatsapp_conversations,whatsapp_allow_closed_window'],
             'on' => ['required', 'boolean'],
         ]);
 
@@ -2349,7 +2349,7 @@ class ChatController extends Controller
             return;
         }
 
-        if (in_array($key, ['assistant_auto_respond_admins_when_off', 'assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'chat_show_assistant_conversations', 'chat_show_whatsapp_conversations'], true))
+        if (in_array($key, ['assistant_auto_respond_admins_when_off', 'assistant_chat_stub', 'assistant_keyword_intent_routing', 'chat_ai_assistance_blocked', 'chat_show_assistant_conversations', 'chat_show_whatsapp_conversations', 'whatsapp_allow_closed_window'], true))
         {
             $team->setSetting($key, $on, [
                 'group' => 'chat',
@@ -3251,6 +3251,7 @@ class ChatController extends Controller
             'attachments' => ['nullable', 'array', 'max:10'],
             'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'use_ai' => 'boolean',
+            'accept_closed_window' => 'sometimes|boolean',
             'contact_id' => 'nullable|integer|exists:contacts,id',
             'prompt_key' => 'nullable|string|max:255',
         ], [
@@ -3261,6 +3262,11 @@ class ChatController extends Controller
             'attachments.*.max' => __('Archivo demasiado pesado.'),
             'attachments.*.mimes' => __('Documento no permitido.'),
         ]);
+
+        if ($request->boolean('accept_closed_window'))
+        {
+            app(WhatsAppCustomerServiceWindow::class)->acceptClosedWindowForRequest();
+        }
 
         $message = trim((string) $request->input('message', ''));
         if ($hasAudio && $message === '')
@@ -3774,6 +3780,7 @@ class ChatController extends Controller
             'teamNumber' => $teamNumber ?? null,
             'teamNumberFormatted' => $teamNumberFormatted ?? null,
             'isTeamConnected' => $isTeamConnected,
+            'allow_closed_window' => auth()->user()?->currentTeam?->allowsClosedWhatsAppWindow() ?? true,
         ]);
     }
 

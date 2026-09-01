@@ -141,6 +141,28 @@ class TeamWhatsAppDriverTest extends TestCase
         $this->assertFalse($team->fresh()->usesLocalWhatsApp());
     }
 
+    public function test_whatsapp_status_stays_ok_when_local_service_is_unreachable(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Config::set('whatsapp.driver', 'local');
+        Config::set('whatsapp.local.base_url', 'http://127.0.0.1:9');
+
+        Http::fake(function ()
+        {
+            throw new \Illuminate\Http\Client\ConnectionException('cURL error 7');
+        });
+
+        $this->actingAs($this->userWithTeam())
+            ->getJson(route('chat.whatsapp-status'))
+            ->assertOk()
+            ->assertJsonPath('status', 'unreachable')
+            ->assertJsonPath('isTeamConnected', false);
+    }
+
     public function test_whatsapp_status_and_qr_treat_meta_as_official_not_baileys(): void
     {
         Config::set('whatsapp.driver', 'local');

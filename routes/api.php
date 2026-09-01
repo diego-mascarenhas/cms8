@@ -840,6 +840,7 @@ Route::middleware('auth.api')->group(function ()
     Route::patch('chat/whatsapp-contact-categories', [ChatController::class, 'updateWhatsAppContactCategories'])->name('api.chat.whatsapp-contact-categories');
     Route::post('chat/whatsapp-contact-categories', [ChatController::class, 'storeWhatsAppContactCategory'])->name('api.chat.whatsapp-contact-categories.store');
     Route::get('chat/whatsapp-status', [ChatController::class, 'whatsappStatus'])->name('api.chat.whatsapp-status');
+    Route::patch('chat/team-settings-sidebar', [ChatController::class, 'updateChatTeamSettingsSidebar'])->name('api.chat.team-settings-sidebar');
     Route::get('chat/whatsapp-qr-image', [ChatController::class, 'whatsappQrImage'])->name('api.chat.whatsapp-qr-image');
     Route::post('chat/whatsapp-refresh-qr', [ChatController::class, 'whatsappRefreshQr'])->name('api.chat.whatsapp-refresh-qr');
     Route::post('chat/whatsapp-warmup-qr', [ChatController::class, 'whatsappWarmupQr'])->name('api.chat.whatsapp-warmup-qr');

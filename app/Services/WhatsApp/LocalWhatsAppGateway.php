@@ -193,7 +193,13 @@ class LocalWhatsAppGateway implements WhatsAppGateway
             return null;
         }
 
-        $response = Http::timeout(5)->get($this->statusUrl());
+        try
+        {
+            $response = Http::timeout(5)->get($this->statusUrl());
+        } catch (\Throwable)
+        {
+            return ['status' => 'unreachable'];
+        }
 
         if (! $response->successful())
         {

@@ -98,7 +98,8 @@ class ApiChatWhatsAppScheduleTest extends TestCase
             ->getJson('/api/chat/whatsapp-messages/5491100000000')
             ->assertOk()
             ->assertJsonPath('whatsapp_session.open', false)
-            ->assertJsonPath('whatsapp_session.last_inbound_at', null);
+            ->assertJsonPath('whatsapp_session.last_inbound_at', null)
+            ->assertJsonPath('whatsapp_session.allow_override', true);
     }
 
     public function test_scheduled_message_can_be_rescheduled_and_cancelled_via_api(): void

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\WhatsApp\WhatsAppCustomerServiceWindow;
 use App\Support\WhatsAppDriver;
 use App\Traits\HasEmailLimits;
 use App\Traits\HasProspectLimits;
@@ -685,6 +686,17 @@ class Team extends JetstreamTeam
     public function usesLocalWhatsApp(): bool
     {
         return $this->getWhatsAppDriver() === WhatsAppDriver::LOCAL;
+    }
+
+    public function allowsClosedWhatsAppWindow(): bool
+    {
+        $raw = $this->getSetting(WhatsAppCustomerServiceWindow::SETTING_KEY, null);
+        if ($raw === null || $raw === '')
+        {
+            return true;
+        }
+
+        return filter_var($raw, FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
