@@ -28,6 +28,16 @@ class TaxIdentifierServiceTest extends TestCase
         $this->assertFalse($s->isValidForCountry('ES', '34293436A'));
 
         $this->assertTrue($s->isValidForCountry('ES', 'X0000000T'));
+
+        $this->assertTrue($s->isValidForCountry('ES', 'B23819360'));
+        $this->assertTrue($s->isValidForCountry('ES', 'ESB23819360'));
+        $this->assertSame('es_cif', $s->resolveStripeTaxIdType('ES', 'B23819360'));
+        $this->assertSame('eu_vat', $s->resolveStripeTaxIdType('ES', 'ESB23819360'));
+        $this->assertFalse($s->isValidForCountry('ES', 'B23819361'));
+        $this->assertFalse($s->isValidForCountry('ES', 'B2381936J'));
+
+        $this->assertTrue($s->isValidForCountry('ES', 'P2800000H'));
+        $this->assertFalse($s->isValidForCountry('ES', 'P28000008'));
     }
 
     public function test_argentina_cuit_with_check_digit(): void
