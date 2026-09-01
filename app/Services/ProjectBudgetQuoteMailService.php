@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Helpers\DnsHelper;
 use App\Mail\ProjectBudgetQuoteMail;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
+use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -25,10 +28,60 @@ class ProjectBudgetQuoteMailService
             throw new RuntimeException(__('Only budgeted projects can be authorized to send the quote email.'));
         }
 
+        $project->loadMissing(['enterprise.contacts', 'team']);
+        $this->assertReadyToSend($project);
+
         $project->status_id = ProjectStatus::STATUS_AUTHORIZED;
         $project->save();
 
         return $this->sendQuoteEmail($project->fresh(['enterprise.contacts', 'team']), $sender);
+    }
+
+    /**
+     * Send the public quote after the visitor confirms the funnel scope.
+     * Leaves the project as a budget request when the team sender is not ready.
+     */
+    public function trySendAfterFunnelSubmit(Project $project): bool
+    {
+        $project->loadMissing(['enterprise.contacts', 'team.settings', 'team.owner']);
+
+        $sender = $project->team?->owner;
+        if (! $sender instanceof User)
+        {
+            return false;
+        }
+
+        $previousStatus = (int) $project->status_id;
+        if ($previousStatus === ProjectStatus::STATUS_BUDGET)
+        {
+            $project->status_id = ProjectStatus::STATUS_BUDGETED;
+            $project->save();
+        }
+
+        try
+        {
+            $this->authorizeAndSend($project->fresh(['enterprise.contacts', 'team']), $sender);
+
+            return true;
+        } catch (RuntimeException $e)
+        {
+            if ($previousStatus === ProjectStatus::STATUS_BUDGET)
+            {
+                $project->refresh();
+                if ((int) $project->status_id === ProjectStatus::STATUS_BUDGETED)
+                {
+                    $project->status_id = ProjectStatus::STATUS_BUDGET;
+                    $project->save();
+                }
+            }
+
+            Log::warning('Funnel quote email skipped', [
+                'project_id' => $project->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
     }
 
     /**
@@ -45,26 +98,12 @@ class ProjectBudgetQuoteMailService
             throw new RuntimeException(__('Only authorized projects can send the quote email.'));
         }
 
-        if (data_get($project->data, 'budget_client_response.status') === 'accepted')
-        {
-            throw new RuntimeException(__('This quote was already answered.'));
-        }
-
-        $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
-        if ($previewToken === '')
-        {
-            throw new RuntimeException(__('Generate the budget preview before authorizing the quote.'));
-        }
-
-        $recipient = $project->enterprise?->quoteContact();
-        $recipientName = $recipient
-            ? trim($recipient->name.' '.(string) ($recipient->surname ?? ''))
-            : '';
-        $recipientEmail = trim((string) ($recipient?->email ?? ''));
-        if ($recipient === null || $recipientEmail === '' || ! filter_var($recipientEmail, FILTER_VALIDATE_EMAIL))
-        {
-            throw new RuntimeException(__('The enterprise contact does not have a valid email address.'));
-        }
+        $ready = $this->assertReadyToSend($project);
+        $recipient = $ready['recipient'];
+        $recipientName = $ready['recipient_name'];
+        $recipientEmail = $ready['recipient_email'];
+        $previewToken = $ready['preview_token'];
+        $from = $ready['from'];
 
         $trackingToken = Str::random(48);
         $previewUrl = route('project.budget-preview', $previewToken);
@@ -90,20 +129,76 @@ class ProjectBudgetQuoteMailService
             trackingToken: $trackingToken,
         );
 
-        $team = $project->team;
-        if ($team)
-        {
-            $fromAddress = trim((string) ($team->getSetting('mail_from_address') ?? ''));
-            $fromName = trim((string) ($team->getSetting('mail_from_name') ?? ''));
-            if ($fromAddress !== '')
-            {
-                $mail->from($fromAddress, $fromName !== '' ? $fromName : (string) $team->name);
-            }
-        }
+        $mail->from($from['from_address'], $from['from_name']);
 
         Mail::to($recipientEmail, $recipientName !== '' ? $recipientName : null)->send($mail);
 
         return $project->fresh(['status', 'enterprise.contacts']);
+    }
+
+    /**
+     * @return array{
+     *     recipient: \App\Models\Contact,
+     *     recipient_name: string,
+     *     recipient_email: string,
+     *     preview_token: string,
+     *     from: array{from_name: string, from_address: string}
+     * }
+     */
+    private function assertReadyToSend(Project $project): array
+    {
+        if (data_get($project->data, 'budget_client_response.status') === 'accepted')
+        {
+            throw new RuntimeException(__('This quote was already answered.'));
+        }
+
+        $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
+        if ($previewToken === '')
+        {
+            throw new RuntimeException(__('Generate the budget preview before authorizing the quote.'));
+        }
+
+        $recipient = $project->enterprise?->quoteContact();
+        $recipientName = $recipient
+            ? trim($recipient->name.' '.(string) ($recipient->surname ?? ''))
+            : '';
+        $recipientEmail = trim((string) ($recipient?->email ?? ''));
+        if ($recipient === null || $recipientEmail === '' || ! filter_var($recipientEmail, FILTER_VALIDATE_EMAIL))
+        {
+            throw new RuntimeException(__('The enterprise contact does not have a valid email address.'));
+        }
+
+        $team = $project->team;
+        if (! $team)
+        {
+            throw new RuntimeException(__('Configure the quote sender in Settings before sending.'));
+        }
+
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        $from = $team->getTeamEmailSender();
+        if (! $team->hasTeamEmailSenderConfigured())
+        {
+            throw new RuntimeException(__('Configure the quote sender in Settings before sending.'));
+        }
+
+        $dnsStatus = DnsHelper::checkEmailDomainConfiguration($from['from_address']);
+        $bypassDns = app()->isLocal() || app()->runningUnitTests();
+        if (! DnsHelper::canSendBroadcastFromUi($dnsStatus, true, $bypassDns))
+        {
+            throw new RuntimeException(__('app.email_spf_record_required_include'));
+        }
+
+        return [
+            'recipient' => $recipient,
+            'recipient_name' => $recipientName !== '' ? $recipientName : $recipientEmail,
+            'recipient_email' => $recipientEmail,
+            'preview_token' => $previewToken,
+            'from' => $from,
+        ];
     }
 
     public function markOpened(string $trackingToken): bool
@@ -152,6 +247,24 @@ class ProjectBudgetQuoteMailService
         $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
 
         return $previewToken !== '' ? route('project.budget-preview', $previewToken) : null;
+    }
+
+    public function countSentForTeam(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): int
+    {
+        $query = Project::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNotNull('data->budget_email->sent_at');
+
+        if ($from !== null)
+        {
+            $query->where('data->budget_email->sent_at', '>=', $from->toIso8601String());
+        }
+        if ($to !== null)
+        {
+            $query->where('data->budget_email->sent_at', '<=', $to->toIso8601String());
+        }
+
+        return $query->count();
     }
 
     public function findByTrackingToken(string $trackingToken): ?Project

@@ -16,7 +16,14 @@ class AuthorizeProjectBudgetRequest extends FormRequest
             return false;
         }
 
-        return $this->user()?->can('update', $project) ?? false;
+        $user = $this->user();
+
+        if (! $user?->hasRole('admin'))
+        {
+            return false;
+        }
+
+        return $user->can('update', $project);
     }
 
     /**

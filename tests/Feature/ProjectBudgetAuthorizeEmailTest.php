@@ -8,6 +8,7 @@ use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
+use App\Services\ProjectBudgetQuoteMailService;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -61,15 +62,40 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $this->assertNotEmpty(data_get($project->data, 'budget_email.tracking_token'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.sent_at'));
 
+        $this->assertSame(
+            1,
+            app(ProjectBudgetQuoteMailService::class)->countSentForTeam((int) $user->current_team_id),
+        );
+
         Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact): bool
         {
             $html = $mail->render();
 
             return $mail->hasTo($contact->email)
+                && $mail->hasFrom('quotes@example.test')
                 && str_contains($html, 'logo-light.svg')
                 && str_contains($html, 'REVISION ALPHA')
                 && ! str_contains($html, 'humano');
         });
+    }
+
+    #[Test]
+    public function authorize_requires_configured_sender(): void
+    {
+        Mail::fake();
+
+        [$user, $project] = $this->createBudgetedProject();
+        $user->currentTeam?->settings()->whereIn('key', ['mail_from_name', 'mail_from_address'])->delete();
+        $user->currentTeam?->unsetRelation('settings');
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->post(route('project.authorize-budget', $project->id))
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('error');
+
+        Mail::assertNothingSent();
+        $this->assertSame(ProjectStatus::STATUS_BUDGETED, (int) $project->fresh()->status_id);
     }
 
     #[Test]
@@ -152,6 +178,16 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $user->assignRole('admin');
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting('mail_from_name', 'Estimator', [
+            'group' => 'email',
+            'type' => 'text',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting('mail_from_address', 'quotes@example.test', [
+            'group' => 'email',
+            'type' => 'email',
+            'is_encrypted' => false,
+        ]);
 
         $enterprise = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($team->id)->create([
             'name' => 'Acme Client',

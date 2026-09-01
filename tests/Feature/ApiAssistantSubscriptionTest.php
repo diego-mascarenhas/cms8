@@ -94,6 +94,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.can_checkout', true);
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.estimator_usage.emails_sent', 0);
     }
 
     public function test_estimator_checkout_does_not_require_a_stripe_price(): void

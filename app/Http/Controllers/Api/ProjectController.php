@@ -373,8 +373,12 @@ class ProjectController extends Controller
     /**
      * Mark the quote as authorized and email the public preview to the enterprise contact.
      */
-    public function authorizeBudget(AuthorizeProjectBudgetRequest $request, string $id, ProjectBudgetQuoteMailService $mailService): JsonResponse
-    {
+    public function authorizeBudget(
+        AuthorizeProjectBudgetRequest $request,
+        string $id,
+        ProjectBudgetQuoteMailService $mailService,
+        ProjectBudgetSpecService $budgetService,
+    ): JsonResponse {
         $user = $request->user();
 
         if (! $user?->currentTeam)
@@ -386,14 +390,6 @@ class ProjectController extends Controller
         }
 
         $project = Project::with(['enterprise.contacts', 'team', 'status', 'client', 'responsible'])->findOrFail($id);
-
-        if (! $user->hasRole('admin'))
-        {
-            return response()->json([
-                'success' => false,
-                'error' => 'Only admins can send the quote email.',
-            ], 403);
-        }
 
         if ((int) $project->status_id === ProjectStatus::STATUS_BUDGET)
         {
@@ -416,7 +412,7 @@ class ProjectController extends Controller
 
         return response()->json($this->projectBudgetResponse(
             $project,
-            app(ProjectBudgetSpecService::class),
+            $budgetService,
             __('Quote authorized and emailed to the enterprise contact.'),
         ));
     }

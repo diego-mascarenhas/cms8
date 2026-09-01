@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\DnsHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\CaptureProjectFunnelLeadRequest;
 use App\Http\Requests\Api\ChatProjectFunnelRequest;
@@ -9,6 +10,7 @@ use App\Http\Requests\Api\GuideProjectFunnelRequest;
 use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelChatPromptRequest;
+use App\Http\Requests\Api\UpdateProjectFunnelSenderRequest;
 use App\Jobs\GenerateProjectFunnelQuoteJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -17,6 +19,7 @@ use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\TaskBoard;
 use App\Models\Team;
+use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -181,6 +184,64 @@ class ProjectFunnelController extends Controller
                 'prompt_instruction' => $prompt->prompt_instruction,
                 'helper_text' => $prompt->helper_text,
             ],
+        ]);
+    }
+
+    public function showSender(Request $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->funnelSenderPayload($team, $request),
+        ]);
+    }
+
+    public function updateSender(UpdateProjectFunnelSenderRequest $request): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if (! $request->user()?->can('update', $team))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('You are not allowed to configure the quote sender.'),
+            ], 403);
+        }
+
+        $validated = $request->validated();
+
+        $team->setSetting('mail_from_name', $validated['mail_from_name'], [
+            'group' => 'email',
+            'type' => 'text',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting('mail_from_address', $validated['mail_from_address'], [
+            'group' => 'email',
+            'type' => 'email',
+            'is_encrypted' => false,
+        ]);
+
+        $team->unsetRelation('settings');
+        $team->load('settings');
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Quote sender saved.'),
+            'data' => $this->funnelSenderPayload($team, $request),
         ]);
     }
 
@@ -375,7 +436,7 @@ class ProjectFunnelController extends Controller
      * Persist project budget from the public funnel.
      * Lead should already exist from step 1; prices stay server-side.
      */
-    public function submit(SubmitProjectFunnelRequest $request): JsonResponse
+    public function submit(SubmitProjectFunnelRequest $request, ProjectBudgetQuoteMailService $quoteMail): JsonResponse
     {
         $team = $this->funnelTeam($request);
         if ($team instanceof JsonResponse)
@@ -534,9 +595,21 @@ class ProjectFunnelController extends Controller
             ], 500);
         }
 
+        $project = Project::withoutGlobalScopes()
+            ->with(['enterprise.contacts', 'team.settings', 'team.owner'])
+            ->find($result['project_id'] ?? null);
+
+        $emailed = $project instanceof Project
+            ? $quoteMail->trySendAfterFunnelSubmit($project)
+            : false;
+
+        $result['emailed'] = $emailed;
+
         return response()->json([
             'success' => true,
-            'message' => __('Thanks! We received your scope and will get back to you shortly.'),
+            'message' => $emailed
+                ? __('Thanks! We sent the quote details to your email.')
+                : __('Thanks! We received your scope and will get back to you shortly.'),
             'data' => $result,
         ], 201);
     }
@@ -950,6 +1023,38 @@ class ProjectFunnelController extends Controller
         }
 
         return $team;
+    }
+
+    /**
+     * @return array{
+     *     from_name: string,
+     *     from_address: string,
+     *     configured: bool,
+     *     can_update: bool,
+     *     can_send: bool,
+     *     required_include: string,
+     *     example_txt: string,
+     *     spf: array<string, mixed>|null
+     * }
+     */
+    private function funnelSenderPayload(Team $team, Request $request): array
+    {
+        $sender = $team->getTeamEmailSender();
+        $configured = $team->hasTeamEmailSenderConfigured();
+        $spf = $configured
+            ? DnsHelper::checkEmailDomainConfiguration($sender['from_address'])
+            : null;
+
+        return [
+            'from_name' => $sender['from_name'],
+            'from_address' => $sender['from_address'],
+            'configured' => $configured,
+            'can_update' => (bool) $request->user()?->can('update', $team),
+            'can_send' => $configured && DnsHelper::canSendBroadcastFromUi($spf, true),
+            'required_include' => DnsHelper::REVISION_ALPHA_SPF_INCLUDE,
+            'example_txt' => DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
+            'spf' => $spf,
+        ];
     }
 
     private function resolveLeadContactStatusId(): ?int

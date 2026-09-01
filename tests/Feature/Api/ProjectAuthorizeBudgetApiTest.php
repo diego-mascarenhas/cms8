@@ -133,6 +133,16 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $team->setSetting('mail_from_name', 'Estimator', [
+            'group' => 'email',
+            'type' => 'text',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting('mail_from_address', 'quotes@example.test', [
+            'group' => 'email',
+            'type' => 'email',
+            'is_encrypted' => false,
+        ]);
 
         $enterprise = Enterprise::withoutEvents(fn () => Enterprise::factory()->forTeam($team->id)->create([
             'name' => 'API Quote Client',
