@@ -99,7 +99,7 @@ class TeamProjectController extends Controller
         return response()->json([
             'success' => true,
             'data' => $project,
-            'message' => 'Project updated successfully',
+            'message' => __('Project updated successfully.'),
         ]);
     }
 

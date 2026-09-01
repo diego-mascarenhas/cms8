@@ -2,11 +2,19 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Category;
+use App\Models\Contact;
+use App\Models\Country;
 use App\Models\Enterprise;
+use App\Models\Module;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\ProjectBudgetSpecService;
+use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
@@ -22,9 +30,12 @@ class ProjectApiTest extends TestCase
         parent::setUp();
 
         $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
             EnterpriseTypeSeeder::class,
             EnterpriseStatusSeeder::class,
             ProjectStatusSeeder::class,
+            ContactStatusSeeder::class,
         ]);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
@@ -288,6 +299,181 @@ class ProjectApiTest extends TestCase
     {
         $this->getJson('/api/projects')->assertUnauthorized();
         $this->postJson('/api/projects', [])->assertUnauthorized();
+        $this->postJson('/api/projects/from-brief', [])->assertUnauthorized();
+    }
+
+    public function test_can_create_project_from_brief_and_existing_client(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn($this->fakeBudgetSpec());
+        });
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/from-brief', [
+                'enterprise_id' => $client->id,
+                'name' => 'Landing ACME',
+                'brief' => 'Landing corporativa con blog y formulario de contacto.',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Landing ACME')
+            ->assertJsonPath('data.team_id', $team->id)
+            ->assertJsonPath('data.enterprise_id', $client->id)
+            ->assertJsonPath('data.responsible_id', $user->id)
+            ->assertJsonPath('data.status_id', 1)
+            ->assertJsonPath('data.data.budget_given', 'Landing corporativa con blog y formulario de contacto.')
+            ->assertJsonPath('data.data.suggested_tasks.0.title', 'Diseño')
+            ->assertJsonPath('data.data.ai_interpretation', 'Landing corporativa');
+
+        $this->assertNotNull($create->json('data.board_id'));
+        $this->assertGreaterThan(0, (int) $create->json('totals.grand_total'));
+        $this->assertSame((int) $create->json('totals.grand_total'), (int) $create->json('data.price'));
+        $this->assertNotEmpty($create->json('data.data.budget_preview_token'));
+    }
+
+    public function test_can_create_project_from_brief_and_new_client(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->andReturn($this->fakeBudgetSpec());
+        });
+
+        $module = Module::firstOrCreate(
+            ['key' => 'contacts'],
+            ['name' => 'Contacts', 'description' => 'Contacts', 'is_core' => 1, 'status' => 1, 'order' => 0],
+        );
+        $category = Category::query()->create([
+            'team_id' => $team->id,
+            'module_id' => $module->id,
+            'name' => 'Lead web',
+            'status' => 1,
+            'order' => 0,
+        ]);
+
+        $create = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/from-brief', [
+                'contact_name' => 'Ana',
+                'surname' => 'García',
+                'email' => 'ana@estudio-norte.test',
+                'phone' => '+34 600 000 000',
+                'business_name' => 'Estudio Norte',
+                'country' => 'ES',
+                'category_ids' => [$category->id],
+                'brief' => 'Tienda online con catálogo y pagos.',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.name', 'Estudio Norte');
+
+        $enterprise = Enterprise::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('name', 'Estudio Norte')
+            ->first();
+
+        $this->assertNotNull($enterprise);
+        $this->assertSame($enterprise->id, $create->json('data.enterprise_id'));
+        $this->assertSame('ana@estudio-norte.test', $enterprise->email);
+        $this->assertNotEmpty($enterprise->phone);
+        $this->assertSame('ES', $enterprise->country);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'ana@estudio-norte.test')
+            ->first();
+
+        $this->assertNotNull($contact);
+        $this->assertSame('Ana', $contact->name);
+        $this->assertSame('García', $contact->surname);
+        $this->assertEquals(
+            Country::query()->whereRaw('LOWER(code) = ?', ['es'])->value('id'),
+            $contact->getAttributes()['country'] ?? null,
+        );
+        $this->assertTrue($contact->categories()->where('categories.id', $category->id)->exists());
+        $this->assertTrue($contact->enterprises()->where('enterprises.id', $enterprise->id)->exists());
+    }
+
+    public function test_from_brief_rejects_client_from_another_team(): void
+    {
+        [, , $token] = $this->adminWithToken();
+        $otherUser = User::factory()->withPersonalTeam()->create();
+        $otherTeam = $otherUser->ownedTeams()->first();
+        $foreign = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $otherTeam->id,
+            'name' => 'Foreign Client',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')->never();
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/from-brief', [
+                'enterprise_id' => $foreign->id,
+                'brief' => 'Landing corporativa con blog y formulario de contacto.',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_from_brief_requires_client_and_text(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/from-brief', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['enterprise_id', 'business_name', 'contact_name', 'email', 'brief']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fakeBudgetSpec(): array
+    {
+        return [
+            'ai_interpretation' => 'Landing corporativa',
+            'dimension' => 'Small',
+            'estimated_times' => '2 weeks',
+            'resources' => '1 designer',
+            'token_consumption' => [
+                'notes' => 'Diseño: 400 K',
+                'input_tokens' => 280000,
+                'output_tokens' => 120000,
+                'total_tokens' => 400000,
+                'cost_euros' => 2,
+                'savings_percent' => 57,
+                'billable_euros' => 4.65,
+                'currency' => 'EUR',
+            ],
+            'client_items' => [],
+            'resource_breakdown' => [],
+            'suggested_tasks' => [
+                [
+                    'title' => 'Diseño',
+                    'description' => 'Home and contact.',
+                    'category_name' => 'Diseño',
+                    'estimated_hours' => 8,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 800,
+                    'estimated_tokens' => 400000,
+                    'included' => true,
+                ],
+            ],
+        ];
     }
 
     public function test_projects_list_defaults_to_newest_first(): void
