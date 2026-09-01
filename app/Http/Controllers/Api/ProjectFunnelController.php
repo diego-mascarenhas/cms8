@@ -11,6 +11,7 @@ use App\Http\Requests\Api\QuoteProjectFunnelRequest;
 use App\Http\Requests\Api\SubmitProjectFunnelRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelChatPromptRequest;
 use App\Http\Requests\Api\UpdateProjectFunnelSenderRequest;
+use App\Http\Requests\Api\UpdateProjectFunnelTokenPricingRequest;
 use App\Jobs\GenerateProjectFunnelQuoteJob;
 use App\Models\Category;
 use App\Models\Contact;
@@ -242,6 +243,68 @@ class ProjectFunnelController extends Controller
             'success' => true,
             'message' => __('Quote sender saved.'),
             'data' => $this->funnelSenderPayload($team, $request),
+        ]);
+    }
+
+    public function showTokenPricing(Request $request, ProjectBudgetSpecService $budgetSpec): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->funnelTokenPricingPayload($team, $request, $budgetSpec),
+        ]);
+    }
+
+    public function updateTokenPricing(UpdateProjectFunnelTokenPricingRequest $request, ProjectBudgetSpecService $budgetSpec): JsonResponse
+    {
+        $team = $this->authorizeFunnelEditor($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if (! $request->user()?->can('update', $team))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('You are not allowed to configure token pricing.'),
+            ], 403);
+        }
+
+        $validated = $request->validated();
+
+        $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE, (string) $validated['input_rate'], [
+            'group' => 'estimator',
+            'type' => 'number',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE, (string) $validated['output_rate'], [
+            'group' => 'estimator',
+            'type' => 'number',
+            'is_encrypted' => false,
+        ]);
+        $team->setSetting(
+            ProjectBudgetSpecService::SETTING_TOKEN_DISCRIMINATE,
+            $validated['discriminate'] ? '1' : '0',
+            [
+                'group' => 'estimator',
+                'type' => 'boolean',
+                'is_encrypted' => false,
+            ],
+        );
+
+        $team->unsetRelation('settings');
+        $team->load('settings');
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Token pricing saved.'),
+            'data' => $this->funnelTokenPricingPayload($team, $request, $budgetSpec),
         ]);
     }
 
@@ -1055,6 +1118,21 @@ class ProjectFunnelController extends Controller
             'example_txt' => DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
             'spf' => $spf,
         ];
+    }
+
+    /**
+     * @return array{
+     *     input_rate: float,
+     *     output_rate: float,
+     *     discriminate: bool,
+     *     can_update: bool
+     * }
+     */
+    private function funnelTokenPricingPayload(Team $team, Request $request, ProjectBudgetSpecService $budgetSpec): array
+    {
+        return array_merge($budgetSpec->tokenPricingPayload($team), [
+            'can_update' => (bool) $request->user()?->can('update', $team),
+        ]);
     }
 
     private function resolveLeadContactStatusId(): ?int

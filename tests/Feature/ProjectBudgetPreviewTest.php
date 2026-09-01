@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\ProjectBudgetSpecService;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\ProjectStatusSeeder;
@@ -104,6 +105,24 @@ class ProjectBudgetPreviewTest extends TestCase
         $response->assertDontSee('ahorro estimado', false);
         $response->assertDontSee('Stripe', false);
         $response->assertDontSee('MCP/TOON', false);
+        $response->assertSee(__('Tokens'), false);
+    }
+
+    #[Test]
+    public function public_budget_preview_can_hide_token_columns(): void
+    {
+        $created = $this->createBudgetPreviewProject();
+        $team = Team::query()->findOrFail($created['project']->team_id);
+        $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_DISCRIMINATE, '0', [
+            'group' => 'estimator',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $this->get(route('project.budget-preview', $created['token']))
+            ->assertOk()
+            ->assertSee('iOS signing', false)
+            ->assertDontSee(__('Tokens'), false);
     }
 
     #[Test]

@@ -765,6 +765,52 @@ class ProjectFunnelTest extends TestCase
         ])->assertUnauthorized();
     }
 
+    public function test_funnel_member_can_get_and_update_token_pricing(): void
+    {
+        $team = $this->createFunnelTeam();
+        $user = $team->owner;
+        $this->assertNotNull($user);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $token = $user->createToken('estimator-tokens')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/funnel/token-pricing')
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.input_rate', 11)
+            ->assertJsonPath('data.output_rate', 55)
+            ->assertJsonPath('data.discriminate', true)
+            ->assertJsonPath('data.can_update', true);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/funnel/token-pricing', [
+                'input_rate' => 3.5,
+                'output_rate' => 12,
+                'discriminate' => false,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.input_rate', 3.5)
+            ->assertJsonPath('data.output_rate', 12)
+            ->assertJsonPath('data.discriminate', false);
+
+        $fresh = $team->fresh();
+        $this->assertSame('3.5', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE));
+        $this->assertSame('12', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE));
+        $this->assertFalse(filter_var($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_DISCRIMINATE), FILTER_VALIDATE_BOOLEAN));
+    }
+
+    public function test_token_pricing_requires_authentication(): void
+    {
+        $this->createFunnelTeam();
+
+        $this->getJson('/api/projects/funnel/token-pricing')->assertUnauthorized();
+        $this->putJson('/api/projects/funnel/token-pricing', [
+            'input_rate' => 3,
+            'output_rate' => 10,
+            'discriminate' => true,
+        ])->assertUnauthorized();
+    }
+
     public function test_chat_uses_team_budget_chat_prompt(): void
     {
         $team = $this->createFunnelTeam();

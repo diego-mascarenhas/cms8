@@ -23,8 +23,24 @@ class ProjectBudgetSpecService
     /** Max drop of (labor + tokens) vs original when shifting hours→tokens. */
     public const MAX_BALANCE_DISCOUNT_PERCENT = 30.0;
 
+    public const DEFAULT_TOKEN_INPUT_RATE = 11.0;
+
+    public const DEFAULT_TOKEN_OUTPUT_RATE = 55.0;
+
     /** Blended AI cost €/M tokens (70% input @ 11 + 30% output @ 55). */
     public const TOKEN_BLEND_EUR_PER_MILLION = 24.2;
+
+    public const SETTING_TOKEN_INPUT_RATE = 'estimator_token_input_rate';
+
+    public const SETTING_TOKEN_OUTPUT_RATE = 'estimator_token_output_rate';
+
+    public const SETTING_TOKEN_DISCRIMINATE = 'estimator_token_discriminate';
+
+    private float $tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
+
+    private float $tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
+
+    private bool $tokenDiscriminate = true;
 
     /**
      * Generate a full budget specification (includes prices for internal use).
@@ -871,10 +887,97 @@ class ProjectBudgetSpecService
 
     public function estimateTokenCostEuros(int $inputTokens, int $outputTokens): float
     {
-        $inputRate = 11.0;
-        $outputRate = 55.0;
+        return round(
+            ($inputTokens / 1_000_000) * $this->tokenInputRate
+            + ($outputTokens / 1_000_000) * $this->tokenOutputRate,
+            2,
+        );
+    }
 
-        return round(($inputTokens / 1_000_000) * $inputRate + ($outputTokens / 1_000_000) * $outputRate, 2);
+    public function tokenInputRate(): float
+    {
+        return $this->tokenInputRate;
+    }
+
+    public function tokenOutputRate(): float
+    {
+        return $this->tokenOutputRate;
+    }
+
+    public function showsTokenLines(): bool
+    {
+        return $this->tokenDiscriminate;
+    }
+
+    public function tokenBlendEurPerMillion(): float
+    {
+        return round(($this->tokenInputRate * 0.7) + ($this->tokenOutputRate * 0.3), 4);
+    }
+
+    public function setTokenRates(float $inputRate, float $outputRate): static
+    {
+        $this->tokenInputRate = max(0.0, $inputRate);
+        $this->tokenOutputRate = max(0.0, $outputRate);
+
+        return $this;
+    }
+
+    public function setTokenDiscriminate(bool $discriminate): static
+    {
+        $this->tokenDiscriminate = $discriminate;
+
+        return $this;
+    }
+
+    public function applyTeamTokenPricing(?Team $team): static
+    {
+        $this->tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
+        $this->tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
+        $this->tokenDiscriminate = true;
+
+        if (! $team)
+        {
+            return $this;
+        }
+
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        $input = $team->getSetting(self::SETTING_TOKEN_INPUT_RATE);
+        if (is_numeric($input))
+        {
+            $this->tokenInputRate = max(0.0, (float) $input);
+        }
+
+        $output = $team->getSetting(self::SETTING_TOKEN_OUTPUT_RATE);
+        if (is_numeric($output))
+        {
+            $this->tokenOutputRate = max(0.0, (float) $output);
+        }
+
+        $discriminate = $team->getSetting(self::SETTING_TOKEN_DISCRIMINATE);
+        if ($discriminate !== null && $discriminate !== '')
+        {
+            $this->tokenDiscriminate = filter_var($discriminate, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return array{input_rate: float, output_rate: float, discriminate: bool}
+     */
+    public function tokenPricingPayload(?Team $team): array
+    {
+        $this->applyTeamTokenPricing($team);
+
+        return [
+            'input_rate' => $this->tokenInputRate,
+            'output_rate' => $this->tokenOutputRate,
+            'discriminate' => $this->tokenDiscriminate,
+        ];
     }
 
     /**
@@ -889,6 +992,8 @@ class ProjectBudgetSpecService
      */
     public function computeQuoteTotals(Project $project): array
     {
+        $this->applyTeamTokenPricing($this->teamForProject($project));
+
         $data = is_array($project->data) ? $project->data : [];
         $suggestedTasks = is_array($data['suggested_tasks'] ?? null) ? $data['suggested_tasks'] : [];
         $savings = (float) data_get($data, 'token_consumption.savings_percent', 57);
@@ -953,7 +1058,23 @@ class ProjectBudgetSpecService
             'discount_percent' => $discountPercent,
             'discounted_total' => $discountedTotal,
             'payable_total' => $payableTotal,
+            'token_discriminate' => $this->tokenDiscriminate,
         ];
+    }
+
+    private function teamForProject(Project $project): ?Team
+    {
+        if ($project->relationLoaded('team') && $project->team instanceof Team)
+        {
+            return $project->team;
+        }
+
+        if (! $project->team_id)
+        {
+            return null;
+        }
+
+        return Team::query()->find($project->team_id);
     }
 
     /**
@@ -1083,7 +1204,7 @@ class ProjectBudgetSpecService
 
         $remainingFactor = max(0.01, $remainingFactor);
         $costNeeded = $billableEuros * $remainingFactor;
-        $blend = self::TOKEN_BLEND_EUR_PER_MILLION;
+        $blend = max(0.01, $this->tokenBlendEurPerMillion());
 
         return (int) max(0, (int) ceil(($costNeeded * 1_000_000) / $blend));
     }

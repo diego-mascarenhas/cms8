@@ -2036,5 +2036,6 @@
   "Exempt from IVA": "Exento de I.V.A.",
   "EU reverse charge (0% IVA)": "Inversión del sujeto pasivo UE (0% I.V.A.)",
   "IVA :percent%": "I.V.A. :percent%",
-  "Enter the invoice line description.": "Introduce la descripción de la línea de factura."
+  "Enter the invoice line description.": "Introduce la descripción de la línea de factura.",
+  "Token pricing saved.": "Precios de tokens guardados."
 }

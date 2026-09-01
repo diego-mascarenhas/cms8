@@ -498,6 +498,10 @@ Route::middleware('auth.api')->group(function ()
         ->name('api.projects.funnel.sender.show');
     Route::put('projects/funnel/sender', [ProjectFunnelController::class, 'updateSender'])
         ->name('api.projects.funnel.sender.update');
+    Route::get('projects/funnel/token-pricing', [ProjectFunnelController::class, 'showTokenPricing'])
+        ->name('api.projects.funnel.token-pricing.show');
+    Route::put('projects/funnel/token-pricing', [ProjectFunnelController::class, 'updateTokenPricing'])
+        ->name('api.projects.funnel.token-pricing.update');
 
     // Menu for mobile app (filtered by user permissions and team modules)
     Route::get('menu', [MenuController::class, 'index']);
