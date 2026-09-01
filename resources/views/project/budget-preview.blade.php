@@ -1,5 +1,7 @@
 @php
     $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
+    $budgetService->applyTeamTokenPricing($project->team);
+    $discriminateTokens = $budgetService->showsTokenLines();
     $projectName = trim((string) ($project->real_name ?: $project->name));
     $clientName = trim((string) (optional($project->enterprise)->name ?? ''));
     $dimension = trim((string) data_get($project->data, 'dimension', ''));
@@ -52,11 +54,17 @@
         $totalHours += $hoursCharged;
         $totalDisplayTokens += $displayTokens;
 
+        $laborDisplay = $laborCharged ?? 0.0;
+        if (! $discriminateTokens)
+        {
+            $laborDisplay += $billable;
+        }
+
         $rows[] = [
             'title' => (string) ($t['title'] ?? '—'),
             'hours' => $formatHoursHuman($hoursCharged),
             'level' => $level,
-            'labor' => $laborCharged !== null ? $formatEuros($laborCharged) : '—',
+            'labor' => ($laborCharged !== null || $billable > 0) ? $formatEuros($laborDisplay) : '—',
             'tokens' => ($displayTokens > 0 || $billable > 0) ? $budgetService->formatTokenCount($displayTokens) : '—',
             'token_cost' => ($displayTokens > 0 || $billable > 0) ? $formatEuros($billable) : '—',
         ];
@@ -319,8 +327,10 @@
                         <th class="num">{{ __('Hours') }}</th>
                         <th class="num">{{ __('Level') }}</th>
                         <th class="num">{{ __('labor') }}</th>
-                        <th class="num">{{ __('Tokens') }}</th>
-                        <th class="num">{{ __('Tokens') }} €</th>
+                        @if ($discriminateTokens)
+                            <th class="num">{{ __('Tokens') }}</th>
+                            <th class="num">{{ __('Tokens') }} €</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -330,15 +340,19 @@
                             <td class="num">{{ $row['hours'] }}</td>
                             <td class="num">{{ $row['level'] }}</td>
                             <td class="num">{{ $row['labor'] }}</td>
-                            <td class="num">{{ $row['tokens'] }}</td>
-                            <td class="num">{{ $row['token_cost'] }}</td>
+                            @if ($discriminateTokens)
+                                <td class="num">{{ $row['tokens'] }}</td>
+                                <td class="num">{{ $row['token_cost'] }}</td>
+                            @endif
                         </tr>
                     @endforeach
                     <tr class="total">
                         <td colspan="3">{{ __('Total') }}</td>
-                        <td class="num">{{ $formatEuros($totalLabor) }}</td>
-                        <td class="num">{{ $totalDisplayTokens > 0 ? $budgetService->formatTokenCount($totalDisplayTokens) : '—' }}</td>
-                        <td class="num">{{ $formatEuros($totalTokenBillable) }}</td>
+                        <td class="num">{{ $formatEuros($discriminateTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</td>
+                        @if ($discriminateTokens)
+                            <td class="num">{{ $totalDisplayTokens > 0 ? $budgetService->formatTokenCount($totalDisplayTokens) : '—' }}</td>
+                            <td class="num">{{ $formatEuros($totalTokenBillable) }}</td>
+                        @endif
                     </tr>
                 </tbody>
             </table>
@@ -346,9 +360,11 @@
             <div class="highlight">
                 <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
                     <span>{{ __('Labor') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($totalLabor) }}</span>
-                    <span>{{ __('Tokens') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
+                    @if ($discriminateTokens)
+                        <span>{{ __('Tokens') }}</span>
+                        <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>
+                    @endif
                     <span>{{ __('Subtotal') }}</span>
                     <span style="text-align:right;">{{ $formatEuros($grandTotal) }}</span>
                     @if ($discountPercent > 0)

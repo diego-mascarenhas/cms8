@@ -509,6 +509,8 @@
   "Resend the quote email to the enterprise contact?": "Resend the quote email to the enterprise contact?",
   "Only budgeted projects can be authorized to send the quote email.": "Only budgeted projects can be authorized to send the quote email.",
   "Only authorized projects can send the quote email.": "Only authorized projects can send the quote email.",
+  "Project created successfully.": "Project created successfully.",
+  "Project status updated successfully.": "Project status updated successfully.",
   "Project updated successfully.": "Project updated successfully.",
   "Resend quote email": "Resend quote email",
   "Authorize this quote and email it to the enterprise contact?": "Authorize this quote and email it to the enterprise contact?",

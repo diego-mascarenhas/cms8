@@ -9,6 +9,21 @@ use Tests\TestCase;
 class ProjectBudgetTokenConsumptionTest extends TestCase
 {
     #[Test]
+    public function it_uses_custom_token_rates_for_cost(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $this->assertSame(11.0, $service->estimateTokenCostEuros(1_000_000, 0));
+        $this->assertSame(55.0, $service->estimateTokenCostEuros(0, 1_000_000));
+
+        $service->setTokenRates(3.0, 15.0);
+
+        $this->assertSame(3.0, $service->estimateTokenCostEuros(1_000_000, 0));
+        $this->assertSame(15.0, $service->estimateTokenCostEuros(0, 1_000_000));
+        $this->assertSame(6.6, $service->tokenBlendEurPerMillion());
+    }
+
+    #[Test]
     public function it_builds_one_token_line_per_included_labor(): void
     {
         $service = new ProjectBudgetSpecService;

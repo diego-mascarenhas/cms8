@@ -1196,6 +1196,8 @@
   "Resend the quote email to the enterprise contact?": "¿Reenviar el presupuesto por email al contacto de la empresa?",
   "Only budgeted projects can be authorized to send the quote email.": "Solo los proyectos presupuestados pueden autorizarse para enviar el email del presupuesto.",
   "Only authorized projects can send the quote email.": "Solo los proyectos autorizados pueden enviar el email del presupuesto.",
+  "Project created successfully.": "Proyecto creado correctamente.",
+  "Project status updated successfully.": "Estado del proyecto actualizado correctamente.",
   "Project updated successfully.": "Proyecto actualizado correctamente.",
   "Resend quote email": "Reenviar presupuesto por email",
   "Authorize this quote and email it to the enterprise contact?": "¿Autorizar este presupuesto y enviarlo por email al contacto de la empresa?",
@@ -2066,5 +2068,10 @@
   "Exempt from IVA": "Exento de I.V.A.",
   "EU reverse charge (0% IVA)": "Inversión del sujeto pasivo UE (0% I.V.A.)",
   "IVA :percent%": "I.V.A. :percent%",
-  "Enter the invoice line description.": "Introduce la descripción de la línea de factura."
+  "Enter the invoice line description.": "Introduce la descripción de la línea de factura.",
+  "Token pricing saved.": "Precios de tokens guardados.",
+  "The client is required.": "El cliente es obligatorio.",
+  "The selected client is invalid.": "El cliente seleccionado no es válido.",
+  "The budget text is required.": "El texto del presupuesto es obligatorio.",
+  "The budget text must be at least 10 characters.": "El texto del presupuesto debe tener al menos 10 caracteres."
 }

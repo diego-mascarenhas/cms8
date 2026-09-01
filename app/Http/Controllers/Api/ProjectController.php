@@ -5,7 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\AuthorizeProjectBudgetRequest;
 use App\Http\Requests\Api\StoreProjectApiRequest;
+use App\Http\Requests\Api\StoreProjectFromBriefRequest;
 use App\Http\Requests\Api\UpdateProjectApiRequest;
+use App\Models\Category;
+use App\Models\Contact;
+use App\Models\ContactStatus;
+use App\Models\Country;
 use App\Models\Enterprise;
 use App\Models\Project;
 use App\Models\ProjectStatus;
@@ -13,6 +18,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Models\User;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
 use Illuminate\Http\JsonResponse;
@@ -149,26 +155,90 @@ class ProjectController extends Controller
         }
 
         $budgetService = app(ProjectBudgetSpecService::class);
-        $data['team_id'] = $user->currentTeam->id;
-        $data['real_name'] = $data['real_name'] ?? $data['name'];
-        $data['responsible_id'] = $data['responsible_id'] ?? $user->id;
-        $data['status_id'] = $data['status_id'] ?? ProjectStatus::STATUS_BUDGET;
-        $data['data'] = $budgetService->hydrateProjectBudgetData($data['data'] ?? null);
+        $project = $this->persistCreatedProject($user, $data, $budgetService);
 
-        $project = Project::create($data);
+        return response()->json($this->projectBudgetResponse($project, $budgetService, __('Project created successfully.')), 201);
+    }
 
-        $board = TaskBoard::create([
-            'team_id' => $user->currentTeam->id,
-            'name' => "Project: {$project->name}",
-            'description' => "Task board for project: {$project->name}",
-            'is_default' => false,
-            'order' => 0,
-        ]);
+    /**
+     * Create a budget from an existing (or new) client and pasted brief.
+     */
+    public function storeFromBrief(StoreProjectFromBriefRequest $request): JsonResponse
+    {
+        $user = $request->user();
 
-        $project->update(['board_id' => $board->id]);
-        $project->load(['client', 'responsible', 'status', 'board']);
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
 
-        return response()->json($this->projectBudgetResponse($project, $budgetService, 'Project created successfully'), 201);
+        $this->authorize('create', Project::class);
+        $this->authorize('createBudget', Project::class);
+
+        $validated = $request->validated();
+        $enterprise = $this->resolveBriefEnterprise($user, $validated);
+        if ($enterprise instanceof JsonResponse)
+        {
+            return $enterprise;
+        }
+
+        $brief = trim((string) $validated['brief']);
+        $timeout = max(60, (int) config('ai.budget_spec_timeout', 180));
+        set_time_limit($timeout + 30);
+
+        $budgetService = app(ProjectBudgetSpecService::class);
+
+        try
+        {
+            $spec = $budgetService->generate($brief, $user->currentTeam, $user);
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        $name = trim((string) ($validated['name'] ?? ''));
+        if ($name === '')
+        {
+            $name = trim((string) $enterprise->name);
+        }
+        if ($name === '')
+        {
+            $name = __('Budget');
+        }
+
+        $project = $this->persistCreatedProject($user, [
+            'name' => $name,
+            'enterprise_id' => $enterprise->id,
+            'description' => (string) ($spec['ai_interpretation'] ?? $brief),
+            'data' => [
+                'budget_given' => $brief,
+                'ai_interpretation' => $spec['ai_interpretation'] ?? '',
+                'dimension' => $spec['dimension'] ?? '',
+                'estimated_times' => $spec['estimated_times'] ?? '',
+                'resources' => $spec['resources'] ?? '',
+                'token_consumption' => is_array($spec['token_consumption'] ?? null)
+                    ? $spec['token_consumption']
+                    : null,
+                'suggested_tasks' => is_array($spec['suggested_tasks'] ?? null)
+                    ? $spec['suggested_tasks']
+                    : [],
+            ],
+        ], $budgetService);
+
+        $totals = $budgetService->computeQuoteTotals($project);
+        if (($totals['grand_total'] ?? 0) > 0)
+        {
+            $project->update(['price' => $totals['grand_total']]);
+            $project->refresh()->load(['client', 'responsible', 'status', 'board']);
+        }
+
+        return response()->json($this->projectBudgetResponse($project, $budgetService, __('Project created successfully.')), 201);
     }
 
     /**
@@ -335,7 +405,7 @@ class ProjectController extends Controller
             return response()->json($this->projectBudgetResponse(
                 $project,
                 app(ProjectBudgetSpecService::class),
-                'Project status updated successfully',
+                __('Project status updated successfully.'),
             ));
         }
 
@@ -367,7 +437,7 @@ class ProjectController extends Controller
         $project->update($validated);
         $project->load(['client', 'responsible', 'status', 'board']);
 
-        return response()->json($this->projectBudgetResponse($project, $budgetService, 'Project updated successfully'));
+        return response()->json($this->projectBudgetResponse($project, $budgetService, __('Project updated successfully.')));
     }
 
     /**
@@ -736,6 +806,193 @@ class ProjectController extends Controller
                 'email' => $task->responsible->email,
             ] : null,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function persistCreatedProject(User $user, array $data, ProjectBudgetSpecService $budgetService): Project
+    {
+        $data['team_id'] = $user->currentTeam->id;
+        $data['real_name'] = $data['real_name'] ?? $data['name'];
+        $data['responsible_id'] = $data['responsible_id'] ?? $user->id;
+        $data['status_id'] = $data['status_id'] ?? ProjectStatus::STATUS_BUDGET;
+        $data['data'] = $budgetService->hydrateProjectBudgetData($data['data'] ?? null);
+
+        $project = Project::create($data);
+
+        $board = TaskBoard::create([
+            'team_id' => $user->currentTeam->id,
+            'name' => "Project: {$project->name}",
+            'description' => "Task board for project: {$project->name}",
+            'is_default' => false,
+            'order' => 0,
+        ]);
+
+        $project->update(['board_id' => $board->id]);
+        $project->load(['client', 'responsible', 'status', 'board']);
+
+        return $project;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveBriefEnterprise(User $user, array $validated): Enterprise|JsonResponse
+    {
+        $enterpriseId = isset($validated['enterprise_id']) ? (int) $validated['enterprise_id'] : 0;
+        if ($enterpriseId > 0)
+        {
+            $enterpriseError = $this->assertEnterpriseInTeam($enterpriseId, (int) $user->currentTeam->id);
+            if ($enterpriseError !== null)
+            {
+                return $enterpriseError;
+            }
+
+            return Enterprise::withoutGlobalScopes()->findOrFail($enterpriseId);
+        }
+
+        $this->authorize('create', Enterprise::class);
+        $this->authorize('create', Contact::class);
+
+        $businessName = trim((string) ($validated['business_name'] ?? $validated['client_name'] ?? ''));
+        $contactName = trim((string) ($validated['contact_name'] ?? ''));
+        $surname = trim((string) ($validated['surname'] ?? ''));
+        $email = strtolower(trim((string) ($validated['email'] ?? '')));
+        $phone = trim((string) ($validated['phone'] ?? ''));
+        $country = trim((string) ($validated['country'] ?? ''));
+
+        if ($businessName === '')
+        {
+            $businessName = trim($contactName.' '.$surname);
+        }
+
+        if ($businessName === '')
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('The client is required.'),
+            ], 422);
+        }
+
+        $team = $user->currentTeam;
+        $contact = $this->upsertBriefContact($user, [
+            'name' => $contactName !== '' ? $contactName : $businessName,
+            'surname' => $surname,
+            'email' => $email,
+            'phone' => $phone,
+            'country' => $country,
+        ]);
+
+        $enterprise = $email !== ''
+            ? Enterprise::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->first()
+            : null;
+
+        if (! $enterprise)
+        {
+            $enterprise = Enterprise::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'name' => $businessName,
+                'email' => $email !== '' ? $email : null,
+                'phone' => $phone !== '' ? $phone : null,
+                'country' => $country !== '' ? $country : null,
+                'type_id' => 1,
+                'status_id' => 1,
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+            ]);
+        }
+
+        if (! $contact->enterprises()->where('enterprises.id', $enterprise->id)->exists())
+        {
+            $contact->enterprises()->attach($enterprise->id, ['position' => 'Contact']);
+        }
+
+        if (! $contact->current_enterprise_id)
+        {
+            $contact->forceFill(['current_enterprise_id' => $enterprise->id])->save();
+        }
+
+        $categoryIds = Category::onlyExistingIds($validated['category_ids'] ?? []);
+        if ($categoryIds !== [])
+        {
+            $categoryIds = Category::query()
+                ->whereIn('id', $categoryIds)
+                ->where(function ($query) use ($team)
+                {
+                    $query->whereNull('team_id')->orWhere('team_id', $team->id);
+                })
+                ->pluck('id')
+                ->all();
+            $contact->categories()->sync($categoryIds);
+        }
+
+        return $enterprise;
+    }
+
+    /**
+     * @param  array{name: string, surname: string, email: string, phone: string, country: string}  $payload
+     */
+    private function upsertBriefContact(User $user, array $payload): Contact
+    {
+        $team = $user->currentTeam;
+        $email = $payload['email'];
+
+        $contact = $email !== ''
+            ? Contact::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->whereRaw('LOWER(email) = ?', [$email])
+                ->first()
+            : null;
+
+        $countryId = $this->resolveContactCountryId($payload['country']);
+
+        $attributes = [
+            'name' => $payload['name'],
+            'surname' => $payload['surname'] !== '' ? $payload['surname'] : null,
+            'phone' => $payload['phone'] !== '' ? $payload['phone'] : null,
+        ];
+        if ($countryId !== null)
+        {
+            $attributes['country'] = $countryId;
+        }
+
+        if ($contact)
+        {
+            $contact->fill($attributes)->save();
+
+            return $contact;
+        }
+
+        return Contact::withoutGlobalScopes()->create([
+            ...$attributes,
+            'team_id' => $team->id,
+            'email' => $email !== '' ? $email : null,
+            'status_id' => ContactStatus::query()->where('name', 'Lead')->value('id')
+                ?? ContactStatus::query()->value('id'),
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'data' => (object) [
+                'source' => 'estimator_app',
+                'captured_at' => now()->toIso8601String(),
+            ],
+        ]);
+    }
+
+    private function resolveContactCountryId(string $country): ?int
+    {
+        $code = strtolower(trim($country));
+        if ($code === '')
+        {
+            return null;
+        }
+
+        $id = Country::query()->whereRaw('LOWER(code) = ?', [$code])->value('id');
+
+        return $id !== null ? (int) $id : null;
     }
 
     private function assertEnterpriseInTeam(int $enterpriseId, int $teamId): ?JsonResponse

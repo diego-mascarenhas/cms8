@@ -52,6 +52,14 @@
 <script src="{{asset('assets/js/form-layouts.js')}}"></script>
 
 <script>
+    @php
+        $tokenPricingTeam = ($data->team ?? null) ?: auth()->user()?->currentTeam;
+        $tokenPricingService = app(\App\Services\ProjectBudgetSpecService::class)->applyTeamTokenPricing($tokenPricingTeam);
+    @endphp
+    var tokenInputRate = {{ $tokenPricingService->tokenInputRate() }};
+    var tokenOutputRate = {{ $tokenPricingService->tokenOutputRate() }};
+    var tokenBlendPerMillion = {{ $tokenPricingService->tokenBlendEurPerMillion() }};
+
     function autoResizeTextarea(el) {
         if (!el) return;
         el.style.height = 'auto';
@@ -300,7 +308,7 @@
         var tokens = resolveTaskTokens(t);
         var input = Math.round(tokens * 0.7);
         var output = Math.max(0, tokens - input);
-        var cost = (input / 1000000) * 11 + (output / 1000000) * 55;
+        var cost = (input / 1000000) * tokenInputRate + (output / 1000000) * tokenOutputRate;
         var savings = (savingsPercent != null && savingsPercent !== '') ? parseFloat(savingsPercent) : 57;
         if (isNaN(savings)) savings = 57;
         var remaining = Math.max(0.01, 1 - (savings / 100));
@@ -364,7 +372,7 @@
             if (parseInt(tokenConsumption.input_tokens, 10) > 0) input = parseInt(tokenConsumption.input_tokens, 10);
             if (parseInt(tokenConsumption.output_tokens, 10) > 0) output = parseInt(tokenConsumption.output_tokens, 10);
         }
-        var cost = (input / 1000000) * 11 + (output / 1000000) * 55;
+        var cost = (input / 1000000) * tokenInputRate + (output / 1000000) * tokenOutputRate;
         var savings = 57;
         if (tokenConsumption && typeof tokenConsumption === 'object' && tokenConsumption.savings_percent != null && tokenConsumption.savings_percent !== '') {
             savings = parseFloat(tokenConsumption.savings_percent) || 57;
@@ -442,7 +450,7 @@
         if (isNaN(savings) || savings < 0) savings = 57;
         if (savings > 99) savings = 99;
         var remainingFactor = Math.max(0.01, 1 - (savings / 100));
-        var blendPerMillion = 24.2;
+        var blendPerMillion = tokenBlendPerMillion;
         var maxDiscount = 30;
 
         var hoursValue = parseFloat(hours);
@@ -452,7 +460,7 @@
 
         var baseInput = Math.round(tokensBase * 0.7);
         var baseOutput = Math.max(0, tokensBase - baseInput);
-        var baseCost = (baseInput / 1000000) * 11 + (baseOutput / 1000000) * 55;
+        var baseCost = (baseInput / 1000000) * tokenInputRate + (baseOutput / 1000000) * tokenOutputRate;
         var baseBillable = Math.round((baseCost / remainingFactor) * 100) / 100;
 
         var originalLabor = parseFloat(unitPrice);
@@ -479,7 +487,7 @@
 
         var input = Math.round(tokens * 0.7);
         var output = Math.max(0, tokens - input);
-        var cost = (input / 1000000) * 11 + (output / 1000000) * 55;
+        var cost = (input / 1000000) * tokenInputRate + (output / 1000000) * tokenOutputRate;
         var tokenBillable = Math.round((cost / remainingFactor) * 100) / 100;
         var displayTokens = Math.round(tokens / remainingFactor);
 
