@@ -316,6 +316,15 @@ class TeamSettingController extends Controller
                 ]);
             }
 
+            if ($group === 'chat' && ! array_key_exists('whatsapp_allow_closed_window', $settings))
+            {
+                $team->setSetting('whatsapp_allow_closed_window', false, [
+                    'group' => 'chat',
+                    'type' => 'boolean',
+                    'is_encrypted' => false,
+                ]);
+            }
+
             if ($group === 'public_shop' && ! array_key_exists('public_catalog_enabled', $settings))
             {
                 $team->setSetting('public_catalog_enabled', false, [
@@ -932,6 +941,13 @@ class TeamSettingController extends Controller
                         'value' => $team->getSetting('chat_ai_assistance_blocked', false) ? '1' : '0',
                         'is_encrypted' => false,
                         'help' => __('If enabled, the chat AI toggle starts off for the team. Per-contact preferences still take priority (same as the chat sidebar).'),
+                    ],
+                    'whatsapp_allow_closed_window' => [
+                        'label' => __('Allow WhatsApp replies after 24 hours'),
+                        'type' => 'checkbox',
+                        'value' => $team->allowsClosedWhatsAppWindow() ? '1' : '0',
+                        'is_encrypted' => false,
+                        'help' => __('When enabled, the inbox can offer “Reply anyway” after the customer-service window closes. The sender accepts responsibility. Default is on.'),
                     ],
                     'assistant_whatsapp_blacklist_numbers' => [
                         'label' => __('WhatsApp auto-reply blacklist numbers'),

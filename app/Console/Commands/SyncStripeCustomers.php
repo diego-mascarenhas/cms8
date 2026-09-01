@@ -127,6 +127,14 @@ class SyncStripeCustomers extends Command
 
                     if (! $team->stripe_id)
                     {
+                        if ($this->otherTeamOwnsStripeCustomer($customer->id, $team->id))
+                        {
+                            $this->warn("  ⚠️  Customer {$customer->id} already belongs to another team");
+                            $stats['skipped']++;
+
+                            continue;
+                        }
+
                         if (! $isDryRun)
                         {
                             $team->stripe_id = $customer->id;
@@ -198,6 +206,14 @@ class SyncStripeCustomers extends Command
 
             return Command::FAILURE;
         }
+    }
+
+    protected function otherTeamOwnsStripeCustomer(string $customerId, int $exceptTeamId): bool
+    {
+        return Team::query()
+            ->where('stripe_id', $customerId)
+            ->where('id', '!=', $exceptTeamId)
+            ->exists();
     }
 
     /**
@@ -309,6 +325,13 @@ class SyncStripeCustomers extends Command
                 // User has a team, update it with stripe_id if it doesn't have one
                 if (! $existingUserTeam->stripe_id)
                 {
+                    if ($this->otherTeamOwnsStripeCustomer($customer->id, $existingUserTeam->id))
+                    {
+                        $this->warn("  ⚠️  Customer {$customer->id} already belongs to another team");
+
+                        return $existingUserTeam;
+                    }
+
                     $existingUserTeam->stripe_id = $customer->id;
                     $existingUserTeam->save();
                     $this->line('  ✅ Updated existing team with stripe_id');

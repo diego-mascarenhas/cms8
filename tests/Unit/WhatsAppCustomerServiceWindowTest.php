@@ -51,8 +51,26 @@ class WhatsAppCustomerServiceWindowTest extends TestCase
         $described = app(WhatsAppCustomerServiceWindow::class)->describe('5491112345678');
 
         $this->assertTrue($described['open']);
+        $this->assertTrue($described['allow_override']);
         $this->assertSame($at->toIso8601String(), $described['last_inbound_at']);
         $this->assertFalse(app(WhatsAppCustomerServiceWindow::class)->describe('54900000000')['open']);
+    }
+
+    public function test_human_override_is_on_by_default(): void
+    {
+        $window = app(WhatsAppCustomerServiceWindow::class);
+
+        $this->assertTrue($window->allowsHumanOverride());
+    }
+
+    public function test_accepted_override_skips_closed_window(): void
+    {
+        $this->createInbound('5491112345678', now()->subHours(25));
+        $window = app(WhatsAppCustomerServiceWindow::class);
+        $window->acceptClosedWindowForRequest();
+
+        $window->assertOpen('5491112345678');
+        $this->assertFalse($window->isOpen('5491112345678'));
     }
 
     public function test_can_be_disabled_from_config(): void

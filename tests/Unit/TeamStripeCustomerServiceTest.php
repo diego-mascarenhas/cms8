@@ -63,6 +63,43 @@ class TeamStripeCustomerServiceTest extends TestCase
         $this->assertNull($team->fresh()->stripe_id);
     }
 
+    public function test_persist_customer_id_does_not_steal_another_teams_customer(): void
+    {
+        $ownerA = User::factory()->create();
+        $ownerB = User::factory()->create();
+        $teamA = Team::factory()->create([
+            'user_id' => $ownerA->id,
+            'stripe_id' => 'cus_owned_by_a',
+        ]);
+        $teamB = Team::factory()->create([
+            'user_id' => $ownerB->id,
+            'stripe_id' => null,
+        ]);
+
+        app(TeamStripeCustomerService::class)
+            ->persistStripeCustomerIdForCategory($teamB, '', 'cus_owned_by_a');
+
+        $this->assertNull($teamB->fresh()->stripe_id);
+        $this->assertSame('cus_owned_by_a', $teamA->fresh()->stripe_id);
+    }
+
+    public function test_stripe_id_is_unique_across_teams(): void
+    {
+        $ownerA = User::factory()->create();
+        $ownerB = User::factory()->create();
+        Team::factory()->create([
+            'user_id' => $ownerA->id,
+            'stripe_id' => 'cus_unique_guard',
+        ]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        Team::factory()->create([
+            'user_id' => $ownerB->id,
+            'stripe_id' => 'cus_unique_guard',
+        ]);
+    }
+
     public function test_get_customer_id_reads_team_stripe_id_even_when_category_setting_exists(): void
     {
         $owner = User::factory()->create();

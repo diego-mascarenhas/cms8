@@ -4,10 +4,15 @@ namespace App\Services\WhatsApp;
 
 use App\Exceptions\WhatsAppSessionWindowClosedException;
 use App\Models\Conversation;
+use App\Models\Team;
 use Carbon\Carbon;
 
 class WhatsAppCustomerServiceWindow
 {
+    public const SETTING_KEY = 'whatsapp_allow_closed_window';
+
+    public const REQUEST_ATTRIBUTE = 'whatsapp_accept_closed_window';
+
     public function isOpen(string $customerPhone): bool
     {
         if (! $this->enabled())
@@ -47,16 +52,39 @@ class WhatsAppCustomerServiceWindow
 
     public function assertOpen(string $customerPhone): void
     {
-        if (! $this->isOpen($customerPhone))
+        if ($this->isOpen($customerPhone))
         {
-            throw new WhatsAppSessionWindowClosedException;
+            return;
         }
+
+        if (request()->attributes->get(self::REQUEST_ATTRIBUTE) && $this->allowsHumanOverride())
+        {
+            return;
+        }
+
+        throw new WhatsAppSessionWindowClosedException;
+    }
+
+    public function acceptClosedWindowForRequest(): void
+    {
+        request()->attributes->set(self::REQUEST_ATTRIBUTE, true);
+    }
+
+    public function allowsHumanOverride(?Team $team = null): bool
+    {
+        $team ??= auth()->user()?->currentTeam;
+        if (! $team)
+        {
+            return true;
+        }
+
+        return $team->allowsClosedWhatsAppWindow();
     }
 
     /**
-     * @return array{open: bool, last_inbound_at: string|null}
+     * @return array{open: bool, last_inbound_at: string|null, allow_override: bool}
      */
-    public function describe(string $customerPhone): array
+    public function describe(string $customerPhone, ?Team $team = null): array
     {
         $lastInboundAt = $this->lastInboundAt($customerPhone);
 
@@ -65,6 +93,7 @@ class WhatsAppCustomerServiceWindow
                 ? ($lastInboundAt !== null && $lastInboundAt->gt($this->closesAfter()))
                 : true,
             'last_inbound_at' => $lastInboundAt?->toIso8601String(),
+            'allow_override' => $this->allowsHumanOverride($team),
         ];
     }
 

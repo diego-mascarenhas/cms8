@@ -36,6 +36,7 @@ class TeamSettingsChatTogglesTest extends TestCase
         $this->assertStringContainsString('name="chat[assistant_chat_stub]"', $html);
         $this->assertStringContainsString('name="chat[assistant_keyword_intent_routing]"', $html);
         $this->assertStringContainsString('name="chat[chat_ai_assistance_blocked]"', $html);
+        $this->assertStringContainsString('name="chat[whatsapp_allow_closed_window]"', $html);
 
         $pAuto = str_contains($html, 'name="chat[assistant_auto_respond]"')
             ? strpos($html, 'name="chat[assistant_auto_respond]"') : 0;
