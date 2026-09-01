@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Team;
+use Illuminate\Support\Facades\Log;
 
 class TeamStripeCustomerService
 {
@@ -54,6 +55,22 @@ class TeamStripeCustomerService
         $customerId = trim($customerId);
         if ($customerId === '')
         {
+            return;
+        }
+
+        $ownerTeam = Team::query()
+            ->where('stripe_id', $customerId)
+            ->where('id', '!=', $team->id)
+            ->first();
+
+        if ($ownerTeam)
+        {
+            Log::warning('Refusing to attach Stripe customer already owned by another team', [
+                'team_id' => $team->id,
+                'owner_team_id' => $ownerTeam->id,
+                'stripe_id' => $customerId,
+            ]);
+
             return;
         }
 
