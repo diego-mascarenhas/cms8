@@ -272,14 +272,16 @@ class TeamBillingDataService
         }
 
         $customerName = trim((string) ($customer->name ?? ''));
-        if ($customerName !== '' && strcasecmp($customerName, $individualName) !== 0)
+        $teamName = trim((string) $team->name);
+        if ($customerName !== ''
+            && strcasecmp($customerName, $individualName) !== 0
+            && strcasecmp($customerName, $teamName) !== 0)
         {
             return $customerName;
         }
 
         return $this->firstFilled([
             $team->getDecodedBusinessConfig()['business_name'] ?? null,
-            $team->name,
         ]);
     }
 

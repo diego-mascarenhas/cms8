@@ -46,7 +46,18 @@ class TeamBillingBusinessNameTest extends TestCase
             'business_name' => '',
         ]);
 
-        $this->assertSame('Equipo', $this->service()->resolveBusinessName($team, $customer, 'Diego Mascarenhas'));
+        $this->assertSame('', $this->service()->resolveBusinessName($team, $customer, 'Diego Mascarenhas'));
+    }
+
+    public function test_does_not_use_team_name_as_business_name(): void
+    {
+        $team = $this->team("1611's Team");
+        $customer = $this->customer([
+            'name' => "1611's Team",
+            'business_name' => '',
+        ]);
+
+        $this->assertSame('', $this->service()->resolveBusinessName($team, $customer, 'Diego Mascarenhas'));
     }
 
     public function test_falls_back_to_team_business_config(): void
