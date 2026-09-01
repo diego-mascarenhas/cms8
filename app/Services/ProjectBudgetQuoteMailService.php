@@ -31,10 +31,27 @@ class ProjectBudgetQuoteMailService
         $project->loadMissing(['enterprise.contacts', 'team']);
         $this->assertReadyToSend($project);
 
+        $previousStatus = (int) $project->status_id;
         $project->status_id = ProjectStatus::STATUS_AUTHORIZED;
         $project->save();
 
-        return $this->sendQuoteEmail($project->fresh(['enterprise.contacts', 'team']), $sender);
+        try
+        {
+            return $this->sendQuoteEmail($project->fresh(['enterprise.contacts', 'team']), $sender);
+        } catch (RuntimeException $e)
+        {
+            $project->refresh();
+            if ((int) $project->status_id === ProjectStatus::STATUS_AUTHORIZED
+                && empty(data_get($project->data, 'budget_email.sent_at')))
+            {
+                $project->status_id = $previousStatus === ProjectStatus::STATUS_AUTHORIZED
+                    ? ProjectStatus::STATUS_BUDGETED
+                    : $previousStatus;
+                $project->save();
+            }
+
+            throw $e;
+        }
     }
 
     /**
@@ -106,7 +123,40 @@ class ProjectBudgetQuoteMailService
         $from = $ready['from'];
 
         $trackingToken = Str::random(48);
-        $previewUrl = route('project.budget-preview', $previewToken);
+        $previewUrl = \App\Support\BudgetPreviewUrl::forToken($previewToken)
+            ?? route('project.budget-preview', $previewToken);
+
+        $mail = new ProjectBudgetQuoteMail(
+            project: $project->fresh(['enterprise', 'team']),
+            recipientName: $recipientName !== '' ? $recipientName : $recipientEmail,
+            previewUrl: $previewUrl,
+            trackingToken: $trackingToken,
+        );
+
+        $mail->from($from['from_address'], $from['from_name']);
+
+        $mailer = (string) config('mail.default');
+        if (! app()->runningUnitTests() && in_array($mailer, ['log', 'array'], true))
+        {
+            throw new RuntimeException(__('Mail is set to :mailer, so the quote was not delivered to an inbox. Configure SMTP and try again.', [
+                'mailer' => $mailer,
+            ]));
+        }
+
+        try
+        {
+            Mail::to($recipientEmail, $recipientName !== '' ? $recipientName : null)->send($mail);
+        } catch (\Throwable $e)
+        {
+            Log::error('Project budget quote email failed', [
+                'project_id' => $project->id,
+                'to' => $recipientEmail,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new RuntimeException(__('The quote email could not be sent. Check mail settings and try again.'), 0, $e);
+        }
+
         $data = $project->data ?? [];
         $data['budget_email'] = [
             'tracking_token' => $trackingToken,
@@ -121,17 +171,6 @@ class ProjectBudgetQuoteMailService
 
         $project->data = $data;
         $project->save();
-
-        $mail = new ProjectBudgetQuoteMail(
-            project: $project->fresh(['enterprise', 'team']),
-            recipientName: $recipientName !== '' ? $recipientName : $recipientEmail,
-            previewUrl: $previewUrl,
-            trackingToken: $trackingToken,
-        );
-
-        $mail->from($from['from_address'], $from['from_name']);
-
-        Mail::to($recipientEmail, $recipientName !== '' ? $recipientName : null)->send($mail);
 
         return $project->fresh(['status', 'enterprise.contacts']);
     }
@@ -246,7 +285,9 @@ class ProjectBudgetQuoteMailService
 
         $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
 
-        return $previewToken !== '' ? route('project.budget-preview', $previewToken) : null;
+        return $previewToken !== ''
+            ? (\App\Support\BudgetPreviewUrl::forToken($previewToken) ?? route('project.budget-preview', $previewToken))
+            : null;
     }
 
     public function countSentForTeam(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): int

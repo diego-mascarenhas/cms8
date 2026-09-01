@@ -8,6 +8,7 @@ use App\Models\Country;
 use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\Project;
+use App\Models\ProjectStatus;
 use App\Models\User;
 use App\Services\ProjectBudgetSpecService;
 use Database\Seeders\ContactStatusSeeder;
@@ -424,6 +425,117 @@ class ProjectApiTest extends TestCase
             ->postJson('/api/projects/from-brief', [
                 'enterprise_id' => $foreign->id,
                 'brief' => 'Landing corporativa con blog y formulario de contacto.',
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('success', false);
+    }
+
+    public function test_can_rename_quote_title_for_public_preview(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Estudio Norte',
+            'real_name' => 'Estudio Norte',
+            'responsible_id' => $user->id,
+            'status_id' => ProjectStatus::STATUS_BUDGETED,
+            'data' => [
+                'budget_preview_token' => 'renameToken'.bin2hex(random_bytes(8)),
+            ],
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/projects/'.$project->id, [
+                'name' => 'Sitio WordPress institucional',
+                'real_name' => 'Sitio WordPress institucional',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Sitio WordPress institucional')
+            ->assertJsonPath('data.real_name', 'Sitio WordPress institucional');
+
+        $this->getJson('/api/projects/funnel/budget/'.data_get($project->fresh()->data, 'budget_preview_token'))
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Sitio WordPress institucional')
+            ->assertJsonPath('data.client_name', 'API Client');
+    }
+
+    public function test_regenerate_budget_keeps_original_brief_and_appends_note(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Landing ACME',
+            'responsible_id' => $user->id,
+            'status_id' => ProjectStatus::STATUS_BUDGETED,
+            'data' => [
+                'budget_given' => 'Landing corporativa con blog y formulario.',
+                'budget_preview_token' => 'regenToken'.bin2hex(random_bytes(8)),
+                'suggested_tasks' => [
+                    [
+                        'title' => 'Diseño',
+                        'estimated_hours' => 8,
+                        'resource_level' => 'Senior',
+                        'unit_price' => 800,
+                        'included' => true,
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')
+                ->once()
+                ->withArgs(function (string $prompt): bool
+                {
+                    return str_contains($prompt, 'Landing corporativa con blog y formulario.')
+                        && str_contains($prompt, 'Sumar app iOS nativa');
+                })
+                ->andReturn($this->fakeBudgetSpec());
+        });
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/regenerate-budget', [
+                'note' => 'Sumar app iOS nativa',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.data.budget_given', 'Landing corporativa con blog y formulario.')
+            ->assertJsonPath('data.data.estimate_notes.0.note', 'Sumar app iOS nativa')
+            ->assertJsonPath('data.data.suggested_tasks.0.title', 'Diseño')
+            ->assertJsonPath('data.status_id', ProjectStatus::STATUS_BUDGETED);
+    }
+
+    public function test_regenerate_budget_rejects_accepted_quote(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Accepted quote',
+            'responsible_id' => $user->id,
+            'status_id' => ProjectStatus::STATUS_APPROVED,
+            'data' => [
+                'budget_given' => 'Landing original',
+                'budget_preview_token' => 'acceptedToken'.bin2hex(random_bytes(8)),
+                'budget_client_response' => ['status' => 'accepted'],
+            ],
+        ]);
+
+        $this->partialMock(ProjectBudgetSpecService::class, function ($mock)
+        {
+            $mock->shouldReceive('generate')->never();
+        });
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/projects/'.$project->id.'/regenerate-budget', [
+                'note' => 'Sumar app iOS nativa',
             ])
             ->assertStatus(422)
             ->assertJsonPath('success', false);

@@ -1135,6 +1135,87 @@ class ProjectFunnelController extends Controller
         ]);
     }
 
+    public function showPublicBudget(string $token): JsonResponse
+    {
+        $project = $this->findProjectByBudgetPreviewToken($token);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->budgetSpecService->publicPreview($project),
+        ]);
+    }
+
+    public function acceptPublicBudget(\App\Http\Requests\AcceptProjectBudgetPreviewRequest $request, string $token): JsonResponse
+    {
+        $project = $this->findProjectByBudgetPreviewToken($token);
+        $existing = data_get($project->data, 'budget_client_response.status');
+        if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('This quote was already answered.'),
+            ], 422);
+        }
+
+        $data = $project->data ?? [];
+        $data['budget_client_response'] = [
+            'status' => 'accepted',
+            'accepted_by_name' => $request->validated('accepted_by_name'),
+            'accept_debit' => $request->boolean('accept_debit'),
+            'message' => null,
+            'responded_at' => now()->toIso8601String(),
+            'ip' => $request->ip(),
+        ];
+        $project->data = $data;
+        $project->status_id = \App\Models\ProjectStatus::STATUS_APPROVED;
+        $project->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Thank you. The quote was accepted. The project will not start until 30% of the payment is received.'),
+            'data' => $this->budgetSpecService->publicPreview($project->fresh(['enterprise', 'team'])),
+        ]);
+    }
+
+    public function reformulatePublicBudget(\App\Http\Requests\ReformulateProjectBudgetPreviewRequest $request, string $token): JsonResponse
+    {
+        $project = $this->findProjectByBudgetPreviewToken($token);
+        $existing = data_get($project->data, 'budget_client_response.status');
+        if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('This quote was already answered.'),
+            ], 422);
+        }
+
+        $data = $project->data ?? [];
+        $data['budget_client_response'] = [
+            'status' => 'reformulation_requested',
+            'accepted_by_name' => $request->validated('name'),
+            'message' => $request->validated('message'),
+            'responded_at' => now()->toIso8601String(),
+            'ip' => $request->ip(),
+        ];
+        $project->data = $data;
+        $project->status_id = \App\Models\ProjectStatus::STATUS_WAITING_FOR_RESPONSE;
+        $project->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Thanks. We received your reformulation request and will review it shortly.'),
+            'data' => $this->budgetSpecService->publicPreview($project->fresh(['enterprise', 'team'])),
+        ]);
+    }
+
+    private function findProjectByBudgetPreviewToken(string $token): Project
+    {
+        return Project::withoutGlobalScopes()
+            ->with(['enterprise', 'team'])
+            ->where('data->budget_preview_token', $token)
+            ->firstOrFail();
+    }
+
     private function resolveLeadContactStatusId(): ?int
     {
         $id = ContactStatus::query()->where('name', 'Lead')->value('id')
@@ -1193,11 +1274,6 @@ class ProjectFunnelController extends Controller
             ];
         }
 
-        $previewUrl = route('project.budget-preview', $token, true);
-
-        return [
-            'preview_url' => $previewUrl,
-            'download_url' => $previewUrl.'?download=1',
-        ];
+        return \App\Support\BudgetPreviewUrl::pair($token);
     }
 }

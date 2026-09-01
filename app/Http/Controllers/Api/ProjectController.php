@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\AuthorizeProjectBudgetRequest;
+use App\Http\Requests\Api\RegenerateProjectBudgetRequest;
 use App\Http\Requests\Api\StoreProjectApiRequest;
 use App\Http\Requests\Api\StoreProjectFromBriefRequest;
 use App\Http\Requests\Api\UpdateProjectApiRequest;
@@ -484,6 +485,79 @@ class ProjectController extends Controller
             $project,
             $budgetService,
             __('Quote authorized and emailed to the enterprise contact.'),
+        ));
+    }
+
+    /**
+     * Generate a new estimate from extra notes without replacing the original brief.
+     */
+    public function regenerateBudget(
+        RegenerateProjectBudgetRequest $request,
+        string $id,
+        ProjectBudgetSpecService $budgetService,
+    ): JsonResponse {
+        $user = $request->user();
+        if (! $user?->currentTeam)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Usuario no autenticado o sin equipo',
+            ], 401);
+        }
+
+        $project = Project::with(['enterprise', 'team', 'status', 'client', 'responsible'])->findOrFail($id);
+        $this->authorize('update', $project);
+        if (data_get($project->data, 'budget_client_response.status') === 'accepted' || $project->isBudgetApproved())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('This quote was already answered.'),
+            ], 422);
+        }
+
+        try
+        {
+            $spec = $budgetService->regenerateWithAddedContext($project, (string) $request->validated('note'), $user);
+        } catch (RuntimeException $e)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], 422);
+        }
+
+        $includedTasks = is_array($spec['suggested_tasks'] ?? null) ? $spec['suggested_tasks'] : [];
+        $data = (array) ($project->data ?? []);
+        $originalBrief = trim((string) ($data['budget_given'] ?? ''));
+        $data = array_merge($data, [
+            'budget_given' => $originalBrief !== '' ? $originalBrief : (string) ($spec['budget_given'] ?? ''),
+            'ai_interpretation' => $spec['ai_interpretation'] ?? ($data['ai_interpretation'] ?? ''),
+            'dimension' => $spec['dimension'] ?? ($data['dimension'] ?? ''),
+            'estimated_times' => $spec['estimated_times'] ?? ($data['estimated_times'] ?? ''),
+            'resources' => $spec['resources'] ?? ($data['resources'] ?? ''),
+            'token_consumption' => $spec['token_consumption'] ?? ($data['token_consumption'] ?? null),
+            'suggested_tasks' => $includedTasks,
+            'estimate_notes' => $spec['estimate_notes'] ?? ($data['estimate_notes'] ?? []),
+            'budget_preview_token' => $data['budget_preview_token'] ?? \Illuminate\Support\Str::random(48),
+        ]);
+        if (($data['budget_client_response']['status'] ?? null) === 'reformulation_requested')
+        {
+            unset($data['budget_client_response']);
+        }
+
+        $price = collect($includedTasks)->sum(fn ($task) => (float) ($task['unit_price'] ?? 0));
+        $project->fill([
+            'description' => $spec['ai_interpretation'] ?? $project->description,
+            'data' => $data,
+            'price' => $price > 0 ? $price : $project->price,
+            'status_id' => ProjectStatus::STATUS_BUDGETED,
+        ])->save();
+        $project->load(['client', 'responsible', 'status', 'board']);
+
+        return response()->json($this->projectBudgetResponse(
+            $project,
+            $budgetService,
+            __('New estimate generated. The original brief was kept and your note was added to the context.'),
         ));
     }
 
@@ -1028,12 +1102,7 @@ class ProjectController extends Controller
             ];
         }
 
-        $previewUrl = route('project.budget-preview', $token, true);
-
-        return [
-            'preview_url' => $previewUrl,
-            'download_url' => $previewUrl.'?download=1',
-        ];
+        return \App\Support\BudgetPreviewUrl::pair($token);
     }
 
     /**

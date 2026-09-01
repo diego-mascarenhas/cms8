@@ -1438,6 +1438,192 @@ class ProjectBudgetSpecService
         );
     }
 
+    /**
+     * Client-facing quote preview for the estimator frontend.
+     *
+     * @return array<string, mixed>
+     */
+    public function publicPreview(Project $project): array
+    {
+        $project->loadMissing(['enterprise', 'team']);
+        $this->applyTeamTokenPricing($project->team);
+
+        $token = trim((string) data_get($project->data, 'budget_preview_token', ''));
+        $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+        $discriminateTokens = $this->showsTokenLines();
+        $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
+        $aiUsage = $this->normalizeAiUsagePercent(
+            data_get($project->data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT),
+        );
+
+        $rows = [];
+        $totalLabor = 0.0;
+        $totalTokenBillable = 0.0;
+        $totalHours = 0.0;
+        $totalDisplayTokens = 0;
+
+        foreach ($suggestedTasks as $task)
+        {
+            if (! is_array($task) || (($task['included'] ?? true) === false))
+            {
+                continue;
+            }
+
+            $hours = isset($task['estimated_hours']) && is_numeric($task['estimated_hours'])
+                ? (float) $task['estimated_hours']
+                : 0.0;
+            $price = isset($task['unit_price']) && $task['unit_price'] !== '' && $task['unit_price'] !== null
+                ? (float) $task['unit_price']
+                : null;
+            $balanced = $this->applyHoursTokensBalance(
+                $price,
+                $hours,
+                $this->resolveEstimatedTokens($task),
+                $savings,
+                $aiUsage,
+            );
+            $rounded = $this->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
+            $laborCharged = $rounded['labor'];
+            $hoursCharged = $rounded['hours'];
+            $billable = $balanced['token_billable'];
+            $displayTokens = $balanced['display_tokens'];
+
+            if ($laborCharged !== null)
+            {
+                $totalLabor += $laborCharged;
+            }
+            $totalTokenBillable += $billable;
+            $totalHours += $hoursCharged;
+            $totalDisplayTokens += $displayTokens;
+
+            $laborDisplay = $laborCharged ?? 0.0;
+            if (! $discriminateTokens)
+            {
+                $laborDisplay += $billable;
+            }
+
+            $rows[] = [
+                'title' => (string) ($task['title'] ?? '—'),
+                'hours' => Helpers::formatHoursHuman($hoursCharged, true),
+                'level' => trim((string) ($task['resource_level'] ?? '')) ?: '—',
+                'labor' => ($laborCharged !== null || $billable > 0) ? $this->formatEuros($laborDisplay) : '—',
+                'tokens' => ($displayTokens > 0 || $billable > 0) ? $this->formatTokenCount($displayTokens) : '—',
+                'token_cost' => ($displayTokens > 0 || $billable > 0) ? $this->formatEuros($billable) : '—',
+            ];
+        }
+
+        $grandTotal = (int) round($totalLabor + $totalTokenBillable);
+        $discountPercent = is_numeric($project->discount) ? max(0.0, min(100.0, (float) $project->discount)) : 0.0;
+        $laborDiscountAmount = round($totalLabor * ($discountPercent / 100), 2);
+        $discountedLabor = round($totalLabor - $laborDiscountAmount, 2);
+        $discountedTotal = (int) round($discountedLabor + $totalTokenBillable);
+        $payableTotal = $discountPercent > 0 ? $discountedTotal : $grandTotal;
+        $clientResponse = is_array(data_get($project->data, 'budget_client_response'))
+            ? data_get($project->data, 'budget_client_response')
+            : null;
+        $responseStatus = is_array($clientResponse) ? ($clientResponse['status'] ?? null) : null;
+        $quoteAccepted = $project->isBudgetApproved() || $responseStatus === 'accepted';
+        $quoteClosed = $quoteAccepted || $responseStatus === 'reformulation_requested';
+
+        return [
+            'token' => $token,
+            'name' => trim((string) ($project->real_name ?: $project->name)),
+            'client_name' => trim((string) (optional($project->enterprise)->name ?? '')),
+            'dimension' => trim((string) data_get($project->data, 'dimension', '')),
+            'estimated_times' => trim((string) data_get($project->data, 'estimated_times', '')),
+            'resources' => trim((string) data_get($project->data, 'resources', '')),
+            'discriminate_tokens' => $discriminateTokens,
+            'rows' => $rows,
+            'totals' => [
+                'labor' => $this->formatEuros($discriminateTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
+                'tokens' => $totalDisplayTokens > 0 ? $this->formatTokenCount($totalDisplayTokens) : '—',
+                'token_cost' => $this->formatEuros($totalTokenBillable),
+                'subtotal' => $this->formatEuros($grandTotal),
+                'discount_percent' => $discountPercent,
+                'discount_amount' => $this->formatEuros($laborDiscountAmount),
+                'total' => $this->formatEuros($payableTotal),
+                'deposit' => $this->formatEuros((int) round($payableTotal * 0.30)),
+                'remaining' => $this->formatEuros(max(0, $payableTotal - (int) round($payableTotal * 0.30))),
+                'weeks' => $totalHours > 0 ? (int) ceil($totalHours / 40) : 0,
+            ],
+            'client_response' => $clientResponse,
+            'quote_closed' => $quoteClosed,
+            'quote_accepted' => $quoteAccepted,
+            'estimate_notes' => is_array(data_get($project->data, 'estimate_notes'))
+                ? data_get($project->data, 'estimate_notes')
+                : [],
+        ];
+    }
+
+    /**
+     * Generate a new estimate using the original brief plus extra notes.
+     *
+     * @return array<string, mixed>
+     */
+    public function regenerateWithAddedContext(Project $project, string $note, ?User $user = null): array
+    {
+        $note = trim($note);
+        if ($note === '')
+        {
+            throw new RuntimeException(__('Describe what should change in the new estimate.'));
+        }
+
+        $project->loadMissing('team');
+        $history = is_array(data_get($project->data, 'estimate_notes'))
+            ? data_get($project->data, 'estimate_notes')
+            : [];
+        $brief = trim((string) data_get($project->data, 'budget_given', $project->description ?? ''));
+        $tasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
+
+        $prompt = $brief !== '' ? $brief : (string) $project->name;
+        if ($tasks !== [])
+        {
+            $prompt .= "\n\n---\nEstimación actual (ajustar, no empezar de cero):\n";
+            foreach ($tasks as $task)
+            {
+                if (! is_array($task) || (($task['included'] ?? true) === false))
+                {
+                    continue;
+                }
+                $prompt .= '- '.trim((string) ($task['title'] ?? 'Tarea'));
+                $hours = $task['estimated_hours'] ?? '';
+                if ($hours !== '' && $hours !== null)
+                {
+                    $prompt .= ' ('.$hours.' h)';
+                }
+                $prompt .= "\n";
+            }
+        }
+        if ($history !== [])
+        {
+            $prompt .= "\n---\nNotas anteriores:\n";
+            foreach ($history as $entry)
+            {
+                $text = is_array($entry) ? trim((string) ($entry['note'] ?? '')) : trim((string) $entry);
+                if ($text !== '')
+                {
+                    $prompt .= '- '.$text."\n";
+                }
+            }
+        }
+        $prompt .= "\n---\nNueva indicación (sumar al contexto, no reemplazar el brief original):\n".$note;
+
+        $spec = $this->generate($prompt, $project->team, $user);
+        $history[] = [
+            'note' => $note,
+            'at' => now()->toIso8601String(),
+        ];
+        $spec['estimate_notes'] = $history;
+        $spec['budget_given'] = $brief !== '' ? $brief : $prompt;
+
+        return $spec;
+    }
+
+    private function formatEuros(float|int $amount): string
+    {
+        return number_format((float) $amount, 2, ',', '.').' €';
+    }
+
     private function getDefaultBudgetSpecPrompt(): string
     {
         return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (short explanation of the section), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";

@@ -133,6 +133,7 @@ Route::prefix('projects/funnel')->group(function ()
         Route::get('requirements', [ProjectFunnelController::class, 'requirements'])->name('api.projects.funnel.requirements');
         Route::get('strategy-tips', [ProjectFunnelController::class, 'strategyTips'])->name('api.projects.funnel.strategy-tips');
         Route::get('quote/status', [ProjectFunnelController::class, 'quoteStatus'])->name('api.projects.funnel.quote.status');
+        Route::get('budget/{token}', [ProjectFunnelController::class, 'showPublicBudget'])->name('api.projects.funnel.budget.show');
     });
 
     Route::middleware('throttle:30,1')->group(function ()
@@ -142,6 +143,8 @@ Route::prefix('projects/funnel')->group(function ()
         Route::post('guide', [ProjectFunnelController::class, 'guide'])->name('api.projects.funnel.guide');
         Route::post('quote', [ProjectFunnelController::class, 'quote'])->name('api.projects.funnel.quote');
         Route::post('submit', [ProjectFunnelController::class, 'submit'])->name('api.projects.funnel.submit');
+        Route::post('budget/{token}/accept', [ProjectFunnelController::class, 'acceptPublicBudget'])->name('api.projects.funnel.budget.accept');
+        Route::post('budget/{token}/reformulate', [ProjectFunnelController::class, 'reformulatePublicBudget'])->name('api.projects.funnel.budget.reformulate');
     });
 });
 
@@ -736,6 +739,8 @@ Route::middleware('auth.api')->group(function ()
     Route::get('projects/{id}', [ProjectController::class, 'show']);
     Route::post('projects/{id}/authorize-budget', [ProjectController::class, 'authorizeBudget'])
         ->name('api.projects.authorize-budget');
+    Route::post('projects/{id}/regenerate-budget', [ProjectController::class, 'regenerateBudget'])
+        ->name('api.projects.regenerate-budget');
     Route::put('projects/{id}', [ProjectController::class, 'update']);
     Route::patch('projects/{id}', [ProjectController::class, 'update']);
     Route::delete('projects/{id}', [ProjectController::class, 'destroy']);

@@ -39,6 +39,7 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+        config(['projects.budget_preview_base_url' => null]);
     }
 
     public function test_show_includes_public_budget_urls(): void
@@ -55,6 +56,19 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
             ->assertJsonPath('download_url', route('project.budget-preview', $previewToken, true).'?download=1');
 
         $this->assertSame($user->id, $project->responsible_id);
+    }
+
+    public function test_show_uses_frontend_preview_url_when_configured(): void
+    {
+        config(['projects.budget_preview_base_url' => 'https://estimator.idoneo.dev']);
+
+        [, $project, , $token] = $this->createBudgetProject();
+        $previewToken = data_get($project->data, 'budget_preview_token');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id)
+            ->assertOk()
+            ->assertJsonPath('preview_url', 'https://estimator.idoneo.dev/p/budget/'.$previewToken);
     }
 
     public function test_budget_status_can_be_authorized_and_emailed(): void
