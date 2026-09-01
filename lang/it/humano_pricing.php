@@ -185,6 +185,15 @@ return [
                 'Fatturazione condivisa con le altre app Idoneo',
             ],
         ],
+        'fanyion' => [
+            'name' => 'Humano.app innovazione',
+            'description' => 'Sistema di innovazione organizzativa. Il piano è gratis; si fatturano solo i token IA.',
+            'features' => [
+                'Proposte, sfide e collaborazione assistita da IA',
+                'Piano a 0 €; la carta serve solo a fatturare i token',
+                'Fatturazione condivisa con le altre app Idoneo',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',

@@ -185,6 +185,15 @@ return [
                 'Shared billing with the rest of your Idoneo apps',
             ],
         ],
+        'fanyion' => [
+            'name' => 'Humano.app innovation',
+            'description' => 'Organizational innovation system. The plan is free; only AI tokens are billed.',
+            'features' => [
+                'Proposals, challenges, and AI-assisted collaboration',
+                '0 € plan; the card is only for token invoices',
+                'Shared billing with the rest of your Idoneo apps',
+            ],
+        ],
     ],
     'checkout_complete_success' => 'Welcome! Your workspace is ready.',
     'checkout_complete_invalid_session' => 'We could not confirm this payment. Please open the link from your Stripe receipt or contact support.',

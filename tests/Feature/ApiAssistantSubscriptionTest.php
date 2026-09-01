@@ -161,6 +161,49 @@ class ApiAssistantSubscriptionTest extends TestCase
         );
     }
 
+    public function test_innovation_catalog_is_free_and_ready_for_token_billing(): void
+    {
+        [, , $token] = $this->assistantUserWithToken();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=innovation');
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('data.plan.id', 'fanyion');
+        $response->assertJsonPath('data.plan.monthly_amount', '0');
+        $response->assertJsonPath('data.plan.yearly_amount', '0');
+        $response->assertJsonPath('data.plan.checkout_available', true);
+        $response->assertJsonPath('data.can_checkout', true);
+        $response->assertJsonPath('data.subscription', null);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
+    }
+
+    public function test_fanyion_checkout_does_not_require_a_stripe_price(): void
+    {
+        [, $team] = $this->assistantUserWithToken();
+
+        $result = app(AssistantSubscriptionService::class)->createCheckout(
+            $team,
+            'monthly',
+            'https://fanyion.test/admin/plan-and-billing',
+            'https://fanyion.test/admin/plan-and-billing',
+            'fanyion',
+        );
+
+        if ($result['success'])
+        {
+            $this->assertNotEmpty($result['url'] ?? null);
+
+            return;
+        }
+
+        $this->assertStringNotContainsString(
+            'precio de Stripe configurado',
+            (string) ($result['message'] ?? ''),
+        );
+    }
+
     public function test_subscription_usage_starts_at_first_use_not_trial_clock(): void
     {
         [, $team, $token] = $this->assistantUserWithToken();

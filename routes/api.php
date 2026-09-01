@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AdPlatformConnectionController as ApiAdPlatformConnectionController;
 use App\Http\Controllers\Api\AffiliateController;
+use App\Http\Controllers\Api\AiCompletionController;
 use App\Http\Controllers\Api\AppFeedbackController;
 use App\Http\Controllers\Api\AssistantCategoryController;
 use App\Http\Controllers\Api\AssistantCommercialStatsController;
@@ -511,6 +512,7 @@ Route::middleware('auth.api')->group(function ()
 
     Route::get('billing', [ApiBillingController::class, 'show'])->name('api.billing.show');
     Route::put('billing', [ApiBillingController::class, 'update'])->name('api.billing.update');
+    Route::post('ai/complete', [AiCompletionController::class, 'complete'])->name('api.ai.complete');
     Route::get('team/business-profile', [BusinessProfileController::class, 'show'])->name('api.team.business-profile.show');
     Route::put('team/business-profile', [BusinessProfileController::class, 'update'])->name('api.team.business-profile.update');
     Route::get('team/business-profile/assets', [BusinessProfileController::class, 'showAsset'])->name('api.team.business-profile.assets.show');

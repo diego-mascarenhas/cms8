@@ -185,6 +185,15 @@ return [
                 'Facturation partagée avec les autres apps Idoneo',
             ],
         ],
+        'fanyion' => [
+            'name' => 'Humano.app innovation',
+            'description' => 'Système d’innovation organisationnelle. Le plan est gratuit ; seuls les jetons IA sont facturés.',
+            'features' => [
+                'Propositions, défis et collaboration assistée par IA',
+                'Plan à 0 € ; la carte sert uniquement à facturer les jetons',
+                'Facturation partagée avec les autres apps Idoneo',
+            ],
+        ],
     ],
     'checkout_complete_success' => '¡Bienvenido! Tu espacio de trabajo ya está listo.',
     'checkout_complete_invalid_session' => 'No pudimos confirmar este pago. Abre el enlace del recibo de Stripe o contacta soporte.',
