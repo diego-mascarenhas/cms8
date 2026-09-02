@@ -990,6 +990,50 @@ class Team extends JetstreamTeam
     }
 
     /**
+     * Same slug matching as the public catalog, including teams that never enabled the Livewire shop.
+     */
+    public static function findByCatalogSlug(string $slug): ?self
+    {
+        $enabled = static::findForPublicCatalog($slug);
+        if ($enabled)
+        {
+            return $enabled;
+        }
+
+        $requestedDomain = static::normalizePublicShopDomain($slug);
+        $requestedNameSlug = Str::slug($slug);
+        $domainMatches = [];
+        $nameMatches = [];
+
+        foreach (static::query()->get() as $team)
+        {
+            $domain = $team->getPublicCatalogShopDomain();
+            if ($requestedDomain !== null && $requestedDomain !== '' && $domain !== null && hash_equals($domain, $requestedDomain))
+            {
+                $domainMatches[] = $team;
+            }
+
+            $nameSlug = $team->getPublicCatalogNameSlug();
+            if ($requestedNameSlug !== '' && $nameSlug !== null && hash_equals($nameSlug, $requestedNameSlug))
+            {
+                $nameMatches[] = $team;
+            }
+        }
+
+        if (count($domainMatches) === 1)
+        {
+            return $domainMatches[0];
+        }
+
+        if (count($nameMatches) === 1)
+        {
+            return $nameMatches[0];
+        }
+
+        return null;
+    }
+
+    /**
      * Digits-only WhatsApp for checkout links.
      */
     public function catalogCheckoutWhatsAppDigits(): ?string

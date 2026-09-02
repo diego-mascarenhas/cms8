@@ -297,6 +297,15 @@ class ProjectFunnelController extends Controller
                 'is_encrypted' => false,
             ],
         );
+        $team->setSetting(
+            ProjectBudgetSpecService::SETTING_TOKEN_INCLUDE,
+            $validated['include'] ? '1' : '0',
+            [
+                'group' => 'estimator',
+                'type' => 'boolean',
+                'is_encrypted' => false,
+            ],
+        );
 
         $team->unsetRelation('settings');
         $team->load('settings');
@@ -1125,6 +1134,7 @@ class ProjectFunnelController extends Controller
      *     input_rate: float,
      *     output_rate: float,
      *     discriminate: bool,
+     *     include: bool,
      *     can_update: bool
      * }
      */

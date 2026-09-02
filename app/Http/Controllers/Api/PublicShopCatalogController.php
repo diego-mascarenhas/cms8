@@ -13,7 +13,7 @@ class PublicShopCatalogController extends Controller
 {
     public function show(string $slug, string $code): JsonResponse
     {
-        $team = Team::findForPublicCatalog($slug);
+        $team = Team::findByCatalogSlug($slug);
         if (! $team)
         {
             return response()->json([

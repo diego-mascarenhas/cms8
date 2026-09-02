@@ -52,6 +52,33 @@ class PublicShopCatalogTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_published_product_is_public_without_livewire_catalog_flag(): void
+    {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        $team = Team::factory()->create();
+        $team->setSetting('business_config', [
+            'business_name' => 'Repuestos Avenida',
+            'business_website' => 'https://www.repuestosav.com',
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        $team = $team->fresh();
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Filtro de aceite',
+            'code' => '43570',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+
+        $this->getJson('/api/public-shop/www.repuestosav.com/products/43570')
+            ->assertOk()
+            ->assertJsonPath('data.code', '43570')
+            ->assertJsonPath('data.name', 'Filtro de aceite');
+    }
+
     public function test_unknown_shop_slug_returns_not_found(): void
     {
         $this->getJson('/api/public-shop/no-existe/products/40975')->assertNotFound();

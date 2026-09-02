@@ -781,6 +781,7 @@ class ProjectFunnelTest extends TestCase
             ->assertJsonPath('data.input_rate', 11)
             ->assertJsonPath('data.output_rate', 55)
             ->assertJsonPath('data.discriminate', true)
+            ->assertJsonPath('data.include', true)
             ->assertJsonPath('data.can_update', true);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -788,16 +789,19 @@ class ProjectFunnelTest extends TestCase
                 'input_rate' => 3.5,
                 'output_rate' => 12,
                 'discriminate' => false,
+                'include' => false,
             ])
             ->assertOk()
             ->assertJsonPath('data.input_rate', 3.5)
             ->assertJsonPath('data.output_rate', 12)
-            ->assertJsonPath('data.discriminate', false);
+            ->assertJsonPath('data.discriminate', false)
+            ->assertJsonPath('data.include', false);
 
         $fresh = $team->fresh();
         $this->assertSame('3.5', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE));
         $this->assertSame('12', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE));
         $this->assertFalse(filter_var($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_DISCRIMINATE), FILTER_VALIDATE_BOOLEAN));
+        $this->assertFalse(filter_var($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INCLUDE), FILTER_VALIDATE_BOOLEAN));
     }
 
     public function test_token_pricing_requires_authentication(): void
@@ -809,6 +813,7 @@ class ProjectFunnelTest extends TestCase
             'input_rate' => 3,
             'output_rate' => 10,
             'discriminate' => true,
+            'include' => true,
         ])->assertUnauthorized();
     }
 

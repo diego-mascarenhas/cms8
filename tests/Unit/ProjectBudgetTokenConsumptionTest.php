@@ -306,4 +306,35 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(2500, $fallback['grand_total']);
         $this->assertSame(2500, $fallback['payable_total']);
     }
+
+    #[Test]
+    public function it_can_exclude_token_charges_from_quote_totals(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'discount' => 0,
+            'price' => null,
+            'data' => [
+                'ai_usage_percent' => 0,
+                'token_consumption' => ['savings_percent' => 57],
+                'suggested_tasks' => [
+                    [
+                        'title' => 'Module A',
+                        'included' => true,
+                        'estimated_hours' => 1,
+                        'unit_price' => 1000,
+                        'estimated_tokens' => 1_000_000,
+                    ],
+                ],
+            ],
+        ]);
+
+        $withTokens = $service->setTokenInclude(true)->computeQuoteTotals($project);
+        $withoutTokens = $service->setTokenInclude(false)->computeQuoteTotals($project);
+
+        $this->assertGreaterThan(1000, $withTokens['grand_total']);
+        $this->assertSame(1000, $withoutTokens['grand_total']);
+        $this->assertSame(1000, $withoutTokens['payable_total']);
+        $this->assertFalse($withoutTokens['token_include']);
+    }
 }

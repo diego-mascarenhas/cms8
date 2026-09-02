@@ -36,11 +36,15 @@ class ProjectBudgetSpecService
 
     public const SETTING_TOKEN_DISCRIMINATE = 'estimator_token_discriminate';
 
+    public const SETTING_TOKEN_INCLUDE = 'estimator_token_include';
+
     private float $tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
 
     private float $tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
 
     private bool $tokenDiscriminate = true;
+
+    private bool $tokenInclude = true;
 
     /**
      * Generate a full budget specification (includes prices for internal use).
@@ -906,7 +910,17 @@ class ProjectBudgetSpecService
 
     public function showsTokenLines(): bool
     {
-        return $this->tokenDiscriminate;
+        return $this->tokenInclude && $this->tokenDiscriminate;
+    }
+
+    public function includesTokenCharges(): bool
+    {
+        return $this->tokenInclude;
+    }
+
+    private function chargedTokenAmount(float $billable): float
+    {
+        return $this->tokenInclude ? $billable : 0.0;
     }
 
     public function tokenBlendEurPerMillion(): float
@@ -929,16 +943,24 @@ class ProjectBudgetSpecService
         return $this;
     }
 
+    public function setTokenInclude(bool $include): static
+    {
+        $this->tokenInclude = $include;
+
+        return $this;
+    }
+
     public function applyTeamTokenPricing(?Team $team): static
     {
-        $this->tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
-        $this->tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
-        $this->tokenDiscriminate = true;
-
         if (! $team)
         {
             return $this;
         }
+
+        $this->tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
+        $this->tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
+        $this->tokenDiscriminate = true;
+        $this->tokenInclude = true;
 
         if (! $team->relationLoaded('settings'))
         {
@@ -963,11 +985,17 @@ class ProjectBudgetSpecService
             $this->tokenDiscriminate = filter_var($discriminate, FILTER_VALIDATE_BOOLEAN);
         }
 
+        $include = $team->getSetting(self::SETTING_TOKEN_INCLUDE);
+        if ($include !== null && $include !== '')
+        {
+            $this->tokenInclude = filter_var($include, FILTER_VALIDATE_BOOLEAN);
+        }
+
         return $this;
     }
 
     /**
-     * @return array{input_rate: float, output_rate: float, discriminate: bool}
+     * @return array{input_rate: float, output_rate: float, discriminate: bool, include: bool}
      */
     public function tokenPricingPayload(?Team $team): array
     {
@@ -977,6 +1005,7 @@ class ProjectBudgetSpecService
             'input_rate' => $this->tokenInputRate,
             'output_rate' => $this->tokenOutputRate,
             'discriminate' => $this->tokenDiscriminate,
+            'include' => $this->tokenInclude,
         ];
     }
 
@@ -987,7 +1016,9 @@ class ProjectBudgetSpecService
      *     grand_total: int,
      *     discount_percent: float,
      *     discounted_total: int,
-     *     payable_total: int
+     *     payable_total: int,
+     *     token_discriminate: bool,
+     *     token_include: bool
      * }
      */
     public function computeQuoteTotals(Project $project): array
@@ -1025,7 +1056,7 @@ class ProjectBudgetSpecService
             {
                 $totalLabor += $rounded['labor'];
             }
-            $totalTokenBillable += $balanced['token_billable'];
+            $totalTokenBillable += $this->chargedTokenAmount($balanced['token_billable']);
         }
 
         $grandTotal = (int) round($totalLabor + $totalTokenBillable);
@@ -1059,6 +1090,7 @@ class ProjectBudgetSpecService
             'discounted_total' => $discountedTotal,
             'payable_total' => $payableTotal,
             'token_discriminate' => $this->tokenDiscriminate,
+            'token_include' => $this->tokenInclude,
         ];
     }
 
@@ -1451,6 +1483,7 @@ class ProjectBudgetSpecService
         $token = trim((string) data_get($project->data, 'budget_preview_token', ''));
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
         $discriminateTokens = $this->showsTokenLines();
+        $includeTokens = $this->includesTokenCharges();
         $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
         $aiUsage = $this->normalizeAiUsagePercent(
             data_get($project->data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT),
@@ -1492,23 +1525,24 @@ class ProjectBudgetSpecService
             {
                 $totalLabor += $laborCharged;
             }
-            $totalTokenBillable += $billable;
+            $chargedTokens = $this->chargedTokenAmount($billable);
+            $totalTokenBillable += $chargedTokens;
             $totalHours += $hoursCharged;
-            $totalDisplayTokens += $displayTokens;
+            $totalDisplayTokens += $includeTokens ? $displayTokens : 0;
 
             $laborDisplay = $laborCharged ?? 0.0;
-            if (! $discriminateTokens)
+            if ($includeTokens && ! $discriminateTokens)
             {
-                $laborDisplay += $billable;
+                $laborDisplay += $chargedTokens;
             }
 
             $rows[] = [
                 'title' => (string) ($task['title'] ?? '—'),
                 'hours' => Helpers::formatHoursHuman($hoursCharged, true),
                 'level' => trim((string) ($task['resource_level'] ?? '')) ?: '—',
-                'labor' => ($laborCharged !== null || $billable > 0) ? $this->formatEuros($laborDisplay) : '—',
-                'tokens' => ($displayTokens > 0 || $billable > 0) ? $this->formatTokenCount($displayTokens) : '—',
-                'token_cost' => ($displayTokens > 0 || $billable > 0) ? $this->formatEuros($billable) : '—',
+                'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $this->formatEuros($laborDisplay) : '—',
+                'tokens' => ($displayTokens > 0 || $chargedTokens > 0) ? $this->formatTokenCount($displayTokens) : '—',
+                'token_cost' => ($displayTokens > 0 || $chargedTokens > 0) ? $this->formatEuros($chargedTokens) : '—',
             ];
         }
 
@@ -1534,9 +1568,10 @@ class ProjectBudgetSpecService
             'estimated_times' => trim((string) data_get($project->data, 'estimated_times', '')),
             'resources' => trim((string) data_get($project->data, 'resources', '')),
             'discriminate_tokens' => $discriminateTokens,
+            'include_tokens' => $includeTokens,
             'rows' => $rows,
             'totals' => [
-                'labor' => $this->formatEuros($discriminateTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
+                'labor' => $this->formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)),
                 'tokens' => $totalDisplayTokens > 0 ? $this->formatTokenCount($totalDisplayTokens) : '—',
                 'token_cost' => $this->formatEuros($totalTokenBillable),
                 'subtotal' => $this->formatEuros($grandTotal),
