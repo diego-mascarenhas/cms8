@@ -347,6 +347,55 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.token_usage.total_tokens_used', 10_000_000);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 1000);
+        $this->assertSame(
+            (int) collect($response->json('data.token_usage.by_module'))->sum('tokens_used'),
+            $response->json('data.token_usage.total_tokens_used'),
+        );
+    }
+
+    public function test_subscription_token_modules_match_usage_sources(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        $teamNumber = '34999000111';
+        $team->setSetting('whatsapp_from', $teamNumber);
+
+        Conversation::create([
+            'message_sid' => 'SM_sub_usage_align',
+            'channel' => 'whatsapp',
+            'from' => $teamNumber,
+            'to' => '34600111222',
+            'body' => 'Respuesta automática',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'metadata' => [
+                'token_usage' => [
+                    'prompt_tokens' => 1_000_000,
+                    'completion_tokens' => 0,
+                    'total_tokens' => 1_000_000,
+                    'model' => 'claude-haiku-4-5',
+                ],
+            ],
+        ]);
+
+        $usage = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/usage')
+            ->assertOk();
+        $subscription = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription')
+            ->assertOk();
+
+        $this->assertSame(
+            $usage->json('data.all.tokens'),
+            $subscription->json('data.token_usage.total_tokens_used'),
+        );
+        $this->assertSame(
+            $usage->json('data.all.amount_cents'),
+            $subscription->json('data.token_usage.amount_due_cents'),
+        );
+        $this->assertSame(
+            collect($usage->json('data.sources'))->pluck('tokens_used', 'module_name')->all(),
+            collect($subscription->json('data.token_usage.by_module'))->pluck('tokens_used', 'module_name')->all(),
+        );
     }
 
     public function test_subscription_whatsapp_usage_bills_outbound_messages_in_current_period(): void

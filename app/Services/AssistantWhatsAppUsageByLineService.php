@@ -70,7 +70,10 @@ class AssistantWhatsAppUsageByLineService
         $tokens = (int) collect($lines)->sum('total_tokens');
         $tokensSaved = (int) collect($lines)->sum('tokens_saved');
         $teamUsage = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
-        $sources = $this->presentSources($teamUsage['byModule'], $from, $defaultModel);
+        $sources = $this->alignSourcesWithModels(
+            $this->presentSources($teamUsage['byModule'], $from, $defaultModel),
+            $byModel,
+        );
         $headline = $this->headlineFromBreakdown($byModel, $sources, (int) $teamUsage['totalTokensUsed'], $from, $defaultModel);
         $allSaved = $this->tokens->scale((int) $teamUsage['totalTokensSaved']);
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
@@ -378,8 +381,8 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * Headline tokens/value follow the catalog-priced model rows the customer can add up.
-     * Log-only sources (Insights, OCR without a model row) still join that total.
+     * Headline tokens/value are the sum of billed sources (catalog Chat/OCR/Whisper
+     * plus log-only origins such as Insights). That is the number Por origen adds up to.
      *
      * @param  list<array{model: string, total_tokens: int, amount_cents: int}>  $byModel
      * @param  list<array{module_name: string, tokens_used: int, amount_cents: int}>  $sources
@@ -387,17 +390,25 @@ class AssistantWhatsAppUsageByLineService
      */
     private function headlineFromBreakdown(array $byModel, array $sources, int $fallbackTokens, Carbon $from, string $defaultModel): array
     {
+        $sourceTokens = (int) collect($sources)->sum('tokens_used');
+        $sourceAmount = (int) collect($sources)->sum('amount_cents');
+
+        if ($sourceTokens > 0 || $sourceAmount > 0)
+        {
+            return [
+                'tokens' => $sourceTokens,
+                'amount_cents' => $sourceAmount,
+            ];
+        }
+
         $modelTokens = (int) collect($byModel)->sum('total_tokens');
         $modelAmount = (int) collect($byModel)->sum('amount_cents');
-        $extra = collect($sources)->filter(
-            fn (array $source): bool => ! $this->sourceCoveredByModels((string) ($source['module_name'] ?? ''), $byModel),
-        );
 
         if ($modelTokens > 0 || $modelAmount > 0)
         {
             return [
-                'tokens' => $modelTokens + (int) $extra->sum('tokens_used'),
-                'amount_cents' => $modelAmount + (int) $extra->sum('amount_cents'),
+                'tokens' => $modelTokens,
+                'amount_cents' => $modelAmount,
             ];
         }
 
@@ -410,30 +421,108 @@ class AssistantWhatsAppUsageByLineService
     }
 
     /**
-     * @param  list<array{model: string}>  $byModel
+     * Replace Chat/OCR/Whisper log estimates with catalog-priced model rows so
+     * Por origen, Modelos and the headline are the same billed universe.
+     *
+     * @param  list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>  $sources
+     * @param  list<array{model: string, replies: int, total_tokens: int, tokens_saved?: int, amount_cents: int, saved_cents?: int}>  $byModel
+     * @return list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>
      */
-    private function sourceCoveredByModels(string $moduleName, array $byModel): bool
+    private function alignSourcesWithModels(array $sources, array $byModel): array
+    {
+        $groups = [
+            'chat' => ['tokens' => 0, 'amount' => 0, 'saved' => 0, 'saved_cents' => 0, 'replies' => 0],
+            'ocr' => ['tokens' => 0, 'amount' => 0, 'saved' => 0, 'saved_cents' => 0, 'replies' => 0],
+            'whisper' => ['tokens' => 0, 'amount' => 0, 'saved' => 0, 'saved_cents' => 0, 'replies' => 0],
+        ];
+
+        foreach ($byModel as $row)
+        {
+            $bucket = $this->modelSourceBucket((string) ($row['model'] ?? ''));
+            $groups[$bucket]['tokens'] += (int) ($row['total_tokens'] ?? 0);
+            $groups[$bucket]['amount'] += (int) ($row['amount_cents'] ?? 0);
+            $groups[$bucket]['saved'] += (int) ($row['tokens_saved'] ?? 0);
+            $groups[$bucket]['saved_cents'] += (int) ($row['saved_cents'] ?? 0);
+            $groups[$bucket]['replies'] += (int) ($row['replies'] ?? 0);
+        }
+
+        $seen = [];
+        $aligned = [];
+
+        foreach ($sources as $source)
+        {
+            $key = $this->sourceBucket((string) ($source['module_name'] ?? ''));
+            if ($key !== null && ($groups[$key]['tokens'] ?? 0) > 0)
+            {
+                $source['tokens_used'] = $groups[$key]['tokens'];
+                $source['amount_cents'] = $groups[$key]['amount'];
+                $source['tokens_saved'] = $groups[$key]['saved'];
+                $source['saved_cents'] = $groups[$key]['saved_cents'];
+            }
+
+            if ($key !== null)
+            {
+                $seen[$key] = true;
+            }
+
+            $aligned[] = $source;
+        }
+
+        foreach (['chat' => 'Chat', 'ocr' => 'OCR', 'whisper' => 'Whisper'] as $key => $label)
+        {
+            if (($groups[$key]['tokens'] ?? 0) > 0 && ! isset($seen[$key]))
+            {
+                $aligned[] = [
+                    'module_name' => $label,
+                    'count' => $groups[$key]['replies'],
+                    'tokens_used' => $groups[$key]['tokens'],
+                    'tokens_saved' => $groups[$key]['saved'],
+                    'amount_cents' => $groups[$key]['amount'],
+                    'saved_cents' => $groups[$key]['saved_cents'],
+                ];
+            }
+        }
+
+        usort($aligned, fn (array $left, array $right): int => $right['tokens_used'] <=> $left['tokens_used']);
+
+        return $aligned;
+    }
+
+    private function modelSourceBucket(string $model): string
+    {
+        if ($this->isOcrModel($model))
+        {
+            return 'ocr';
+        }
+
+        if (str_contains(strtolower($model), 'whisper'))
+        {
+            return 'whisper';
+        }
+
+        return 'chat';
+    }
+
+    private function sourceBucket(string $moduleName): ?string
     {
         $name = strtolower(trim($moduleName));
 
-        if ($name === 'chat')
+        if ($name === 'chat' || str_contains($name, 'chat'))
         {
-            return collect($byModel)->contains(fn (array $row): bool => ! $this->isAuxiliaryModel((string) ($row['model'] ?? '')));
+            return 'chat';
         }
 
-        if ($name === 'ocr')
+        if ($name === 'ocr' || str_contains($name, 'ocr'))
         {
-            return collect($byModel)->contains(fn (array $row): bool => $this->isOcrModel((string) ($row['model'] ?? '')));
+            return 'ocr';
         }
 
-        return false;
-    }
+        if ($name === 'whisper' || str_contains($name, 'whisper') || str_contains($name, 'audio'))
+        {
+            return 'whisper';
+        }
 
-    private function isAuxiliaryModel(string $model): bool
-    {
-        $key = strtolower($model);
-
-        return str_contains($key, 'whisper') || $this->isOcrModel($model);
+        return null;
     }
 
     private function isOcrModel(string $model): bool

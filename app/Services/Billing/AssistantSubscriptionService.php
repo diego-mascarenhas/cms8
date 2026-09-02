@@ -589,9 +589,12 @@ class AssistantSubscriptionService
     {
         [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
+        $currency = TokenBillingRateService::displayCurrency();
+        $presenter = app(ClientTokenPresenter::class);
+        $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
         $byModule = [];
 
-        foreach ($stats['byModule'] as $row)
+        foreach ($billed['sources'] ?? [] as $row)
         {
             $byModule[] = [
                 'module_name' => (string) ($row['module_name'] ?? ''),
@@ -599,16 +602,6 @@ class AssistantSubscriptionService
                 'tokens_used' => (int) ($row['tokens_used'] ?? 0),
                 'tokens_saved' => (int) ($row['tokens_saved'] ?? 0),
             ];
-        }
-
-        $currency = TokenBillingRateService::displayCurrency();
-        $presenter = app(ClientTokenPresenter::class);
-        $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
-        foreach ($byModule as $index => $row)
-        {
-            $modulePresented = $presenter->present((int) $row['tokens_used'], 0, null, $from);
-            $byModule[$index]['tokens_used'] = $modulePresented['total_tokens'];
-            $byModule[$index]['tokens_saved'] = $presenter->scale((int) $row['tokens_saved']);
         }
 
         return [
@@ -1275,6 +1268,7 @@ class AssistantSubscriptionService
 
         try
         {
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
             $stripeSubscription = \Stripe\Subscription::retrieve([
                 'id' => $subscription->stripe_id,
                 'expand' => ['items.data'],
