@@ -12,6 +12,12 @@ class WhatsAppCustomerServiceWindowTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['whatsapp.customer_service_window.enabled' => true]);
+    }
+
     public function test_closed_when_customer_never_wrote(): void
     {
         $window = app(WhatsAppCustomerServiceWindow::class);

@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\TeamBillingProduct;
 use App\Models\ExchangeRate;
+use App\Models\Team;
+use App\Models\TeamBillingRate;
 use Carbon\Carbon;
 use DateTimeInterface;
 
@@ -22,9 +25,11 @@ class TokenBillingRateService
         return strtoupper((string) config('humano_pricing.token_billing.currency', 'EUR'));
     }
 
-    public static function clientTokenMultiplier(): float
+    public static function clientTokenMultiplier(Team|int|null $team = null, DateTimeInterface|string|null $on = null): float
     {
-        return max(1, (float) config('humano_pricing.token_billing.client_token_multiplier', 10));
+        $teamId = $team instanceof Team ? (int) $team->id : $team;
+
+        return TeamBillingRate::amountOn($teamId, TeamBillingProduct::TokensMultiplier, $on);
     }
 
     public static function usdToDisplay(DateTimeInterface|string|null $on = null): float

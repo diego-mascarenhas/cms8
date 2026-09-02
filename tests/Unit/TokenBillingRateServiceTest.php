@@ -29,6 +29,14 @@ class TokenBillingRateServiceTest extends TestCase
         $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier());
     }
 
+    public function test_client_multiplier_uses_the_team_config_override(): void
+    {
+        config(['humano_pricing.token_billing.client_token_multiplier_by_team' => [99 => 4]]);
+
+        $this->assertSame(4.0, TokenBillingRateService::clientTokenMultiplier(99));
+        $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier(100));
+    }
+
     public function test_usd_to_display_uses_exchange_rate_history(): void
     {
         config([

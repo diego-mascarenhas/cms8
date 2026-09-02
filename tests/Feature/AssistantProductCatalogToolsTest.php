@@ -496,7 +496,7 @@ class AssistantProductCatalogToolsTest extends TestCase
         $this->assertStringContainsString('Camiseta foto', $sent);
         $this->assertSame(1, $gateway->sendCount);
         $this->assertSame($phone, $gateway->lastTo);
-        $this->assertSame('storage/'.$relative, $gateway->lastPath);
+        $this->assertSame('https://humano.test/storage/'.$relative, $gateway->lastPath);
         $this->assertSame('Camiseta foto', $gateway->lastCaption);
 
         $missing = $service->execute('send_product_image', ['product_id' => $withoutImage->id]);
@@ -716,6 +716,8 @@ class AssistantProductCatalogToolsTest extends TestCase
 
     public function test_send_whatsapp_message_is_blocked_outside_the_24_hour_window(): void
     {
+        config(['whatsapp.customer_service_window.enabled' => true]);
+
         $role = Role::firstOrCreate(['name' => 'admin']);
         $user = User::factory()->create();
         $team = Team::factory()->create(['user_id' => $user->id]);

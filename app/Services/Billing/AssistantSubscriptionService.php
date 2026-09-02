@@ -590,7 +590,7 @@ class AssistantSubscriptionService
         [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         $currency = TokenBillingRateService::displayCurrency();
-        $presenter = app(ClientTokenPresenter::class);
+        $presenter = app(ClientTokenPresenter::class)->usingTeam($team);
         $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
         $byModule = [];
 

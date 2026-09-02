@@ -160,7 +160,7 @@ class TeamSiteAssistantPromptServiceTest extends TestCase
         $this->assertSame('Texto nuevo.', $option['prompt_instruction']);
         $this->assertSame('customer', $option['audience']);
         $this->assertSame('Para el cliente', $option['audience_label']);
-        $this->assertSame(3, $option['audience_rank']);
+        $this->assertSame(90, $option['audience_rank']);
         $this->assertNull($team->fresh()->getSetting(TeamSiteAssistantPromptService::SETTING_KEY));
     }
 

@@ -36,5 +36,6 @@
         <env name="CMS8_PLAN_ACCESS_TEAM_IDS" value=""/>
         <env name="APP_LOGO_BUDGET_PATH" value=""/>
         <env name="BUDGET_PREVIEW_BASE_URL" value=""/>
+        <env name="WHATSAPP_ENFORCE_SESSION_WINDOW" value="false"/>
     </php>
 </phpunit>

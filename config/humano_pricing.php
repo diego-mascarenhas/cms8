@@ -78,6 +78,14 @@ return [
         'base_currency' => 'USD',
         'currency' => env('HUMANO_TOKEN_BILLING_CURRENCY', 'EUR'),
         'client_token_multiplier' => (float) env('HUMANO_TOKEN_CLIENT_MULTIPLIER', 10),
+        /*
+         * | Current team overrides when team_billing_rates has no row.
+         * | Changing a value here reprices open usage. Persist history with
+         * | TeamBillingRate::setAmount() / php artisan billing:set-team-rate.
+         */
+        'client_token_multiplier_by_team' => [
+            // 1 => 8,
+        ],
     ],
 
     /*
@@ -90,6 +98,9 @@ return [
         'currency' => env('HUMANO_WHATSAPP_BILLING_CURRENCY', 'EUR'),
         'our_amount' => (float) env('HUMANO_WHATSAPP_OUR_AMOUNT', 0.003),
         'reference_amount' => (float) env('HUMANO_WHATSAPP_REFERENCE_AMOUNT', 0.005),
+        'our_amount_by_team' => [
+            // 1 => 0.002,
+        ],
     ],
 
     /*

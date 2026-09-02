@@ -107,6 +107,7 @@ class WhatsAppClosedWindowOverrideTest extends TestCase
 
         config(['whatsapp.driver' => 'local']);
         config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        config(['whatsapp.customer_service_window.enabled' => true]);
         Http::fake([
             'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => self::TEAM_NUMBER], 200),
             'http://127.0.0.1:3000/send-message' => Http::response(['success' => true, 'id' => 'wa_override_1'], 200),

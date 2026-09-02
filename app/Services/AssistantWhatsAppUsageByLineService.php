@@ -49,6 +49,7 @@ class AssistantWhatsAppUsageByLineService
         {
             [$from, $to] = $this->subscriptions->usagePeriod($team);
         }
+        $this->tokens->usingTeam($team);
         $currency = TokenBillingRateService::displayCurrency();
         $defaultModel = $this->displayModel(null);
 
@@ -82,7 +83,7 @@ class AssistantWhatsAppUsageByLineService
             'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'token_multiplier' => TokenBillingRateService::clientTokenMultiplier(),
+            'token_multiplier' => TokenBillingRateService::clientTokenMultiplier($team, $from),
             'usd_to_display' => TokenBillingRateService::usdToDisplay($from),
             'client_presented' => true,
             'currency' => $currency,

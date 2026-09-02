@@ -30,6 +30,7 @@ class AdminProactiveOutreachSlashTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $team->setSetting('whatsapp_driver', 'twilio');
 
         $mod = Module::query()->create([
             'name' => 'Chat',
@@ -150,6 +151,7 @@ class AdminProactiveOutreachSlashTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $team->setSetting('whatsapp_driver', 'twilio');
 
         $mod = Module::query()->create([
             'name' => 'Chat',
@@ -225,6 +227,7 @@ class AdminProactiveOutreachSlashTest extends TestCase
         $user->teams()->attach($team->id, ['role' => 'admin']);
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
+        $team->setSetting('whatsapp_driver', 'twilio');
 
         self::$systemOnboardingMediaCalls = 0;
 
