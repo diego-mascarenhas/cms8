@@ -7,6 +7,7 @@ use App\Mail\ProjectBudgetQuoteMail;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -145,7 +146,13 @@ class ProjectBudgetQuoteMailService
 
         try
         {
-            Mail::to($recipientEmail, $recipientName !== '' ? $recipientName : null)->send($mail);
+            $outgoing = Mail::to($recipientEmail, $recipientName !== '' ? $recipientName : null);
+            $copyTo = $this->senderCopyAddress($from['from_address'], $recipientEmail);
+            if ($copyTo !== null)
+            {
+                $outgoing->bcc($copyTo);
+            }
+            $outgoing->send($mail);
         } catch (\Throwable $e)
         {
             Log::error('Project budget quote email failed', [
@@ -166,7 +173,9 @@ class ProjectBudgetQuoteMailService
             'sent_at' => now()->toIso8601String(),
             'opened_at' => null,
             'clicked_at' => null,
+            'visited_count' => 0,
             'sent_by' => $sender->id,
+            'bcc_email' => $copyTo,
         ];
 
         $project->data = $data;
@@ -240,6 +249,80 @@ class ProjectBudgetQuoteMailService
         ];
     }
 
+    private function senderCopyAddress(string $fromAddress, string $recipientEmail): ?string
+    {
+        $copyTo = trim($fromAddress);
+        if ($copyTo === '' || ! filter_var($copyTo, FILTER_VALIDATE_EMAIL))
+        {
+            return null;
+        }
+
+        if (strcasecmp($copyTo, trim($recipientEmail)) === 0)
+        {
+            return null;
+        }
+
+        return $copyTo;
+    }
+
+    /**
+     * @param  array<string, mixed>  $email
+     */
+    private function recordBudgetVisit(array &$email): bool
+    {
+        $now = now();
+        $count = max(0, (int) ($email['visited_count'] ?? 0));
+        $lastRaw = $email['last_visited_at'] ?? null;
+        if ($count > 0 && is_string($lastRaw) && $lastRaw !== '')
+        {
+            try
+            {
+                $last = Carbon::parse($lastRaw);
+                if ($last->diffInMinutes($now) < 5)
+                {
+                    return false;
+                }
+            } catch (\Throwable)
+            {
+            }
+        }
+
+        $at = $now->toIso8601String();
+        $email['visited_count'] = $count + 1;
+        $email['last_visited_at'] = $at;
+        if (empty($email['opened_at']))
+        {
+            $email['opened_at'] = $at;
+        }
+        if (empty($email['clicked_at']))
+        {
+            $email['clicked_at'] = $at;
+        }
+
+        return true;
+    }
+
+    public function markPreviewVisited(Project $project): bool
+    {
+        $data = $project->data ?? [];
+        $email = is_array($data['budget_email'] ?? null) ? $data['budget_email'] : [];
+        if (empty($email['sent_at']))
+        {
+            return false;
+        }
+
+        if (! $this->recordBudgetVisit($email))
+        {
+            return true;
+        }
+
+        $data['budget_email'] = $email;
+        $project->data = $data;
+        $project->save();
+
+        return true;
+    }
+
     public function markOpened(string $trackingToken): bool
     {
         $project = $this->findByTrackingToken($trackingToken);
@@ -271,17 +354,12 @@ class ProjectBudgetQuoteMailService
 
         $data = $project->data ?? [];
         $email = is_array($data['budget_email'] ?? null) ? $data['budget_email'] : [];
-        if (empty($email['opened_at']))
+        if ($this->recordBudgetVisit($email))
         {
-            $email['opened_at'] = now()->toIso8601String();
+            $data['budget_email'] = $email;
+            $project->data = $data;
+            $project->save();
         }
-        if (empty($email['clicked_at']))
-        {
-            $email['clicked_at'] = now()->toIso8601String();
-        }
-        $data['budget_email'] = $email;
-        $project->data = $data;
-        $project->save();
 
         $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
 

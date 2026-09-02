@@ -224,6 +224,46 @@ class Project extends Model
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
+    /**
+     * Preferred quote recipient without leaking the contacts relation into API payloads.
+     *
+     * @return array{id: int, name: string, email: string}|null
+     */
+    public function quoteRecipientSummary(): ?array
+    {
+        $enterprise = $this->client ?? $this->enterprise;
+        if (! $enterprise)
+        {
+            return null;
+        }
+
+        $contactsWereLoaded = $enterprise->relationLoaded('contacts');
+        $contact = $enterprise->quoteContact();
+        if (! $contactsWereLoaded)
+        {
+            $enterprise->unsetRelation('contacts');
+        }
+
+        if (! $contact)
+        {
+            return null;
+        }
+
+        $email = trim((string) ($contact->email ?? ''));
+        if ($email === '')
+        {
+            return null;
+        }
+
+        $name = trim($contact->name.' '.(string) ($contact->surname ?? ''));
+
+        return [
+            'id' => (int) $contact->id,
+            'name' => $name !== '' ? $name : $email,
+            'email' => $email,
+        ];
+    }
+
     public function responsible()
     {
         return $this->belongsTo(User::class, 'responsible_id');

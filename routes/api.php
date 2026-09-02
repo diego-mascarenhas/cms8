@@ -827,6 +827,8 @@ Route::middleware('auth.api')->group(function ()
         ->where('phone', '[0-9]+')
         ->name('api.chat.whatsapp-messages');
     Route::get('chat/whatsapp-quick-replies', [ChatController::class, 'quickReplies'])->name('api.chat.whatsapp-quick-replies');
+    Route::get('chat/whatsapp-product-suggestions', [ChatController::class, 'productSuggestions'])->name('api.chat.whatsapp-product-suggestions');
+    Route::get('chat/inbox-image', [ChatController::class, 'inboxImage'])->name('api.chat.inbox-image');
     Route::post('chat/whatsapp-send', [ChatController::class, 'sendMessage'])->name('api.chat.whatsapp-send');
     Route::post('chat/schedule-message', [ChatController::class, 'scheduleMessage'])->name('api.chat.schedule-message');
     Route::patch('chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'updateScheduledMessage'])->name('api.chat.scheduled-message.update');

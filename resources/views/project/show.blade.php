@@ -86,18 +86,25 @@
 				</a>
 			@endif
 			@php
+				$quoteRecipient = $project->quoteRecipientSummary();
 				$canAuthorizeBudget = auth()->user()->hasRole('admin')
 					&& (int) $project->status_id === \App\Models\ProjectStatus::STATUS_BUDGETED
 					&& data_get($project->data, 'budget_preview_token')
 					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
-					&& $project->client?->quoteContact() !== null;
+					&& $quoteRecipient !== null;
+				$authorizeConfirm = $quoteRecipient
+					? __('Mark as authorized and email the quote to :name (:email)?', ['name' => $quoteRecipient['name'], 'email' => $quoteRecipient['email']])
+					: __('Mark as authorized and email the quote to the enterprise contact?');
+				$resendConfirm = $quoteRecipient
+					? __('Resend the quote email to :name (:email)?', ['name' => $quoteRecipient['name'], 'email' => $quoteRecipient['email']])
+					: __('Resend the quote email to the enterprise contact?');
 			@endphp
 			@can('update', $project)
 				@if ($canAuthorizeBudget)
 					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
 						@csrf
 						<button type="submit" class="btn btn-success waves-effect waves-light"
-							onclick="return confirm('{{ __('Mark as authorized and email the quote to the enterprise contact?') }}')">
+							onclick="return confirm(@json($authorizeConfirm))">
 							<i class="ti ti-mail-forward me-1"></i>{{ __('Authorize quote') }}
 						</button>
 					</form>
@@ -105,11 +112,11 @@
 					&& (int) $project->status_id === \App\Models\ProjectStatus::STATUS_AUTHORIZED
 					&& data_get($project->data, 'budget_preview_token')
 					&& data_get($project->data, 'budget_client_response.status') !== 'accepted'
-					&& $project->client?->quoteContact() !== null)
+					&& $quoteRecipient !== null)
 					<form action="{{ route('project.authorize-budget', $project->id) }}" method="POST" class="d-inline">
 						@csrf
 						<button type="submit" class="btn btn-outline-success waves-effect waves-light"
-							onclick="return confirm('{{ __('Resend the quote email to the enterprise contact?') }}')">
+							onclick="return confirm(@json($resendConfirm))">
 							<i class="ti ti-mail-forward me-1"></i>{{ __('Resend quote email') }}
 						</button>
 					</form>
@@ -357,6 +364,9 @@
                                @if (! empty($budgetEmail['clicked_at']))
                                    <span class="badge rounded-pill bg-label-info">{{ __('Link clicked') }}</span>
                                    <span class="text-muted small">{{ \Carbon\Carbon::parse($budgetEmail['clicked_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</span>
+                                   @if ((int) ($budgetEmail['visited_count'] ?? 0) > 0)
+                                       <span class="text-muted small">{{ trans_choice(':count time|:count times', (int) $budgetEmail['visited_count'], ['count' => (int) $budgetEmail['visited_count']]) }}</span>
+                                   @endif
                                @endif
                            @endif
                        </div>

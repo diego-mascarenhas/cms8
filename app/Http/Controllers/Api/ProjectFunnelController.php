@@ -1135,13 +1135,14 @@ class ProjectFunnelController extends Controller
         ]);
     }
 
-    public function showPublicBudget(string $token): JsonResponse
+    public function showPublicBudget(string $token, ProjectBudgetQuoteMailService $mailService): JsonResponse
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
+        $mailService->markPreviewVisited($project);
 
         return response()->json([
             'success' => true,
-            'data' => $this->budgetSpecService->publicPreview($project),
+            'data' => $this->budgetSpecService->publicPreview($project->fresh(['enterprise', 'team'])),
         ]);
     }
 

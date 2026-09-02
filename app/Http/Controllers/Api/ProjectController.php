@@ -321,6 +321,7 @@ class ProjectController extends Controller
             return response()->json(array_merge([
                 'success' => true,
                 'data' => array_merge($project->toArray(), [
+                    'quote_contact' => $project->quoteRecipientSummary(),
                     'tasks' => $tasks,
                     'tasks_count' => count($tasks),
                     'total_time_seconds' => $totalSeconds,
@@ -1110,9 +1111,12 @@ class ProjectController extends Controller
      */
     private function projectBudgetResponse(Project $project, ProjectBudgetSpecService $budgetService, string $message): array
     {
+        $payload = $project->toArray();
+        $payload['quote_contact'] = $project->quoteRecipientSummary();
+
         return array_merge([
             'success' => true,
-            'data' => $project,
+            'data' => $payload,
             'message' => $message,
             'totals' => $budgetService->computeQuoteTotals($project),
         ], $this->budgetPublicUrls($project));

@@ -53,7 +53,10 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('preview_url', route('project.budget-preview', $previewToken, true))
-            ->assertJsonPath('download_url', route('project.budget-preview', $previewToken, true).'?download=1');
+            ->assertJsonPath('download_url', route('project.budget-preview', $previewToken, true).'?download=1')
+            ->assertJsonPath('data.quote_contact.name', 'Client Contact')
+            ->assertJsonPath('data.quote_contact.email', 'quote.contact@example.com')
+            ->assertJsonMissingPath('data.client.contacts');
 
         $this->assertSame($user->id, $project->responsible_id);
     }
@@ -92,7 +95,8 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
 
         Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact): bool
         {
-            return $mail->hasTo($contact->email);
+            return $mail->hasTo($contact->email)
+                && $mail->hasBcc('quotes@example.test');
         });
     }
 
