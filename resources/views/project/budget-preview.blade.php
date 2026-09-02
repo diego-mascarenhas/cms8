@@ -2,6 +2,7 @@
     $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
     $budgetService->applyTeamTokenPricing($project->team);
     $discriminateTokens = $budgetService->showsTokenLines();
+    $includeTokens = $budgetService->includesTokenCharges();
     $projectName = trim((string) ($project->real_name ?: $project->name));
     $clientName = trim((string) (optional($project->enterprise)->name ?? ''));
     $dimension = trim((string) data_get($project->data, 'dimension', ''));
@@ -50,23 +51,24 @@
         if ($laborCharged !== null) {
             $totalLabor += $laborCharged;
         }
-        $totalTokenBillable += $billable;
+        $chargedTokens = $includeTokens ? $billable : 0.0;
+        $totalTokenBillable += $chargedTokens;
         $totalHours += $hoursCharged;
-        $totalDisplayTokens += $displayTokens;
+        $totalDisplayTokens += $includeTokens ? $displayTokens : 0;
 
         $laborDisplay = $laborCharged ?? 0.0;
-        if (! $discriminateTokens)
+        if ($includeTokens && ! $discriminateTokens)
         {
-            $laborDisplay += $billable;
+            $laborDisplay += $chargedTokens;
         }
 
         $rows[] = [
             'title' => (string) ($t['title'] ?? '—'),
             'hours' => $formatHoursHuman($hoursCharged),
             'level' => $level,
-            'labor' => ($laborCharged !== null || $billable > 0) ? $formatEuros($laborDisplay) : '—',
-            'tokens' => ($displayTokens > 0 || $billable > 0) ? $budgetService->formatTokenCount($displayTokens) : '—',
-            'token_cost' => ($displayTokens > 0 || $billable > 0) ? $formatEuros($billable) : '—',
+            'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $formatEuros($laborDisplay) : '—',
+            'tokens' => ($displayTokens > 0 || $chargedTokens > 0) ? $budgetService->formatTokenCount($displayTokens) : '—',
+            'token_cost' => ($displayTokens > 0 || $chargedTokens > 0) ? $formatEuros($chargedTokens) : '—',
         ];
     }
 
@@ -348,7 +350,7 @@
                     @endforeach
                     <tr class="total">
                         <td colspan="3">{{ __('Total') }}</td>
-                        <td class="num">{{ $formatEuros($discriminateTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</td>
+                        <td class="num">{{ $formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</td>
                         @if ($discriminateTokens)
                             <td class="num">{{ $totalDisplayTokens > 0 ? $budgetService->formatTokenCount($totalDisplayTokens) : '—' }}</td>
                             <td class="num">{{ $formatEuros($totalTokenBillable) }}</td>
@@ -360,7 +362,7 @@
             <div class="highlight">
                 <div style="display:grid;grid-template-columns:1fr auto;gap:4px 16px;max-width:320px;">
                     <span>{{ __('Labor') }}</span>
-                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
+                    <span style="text-align:right;">{{ $formatEuros($discriminateTokens || ! $includeTokens ? $totalLabor : ($totalLabor + $totalTokenBillable)) }}</span>
                     @if ($discriminateTokens)
                         <span>{{ __('Tokens') }}</span>
                         <span style="text-align:right;">{{ $formatEuros($totalTokenBillable) }}</span>

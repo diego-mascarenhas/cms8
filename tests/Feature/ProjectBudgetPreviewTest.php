@@ -126,6 +126,23 @@ class ProjectBudgetPreviewTest extends TestCase
     }
 
     #[Test]
+    public function public_budget_preview_can_exclude_token_charges(): void
+    {
+        $created = $this->createBudgetPreviewProject();
+        $team = Team::query()->findOrFail($created['project']->team_id);
+        $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_INCLUDE, '0', [
+            'group' => 'estimator',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $this->get(route('project.budget-preview', $created['token']))
+            ->assertOk()
+            ->assertSee('iOS signing', false)
+            ->assertDontSee(__('Tokens'), false);
+    }
+
+    #[Test]
     public function public_budget_preview_redirects_to_the_project_frontend(): void
     {
         $created = $this->createBudgetPreviewProject([

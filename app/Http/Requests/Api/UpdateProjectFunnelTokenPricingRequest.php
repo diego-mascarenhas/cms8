@@ -20,6 +20,7 @@ class UpdateProjectFunnelTokenPricingRequest extends FormRequest
             'input_rate' => ['required', 'numeric', 'min:0', 'max:1000'],
             'output_rate' => ['required', 'numeric', 'min:0', 'max:1000'],
             'discriminate' => ['required', 'boolean'],
+            'include' => ['required', 'boolean'],
         ];
     }
 
@@ -34,6 +35,7 @@ class UpdateProjectFunnelTokenPricingRequest extends FormRequest
             'output_rate.required' => __('The output token price is required.'),
             'output_rate.numeric' => __('The output token price is not valid.'),
             'discriminate.required' => __('Choose whether to show tokens separately.'),
+            'include.required' => __('Choose whether to add tokens to the labors.'),
         ];
     }
 }
