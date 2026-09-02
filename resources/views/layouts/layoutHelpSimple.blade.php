@@ -151,6 +151,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
           </a>
         </li>
 
+        <li class="menu-item {{ request()->routeIs('help.team-billing') ? 'active' : '' }}">
+          <a href="{{ route('help.team-billing') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-receipt"></i>
+            <div>{{ __('help_team_billing.sidebar_title') }}</div>
+          </a>
+        </li>
+
         <li class="menu-item {{ request()->routeIs('help.email-spf-dns') ? 'active' : '' }}">
           <a href="{{ route('help.email-spf-dns') }}" class="menu-link">
             <i class="menu-icon tf-icons ti ti-mail"></i>

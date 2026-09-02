@@ -29,6 +29,7 @@ class ChatWhatsappDisconnectTest extends TestCase
         Config::set('whatsapp.driver', 'twilio');
 
         $user = $this->userWithTeam();
+        $user->currentTeam->setSetting('whatsapp_driver', 'twilio');
 
         $response = $this->actingAs($user)->postJson(route('chat.whatsapp-disconnect'), []);
 

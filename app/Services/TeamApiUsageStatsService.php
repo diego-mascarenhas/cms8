@@ -94,7 +94,9 @@ final class TeamApiUsageStatsService
     public static function costSummary(int $teamId): array
     {
         $tokens = (int) self::forTeam($teamId)['totalTokensUsed'];
-        $presented = app(\App\Services\Billing\ClientTokenPresenter::class)->present($tokens, 0, null);
+        $presented = app(\App\Services\Billing\ClientTokenPresenter::class)
+            ->usingTeam(\App\Models\Team::query()->find($teamId))
+            ->present($tokens, 0, null);
         $currency = TokenBillingRateService::displayCurrency();
         $amountCents = $presented['amount_cents'];
         $amount = $amountCents / 100;

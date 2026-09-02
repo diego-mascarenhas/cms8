@@ -26,6 +26,13 @@
                 <i class="ti ti-presentation me-1"></i>{{ __('Presentación facturación') }}
             </a>
             <a href="{{ route('help.stripe-webhook') }}" class="btn btn-sm btn-label-secondary">{{ __('Webhooks Stripe') }}</a>
+            <a href="{{ route('help.team-billing') }}" class="btn btn-sm btn-label-secondary">{{ __('help_team_billing.sidebar_title') }}</a>
+        </p>
+
+        <h5 class="mt-4">{{ __('help_team_billing.title') }}</h5>
+        <p>{{ __('help_team_billing.two_invoices_usage') }}</p>
+        <p class="mb-0">
+            <a href="{{ route('help.team-billing') }}" class="btn btn-sm btn-label-primary">{{ __('View documentation') }}</a>
         </p>
 
         <h5 class="mt-4">{{ __('Reconciliar') }}</h5>

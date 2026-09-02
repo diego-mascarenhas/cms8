@@ -3,11 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\AccountDataTable;
+use App\DataTables\AccountRatesUsageDataTable;
+use App\Enums\TeamBillingFrequency;
+use App\Enums\TeamBillingProduct;
 use App\Helpers\TokenHelper;
+use App\Http\Requests\UpdateAccountRatesRequest;
 use App\Mail\AutologinInvitationMail;
 use App\Models\Module;
 use App\Models\Subscription;
 use App\Models\Team;
+use App\Models\TeamBillingRate;
+use App\Services\TeamBillingUsageSummaryService;
+use App\Support\TeamUsageInvoiceFrequency;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -110,7 +117,35 @@ class AccountController extends Controller
             ];
         }
 
-        return view('account.form', compact('team', 'coreModules', 'additionalModules', 'groupLabels'));
+        return view('account.form', compact(
+            'team',
+            'coreModules',
+            'additionalModules',
+            'groupLabels',
+        ));
+    }
+
+    public function editRates(string $id, AccountRatesUsageDataTable $dataTable, TeamBillingUsageSummaryService $usage)
+    {
+        $team = Team::findOrFail($id);
+        $billingRates = $this->billingRatesForForm($team);
+        $billingRateHistory = TeamBillingRate::query()
+            ->where('team_id', $team->id)
+            ->orderByDesc('effective_from')
+            ->limit(12)
+            ->get();
+        $invoiceFrequency = TeamUsageInvoiceFrequency::for($team);
+        $invoicePreview = $usage->invoicePreview($team, $invoiceFrequency);
+        $frequencyChangePreviews = $usage->frequencyChangePreviews($team);
+
+        return $dataTable->render('account.rates', compact(
+            'team',
+            'billingRates',
+            'billingRateHistory',
+            'invoiceFrequency',
+            'invoicePreview',
+            'frequencyChangePreviews',
+        ));
     }
 
     /**
@@ -169,6 +204,23 @@ class AccountController extends Controller
         return redirect()
             ->route('account-management')
             ->with('success', 'Account updated successfully');
+    }
+
+    public function updateRates(UpdateAccountRatesRequest $request, string $id)
+    {
+        $team = Team::findOrFail($id);
+        $previousFrequency = TeamUsageInvoiceFrequency::for($team);
+        $nextFrequency = TeamBillingFrequency::from($request->validated('invoice_frequency'));
+        $this->syncTeamBillingRates($team, $request);
+        TeamUsageInvoiceFrequency::set($team, $nextFrequency);
+
+        $message = $previousFrequency === $nextFrequency
+            ? 'Tarifas actualizadas'
+            : 'Frecuencia cambiada a '.mb_strtolower($nextFrequency->label()).'. El ciclo anterior queda como factura de ajuste. Aún no se emite.';
+
+        return redirect()
+            ->route('account.rates.edit', $team->id)
+            ->with('success', $message);
     }
 
     public function updateOwnerPassword(Request $request, string $id)
@@ -560,6 +612,44 @@ class AccountController extends Controller
                 'success' => false,
                 'message' => 'Error al enviar la invitación: '.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string}
+     */
+    private function billingRatesForForm(Team $team): array
+    {
+        return [
+            'tokens_multiplier' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::TokensMultiplier),
+            'whatsapp_send' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::WhatsappSend),
+            'mailer_send' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::MailerSend),
+        ];
+    }
+
+    private function syncTeamBillingRates(Team $team, Request $request): void
+    {
+        $fields = [
+            'tokens_multiplier' => TeamBillingProduct::TokensMultiplier,
+            'whatsapp_send' => TeamBillingProduct::WhatsappSend,
+            'mailer_send' => TeamBillingProduct::MailerSend,
+        ];
+
+        foreach ($fields as $field => $product)
+        {
+            if (! $request->filled($field))
+            {
+                continue;
+            }
+
+            $amount = (float) $request->input($field);
+            $current = TeamBillingRate::amountOn((int) $team->id, $product);
+            if (abs($current - $amount) < 0.0000001)
+            {
+                continue;
+            }
+
+            TeamBillingRate::setAmount((int) $team->id, $product, $amount);
         }
     }
 }

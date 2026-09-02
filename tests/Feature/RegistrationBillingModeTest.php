@@ -65,6 +65,7 @@ class RegistrationBillingModeTest extends TestCase
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
+        $team->setSetting('whatsapp_driver', 'twilio');
 
         $this->actingAs($user)
             ->get(route('registration.onboarding.qr'))

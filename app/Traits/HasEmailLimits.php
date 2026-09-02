@@ -79,8 +79,8 @@ trait HasEmailLimits
             'daily_limit' => $remaining['daily_limit'],
             'overage_emails' => $overage,
             'allows_overage' => $this->allowsMailerOverage(),
-            'amount_due_cents' => MailerPaygPricing::overageDueCents($overage),
-            'price_per_email' => MailerPaygPricing::pricePerEmail(),
+            'amount_due_cents' => MailerPaygPricing::overageDueCents($overage, $this),
+            'price_per_email' => MailerPaygPricing::pricePerEmail($this),
             'currency' => MailerPaygPricing::currency(),
         ];
     }

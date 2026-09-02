@@ -675,6 +675,7 @@ class ShopApiTest extends TestCase
     public function test_can_update_order_items(): void
     {
         [, $team, $token] = $this->adminWithShopModules();
+        config(['whatsapp.customer_service_window.enabled' => true]);
         $spark = $this->createPricedProduct($team, 6900);
         $kit = $this->createPricedProduct($team, 22900);
 

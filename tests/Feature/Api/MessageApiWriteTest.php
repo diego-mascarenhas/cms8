@@ -278,13 +278,16 @@ class MessageApiWriteTest extends TestCase
 
     public function test_can_read_and_update_mailer_sender(): void
     {
-        [, , $token] = $this->adminWithToken();
+        [, $team, $token] = $this->adminWithToken();
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/mailer/sender')
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.configured', false);
+            ->assertJsonPath('data.configured', false)
+            ->assertJsonPath('data.required_include', 'include:spf.revisionalpha.com')
+            ->assertJsonPath('data.example_txt', 'v=spf1 include:spf.revisionalpha.com -all')
+            ->assertJsonPath('data.spf', null);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->putJson('/api/mailer/sender', [
@@ -295,12 +298,17 @@ class MessageApiWriteTest extends TestCase
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.configured', true)
             ->assertJsonPath('data.from_name', 'Campaña Idoneo')
-            ->assertJsonPath('data.from_address', 'news@example.test');
+            ->assertJsonPath('data.from_address', 'news@example.test')
+            ->assertJsonPath('data.spf.domain', 'example.test');
+
+        $this->assertSame('Campaña Idoneo', $team->fresh()->getSetting('mailer_from_name'));
+        $this->assertSame('news@example.test', $team->fresh()->getSetting('mailer_from_address'));
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/mailer/sender')
             ->assertOk()
-            ->assertJsonPath('data.configured', true);
+            ->assertJsonPath('data.configured', true)
+            ->assertJsonPath('data.spf.domain', 'example.test');
     }
 
     public function test_save_send_fails_without_sender_and_succeeds_when_configured(): void

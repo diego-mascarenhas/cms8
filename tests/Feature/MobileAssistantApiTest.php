@@ -51,8 +51,8 @@ class MobileAssistantApiTest extends TestCase
     }
 
     /**
-     * The API gates each endpoint on the modules the plan grants ({@see \App\Http\Controllers\Api\Concerns\ChecksTeamModule}),
-     * so a test hitting an endpoint outside the assistant bundle has to name the plan that includes it.
+     * First API use turns a missing/disabled catalog module on ({@see \App\Http\Controllers\Api\Concerns\ChecksTeamModule}).
+     * A test hitting an endpoint outside the assistant bundle should name the plan that includes it.
      *
      * @return array{0: User, 1: \App\Models\Team, 2: string}
      */
@@ -267,7 +267,8 @@ class MobileAssistantApiTest extends TestCase
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/clients');
 
-        $response->assertStatus(403);
+        $response->assertOk();
+        $this->assertTrue($team->fresh()->hasModule('clients'));
     }
 
     public function test_emails_endpoint_returns_inbox_messages(): void

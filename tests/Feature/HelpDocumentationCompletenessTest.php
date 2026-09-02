@@ -39,6 +39,7 @@ class HelpDocumentationCompletenessTest extends TestCase
             'help.postgresql-search-unaccent',
             'help.email-spf-dns',
             'help.stripe-webhook',
+            'help.team-billing',
         ];
     }
 
@@ -56,6 +57,7 @@ class HelpDocumentationCompletenessTest extends TestCase
             ->assertOk()
             ->assertSee(route('help.plugins', [], false), false)
             ->assertSee(route('help.paid-ads-setup', [], false), false)
+            ->assertSee(route('help.team-billing', [], false), false)
             ->assertSee(route('manual.index', [], false), false)
             ->assertSee(route('help.chat-assistant').'#assistant-embed', false);
     }
@@ -73,6 +75,7 @@ class HelpDocumentationCompletenessTest extends TestCase
         $this->get(route('help.environment-variables'))
             ->assertOk()
             ->assertSee(route('help.stripe-webhook', [], false), false)
+            ->assertSee(route('help.team-billing', [], false), false)
             ->assertSee(route('help.email-spf-dns', [], false), false)
             ->assertSee(route('help.paid-ads-setup', [], false), false)
             ->assertDontSee('Claves API y webhook para pagos con Stripe.', false);

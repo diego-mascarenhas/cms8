@@ -236,6 +236,9 @@ return [
     'payg' => [
         'price_per_email' => env('MAILER_PAYG_PRICE_PER_EMAIL', '0.01'),
         'currency' => env('MAILER_PAYG_CURRENCY', 'EUR'),
+        'price_per_email_by_team' => [
+            // 1 => '0.008',
+        ],
     ],
 
 ];

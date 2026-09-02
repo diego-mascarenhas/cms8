@@ -2,24 +2,34 @@
 
 namespace App\Services\Billing;
 
+use App\Models\Team;
 use App\Services\OpenRouterModelCatalog;
 use App\Services\TokenBillingRateService;
 use DateTimeInterface;
 
 class ClientTokenPresenter
 {
+    private ?Team $team = null;
+
     public function __construct(
         private readonly OpenRouterModelCatalog $catalog,
     ) {}
 
-    public function multiplier(): float
+    public function usingTeam(?Team $team): static
     {
-        return TokenBillingRateService::clientTokenMultiplier();
+        $this->team = $team;
+
+        return $this;
     }
 
-    public function scale(int $tokens): int
+    public function multiplier(DateTimeInterface|string|null $on = null): float
     {
-        return (int) round(max(0, $tokens) * $this->multiplier());
+        return TokenBillingRateService::clientTokenMultiplier($this->team, $on);
+    }
+
+    public function scale(int $tokens, DateTimeInterface|string|null $on = null): int
+    {
+        return (int) round(max(0, $tokens) * $this->multiplier($on));
     }
 
     /**
@@ -27,8 +37,8 @@ class ClientTokenPresenter
      */
     public function present(int $promptTokens, int $completionTokens, ?string $model, DateTimeInterface|string|null $on = null): array
     {
-        $prompt = $this->scale($promptTokens);
-        $completion = $this->scale($completionTokens);
+        $prompt = $this->scale($promptTokens, $on);
+        $completion = $this->scale($completionTokens, $on);
         $total = $prompt + $completion;
 
         return [

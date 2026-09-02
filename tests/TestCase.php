@@ -21,6 +21,7 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
         $this->assertTestsUseIsolatedDatabase();
         config(['daily_performance_insight.use_llm' => false]);
+        config(['whatsapp.customer_service_window.enabled' => false]);
         $this->registerDeniedForBrowserAssertion();
     }
 

@@ -92,6 +92,7 @@ class ApiChatWhatsAppScheduleTest extends TestCase
 
     public function test_thread_reports_closed_whatsapp_session_without_recent_inbound(): void
     {
+        config(['whatsapp.customer_service_window.enabled' => true]);
         [$token] = $this->inbox();
 
         $this->withHeader('Authorization', 'Bearer '.$token)

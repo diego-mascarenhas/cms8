@@ -474,6 +474,8 @@ Route::middleware(['auth'])->group(function ()
     {
         Route::get('/account-management', [AccountController::class, 'index'])->name('account-management');
         Route::get('/account-management/{id}/edit', [AccountController::class, 'edit'])->name('account.edit');
+        Route::get('/account-management/{id}/rates', [AccountController::class, 'editRates'])->name('account.rates.edit');
+        Route::put('/account-management/{id}/rates', [AccountController::class, 'updateRates'])->name('account.rates.update');
         Route::put('/account-management/{id}', [AccountController::class, 'update'])->name('account.update');
         Route::post('/account-management', [AccountController::class, 'store'])->name('account.store');
         Route::get('/account-management/{id}/subscriptions', [AccountController::class, 'showSubscriptions'])->name('account.subscriptions');
@@ -1563,6 +1565,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
     Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
+    Route::get('/team-billing', [HelpController::class, 'teamBilling'])->name('team-billing');
 });
 
 // Fallback route for 404 errors - must be at the end

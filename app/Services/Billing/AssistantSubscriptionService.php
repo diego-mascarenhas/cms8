@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing;
 
+use App\Enums\EmailPlan;
 use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
 use App\Models\Team;
@@ -589,9 +590,12 @@ class AssistantSubscriptionService
     {
         [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
+        $currency = TokenBillingRateService::displayCurrency();
+        $presenter = app(ClientTokenPresenter::class)->usingTeam($team);
+        $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
         $byModule = [];
 
-        foreach ($stats['byModule'] as $row)
+        foreach ($billed['sources'] ?? [] as $row)
         {
             $byModule[] = [
                 'module_name' => (string) ($row['module_name'] ?? ''),
@@ -599,16 +603,6 @@ class AssistantSubscriptionService
                 'tokens_used' => (int) ($row['tokens_used'] ?? 0),
                 'tokens_saved' => (int) ($row['tokens_saved'] ?? 0),
             ];
-        }
-
-        $currency = TokenBillingRateService::displayCurrency();
-        $presenter = app(ClientTokenPresenter::class);
-        $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
-        foreach ($byModule as $index => $row)
-        {
-            $modulePresented = $presenter->present((int) $row['tokens_used'], 0, null, $from);
-            $byModule[$index]['tokens_used'] = $modulePresented['total_tokens'];
-            $byModule[$index]['tokens_saved'] = $presenter->scale((int) $row['tokens_saved']);
         }
 
         return [
@@ -901,7 +895,7 @@ class AssistantSubscriptionService
             $description = (string) __('humano_pricing.plans.'.$id.'.description');
         }
 
-        return [
+        $payload = [
             'id' => $id,
             'name' => $name,
             'description' => $description,
@@ -912,6 +906,36 @@ class AssistantSubscriptionService
             'currency' => 'EUR',
             'checkout_available' => (bool) ($plan['checkout_available'] ?? false),
         ];
+
+        $subscribersLimit = $this->planSubscribersLimit($id, $plan);
+        if ($subscribersLimit !== null)
+        {
+            $payload['subscribers_limit'] = $subscribersLimit;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function planSubscribersLimit(string $id, array $plan): ?int
+    {
+        if (isset($plan['subscribers_limit']))
+        {
+            return (int) $plan['subscribers_limit'];
+        }
+
+        $emailPlan = match ($id)
+        {
+            'mailer_basic' => EmailPlan::BASIC,
+            'mailer_foundation' => EmailPlan::FOUNDATION,
+            'mailer_scale' => EmailPlan::SCALE,
+            'mailer_payg' => EmailPlan::PAYG,
+            default => null,
+        };
+
+        return $emailPlan?->getContactLimit();
     }
 
     /**
@@ -1275,6 +1299,7 @@ class AssistantSubscriptionService
 
         try
         {
+            \Stripe\Stripe::setApiKey(StripeAccountResolver::secretForCategory(''));
             $stripeSubscription = \Stripe\Subscription::retrieve([
                 'id' => $subscription->stripe_id,
                 'expand' => ['items.data'],

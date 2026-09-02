@@ -366,6 +366,107 @@ class ApiAssistantUsageTest extends TestCase
         $this->assertSame('OCR', $response->json('data.sources.0.module_name'));
         $this->assertSame(5_000_000, $response->json('data.sources.0.tokens_used'));
         $this->assertSame(500, $response->json('data.sources.0.amount_cents'));
+        $this->assertSame('Chat', collect($response->json('data.sources'))->firstWhere('module_name', 'Chat')['module_name'] ?? null);
+        $this->assertSame(
+            (int) collect($response->json('data.sources'))->sum('tokens_used'),
+            $response->json('data.all.tokens'),
+        );
+        $this->assertSame(
+            (int) collect($response->json('data.sources'))->sum('amount_cents'),
+            $response->json('data.all.amount_cents'),
+        );
+    }
+
+    public function test_usage_replaces_ocr_logs_when_catalog_ocr_model_exists(): void
+    {
+        [$token, , $team] = $this->team();
+
+        $ocr = Module::query()->firstOrCreate(
+            ['key' => 'ocr'],
+            ['name' => 'OCR', 'is_core' => false, 'order' => 0, 'status' => 1],
+        );
+        $insights = Module::query()->firstOrCreate(
+            ['key' => 'insights'],
+            ['name' => 'Insights', 'is_core' => false, 'order' => 0, 'status' => 1],
+        );
+
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $ocr->id,
+            'service' => 'DocumentAiOcrService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 500_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $insights->id,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 100_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+
+        $this->outboundUsage('34600111222', 800, 40, 840, 'claude-haiku-4-5', 'SM_usage_ocr_model');
+
+        $conversation = Conversation::query()->create([
+            'message_sid' => 'SM_usage_ocr_photo',
+            'channel' => 'whatsapp',
+            'from' => '34600111222',
+            'to' => self::TEAM_NUMBER,
+            'body' => ' ',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => '/storage/inbound-media/pieza.jpg',
+                    'content_type' => 'image/jpeg',
+                ],
+            ],
+        ]);
+        DocumentIngestion::query()->create([
+            'team_id' => $team->id,
+            'conversation_id' => $conversation->id,
+            'file_name' => 'pieza.jpg',
+            'mime_type' => 'image/jpeg',
+            'ocr_text' => 'FILTRO ACEITE OEM 12345',
+            'document_type' => 'unknown',
+            'classification_status' => 'classified',
+            'classification_meta' => [
+                'ocr_applied' => true,
+                'ocr_engine_used' => 'ai',
+                'ocr_usage' => [
+                    'model' => 'openai/gpt-4o-mini',
+                    'prompt_tokens' => 200,
+                    'completion_tokens' => 0,
+                    'total_tokens' => 200,
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/usage');
+
+        $response->assertOk();
+        $sources = collect($response->json('data.sources'));
+        $this->assertSame(2000, $sources->firstWhere('module_name', 'OCR')['tokens_used'] ?? null);
+        $this->assertSame(8400, $sources->firstWhere('module_name', 'Chat')['tokens_used'] ?? null);
+        $this->assertSame(1_000_000, $sources->firstWhere('module_name', 'Insights')['tokens_used'] ?? null);
+        $this->assertSame(
+            (int) $sources->sum('tokens_used'),
+            $response->json('data.all.tokens'),
+        );
+        $this->assertSame(
+            (int) $sources->sum('amount_cents'),
+            $response->json('data.all.amount_cents'),
+        );
+        $this->assertSame(1_010_400, $response->json('data.all.tokens'));
     }
 
     public function test_usage_ignores_another_team_whatsapp_line(): void

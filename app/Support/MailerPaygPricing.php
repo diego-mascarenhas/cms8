@@ -2,11 +2,22 @@
 
 namespace App\Support;
 
+use App\Enums\TeamBillingProduct;
+use App\Models\Team;
+use App\Models\TeamBillingRate;
+use DateTimeInterface;
+
 class MailerPaygPricing
 {
-    public static function pricePerEmail(): string
+    public static function pricePerEmail(Team|int|null $team = null, DateTimeInterface|string|null $on = null): string
     {
-        return trim((string) config('emailer.payg.price_per_email', '0.01')) ?: '0.01';
+        $teamId = $team instanceof Team ? (int) $team->id : $team;
+        if ($teamId === null && $on === null)
+        {
+            return TeamBillingRate::formatAmount((float) (config('emailer.payg.price_per_email', 0.01) ?: 0));
+        }
+
+        return TeamBillingRate::formattedAmountOn($teamId, TeamBillingProduct::MailerSend, $on);
     }
 
     public static function currency(): string
@@ -19,13 +30,13 @@ class MailerPaygPricing
         return (int) round(((float) $amount) * 100);
     }
 
-    public static function overageDueCents(int $overageEmails): int
+    public static function overageDueCents(int $overageEmails, Team|int|null $team = null, DateTimeInterface|string|null $on = null): int
     {
         if ($overageEmails < 1)
         {
             return 0;
         }
 
-        return $overageEmails * self::amountToCents(self::pricePerEmail());
+        return $overageEmails * self::amountToCents(self::pricePerEmail($team, $on));
     }
 }

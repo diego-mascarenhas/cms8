@@ -1393,7 +1393,7 @@ class ChatController extends Controller
                 return [
                     'id' => $message->id,
                     'direction' => 'outbound',
-                    'channel' => $message->channel ?: 'whatsapp',
+                    'channel' => $message->channel ?? 'whatsapp',
                     'body' => $message->body,
                     'status' => 'scheduled',
                     'is_scheduled' => true,
@@ -1411,7 +1411,7 @@ class ChatController extends Controller
             }
 
             $payload = $message->toArray();
-            $payload['channel'] = $message->channel ?: 'whatsapp';
+            $payload['channel'] = $message->channel ?? 'whatsapp';
             $payload['from_assistant'] = $this->whatsAppMessageIsFromAssistant($message);
             $payload['sender_avatar'] = $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser);
             $payload['transcribed_audio'] = $message instanceof Conversation
@@ -4539,6 +4539,7 @@ class ChatController extends Controller
 
         $model = is_string($usage['model'] ?? null) ? $usage['model'] : null;
         $presented = app(\App\Services\Billing\ClientTokenPresenter::class)
+            ->usingTeam(auth()->user()?->currentTeam)
             ->present($prompt, $completion, $model);
 
         return [
@@ -4573,6 +4574,7 @@ class ChatController extends Controller
         return (object) [
             'id' => 'scheduled-'.$scheduled->id,
             'direction' => 'outbound',
+            'channel' => 'whatsapp',
             'body' => $scheduled->body,
             'status' => 'scheduled',
             'is_scheduled' => true,

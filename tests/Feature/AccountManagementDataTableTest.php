@@ -119,7 +119,7 @@ class AccountManagementDataTableTest extends TestCase
 
         $response->assertOk();
         $html = collect($response->json('data'))->pluck('subscriptions_count')->implode(' ');
-        $this->assertStringContainsString('2.000.000 / 2,00 EUR', $html);
+        $this->assertStringContainsString('10.000.000 / 10,00 EUR', $html);
     }
 
     public function test_account_management_datatable_shows_owner_as_title_and_team_as_truncated_subtitle(): void
@@ -390,6 +390,8 @@ class AccountManagementDataTableTest extends TestCase
         $actions = collect($payload['data'])->pluck('action')->implode(' ');
         $this->assertStringContainsString('changeAccountPassword('.$account->id.')', $actions);
         $this->assertStringContainsString('ti-key', $actions);
+        $this->assertStringContainsString(route('account.rates.edit', $account->id), $actions);
+        $this->assertStringContainsString('ti-currency-euro', $actions);
     }
 
     /**
