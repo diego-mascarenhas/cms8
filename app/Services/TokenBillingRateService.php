@@ -24,7 +24,7 @@ class TokenBillingRateService
 
     public static function clientTokenMultiplier(): float
     {
-        return max(1, (float) config('humano_pricing.token_billing.client_token_multiplier', 8));
+        return max(1, (float) config('humano_pricing.token_billing.client_token_multiplier', 10));
     }
 
     public static function usdToDisplay(DateTimeInterface|string|null $on = null): float

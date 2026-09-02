@@ -69,7 +69,7 @@ return [
     /*
      * | Customer token billing on the Assistant subscription period
      * | (calendar month when there is no Stripe period).
-     * | The customer sees client_token_multiplier × real tokens (default 8)
+     * | The customer sees client_token_multiplier × real tokens (default 10)
      * | priced at OpenRouter list rates. currency is the display / charge
      * | label; USD is converted with exchange_rate_histories (or
      * | exchange_rates) for that month.
@@ -77,7 +77,7 @@ return [
     'token_billing' => [
         'base_currency' => 'USD',
         'currency' => env('HUMANO_TOKEN_BILLING_CURRENCY', 'EUR'),
-        'client_token_multiplier' => (float) env('HUMANO_TOKEN_CLIENT_MULTIPLIER', 8),
+        'client_token_multiplier' => (float) env('HUMANO_TOKEN_CLIENT_MULTIPLIER', 10),
     ],
 
     /*

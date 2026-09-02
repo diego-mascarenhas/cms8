@@ -24,9 +24,9 @@ class TokenBillingRateServiceTest extends TestCase
         $this->assertSame('USD', TokenBillingRateService::displayCurrency());
     }
 
-    public function test_default_client_multiplier_is_eight(): void
+    public function test_default_client_multiplier_is_ten(): void
     {
-        $this->assertSame(8.0, TokenBillingRateService::clientTokenMultiplier());
+        $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier());
     }
 
     public function test_usd_to_display_uses_exchange_rate_history(): void
