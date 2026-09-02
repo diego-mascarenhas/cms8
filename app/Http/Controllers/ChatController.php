@@ -1167,6 +1167,73 @@ class ChatController extends Controller
         ]);
     }
 
+    public function productSuggestions(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $team = auth()->user()?->currentTeam;
+        if ($team === null)
+        {
+            return response()->json(['items' => []], 403);
+        }
+
+        $query = trim((string) $request->query('q', ''));
+
+        return response()->json([
+            'items' => app(InboxQuickReplyService::class)->suggestPublishedProducts($team, $query),
+        ]);
+    }
+
+    public function inboxImage(Request $request): \Symfony\Component\HttpFoundation\Response
+    {
+        if (auth()->user()?->currentTeam === null)
+        {
+            abort(403);
+        }
+
+        $path = $this->inboxStoragePathFromUrl(trim((string) $request->query('url', '')));
+        if ($path === null || ! Storage::disk('public')->exists($path))
+        {
+            abort(404);
+        }
+
+        $mime = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
+
+        return response(Storage::disk('public')->get($path), 200, [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'private, max-age=60',
+        ]);
+    }
+
+    private function inboxStoragePathFromUrl(string $raw): ?string
+    {
+        if ($raw === '')
+        {
+            return null;
+        }
+
+        $parts = parse_url($raw);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $path = (string) ($parts['path'] ?? '');
+        $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+
+        if ($host === '' || $appHost === '' || $host !== $appHost)
+        {
+            return null;
+        }
+
+        if (! str_starts_with($path, '/storage/'))
+        {
+            return null;
+        }
+
+        $relative = ltrim(substr($path, strlen('/storage/')), '/');
+        if ($relative === '' || str_contains($relative, '..'))
+        {
+            return null;
+        }
+
+        return $relative;
+    }
+
     /**
      * @param  array{key: string, argument: ?string}  $quickReply
      */

@@ -147,6 +147,46 @@ class InboxQuickReplyServiceTest extends TestCase
         $this->assertSame('Usá /producto y el SKU o código. Ej: /producto REM-001', $resolved['error']);
     }
 
+    public function test_suggests_published_products_by_name_or_sku(): void
+    {
+        Storage::fake('public');
+        Storage::disk('public')->put('shop/products/remera.jpg', 'photo');
+        $team = Team::factory()->create();
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Remera básica',
+            'code' => 'REM-001',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+            'image' => 'shop/products/remera.jpg',
+        ]);
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Bolso tote',
+            'code' => 'BOL-TOT-001',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Borrador',
+            'code' => 'DRAFT-1',
+            'catalog_status' => ProductCatalogStatus::Draft,
+            'status' => false,
+        ]);
+
+        $all = app(InboxQuickReplyService::class)->suggestPublishedProducts($team);
+        $this->assertCount(2, $all);
+        $this->assertSame('Bolso tote', $all[0]['name']);
+        $this->assertSame('REM-001', $all[1]['code']);
+        $this->assertSame(url('storage/shop/products/remera.jpg'), $all[1]['image_url']);
+
+        $filtered = app(InboxQuickReplyService::class)->suggestPublishedProducts($team, 'tote');
+        $this->assertCount(1, $filtered);
+        $this->assertSame('BOL-TOT-001', $filtered[0]['code']);
+        $this->assertNull($filtered[0]['image_url']);
+    }
+
     public function test_producto_fails_when_code_is_missing_or_draft(): void
     {
         $team = Team::factory()->create();

@@ -324,6 +324,7 @@ class ProjectBudgetPreviewTest extends TestCase
             'data' => array_merge([
                 'budget_preview_token' => $token,
                 'ai_usage_percent' => 70,
+                'ai_interpretation' => 'El cliente solicita a mobile store release for iOS publishing.',
                 'dimension' => 'Medium scope mobile store release.',
                 'estimated_times' => 'About 1 week.',
                 'resources' => 'One Senior profile.',
@@ -355,8 +356,37 @@ class ProjectBudgetPreviewTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.name', 'Store publish project')
+            ->assertJsonPath('data.summary', 'A mobile store release for iOS publishing.')
             ->assertJsonPath('data.rows.0.title', 'iOS signing')
             ->assertJsonPath('data.quote_closed', false);
+    }
+
+    #[Test]
+    public function public_budget_preview_api_marks_email_click_when_quote_was_sent(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'budget_email' => [
+                'tracking_token' => 'track'.bin2hex(random_bytes(8)),
+                'to_email' => 'ana@estudio-norte.test',
+                'sent_at' => now()->toIso8601String(),
+                'opened_at' => null,
+                'clicked_at' => null,
+            ],
+        ]);
+
+        $this->getJson('/api/projects/funnel/budget/'.$created['token'])->assertOk();
+
+        $project = $created['project']->fresh();
+        $this->assertNotNull(data_get($project->data, 'budget_email.clicked_at'));
+        $this->assertNotNull(data_get($project->data, 'budget_email.opened_at'));
+        $this->assertSame(1, (int) data_get($project->data, 'budget_email.visited_count'));
+
+        $this->getJson('/api/projects/funnel/budget/'.$created['token'])->assertOk();
+        $this->assertSame(1, (int) data_get($created['project']->fresh()->data, 'budget_email.visited_count'));
+
+        $this->travel(6)->minutes();
+        $this->getJson('/api/projects/funnel/budget/'.$created['token'])->assertOk();
+        $this->assertSame(2, (int) data_get($created['project']->fresh()->data, 'budget_email.visited_count'));
     }
 
     #[Test]

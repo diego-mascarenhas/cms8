@@ -149,6 +149,57 @@ class InboxQuickReplyService
     }
 
     /**
+     * @return list<array{code: string, name: string, sku: ?string, image_url: ?string}>
+     */
+    public function suggestPublishedProducts(Team $team, string $query = '', int $limit = 80): array
+    {
+        $needle = mb_strtolower(trim($query));
+        $teamIds = $this->shopCatalogTeamIds($team);
+        $images = app(ProductImageService::class);
+
+        $products = Product::withoutGlobalScope('team')
+            ->whereIn('team_id', $teamIds)
+            ->where('catalog_status', ProductCatalogStatus::Publish)
+            ->when($needle !== '', function ($builder) use ($needle): void
+            {
+                $like = '%'.$needle.'%';
+                $builder->where(function ($query) use ($like): void
+                {
+                    $query->whereRaw('LOWER(name) like ?', [$like])
+                        ->orWhereRaw('LOWER(code) like ?', [$like])
+                        ->orWhereRaw('LOWER(COALESCE(barcode, \'\')) like ?', [$like])
+                        ->orWhereHas('variants', function ($variants) use ($like): void
+                        {
+                            $variants->withoutGlobalScope('team')
+                                ->whereRaw('LOWER(COALESCE(sku, \'\')) like ?', [$like]);
+                        });
+                });
+            })
+            ->with(['variants' => function ($variants): void
+            {
+                $variants->withoutGlobalScope('team');
+            }])
+            ->orderBy('name')
+            ->limit(max(1, min($limit, 80)))
+            ->get();
+
+        return $products
+            ->map(function (Product $product) use ($images): array
+            {
+                $sku = trim((string) ($product->defaultVariant()?->sku ?? ''));
+
+                return [
+                    'code' => (string) $product->code,
+                    'name' => (string) $product->name,
+                    'sku' => $sku !== '' ? $sku : null,
+                    'image_url' => $this->suggestionImageUrl($images->whatsAppPath($product->image)),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * @return array{product: Product, variant: ?ProductVariant}|null
      */
     public function findPublishedShopProduct(Team $team, string $needle): ?array
@@ -202,6 +253,24 @@ class InboxQuickReplyService
         }
 
         return ['product' => $product, 'variant' => $variant];
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function suggestionImageUrl(?string $media): ?string
+    {
+        if ($media === null || $media === '')
+        {
+            return null;
+        }
+
+        if (preg_match('#^https?://#i', $media) === 1)
+        {
+            return $media;
+        }
+
+        return url($media);
     }
 
     /**

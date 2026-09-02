@@ -15,6 +15,7 @@ use Database\Seeders\LanguageSeeder;
 use Database\Seeders\List60StatusesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -253,6 +254,35 @@ class InboxQuickReplySendTest extends TestCase
             ->assertJsonMissing(['slash' => '/horarios']);
     }
 
+    public function test_product_suggestions_list_published_shop_items(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Remera básica',
+            'code' => 'REM-001',
+            'catalog_status' => \App\Enums\ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-product-suggestions?q=remera')
+            ->assertOk()
+            ->assertJsonPath('items.0.code', 'REM-001')
+            ->assertJsonPath('items.0.name', 'Remera básica');
+    }
+
     public function test_whatsapp_list_slash_enrolls_contact_without_sending(): void
     {
         if (! Features::hasTeamFeatures())
@@ -327,6 +357,53 @@ class InboxQuickReplySendTest extends TestCase
         $this->assertSame(1, List60::query()->count());
 
         Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/send-message'));
+    }
+
+    public function test_inbox_image_streams_a_public_storage_file(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Storage::fake('public');
+        Storage::disk('public')->put('whatsapp-inbound/helix.jpg', 'fake-image-bytes');
+        config(['app.url' => 'https://cms8.test']);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/chat/inbox-image?url='.urlencode('https://cms8.test/storage/whatsapp-inbound/helix.jpg'))
+            ->assertOk()
+            ->assertSee('fake-image-bytes');
+    }
+
+    public function test_inbox_image_rejects_foreign_hosts(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Storage::fake('public');
+        Storage::disk('public')->put('whatsapp-inbound/helix.jpg', 'fake-image-bytes');
+        config(['app.url' => 'https://cms8.test']);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $token = $user->createToken('test')->plainTextToken;
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->get('/api/chat/inbox-image?url='.urlencode('https://evil.test/storage/whatsapp-inbound/helix.jpg'))
+            ->assertNotFound();
     }
 
     private function createRecentInbound(string $from): void

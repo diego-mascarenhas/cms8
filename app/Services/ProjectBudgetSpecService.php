@@ -1529,6 +1529,7 @@ class ProjectBudgetSpecService
             'token' => $token,
             'name' => trim((string) ($project->real_name ?: $project->name)),
             'client_name' => trim((string) (optional($project->enterprise)->name ?? '')),
+            'summary' => $this->publicPreviewSummary($project),
             'dimension' => trim((string) data_get($project->data, 'dimension', '')),
             'estimated_times' => trim((string) data_get($project->data, 'estimated_times', '')),
             'resources' => trim((string) data_get($project->data, 'resources', '')),
@@ -1553,6 +1554,44 @@ class ProjectBudgetSpecService
                 ? data_get($project->data, 'estimate_notes')
                 : [],
         ];
+    }
+
+    private function publicPreviewSummary(Project $project): string
+    {
+        $candidates = [
+            data_get($project->data, 'ai_interpretation', ''),
+            strip_tags((string) ($project->description ?? '')),
+        ];
+
+        foreach ($candidates as $candidate)
+        {
+            $text = $this->generalizeClientRequestLead(
+                trim(html_entity_decode(strip_tags((string) $candidate))),
+            );
+            if ($text !== '')
+            {
+                return $text;
+            }
+        }
+
+        return '';
+    }
+
+    private function generalizeClientRequestLead(string $text): string
+    {
+        $general = preg_replace(
+            '/^(?:el\s+cliente\s+|the\s+client\s+|se\s+)?(?:solicita|pide|requiere|necesita|quiere|busca|requests|needs|wants|asks(?:\s+for)?|is\s+looking\s+for)\s*:?\s+/iu',
+            '',
+            $text,
+            1,
+        );
+        $general = trim((string) $general);
+        if ($general === '' || $general === $text)
+        {
+            return $text;
+        }
+
+        return mb_strtoupper(mb_substr($general, 0, 1)).mb_substr($general, 1);
     }
 
     /**
@@ -1626,6 +1665,6 @@ class ProjectBudgetSpecService
 
     private function getDefaultBudgetSpecPrompt(): string
     {
-        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Short summary of what you understood from the budget (scope, intent, main deliverables). 1-2 paragraphs.\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (short explanation of the section), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
+        return "You are an expert at interpreting project budgets and technical proposals, especially for software development.\n\nGiven the budget text we received from the client, respond with ONLY a valid JSON object (no markdown, no code block wrapper, no explanation).\nUse exactly these keys:\n- \"ai_interpretation\": Neutral 1-2 paragraph description of the project itself (what it is and the main deliverables). Write it as a general project summary. Do not narrate the client's request and do not start with phrases like \"El cliente solicita\", \"The client requests\" or \"The client wants\".\n- \"dimension\": Scope and size of the project (features, modules, deliverables, complexity).\n- \"estimated_times\": Realistic timeline (phases, milestones, total duration).\n- \"resources\": Human and technical resources (roles, team size, tools, infrastructure).\n- \"token_consumption\": Object with \"notes\" (one line per labor: \"{title}: {N} K\", no Tokens AI prefix), and optional input_tokens/output_tokens/total_tokens/cost_euros/savings_percent/billable_euros/currency.\n- \"suggested_tasks\": (optional) Array: each object with \"title\", \"description\" (short explanation of the section), \"category_name\" (match existing task category), \"estimated_hours\" (decimal), \"resource_level\" (Senior/Junior/Consultor), \"unit_price\" (number), \"estimated_tokens\" (integer). Use empty array if not applicable.\n\nWrite in the same language as the budget text. Be concrete and professional. Keep each field to 2-4 short paragraphs. Every suggested task must include description, resource_level, unit_price and estimated_tokens.";
     }
 }

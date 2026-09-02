@@ -474,7 +474,8 @@ class ProjectFunnelTest extends TestCase
         Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail): bool
         {
             return $mail->hasTo('ana.send@example.com')
-                && $mail->hasFrom('quotes@example.test');
+                && $mail->hasFrom('quotes@example.test')
+                && $mail->hasBcc('quotes@example.test');
         });
     }
 

@@ -59,6 +59,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $project->refresh();
         $this->assertSame(ProjectStatus::STATUS_AUTHORIZED, (int) $project->status_id);
         $this->assertSame($contact->email, data_get($project->data, 'budget_email.to_email'));
+        $this->assertSame('quotes@example.test', data_get($project->data, 'budget_email.bcc_email'));
         $this->assertSame($contact->id, data_get($project->data, 'budget_email.contact_id'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.tracking_token'));
         $this->assertNotEmpty(data_get($project->data, 'budget_email.sent_at'));
@@ -74,9 +75,51 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
 
             return $mail->hasTo($contact->email)
                 && $mail->hasFrom('quotes@example.test')
-                && str_contains($html, 'logo-light.svg')
-                && str_contains($html, 'REVISION ALPHA')
+                && $mail->hasBcc('quotes@example.test')
+                && str_contains($html, __('Hello :name,', ['name' => 'Client Contact']))
+                && str_contains($html, __('This quote covers the following project:'))
+                && str_contains($html, 'Un sitio web institucional desarrollado en WordPress.')
+                && ! str_contains($html, 'El cliente solicita')
+                && str_contains($html, __('Dimension'))
+                && str_contains($html, 'Small institutional WordPress site.')
+                && str_contains($html, 'It covers hosting and four core pages.')
+                && str_contains($html, __('Times'))
+                && str_contains($html, 'Two to three weeks.')
+                && str_contains($html, 'Fase 1: setup.')
+                && str_contains($html, __('Resources'))
+                && str_contains($html, 'One WordPress developer.')
+                && ! str_contains($html, 'iOS signing')
+                && ! str_contains($html, 'Certificate setup')
+                && ! str_contains($html, 'Estimado')
+                && ! str_contains($html, 'Dear ')
+                && str_contains($html, '/p/budget-mail/')
+                && str_contains($html, '/click')
+                && ! str_contains($html, 'localhost:3007')
+                && str_contains($html, '#0d9488')
+                && ! str_contains($html, '#4361f7')
+                && ! str_contains($html, 'logo-light.svg')
+                && ! str_contains($html, 'REVISION ALPHA')
+                && ! str_contains($html, '30%')
                 && ! str_contains($html, 'humano');
+        });
+    }
+
+    #[Test]
+    public function quote_email_does_not_bcc_when_recipient_is_the_sender(): void
+    {
+        Mail::fake();
+
+        [$user, $project, $contact] = $this->createBudgetedProject();
+        $contact->forceFill(['email' => 'quotes@example.test'])->save();
+
+        $this->actingAs($user)->post(route('project.authorize-budget', $project->id));
+
+        $project->refresh();
+        $this->assertNull(data_get($project->data, 'budget_email.bcc_email'));
+
+        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail): bool
+        {
+            return $mail->hasTo('quotes@example.test') && ! $mail->hasBcc('quotes@example.test');
         });
     }
 
@@ -240,14 +283,24 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
             'real_name' => 'Store publish project',
             'data' => [
                 'budget_preview_token' => $token,
+                'ai_interpretation' => 'El cliente solicita un sitio web institucional desarrollado en WordPress.',
+                'dimension' => 'Small institutional WordPress site. It covers hosting and four core pages.',
+                'estimated_times' => 'Two to three weeks. Fase 1: setup. Fase 2: launch.',
+                'resources' => 'One WordPress developer.',
                 'suggested_tasks' => [
                     [
                         'title' => 'iOS signing',
+                        'description' => 'Certificate setup and store publishing for the iOS build.',
                         'estimated_hours' => 3,
                         'resource_level' => 'Senior',
                         'unit_price' => 225,
                         'estimated_tokens' => 60000,
                         'included' => true,
+                    ],
+                    [
+                        'title' => 'Internal QA only',
+                        'description' => 'This optional task should not appear in the quote email.',
+                        'included' => false,
                     ],
                 ],
             ],
