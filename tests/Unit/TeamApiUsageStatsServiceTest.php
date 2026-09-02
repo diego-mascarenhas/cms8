@@ -357,9 +357,9 @@ class TeamApiUsageStatsServiceTest extends TestCase
 
         $summary = TeamApiUsageStatsService::costSummary((int) $team->id);
 
-        $this->assertSame(8_000_000, $summary['tokens']);
-        $this->assertSame(800, $summary['amount_cents']);
+        $this->assertSame(10_000_000, $summary['tokens']);
+        $this->assertSame(1000, $summary['amount_cents']);
         $this->assertSame('EUR', $summary['currency']);
-        $this->assertSame('8.000.000 / 8,00 EUR', $summary['formatted']);
+        $this->assertSame('10.000.000 / 10,00 EUR', $summary['formatted']);
     }
 }

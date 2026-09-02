@@ -239,7 +239,7 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 8_000_000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 10_000_000);
         $this->assertEqualsWithDelta(
             $firstUse->fresh()->created_at->timestamp,
             Carbon::parse($response->json('data.token_usage.period_start'))->timestamp,
@@ -311,9 +311,9 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 16_000_000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 20_000_000);
         $response->assertJsonPath('data.token_usage.total_calls', 2);
-        $response->assertJsonPath('data.token_usage.amount_due_cents', 1600);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 2000);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
     }
 
@@ -345,8 +345,8 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 8_000_000);
-        $response->assertJsonPath('data.token_usage.amount_due_cents', 800);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 10_000_000);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 1000);
     }
 
     public function test_subscription_whatsapp_usage_bills_outbound_messages_in_current_period(): void
