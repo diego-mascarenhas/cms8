@@ -37,7 +37,6 @@ use App\Services\InboxQuickReplyService;
 use App\Services\InboxReplyTargetService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\SiteAssistantConversationService;
-use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamInboundAssistantPolicy;
 use App\Services\TeamSiteAssistantPromptService;
 use App\Services\TeamWhatsAppChatPresentation;
@@ -4538,14 +4537,17 @@ class ChatController extends Controller
             return null;
         }
 
-        $rate = TeamApiUsageStatsService::sellRatePerMillion();
+        $model = is_string($usage['model'] ?? null) ? $usage['model'] : null;
+        $presented = app(\App\Services\Billing\ClientTokenPresenter::class)
+            ->present($prompt, $completion, $model);
 
         return [
-            'prompt_tokens' => $prompt,
-            'completion_tokens' => $completion,
-            'total_tokens' => $total,
+            'prompt_tokens' => $presented['prompt_tokens'],
+            'completion_tokens' => $presented['completion_tokens'],
+            'total_tokens' => $presented['total_tokens'],
             'tool_calls' => max(0, $toolCalls),
-            'amount_cents' => (int) round(($total / 1_000_000) * $rate * 100),
+            'amount_cents' => $presented['amount_cents'],
+            'model' => $model,
         ];
     }
 

@@ -7,6 +7,7 @@ use App\Models\TokenUsageLog;
 use App\Support\AiTasks;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\AiManager;
 
 use function Laravel\Ai\agent;
 
@@ -14,9 +15,17 @@ class DocumentAiOcrService
 {
     public function extractTextFromLocalFile(string $absolutePath, ?int $teamId = null): ?string
     {
+        return $this->extractWithUsage($absolutePath, $teamId)['text'];
+    }
+
+    /**
+     * @return array{text: ?string, usage: ?array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}}
+     */
+    public function extractWithUsage(string $absolutePath, ?int $teamId = null): array
+    {
         if (! is_file($absolutePath))
         {
-            return null;
+            return ['text' => null, 'usage' => null];
         }
 
         try
@@ -35,11 +44,15 @@ class DocumentAiOcrService
                 messages: [],
                 tools: [],
             );
-            $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], provider: AiTasks::provider('ocr'));
+            $ocrModel = $this->resolveOcrModel();
+            $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], AiTasks::provider('ocr'), $ocrModel);
             $text = trim((string) ($response->text ?? ''));
             $this->logTokenUsage($response, $teamId, $ocrPrompt, $text);
 
-            return $text !== '' ? $text : null;
+            return [
+                'text' => $text !== '' ? $text : null,
+                'usage' => $this->usageFromResponse($response),
+            ];
         } catch (\Throwable $e)
         {
             Log::warning('AI OCR extraction failed', [
@@ -47,8 +60,59 @@ class DocumentAiOcrService
                 'path' => $absolutePath,
             ]);
 
+            return ['text' => null, 'usage' => null];
+        }
+    }
+
+    public function resolveOcrModel(): string
+    {
+        $configured = trim((string) config('ai.ocr_model', 'anthropic/claude-haiku-4.5'));
+        if ($configured !== '' && strtolower($configured) !== 'cheapest')
+        {
+            return $configured;
+        }
+
+        $provider = AiTasks::provider('ocr');
+        $primary = is_array($provider) ? (string) ($provider[0] ?? 'anthropic') : $provider;
+
+        try
+        {
+            $cheapest = app(AiManager::class)->textProvider($primary)->cheapestTextModel();
+            if (is_string($cheapest) && trim($cheapest) !== '')
+            {
+                return trim($cheapest);
+            }
+        } catch (\Throwable)
+        {
+        }
+
+        return 'anthropic/claude-haiku-4.5';
+    }
+
+    /**
+     * @return array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}|null
+     */
+    private function usageFromResponse(mixed $response): ?array
+    {
+        $usage = $response->usage ?? null;
+        $prompt = is_array($usage)
+            ? (int) ($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0)
+            : (int) ($usage->promptTokens ?? $usage->prompt_tokens ?? 0);
+        $completion = is_array($usage)
+            ? (int) ($usage['completion_tokens'] ?? $usage['completionTokens'] ?? 0)
+            : (int) ($usage->completionTokens ?? $usage->completion_tokens ?? 0);
+        $total = $prompt + $completion;
+        if ($total <= 0)
+        {
             return null;
         }
+
+        return [
+            'model' => $this->resolveOcrModel(),
+            'prompt_tokens' => $prompt,
+            'completion_tokens' => $completion,
+            'total_tokens' => $total,
+        ];
     }
 
     private function logTokenUsage(mixed $response, ?int $teamId, string $input, string $output): void

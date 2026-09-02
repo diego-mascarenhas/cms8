@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Models\ExchangeRate;
 use App\Services\TokenBillingRateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -10,17 +11,34 @@ class TokenBillingRateServiceTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_default_usd_sell_rate_is_ten_dollars_plus_markup(): void
+    public function test_client_multiplier_and_display_currency(): void
     {
         config([
-            'humano_pricing.token_billing.amount_per_million' => 10,
-            'humano_pricing.token_billing.markup_percent' => 50,
             'humano_pricing.token_billing.currency' => 'USD',
+            'humano_pricing.token_billing.client_token_multiplier' => 2,
         ]);
 
-        $this->assertSame(15.0, TokenBillingRateService::usdSellRateFromConfig());
-        $this->assertSame(15.0, TokenBillingRateService::displaySellRate());
-        $this->assertSame(1500, TokenBillingRateService::cents(1_000_000));
+        $this->assertSame(2.0, TokenBillingRateService::clientTokenMultiplier());
+        $this->assertSame(1.0, TokenBillingRateService::usdToDisplay());
         $this->assertSame('USD', TokenBillingRateService::baseCurrency());
+        $this->assertSame('USD', TokenBillingRateService::displayCurrency());
+    }
+
+    public function test_usd_to_display_uses_exchange_rate_history(): void
+    {
+        config([
+            'humano_pricing.token_billing.base_currency' => 'USD',
+            'humano_pricing.token_billing.currency' => 'EUR',
+        ]);
+
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'EUR',
+            'rate' => 0.90,
+            'date' => now()->toDateString(),
+            'fetched_at' => now(),
+        ]);
+
+        $this->assertEqualsWithDelta(0.90, TokenBillingRateService::usdToDisplay(), 0.0001);
     }
 }

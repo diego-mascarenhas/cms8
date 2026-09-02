@@ -9,6 +9,7 @@ use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\TeamApiUsageStatsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -329,12 +330,14 @@ class TeamApiUsageStatsServiceTest extends TestCase
         $this->assertSame(80, $stats['totalTokensUsed']);
     }
 
-    public function test_cost_summary_uses_configured_sell_rate(): void
+    public function test_cost_summary_uses_catalog_market_rate_on_double_tokens(): void
     {
         config([
-            'humano_pricing.token_billing.amount_per_million' => 6,
-            'humano_pricing.token_billing.markup_percent' => 50,
+            'services.openrouter.cache_store' => 'array',
             'humano_pricing.token_billing.currency' => 'EUR',
+        ]);
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
         ]);
 
         $user = User::factory()->withPersonalTeam()->create();
@@ -354,9 +357,9 @@ class TeamApiUsageStatsServiceTest extends TestCase
 
         $summary = TeamApiUsageStatsService::costSummary((int) $team->id);
 
-        $this->assertSame(1_000_000, $summary['tokens']);
-        $this->assertSame(900, $summary['amount_cents']);
+        $this->assertSame(2_000_000, $summary['tokens']);
+        $this->assertSame(200, $summary['amount_cents']);
         $this->assertSame('EUR', $summary['currency']);
-        $this->assertSame('1.000.000 / 9,00 EUR', $summary['formatted']);
+        $this->assertSame('2.000.000 / 2,00 EUR', $summary['formatted']);
     }
 }

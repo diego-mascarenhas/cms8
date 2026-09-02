@@ -277,9 +277,9 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('messages.0.from_assistant', true);
-        $response->assertJsonPath('messages.0.usage.prompt_tokens', 12000);
-        $response->assertJsonPath('messages.0.usage.completion_tokens', 180);
-        $response->assertJsonPath('messages.0.usage.total_tokens', 12180);
+        $response->assertJsonPath('messages.0.usage.prompt_tokens', 24000);
+        $response->assertJsonPath('messages.0.usage.completion_tokens', 360);
+        $response->assertJsonPath('messages.0.usage.total_tokens', 24360);
         $response->assertJsonPath('messages.0.usage.tool_calls', 2);
         $this->assertGreaterThan(0, $response->json('messages.0.usage.amount_cents'));
     }
@@ -320,7 +320,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
             ->getJson('/api/chat/whatsapp-messages/34600888666')
             ->assertOk()
-            ->assertJsonPath('messages.0.usage.total_tokens', 840)
+            ->assertJsonPath('messages.0.usage.total_tokens', 1680)
             ->assertJsonPath('messages.0.usage.tool_calls', 1);
     }
 

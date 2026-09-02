@@ -13,6 +13,7 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -81,9 +82,11 @@ class AccountManagementDataTableTest extends TestCase
     public function test_account_management_datatable_shows_token_usage_in_subscriptions_column(): void
     {
         config([
-            'humano_pricing.token_billing.amount_per_million' => 10,
-            'humano_pricing.token_billing.markup_percent' => 50,
+            'services.openrouter.cache_store' => 'array',
             'humano_pricing.token_billing.currency' => 'EUR',
+        ]);
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
         ]);
 
         Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
@@ -116,7 +119,7 @@ class AccountManagementDataTableTest extends TestCase
 
         $response->assertOk();
         $html = collect($response->json('data'))->pluck('subscriptions_count')->implode(' ');
-        $this->assertStringContainsString('1.000.000 / 15,00 EUR', $html);
+        $this->assertStringContainsString('2.000.000 / 2,00 EUR', $html);
     }
 
     public function test_account_management_datatable_shows_owner_as_title_and_team_as_truncated_subtitle(): void

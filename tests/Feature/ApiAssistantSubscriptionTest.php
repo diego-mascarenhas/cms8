@@ -16,6 +16,7 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Jetstream\Features;
 use ReflectionMethod;
 use Spatie\Permission\Models\Role;
@@ -24,6 +25,16 @@ use Tests\TestCase;
 class ApiAssistantSubscriptionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['services.openrouter.cache_store' => 'array']);
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
+        ]);
+    }
 
     /**
      * @return array{0: \App\Models\User, 1: \App\Models\Team, 2: string}
@@ -71,7 +82,6 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.total_tokens_used', 0);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
-        $response->assertJsonPath('data.token_usage.rate_per_million', 15);
         $this->assertNotEmpty($response->json('data.token_usage.period_start'));
         $this->assertNotEmpty($response->json('data.token_usage.period_end'));
         $this->assertIsArray($response->json('data.token_usage.by_module'));
@@ -229,7 +239,7 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 1_000_000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 2_000_000);
         $this->assertEqualsWithDelta(
             $firstUse->fresh()->created_at->timestamp,
             Carbon::parse($response->json('data.token_usage.period_start'))->timestamp,
@@ -272,11 +282,6 @@ class ApiAssistantSubscriptionTest extends TestCase
     public function test_subscription_token_usage_bills_tokens_used_in_current_period(): void
     {
         [, $team, $token] = $this->assistantUserWithToken();
-        config([
-            'humano_pricing.token_billing.amount_per_million' => 6,
-            'humano_pricing.token_billing.markup_percent' => 50,
-        ]);
-
         TokenUsageLog::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'module_id' => null,
@@ -306,11 +311,10 @@ class ApiAssistantSubscriptionTest extends TestCase
             ->getJson('/api/assistant/subscription');
 
         $response->assertOk();
-        $response->assertJsonPath('data.token_usage.total_tokens_used', 2_000_000);
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 4_000_000);
         $response->assertJsonPath('data.token_usage.total_calls', 2);
-        $response->assertJsonPath('data.token_usage.amount_due_cents', 1800);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 400);
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
-        $response->assertJsonPath('data.token_usage.rate_per_million', 9);
     }
 
     public function test_subscription_whatsapp_usage_bills_outbound_messages_in_current_period(): void

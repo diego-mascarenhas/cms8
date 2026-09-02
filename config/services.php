@@ -204,6 +204,12 @@ return [
         'success_url' => env('LANDING_SUCCESS_URL', ''),
     ],
 
+    'openrouter' => [
+        'models_url' => env('OPENROUTER_MODELS_URL', 'https://openrouter.ai/api/v1/models'),
+        'cache_seconds' => (int) env('OPENROUTER_MODELS_CACHE_SECONDS', 3600),
+        'cache_store' => env('OPENROUTER_MODELS_CACHE_STORE', 'file'),
+    ],
+
     'prospect_search' => [
         'team_id' => env('PROSPECT_SEARCH_TEAM_ID'),
         // URL of the Prospection frontend (React app). The email link must point here so users land on the frontend.
