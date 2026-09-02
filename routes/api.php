@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
 use App\Http\Controllers\Api\PublicPostController;
+use App\Http\Controllers\Api\PublicShopCatalogController;
 use App\Http\Controllers\Api\PublicSiteAssistantController;
 use App\Http\Controllers\Api\RolePermissionController;
 use App\Http\Controllers\Api\ServiceController;
@@ -117,6 +118,10 @@ Route::prefix('embed/automation/{token}')->middleware('throttle:60,1')->group(fu
 Route::get('embed/site/{teamSlug}', [PublicSiteAssistantController::class, 'show'])
     ->middleware('throttle:60,1')
     ->name('api.embed.site');
+
+Route::get('public-shop/{slug}/products/{code}', [PublicShopCatalogController::class, 'show'])
+    ->middleware('throttle:120,1')
+    ->name('api.public-shop.products.show');
 
 // Public CMS read API (anonymous, resolved by team slug; opt-in via cms_public_enabled)
 Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function ()

@@ -346,7 +346,7 @@ class InboxQuickReplyService
         $catalogTeam = (int) $product->team_id === (int) $team->id
             ? $team
             : Team::withoutGlobalScopes()->find($product->team_id);
-        $shopUrl = ($catalogTeam ?? $team)->publicCatalogShopUrl();
+        $shopUrl = ($catalogTeam ?? $team)->publicCatalogProductUrl($code !== '' ? $code : $sku);
         if ($shopUrl !== null)
         {
             $lines[] = $shopUrl;

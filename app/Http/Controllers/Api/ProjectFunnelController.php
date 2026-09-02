@@ -645,7 +645,7 @@ class ProjectFunnelController extends Controller
                     'project_name' => $project->name,
                     'tasks_count' => count($includedTasks),
                     'total_hours' => collect($includedTasks)->sum(fn ($t) => (float) ($t['estimated_hours'] ?? 0)),
-                    ...$this->publicBudgetUrls($previewToken),
+                    ...$this->publicBudgetUrls($previewToken, $project),
                 ];
             });
         } catch (\Throwable $e)
@@ -1265,7 +1265,7 @@ class ProjectFunnelController extends Controller
     /**
      * @return array{preview_url: string|null, download_url: string|null}
      */
-    private function publicBudgetUrls(string $token): array
+    private function publicBudgetUrls(string $token, ?Project $project = null): array
     {
         if ($token === '')
         {
@@ -1275,6 +1275,6 @@ class ProjectFunnelController extends Controller
             ];
         }
 
-        return \App\Support\BudgetPreviewUrl::pair($token);
+        return \App\Support\BudgetPreviewUrl::pair($token, $project);
     }
 }

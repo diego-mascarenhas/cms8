@@ -1103,7 +1103,7 @@ class ProjectController extends Controller
             ];
         }
 
-        return \App\Support\BudgetPreviewUrl::pair($token);
+        return \App\Support\BudgetPreviewUrl::pair($token, $project);
     }
 
     /**

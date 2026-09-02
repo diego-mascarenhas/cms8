@@ -124,7 +124,7 @@ class ProjectBudgetQuoteMailService
         $from = $ready['from'];
 
         $trackingToken = Str::random(48);
-        $previewUrl = \App\Support\BudgetPreviewUrl::forToken($previewToken)
+        $previewUrl = \App\Support\BudgetPreviewUrl::forToken($previewToken, $project)
             ?? route('project.budget-preview', $previewToken);
 
         $mail = new ProjectBudgetQuoteMail(
@@ -364,7 +364,7 @@ class ProjectBudgetQuoteMailService
         $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
 
         return $previewToken !== ''
-            ? (\App\Support\BudgetPreviewUrl::forToken($previewToken) ?? route('project.budget-preview', $previewToken))
+            ? (\App\Support\BudgetPreviewUrl::forToken($previewToken, $project) ?? route('project.budget-preview', $previewToken))
             : null;
     }
 

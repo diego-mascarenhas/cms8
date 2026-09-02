@@ -899,21 +899,37 @@ class Team extends JetstreamTeam
         return $slug !== '' ? $slug : null;
     }
 
+    public function publicShopAppUrl(): string
+    {
+        return rtrim((string) config('services.shop.url', 'https://shop.idoneo.dev'), '/');
+    }
+
+    public function publicCatalogPathSlug(): ?string
+    {
+        return $this->getPublicCatalogShopDomain() ?? $this->getPublicCatalogNameSlug();
+    }
+
     public function publicCatalogShopUrl(): ?string
     {
-        $domain = $this->getPublicCatalogShopDomain();
-        if ($domain !== null)
+        $slug = $this->publicCatalogPathSlug();
+        if ($slug === null)
         {
-            return url('/shop/'.$domain);
+            return null;
         }
 
-        $nameSlug = $this->getPublicCatalogNameSlug();
-        if ($nameSlug !== null)
+        return $this->publicShopAppUrl().'/p/'.$slug;
+    }
+
+    public function publicCatalogProductUrl(?string $code): ?string
+    {
+        $base = $this->publicCatalogShopUrl();
+        $code = trim((string) $code);
+        if ($base === null || $code === '')
         {
-            return url('/shop/'.$nameSlug);
+            return $base;
         }
 
-        return null;
+        return $base.'/'.rawurlencode($code);
     }
 
     /**

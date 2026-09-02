@@ -126,6 +126,17 @@ class ProjectBudgetPreviewTest extends TestCase
     }
 
     #[Test]
+    public function public_budget_preview_redirects_to_the_project_frontend(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'budget_preview_base_url' => 'https://presu.humano.app',
+        ]);
+
+        $this->get(route('project.budget-preview', $created['token']))
+            ->assertRedirect('https://presu.humano.app/p/budget/'.$created['token']);
+    }
+
+    #[Test]
     public function public_budget_preview_uses_budget_logo_url_from_config(): void
     {
         config(['variables.logo.budget_path' => 'https://mi.humano.app/assets/logo-dark.svg']);
