@@ -15,8 +15,9 @@
     $logoUrl = \App\Helpers\Helpers::budgetLogoAsset();
     $isoUrl = \App\Helpers\Helpers::logoAsset('iso');
 
-    $formatHoursHuman = function ($hours): string {
-        return \App\Helpers\Helpers::formatHoursHuman($hours, true);
+    $useSavedQuote = $budgetService->usesSavedQuote($project);
+    $formatHoursHuman = function ($hours) use ($useSavedQuote): string {
+        return \App\Helpers\Helpers::formatHoursHuman($hours, ! $useSavedQuote);
     };
 
     $formatEuros = function ($amount): string {
@@ -37,16 +38,12 @@
         if (! is_array($t) || (($t['included'] ?? true) === false)) {
             continue;
         }
-        $hours = isset($t['estimated_hours']) && is_numeric($t['estimated_hours']) ? (float) $t['estimated_hours'] : 0.0;
         $level = trim((string) ($t['resource_level'] ?? '')) ?: '—';
-        $price = isset($t['unit_price']) && $t['unit_price'] !== '' && $t['unit_price'] !== null ? (float) $t['unit_price'] : null;
-        $baseTokens = $budgetService->resolveEstimatedTokens($t);
-        $balanced = $budgetService->applyHoursTokensBalance($price, $hours, $baseTokens, $savings, $aiUsage);
-        $rounded = $budgetService->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
-        $laborCharged = $rounded['labor'];
-        $hoursCharged = $rounded['hours'];
-        $billable = $balanced['token_billable'];
-        $displayTokens = $balanced['display_tokens'];
+        $line = $budgetService->quoteLineAmounts($t, $savings, $aiUsage, $useSavedQuote);
+        $laborCharged = $line['labor'];
+        $hoursCharged = $line['hours'];
+        $billable = $line['token_billable'];
+        $displayTokens = $line['display_tokens'];
 
         if ($laborCharged !== null) {
             $totalLabor += $laborCharged;

@@ -229,6 +229,10 @@ class ProjectController extends Controller
                 'suggested_tasks' => is_array($spec['suggested_tasks'] ?? null)
                     ? $spec['suggested_tasks']
                     : [],
+                'ai_suggested_tasks' => is_array($spec['suggested_tasks'] ?? null)
+                    ? $spec['suggested_tasks']
+                    : [],
+                'quote_finalized' => false,
             ],
         ], $budgetService);
 
@@ -538,6 +542,8 @@ class ProjectController extends Controller
             'resources' => $spec['resources'] ?? ($data['resources'] ?? ''),
             'token_consumption' => $spec['token_consumption'] ?? ($data['token_consumption'] ?? null),
             'suggested_tasks' => $includedTasks,
+            'ai_suggested_tasks' => $includedTasks,
+            'quote_finalized' => false,
             'estimate_notes' => $spec['estimate_notes'] ?? ($data['estimate_notes'] ?? []),
             'budget_preview_token' => $data['budget_preview_token'] ?? \Illuminate\Support\Str::random(48),
         ]);

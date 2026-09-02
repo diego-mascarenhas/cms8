@@ -253,6 +253,9 @@
         var totalMinutes = Math.round(rounded * 60);
         var wholeHours = Math.floor(totalMinutes / 60);
         var minutes = totalMinutes % 60;
+        if (wholeHours > 0 && minutes === 30) {
+            return wholeHours === 1 ? '1 hora y media' : wholeHours + ' horas y media';
+        }
         if (wholeHours > 0 && minutes > 0) {
             return wholeHours + ' h ' + minutes + ' min';
         }

@@ -611,6 +611,8 @@ class ProjectFunnelController extends Controller
                         ? $spec['token_consumption']
                         : $this->budgetSpecService->buildTokenConsumption($includedTasks),
                     'suggested_tasks' => $includedTasks,
+                    'ai_suggested_tasks' => $includedTasks,
+                    'quote_finalized' => false,
                     'budget_preview_token' => $projectData['budget_preview_token'] ?? Str::random(48),
                     'funnel' => array_merge($funnel, [
                         'source' => 'projects_funnel',

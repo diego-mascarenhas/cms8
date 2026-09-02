@@ -476,6 +476,11 @@ class Helpers
         $wholeHours = intdiv($totalMinutes, 60);
         $minutes = $totalMinutes % 60;
 
+        if ($wholeHours > 0 && $minutes === 30)
+        {
+            return $wholeHours === 1 ? '1 hora y media' : $wholeHours.' horas y media';
+        }
+
         if ($wholeHours > 0 && $minutes > 0)
         {
             return $wholeHours.' h '.$minutes.' min';

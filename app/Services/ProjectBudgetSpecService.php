@@ -668,6 +668,14 @@ class ProjectBudgetSpecService
             $data['suggested_tasks'],
         );
 
+        if (
+            empty($data['ai_suggested_tasks'])
+            && $data['suggested_tasks'] !== []
+            && empty($data['quote_finalized'])
+        ) {
+            $data['ai_suggested_tasks'] = $data['suggested_tasks'];
+        }
+
         if ($data['suggested_tasks'] !== [] && empty($data['budget_preview_token']))
         {
             $data['budget_preview_token'] = Str::random(48);
@@ -1035,6 +1043,8 @@ class ProjectBudgetSpecService
         $totalLabor = 0.0;
         $totalTokenBillable = 0.0;
 
+        $useSavedQuote = $this->usesSavedQuote($project);
+
         foreach ($suggestedTasks as $task)
         {
             if (! is_array($task) || (($task['included'] ?? true) === false))
@@ -1042,21 +1052,13 @@ class ProjectBudgetSpecService
                 continue;
             }
 
-            $hours = isset($task['estimated_hours']) && is_numeric($task['estimated_hours'])
-                ? (float) $task['estimated_hours']
-                : 0.0;
-            $price = isset($task['unit_price']) && $task['unit_price'] !== '' && $task['unit_price'] !== null
-                ? (float) $task['unit_price']
-                : null;
-            $baseTokens = $this->resolveEstimatedTokens($task);
-            $balanced = $this->applyHoursTokensBalance($price, $hours, $baseTokens, $savings, $aiUsage);
-            $rounded = $this->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
+            $line = $this->quoteLineAmounts($task, $savings, $aiUsage, $useSavedQuote);
 
-            if ($rounded['labor'] !== null)
+            if ($line['labor'] !== null)
             {
-                $totalLabor += $rounded['labor'];
+                $totalLabor += $line['labor'];
             }
-            $totalTokenBillable += $this->chargedTokenAmount($balanced['token_billable']);
+            $totalTokenBillable += $this->chargedTokenAmount($line['token_billable']);
         }
 
         $grandTotal = (int) round($totalLabor + $totalTokenBillable);
@@ -1247,6 +1249,54 @@ class ProjectBudgetSpecService
     public function laborValueAfterAi(float|int|string|null $unitPrice, float|int|string|null $aiUsagePercent): ?float
     {
         return $this->applyHoursTokensBalance($unitPrice, 1, 0, 57, $aiUsagePercent)['labor'];
+    }
+
+    public function usesSavedQuote(Project $project): bool
+    {
+        return (bool) data_get($project->data, 'quote_finalized', false);
+    }
+
+    /**
+     * Hours and labor the client should see. A saved desglose is the final quote;
+     * otherwise AI usage still shifts hours onto tokens.
+     *
+     * @param  array<string, mixed>  $task
+     * @return array{hours: float, labor: ?float, token_billable: float, display_tokens: int}
+     */
+    public function quoteLineAmounts(array $task, float $savings, float $aiUsage, bool $useSavedQuote): array
+    {
+        $hours = isset($task['estimated_hours']) && is_numeric($task['estimated_hours'])
+            ? (float) $task['estimated_hours']
+            : 0.0;
+        $price = isset($task['unit_price']) && $task['unit_price'] !== '' && $task['unit_price'] !== null
+            ? (float) $task['unit_price']
+            : null;
+        $balanced = $this->applyHoursTokensBalance(
+            $price,
+            $hours,
+            $this->resolveEstimatedTokens($task),
+            $savings,
+            $useSavedQuote ? 0.0 : $aiUsage,
+        );
+
+        if ($useSavedQuote)
+        {
+            return [
+                'hours' => $hours,
+                'labor' => $price,
+                'token_billable' => $balanced['token_billable'],
+                'display_tokens' => $balanced['display_tokens'],
+            ];
+        }
+
+        $rounded = $this->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
+
+        return [
+            'hours' => $rounded['hours'],
+            'labor' => $rounded['labor'],
+            'token_billable' => $balanced['token_billable'],
+            'display_tokens' => $balanced['display_tokens'],
+        ];
     }
 
     /**
@@ -1488,6 +1538,7 @@ class ProjectBudgetSpecService
         $aiUsage = $this->normalizeAiUsagePercent(
             data_get($project->data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT),
         );
+        $useSavedQuote = $this->usesSavedQuote($project);
 
         $rows = [];
         $totalLabor = 0.0;
@@ -1502,24 +1553,11 @@ class ProjectBudgetSpecService
                 continue;
             }
 
-            $hours = isset($task['estimated_hours']) && is_numeric($task['estimated_hours'])
-                ? (float) $task['estimated_hours']
-                : 0.0;
-            $price = isset($task['unit_price']) && $task['unit_price'] !== '' && $task['unit_price'] !== null
-                ? (float) $task['unit_price']
-                : null;
-            $balanced = $this->applyHoursTokensBalance(
-                $price,
-                $hours,
-                $this->resolveEstimatedTokens($task),
-                $savings,
-                $aiUsage,
-            );
-            $rounded = $this->roundLaborToHalfHourSteps($balanced['labor'], $balanced['hours']);
-            $laborCharged = $rounded['labor'];
-            $hoursCharged = $rounded['hours'];
-            $billable = $balanced['token_billable'];
-            $displayTokens = $balanced['display_tokens'];
+            $line = $this->quoteLineAmounts($task, $savings, $aiUsage, $useSavedQuote);
+            $laborCharged = $line['labor'];
+            $hoursCharged = $line['hours'];
+            $billable = $line['token_billable'];
+            $displayTokens = $line['display_tokens'];
 
             if ($laborCharged !== null)
             {
@@ -1538,7 +1576,7 @@ class ProjectBudgetSpecService
 
             $rows[] = [
                 'title' => (string) ($task['title'] ?? '—'),
-                'hours' => Helpers::formatHoursHuman($hoursCharged, true),
+                'hours' => Helpers::formatHoursHuman($hoursCharged, ! $useSavedQuote),
                 'level' => trim((string) ($task['resource_level'] ?? '')) ?: '—',
                 'labor' => ($laborCharged !== null || $chargedTokens > 0) ? $this->formatEuros($laborDisplay) : '—',
                 'tokens' => ($displayTokens > 0 || $chargedTokens > 0) ? $this->formatTokenCount($displayTokens) : '—',
