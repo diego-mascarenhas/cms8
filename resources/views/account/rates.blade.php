@@ -6,11 +6,13 @@
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-bs5/datatables.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-responsive-bs5/responsive.bootstrap5.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/vendor/libs/datatables-buttons-bs5/buttons.bootstrap5.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.css') }}">
 @endsection
 
 @section('vendor-script')
     <script src="{{ asset('assets/vendor/libs/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/vendor/libs/datatables-bs5/datatables-bootstrap5.js') }}"></script>
+    <script src="{{ asset('assets/vendor/libs/sweetalert2/sweetalert2.js') }}"></script>
 @endsection
 
 @section('content')
@@ -20,6 +22,9 @@
         <p class="text-muted">Tarifas de consumo</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
+        <a href="{{ route('help.team-billing') }}" class="btn btn-label-primary waves-effect waves-light" target="_blank" rel="noopener">
+            <i class="ti ti-help me-1"></i>Ayuda
+        </a>
         <a href="{{ route('account-management') }}" class="btn btn-label-secondary waves-effect waves-light">
             <i class="ti ti-arrow-left me-1"></i>Volver
         </a>
@@ -33,6 +38,9 @@
             Consumo {{ mb_strtolower($invoicePreview['frequency_label']) }}
             · {{ $invoicePreview['period_label'] }}
             · Se cierra el {{ $invoicePreview['closes_on'] }}.
+            @if(!empty($invoicePreview['has_adjustments']))
+                Incluye ajuste del ciclo anterior.
+            @endif
             Aún no se emite.
         </p>
     </div>
@@ -42,7 +50,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
                         <span class="text-muted">A facturar</span>
-                        <h4 class="mb-0 mt-1">{{ $invoicePreview['formatted']['billed'] }}</h4>
+                        <h4 class="mb-0 mt-1">{{ $invoicePreview['formatted']['total_billed'] ?? $invoicePreview['formatted']['billed'] }}</h4>
                     </div>
                     <span class="avatar">
                         <span class="avatar-initial rounded bg-label-primary">
@@ -56,7 +64,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
                         <span class="text-muted">Coste</span>
-                        <h4 class="mb-0 mt-1">{{ $invoicePreview['formatted']['cost'] }}</h4>
+                        <h4 class="mb-0 mt-1">{{ $invoicePreview['formatted']['total_cost'] ?? $invoicePreview['formatted']['cost'] }}</h4>
                     </div>
                     <span class="avatar">
                         <span class="avatar-initial rounded bg-label-secondary">
@@ -70,7 +78,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
                         <span class="text-muted">Markup</span>
-                        <h4 class="mb-0 mt-1 text-success">{{ $invoicePreview['formatted']['markup'] }}</h4>
+                        <h4 class="mb-0 mt-1 text-success">{{ $invoicePreview['formatted']['total_markup'] ?? $invoicePreview['formatted']['markup'] }}</h4>
                     </div>
                     <span class="avatar">
                         <span class="avatar-initial rounded bg-label-success">
@@ -84,7 +92,7 @@
                 <div class="d-flex align-items-start justify-content-between">
                     <div>
                         <span class="text-muted">Tokens</span>
-                        <h4 class="mb-0 mt-1">{{ $invoicePreview['formatted']['tokens'] }}</h4>
+                        <h4 class="mb-0 mt-1">{{ $invoicePreview['formatted']['total_tokens'] ?? $invoicePreview['formatted']['tokens'] }}</h4>
                     </div>
                     <span class="avatar">
                         <span class="avatar-initial rounded bg-label-info">
@@ -92,7 +100,12 @@
                         </span>
                     </span>
                 </div>
-                <small class="text-muted">Reales → facturados</small>
+                <small class="text-muted">
+                    Facturados
+                    @if(!empty($invoicePreview['formatted']['tokens_by_module']))
+                        · {{ $invoicePreview['formatted']['tokens_by_module'] }}
+                    @endif
+                </small>
             </div>
         </div>
 
@@ -100,33 +113,39 @@
             <table class="table table-sm mb-0">
                 <thead>
                     <tr>
-                        <th>Línea</th>
-                        <th class="text-center">Detalle</th>
-                        <th class="text-center">Importe</th>
+                        <th class="text-start">Ítem</th>
+                        <th class="text-start">Detalle</th>
+                        <th class="text-end text-nowrap">Importe</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>Tokens</td>
-                        <td class="text-center">{{ $invoicePreview['formatted']['tokens'] }}</td>
-                        <td class="text-center">{{ $invoicePreview['formatted']['token_billed'] }}</td>
-                    </tr>
-                    <tr>
-                        <td>WhatsApp</td>
-                        <td class="text-center">{{ number_format($invoicePreview['whatsapp_messages'], 0, ',', '.') }} envíos</td>
-                        <td class="text-center">{{ $invoicePreview['formatted']['whatsapp_billed'] }}</td>
-                    </tr>
-                    <tr>
-                        <td>Mail</td>
-                        <td class="text-center">{{ number_format($invoicePreview['mailer_overage'], 0, ',', '.') }} excedente</td>
-                        <td class="text-center">{{ $invoicePreview['formatted']['mailer_billed'] }}</td>
-                    </tr>
+                    @foreach($invoicePreview['invoices'] ?? [] as $invoice)
+                        <tr>
+                            <td colspan="3" class="text-muted pt-3">
+                                {{ $invoice['title'] }} · {{ $invoice['period_label'] }}
+                                <span class="fw-normal">· {{ $invoice['note'] }}</span>
+                                <span class="fw-normal">· Tokens {{ $invoice['formatted_tokens'] }}</span>
+                            </td>
+                        </tr>
+                        @foreach($invoice['lines'] as $line)
+                            <tr>
+                                <td @class(['ps-4 text-muted' => ($line['kind'] ?? '') === 'token_source'])>{{ $line['description'] }}</td>
+                                <td @class(['text-muted' => ($line['kind'] ?? '') === 'token_source'])>{{ $line['detail'] }}</td>
+                                <td class="text-end text-nowrap">{{ $line['formatted_amount'] }}</td>
+                            </tr>
+                        @endforeach
+                        <tr>
+                            <td>Total factura</td>
+                            <td></td>
+                            <td class="text-end text-nowrap">{{ $invoice['formatted_total'] }}</td>
+                        </tr>
+                    @endforeach
                 </tbody>
                 <tfoot>
                     <tr>
-                        <th>Total</th>
+                        <th class="text-start">Total pendiente</th>
                         <th></th>
-                        <th class="text-center">{{ $invoicePreview['formatted']['billed'] }}</th>
+                        <th class="text-end text-nowrap">{{ $invoicePreview['formatted']['total_billed'] ?? $invoicePreview['formatted']['billed'] }}</th>
                     </tr>
                 </tfoot>
             </table>
@@ -143,13 +162,18 @@
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
         <p class="text-muted">Al cambiar una tarifa, la anterior se conserva para el consumo ya facturado. El consumo se factura aparte, no en la cuota del plan.</p>
-        <form action="{{ route('account.rates.update', $team->id) }}" method="POST">
+        <form id="account-rates-form" action="{{ route('account.rates.update', $team->id) }}" method="POST">
             @csrf
             @method('PUT')
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label" for="invoice_frequency">Frecuencia de facturación</label>
-                    <select id="invoice_frequency" name="invoice_frequency" class="form-select @error('invoice_frequency') is-invalid @enderror">
+                    <select
+                        id="invoice_frequency"
+                        name="invoice_frequency"
+                        class="form-select @error('invoice_frequency') is-invalid @enderror"
+                        data-original="{{ $invoiceFrequency->value }}"
+                    >
                         @foreach(\App\Enums\TeamBillingFrequency::options() as $value => $label)
                             <option value="{{ $value }}" @selected(old('invoice_frequency', $invoiceFrequency->value) === $value)>{{ $label }}</option>
                         @endforeach
@@ -157,7 +181,7 @@
                     @error('invoice_frequency')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">Periodo de la factura de consumo.</small>
+                    <small class="text-muted">Al cambiar, se cierra el ciclo en curso ese día y el nuevo arranca ahí (miércoles a miércoles, o del 15 al 15).</small>
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="tokens_multiplier">Multiplicador de tokens</label>
@@ -181,7 +205,7 @@
                     @error('mailer_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por email de excedente.</small>
+                    <small class="text-muted">EUR por email enviado. El plan no incluye envíos.</small>
                 </div>
             </div>
 
@@ -229,5 +253,88 @@
 @endsection
 
 @push('scripts')
+    <script type="application/json" id="frequency-change-previews">{!! json_encode($frequencyChangePreviews ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) !!}</script>
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
+    <script>
+        (function () {
+            const form = document.getElementById('account-rates-form');
+            const frequency = document.getElementById('invoice_frequency');
+            if (!form || !frequency) {
+                return;
+            }
+
+            form.addEventListener('submit', function (event) {
+                if (frequency.value === frequency.dataset.original) {
+                    return;
+                }
+
+                event.preventDefault();
+
+                let previews = {};
+                const payload = document.getElementById('frequency-change-previews');
+                try {
+                    previews = JSON.parse(payload ? payload.textContent : '{}');
+                } catch (error) {
+                    previews = {};
+                }
+
+                const preview = previews[frequency.value];
+                const escapeHtml = function (value) {
+                    return String(value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;');
+                };
+                const invoices = preview && preview.invoices ? preview.invoices : [];
+                const rows = invoices.map(function (invoice) {
+                    const header = '<tr><td colspan="3" class="text-muted pt-2">' + escapeHtml(invoice.title) + ' · ' + escapeHtml(invoice.period_label) + ' · Tokens ' + escapeHtml(invoice.formatted_tokens || '') + '</td></tr>';
+                    const lines = (invoice.lines || []).map(function (line) {
+                        const isSource = line.kind === 'token_source';
+                        const itemClass = isSource ? ' class="ps-3 text-muted"' : '';
+                        const detailClass = isSource ? ' class="text-muted"' : '';
+                        return '<tr><td' + itemClass + '>' + escapeHtml(line.description) + '</td><td' + detailClass + '>' + escapeHtml(line.detail) + '</td><td class="text-end text-nowrap">' + escapeHtml(line.formatted_amount || '') + '</td></tr>';
+                    }).join('');
+                    return header + lines;
+                }).join('');
+                const total = preview && preview.formatted_total ? preview.formatted_total : '0,00 EUR';
+                const tokens = preview && preview.formatted_tokens ? preview.formatted_tokens : '';
+                const fromLabel = preview && preview.from_frequency ? preview.from_frequency : '';
+                const toLabel = preview && preview.to_frequency ? preview.to_frequency : frequency.options[frequency.selectedIndex].text;
+
+                const html = '<p class="mb-2 text-start">Se cierra el ciclo ' + fromLabel.toLowerCase() + ' y arranca ' + toLabel.toLowerCase() + ' hoy. Aún no se emite en Stripe.</p>'
+                    + (tokens ? '<p class="mb-2 text-start"><strong>Tokens totales:</strong> ' + escapeHtml(tokens) + '</p>' : '')
+                    + '<div class="table-responsive text-start"><table class="table table-sm mb-0 text-start"><thead><tr><th class="text-start">Ítem</th><th class="text-start">Detalle</th><th class="text-end text-nowrap">Importe</th></tr></thead><tbody>'
+                    + rows
+                    + '</tbody><tfoot><tr><th class="text-start">Total</th><th></th><th class="text-end text-nowrap">' + total + '</th></tr></tfoot></table></div>';
+
+                if (typeof Swal === 'undefined') {
+                    if (window.confirm('¿Cambiar la frecuencia de facturación? El ciclo anterior se cierra como ajuste.')) {
+                        form.submit();
+                    }
+                    return;
+                }
+
+                Swal.fire({
+                    title: '¿Cambiar facturación?',
+                    html: html,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Cambiar y guardar',
+                    cancelButtonText: 'Cancelar',
+                    buttonsStyling: false,
+                    width: '48rem',
+                    customClass: {
+                        htmlContainer: 'text-start',
+                        confirmButton: 'btn btn-primary me-3 waves-effect waves-light',
+                        cancelButton: 'btn btn-label-secondary waves-effect waves-light'
+                    }
+                }).then(function (result) {
+                    if (result.isConfirmed) {
+                        form.submit();
+                    }
+                });
+            });
+        })();
+    </script>
 @endpush

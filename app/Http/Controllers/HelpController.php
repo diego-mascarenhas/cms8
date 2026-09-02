@@ -284,6 +284,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Per-team usage rates, invoice preview, and billing frequency.
+     */
+    public function teamBilling()
+    {
+        return view('help.team-billing', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * WordPress MCP Adapter + Cursor mcp.json setup.
      */
     public function wordpressMcpCursor()

@@ -2,6 +2,7 @@
 
 namespace App\Services\Billing;
 
+use App\Enums\EmailPlan;
 use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
 use App\Models\Team;
@@ -894,7 +895,7 @@ class AssistantSubscriptionService
             $description = (string) __('humano_pricing.plans.'.$id.'.description');
         }
 
-        return [
+        $payload = [
             'id' => $id,
             'name' => $name,
             'description' => $description,
@@ -905,6 +906,36 @@ class AssistantSubscriptionService
             'currency' => 'EUR',
             'checkout_available' => (bool) ($plan['checkout_available'] ?? false),
         ];
+
+        $subscribersLimit = $this->planSubscribersLimit($id, $plan);
+        if ($subscribersLimit !== null)
+        {
+            $payload['subscribers_limit'] = $subscribersLimit;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $plan
+     */
+    private function planSubscribersLimit(string $id, array $plan): ?int
+    {
+        if (isset($plan['subscribers_limit']))
+        {
+            return (int) $plan['subscribers_limit'];
+        }
+
+        $emailPlan = match ($id)
+        {
+            'mailer_basic' => EmailPlan::BASIC,
+            'mailer_foundation' => EmailPlan::FOUNDATION,
+            'mailer_scale' => EmailPlan::SCALE,
+            'mailer_payg' => EmailPlan::PAYG,
+            default => null,
+        };
+
+        return $emailPlan?->getContactLimit();
     }
 
     /**

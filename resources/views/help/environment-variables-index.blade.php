@@ -113,6 +113,18 @@
                         <div class="card border h-100">
                             <div class="card-body">
                                 <h6 class="card-title d-flex align-items-center">
+                                    <i class="ti ti-receipt me-2 text-primary"></i>
+                                    {{ __('help_team_billing.index_card_title') }}
+                                </h6>
+                                <p class="card-text small mb-2">{{ __('help_team_billing.index_card_body') }}</p>
+                                <a href="{{ route('help.team-billing') }}" class="btn btn-sm btn-primary">{{ __('Ver instructivo') }}</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card border h-100">
+                            <div class="card-body">
+                                <h6 class="card-title d-flex align-items-center">
                                     <i class="ti ti-mail me-2 text-primary"></i>
                                     {{ __('Email (SPF / DNS)') }}
                                 </h6>

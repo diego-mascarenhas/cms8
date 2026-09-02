@@ -419,6 +419,7 @@ return [
             'stripe_price_yearly_id' => '',
             'monthly_amount' => env('HUMANO_PRICING_MAILER_BASIC_MONTHLY_AMOUNT', '15.99'),
             'yearly_amount' => '',
+            'subscribers_limit' => 3000,
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_MAILER_BASIC_CHECKOUT_AVAILABLE', 'true'),
@@ -437,6 +438,7 @@ return [
             'stripe_price_yearly_id' => '',
             'monthly_amount' => env('HUMANO_PRICING_MAILER_FOUNDATION_MONTHLY_AMOUNT', '35.99'),
             'yearly_amount' => '',
+            'subscribers_limit' => 20000,
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_MAILER_FOUNDATION_CHECKOUT_AVAILABLE', 'true'),
@@ -455,6 +457,7 @@ return [
             'stripe_price_yearly_id' => '',
             'monthly_amount' => env('HUMANO_PRICING_MAILER_SCALE_MONTHLY_AMOUNT', '119.99'),
             'yearly_amount' => '',
+            'subscribers_limit' => 50000,
             'popular' => false,
             'checkout_available' => filter_var(
                 (string) env('HUMANO_PRICING_MAILER_SCALE_CHECKOUT_AVAILABLE', 'true'),

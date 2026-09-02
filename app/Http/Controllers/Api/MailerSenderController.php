@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Helpers\DnsHelper;
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\UpdateMailerSenderApiRequest;
+use App\Models\Team;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,21 +27,9 @@ class MailerSenderController extends Controller
             return $denied;
         }
 
-        if (! $team->relationLoaded('settings'))
-        {
-            $team->load('settings');
-        }
-
-        $config = $team->getOutgoingEmailConfig();
-
         return response()->json([
             'success' => true,
-            'data' => [
-                'from_name' => trim((string) ($config['from_name'] ?? '')),
-                'from_address' => trim((string) ($config['from_address'] ?? '')),
-                'configured' => $team->hasOutgoingEmailSenderConfigured(),
-                'can_update' => (bool) $request->user()?->can('update', $team),
-            ],
+            'data' => $this->senderPayload($team, $request),
         ]);
     }
 
@@ -66,12 +56,12 @@ class MailerSenderController extends Controller
 
         $validated = $request->validated();
 
-        $team->setSetting('mail_from_name', $validated['mail_from_name'], [
+        $team->setSetting('mailer_from_name', $validated['mail_from_name'], [
             'group' => 'email',
             'type' => 'text',
             'is_encrypted' => false,
         ]);
-        $team->setSetting('mail_from_address', $validated['mail_from_address'], [
+        $team->setSetting('mailer_from_address', $validated['mail_from_address'], [
             'group' => 'email',
             'type' => 'email',
             'is_encrypted' => false,
@@ -83,12 +73,44 @@ class MailerSenderController extends Controller
         return response()->json([
             'success' => true,
             'message' => __('app.email_sender_config_saved'),
-            'data' => [
-                'from_name' => $validated['mail_from_name'],
-                'from_address' => $validated['mail_from_address'],
-                'configured' => true,
-                'can_update' => true,
-            ],
+            'data' => $this->senderPayload($team, $request),
         ]);
+    }
+
+    /**
+     * @return array{
+     *     from_name: string,
+     *     from_address: string,
+     *     configured: bool,
+     *     can_update: bool,
+     *     can_send: bool,
+     *     required_include: string,
+     *     example_txt: string,
+     *     spf: array<string, mixed>|null
+     * }
+     */
+    private function senderPayload(Team $team, Request $request): array
+    {
+        if (! $team->relationLoaded('settings'))
+        {
+            $team->load('settings');
+        }
+
+        $sender = $team->getMailerEmailSender();
+        $configured = $team->hasOutgoingEmailSenderConfigured();
+        $spf = $configured
+            ? DnsHelper::checkEmailDomainConfiguration($sender['from_address'])
+            : null;
+
+        return [
+            'from_name' => $sender['from_name'],
+            'from_address' => $sender['from_address'],
+            'configured' => $configured,
+            'can_update' => (bool) $request->user()?->can('update', $team),
+            'can_send' => $configured && DnsHelper::canSendBroadcastFromUi($spf, true),
+            'required_include' => DnsHelper::REVISION_ALPHA_SPF_INCLUDE,
+            'example_txt' => DnsHelper::REQUIRED_REVISION_ALPHA_SPF_TXT,
+            'spf' => $spf,
+        ];
     }
 }

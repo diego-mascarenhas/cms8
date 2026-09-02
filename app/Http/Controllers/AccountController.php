@@ -136,6 +136,7 @@ class AccountController extends Controller
             ->get();
         $invoiceFrequency = TeamUsageInvoiceFrequency::for($team);
         $invoicePreview = $usage->invoicePreview($team, $invoiceFrequency);
+        $frequencyChangePreviews = $usage->frequencyChangePreviews($team);
 
         return $dataTable->render('account.rates', compact(
             'team',
@@ -143,6 +144,7 @@ class AccountController extends Controller
             'billingRateHistory',
             'invoiceFrequency',
             'invoicePreview',
+            'frequencyChangePreviews',
         ));
     }
 
@@ -207,15 +209,18 @@ class AccountController extends Controller
     public function updateRates(UpdateAccountRatesRequest $request, string $id)
     {
         $team = Team::findOrFail($id);
+        $previousFrequency = TeamUsageInvoiceFrequency::for($team);
+        $nextFrequency = TeamBillingFrequency::from($request->validated('invoice_frequency'));
         $this->syncTeamBillingRates($team, $request);
-        TeamUsageInvoiceFrequency::set(
-            $team,
-            TeamBillingFrequency::from($request->validated('invoice_frequency')),
-        );
+        TeamUsageInvoiceFrequency::set($team, $nextFrequency);
+
+        $message = $previousFrequency === $nextFrequency
+            ? 'Tarifas actualizadas'
+            : 'Frecuencia cambiada a '.mb_strtolower($nextFrequency->label()).'. El ciclo anterior queda como factura de ajuste. Aún no se emite.';
 
         return redirect()
             ->route('account.rates.edit', $team->id)
-            ->with('success', 'Tarifas actualizadas');
+            ->with('success', $message);
     }
 
     public function updateOwnerPassword(Request $request, string $id)

@@ -27,9 +27,10 @@
                         <div class="card border-info h-100">
                             <div class="card-body">
                                 <h5>{{ __('Technical Help') }}</h5>
-                                <p>{{ __('API, environment variables, Stripe webhooks, WooCommerce, plugins, Paid Ads OAuth, SPF/DNS.') }}</p>
+                                <p>{{ __('API, environment variables, Stripe webhooks, usage rates, WooCommerce, plugins, Paid Ads OAuth, SPF/DNS.') }}</p>
                                 <a href="{{ route('help.index') }}" class="btn btn-info btn-sm">{{ __('Help home') }}</a>
                                 <a href="{{ route('help.api') }}" class="btn btn-label-info btn-sm">{{ __('API docs') }}</a>
+                                <a href="{{ route('help.team-billing') }}" class="btn btn-label-info btn-sm">{{ __('help_team_billing.sidebar_title') }}</a>
                             </div>
                         </div>
                     </div>

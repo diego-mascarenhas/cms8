@@ -976,6 +976,10 @@ class ApiAssistantSubscriptionTest extends TestCase
             ['15.99', '35.99', '119.99'],
             collect($response->json('data.plans'))->pluck('monthly_amount')->all(),
         );
+        $this->assertSame(
+            [3000, 20000, 50000],
+            collect($response->json('data.plans'))->pluck('subscribers_limit')->all(),
+        );
         $this->assertSame('Mailer Scale', $response->json('data.plans.2.name'));
     }
 

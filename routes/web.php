@@ -1565,6 +1565,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/postgresql-search-unaccent', [HelpController::class, 'postgresqlSearchUnaccent'])->name('postgresql-search-unaccent');
     Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
+    Route::get('/team-billing', [HelpController::class, 'teamBilling'])->name('team-billing');
 });
 
 // Fallback route for 404 errors - must be at the end

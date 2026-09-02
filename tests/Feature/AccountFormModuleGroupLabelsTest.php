@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\TokenBillingRateService;
 use App\Support\MailerPaygPricing;
 use App\Support\TeamUsageInvoiceFrequency;
+use Carbon\Carbon;
 use Database\Seeders\ModuleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -137,7 +138,12 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertOk()
             ->assertSee('Tarifas', false)
             ->assertSee('Preview de factura', false)
+            ->assertSee(route('help.team-billing', [], false), false)
             ->assertSee('A facturar', false)
+            ->assertSee('Tokens IA', false)
+            ->assertSee('Envíos WhatsApp', false)
+            ->assertSee('Envíos email', false)
+            ->assertSee('id="frequency-change-previews"', false)
             ->assertSee('name="invoice_frequency"', false)
             ->assertSee('Meses anteriores', false)
             ->assertSee('id="account-rates-usage-table"', false)
@@ -166,13 +172,29 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole($role);
 
+        $chat = Module::query()->where('key', 'chat')->first();
+        $projects = Module::query()->where('key', 'projects')->first();
+        $this->assertNotNull($chat);
+        $this->assertNotNull($projects);
+
         TokenUsageLog::withoutGlobalScopes()->create([
             'team_id' => $team->id,
-            'module_id' => null,
+            'module_id' => $chat->id,
             'service' => 'ContactSentimentAnalysisService',
             'json_size' => 10,
             'toon_size' => 0,
-            'json_tokens' => 1_000_000,
+            'json_tokens' => 700_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => $projects->id,
+            'service' => 'ProjectBudgetSpecService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 300_000,
             'toon_tokens' => 0,
             'savings_percentage' => 0,
             'used_toon' => false,
@@ -181,13 +203,17 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->actingAs($user)
             ->get(route('account.rates.edit', $team->id))
             ->assertOk()
-            ->assertSee('1.000.000 → 10.000.000', false)
+            ->assertSee('10.000.000', false)
+            ->assertSee('Chat 7.000.000 · Projects 3.000.000', false)
+            ->assertSee('7.000.000', false)
+            ->assertSee('3.000.000', false)
             ->assertSee('1,00 EUR', false)
             ->assertSee('10,00 EUR', false)
             ->assertSee('9,00 EUR', false)
             ->assertSee('×10 sobre tokens reales', false)
             ->assertSee('Preview de factura', false)
-            ->assertSee('Aún no se emite', false);
+            ->assertSee('Aún no se emite', false)
+            ->assertSee('class="text-end text-nowrap">Importe', false);
     }
 
     public function test_account_rates_usage_datatable_lists_past_months(): void
@@ -247,7 +273,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertArrayNotHasKey('error', $payload);
         $this->assertSame(1, (int) $payload['recordsTotal']);
         $this->assertSame(now()->subMonth()->format('Y-m'), $payload['data'][0]['month']);
-        $this->assertSame('2.000.000 → 20.000.000', $payload['data'][0]['tokens']);
+        $this->assertSame('20.000.000', $payload['data'][0]['tokens']);
         $this->assertSame('2,00 EUR', $payload['data'][0]['cost']);
         $this->assertSame('20,00 EUR', $payload['data'][0]['billed']);
         $this->assertSame('18,00 EUR', $payload['data'][0]['markup']);
@@ -272,7 +298,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'whatsapp_send' => 0.002,
             'mailer_send' => 0.008,
             'invoice_frequency' => TeamBillingFrequency::Weekly->value,
-        ])->assertRedirect(route('account.rates.edit', $team->id));
+        ])->assertRedirect(route('account.rates.edit', $team->id))
+            ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
 
         $this->assertSame(8.0, TokenBillingRateService::clientTokenMultiplier($team));
         $this->assertSame(10.0, TokenBillingRateService::clientTokenMultiplier($team, now()->subMinute()));
@@ -281,6 +308,60 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertSame('0.008', MailerPaygPricing::pricePerEmail($team));
         $this->assertSame('0.01', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
         $this->assertSame(TeamBillingFrequency::Weekly, TeamUsageInvoiceFrequency::for($team));
+    }
+
+    public function test_switching_invoice_frequency_to_weekly_shows_adjustment_preview(): void
+    {
+        $this->seed(ModuleSeeder::class);
+        $this->fakeTokenCatalog();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-23 12:00:00'));
+
+        $role = Role::firstOrCreate(
+            ['name' => 'root', 'guard_name' => 'web'],
+        );
+
+        $user = User::factory()->create();
+        $team = Team::factory()->create(['user_id' => $user->id]);
+        $user->teams()->attach($team->id, ['role' => 'admin']);
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole($role);
+
+        $elapsed = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'ContactSentimentAnalysisService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $elapsed->forceFill([
+            'created_at' => Carbon::parse('2026-09-10 10:00:00'),
+            'updated_at' => Carbon::parse('2026-09-10 10:00:00'),
+        ])->save();
+
+        $this->actingAs($user)->put(route('account.rates.update', $team->id), [
+            'tokens_multiplier' => 10,
+            'whatsapp_send' => 0.003,
+            'mailer_send' => 0.01,
+            'invoice_frequency' => TeamBillingFrequency::Weekly->value,
+        ])->assertRedirect(route('account.rates.edit', $team->id))
+            ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
+
+        $this->actingAs($user)
+            ->get(route('account.rates.edit', $team->id))
+            ->assertOk()
+            ->assertSee('Incluye ajuste del ciclo anterior', false)
+            ->assertSee('Ajuste Mensual', false)
+            ->assertSee('Tokens IA · 1 al 22 de septiembre 2026', false)
+            ->assertSee('1 al 22 de septiembre 2026', false)
+            ->assertSee('Total factura', false)
+            ->assertSee('10,00 EUR', false);
+
+        Carbon::setTestNow();
     }
 
     private function fakeTokenCatalog(): void
