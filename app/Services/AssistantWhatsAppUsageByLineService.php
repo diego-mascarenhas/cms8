@@ -39,7 +39,8 @@ class AssistantWhatsAppUsageByLineService
      *     all: array{calls: int, tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int},
      *     sources: list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
      *     by_model: list<array{model: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
-     *     lines: list<array<string, mixed>>
+     *     lines: list<array<string, mixed>>,
+     *     whatsapp: array{messages_sent: int, our_amount_cents: int, our_rate: float, currency: string}
      * }
      */
     public function forTeam(Team $team, ?Carbon $from = null, ?Carbon $to = null): array
@@ -70,8 +71,9 @@ class AssistantWhatsAppUsageByLineService
         $tokensSaved = (int) collect($lines)->sum('tokens_saved');
         $teamUsage = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         $sources = $this->presentSources($teamUsage['byModule'], $from, $defaultModel);
-        $allPresented = $this->tokens->present((int) $teamUsage['totalTokensUsed'], 0, $defaultModel, $from);
+        $headline = $this->headlineFromBreakdown($byModel, $sources, (int) $teamUsage['totalTokensUsed'], $from, $defaultModel);
         $allSaved = $this->tokens->scale((int) $teamUsage['totalTokensSaved']);
+        $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
 
         return [
             'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
@@ -94,14 +96,20 @@ class AssistantWhatsAppUsageByLineService
             ],
             'all' => [
                 'calls' => (int) $teamUsage['totalCalls'],
-                'tokens' => $allPresented['total_tokens'],
+                'tokens' => $headline['tokens'],
                 'tokens_saved' => $allSaved,
-                'amount_cents' => $allPresented['amount_cents'],
+                'amount_cents' => $headline['amount_cents'],
                 'saved_cents' => $this->tokens->costCents($allSaved, 0, $defaultModel, $from),
             ],
             'sources' => $sources,
             'by_model' => $byModel,
             'lines' => $lines,
+            'whatsapp' => [
+                'messages_sent' => (int) $whatsapp['messages_sent'],
+                'our_amount_cents' => (int) $whatsapp['our_amount_cents'],
+                'our_rate' => (float) $whatsapp['our_rate'],
+                'currency' => (string) $whatsapp['currency'],
+            ],
         ];
     }
 
@@ -367,6 +375,72 @@ class AssistantWhatsAppUsageByLineService
         arsort($models);
 
         return array_values(array_keys($models));
+    }
+
+    /**
+     * Headline tokens/value follow the catalog-priced model rows the customer can add up.
+     * Log-only sources (Insights, OCR without a model row) still join that total.
+     *
+     * @param  list<array{model: string, total_tokens: int, amount_cents: int}>  $byModel
+     * @param  list<array{module_name: string, tokens_used: int, amount_cents: int}>  $sources
+     * @return array{tokens: int, amount_cents: int}
+     */
+    private function headlineFromBreakdown(array $byModel, array $sources, int $fallbackTokens, Carbon $from, string $defaultModel): array
+    {
+        $modelTokens = (int) collect($byModel)->sum('total_tokens');
+        $modelAmount = (int) collect($byModel)->sum('amount_cents');
+        $extra = collect($sources)->filter(
+            fn (array $source): bool => ! $this->sourceCoveredByModels((string) ($source['module_name'] ?? ''), $byModel),
+        );
+
+        if ($modelTokens > 0 || $modelAmount > 0)
+        {
+            return [
+                'tokens' => $modelTokens + (int) $extra->sum('tokens_used'),
+                'amount_cents' => $modelAmount + (int) $extra->sum('amount_cents'),
+            ];
+        }
+
+        $presented = $this->tokens->present($fallbackTokens, 0, $defaultModel, $from);
+
+        return [
+            'tokens' => $presented['total_tokens'],
+            'amount_cents' => $presented['amount_cents'],
+        ];
+    }
+
+    /**
+     * @param  list<array{model: string}>  $byModel
+     */
+    private function sourceCoveredByModels(string $moduleName, array $byModel): bool
+    {
+        $name = strtolower(trim($moduleName));
+
+        if ($name === 'chat')
+        {
+            return collect($byModel)->contains(fn (array $row): bool => ! $this->isAuxiliaryModel((string) ($row['model'] ?? '')));
+        }
+
+        if ($name === 'ocr')
+        {
+            return collect($byModel)->contains(fn (array $row): bool => $this->isOcrModel((string) ($row['model'] ?? '')));
+        }
+
+        return false;
+    }
+
+    private function isAuxiliaryModel(string $model): bool
+    {
+        $key = strtolower($model);
+
+        return str_contains($key, 'whisper') || $this->isOcrModel($model);
+    }
+
+    private function isOcrModel(string $model): bool
+    {
+        $key = strtolower($model);
+
+        return str_contains($key, 'gpt-4o-mini') || str_contains($key, 'ocr');
     }
 
     /**

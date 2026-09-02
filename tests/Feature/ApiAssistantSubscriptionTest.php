@@ -317,6 +317,38 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.currency', 'EUR');
     }
 
+    public function test_subscription_token_usage_bills_catalog_priced_whatsapp_models(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        $teamNumber = '34999000111';
+        $team->setSetting('whatsapp_from', $teamNumber);
+
+        Conversation::create([
+            'message_sid' => 'SM_sub_usage_haiku',
+            'channel' => 'whatsapp',
+            'from' => $teamNumber,
+            'to' => '34600111222',
+            'body' => 'Respuesta automática',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'metadata' => [
+                'token_usage' => [
+                    'prompt_tokens' => 1_000_000,
+                    'completion_tokens' => 0,
+                    'total_tokens' => 1_000_000,
+                    'model' => 'claude-haiku-4-5',
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 2_000_000);
+        $response->assertJsonPath('data.token_usage.amount_due_cents', 200);
+    }
+
     public function test_subscription_whatsapp_usage_bills_outbound_messages_in_current_period(): void
     {
         [, $team, $token] = $this->assistantUserWithToken();

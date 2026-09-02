@@ -19,6 +19,7 @@ class OpenRouterModelCatalog
         'claude-haiku-4.5' => ['prompt' => 1.0, 'completion' => 5.0],
         'claude-sonnet-4.5' => ['prompt' => 3.0, 'completion' => 15.0],
         'whisper-1' => ['prompt' => 6.0, 'completion' => 6.0],
+        'gpt-4o-mini' => ['prompt' => 0.15, 'completion' => 0.6],
     ];
 
     /**

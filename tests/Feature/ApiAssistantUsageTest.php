@@ -54,7 +54,10 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.totals.total_tokens', 0)
             ->assertJsonPath('data.all.tokens', 0)
             ->assertJsonPath('data.sources', [])
-            ->assertJsonPath('data.lines', []);
+            ->assertJsonPath('data.lines', [])
+            ->assertJsonPath('data.whatsapp.messages_sent', 0)
+            ->assertJsonPath('data.whatsapp.our_rate', 0.003)
+            ->assertJsonPath('data.whatsapp.currency', 'EUR');
     }
 
     public function test_usage_groups_tokens_by_whatsapp_line_and_exposes_the_model(): void
@@ -125,7 +128,11 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.token_multiplier', 2);
         $response->assertJsonPath('data.client_presented', true);
+        $response->assertJsonPath('data.whatsapp.messages_sent', 1);
+        $response->assertJsonPath('data.whatsapp.our_rate', 0.003);
         $response->assertJsonPath('data.totals.amount_cents', 200);
+        $response->assertJsonPath('data.all.amount_cents', 200);
+        $response->assertJsonPath('data.all.tokens', 2_000_000);
         $response->assertJsonPath('data.totals.saved_cents', 200);
         $response->assertJsonPath('data.totals.tokens_saved', 2_000_000);
         $response->assertJsonPath('data.lines.0.amount_cents', 200);
@@ -350,8 +357,12 @@ class ApiAssistantUsageTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.totals.total_tokens', 1680);
-        $response->assertJsonPath('data.all.tokens', 1_000_000);
+        $response->assertJsonPath('data.all.tokens', 1_001_680);
         $response->assertJsonPath('data.all.calls', 1);
+        $this->assertSame(
+            (int) collect($response->json('data.by_model'))->sum('amount_cents') + 100,
+            $response->json('data.all.amount_cents'),
+        );
         $this->assertSame('OCR', $response->json('data.sources.0.module_name'));
         $this->assertSame(1_000_000, $response->json('data.sources.0.tokens_used'));
         $this->assertSame(100, $response->json('data.sources.0.amount_cents'));

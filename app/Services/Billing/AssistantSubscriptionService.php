@@ -6,6 +6,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
 use App\Models\Team;
 use App\Models\TokenUsageLog;
+use App\Services\AssistantWhatsAppUsageByLineService;
 use App\Services\HumanoPricingPlanResolver;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\StripeAccountResolver;
@@ -600,10 +601,9 @@ class AssistantSubscriptionService
             ];
         }
 
-        $tokensUsed = (int) $stats['totalTokensUsed'];
         $currency = TokenBillingRateService::displayCurrency();
         $presenter = app(ClientTokenPresenter::class);
-        $presented = $presenter->present($tokensUsed, 0, null, $from);
+        $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
         foreach ($byModule as $index => $row)
         {
             $modulePresented = $presenter->present((int) $row['tokens_used'], 0, null, $from);
@@ -615,12 +615,12 @@ class AssistantSubscriptionService
             'total_calls' => (int) $stats['totalCalls'],
             'total_tokens_saved' => $presenter->scale((int) $stats['totalTokensSaved']),
             'average_savings' => (float) $stats['averageSavings'],
-            'total_tokens_used' => $presented['total_tokens'],
+            'total_tokens_used' => (int) $billed['all']['tokens'],
             'total_tokens_without_toon' => $presenter->scale((int) $stats['totalTokensWithoutToon']),
             'by_module' => $byModule,
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'amount_due_cents' => $presented['amount_cents'],
+            'amount_due_cents' => (int) $billed['all']['amount_cents'],
             'currency' => $currency,
             'token_multiplier' => $presenter->multiplier(),
             'client_presented' => true,

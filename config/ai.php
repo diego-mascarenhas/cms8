@@ -48,7 +48,9 @@ return [
         'summary' => [],
         'template' => [],
         'vision' => [],
-        'ocr' => [],
+        'ocr' => [
+            'provider' => env('AI_OCR_PROVIDER', 'openai'),
+        ],
         'registration' => [],
         'image' => [
             'provider' => env('AI_IMAGE_TASK_PROVIDER', 'openai'),
@@ -75,9 +77,11 @@ return [
     |--------------------------------------------------------------------------
     |
     | WhatsApp photos and documents use this model for AI OCR.
+    | If the primary model fails, ocr_failover_model is tried next.
     |
     */
-    'ocr_model' => env('AI_OCR_MODEL', 'anthropic/claude-haiku-4.5'),
+    'ocr_model' => env('AI_OCR_MODEL', 'openai/gpt-4o-mini'),
+    'ocr_failover_model' => env('AI_OCR_FAILOVER_MODEL', 'anthropic/claude-haiku-4.5'),
 
     /*
     |--------------------------------------------------------------------------

@@ -28,52 +28,75 @@ class DocumentAiOcrService
             return ['text' => null, 'usage' => null];
         }
 
-        try
+        $ocrPrompt = 'Extract all visible text from this document or spare-part photo. Return only plain text, preserving line breaks. Include brand names, part numbers, OEM codes, and references exactly as printed.';
+        $attempts = [
+            ['model' => $this->resolveOcrModel(), 'provider' => $this->providerFor($this->resolveOcrModel())],
+        ];
+        $failover = $this->resolveOcrFailoverModel();
+        if ($failover !== '' && $failover !== $attempts[0]['model'])
         {
-            $uploadedFile = new UploadedFile(
-                $absolutePath,
-                basename($absolutePath),
-                mime_content_type($absolutePath) ?: null,
-                null,
-                true,
-            );
+            $attempts[] = ['model' => $failover, 'provider' => $this->providerFor($failover)];
+        }
 
-            $ocrPrompt = 'Extract all visible text from this document or spare-part photo. Return only plain text, preserving line breaks. Include brand names, part numbers, OEM codes, and references exactly as printed.';
-            $ocrAgent = agent(
-                instructions: 'You are an OCR engine. Return only extracted text.',
-                messages: [],
-                tools: [],
-            );
-            $ocrModel = $this->resolveOcrModel();
-            $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], AiTasks::provider('ocr'), $ocrModel);
-            $text = trim((string) ($response->text ?? ''));
-            $this->logTokenUsage($response, $teamId, $ocrPrompt, $text);
-
-            return [
-                'text' => $text !== '' ? $text : null,
-                'usage' => $this->usageFromResponse($response),
-            ];
-        } catch (\Throwable $e)
+        $lastError = null;
+        foreach ($attempts as $index => $attempt)
         {
-            Log::warning('AI OCR extraction failed', [
-                'error' => $e->getMessage(),
+            try
+            {
+                $uploadedFile = new UploadedFile(
+                    $absolutePath,
+                    basename($absolutePath),
+                    mime_content_type($absolutePath) ?: null,
+                    null,
+                    true,
+                );
+                $ocrAgent = agent(
+                    instructions: 'You are an OCR engine. Return only extracted text.',
+                    messages: [],
+                    tools: [],
+                );
+                $response = $ocrAgent->prompt($ocrPrompt, [$uploadedFile], $attempt['provider'], $attempt['model']);
+                $text = trim((string) ($response->text ?? ''));
+                $this->logTokenUsage($response, $teamId, $ocrPrompt, $text);
+
+                return [
+                    'text' => $text !== '' ? $text : null,
+                    'usage' => $this->usageFromResponse($response, $attempt['model']),
+                ];
+            } catch (\Throwable $e)
+            {
+                $lastError = $e;
+                Log::warning('AI OCR extraction failed', [
+                    'error' => $e->getMessage(),
+                    'path' => $absolutePath,
+                    'model' => $attempt['model'],
+                    'provider' => $attempt['provider'],
+                    'attempt' => $index + 1,
+                ]);
+            }
+        }
+
+        if ($lastError !== null)
+        {
+            Log::warning('AI OCR extraction exhausted fallbacks', [
+                'error' => $lastError->getMessage(),
                 'path' => $absolutePath,
             ]);
-
-            return ['text' => null, 'usage' => null];
         }
+
+        return ['text' => null, 'usage' => null];
     }
 
     public function resolveOcrModel(): string
     {
-        $configured = trim((string) config('ai.ocr_model', 'anthropic/claude-haiku-4.5'));
+        $configured = trim((string) config('ai.ocr_model', 'openai/gpt-4o-mini'));
         if ($configured !== '' && strtolower($configured) !== 'cheapest')
         {
             return $configured;
         }
 
         $provider = AiTasks::provider('ocr');
-        $primary = is_array($provider) ? (string) ($provider[0] ?? 'anthropic') : $provider;
+        $primary = is_array($provider) ? (string) ($provider[0] ?? 'openai') : $provider;
 
         try
         {
@@ -86,13 +109,18 @@ class DocumentAiOcrService
         {
         }
 
-        return 'anthropic/claude-haiku-4.5';
+        return 'openai/gpt-4o-mini';
+    }
+
+    public function resolveOcrFailoverModel(): string
+    {
+        return trim((string) config('ai.ocr_failover_model', 'anthropic/claude-haiku-4.5'));
     }
 
     /**
      * @return array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}|null
      */
-    private function usageFromResponse(mixed $response): ?array
+    private function usageFromResponse(mixed $response, string $model): ?array
     {
         $usage = $response->usage ?? null;
         $prompt = is_array($usage)
@@ -108,11 +136,23 @@ class DocumentAiOcrService
         }
 
         return [
-            'model' => $this->resolveOcrModel(),
+            'model' => $model,
             'prompt_tokens' => $prompt,
             'completion_tokens' => $completion,
             'total_tokens' => $total,
         ];
+    }
+
+    private function providerFor(string $model): string
+    {
+        if (str_contains($model, '/'))
+        {
+            return strtolower(explode('/', $model, 2)[0]);
+        }
+
+        $provider = AiTasks::provider('ocr');
+
+        return is_array($provider) ? (string) ($provider[0] ?? 'openai') : $provider;
     }
 
     private function logTokenUsage(mixed $response, ?int $teamId, string $input, string $output): void
