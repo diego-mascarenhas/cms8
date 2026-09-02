@@ -376,6 +376,30 @@ class ProjectBudgetPreviewTest extends TestCase
     }
 
     #[Test]
+    public function public_budget_preview_uses_saved_desglose_as_the_final_quote(): void
+    {
+        $created = $this->createBudgetPreviewProject([
+            'quote_finalized' => true,
+            'ai_usage_percent' => 70,
+            'suggested_tasks' => [
+                [
+                    'title' => 'iOS signing',
+                    'estimated_hours' => 3,
+                    'resource_level' => 'Senior',
+                    'unit_price' => 225,
+                    'estimated_tokens' => 60000,
+                    'included' => true,
+                ],
+            ],
+        ]);
+
+        $this->getJson('/api/projects/funnel/budget/'.$created['token'])
+            ->assertOk()
+            ->assertJsonPath('data.rows.0.hours', '3 h')
+            ->assertJsonPath('data.rows.0.labor', '225,00 €');
+    }
+
+    #[Test]
     public function public_budget_preview_api_returns_computed_rows(): void
     {
         $created = $this->createBudgetPreviewProject();

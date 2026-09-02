@@ -19,7 +19,8 @@ class HelpersFormatHoursHumanTest extends TestCase
     public static function hoursProvider(): array
     {
         return [
-            'one and a half hours' => [1.5, '1 h 30 min'],
+            'one and a half hours' => [1.5, '1 hora y media'],
+            'fifteen and a half hours' => [15.5, '15 horas y media'],
             'whole hours' => [2, '2 h'],
             'minutes only' => [0.25, '15 min'],
             'zero' => [0, '0 min'],
@@ -40,7 +41,7 @@ class HelpersFormatHoursHumanTest extends TestCase
     {
         return [
             '54 minutes becomes 1 hour' => [0.9, '1 h'],
-            '1 h 12 min becomes 1 h 30 min' => [1.2, '1 h 30 min'],
+            '1 h 12 min becomes 1 hora y media' => [1.2, '1 hora y media'],
             'exact half hour stays' => [0.5, '30 min'],
             'exact hour stays' => [1, '1 h'],
             'one minute becomes 30 min' => [1 / 60, '30 min'],

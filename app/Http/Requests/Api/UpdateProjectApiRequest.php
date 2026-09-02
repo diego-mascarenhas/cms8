@@ -47,6 +47,8 @@ class UpdateProjectApiRequest extends FormRequest
             'data.token_consumption.currency' => ['nullable', 'string', 'max:8'],
             'data.budget_preview_html' => ['nullable', 'string'],
             'data.suggested_tasks' => ['nullable'],
+            'data.ai_suggested_tasks' => ['nullable', 'array'],
+            'data.quote_finalized' => ['nullable', 'boolean'],
         ];
     }
 

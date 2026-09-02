@@ -308,6 +308,84 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
     }
 
     #[Test]
+    public function it_keeps_saved_desglose_hours_and_prices_on_the_final_quote(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $task = [
+            'title' => 'Backend',
+            'included' => true,
+            'estimated_hours' => 1.5,
+            'unit_price' => 135,
+            'estimated_tokens' => 30000,
+            'resource_level' => 'Senior',
+        ];
+
+        $aiLine = $service->quoteLineAmounts($task, 57, 70, false);
+        $this->assertSame(0.5, $aiLine['hours']);
+        $this->assertSame(45.0, $aiLine['labor']);
+
+        $savedLine = $service->quoteLineAmounts($task, 57, 70, true);
+        $this->assertSame(1.5, $savedLine['hours']);
+        $this->assertSame(135.0, $savedLine['labor']);
+
+        $project = new \App\Models\Project([
+            'discount' => 0,
+            'price' => null,
+            'name' => 'Jaguar',
+            'data' => [
+                'quote_finalized' => true,
+                'ai_usage_percent' => 70,
+                'suggested_tasks' => [$task],
+            ],
+        ]);
+
+        $preview = $service->publicPreview($project);
+
+        $this->assertTrue($service->usesSavedQuote($project));
+        $this->assertSame('1 hora y media', $preview['rows'][0]['hours']);
+        $this->assertSame('135,00 €', $preview['rows'][0]['labor']);
+        $this->assertSame('135,00 €', $preview['totals']['labor']);
+    }
+
+    #[Test]
+    public function it_snapshots_ai_tasks_until_the_desglose_is_saved(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $tasks = [
+            [
+                'title' => 'Análisis',
+                'estimated_hours' => 1,
+                'unit_price' => 80,
+                'included' => true,
+            ],
+        ];
+
+        $hydrated = $service->hydrateProjectBudgetData([
+            'suggested_tasks' => $tasks,
+        ]);
+
+        $this->assertSame('Análisis', $hydrated['ai_suggested_tasks'][0]['title']);
+        $this->assertFalse((bool) ($hydrated['quote_finalized'] ?? false));
+
+        $final = $service->hydrateProjectBudgetData([
+            'suggested_tasks' => [
+                [
+                    'title' => 'Análisis',
+                    'estimated_hours' => 3,
+                    'unit_price' => 240,
+                    'included' => true,
+                ],
+            ],
+            'ai_suggested_tasks' => $tasks,
+            'quote_finalized' => true,
+        ]);
+
+        $this->assertEquals(1, $final['ai_suggested_tasks'][0]['estimated_hours']);
+        $this->assertEquals(3, $final['suggested_tasks'][0]['estimated_hours']);
+        $this->assertTrue($final['quote_finalized']);
+    }
+
+    #[Test]
     public function it_can_exclude_token_charges_from_quote_totals(): void
     {
         $service = new ProjectBudgetSpecService;
