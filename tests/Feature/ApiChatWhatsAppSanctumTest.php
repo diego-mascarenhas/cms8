@@ -1439,7 +1439,13 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         ])
             ->getJson('/api/chat/whatsapp-messages/34600111222')
             ->assertOk()
-            ->assertJsonMissing(['id' => $conversation->id]);
+            ->assertJsonFragment([
+                'id' => $conversation->id,
+                'status' => 'deleted',
+                'body' => '',
+                'can_delete' => false,
+            ])
+            ->assertJsonMissing(['body' => 'borrar esto']);
     }
 
     public function test_whatsapp_message_without_remote_id_cannot_be_deleted(): void

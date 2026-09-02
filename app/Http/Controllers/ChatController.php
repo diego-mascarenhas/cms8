@@ -108,7 +108,7 @@ class ChatController extends Controller
         $team = auth()->check() ? auth()->user()->currentTeam : null;
         $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : null;
 
-        $query = Conversation::where('channel', 'whatsapp')->where('status', '!=', 'deleted');
+        $query = Conversation::where('channel', 'whatsapp');
 
         if ($teamNumber !== null && $teamNumber !== '')
         {
@@ -572,7 +572,9 @@ class ChatController extends Controller
 
             $contact = (object) [
                 'from' => $entry['digits'],
-                'last_message' => $lastMessage->body,
+                'last_message' => $lastMessage instanceof Conversation
+                    ? $lastMessage->inboxPreview()
+                    : $lastMessage->body,
                 'last_message_time' => $lastMessage->created_at->diffForHumans(),
                 'last_message_at' => $lastMessage->created_at,
                 'unread_count' => $entry['unread'],
@@ -1420,6 +1422,13 @@ class ChatController extends Controller
             $payload['can_delete'] = $message instanceof Conversation
                 && $this->currentTeamUsesLocalWhatsApp()
                 && $message->canRevokeOnWhatsApp();
+
+            if ($message instanceof Conversation && $message->isDeleted())
+            {
+                $payload['body'] = '';
+                $payload['media'] = [];
+                $payload['can_delete'] = false;
+            }
 
             return $payload;
         })->values()->all();

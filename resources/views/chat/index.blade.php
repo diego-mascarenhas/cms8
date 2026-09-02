@@ -3239,12 +3239,14 @@
                                             @endif
                                             <div class="chat-message-wrapper flex-grow-1">
                                                 <div class="chat-message-text">
-                                                    @if ($isScheduledOutbound)
+                                                    @if ($message instanceof \App\Models\Conversation && $message->isDeleted())
+                                                        <p class="mb-0 fst-italic"><i class="ti ti-ban ti-xs me-1"></i>{{ __('Se eliminó este mensaje.') }}</p>
+                                                    @elseif ($isScheduledOutbound)
                                                         <p class="mb-0">{!! nl2br(e($message->body)) !!}</p>
                                                     @else
                                                         <p class="mb-0">{!! nl2br($message->body) !!}</p>
                                                     @endif
-                                                    @if (!empty($media))
+                                                    @if (! ($message instanceof \App\Models\Conversation && $message->isDeleted()) && !empty($media))
                                                         <div class="chat-media mt-2">
                                                             @foreach ($media as $item)
                                                                 @php

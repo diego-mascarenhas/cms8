@@ -87,6 +87,16 @@ class Conversation extends Model
         return $this->status === 'deleted';
     }
 
+    public function inboxPreview(): string
+    {
+        if ($this->isDeleted())
+        {
+            return __('Se eliminó este mensaje.');
+        }
+
+        return (string) $this->body;
+    }
+
     public function whatsAppRemoteId(): ?string
     {
         $sid = trim((string) $this->message_sid);
