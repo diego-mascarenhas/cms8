@@ -108,7 +108,7 @@ class ChatController extends Controller
         $team = auth()->check() ? auth()->user()->currentTeam : null;
         $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : null;
 
-        $query = Conversation::where('channel', 'whatsapp');
+        $query = Conversation::where('channel', 'whatsapp')->where('status', '!=', 'deleted');
 
         if ($teamNumber !== null && $teamNumber !== '')
         {
@@ -1405,6 +1405,7 @@ class ChatController extends Controller
                     'from_assistant' => $fromAssistant,
                     'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
                     'usage' => $usageById[$message->id] ?? null,
+                    'can_delete' => false,
                 ];
             }
 
@@ -1416,6 +1417,9 @@ class ChatController extends Controller
                 ? $message->isTranscribedAudio()
                 : false;
             $payload['usage'] = $usageById[$message->id] ?? null;
+            $payload['can_delete'] = $message instanceof Conversation
+                && $this->currentTeamUsesLocalWhatsApp()
+                && $message->canRevokeOnWhatsApp();
 
             return $payload;
         })->values()->all();
@@ -3481,6 +3485,7 @@ class ChatController extends Controller
         $team = auth()->user()?->currentTeam;
         $cleanFrom = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
         $media = [];
+        $remoteIds = [];
 
         foreach (array_values($uploadedFiles) as $index => $uploadedFile)
         {
@@ -3505,6 +3510,15 @@ class ChatController extends Controller
                 return response()->json(['success' => false, 'error' => __('No se pudo enviar el archivo.')], 500);
             }
 
+            if ($gateway instanceof LocalWhatsAppGateway)
+            {
+                $remoteId = $gateway->lastSentMessageId();
+                if ($remoteId)
+                {
+                    $remoteIds[] = $remoteId;
+                }
+            }
+
             $media[] = [
                 'url' => asset('storage/'.$storedPath),
                 'content_type' => $uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType(),
@@ -3519,7 +3533,7 @@ class ChatController extends Controller
         }
 
         $conversation = Conversation::create([
-            'message_sid' => 'wa_attach_'.uniqid('', true),
+            'message_sid' => $remoteIds[0] ?? ('wa_attach_'.uniqid('', true)),
             'channel' => 'whatsapp',
             'from' => $cleanFrom !== '' ? $cleanFrom : (string) (auth()->id() ?? '0'),
             'to' => $cleanTo,
@@ -3755,6 +3769,54 @@ class ChatController extends Controller
         $scheduledMessage->markAsCancelled();
 
         return response()->json(['success' => true]);
+    }
+
+    public function destroyWhatsAppMessage(Conversation $conversation): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeTeamWhatsAppConversation($conversation);
+
+        if ($conversation->direction !== 'outbound' || $conversation->isDeleted())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('No se puede borrar este mensaje.'),
+            ], 422);
+        }
+
+        $remoteId = $conversation->whatsAppRemoteId();
+        $gateway = $this->getLocalGatewayForCurrentTeam();
+        if ($remoteId === null || ! $gateway instanceof LocalWhatsAppGateway || ! $conversation->canRevokeOnWhatsApp())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('Ya no se puede borrar este mensaje en WhatsApp.'),
+            ], 422);
+        }
+
+        if (! $gateway->deleteMessage((string) $conversation->to, $remoteId))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('No se pudo borrar el mensaje.'),
+            ], 500);
+        }
+
+        $conversation->update(['status' => 'deleted']);
+
+        return response()->json(['success' => true]);
+    }
+
+    private function authorizeTeamWhatsAppConversation(Conversation $conversation): void
+    {
+        $team = auth()->user()?->currentTeam;
+        $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
+        $from = preg_replace('/[^0-9]/', '', (string) $conversation->from);
+        $to = preg_replace('/[^0-9]/', '', (string) $conversation->to);
+
+        abort_unless(
+            $teamNumber !== '' && $conversation->channel === 'whatsapp' && in_array($teamNumber, [$from, $to], true),
+            404,
+        );
     }
 
     private function authorizeScheduledMessage(ScheduledMessage $scheduledMessage): void

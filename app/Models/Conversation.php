@@ -82,6 +82,38 @@ class Conversation extends Model
         return in_array($this->status, ['failed', 'undelivered']);
     }
 
+    public function isDeleted(): bool
+    {
+        return $this->status === 'deleted';
+    }
+
+    public function whatsAppRemoteId(): ?string
+    {
+        $sid = trim((string) $this->message_sid);
+        if ($sid === '' || str_starts_with($sid, 'wa_') || str_starts_with($sid, 'chat_upload_'))
+        {
+            return null;
+        }
+
+        return $sid;
+    }
+
+    public function canRevokeOnWhatsApp(): bool
+    {
+        if ($this->direction !== 'outbound' || $this->isDeleted() || $this->whatsAppRemoteId() === null)
+        {
+            return false;
+        }
+
+        $sentAt = $this->created_at;
+        if ($sentAt === null)
+        {
+            return false;
+        }
+
+        return now()->lte($sentAt->copy()->addHours(48));
+    }
+
     protected static function booted(): void
     {
         static::created(function (Conversation $conversation)
