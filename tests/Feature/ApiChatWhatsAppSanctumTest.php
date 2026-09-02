@@ -1347,4 +1347,39 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath('message', 'Documento no permitido.');
     }
+
+    public function test_whatsapp_send_rejects_more_than_one_attachment(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $user->assignRole('admin');
+        $user->ownedTeams()->first()->setSetting('whatsapp_from', '34999000111');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ])
+            ->post('/api/chat/whatsapp-send', [
+                'to' => '34600111222',
+                'message' => '',
+                'attachments' => [
+                    UploadedFile::fake()->image('uno.jpg', 40, 40),
+                    UploadedFile::fake()->image('dos.jpg', 40, 40),
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Podés adjuntar un archivo por mensaje.');
+    }
 }

@@ -3315,7 +3315,7 @@ class ChatController extends Controller
             'to' => 'required|string',
             'message' => ['required_without_all:audio,attachments', 'nullable', 'string'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
-            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments' => ['nullable', 'array', 'max:1'],
             'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'use_ai' => 'boolean',
             'accept_closed_window' => 'sometimes|boolean',
@@ -3324,7 +3324,7 @@ class ChatController extends Controller
         ], [
             'audio.mimes' => __('Documento no permitido.'),
             'audio.max' => __('Archivo demasiado pesado.'),
-            'attachments.max' => __('Podés adjuntar hasta 10 archivos.'),
+            'attachments.max' => __('Podés adjuntar un archivo por mensaje.'),
             'attachments.*.file' => __('No se pudo leer el archivo.'),
             'attachments.*.max' => __('Archivo demasiado pesado.'),
             'attachments.*.mimes' => __('Documento no permitido.'),
