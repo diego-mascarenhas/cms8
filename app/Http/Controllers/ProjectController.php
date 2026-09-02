@@ -230,6 +230,18 @@ class ProjectController extends Controller
     public function budgetPreview(Request $request, string $token)
     {
         $project = $this->findProjectByBudgetPreviewToken($token);
+        $frontendUrl = \App\Support\BudgetPreviewUrl::forToken($token, $project);
+        $currentUrl = rtrim($request->schemeAndHttpHost(), '/');
+        $frontendBase = \App\Support\BudgetPreviewUrl::frontendBase($project);
+        if (is_string($frontendUrl) && is_string($frontendBase) && $frontendBase !== $currentUrl)
+        {
+            if ($request->boolean('download'))
+            {
+                $frontendUrl .= (str_contains($frontendUrl, '?') ? '&' : '?').'download=1';
+            }
+
+            return redirect()->away($frontendUrl);
+        }
 
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
 

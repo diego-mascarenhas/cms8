@@ -130,13 +130,16 @@ class PublicShopTest extends TestCase
 
     public function test_public_shop_loads_by_business_name_slug(): void
     {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
         $team = $this->makeShopTeam();
 
         $this->get(url('/shop/acme-demo-store'))
             ->assertOk()
             ->assertSeeLivewire(ShoppingAssistant::class);
 
-        $this->assertStringEndsWith('/shop/www.shop-demo.example', $team->publicCatalogShopUrl() ?? '');
+        $this->assertSame('https://shop.idoneo.dev/p/www.shop-demo.example', $team->publicCatalogShopUrl());
+        $this->assertSame('https://shop.idoneo.dev/p/www.shop-demo.example/ALP-1', $team->publicCatalogProductUrl('ALP-1'));
     }
 
     public function test_public_shop_name_slug_ambiguous_returns_404(): void

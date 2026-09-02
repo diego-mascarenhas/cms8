@@ -74,6 +74,25 @@ class ProjectAuthorizeBudgetApiTest extends TestCase
             ->assertJsonPath('preview_url', 'https://estimator.idoneo.dev/p/budget/'.$previewToken);
     }
 
+    public function test_show_uses_the_estimator_origin_for_preview_url(): void
+    {
+        config(['projects.budget_preview_base_url' => 'https://estimator.idoneo.dev']);
+
+        [, $project, , $token] = $this->createBudgetProject();
+        $previewToken = data_get($project->data, 'budget_preview_token');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$token,
+            'Origin' => 'https://presu.humano.app',
+        ])
+            ->getJson('/api/projects/'.$project->id)
+            ->assertOk()
+            ->assertJsonPath('preview_url', 'https://presu.humano.app/p/budget/'.$previewToken);
+
+        $project->refresh();
+        $this->assertSame('https://presu.humano.app', data_get($project->data, 'budget_preview_base_url'));
+    }
+
     public function test_budget_status_can_be_authorized_and_emailed(): void
     {
         Mail::fake();

@@ -35,7 +35,17 @@ class InboxQuickReplyServiceTest extends TestCase
 
     public function test_producto_sends_published_shop_item_by_code(): void
     {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
         $team = Team::factory()->create();
+        $team->setSetting('business_config', [
+            'business_name' => 'Repuestos Avenida',
+            'business_website' => 'https://www.repuestosav.com',
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        $team = $team->fresh();
         Product::factory()->create([
             'team_id' => $team->id,
             'name' => 'Remera básica',
@@ -53,6 +63,7 @@ class InboxQuickReplyServiceTest extends TestCase
         $this->assertStringContainsString('REM-001', $resolved['messages'][0]);
         $this->assertStringContainsString('12.500,00', $resolved['messages'][0]);
         $this->assertStringContainsString('Algodón peinado', $resolved['messages'][0]);
+        $this->assertStringContainsString('https://shop.idoneo.dev/p/www.repuestosav.com/REM-001', $resolved['messages'][0]);
         $this->assertArrayNotHasKey('media', $resolved);
     }
 

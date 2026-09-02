@@ -3734,7 +3734,7 @@ class AssistantToolsService
             return 'No published shop products found'.($categoryFilter !== '' ? ' for that category filter.' : '.').' Publish products in the shop catalog or adjust the filter.';
         }
 
-        $rows = $products->map(function (Product $product)
+        $rows = $products->map(function (Product $product) use ($teamId)
         {
             return [
                 'id' => (int) $product->id,
@@ -3748,6 +3748,7 @@ class AssistantToolsService
                     ? ltrim($this->catalogPriceSuffix($product), ' —')
                     : '',
                 'has_image' => filled($product->image),
+                'url' => $this->publicCatalogProductUrl($teamId, $product),
             ];
         })->values()->all();
 
@@ -3819,7 +3820,7 @@ class AssistantToolsService
 
         $products->each(fn (Product $product) => $product->loadMissing(['category', 'currency', 'store', 'stores']));
 
-        $rows = $products->map(function (Product $product)
+        $rows = $products->map(function (Product $product) use ($teamId)
         {
             $pricePart = $this->catalogPriceSuffix($product);
 
@@ -3832,6 +3833,7 @@ class AssistantToolsService
                 'category' => (string) ($product->category->name ?? '—'),
                 'price' => $pricePart !== '' ? ltrim($pricePart, ' —') : '',
                 'has_image' => filled($product->image),
+                'url' => $this->publicCatalogProductUrl($teamId, $product),
             ];
         })->values()->all();
 
@@ -4388,6 +4390,17 @@ class AssistantToolsService
         $blocks = $stores->map(fn (Store $store): string => $store->toAssistantText())->implode("\n\n");
 
         return $this->truncate($blocks."\n\nAnswer the customer from this store data. Do not say you lack hours, payments, or delivery. Do not send them to another channel for these facts.");
+    }
+
+    private function publicCatalogProductUrl(int $teamId, Product $product): ?string
+    {
+        $team = (int) $product->team_id === $teamId
+            ? Team::withoutGlobalScopes()->find($teamId)
+            : Team::withoutGlobalScopes()->find($product->team_id);
+
+        $code = trim((string) ($product->code ?: $product->defaultVariant()?->sku ?: ''));
+
+        return $team?->publicCatalogProductUrl($code !== '' ? $code : null);
     }
 
     private function catalogPriceSuffix(Product $product): string

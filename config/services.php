@@ -188,6 +188,10 @@ return [
         'url' => env('PROJECTS_APP_URL', 'https://idoneo-projects.test'),
     ],
 
+    'shop' => [
+        'url' => env('SHOP_APP_URL', 'https://shop.idoneo.dev'),
+    ],
+
     'apollo' => [
         'api_key' => env('APOLLO_API_KEY', ''),
     ],
