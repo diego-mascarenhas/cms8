@@ -6,6 +6,7 @@ use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
 use App\Models\Team;
 use App\Models\TokenUsageLog;
+use App\Services\AssistantWhatsAppUsageByLineService;
 use App\Services\HumanoPricingPlanResolver;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\StripeAccountResolver;
@@ -600,22 +601,29 @@ class AssistantSubscriptionService
             ];
         }
 
-        $tokensUsed = (int) $stats['totalTokensUsed'];
-        $rate = TeamApiUsageStatsService::sellRatePerMillion($from);
         $currency = TokenBillingRateService::displayCurrency();
+        $presenter = app(ClientTokenPresenter::class);
+        $billed = app(AssistantWhatsAppUsageByLineService::class)->forTeam($team, $from, $to);
+        foreach ($byModule as $index => $row)
+        {
+            $modulePresented = $presenter->present((int) $row['tokens_used'], 0, null, $from);
+            $byModule[$index]['tokens_used'] = $modulePresented['total_tokens'];
+            $byModule[$index]['tokens_saved'] = $presenter->scale((int) $row['tokens_saved']);
+        }
 
         return [
             'total_calls' => (int) $stats['totalCalls'],
-            'total_tokens_saved' => (int) $stats['totalTokensSaved'],
+            'total_tokens_saved' => $presenter->scale((int) $stats['totalTokensSaved']),
             'average_savings' => (float) $stats['averageSavings'],
-            'total_tokens_used' => $tokensUsed,
-            'total_tokens_without_toon' => (int) $stats['totalTokensWithoutToon'],
+            'total_tokens_used' => (int) $billed['all']['tokens'],
+            'total_tokens_without_toon' => $presenter->scale((int) $stats['totalTokensWithoutToon']),
             'by_module' => $byModule,
             'period_start' => $from->toIso8601String(),
             'period_end' => $to->toIso8601String(),
-            'amount_due_cents' => (int) round(($tokensUsed / 1_000_000) * $rate * 100),
+            'amount_due_cents' => (int) $billed['all']['amount_cents'],
             'currency' => $currency,
-            'rate_per_million' => $rate,
+            'token_multiplier' => $presenter->multiplier(),
+            'client_presented' => true,
         ];
     }
 

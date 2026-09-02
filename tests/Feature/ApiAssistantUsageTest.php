@@ -6,6 +6,7 @@ use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\DocumentIngestion;
 use App\Models\Module;
 use App\Models\TokenUsageLog;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
@@ -24,6 +26,16 @@ class ApiAssistantUsageTest extends TestCase
     use RefreshDatabase;
 
     private const TEAM_NUMBER = '34999000111';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['services.openrouter.cache_store' => 'array']);
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
+        ]);
+    }
 
     public function test_usage_requires_authentication(): void
     {
@@ -42,7 +54,10 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.totals.total_tokens', 0)
             ->assertJsonPath('data.all.tokens', 0)
             ->assertJsonPath('data.sources', [])
-            ->assertJsonPath('data.lines', []);
+            ->assertJsonPath('data.lines', [])
+            ->assertJsonPath('data.whatsapp.messages_sent', 0)
+            ->assertJsonPath('data.whatsapp.our_rate', 0.003)
+            ->assertJsonPath('data.whatsapp.currency', 'EUR');
     }
 
     public function test_usage_groups_tokens_by_whatsapp_line_and_exposes_the_model(): void
@@ -76,27 +91,25 @@ class ApiAssistantUsageTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.totals.lines', 2);
         $response->assertJsonPath('data.totals.replies', 3);
-        $response->assertJsonPath('data.totals.total_tokens', 31308);
+        $response->assertJsonPath('data.totals.total_tokens', 62616);
+        $response->assertJsonPath('data.client_presented', true);
         $this->assertNotEmpty($response->json('data.period_start'));
         $this->assertNotEmpty($response->json('data.period_end'));
         $this->assertSame('Ana Catalogo', $response->json('data.lines.0.name'));
         $this->assertSame('34600111222', $response->json('data.lines.0.phone'));
-        $this->assertSame(30888, $response->json('data.lines.0.total_tokens'));
+        $this->assertSame(61776, $response->json('data.lines.0.total_tokens'));
         $this->assertSame('claude-haiku-4-5', $response->json('data.lines.0.model'));
         $this->assertSame('/inbox?phone=34600111222', $response->json('data.lines.0.inbox_href'));
         $this->assertSame('34600999000', $response->json('data.lines.1.phone'));
         $this->assertSame('claude-sonnet-4-5', $response->json('data.lines.1.model'));
         $this->assertSame('claude-haiku-4-5', $response->json('data.by_model.0.model'));
+        $this->assertSame(61400, $response->json('data.by_model.0.prompt_tokens'));
+        $this->assertSame(376, $response->json('data.by_model.0.completion_tokens'));
         $this->assertGreaterThan(0, $response->json('data.lines.0.amount_cents'));
     }
 
-    public function test_usage_costs_and_savings_use_the_marked_up_sell_rate(): void
+    public function test_usage_costs_use_catalog_market_rates_on_double_tokens(): void
     {
-        config([
-            'humano_pricing.token_billing.amount_per_million' => 6,
-            'humano_pricing.token_billing.markup_percent' => 50,
-        ]);
-
         [$token] = $this->team();
 
         $this->outboundUsage(
@@ -113,13 +126,104 @@ class ApiAssistantUsageTest extends TestCase
             ->getJson('/api/assistant/usage');
 
         $response->assertOk();
-        $response->assertJsonPath('data.rate_per_million', 9);
-        $response->assertJsonPath('data.totals.amount_cents', 900);
-        $response->assertJsonPath('data.totals.saved_cents', 900);
-        $response->assertJsonPath('data.totals.tokens_saved', 1_000_000);
-        $response->assertJsonPath('data.lines.0.amount_cents', 900);
-        $response->assertJsonPath('data.lines.0.saved_cents', 900);
-        $response->assertJsonPath('data.by_model.0.saved_cents', 900);
+        $response->assertJsonPath('data.token_multiplier', 2);
+        $response->assertJsonPath('data.client_presented', true);
+        $response->assertJsonPath('data.whatsapp.messages_sent', 1);
+        $response->assertJsonPath('data.whatsapp.our_rate', 0.003);
+        $response->assertJsonPath('data.totals.amount_cents', 200);
+        $response->assertJsonPath('data.all.amount_cents', 200);
+        $response->assertJsonPath('data.all.tokens', 2_000_000);
+        $response->assertJsonPath('data.totals.saved_cents', 200);
+        $response->assertJsonPath('data.totals.tokens_saved', 2_000_000);
+        $response->assertJsonPath('data.lines.0.amount_cents', 200);
+        $response->assertJsonPath('data.lines.0.saved_cents', 200);
+        $response->assertJsonPath('data.by_model.0.saved_cents', 200);
+    }
+
+    public function test_usage_includes_whisper_for_transcribed_audio(): void
+    {
+        [$token] = $this->team();
+
+        $this->outboundUsage('34600111222', 800, 40, 840, 'claude-haiku-4-5', 'SM_usage_audio_reply');
+
+        Conversation::query()->create([
+            'message_sid' => 'SM_usage_audio_in',
+            'channel' => 'whatsapp',
+            'from' => '34600111222',
+            'to' => self::TEAM_NUMBER,
+            'body' => '[Audio]: hola quiero un presupuesto',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'metadata' => [
+                'TranscribedAudio' => '1',
+            ],
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/usage');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.totals.replies', 1);
+        $this->assertSame('claude-haiku-4-5', $response->json('data.lines.0.model'));
+        $this->assertContains('whisper-1', $response->json('data.lines.0.models'));
+        $this->assertContains('claude-haiku-4-5', $response->json('data.lines.0.models'));
+
+        $whisper = collect($response->json('data.by_model'))->firstWhere('model', 'whisper-1');
+        $this->assertNotNull($whisper);
+        $this->assertSame(0, $whisper['replies']);
+        $this->assertSame(12, $whisper['total_tokens']);
+    }
+
+    public function test_usage_includes_ocr_model_for_inbound_photos(): void
+    {
+        [$token, , $team] = $this->team();
+
+        $conversation = Conversation::query()->create([
+            'message_sid' => 'SM_usage_photo_in',
+            'channel' => 'whatsapp',
+            'from' => '34600111222',
+            'to' => self::TEAM_NUMBER,
+            'body' => ' ',
+            'status' => 'received',
+            'direction' => 'inbound',
+            'media' => [
+                [
+                    'url' => '/storage/inbound-media/pieza.jpg',
+                    'content_type' => 'image/jpeg',
+                ],
+            ],
+        ]);
+
+        DocumentIngestion::query()->create([
+            'team_id' => $team->id,
+            'conversation_id' => $conversation->id,
+            'file_name' => 'pieza.jpg',
+            'mime_type' => 'image/jpeg',
+            'ocr_text' => 'FILTRO ACEITE OEM 12345',
+            'document_type' => 'unknown',
+            'classification_status' => 'classified',
+            'classification_meta' => [
+                'ocr_applied' => true,
+                'ocr_engine_used' => 'ai',
+                'ocr_usage' => [
+                    'model' => 'claude-haiku-4.5',
+                    'prompt_tokens' => 1200,
+                    'completion_tokens' => 80,
+                    'total_tokens' => 1280,
+                ],
+            ],
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/usage');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.totals.replies', 0);
+        $response->assertJsonPath('data.lines.0.model', 'claude-haiku-4.5');
+        $response->assertJsonPath('data.lines.0.total_tokens', 2560);
+        $this->assertContains('claude-haiku-4.5', $response->json('data.lines.0.models'));
+        $this->assertSame('claude-haiku-4.5', $response->json('data.by_model.0.model'));
+        $this->assertSame(2560, $response->json('data.by_model.0.total_tokens'));
     }
 
     public function test_usage_excludes_replies_outside_the_current_period(): void
@@ -135,7 +239,7 @@ class ApiAssistantUsageTest extends TestCase
         $payload = app(AssistantWhatsAppUsageByLineService::class)
             ->forTeam($team, $from, $to);
 
-        $this->assertSame(840, $payload['totals']['total_tokens']);
+        $this->assertSame(1680, $payload['totals']['total_tokens']);
         $this->assertSame(1, $payload['totals']['replies']);
         $this->assertSame($from->toIso8601String(), $payload['period_start']);
     }
@@ -181,7 +285,7 @@ class ApiAssistantUsageTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.totals.lines', 1)
             ->assertJsonPath('data.lines.0.phone', '34600888777')
-            ->assertJsonPath('data.lines.0.total_tokens', 12180)
+            ->assertJsonPath('data.lines.0.total_tokens', 24360)
             ->assertJsonPath('data.lines.0.model', 'claude-haiku-4-5');
     }
 
@@ -221,7 +325,7 @@ class ApiAssistantUsageTest extends TestCase
             ->getJson('/api/assistant/usage')
             ->assertOk()
             ->assertJsonPath('data.totals.lines', 1)
-            ->assertJsonPath('data.totals.total_tokens', 840)
+            ->assertJsonPath('data.totals.total_tokens', 1680)
             ->assertJsonPath('data.totals.replies', 1);
     }
 
@@ -240,7 +344,7 @@ class ApiAssistantUsageTest extends TestCase
             'service' => 'DocumentAiOcrService',
             'json_size' => 10,
             'toon_size' => 0,
-            'json_tokens' => 2000,
+            'json_tokens' => 500_000,
             'toon_tokens' => 0,
             'savings_percentage' => 0,
             'used_toon' => false,
@@ -252,12 +356,16 @@ class ApiAssistantUsageTest extends TestCase
             ->getJson('/api/assistant/usage');
 
         $response->assertOk();
-        $response->assertJsonPath('data.totals.total_tokens', 840);
-        $response->assertJsonPath('data.all.tokens', 2000);
+        $response->assertJsonPath('data.totals.total_tokens', 1680);
+        $response->assertJsonPath('data.all.tokens', 1_001_680);
         $response->assertJsonPath('data.all.calls', 1);
+        $this->assertSame(
+            (int) collect($response->json('data.by_model'))->sum('amount_cents') + 100,
+            $response->json('data.all.amount_cents'),
+        );
         $this->assertSame('OCR', $response->json('data.sources.0.module_name'));
-        $this->assertSame(2000, $response->json('data.sources.0.tokens_used'));
-        $this->assertGreaterThan(0, $response->json('data.sources.0.amount_cents'));
+        $this->assertSame(1_000_000, $response->json('data.sources.0.tokens_used'));
+        $this->assertSame(100, $response->json('data.sources.0.amount_cents'));
     }
 
     public function test_usage_ignores_another_team_whatsapp_line(): void

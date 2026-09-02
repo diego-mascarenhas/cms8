@@ -12,11 +12,18 @@ use Illuminate\Support\Facades\Storage;
 
 class LocalWhatsAppGateway implements WhatsAppGateway
 {
+    private ?string $lastSentMessageId = null;
+
     public function __construct(
         protected string $baseUrl,
         protected ?string $webhookSecret = null,
         protected ?int $teamId = null,
     ) {}
+
+    public function lastSentMessageId(): ?string
+    {
+        return $this->lastSentMessageId;
+    }
 
     private function statusUrl(): string
     {
@@ -129,6 +136,7 @@ class LocalWhatsAppGateway implements WhatsAppGateway
             $payload['media_file_name'] = basename($absolutePath);
         }
 
+        $this->lastSentMessageId = null;
         $response = Http::timeout(30)
             ->post(rtrim($this->baseUrl, '/').'/send-media', $this->sendBody($payload));
 
@@ -136,6 +144,38 @@ class LocalWhatsAppGateway implements WhatsAppGateway
         {
             Log::error('Local WhatsApp send-media failed', [
                 'to' => $cleanTo,
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+
+            return false;
+        }
+
+        $messageId = $response->json('id');
+        $this->lastSentMessageId = is_string($messageId) && $messageId !== '' ? $messageId : null;
+
+        return true;
+    }
+
+    public function deleteMessage(string $to, string $messageId): bool
+    {
+        if (! $this->isConfigured() || $messageId === '')
+        {
+            return false;
+        }
+
+        $cleanTo = preg_replace('/[^0-9]/', '', $to);
+        $response = Http::timeout(15)
+            ->post(rtrim($this->baseUrl, '/').'/delete-message', $this->sendBody([
+                'to' => $cleanTo,
+                'id' => $messageId,
+            ]));
+
+        if (! $response->successful())
+        {
+            Log::error('Local WhatsApp delete-message failed', [
+                'to' => $cleanTo,
+                'id' => $messageId,
                 'status' => $response->status(),
                 'body' => $response->body(),
             ]);

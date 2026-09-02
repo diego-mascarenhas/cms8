@@ -838,6 +838,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('chat/schedule-message', [ChatController::class, 'scheduleMessage'])->name('api.chat.schedule-message');
     Route::patch('chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'updateScheduledMessage'])->name('api.chat.scheduled-message.update');
     Route::delete('chat/scheduled-message/{scheduledMessage}', [ChatController::class, 'destroyScheduledMessage'])->name('api.chat.scheduled-message.destroy');
+    Route::delete('chat/whatsapp-message/{conversation}', [ChatController::class, 'destroyWhatsAppMessage'])->name('api.chat.whatsapp-message.destroy');
     Route::get('chat/whatsapp-search-contacts', [ChatController::class, 'searchWhatsAppContacts'])->name('api.chat.whatsapp-search-contacts');
     Route::post('chat/whatsapp-start-contact', [ChatController::class, 'startWhatsAppContact'])->name('api.chat.whatsapp-start-contact');
     Route::patch('chat/whatsapp-contact', [ChatController::class, 'updateWhatsAppInboxContact'])->name('api.chat.whatsapp-contact');

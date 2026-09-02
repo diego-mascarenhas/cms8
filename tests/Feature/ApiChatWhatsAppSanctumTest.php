@@ -277,9 +277,9 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('messages.0.from_assistant', true);
-        $response->assertJsonPath('messages.0.usage.prompt_tokens', 12000);
-        $response->assertJsonPath('messages.0.usage.completion_tokens', 180);
-        $response->assertJsonPath('messages.0.usage.total_tokens', 12180);
+        $response->assertJsonPath('messages.0.usage.prompt_tokens', 24000);
+        $response->assertJsonPath('messages.0.usage.completion_tokens', 360);
+        $response->assertJsonPath('messages.0.usage.total_tokens', 24360);
         $response->assertJsonPath('messages.0.usage.tool_calls', 2);
         $this->assertGreaterThan(0, $response->json('messages.0.usage.amount_cents'));
     }
@@ -320,7 +320,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$user->createToken('test')->plainTextToken)
             ->getJson('/api/chat/whatsapp-messages/34600888666')
             ->assertOk()
-            ->assertJsonPath('messages.0.usage.total_tokens', 840)
+            ->assertJsonPath('messages.0.usage.total_tokens', 1680)
             ->assertJsonPath('messages.0.usage.tool_calls', 1);
     }
 
@@ -1118,7 +1118,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
 
         Http::fake([
             'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
-            'http://127.0.0.1:3000/send-media' => Http::response(['success' => true], 200),
+            'http://127.0.0.1:3000/send-media' => Http::response(['success' => true, 'id' => '3EB0FOTO01'], 200),
         ]);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
@@ -1141,6 +1141,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
                 'to' => $clientPhone,
                 'message' => 'Mirá esta foto',
                 'attachments' => [$file],
+                'accept_closed_window' => 1,
             ]);
 
         $response->assertOk();
@@ -1164,6 +1165,7 @@ class ApiChatWhatsAppSanctumTest extends TestCase
         $this->assertStringContainsString('foto.jpg', (string) ($conversation->media[0]['name'] ?? ''));
         $this->assertNotEmpty($conversation->media[0]['url'] ?? null);
         $this->assertSame(1, Conversation::query()->where('direction', 'outbound')->count());
+        $this->assertSame('3EB0FOTO01', $conversation->message_sid);
     }
 
     public function test_whatsapp_send_attachment_does_not_reply_with_document_summary(): void
@@ -1346,5 +1348,143 @@ class ApiChatWhatsAppSanctumTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonPath('message', 'Documento no permitido.');
+    }
+
+    public function test_whatsapp_send_rejects_more_than_one_attachment(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $user->assignRole('admin');
+        $user->ownedTeams()->first()->setSetting('whatsapp_from', '34999000111');
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ])
+            ->post('/api/chat/whatsapp-send', [
+                'to' => '34600111222',
+                'message' => '',
+                'attachments' => [
+                    UploadedFile::fake()->image('uno.jpg', 40, 40),
+                    UploadedFile::fake()->image('dos.jpg', 40, 40),
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Podés adjuntar un archivo por mensaje.');
+    }
+
+    public function test_whatsapp_message_can_be_deleted_for_everyone(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+            'http://127.0.0.1:3000/delete-message' => Http::response(['success' => true], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34999000111');
+
+        $conversation = Conversation::create([
+            'message_sid' => '3EB0DELETE01',
+            'channel' => 'whatsapp',
+            'from' => '34999000111',
+            'to' => '34600111222',
+            'body' => 'borrar esto',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'user_id' => $user->id,
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ])
+            ->deleteJson('/api/chat/whatsapp-message/'.$conversation->id)
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame('deleted', $conversation->fresh()->status);
+        Http::assertSent(function ($request): bool
+        {
+            return str_contains($request->url(), '/delete-message')
+                && ($request->data()['id'] ?? '') === '3EB0DELETE01'
+                && ($request->data()['to'] ?? '') === '34600111222';
+        });
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ])
+            ->getJson('/api/chat/whatsapp-messages/34600111222')
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $conversation->id,
+                'status' => 'deleted',
+                'body' => '',
+                'can_delete' => false,
+            ])
+            ->assertJsonMissing(['body' => 'borrar esto']);
+    }
+
+    public function test_whatsapp_message_without_remote_id_cannot_be_deleted(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        config(['whatsapp.driver' => 'local']);
+        config(['whatsapp.local.base_url' => 'http://127.0.0.1:3000']);
+        Http::fake([
+            'http://127.0.0.1:3000/status*' => Http::response(['status' => 'connected', 'number' => '34999000111'], 200),
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->setSetting('whatsapp_from', '34999000111');
+
+        $conversation = Conversation::create([
+            'message_sid' => 'wa_attach_old',
+            'channel' => 'whatsapp',
+            'from' => '34999000111',
+            'to' => '34600111222',
+            'body' => '',
+            'status' => 'sent',
+            'direction' => 'outbound',
+            'user_id' => $user->id,
+        ]);
+
+        $this->withHeaders([
+            'Authorization' => 'Bearer '.$user->createToken('test')->plainTextToken,
+            'Accept' => 'application/json',
+        ])
+            ->deleteJson('/api/chat/whatsapp-message/'.$conversation->id)
+            ->assertStatus(422)
+            ->assertJsonPath('error', 'Ya no se puede borrar este mensaje en WhatsApp.');
     }
 }

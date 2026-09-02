@@ -80,14 +80,15 @@ class DocumentIngestionService
                     'classification_confidence' => $classification['classification_confidence'],
                     'ocr_text' => $ocrText,
                     'extracted_data' => $extractedData !== [] ? $extractedData : null,
-                    'classification_meta' => [
+                    'classification_meta' => array_filter([
                         'reason' => $classification['reason'],
                         'channel' => Str::lower($sourceName),
                         'ocr_applied' => $ocrText !== null,
                         'ocr_mode' => $ocrResult['mode'],
                         'ocr_engine_used' => $ocrResult['engine_used'],
                         'ocr_engines_ran' => $ocrResult['engines_ran'],
-                    ],
+                        'ocr_usage' => $ocrResult['usage'] ?? null,
+                    ], fn (mixed $value): bool => $value !== null),
                 ]);
 
                 try
@@ -171,14 +172,15 @@ class DocumentIngestionService
                 'classification_confidence' => $classification['classification_confidence'],
                 'ocr_text' => $ocrText,
                 'extracted_data' => $extractedData !== [] ? $extractedData : null,
-                'classification_meta' => array_merge((array) ($documentIngestion->classification_meta ?? []), [
+                'classification_meta' => array_merge((array) ($documentIngestion->classification_meta ?? []), array_filter([
                     'reason' => $classification['reason'],
                     'ocr_applied' => $ocrText !== null,
                     'ocr_mode' => $ocrResult['mode'],
                     'ocr_engine_used' => $ocrResult['engine_used'],
                     'ocr_engines_ran' => $ocrResult['engines_ran'],
+                    'ocr_usage' => $ocrResult['usage'] ?? null,
                     'reprocessed_at' => now()->toIso8601String(),
-                ]),
+                ], fn (mixed $value): bool => $value !== null)),
                 'processing_error' => null,
                 'processed_at' => now(),
             ])->save();
@@ -338,7 +340,7 @@ class DocumentIngestionService
     }
 
     /**
-     * @return array{text:?string,mode:string,engine_used:?string,engines_ran:array<int,string>}
+     * @return array{text:?string,mode:string,engine_used:?string,engines_ran:array<int,string>,usage:?array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}}
      */
     private function extractOcrText(string $fileUrl, string $mimeType, ?int $teamId): array
     {
@@ -358,6 +360,7 @@ class DocumentIngestionService
                 'mode' => $this->resolveOcrMode($teamId),
                 'engine_used' => null,
                 'engines_ran' => [],
+                'usage' => null,
             ];
         }
 
@@ -375,6 +378,7 @@ class DocumentIngestionService
                 'mode' => $this->resolveOcrMode($teamId),
                 'engine_used' => null,
                 'engines_ran' => [],
+                'usage' => null,
             ];
         }
 
@@ -383,6 +387,7 @@ class DocumentIngestionService
             $mode = $this->resolveOcrMode($teamId);
             $localText = null;
             $aiText = null;
+            $aiUsage = null;
             $enginesRan = [];
 
             if ($mode === 'local' || $mode === 'hybrid')
@@ -393,7 +398,9 @@ class DocumentIngestionService
 
             if ($mode === 'ai' || $mode === 'hybrid')
             {
-                $aiText = $this->aiOcrService->extractTextFromLocalFile($localPath, $teamId);
+                $aiResult = $this->aiOcrService->extractWithUsage($localPath, $teamId);
+                $aiText = $aiResult['text'];
+                $aiUsage = $aiResult['usage'];
                 $enginesRan[] = 'ai';
             }
 
@@ -433,6 +440,7 @@ class DocumentIngestionService
                 'mode' => $mode,
                 'engine_used' => $engineUsed,
                 'engines_ran' => $enginesRan,
+                'usage' => $engineUsed === 'ai' ? $aiUsage : null,
             ];
         } finally
         {

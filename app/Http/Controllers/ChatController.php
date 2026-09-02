@@ -37,7 +37,6 @@ use App\Services\InboxQuickReplyService;
 use App\Services\InboxReplyTargetService;
 use App\Services\PerformanceInsightSlashDispatcher;
 use App\Services\SiteAssistantConversationService;
-use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamInboundAssistantPolicy;
 use App\Services\TeamSiteAssistantPromptService;
 use App\Services\TeamWhatsAppChatPresentation;
@@ -572,7 +571,9 @@ class ChatController extends Controller
 
             $contact = (object) [
                 'from' => $entry['digits'],
-                'last_message' => $lastMessage->body,
+                'last_message' => $lastMessage instanceof Conversation
+                    ? $lastMessage->inboxPreview()
+                    : $lastMessage->body,
                 'last_message_time' => $lastMessage->created_at->diffForHumans(),
                 'last_message_at' => $lastMessage->created_at,
                 'unread_count' => $entry['unread'],
@@ -1405,6 +1406,7 @@ class ChatController extends Controller
                     'from_assistant' => $fromAssistant,
                     'sender_avatar' => $this->whatsAppMessageSenderAvatar($message, $messageUsers, $authUser),
                     'usage' => $usageById[$message->id] ?? null,
+                    'can_delete' => false,
                 ];
             }
 
@@ -1416,6 +1418,16 @@ class ChatController extends Controller
                 ? $message->isTranscribedAudio()
                 : false;
             $payload['usage'] = $usageById[$message->id] ?? null;
+            $payload['can_delete'] = $message instanceof Conversation
+                && $this->currentTeamUsesLocalWhatsApp()
+                && $message->canRevokeOnWhatsApp();
+
+            if ($message instanceof Conversation && $message->isDeleted())
+            {
+                $payload['body'] = '';
+                $payload['media'] = [];
+                $payload['can_delete'] = false;
+            }
 
             return $payload;
         })->values()->all();
@@ -3315,7 +3327,7 @@ class ChatController extends Controller
             'to' => 'required|string',
             'message' => ['required_without_all:audio,attachments', 'nullable', 'string'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,m4a,webm,ogg,mp4,mpeg', 'max:25600'],
-            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments' => ['nullable', 'array', 'max:1'],
             'attachments.*' => ['file', 'max:25600', 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'],
             'use_ai' => 'boolean',
             'accept_closed_window' => 'sometimes|boolean',
@@ -3324,7 +3336,7 @@ class ChatController extends Controller
         ], [
             'audio.mimes' => __('Documento no permitido.'),
             'audio.max' => __('Archivo demasiado pesado.'),
-            'attachments.max' => __('Podés adjuntar hasta 10 archivos.'),
+            'attachments.max' => __('Podés adjuntar un archivo por mensaje.'),
             'attachments.*.file' => __('No se pudo leer el archivo.'),
             'attachments.*.max' => __('Archivo demasiado pesado.'),
             'attachments.*.mimes' => __('Documento no permitido.'),
@@ -3481,6 +3493,7 @@ class ChatController extends Controller
         $team = auth()->user()?->currentTeam;
         $cleanFrom = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
         $media = [];
+        $remoteIds = [];
 
         foreach (array_values($uploadedFiles) as $index => $uploadedFile)
         {
@@ -3505,6 +3518,15 @@ class ChatController extends Controller
                 return response()->json(['success' => false, 'error' => __('No se pudo enviar el archivo.')], 500);
             }
 
+            if ($gateway instanceof LocalWhatsAppGateway)
+            {
+                $remoteId = $gateway->lastSentMessageId();
+                if ($remoteId)
+                {
+                    $remoteIds[] = $remoteId;
+                }
+            }
+
             $media[] = [
                 'url' => asset('storage/'.$storedPath),
                 'content_type' => $uploadedFile->getClientMimeType() ?: $uploadedFile->getMimeType(),
@@ -3519,7 +3541,7 @@ class ChatController extends Controller
         }
 
         $conversation = Conversation::create([
-            'message_sid' => 'wa_attach_'.uniqid('', true),
+            'message_sid' => $remoteIds[0] ?? ('wa_attach_'.uniqid('', true)),
             'channel' => 'whatsapp',
             'from' => $cleanFrom !== '' ? $cleanFrom : (string) (auth()->id() ?? '0'),
             'to' => $cleanTo,
@@ -3755,6 +3777,54 @@ class ChatController extends Controller
         $scheduledMessage->markAsCancelled();
 
         return response()->json(['success' => true]);
+    }
+
+    public function destroyWhatsAppMessage(Conversation $conversation): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeTeamWhatsAppConversation($conversation);
+
+        if ($conversation->direction !== 'outbound' || $conversation->isDeleted())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('No se puede borrar este mensaje.'),
+            ], 422);
+        }
+
+        $remoteId = $conversation->whatsAppRemoteId();
+        $gateway = $this->getLocalGatewayForCurrentTeam();
+        if ($remoteId === null || ! $gateway instanceof LocalWhatsAppGateway || ! $conversation->canRevokeOnWhatsApp())
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('Ya no se puede borrar este mensaje en WhatsApp.'),
+            ], 422);
+        }
+
+        if (! $gateway->deleteMessage((string) $conversation->to, $remoteId))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => __('No se pudo borrar el mensaje.'),
+            ], 500);
+        }
+
+        $conversation->update(['status' => 'deleted']);
+
+        return response()->json(['success' => true]);
+    }
+
+    private function authorizeTeamWhatsAppConversation(Conversation $conversation): void
+    {
+        $team = auth()->user()?->currentTeam;
+        $teamNumber = $team ? preg_replace('/[^0-9]/', '', (string) $team->getWhatsAppFrom()) : '';
+        $from = preg_replace('/[^0-9]/', '', (string) $conversation->from);
+        $to = preg_replace('/[^0-9]/', '', (string) $conversation->to);
+
+        abort_unless(
+            $teamNumber !== '' && $conversation->channel === 'whatsapp' && in_array($teamNumber, [$from, $to], true),
+            404,
+        );
     }
 
     private function authorizeScheduledMessage(ScheduledMessage $scheduledMessage): void
@@ -4467,14 +4537,17 @@ class ChatController extends Controller
             return null;
         }
 
-        $rate = TeamApiUsageStatsService::sellRatePerMillion();
+        $model = is_string($usage['model'] ?? null) ? $usage['model'] : null;
+        $presented = app(\App\Services\Billing\ClientTokenPresenter::class)
+            ->present($prompt, $completion, $model);
 
         return [
-            'prompt_tokens' => $prompt,
-            'completion_tokens' => $completion,
-            'total_tokens' => $total,
+            'prompt_tokens' => $presented['prompt_tokens'],
+            'completion_tokens' => $presented['completion_tokens'],
+            'total_tokens' => $presented['total_tokens'],
             'tool_calls' => max(0, $toolCalls),
-            'amount_cents' => (int) round(($total / 1_000_000) * $rate * 100),
+            'amount_cents' => $presented['amount_cents'],
+            'model' => $model,
         ];
     }
 

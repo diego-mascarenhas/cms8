@@ -88,26 +88,21 @@ final class TeamApiUsageStatsService
         ];
     }
 
-    public static function sellRatePerMillion(\DateTimeInterface|string|null $on = null): float
-    {
-        return TokenBillingRateService::displaySellRate($on);
-    }
-
     /**
      * @return array{tokens: int, amount_cents: int, currency: string, formatted: string}
      */
     public static function costSummary(int $teamId): array
     {
         $tokens = (int) self::forTeam($teamId)['totalTokensUsed'];
-        $rate = self::sellRatePerMillion();
+        $presented = app(\App\Services\Billing\ClientTokenPresenter::class)->present($tokens, 0, null);
         $currency = TokenBillingRateService::displayCurrency();
-        $amountCents = (int) round(($tokens / 1_000_000) * $rate * 100);
+        $amountCents = $presented['amount_cents'];
         $amount = $amountCents / 100;
-        $tokenLabel = number_format($tokens, 0, ',', '.');
+        $tokenLabel = number_format($presented['total_tokens'], 0, ',', '.');
         $priceLabel = number_format($amount, 2, ',', '.').' '.$currency;
 
         return [
-            'tokens' => $tokens,
+            'tokens' => $presented['total_tokens'],
             'amount_cents' => $amountCents,
             'currency' => $currency,
             'formatted' => $tokenLabel.' / '.$priceLabel,

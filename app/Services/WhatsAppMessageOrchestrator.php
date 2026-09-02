@@ -15,6 +15,7 @@ use App\Helpers\WhatsAppOutboundText;
 use App\Mail\IncomingMessageNotification;
 use App\Models\Contact;
 use App\Models\Conversation;
+use App\Models\DocumentIngestion;
 use App\Models\Invoice;
 use App\Models\Product;
 use App\Models\Service;
@@ -873,6 +874,7 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
                             $ingestions,
                         ))),
                     ]);
+                    $this->persistInboundOcrUsage($conversation, $ingestions);
                 } catch (\Throwable $e)
                 {
                     Log::warning('Document ingestion failed for inbound media', [
@@ -3841,6 +3843,39 @@ class WhatsAppMessageOrchestrator implements WhatsAppGateway
 
             return empty($meta['internal_only']);
         }));
+    }
+
+    /**
+     * @param  list<DocumentIngestion|array<string, mixed>>  $ingestions
+     */
+    private function persistInboundOcrUsage(Conversation $conversation, array $ingestions): void
+    {
+        $usages = [];
+        foreach ($ingestions as $ingestion)
+        {
+            $meta = is_object($ingestion)
+                ? (is_array($ingestion->classification_meta ?? null) ? $ingestion->classification_meta : [])
+                : (is_array($ingestion['classification_meta'] ?? null) ? $ingestion['classification_meta'] : []);
+            $usage = is_array($meta['ocr_usage'] ?? null) ? $meta['ocr_usage'] : null;
+            if (is_array($usage) && (int) ($usage['total_tokens'] ?? 0) > 0)
+            {
+                $usages[] = $usage;
+            }
+        }
+
+        if ($usages === [])
+        {
+            return;
+        }
+
+        $metadata = is_array($conversation->metadata) ? $conversation->metadata : [];
+        $metadata['ocr_usage'] = count($usages) === 1 ? $usages[0] : [
+            'model' => (string) ($usages[0]['model'] ?? ''),
+            'prompt_tokens' => (int) array_sum(array_column($usages, 'prompt_tokens')),
+            'completion_tokens' => (int) array_sum(array_column($usages, 'completion_tokens')),
+            'total_tokens' => (int) array_sum(array_column($usages, 'total_tokens')),
+        ];
+        $conversation->forceFill(['metadata' => $metadata])->save();
     }
 
     /**

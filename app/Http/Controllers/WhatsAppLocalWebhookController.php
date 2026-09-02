@@ -59,6 +59,7 @@ class WhatsAppLocalWebhookController extends Controller
             {
                 $payload['body'] = '[Audio]: '.$transcript;
                 $payload['transcribed_audio'] = true;
+                $payload['transcription_usage'] = $this->estimateTranscriptionUsage($transcript);
             }
         }
 
@@ -170,6 +171,10 @@ class WhatsAppLocalWebhookController extends Controller
         if (! empty($payload['transcribed_audio']) || preg_match('/^\s*\[audio\]\s*:?\s+\S/iu', $body) === 1)
         {
             $normalized['TranscribedAudio'] = '1';
+            if (is_array($payload['transcription_usage'] ?? null))
+            {
+                $normalized['transcription_usage'] = $payload['transcription_usage'];
+            }
         }
 
         $mediaEntries = $this->extractMediaEntries($payload);
@@ -292,6 +297,21 @@ class WhatsAppLocalWebhookController extends Controller
         }
 
         return array_values($unique);
+    }
+
+    /**
+     * @return array{model: string, prompt_tokens: int, completion_tokens: int, total_tokens: int}
+     */
+    private function estimateTranscriptionUsage(string $transcript): array
+    {
+        $tokens = max(1, (int) ceil(str_word_count($transcript) * 1.3));
+
+        return [
+            'model' => 'whisper-1',
+            'prompt_tokens' => $tokens,
+            'completion_tokens' => 0,
+            'total_tokens' => $tokens,
+        ];
     }
 
     /**
