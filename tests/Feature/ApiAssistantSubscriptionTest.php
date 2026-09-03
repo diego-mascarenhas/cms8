@@ -191,7 +191,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.mailer_usage.emails_sent', 0);
         $response->assertJsonPath('data.mailer_usage.amount_due_cents', 0);
-        $this->assertSame(0.01, $response->json('data.mailer_usage.our_rate'));
+        $this->assertSame(0.002, $response->json('data.mailer_usage.our_rate'));
     }
 
     public function test_innovation_catalog_bills_sent_emails_in_current_period(): void
@@ -1017,7 +1017,7 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.plan.monthly_amount', '15.99');
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.can_checkout', true);
-        $response->assertJsonPath('data.mailer_usage.price_per_email', '0.01');
+        $response->assertJsonPath('data.mailer_usage.price_per_email', '0.002');
         $response->assertJsonPath('data.mailer_usage.emails_included', 10000);
         $this->assertSame(
             ['mailer_basic', 'mailer_foundation', 'mailer_scale'],

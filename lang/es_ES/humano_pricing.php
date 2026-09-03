@@ -82,7 +82,7 @@ return [
             'name' => 'Pay as you go',
             'description' => 'Sin cuota mensual. Comprás créditos y pagás solo los emails que enviás.',
             'features' => [
-                '0,01 € por email enviado',
+                '0,002 € por email enviado',
                 'Comprá créditos cuando los necesites',
                 'Sin cupo mensual fijo',
             ],
@@ -93,7 +93,7 @@ return [
             'features' => [
                 'Hasta 3.000 suscriptores',
                 '10.000 emails incluidos al mes',
-                'Emails extra a 0,01 €, aparte de los tokens',
+                'Emails extra a 0,002 €, aparte de los tokens',
             ],
         ],
         'mailer_foundation' => [
@@ -102,7 +102,7 @@ return [
             'features' => [
                 'Hasta 20.000 suscriptores',
                 '50.000 emails incluidos al mes',
-                'Emails extra a 0,01 €, aparte de los tokens',
+                'Emails extra a 0,002 €, aparte de los tokens',
             ],
         ],
         'mailer_scale' => [
@@ -111,7 +111,7 @@ return [
             'features' => [
                 'Hasta 50.000 suscriptores',
                 '100.000 emails incluidos al mes',
-                'Emails extra a 0,01 €, aparte de los tokens',
+                'Emails extra a 0,002 €, aparte de los tokens',
             ],
         ],
         'shop_basic' => [

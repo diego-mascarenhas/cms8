@@ -225,7 +225,7 @@ class TeamBillingRate extends Model
         {
             TeamBillingProduct::TokensMultiplier => max(1, (float) config('humano_pricing.token_billing.client_token_multiplier', 10)),
             TeamBillingProduct::WhatsappSend => max(0, (float) config('humano_pricing.whatsapp_message_billing.our_amount', 0.003)),
-            TeamBillingProduct::MailerSend => max(0, (float) config('emailer.payg.price_per_email', 0.01)),
+            TeamBillingProduct::MailerSend => max(0, (float) config('emailer.payg.price_per_email', 0.002)),
         };
     }
 

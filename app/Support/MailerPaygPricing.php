@@ -14,7 +14,7 @@ class MailerPaygPricing
         $teamId = $team instanceof Team ? (int) $team->id : $team;
         if ($teamId === null && $on === null)
         {
-            return TeamBillingRate::formatAmount((float) (config('emailer.payg.price_per_email', 0.01) ?: 0));
+            return TeamBillingRate::formatAmount((float) (config('emailer.payg.price_per_email', 0.002) ?: 0));
         }
 
         return TeamBillingRate::formattedAmountOn($teamId, TeamBillingProduct::MailerSend, $on);
@@ -37,6 +37,6 @@ class MailerPaygPricing
             return 0;
         }
 
-        return $overageEmails * self::amountToCents(self::pricePerEmail($team, $on));
+        return (int) round($overageEmails * (float) self::pricePerEmail($team, $on) * 100);
     }
 }
