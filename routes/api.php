@@ -535,6 +535,7 @@ Route::middleware('auth.api')->group(function ()
     Route::post('assistant/checkout', [AssistantSubscriptionController::class, 'checkout'])->name('api.assistant.checkout');
     Route::post('assistant/checkout/complete', [AssistantSubscriptionController::class, 'complete'])->name('api.assistant.checkout.complete');
     Route::post('assistant/payment-method', [AssistantSubscriptionController::class, 'paymentMethod'])->name('api.assistant.payment-method');
+    Route::post('assistant/mailer-usage', [AssistantSubscriptionController::class, 'recordMailerUsage'])->name('api.assistant.mailer-usage');
     Route::get('assistant/site-prompt', [SiteAssistantPromptController::class, 'show'])->name('api.assistant.site-prompt.show');
     Route::put('assistant/site-prompt', [SiteAssistantPromptController::class, 'update'])->name('api.assistant.site-prompt.update');
     Route::patch('assistant/site-prompt', [SiteAssistantPromptController::class, 'updateContent'])->name('api.assistant.site-prompt.content');

@@ -5,6 +5,8 @@ namespace App\Services\Billing;
 use App\Enums\EmailPlan;
 use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
+use App\Models\MailerUsageLog;
+use App\Models\MessageDelivery;
 use App\Models\Team;
 use App\Models\TokenUsageLog;
 use App\Services\AssistantWhatsAppUsageByLineService;
@@ -13,6 +15,7 @@ use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\StripeAccountResolver;
 use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
+use App\Services\TeamMailerUsageStatsService;
 use App\Services\TeamStripeCustomerService;
 use App\Services\TeamWhatsAppUsageStatsService;
 use App\Services\TokenBillingRateService;
@@ -83,7 +86,7 @@ class AssistantSubscriptionService
             'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
             'mailer_usage' => $catalog === HumanoPricingCatalog::MAILER
                 ? $this->mailerUsagePayload($team)
-                : null,
+                : $this->mailerPeriodUsagePayload($team, $stripe),
             'estimator_usage' => $catalog === HumanoPricingCatalog::ESTIMATOR
                 ? $this->estimatorUsagePayload($team, $stripe)
                 : null,
@@ -667,7 +670,7 @@ class AssistantSubscriptionService
     /**
      * Paid Assistant cycle when it exists. Pre-plan usage is CAC and stays
      * outside this window. Without a Stripe period, count from the first real
-     * use (tokens, chat, WhatsApp) — not the 48h trial stamp.
+     * use (tokens, chat, WhatsApp, mailer) — not the 48h trial stamp.
      *
      * @param  array<string, mixed>  $stripe
      * @return array{0: Carbon, 1: Carbon}
@@ -758,6 +761,23 @@ class AssistantSubscriptionService
             }
         }
 
+        $mailerAt = MessageDelivery::query()
+            ->where('team_id', $team->id)
+            ->whereNotNull('sent_at')
+            ->min('sent_at');
+        if ($mailerAt)
+        {
+            $times[] = Carbon::parse($mailerAt);
+        }
+
+        $mailerLogAt = MailerUsageLog::query()
+            ->where('team_id', $team->id)
+            ->min('sent_at');
+        if ($mailerLogAt)
+        {
+            $times[] = Carbon::parse($mailerLogAt);
+        }
+
         if ($times === [])
         {
             return null;
@@ -831,6 +851,26 @@ class AssistantSubscriptionService
     private function mailerUsagePayload(Team $team): array
     {
         return $team->getMailerUsageSummary();
+    }
+
+    /**
+     * @param  array<string, mixed>  $stripe
+     * @return array<string, mixed>
+     */
+    private function mailerPeriodUsagePayload(Team $team, array $stripe): array
+    {
+        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        $stats = TeamMailerUsageStatsService::forTeam($team, $from, $to);
+
+        return [
+            'emails_sent' => (int) $stats['emails_sent'],
+            'amount_due_cents' => (int) $stats['amount_due_cents'],
+            'our_rate' => (float) $stats['our_rate'],
+            'currency' => (string) $stats['currency'],
+            'period_start' => $from->toIso8601String(),
+            'period_end' => $to->toIso8601String(),
+            'period_emails_sent' => (int) $stats['emails_sent'],
+        ];
     }
 
     /**

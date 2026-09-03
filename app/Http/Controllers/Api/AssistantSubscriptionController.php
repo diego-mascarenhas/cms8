@@ -7,7 +7,9 @@ use App\Http\Requests\Api\CancelAssistantSubscriptionRequest;
 use App\Http\Requests\Api\CompleteAssistantCheckoutRequest;
 use App\Http\Requests\Api\CreateAssistantCheckoutRequest;
 use App\Http\Requests\Api\CreateAssistantPaymentMethodRequest;
+use App\Http\Requests\Api\RecordMailerUsageRequest;
 use App\Http\Requests\Api\ResumeAssistantSubscriptionRequest;
+use App\Models\MailerUsageLog;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Support\HumanoPricingCatalog;
 use Illuminate\Http\JsonResponse;
@@ -133,6 +135,31 @@ class AssistantSubscriptionController extends Controller
             'success' => true,
             'data' => $result['data'],
         ]);
+    }
+
+    public function recordMailerUsage(RecordMailerUsageRequest $request): JsonResponse
+    {
+        $team = $request->user()->currentTeam;
+        $count = (int) ($request->validated('count') ?? 1);
+        $source = trim((string) ($request->validated('source') ?? 'app')) ?: 'app';
+        $sentAt = $request->validated('sent_at');
+
+        $log = MailerUsageLog::query()->create([
+            'team_id' => $team->id,
+            'source' => $source,
+            'count' => $count,
+            'sent_at' => $sentAt ?: now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'id' => $log->id,
+                'count' => $log->count,
+                'source' => $log->source,
+                'sent_at' => $log->sent_at?->toIso8601String(),
+            ],
+        ], 201);
     }
 
     public function paymentMethod(CreateAssistantPaymentMethodRequest $request): JsonResponse

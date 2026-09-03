@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Conversation;
 use App\Models\Enterprise;
+use App\Models\MailerUsageLog;
+use App\Models\MessageDelivery;
 use App\Models\Project;
 use App\Models\TokenUsageLog;
 use App\Models\User;
@@ -187,6 +189,55 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.can_checkout', true);
         $response->assertJsonPath('data.subscription', null);
         $response->assertJsonPath('data.token_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.mailer_usage.emails_sent', 0);
+        $response->assertJsonPath('data.mailer_usage.amount_due_cents', 0);
+        $this->assertSame(0.01, $response->json('data.mailer_usage.our_rate'));
+    }
+
+    public function test_innovation_catalog_bills_sent_emails_in_current_period(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        config(['emailer.payg.price_per_email' => 0.01]);
+
+        MessageDelivery::create([
+            'team_id' => $team->id,
+            'message_id' => 1,
+            'contact_id' => 1,
+            'sent_at' => now(),
+            'status_id' => 2,
+            'delivery_status' => 'sent',
+        ]);
+        MessageDelivery::create([
+            'team_id' => $team->id,
+            'message_id' => 1,
+            'contact_id' => 2,
+            'sent_at' => now(),
+            'status_id' => 2,
+            'delivery_status' => 'sent',
+        ]);
+        MessageDelivery::create([
+            'team_id' => $team->id,
+            'message_id' => 1,
+            'contact_id' => 3,
+            'sent_at' => now()->subMonth(),
+            'status_id' => 2,
+            'delivery_status' => 'sent',
+        ]);
+        MailerUsageLog::factory()->create([
+            'team_id' => $team->id,
+            'source' => 'fanyion',
+            'count' => 2,
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=innovation');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.mailer_usage.emails_sent', 5);
+        $response->assertJsonPath('data.mailer_usage.period_emails_sent', 5);
+        $response->assertJsonPath('data.mailer_usage.amount_due_cents', 5);
+        $this->assertSame(0.01, $response->json('data.mailer_usage.our_rate'));
     }
 
     public function test_fanyion_checkout_does_not_require_a_stripe_price(): void
