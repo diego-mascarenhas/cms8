@@ -12,6 +12,8 @@ use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Message;
 use App\Models\Module;
+use App\Services\MailerCategoryService;
+use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,13 +50,7 @@ class MailerAudienceController extends Controller
         $search = trim((string) ($validated['search'] ?? ''));
         if ($search !== '')
         {
-            $term = '%'.$search.'%';
-            $query->where(function (Builder $builder) use ($term): void
-            {
-                $builder->where('name', 'like', $term)
-                    ->orWhere('surname', 'like', $term)
-                    ->orWhere('email', 'like', $term);
-            });
+            SearchNormalizer::applyContactNavbarConditions($query, $search);
         }
 
         $categoryId = (int) ($validated['category_id'] ?? 0);
@@ -242,7 +238,7 @@ class MailerAudienceController extends Controller
     }
 
     /**
-     * @return list<array{id: int, name: string, subscribers: int}>
+     * @return list<array{id: int, name: string, color: string|null, subscribers: int}>
      */
     private function listsForTeam(int $teamId): array
     {
@@ -372,13 +368,14 @@ class MailerAudienceController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string, subscribers: int}
+     * @return array{id: int, name: string, color: string|null, subscribers: int}
      */
     private function formatList(Category $category): array
     {
         return [
             'id' => (int) $category->id,
             'name' => (string) $category->name,
+            'color' => MailerCategoryService::normalizeColor($category->color),
             'subscribers' => $category->contacts()
                 ->whereNotNull('email')
                 ->where('email', '!=', '')
@@ -411,6 +408,7 @@ class MailerAudienceController extends Controller
                 ->map(fn (Category $category): array => [
                     'id' => (int) $category->id,
                     'name' => (string) $category->name,
+                    'color' => MailerCategoryService::normalizeColor($category->color),
                 ])
                 ->values()
                 ->all(),
