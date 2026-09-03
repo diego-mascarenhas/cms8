@@ -75,6 +75,7 @@ class MailerAudienceApiTest extends TestCase
             'team_id' => $team->id,
             'module_id' => $contactsModule->id,
             'name' => 'Newsletter',
+            'color' => '#d4a017',
             'status' => 1,
         ]);
 
@@ -118,13 +119,16 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('pagination.total', 2)
             ->assertJsonPath('data.0.photo_url', null)
             ->assertJsonPath('data.0.status.label_class', 'bg-label-success')
+            ->assertJsonPath('lists.0.color', '#d4a017')
             ->assertJsonPath('status_stats.0.key', 'leads')
             ->assertJsonPath('status_stats.0.count', 2)
             ->assertJsonPath('status_stats.0.percentage', 100)
             ->assertJsonPath('status_stats.0.label_class', 'bg-label-success');
 
         $rows = collect($response->json('data'));
-        $this->assertTrue((bool) $rows->firstWhere('email', 'lucia.garcia@cliente.com')['can_send']);
+        $lucia = $rows->firstWhere('email', 'lucia.garcia@cliente.com');
+        $this->assertSame('#d4a017', $lucia['categories'][0]['color'] ?? null);
+        $this->assertTrue((bool) $lucia['can_send']);
         $fake = $rows->first(fn (array $row): bool => str_ends_with((string) $row['email'], '@fake.com'));
         $this->assertNotNull($fake);
         $this->assertFalse((bool) $fake['can_send']);
@@ -243,6 +247,58 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('data.name', 'Clientes VIP');
 
         $this->assertSame(1, Category::query()->where('team_id', $team->id)->where('name', 'Clientes VIP')->count());
+    }
+
+    public function test_search_matches_name_without_case_or_accents(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        foreach (['lucia', 'LUCÍA', 'garcia'] as $term)
+        {
+            $this->withHeader('Authorization', 'Bearer '.$token)
+                ->getJson('/api/mailer/audience?search='.rawurlencode($term))
+                ->assertOk()
+                ->assertJsonPath('pagination.total', 1)
+                ->assertJsonPath('data.0.email', 'lucia.garcia@cliente.com');
+        }
+    }
+
+    public function test_paginates_audience_contacts(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $leadStatusId = (int) ContactStatus::query()->where('name', 'Lead')->value('id');
+
+        for ($i = 1; $i <= 25; $i++)
+        {
+            Contact::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'name' => sprintf('Contacto %02d', $i),
+                'surname' => 'Extra',
+                'email' => "extra{$i}@cliente.com",
+                'language' => 'es',
+                'country' => 724,
+                'creator_id' => $user->id,
+                'responsible_id' => $user->id,
+                'status_id' => $leadStatusId,
+            ]);
+        }
+
+        $first = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?per_page=20&page=1')
+            ->assertOk()
+            ->assertJsonPath('pagination.current_page', 1)
+            ->assertJsonPath('pagination.per_page', 20)
+            ->assertJsonPath('pagination.last_page', 2)
+            ->assertJsonPath('pagination.total', 27);
+
+        $this->assertCount(20, $first->json('data'));
+
+        $second = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience?per_page=20&page=2')
+            ->assertOk()
+            ->assertJsonPath('pagination.current_page', 2);
+
+        $this->assertCount(7, $second->json('data'));
     }
 
     public function test_guest_cannot_list_audience(): void
