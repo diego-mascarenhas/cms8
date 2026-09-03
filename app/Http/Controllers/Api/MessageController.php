@@ -540,7 +540,7 @@ class MessageController extends Controller
 
         $messageModel = null;
 
-        DB::transaction(function () use ($request, $validated, $team, $existing, $typeId, $templateId, $weekdays, $mailHtml, $hasDeliveries, &$messageModel): void
+        DB::transaction(function () use ($request, $validated, $team, $existing, $typeId, $templateId, $weekdays, $mailHtml, &$messageModel): void
         {
             $payload = [
                 'team_id' => $team->id,
@@ -614,7 +614,7 @@ class MessageController extends Controller
                 $messageModel = Message::create($payload);
             }
 
-            if (! $hasDeliveries && array_key_exists('message_category_ids', $validated))
+            if (array_key_exists('message_category_ids', $validated))
             {
                 $messageModel->syncMessageCategories($validated['message_category_ids'] ?? []);
             }

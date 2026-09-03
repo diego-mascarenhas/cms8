@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Api;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class StoreMailerAudienceContactRequest extends FormRequest
@@ -10,6 +11,15 @@ class StoreMailerAudienceContactRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user() !== null;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $email = $this->input('email');
+        if (is_string($email))
+        {
+            $this->merge(['email' => Str::lower(trim($email))]);
+        }
     }
 
     /**
@@ -26,9 +36,7 @@ class StoreMailerAudienceContactRequest extends FormRequest
                 'required',
                 'email:rfc',
                 'max:255',
-                Rule::unique('contacts', 'email')->where(fn ($query) => $query
-                    ->where('team_id', $teamId)
-                    ->whereNull('deleted_at')),
+                Rule::unique('contacts', 'email')->where(fn ($query) => $query->where('team_id', $teamId)),
             ],
             'status_id' => ['nullable', 'integer', 'exists:contact_statuses,id'],
             'category_ids' => ['nullable', 'array'],

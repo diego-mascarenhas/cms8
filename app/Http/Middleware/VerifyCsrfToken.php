@@ -26,5 +26,6 @@ class VerifyCsrfToken extends Middleware
         'lead',  // form submissions and external lead sources
         'stripe/webhook', // Stripe webhook handler (default and per-category)
         'stripe/webhook/*',
+        'unsubscribe/*',
     ];
 }
