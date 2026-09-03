@@ -1280,7 +1280,7 @@ Route::get('/legal/google-connection', [LegalDocumentsController::class, 'google
 Route::get('/legal/google-user-data', [LegalDocumentsController::class, 'googleUserData'])->name('legal.google-user-data');
 Route::get('/legal/data-deletion', [LegalDocumentsController::class, 'dataDeletion'])->name('legal.data-deletion');
 
-Route::get('/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
+Route::match(['get', 'post'], '/unsubscribe/{email}', [MessageController::class, 'unsubscribe']);
 
 // Notification tracking routes (no auth required)
 Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');

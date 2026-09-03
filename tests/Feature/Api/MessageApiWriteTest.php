@@ -3,10 +3,16 @@
 namespace Tests\Feature\Api;
 
 use App\Mail\TestMessageMail;
+use App\Models\Category;
+use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Message;
+use App\Models\MessageDelivery;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\LanguageSeeder;
 use Database\Seeders\MessageTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -23,6 +29,8 @@ class MessageApiWriteTest extends TestCase
         parent::setUp();
 
         $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
             ContactStatusSeeder::class,
             MessageTypeSeeder::class,
         ]);
@@ -397,6 +405,65 @@ class MessageApiWriteTest extends TestCase
         $empty->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('pagination.total', 0);
+    }
+
+    public function test_can_update_target_when_message_has_deliveries(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+
+        $contactsModule = Module::query()->where('key', 'contacts')->firstOrFail();
+        $category = Category::query()->create([
+            'name' => 'Mayoristas',
+            'module_id' => $contactsModule->id,
+            'team_id' => $team->id,
+            'status' => 1,
+        ]);
+
+        $followStatusId = (int) ContactStatus::query()->where('name', 'En seguimiento')->value('id');
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Sent Campaign',
+            'text' => 'Subject line here',
+            'type_id' => 1,
+            'status_id' => 0,
+            'mail_html' => '<p>Original</p>',
+        ]);
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'campaign_id' => null,
+            'status_id' => 1,
+            'sent_at' => now(),
+        ]);
+
+        $update = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/message/'.$message->id, [
+                'name' => 'Sent Campaign',
+                'text' => 'Subject line here',
+                'mail_html' => '<p>Tampered</p>',
+                'message_category_ids' => [$category->id],
+                'contact_status_id' => $followStatusId,
+            ]);
+
+        $update->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.contact_status.id', $followStatusId)
+            ->assertJsonPath('data.contact_categories.0.id', $category->id)
+            ->assertJsonPath('data.mail_html', '<p>Original</p>');
+
+        $message->refresh();
+        $this->assertSame('<p>Original</p>', $message->mail_html);
+        $this->assertSame($followStatusId, (int) $message->contact_status_id);
+        $this->assertEquals([$category->id], $message->contactCategories()->pluck('categories.id')->all());
     }
 
     public function test_unauthenticated_cannot_write_messages(): void

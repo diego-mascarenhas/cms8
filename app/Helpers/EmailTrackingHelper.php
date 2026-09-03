@@ -4,6 +4,7 @@ namespace App\Helpers;
 
 use App\Models\MessageDelivery;
 use App\Models\MessageDeliveryLink;
+use Illuminate\Mail\Mailable;
 
 class EmailTrackingHelper
 {
@@ -178,7 +179,7 @@ class EmailTrackingHelper
             return $html;
         }
 
-        $unsubscribeUrl = url('/unsubscribe/'.urlencode($delivery->contact->email));
+        $unsubscribeUrl = self::unsubscribeUrl($delivery->contact->email);
 
         $unsubscribeHtml = '
         <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-top: 1px solid #e9ecef; text-align: center; font-family: Arial, sans-serif;">
@@ -196,5 +197,51 @@ class EmailTrackingHelper
         {
             return $html.$unsubscribeHtml;
         }
+    }
+
+    public static function unsubscribeUrl(string $email): string
+    {
+        return url('/unsubscribe/'.rawurlencode($email));
+    }
+
+    /**
+     * Headers that make Apple Mail and Gmail show the native Unsubscribe control.
+     *
+     * @return array<string, string>
+     */
+    public static function listUnsubscribeHeaders(?string $email, bool $enabled = true): array
+    {
+        $email = is_string($email) ? trim($email) : '';
+        if (! $enabled || $email === '')
+        {
+            return [];
+        }
+
+        $url = self::unsubscribeUrl($email);
+        $host = parse_url($url, PHP_URL_HOST) ?: 'localhost';
+
+        return [
+            'List-Unsubscribe' => '<'.$url.'>',
+            'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+            'List-Id' => 'Mailer <mailer.'.$host.'>',
+        ];
+    }
+
+    public static function applyListUnsubscribeHeaders(Mailable $mailable, ?string $email, bool $enabled = true): Mailable
+    {
+        $headers = self::listUnsubscribeHeaders($email, $enabled);
+        if ($headers === [])
+        {
+            return $mailable;
+        }
+
+        return $mailable->withSymfonyMessage(function ($message) use ($headers)
+        {
+            $symfonyHeaders = $message->getHeaders();
+            foreach ($headers as $name => $value)
+            {
+                $symfonyHeaders->addTextHeader($name, $value);
+            }
+        });
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Helpers\EmailTrackingHelper;
 use App\Models\Message;
 use App\Support\MessageTemplateMergeFields;
 use Illuminate\Bus\Queueable;
@@ -65,7 +66,10 @@ class TestMessageMail extends Mailable
 
         $subject = MessageTemplateMergeFields::replace((string) $this->message->name, $this->testContact);
 
-        return $this->from($fromAddress, $fromName)
+        $recipient = is_string($this->testContact->email ?? null) ? $this->testContact->email : null;
+
+        return EmailTrackingHelper::applyListUnsubscribeHeaders($this, $recipient, (bool) $this->message->show_unsubscribe)
+            ->from($fromAddress, $fromName)
             ->subject('[TEST] '.$subject)
             ->html($inlinedHtml);
     }

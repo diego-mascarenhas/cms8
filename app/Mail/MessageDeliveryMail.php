@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Helpers\EmailTrackingHelper;
 use App\Models\MessageDelivery;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -33,9 +34,14 @@ class MessageDeliveryMail extends Mailable
         $inliner = new CssToInlineStyles;
         $htmlInlined = $inliner->convert($html, $css);
 
+        $this->delivery->loadMissing(['contact', 'message']);
+        $recipient = $this->delivery->contact->email ?? null;
+        $unsubscribeEnabled = (bool) ($this->delivery->message->show_unsubscribe ?? false);
+
         // Use config() which will be set by ConfiguresTeamMail trait before sending
         // Do NOT explicitly set ->from() here, let Laravel use the config('mail.from')
-        return $this->subject($subject)
+        return EmailTrackingHelper::applyListUnsubscribeHeaders($this, $recipient, $unsubscribeEnabled)
+            ->subject($subject)
             ->html($htmlInlined);
     }
 }

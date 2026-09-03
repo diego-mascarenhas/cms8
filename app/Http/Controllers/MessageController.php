@@ -162,7 +162,7 @@ class MessageController extends Controller
             }
         }
 
-        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, $hasDeliveries, &$messageModel): void
+        DB::transaction(function () use ($request, $validated, $data, $templateId, $resolvedTypeId, $status_id, $show_unsubscribe, $enable_open_tracking, $enable_click_tracking, $minHours, $sendAllowedWeekdays, $sendWindowStart, $sendWindowEnd, $scheduledSendAt, $mailHtml, &$messageModel): void
         {
             $payload = [
                 'name' => $validated['name'],
@@ -191,10 +191,7 @@ class MessageController extends Controller
                 $payload,
             );
 
-            if (! $hasDeliveries)
-            {
-                $messageModel->syncMessageCategories($data['message_category_ids'] ?? []);
-            }
+            $messageModel->syncMessageCategories($data['message_category_ids'] ?? []);
         });
 
         $messageId = (int) $messageModel->id;
@@ -739,7 +736,7 @@ class MessageController extends Controller
         }
     }
 
-    public function unsubscribe($email)
+    public function unsubscribe(Request $request, $email)
     {
         // Update contact status to "Perdido" (ID 4) when they unsubscribe
         // But don't change status if they are already a client (status_id 5)
@@ -767,6 +764,11 @@ class MessageController extends Controller
                     'action' => 'unsubscribe_attempt',
                 ]);
             }
+        }
+
+        if ($request->isMethod('post'))
+        {
+            return response('', 200);
         }
 
         return view('message.unsubscribe', ['email' => $email]);

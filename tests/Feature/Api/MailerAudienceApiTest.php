@@ -214,6 +214,47 @@ class MailerAudienceApiTest extends TestCase
         $this->assertSame($leadStatusId, (int) $contact->fresh()->status_id);
     }
 
+    public function test_can_add_category_when_another_contact_shares_the_email(): void
+    {
+        [$user, $team, $token, $category] = $this->adminWithToken();
+        $leadStatusId = (int) ContactStatus::query()->where('name', 'Lead')->value('id');
+        $staff = Category::query()->create([
+            'team_id' => $team->id,
+            'module_id' => $category->module_id,
+            'name' => 'Staff',
+            'status' => 1,
+        ]);
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        Contact::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Lucía',
+            'surname' => 'Duplicada',
+            'email' => 'Lucia.Garcia@cliente.com',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => $leadStatusId,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->putJson('/api/mailer/audience/'.$contact->id, [
+                'name' => 'Lucía',
+                'surname' => 'García',
+                'email' => 'lucia.garcia@cliente.com',
+                'category_ids' => [$category->id, $staff->id],
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertTrue($contact->fresh()->categories->contains('id', $staff->id));
+    }
+
     public function test_cannot_update_missing_audience_contact(): void
     {
         [, , $token] = $this->adminWithToken();
