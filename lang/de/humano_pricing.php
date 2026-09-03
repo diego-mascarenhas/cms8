@@ -82,7 +82,7 @@ return [
             'name' => 'Pay as you go',
             'description' => 'Sin cuota mensual. Comprás créditos y pagás solo los emails que enviás.',
             'features' => [
-                '0,01 € por email enviado',
+                '0,002 € por email enviado',
                 'Comprá créditos cuando los necesites',
                 'Sin cupo mensual fijo',
             ],

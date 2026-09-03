@@ -201,7 +201,7 @@
                 </div>
                 <div class="col-md-3">
                     <label class="form-label" for="mailer_send">Envío mail (€)</label>
-                    <input type="number" step="any" min="0" class="form-control @error('mailer_send') is-invalid @enderror" id="mailer_send" name="mailer_send" value="{{ old('mailer_send', $billingRates['mailer_send'] ?? '0.01') }}">
+                    <input type="number" step="any" min="0" class="form-control @error('mailer_send') is-invalid @enderror" id="mailer_send" name="mailer_send" value="{{ old('mailer_send', $billingRates['mailer_send'] ?? '0.002') }}">
                     @error('mailer_send')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror

@@ -21,7 +21,7 @@ return [
     'rates_intro' => 'There are three products. If the team has no row, the platform default is used, then config.',
     'rates_tokens' => 'Token multiplier: the client sees N × real tokens at OpenRouter rates, with no extra markup. Default ×10.',
     'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.',
-    'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.01 EUR.',
+    'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.',
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',
 
     'frequency_heading' => 'Frequency',
