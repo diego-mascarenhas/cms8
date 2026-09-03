@@ -24,8 +24,11 @@ use App\Http\Controllers\Api\InvoiceController;
 use App\Http\Controllers\Api\LandingEmbedDemoController;
 use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
+use App\Http\Controllers\Api\MailerAudienceController;
+use App\Http\Controllers\Api\MailerAudienceImportController;
 use App\Http\Controllers\Api\MailerLookupController;
 use App\Http\Controllers\Api\MailerSenderController;
+use App\Http\Controllers\Api\MailerUsageController;
 use App\Http\Controllers\Api\MailInboxController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\MessageController;
@@ -626,6 +629,13 @@ Route::middleware('auth.api')->group(function ()
     Route::get('message/{id}/preview', [MessageController::class, 'preview'])->whereNumber('id');
     Route::get('message/{id}/deliveries', [MessageController::class, 'deliveries'])->whereNumber('id');
     Route::get('mailer/lookups', [MailerLookupController::class, 'index']);
+    Route::get('mailer/usage', [MailerUsageController::class, 'show']);
+    Route::get('mailer/audience', [MailerAudienceController::class, 'index']);
+    Route::post('mailer/audience', [MailerAudienceController::class, 'store']);
+    Route::get('mailer/audience/import', [MailerAudienceImportController::class, 'show']);
+    Route::post('mailer/audience/import', [MailerAudienceImportController::class, 'store']);
+    Route::put('mailer/audience/{id}', [MailerAudienceController::class, 'update'])->whereNumber('id');
+    Route::post('mailer/audience/lists', [MailerAudienceController::class, 'storeList']);
     Route::get('mailer/sender', [MailerSenderController::class, 'show']);
     Route::put('mailer/sender', [MailerSenderController::class, 'update']);
 
