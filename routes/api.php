@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\LanguageVariantController;
 use App\Http\Controllers\Api\LicenseController;
 use App\Http\Controllers\Api\MailerAudienceController;
 use App\Http\Controllers\Api\MailerAudienceImportController;
+use App\Http\Controllers\Api\MailerCategoryController;
 use App\Http\Controllers\Api\MailerLookupController;
 use App\Http\Controllers\Api\MailerSenderController;
 use App\Http\Controllers\Api\MailerUsageController;
@@ -636,6 +637,12 @@ Route::middleware('auth.api')->group(function ()
     Route::post('mailer/audience/import', [MailerAudienceImportController::class, 'store']);
     Route::put('mailer/audience/{id}', [MailerAudienceController::class, 'update'])->whereNumber('id');
     Route::post('mailer/audience/lists', [MailerAudienceController::class, 'storeList']);
+    Route::get('mailer/categories', [MailerCategoryController::class, 'index']);
+    Route::post('mailer/categories', [MailerCategoryController::class, 'store']);
+    Route::patch('mailer/categories/sort', [MailerCategoryController::class, 'updateSort']);
+    Route::put('mailer/categories/order', [MailerCategoryController::class, 'reorder']);
+    Route::patch('mailer/categories/{category}', [MailerCategoryController::class, 'update']);
+    Route::delete('mailer/categories/{category}', [MailerCategoryController::class, 'destroy']);
     Route::get('mailer/sender', [MailerSenderController::class, 'show']);
     Route::put('mailer/sender', [MailerSenderController::class, 'update']);
 
