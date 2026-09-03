@@ -8,7 +8,6 @@ use App\Models\Team;
 use App\Models\TeamBillingRate;
 use App\Models\TeamUsageInvoiceAdjustment;
 use App\Services\Billing\ClientTokenPresenter;
-use App\Support\MailerPaygPricing;
 use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -532,16 +531,12 @@ final class TeamBillingUsageSummaryService
      */
     private function mailerForPeriod(Team $team, Carbon $from, Carbon $to, Carbon $asOf): array
     {
-        $emails = $team->messageDeliveries()
-            ->whereNotNull('sent_at')
-            ->where('sent_at', '<=', $to)
-            ->where('sent_at', '>=', $from)
-            ->count();
+        $stats = TeamMailerUsageStatsService::forTeam($team, $from, $to);
 
         return [
-            'emails' => $emails,
-            'overage' => $emails,
-            'billed_cents' => MailerPaygPricing::overageDueCents($emails, $team, $asOf),
+            'emails' => (int) $stats['emails_sent'],
+            'overage' => (int) $stats['emails_sent'],
+            'billed_cents' => (int) $stats['amount_due_cents'],
         ];
     }
 
