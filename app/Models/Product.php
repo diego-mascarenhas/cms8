@@ -35,6 +35,7 @@ class Product extends Model
         'manage_stock',
         'stock_quantity',
         'assortment_size',
+        'configurator',
         'whatsapp_enabled',
         'team_id',
         'image',
@@ -49,6 +50,7 @@ class Product extends Model
         'manage_stock' => 'boolean',
         'stock_quantity' => 'integer',
         'assortment_size' => 'integer',
+        'configurator' => 'array',
         'catalog_status' => ProductCatalogStatus::class,
         'stock_status' => ProductStockStatus::class,
     ];

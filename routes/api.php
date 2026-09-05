@@ -126,6 +126,9 @@ Route::get('embed/site/{teamSlug}', [PublicSiteAssistantController::class, 'show
 Route::get('public-shop/{slug}/products/{code}', [PublicShopCatalogController::class, 'show'])
     ->middleware('throttle:120,1')
     ->name('api.public-shop.products.show');
+Route::get('public-shop/{slug}', [PublicShopCatalogController::class, 'index'])
+    ->middleware('throttle:120,1')
+    ->name('api.public-shop.show');
 
 // Public CMS read API (anonymous, resolved by team slug; opt-in via cms_public_enabled)
 Route::prefix('public/{teamSlug}')->middleware('throttle:120,1')->group(function ()

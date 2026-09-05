@@ -917,19 +917,24 @@ class Team extends JetstreamTeam
             return null;
         }
 
-        return $this->publicShopAppUrl().'/p/'.$slug;
+        return $this->publicShopAppUrl().'/'.$slug;
     }
 
     public function publicCatalogProductUrl(?string $code): ?string
     {
-        $base = $this->publicCatalogShopUrl();
-        $code = trim((string) $code);
-        if ($base === null || $code === '')
+        $slug = $this->publicCatalogPathSlug();
+        if ($slug === null)
         {
-            return $base;
+            return null;
         }
 
-        return $base.'/'.rawurlencode($code);
+        $code = trim((string) $code);
+        if ($code === '')
+        {
+            return $this->publicCatalogShopUrl();
+        }
+
+        return $this->publicShopAppUrl().'/p/'.$slug.'/'.rawurlencode($code);
     }
 
     /**

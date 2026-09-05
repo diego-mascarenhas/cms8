@@ -17,6 +17,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
     {
         $keys = array_values(array_unique(array_merge(
             config('humano_pricing.plan_team_modules.assistant', []),
+            config('humano_pricing.plan_team_modules.hunter', []),
             config('humano_pricing.plan_team_modules.business', []),
             config('humano_pricing.plan_team_modules.mentor', []),
         )));
@@ -78,7 +79,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $this->assertTrue($team->hasModule('chat'));
     }
 
-    public function test_hunter_plan_includes_mailer_and_landings(): void
+    public function test_hunter_plan_includes_mailer_templates_and_shop(): void
     {
         $this->seedModulesFromPricingConfig();
 
@@ -91,6 +92,10 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $team = $team->fresh();
         $this->assertTrue($team->hasModule('chat'));
         $this->assertTrue($team->hasModule('mailer'));
+        $this->assertTrue($team->hasModule('templates'));
+        $this->assertTrue($team->hasModule('products'));
+        $this->assertTrue($team->hasModule('orders'));
+        $this->assertTrue($team->hasModule('stores'));
         $this->assertTrue($team->hasModule('landings'));
         $this->assertFalse($team->hasModule('funnel'));
     }
@@ -108,6 +113,10 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
         $team = $team->fresh();
         $this->assertTrue($team->hasModule('dashboard'));
         $this->assertTrue($team->hasModule('mailer'));
+        $this->assertTrue($team->hasModule('templates'));
+        $this->assertTrue($team->hasModule('products'));
+        $this->assertTrue($team->hasModule('orders'));
+        $this->assertTrue($team->hasModule('stores'));
         $this->assertTrue($team->hasModule('funnel'));
         $this->assertTrue($team->hasModule('invoices'));
         $this->assertTrue($team->hasModule('payments'));
@@ -121,9 +130,13 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
             'settings',
             'campaigns',
             'mailer',
+            'templates',
             'funnel',
             'payments',
             'financial',
+            'stores',
+            'products',
+            'orders',
         ], $keys));
     }
 
@@ -176,7 +189,7 @@ class TeamHumanoPricingPlanModulesTest extends TestCase
 
         $team = $team->fresh();
         $this->assertFalse($team->hasModule('list60'));
-        $this->assertFalse($team->hasModule('products'));
+        $this->assertTrue($team->hasModule('products'));
         $this->assertFalse($team->hasModule('projects'));
         $this->assertTrue($team->hasModule('campaigns'));
     }

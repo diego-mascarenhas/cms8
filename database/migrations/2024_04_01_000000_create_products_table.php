@@ -34,6 +34,7 @@ return new class extends Migration
             $table->boolean('manage_stock')->default(false);
             $table->unsignedInteger('stock_quantity')->nullable();
             $table->unsignedInteger('assortment_size')->nullable();
+            $table->json('configurator')->nullable();
             $table->string('image', 2048)->nullable();
             $table->boolean('whatsapp_enabled')->default(true);
             $table->timestamps();
