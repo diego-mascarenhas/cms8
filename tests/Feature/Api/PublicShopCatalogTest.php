@@ -183,6 +183,7 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.stores.0.is_main', true)
             ->assertJsonPath('data.stores.0.address', 'Avda Francia 1198, Rosario')
             ->assertJsonPath('data.stores.0.hours_label', 'De 12:00 a 15:00 y de 19:30 a 23:30hs')
+            ->assertJsonPath('data.stores.0.checkout_fulfillment_types.0.key', 'pickup')
             ->assertJsonPath('data.stores.1.name', 'Palermo')
             ->assertJsonPath('data.stores.1.address', 'Honduras 4800, CABA')
             ->assertJsonPath('data.address', 'Avda Francia 1198, Rosario')

@@ -158,7 +158,9 @@ class PublicShopCatalogController extends Controller
      *     phone: string|null,
      *     whatsapp: string|null,
      *     hours_label: string|null,
-     *     notes: string|null
+     *     notes: string|null,
+     *     checkout_payment_methods: list<array{key: string, label: string}>,
+     *     checkout_fulfillment_types: list<array{key: string, label: string}>
      * }
      */
     private function transformStorefrontStore(Store $store): array
@@ -167,6 +169,8 @@ class PublicShopCatalogController extends Controller
         $whatsapp = trim((string) data_get($store->data, 'whatsapp', ''));
         $address = trim((string) ($store->address ?? ''));
         $notes = trim((string) data_get($store->data, 'notes', ''));
+        $paymentLabels = Store::checkoutPaymentMethodLabels();
+        $fulfillmentLabels = Store::checkoutFulfillmentLabels();
 
         return [
             'id' => (int) $store->id,
@@ -177,7 +181,33 @@ class PublicShopCatalogController extends Controller
             'whatsapp' => $whatsapp !== '' ? preg_replace('/\D+/', '', $whatsapp) : null,
             'hours_label' => $this->hoursLabel($store),
             'notes' => $notes !== '' ? $notes : null,
+            'checkout_payment_methods' => array_map(
+                static fn (string $key): array => [
+                    'key' => $key,
+                    'label' => (string) ($paymentLabels[$key] ?? $key),
+                ],
+                $store->enabledCheckoutPaymentMethods(),
+            ),
+            'checkout_fulfillment_types' => array_map(
+                static fn (string $key): array => [
+                    'key' => $key,
+                    'label' => (string) ($fulfillmentLabels[$key] ?? $key),
+                ],
+                $store->enabledCheckoutFulfillmentTypes(),
+            ),
+            'delivery_area' => self::nullableTrimmedString(data_get($store->data, 'delivery.area')),
+            'delivery_notes' => self::nullableTrimmedString(data_get($store->data, 'delivery.notes')),
+            'delivery_cost' => is_numeric(data_get($store->data, 'delivery.cost'))
+                ? (float) data_get($store->data, 'delivery.cost')
+                : null,
         ];
+    }
+
+    private static function nullableTrimmedString(mixed $value): ?string
+    {
+        $trimmed = trim((string) ($value ?? ''));
+
+        return $trimmed !== '' ? $trimmed : null;
     }
 
     /**

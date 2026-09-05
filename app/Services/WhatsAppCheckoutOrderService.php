@@ -19,6 +19,93 @@ class WhatsAppCheckoutOrderService
      */
     public function createFromWhatsAppCart(int $teamId, string $cleanPhoneDigits, iterable $cartItems, float $cartTotal, ?int $storeId = null, ?array $checkoutSnapshot = null): Order
     {
+        return $this->createFromCartLines(
+            teamId: $teamId,
+            cartItems: $cartItems,
+            cartTotal: $cartTotal,
+            source: 'whatsapp',
+            phoneDigits: $cleanPhoneDigits,
+            storeId: $storeId,
+            checkoutSnapshot: $checkoutSnapshot,
+            notes: 'Pedido realizado por WhatsApp',
+            orderNumberPrefix: 'WA-',
+        );
+    }
+
+    /**
+     * Persist a public web-shop cart as an {@see Order}.
+     *
+     * @param  iterable<object>  $cartItems
+     * @param  array<string, mixed>|null  $checkoutSnapshot
+     */
+    public function createFromPublicShopCart(
+        int $teamId,
+        iterable $cartItems,
+        float $cartTotal,
+        ?string $phoneDigits = null,
+        ?string $customerName = null,
+        ?int $storeId = null,
+        ?array $checkoutSnapshot = null,
+        ?string $customerNotes = null,
+        ?string $couponCode = null,
+        ?string $deliveryAddress = null,
+    ): Order {
+        $cleanPhone = $phoneDigits !== null && $phoneDigits !== ''
+            ? (preg_replace('/[^0-9]/', '', $phoneDigits) ?: null)
+            : null;
+
+        $notes = 'Pedido realizado desde la tienda web';
+        if ($customerName)
+        {
+            $notes .= ' · '.$customerName;
+        }
+        if ($deliveryAddress)
+        {
+            $notes .= "\nDirección: ".$deliveryAddress;
+        }
+        if ($couponCode)
+        {
+            $notes .= "\nCupón: ".$couponCode;
+        }
+        if ($customerNotes)
+        {
+            $notes .= "\n".$customerNotes;
+        }
+
+        return $this->createFromCartLines(
+            teamId: $teamId,
+            cartItems: $cartItems,
+            cartTotal: $cartTotal,
+            source: 'public_shop',
+            phoneDigits: $cleanPhone,
+            storeId: $storeId,
+            checkoutSnapshot: $checkoutSnapshot,
+            notes: $notes,
+            orderNumberPrefix: 'WEB-',
+            customerName: $customerName,
+            couponCode: $couponCode,
+            deliveryAddress: $deliveryAddress,
+        );
+    }
+
+    /**
+     * @param  iterable<object>  $cartItems
+     * @param  array<string, mixed>|null  $checkoutSnapshot
+     */
+    public function createFromCartLines(
+        int $teamId,
+        iterable $cartItems,
+        float $cartTotal,
+        string $source,
+        ?string $phoneDigits = null,
+        ?int $storeId = null,
+        ?array $checkoutSnapshot = null,
+        ?string $notes = null,
+        string $orderNumberPrefix = 'ORD-',
+        ?string $customerName = null,
+        ?string $couponCode = null,
+        ?string $deliveryAddress = null,
+    ): Order {
         $lines = [];
         foreach ($cartItems as $item)
         {
@@ -31,16 +118,47 @@ class WhatsAppCheckoutOrderService
         }
 
         $currencyId = $this->resolveCurrencyId($lines);
+        $cleanPhone = $phoneDigits !== null && $phoneDigits !== ''
+            ? (preg_replace('/[^0-9]/', '', $phoneDigits) ?: '')
+            : '';
 
-        return Order::query()->getModel()->getConnection()->transaction(function () use ($teamId, $cleanPhoneDigits, $lines, $cartTotal, $currencyId, $storeId, $checkoutSnapshot)
-        {
-            $orderNumber = $this->generateUniqueOrderNumber();
+        return Order::query()->getModel()->getConnection()->transaction(function () use (
+            $teamId,
+            $cleanPhone,
+            $lines,
+            $cartTotal,
+            $currencyId,
+            $storeId,
+            $checkoutSnapshot,
+            $source,
+            $notes,
+            $orderNumberPrefix,
+            $customerName,
+            $couponCode,
+            $deliveryAddress,
+        ) {
+            $orderNumber = $this->generateUniqueOrderNumber($orderNumberPrefix);
 
             $metadata = [
-                'source' => 'whatsapp',
-                'phone' => $cleanPhoneDigits,
+                'source' => $source,
                 'items' => $lines,
             ];
+            if ($cleanPhone !== '')
+            {
+                $metadata['phone'] = $cleanPhone;
+            }
+            if ($customerName)
+            {
+                $metadata['customer_name'] = $customerName;
+            }
+            if ($couponCode)
+            {
+                $metadata['coupon_code'] = $couponCode;
+            }
+            if ($deliveryAddress)
+            {
+                $metadata['delivery_address'] = $deliveryAddress;
+            }
             if ($checkoutSnapshot !== null && $checkoutSnapshot !== [])
             {
                 $metadata['checkout_offered'] = $checkoutSnapshot;
@@ -50,12 +168,12 @@ class WhatsAppCheckoutOrderService
                 'team_id' => $teamId,
                 'store_id' => $storeId,
                 'order_number' => $orderNumber,
-                'contact_id' => $this->findContactIdForTeamPhone($teamId, $cleanPhoneDigits),
+                'contact_id' => $cleanPhone !== '' ? $this->findContactIdForTeamPhone($teamId, $cleanPhone) : null,
                 'total_amount' => round($cartTotal, 2),
                 'currency_id' => $currencyId,
                 'payment_status' => 'pending',
                 'delivery_status' => 'processing',
-                'notes' => 'Pedido realizado por WhatsApp',
+                'notes' => $notes ?? 'Pedido',
                 'metadata' => $metadata,
             ]);
         });
@@ -198,6 +316,9 @@ class WhatsAppCheckoutOrderService
         $quantity = (int) $item->quantity;
         $unitPrice = (float) $item->price;
         $lineTotal = round($unitPrice * $quantity, 2);
+        $optionLabel = isset($attrs['option_label']) ? trim((string) $attrs['option_label']) : '';
+        $baseName = (string) $item->name;
+        $displayName = $optionLabel !== '' ? $baseName.' — '.$optionLabel : $baseName;
 
         $currencyId = isset($attrs['currency_id']) ? (int) $attrs['currency_id'] : null;
         if ($currencyId === null && $productId > 0)
@@ -210,12 +331,13 @@ class WhatsAppCheckoutOrderService
 
         return [
             'product_id' => $productId,
-            'name' => (string) $item->name,
+            'name' => $displayName,
             'quantity' => $quantity,
             'unit_price' => round($unitPrice, 2),
             'line_total' => $lineTotal,
             'category_name' => isset($attrs['category_name']) ? (string) $attrs['category_name'] : null,
             'currency_id' => $currencyId,
+            'option_label' => $optionLabel !== '' ? $optionLabel : null,
         ];
     }
 
@@ -235,11 +357,11 @@ class WhatsAppCheckoutOrderService
         return null;
     }
 
-    private function generateUniqueOrderNumber(): string
+    private function generateUniqueOrderNumber(string $prefix = 'WA-'): string
     {
         do
         {
-            $orderNumber = 'WA-'.strtoupper(Str::random(12));
+            $orderNumber = $prefix.strtoupper(Str::random(12));
         } while (Order::withoutGlobalScopes()->where('order_number', $orderNumber)->exists());
 
         return $orderNumber;
