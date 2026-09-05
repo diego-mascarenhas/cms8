@@ -32,7 +32,7 @@ return [
         // Not a sidebar module; insights are generated on schedule and on dashboard for admin/root.
         'performance_insights' => false,
         'insights' => false,
-        'templates' => false,
+        'templates' => true,
         // Additional modules (billing)
         'invoices' => true,
         'payments' => false,
@@ -41,9 +41,9 @@ return [
         'financial' => true,
         'accounting' => false,
         // Additional modules (ecommerce)
-        'products' => false,
-        'orders' => false,
-        'stores' => false,
+        'products' => true,
+        'orders' => true,
+        'stores' => true,
         // Additional modules (infrastructure)
         'servers' => false,
         'hosting' => false,

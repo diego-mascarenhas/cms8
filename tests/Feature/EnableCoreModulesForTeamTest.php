@@ -80,7 +80,7 @@ class EnableCoreModulesForTeamTest extends TestCase
         $this->assertFalse($team->fresh()->hasModule('times'));
     }
 
-    public function test_new_team_does_not_enable_templates_when_default_false(): void
+    public function test_new_team_enables_templates_when_default_true(): void
     {
         Module::query()->create([
             'name' => 'Templates',
@@ -99,7 +99,7 @@ class EnableCoreModulesForTeamTest extends TestCase
             'personal_team' => true,
         ]);
 
-        $this->assertFalse($team->fresh()->hasModule('templates'));
+        $this->assertTrue($team->fresh()->hasModule('templates'));
     }
 
     public function test_new_team_enables_team_files_when_default_true(): void
@@ -148,7 +148,7 @@ class EnableCoreModulesForTeamTest extends TestCase
         $this->assertFalse($team->fresh()->hasModule('expenses'));
     }
 
-    public function test_new_team_enables_financial_and_skips_ecommerce_modules_per_defaults(): void
+    public function test_new_team_enables_financial_and_ecommerce_modules_per_defaults(): void
     {
         foreach (['financial', 'products', 'orders', 'stores'] as $key)
         {
@@ -171,9 +171,9 @@ class EnableCoreModulesForTeamTest extends TestCase
         $team = $team->fresh();
 
         $this->assertTrue($team->hasModule('financial'));
-        $this->assertFalse($team->hasModule('products'));
-        $this->assertFalse($team->hasModule('orders'));
-        $this->assertFalse($team->hasModule('stores'));
+        $this->assertTrue($team->hasModule('products'));
+        $this->assertTrue($team->hasModule('orders'));
+        $this->assertTrue($team->hasModule('stores'));
     }
 
     public function test_new_team_does_not_enable_performance_insights_addon_by_default(): void

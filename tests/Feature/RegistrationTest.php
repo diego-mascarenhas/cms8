@@ -126,6 +126,10 @@ class RegistrationTest extends TestCase
         $this->assertTrue($team->hasModule('today'));
         $this->assertTrue($team->hasModule('prospecting'));
         $this->assertTrue($team->hasModule('mailer'));
+        $this->assertTrue($team->hasModule('templates'));
+        $this->assertTrue($team->hasModule('products'));
+        $this->assertTrue($team->hasModule('orders'));
+        $this->assertTrue($team->hasModule('stores'));
         $this->assertTrue($team->hasModule('landings'));
         $this->assertTrue($team->hasModule('chat'));
         $this->assertFalse($team->hasModule('invoices'));

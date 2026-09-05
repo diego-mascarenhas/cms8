@@ -188,8 +188,9 @@ return [
      * |--------------------------------------------------------------------------
      * |
      * | Matched via stripe_product_id on the subscription vs plans below.
-     * | Each plan lists every module key to enable (business repeats assistant + extras).
-     * | mentor is business plus org, CRM, API, files, support, extended billing, and commerce keys.
+     * | Each plan lists every module key to enable (business repeats assistant + extras,
+     * | including mailer, templates, and shop). mentor is business plus org, CRM, API,
+     * | files, support, and extended billing keys.
      * | Demo team modules follow demo_team_plan_slug above (default: business).
      * | Keys must match modules.key (see ModuleSeeder). Include settings so team
      * | settings stay usable after paid signup.
@@ -216,8 +217,12 @@ return [
             'prompts',
             'automations',
             'mailer',
+            'templates',
             'landings',
             'chat',
+            'stores',
+            'products',
+            'orders',
         ],
         'business' => [
             'settings',
@@ -231,12 +236,16 @@ return [
             'automations',
             'campaigns',
             'mailer',
+            'templates',
             'landings',
             'chat',
             'funnel',
             'invoices',
             'payments',
             'financial',
+            'stores',
+            'products',
+            'orders',
         ],
         'mentor' => [
             'settings',

@@ -138,7 +138,7 @@ class PublicShopTest extends TestCase
             ->assertOk()
             ->assertSeeLivewire(ShoppingAssistant::class);
 
-        $this->assertSame('https://shop.idoneo.dev/p/www.shop-demo.example', $team->publicCatalogShopUrl());
+        $this->assertSame('https://shop.idoneo.dev/www.shop-demo.example', $team->publicCatalogShopUrl());
         $this->assertSame('https://shop.idoneo.dev/p/www.shop-demo.example/ALP-1', $team->publicCatalogProductUrl('ALP-1'));
     }
 
