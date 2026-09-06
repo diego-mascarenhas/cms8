@@ -728,6 +728,7 @@ Route::middleware('auth.api')->group(function ()
         Route::get('stores/{id}', [ShopStoreController::class, 'show'])->whereNumber('id');
         Route::put('stores/{id}', [ShopStoreController::class, 'update'])->whereNumber('id');
         Route::delete('stores/{id}', [ShopStoreController::class, 'destroy'])->whereNumber('id');
+        Route::post('stores/{id}/banner', [ShopStoreController::class, 'banner'])->whereNumber('id');
 
         Route::get('orders', [ShopOrderController::class, 'index']);
         Route::get('orders/{id}', [ShopOrderController::class, 'show'])->whereNumber('id');

@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api\Shop;
 use App\Http\Controllers\Api\Shop\Concerns\FormatsShopResources;
 use App\Http\Controllers\Api\Shop\Concerns\ResolvesShopTeam;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\StoreShopStoreBannerRequest;
 use App\Http\Requests\StoreRequest;
 use App\Models\Store;
+use App\Services\StoreBannerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -161,6 +163,31 @@ class StoreController extends Controller
 
         return response()->json([
             'success' => true,
+        ]);
+    }
+
+    public function banner(StoreShopStoreBannerRequest $request, int $id, StoreBannerService $banners): JsonResponse
+    {
+        $team = $this->shopTeamWithAnyModule($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        $store = Store::query()->withCount('products')->find($id);
+        if (! $store)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Store not found'),
+            ], 404);
+        }
+
+        $banners->store($team, $store, $request->file('file'));
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatStore($store->fresh()->loadCount('products')),
         ]);
     }
 }
