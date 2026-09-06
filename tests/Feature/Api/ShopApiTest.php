@@ -16,6 +16,8 @@ use App\Models\User;
 use App\Services\ShoppingCartService;
 use Database\Seeders\CurrencySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -573,6 +575,50 @@ class ShopApiTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertSoftDeleted('stores', ['id' => $mainId]);
+    }
+
+    public function test_store_banner_upload_is_used_on_public_catalog(): void
+    {
+        Storage::fake('public');
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        [, $team, $token] = $this->adminWithShopModules();
+        $store = Store::ensureMainStoreForTeam((int) $team->id);
+
+        $team->setSetting('business_config', [
+            'business_name' => 'Repuestos Avenida',
+            'business_website' => 'https://www.repuestosav.com',
+            'business_logo' => 'https://cdn.example/logo.png',
+            'business_banner' => 'https://cdn.example/old-banner.png',
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        $team->setSetting('public_catalog_enabled', true, [
+            'group' => 'public_shop',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/shop/stores/'.$store->id.'/banner', [
+                'file' => UploadedFile::fake()->image('header.jpg', 2000, 600),
+            ], [
+                'Accept' => 'application/json',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $bannerUrl = (string) $response->json('data.banner');
+        $this->assertNotSame('', $bannerUrl);
+        $this->assertStringContainsString('/storage/shop/stores/'.$team->id.'/'.$store->id.'/banner', $bannerUrl);
+        Storage::disk('public')->assertExists('shop/stores/'.$team->id.'/'.$store->id.'/banner.jpg');
+
+        $this->getJson('/api/public-shop/www.repuestosav.com')
+            ->assertOk()
+            ->assertJsonPath('data.logo', 'https://cdn.example/logo.png')
+            ->assertJsonPath('data.banner', $bannerUrl)
+            ->assertJsonPath('data.stores.0.banner', $bannerUrl);
     }
 
     public function test_store_can_hide_prices_and_whatsapp(): void

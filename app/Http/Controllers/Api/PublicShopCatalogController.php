@@ -125,6 +125,8 @@ class PublicShopCatalogController extends Controller
         $address = trim((string) ($store?->address ?: ($config['business_address'] ?? '')));
         $notes = trim((string) (data_get($store?->data, 'notes') ?: ''));
         $logo = $this->publicImageUrl($config['business_logo'] ?? $config['logo'] ?? null);
+        $storeBanner = $this->publicImageUrl(data_get($store?->data, 'banner'));
+        $businessBanner = $this->publicImageUrl($config['business_banner'] ?? $config['banner'] ?? null);
 
         return [
             'slug' => $team->publicCatalogPathSlug() ?? $slug,
@@ -136,7 +138,7 @@ class PublicShopCatalogController extends Controller
             'hours_label' => $this->hoursLabel($store),
             'notes' => $notes !== '' ? $notes : null,
             'logo' => $logo,
-            'banner' => $this->publicImageUrl($config['business_banner'] ?? $config['banner'] ?? null),
+            'banner' => $storeBanner ?? $businessBanner,
             'social' => [
                 'facebook' => $this->nullableUrl($config['facebook'] ?? $config['business_facebook'] ?? null),
                 'instagram' => $this->nullableUrl($config['instagram'] ?? $config['business_instagram'] ?? null),
@@ -200,6 +202,7 @@ class PublicShopCatalogController extends Controller
             'delivery_cost' => is_numeric(data_get($store->data, 'delivery.cost'))
                 ? (float) data_get($store->data, 'delivery.cost')
                 : null,
+            'banner' => $this->publicImageUrl(data_get($store->data, 'banner')),
         ];
     }
 

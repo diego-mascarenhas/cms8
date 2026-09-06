@@ -155,6 +155,7 @@ trait FormatsShopResources
             'delivery_area' => data_get($store->data, 'delivery.area'),
             'delivery_notes' => data_get($store->data, 'delivery.notes'),
             'delivery_cost' => data_get($store->data, 'delivery.cost'),
+            'banner' => data_get($store->data, 'banner'),
             'updated_at' => $store->updated_at?->toIso8601String(),
         ];
     }
