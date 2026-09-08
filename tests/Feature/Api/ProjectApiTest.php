@@ -330,7 +330,8 @@ class ProjectApiTest extends TestCase
             ->assertJsonPath('data.status_id', 1)
             ->assertJsonPath('data.data.budget_given', 'Landing corporativa con blog y formulario de contacto.')
             ->assertJsonPath('data.data.suggested_tasks.0.title', 'Diseño')
-            ->assertJsonPath('data.data.ai_interpretation', 'Landing corporativa');
+            ->assertJsonPath('data.data.ai_interpretation', 'Landing corporativa')
+            ->assertJsonPath('data.data.ai_usage_percent', (int) ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
 
         $this->assertNotNull($create->json('data.board_id'));
         $this->assertGreaterThan(0, (int) $create->json('totals.grand_total'));

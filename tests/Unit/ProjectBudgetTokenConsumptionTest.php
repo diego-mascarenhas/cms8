@@ -169,7 +169,7 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(0.0, $service->normalizeAiUsagePercent(-10));
         $this->assertSame(100.0, $service->normalizeAiUsagePercent(150));
         $this->assertSame(ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT, $service->normalizeAiUsagePercent(null));
-        $this->assertSame(70.0, ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
+        $this->assertSame(30.0, ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
     }
 
     #[Test]
@@ -414,5 +414,36 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(1000, $withoutTokens['grand_total']);
         $this->assertSame(1000, $withoutTokens['payable_total']);
         $this->assertFalse($withoutTokens['token_include']);
+    }
+
+    #[Test]
+    public function it_uses_project_token_flags_over_team_defaults(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'discount' => 0,
+            'price' => null,
+            'data' => [
+                'ai_usage_percent' => 0,
+                'token_include' => false,
+                'token_discriminate' => true,
+                'token_consumption' => ['savings_percent' => 57],
+                'suggested_tasks' => [
+                    [
+                        'title' => 'Module A',
+                        'included' => true,
+                        'estimated_hours' => 1,
+                        'unit_price' => 1000,
+                        'estimated_tokens' => 1_000_000,
+                    ],
+                ],
+            ],
+        ]);
+
+        $totals = $service->setTokenInclude(true)->setTokenDiscriminate(true)->computeQuoteTotals($project);
+
+        $this->assertFalse($totals['token_include']);
+        $this->assertFalse($totals['token_discriminate']);
+        $this->assertSame(1000, $totals['grand_total']);
     }
 }

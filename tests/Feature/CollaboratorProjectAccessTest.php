@@ -175,7 +175,9 @@ class CollaboratorProjectAccessTest extends TestCase
             ->get(route('project.create'))
             ->assertOk()
             ->assertSee(__('Budget received'), false)
-            ->assertSee('generate-budget-spec', false);
+            ->assertSee('generate-budget-spec', false)
+            ->assertSee('id="data_ai_usage_percent"', false)
+            ->assertSee('value="'.(int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT.'"', false);
 
         $this->actingAs($advisor)
             ->get(route('project.edit', $project->id))

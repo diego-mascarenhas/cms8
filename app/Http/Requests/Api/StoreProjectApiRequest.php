@@ -36,6 +36,8 @@ class StoreProjectApiRequest extends FormRequest
             'data.estimated_times' => ['nullable', 'string'],
             'data.resources' => ['nullable', 'string'],
             'data.ai_usage_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'data.token_include' => ['nullable', 'boolean'],
+            'data.token_discriminate' => ['nullable', 'boolean'],
             'data.token_consumption' => ['nullable', 'array'],
             'data.token_consumption.notes' => ['nullable', 'string'],
             'data.token_consumption.input_tokens' => ['nullable', 'integer', 'min:0'],

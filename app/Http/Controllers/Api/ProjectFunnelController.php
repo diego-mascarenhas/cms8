@@ -613,6 +613,7 @@ class ProjectFunnelController extends Controller
                     'suggested_tasks' => $includedTasks,
                     'ai_suggested_tasks' => $includedTasks,
                     'quote_finalized' => false,
+                    'ai_usage_percent' => $projectData['ai_usage_percent'] ?? ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT,
                     'budget_preview_token' => $projectData['budget_preview_token'] ?? Str::random(48),
                     'funnel' => array_merge($funnel, [
                         'source' => 'projects_funnel',

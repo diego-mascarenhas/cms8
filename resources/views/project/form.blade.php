@@ -59,6 +59,7 @@
     var tokenInputRate = {{ $tokenPricingService->tokenInputRate() }};
     var tokenOutputRate = {{ $tokenPricingService->tokenOutputRate() }};
     var tokenBlendPerMillion = {{ $tokenPricingService->tokenBlendEurPerMillion() }};
+    var defaultAiUsagePercent = {{ (int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT }};
 
     function autoResizeTextarea(el) {
         if (!el) return;
@@ -437,7 +438,7 @@
     }
     function resolveAiUsagePercent() {
         var raw = parseFloat($('#data_ai_usage_percent').val());
-        if (isNaN(raw) || raw < 0) return 0;
+        if (isNaN(raw) || raw < 0) return defaultAiUsagePercent;
         if (raw > 100) return 100;
         return raw;
     }
@@ -705,8 +706,8 @@
         var balanceInput = document.getElementById('data_ai_usage_percent');
         var balanceLabel = document.getElementById('data_ai_usage_percent_label');
         if (balanceSlider && typeof noUiSlider !== 'undefined') {
-            var startBalance = parseFloat(balanceInput ? balanceInput.value : 0);
-            if (isNaN(startBalance) || startBalance < 0) startBalance = 0;
+            var startBalance = parseFloat(balanceInput ? balanceInput.value : defaultAiUsagePercent);
+            if (isNaN(startBalance) || startBalance < 0) startBalance = defaultAiUsagePercent;
             if (startBalance > 100) startBalance = 100;
             noUiSlider.create(balanceSlider, {
                 start: [startBalance],

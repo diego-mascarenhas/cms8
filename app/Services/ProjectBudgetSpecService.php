@@ -18,7 +18,7 @@ use function Laravel\Ai\agent;
 
 class ProjectBudgetSpecService
 {
-    public const DEFAULT_AI_USAGE_PERCENT = 70.0;
+    public const DEFAULT_AI_USAGE_PERCENT = 30.0;
 
     /** Max drop of (labor + tokens) vs original when shifting hours→tokens. */
     public const MAX_BALANCE_DISCOUNT_PERCENT = 30.0;
@@ -1003,6 +1003,34 @@ class ProjectBudgetSpecService
     }
 
     /**
+     * Team token settings first, then per-project overrides when present.
+     */
+    public function applyProjectTokenPresentation(Project $project): static
+    {
+        $this->applyTeamTokenPricing($this->teamForProject($project));
+
+        $data = is_array($project->data) ? $project->data : [];
+        $include = $this->optionalBool($data['token_include'] ?? null);
+        if ($include !== null)
+        {
+            $this->tokenInclude = $include;
+        }
+
+        $discriminate = $this->optionalBool($data['token_discriminate'] ?? null);
+        if ($discriminate !== null)
+        {
+            $this->tokenDiscriminate = $discriminate;
+        }
+
+        if (! $this->tokenInclude)
+        {
+            $this->tokenDiscriminate = false;
+        }
+
+        return $this;
+    }
+
+    /**
      * @return array{input_rate: float, output_rate: float, discriminate: bool, include: bool}
      */
     public function tokenPricingPayload(?Team $team): array
@@ -1031,7 +1059,7 @@ class ProjectBudgetSpecService
      */
     public function computeQuoteTotals(Project $project): array
     {
-        $this->applyTeamTokenPricing($this->teamForProject($project));
+        $this->applyProjectTokenPresentation($project);
 
         $data = is_array($project->data) ? $project->data : [];
         $suggestedTasks = is_array($data['suggested_tasks'] ?? null) ? $data['suggested_tasks'] : [];
@@ -1528,7 +1556,7 @@ class ProjectBudgetSpecService
     public function publicPreview(Project $project): array
     {
         $project->loadMissing(['enterprise', 'team']);
-        $this->applyTeamTokenPricing($project->team);
+        $this->applyProjectTokenPresentation($project);
 
         $token = trim((string) data_get($project->data, 'budget_preview_token', ''));
         $suggestedTasks = is_array($project->data['suggested_tasks'] ?? null) ? $project->data['suggested_tasks'] : [];
@@ -1729,6 +1757,21 @@ class ProjectBudgetSpecService
         $spec['budget_given'] = $brief !== '' ? $brief : $prompt;
 
         return $spec;
+    }
+
+    private function optionalBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '')
+        {
+            return null;
+        }
+
+        if (is_bool($value))
+        {
+            return $value;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
 
     private function formatEuros(float|int $amount): string

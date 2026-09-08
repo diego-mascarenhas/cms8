@@ -381,6 +381,7 @@ class ProjectFunnelTest extends TestCase
         $this->assertNotNull($project);
         $this->assertSame(ProjectStatus::STATUS_BUDGET, (int) $project->status_id);
         $this->assertSame(2700.0, (float) $project->price);
+        $this->assertSame(ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT, (float) $project->data['ai_usage_percent']);
         $this->assertSame(20.0, (float) $project->data['suggested_tasks'][1]['estimated_hours']);
         $this->assertArrayHasKey('unit_price', $project->data['suggested_tasks'][0]);
         $this->assertNotNull($project->board_id);

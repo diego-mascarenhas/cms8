@@ -191,6 +191,7 @@ class ProjectController extends Controller
         set_time_limit($timeout + 30);
 
         $budgetService = app(ProjectBudgetSpecService::class);
+        $budgetService->applyTeamTokenPricing($user->currentTeam);
 
         try
         {
@@ -233,6 +234,9 @@ class ProjectController extends Controller
                     ? $spec['suggested_tasks']
                     : [],
                 'quote_finalized' => false,
+                'ai_usage_percent' => ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT,
+                'token_include' => $budgetService->includesTokenCharges(),
+                'token_discriminate' => $budgetService->showsTokenLines(),
             ],
         ], $budgetService);
 
