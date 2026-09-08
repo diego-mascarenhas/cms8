@@ -331,7 +331,11 @@ class ProjectApiTest extends TestCase
             ->assertJsonPath('data.data.budget_given', 'Landing corporativa con blog y formulario de contacto.')
             ->assertJsonPath('data.data.suggested_tasks.0.title', 'Diseño')
             ->assertJsonPath('data.data.ai_interpretation', 'Landing corporativa')
-            ->assertJsonPath('data.data.ai_usage_percent', (int) ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
+            ->assertJsonPath(
+                'data.data.ai_usage_percent',
+                (int) (new ProjectBudgetSpecService)->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
+            )
+            ->assertJsonPath('data.data.token_model.id', 'openai/gpt-4.1');
 
         $this->assertNotNull($create->json('data.board_id'));
         $this->assertGreaterThan(0, (int) $create->json('totals.grand_total'));

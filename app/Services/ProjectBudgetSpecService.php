@@ -30,6 +30,11 @@ class ProjectBudgetSpecService
     /** Blended AI cost €/M tokens (70% input @ 11 + 30% output @ 55). */
     public const TOKEN_BLEND_EUR_PER_MILLION = 24.2;
 
+    /** Mid-range catalog blend that maps to DEFAULT_AI_USAGE_PERCENT. */
+    public const MODEL_AI_REFERENCE_BLEND = 3.0;
+
+    public const MODEL_AI_LOG_SCALE = 25.0;
+
     public const SETTING_TOKEN_INPUT_RATE = 'estimator_token_input_rate';
 
     public const SETTING_TOKEN_OUTPUT_RATE = 'estimator_token_output_rate';
@@ -38,6 +43,16 @@ class ProjectBudgetSpecService
 
     public const SETTING_TOKEN_INCLUDE = 'estimator_token_include';
 
+    public const SETTING_TOKEN_MODEL = 'estimator_token_model';
+
+    /** Mid-range catalog model used when the team has not picked one. */
+    public const DEFAULT_TOKEN_MODEL = [
+        'id' => 'openai/gpt-4.1',
+        'name' => 'OpenAI: GPT-4.1',
+        'prompt_per_million' => 2.0,
+        'completion_per_million' => 8.0,
+    ];
+
     private float $tokenInputRate = self::DEFAULT_TOKEN_INPUT_RATE;
 
     private float $tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
@@ -45,6 +60,11 @@ class ProjectBudgetSpecService
     private bool $tokenDiscriminate = true;
 
     private bool $tokenInclude = true;
+
+    /**
+     * @var array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null}|null
+     */
+    private ?array $tokenModel = null;
 
     /**
      * Generate a full budget specification (includes prices for internal use).
@@ -944,6 +964,25 @@ class ProjectBudgetSpecService
         return $this;
     }
 
+    public function applyNormalizedTokenModel(mixed $value): static
+    {
+        $model = $this->normalizeTokenModel($value);
+        if (! $model)
+        {
+            return $this;
+        }
+
+        $this->tokenModel = $model;
+        $prompt = $model['prompt_per_million'];
+        $completion = $model['completion_per_million'];
+        if ($prompt !== null && $completion !== null)
+        {
+            $this->setTokenRates($prompt, $completion);
+        }
+
+        return $this;
+    }
+
     public function setTokenDiscriminate(bool $discriminate): static
     {
         $this->tokenDiscriminate = $discriminate;
@@ -969,6 +1008,7 @@ class ProjectBudgetSpecService
         $this->tokenOutputRate = self::DEFAULT_TOKEN_OUTPUT_RATE;
         $this->tokenDiscriminate = true;
         $this->tokenInclude = true;
+        $this->tokenModel = null;
 
         if (! $team->relationLoaded('settings'))
         {
@@ -999,6 +1039,8 @@ class ProjectBudgetSpecService
             $this->tokenInclude = filter_var($include, FILTER_VALIDATE_BOOLEAN);
         }
 
+        $this->applyNormalizedTokenModel($team->getSetting(self::SETTING_TOKEN_MODEL));
+
         return $this;
     }
 
@@ -1027,11 +1069,19 @@ class ProjectBudgetSpecService
             $this->tokenDiscriminate = false;
         }
 
+        $this->applyNormalizedTokenModel($data['token_model'] ?? null);
+
         return $this;
     }
 
     /**
-     * @return array{input_rate: float, output_rate: float, discriminate: bool, include: bool}
+     * @return array{
+     *     input_rate: float,
+     *     output_rate: float,
+     *     discriminate: bool,
+     *     include: bool,
+     *     token_model: array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null}
+     * }
      */
     public function tokenPricingPayload(?Team $team): array
     {
@@ -1042,6 +1092,61 @@ class ProjectBudgetSpecService
             'output_rate' => $this->tokenOutputRate,
             'discriminate' => $this->tokenDiscriminate,
             'include' => $this->tokenInclude,
+            'token_model' => $this->resolvedTokenModel(),
+        ];
+    }
+
+    /**
+     * @return array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null}|null
+     */
+    public function tokenModel(): ?array
+    {
+        return $this->tokenModel;
+    }
+
+    /**
+     * Team default, or GPT-4.1 when none is saved.
+     *
+     * @return array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null}
+     */
+    public function resolvedTokenModel(): array
+    {
+        return $this->tokenModel ?? self::DEFAULT_TOKEN_MODEL;
+    }
+
+    /**
+     * @return array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null}|null
+     */
+    public function normalizeTokenModel(mixed $value): ?array
+    {
+        if (is_string($value) && trim($value) !== '')
+        {
+            $decoded = json_decode($value, true);
+            $value = is_array($decoded) ? $decoded : null;
+        }
+
+        if (! is_array($value))
+        {
+            return null;
+        }
+
+        $id = trim((string) ($value['id'] ?? ''));
+        if ($id === '')
+        {
+            return null;
+        }
+
+        $name = trim((string) ($value['name'] ?? ''));
+
+        return [
+            'id' => $id,
+            'name' => $name !== '' ? $name : $id,
+            'prompt_per_million' => is_numeric($value['prompt_per_million'] ?? null)
+                ? (float) $value['prompt_per_million']
+                : null,
+            'completion_per_million' => is_numeric($value['completion_per_million'] ?? null)
+                ? (float) $value['completion_per_million']
+                : null,
         ];
     }
 
@@ -1064,9 +1169,7 @@ class ProjectBudgetSpecService
         $data = is_array($project->data) ? $project->data : [];
         $suggestedTasks = is_array($data['suggested_tasks'] ?? null) ? $data['suggested_tasks'] : [];
         $savings = (float) data_get($data, 'token_consumption.savings_percent', 57);
-        $aiUsage = $this->normalizeAiUsagePercent(
-            data_get($data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT),
-        );
+        $aiUsage = $this->resolveProjectAiUsagePercent($data);
 
         $totalLabor = 0.0;
         $totalTokenBillable = 0.0;
@@ -1342,6 +1445,74 @@ class ProjectBudgetSpecService
     }
 
     /**
+     * Hours↔IA percent for a budget: no tokens → 0, selected model price → curve, else stored/default.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function resolveProjectAiUsagePercent(array $data): float
+    {
+        if (! $this->tokenInclude)
+        {
+            return 0.0;
+        }
+
+        $fromModel = $this->aiUsagePercentFromTokenModel($data['token_model'] ?? $this->tokenModel ?? self::DEFAULT_TOKEN_MODEL);
+        if ($fromModel !== null)
+        {
+            return $fromModel;
+        }
+
+        return $this->normalizeAiUsagePercent(data_get($data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT));
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $model
+     */
+    public function aiUsagePercentFromTokenModel(mixed $model): ?float
+    {
+        if (! is_array($model))
+        {
+            return null;
+        }
+
+        $prompt = $model['prompt_per_million'] ?? null;
+        $completion = $model['completion_per_million'] ?? null;
+        if (! is_numeric($prompt) && ! is_numeric($completion))
+        {
+            return null;
+        }
+
+        $blend = $this->modelBlendPerMillion(
+            is_numeric($prompt) ? (float) $prompt : null,
+            is_numeric($completion) ? (float) $completion : null,
+        );
+
+        if ($blend === null)
+        {
+            return null;
+        }
+
+        if ($blend <= 0)
+        {
+            return 0.0;
+        }
+
+        $raw = self::DEFAULT_AI_USAGE_PERCENT + self::MODEL_AI_LOG_SCALE * log10($blend / self::MODEL_AI_REFERENCE_BLEND);
+
+        return max(0.0, min(100.0, round($raw)));
+    }
+
+    public function modelBlendPerMillion(?float $prompt, ?float $completion): ?float
+    {
+        if ($prompt === null && $completion === null)
+        {
+            return null;
+        }
+
+        return round(max(0.0, $prompt ?? 0.0) * 0.7 + max(0.0, $completion ?? 0.0) * 0.3, 4);
+    }
+
+    /**
      * @param  array<string, mixed>  $task
      */
     public function resolveEstimatedTokens(array $task): int
@@ -1563,9 +1734,7 @@ class ProjectBudgetSpecService
         $discriminateTokens = $this->showsTokenLines();
         $includeTokens = $this->includesTokenCharges();
         $savings = (float) data_get($project->data, 'token_consumption.savings_percent', 57);
-        $aiUsage = $this->normalizeAiUsagePercent(
-            data_get($project->data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT),
-        );
+        $aiUsage = $this->resolveProjectAiUsagePercent(is_array($project->data) ? $project->data : []);
         $useSavedQuote = $this->usesSavedQuote($project);
 
         $rows = [];

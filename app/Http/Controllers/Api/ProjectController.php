@@ -234,9 +234,11 @@ class ProjectController extends Controller
                     ? $spec['suggested_tasks']
                     : [],
                 'quote_finalized' => false,
-                'ai_usage_percent' => ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT,
+                'ai_usage_percent' => $budgetService->aiUsagePercentFromTokenModel($budgetService->resolvedTokenModel())
+                    ?? ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT,
                 'token_include' => $budgetService->includesTokenCharges(),
                 'token_discriminate' => $budgetService->showsTokenLines(),
+                'token_model' => $budgetService->resolvedTokenModel(),
             ],
         ], $budgetService);
 

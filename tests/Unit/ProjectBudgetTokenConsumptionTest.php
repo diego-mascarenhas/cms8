@@ -446,4 +446,54 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertFalse($totals['token_discriminate']);
         $this->assertSame(1000, $totals['grand_total']);
     }
+
+    #[Test]
+    public function it_uses_project_token_model_rates(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'data' => [
+                'token_include' => true,
+                'token_model' => [
+                    'id' => 'ibm-granite/granite-4.2-8b',
+                    'name' => 'IBM: Granite 4.2 8B',
+                    'prompt_per_million' => 0.1,
+                    'completion_per_million' => 0.15,
+                ],
+            ],
+        ]);
+
+        $service->applyProjectTokenPresentation($project);
+
+        $this->assertSame(0.1, $service->tokenInputRate());
+        $this->assertSame(0.15, $service->tokenOutputRate());
+    }
+
+    #[Test]
+    public function it_derives_ai_usage_percent_from_the_token_model(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $this->assertSame(
+            $service->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
+            $service->resolveProjectAiUsagePercent([]),
+        );
+        $this->assertSame(0.0, $service->setTokenInclude(false)->resolveProjectAiUsagePercent([]));
+        $service->setTokenInclude(true);
+
+        $this->assertSame(0.0, $service->aiUsagePercentFromTokenModel([
+            'prompt_per_million' => 0,
+            'completion_per_million' => 0,
+        ]));
+        $this->assertSame(30.0, $service->aiUsagePercentFromTokenModel([
+            'prompt_per_million' => 3,
+            'completion_per_million' => 3,
+        ]));
+        $this->assertSame(55.0, $service->aiUsagePercentFromTokenModel([
+            'prompt_per_million' => 30,
+            'completion_per_million' => 30,
+        ]));
+        $this->assertSame('openai/gpt-4.1', $service->normalizeTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL)['id'] ?? null);
+        $this->assertNull($service->normalizeTokenModel(['name' => 'Broken']));
+    }
 }

@@ -277,17 +277,26 @@ class ProjectFunnelController extends Controller
         }
 
         $validated = $request->validated();
+        $tokenModel = $budgetSpec->normalizeTokenModel($validated['token_model'] ?? null);
+        $inputRate = $tokenModel['prompt_per_million'] ?? $validated['input_rate'] ?? null;
+        $outputRate = $tokenModel['completion_per_million'] ?? $validated['output_rate'] ?? null;
 
-        $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE, (string) $validated['input_rate'], [
-            'group' => 'estimator',
-            'type' => 'number',
-            'is_encrypted' => false,
-        ]);
-        $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE, (string) $validated['output_rate'], [
-            'group' => 'estimator',
-            'type' => 'number',
-            'is_encrypted' => false,
-        ]);
+        if (is_numeric($inputRate))
+        {
+            $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE, (string) $inputRate, [
+                'group' => 'estimator',
+                'type' => 'number',
+                'is_encrypted' => false,
+            ]);
+        }
+        if (is_numeric($outputRate))
+        {
+            $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE, (string) $outputRate, [
+                'group' => 'estimator',
+                'type' => 'number',
+                'is_encrypted' => false,
+            ]);
+        }
         $team->setSetting(
             ProjectBudgetSpecService::SETTING_TOKEN_DISCRIMINATE,
             $validated['discriminate'] ? '1' : '0',
@@ -306,6 +315,14 @@ class ProjectFunnelController extends Controller
                 'is_encrypted' => false,
             ],
         );
+        if ($tokenModel)
+        {
+            $team->setSetting(ProjectBudgetSpecService::SETTING_TOKEN_MODEL, $tokenModel, [
+                'group' => 'estimator',
+                'type' => 'json',
+                'is_encrypted' => false,
+            ]);
+        }
 
         $team->unsetRelation('settings');
         $team->load('settings');
@@ -516,6 +533,8 @@ class ProjectFunnelController extends Controller
             return $team;
         }
 
+        $teamPricing = (new ProjectBudgetSpecService)->applyTeamTokenPricing($team);
+
         try
         {
             $payload = $this->decryptQuoteToken((string) $request->validated('quote_token'));
@@ -554,7 +573,7 @@ class ProjectFunnelController extends Controller
 
         try
         {
-            $result = DB::transaction(function () use ($team, $name, $surname, $email, $brief, $projectName, $businessName, $spec, $existingProjectId, $intake)
+            $result = DB::transaction(function () use ($team, $teamPricing, $name, $surname, $email, $brief, $projectName, $businessName, $spec, $existingProjectId, $intake)
             {
                 $contact = $this->upsertLeadContact($team, $name, $surname, $email, $intake);
                 $enterprise = $this->ensureEnterpriseForLead(
@@ -613,7 +632,12 @@ class ProjectFunnelController extends Controller
                     'suggested_tasks' => $includedTasks,
                     'ai_suggested_tasks' => $includedTasks,
                     'quote_finalized' => false,
-                    'ai_usage_percent' => $projectData['ai_usage_percent'] ?? ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT,
+                    'ai_usage_percent' => $projectData['ai_usage_percent']
+                        ?? $teamPricing->aiUsagePercentFromTokenModel($teamPricing->resolvedTokenModel())
+                        ?? ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT,
+                    'token_include' => $projectData['token_include'] ?? $teamPricing->includesTokenCharges(),
+                    'token_discriminate' => $projectData['token_discriminate'] ?? $teamPricing->showsTokenLines(),
+                    'token_model' => $projectData['token_model'] ?? $teamPricing->resolvedTokenModel(),
                     'budget_preview_token' => $projectData['budget_preview_token'] ?? Str::random(48),
                     'funnel' => array_merge($funnel, [
                         'source' => 'projects_funnel',
@@ -1136,6 +1160,7 @@ class ProjectFunnelController extends Controller
      * @return array{
      *     input_rate: float,
      *     output_rate: float,
+     *     token_model: array{id: string, name: string, prompt_per_million: float|null, completion_per_million: float|null},
      *     discriminate: bool,
      *     include: bool,
      *     can_update: bool

@@ -381,7 +381,11 @@ class ProjectFunnelTest extends TestCase
         $this->assertNotNull($project);
         $this->assertSame(ProjectStatus::STATUS_BUDGET, (int) $project->status_id);
         $this->assertSame(2700.0, (float) $project->price);
-        $this->assertSame(ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT, (float) $project->data['ai_usage_percent']);
+        $this->assertSame(
+            (new ProjectBudgetSpecService)->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
+            (float) $project->data['ai_usage_percent'],
+        );
+        $this->assertSame('openai/gpt-4.1', $project->data['token_model']['id'] ?? null);
         $this->assertSame(20.0, (float) $project->data['suggested_tasks'][1]['estimated_hours']);
         $this->assertArrayHasKey('unit_price', $project->data['suggested_tasks'][0]);
         $this->assertNotNull($project->board_id);
@@ -783,6 +787,7 @@ class ProjectFunnelTest extends TestCase
             ->assertJsonPath('data.output_rate', 55)
             ->assertJsonPath('data.discriminate', true)
             ->assertJsonPath('data.include', true)
+            ->assertJsonPath('data.token_model.id', 'openai/gpt-4.1')
             ->assertJsonPath('data.can_update', true);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
@@ -791,16 +796,24 @@ class ProjectFunnelTest extends TestCase
                 'output_rate' => 12,
                 'discriminate' => false,
                 'include' => false,
+                'token_model' => [
+                    'id' => 'ibm-granite/granite-4.2-8b',
+                    'name' => 'IBM: Granite 4.2 8B',
+                    'prompt_per_million' => 0.1,
+                    'completion_per_million' => 0.15,
+                ],
             ])
             ->assertOk()
-            ->assertJsonPath('data.input_rate', 3.5)
-            ->assertJsonPath('data.output_rate', 12)
+            ->assertJsonPath('data.input_rate', 0.1)
+            ->assertJsonPath('data.output_rate', 0.15)
             ->assertJsonPath('data.discriminate', false)
-            ->assertJsonPath('data.include', false);
+            ->assertJsonPath('data.include', false)
+            ->assertJsonPath('data.token_model.id', 'ibm-granite/granite-4.2-8b');
 
         $fresh = $team->fresh();
-        $this->assertSame('3.5', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE));
-        $this->assertSame('12', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE));
+        $this->assertSame('0.1', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INPUT_RATE));
+        $this->assertSame('0.15', (string) $fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_OUTPUT_RATE));
+        $this->assertSame('ibm-granite/granite-4.2-8b', data_get($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_MODEL), 'id'));
         $this->assertFalse(filter_var($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_DISCRIMINATE), FILTER_VALIDATE_BOOLEAN));
         $this->assertFalse(filter_var($fresh->getSetting(ProjectBudgetSpecService::SETTING_TOKEN_INCLUDE), FILTER_VALIDATE_BOOLEAN));
     }

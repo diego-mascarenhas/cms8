@@ -17,8 +17,13 @@ class UpdateProjectFunnelTokenPricingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'input_rate' => ['required', 'numeric', 'min:0', 'max:1000'],
-            'output_rate' => ['required', 'numeric', 'min:0', 'max:1000'],
+            'input_rate' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'output_rate' => ['nullable', 'numeric', 'min:0', 'max:1000'],
+            'token_model' => ['nullable', 'array'],
+            'token_model.id' => ['required_with:token_model', 'string', 'max:255'],
+            'token_model.name' => ['nullable', 'string', 'max:255'],
+            'token_model.prompt_per_million' => ['nullable', 'numeric', 'min:0'],
+            'token_model.completion_per_million' => ['nullable', 'numeric', 'min:0'],
             'discriminate' => ['required', 'boolean'],
             'include' => ['required', 'boolean'],
         ];
