@@ -41,6 +41,7 @@ class PublicShopCatalogController extends Controller
             'data' => array_merge($this->storefrontMeta($team, $slug), [
                 'categories' => $this->categoriesFromProducts($products),
                 'products' => $transformed,
+                'featured_products' => $this->featuredProducts($transformed),
             ]),
         ]);
     }
@@ -124,7 +125,12 @@ class PublicShopCatalogController extends Controller
         $whatsapp = trim((string) (data_get($store?->data, 'whatsapp') ?: $team->getWhatsAppFrom() ?: ''));
         $address = trim((string) ($store?->address ?: ($config['business_address'] ?? '')));
         $notes = trim((string) (data_get($store?->data, 'notes') ?: ''));
-        $logo = $this->publicImageUrl($config['business_logo'] ?? $config['logo'] ?? null);
+        $logo = $this->publicImageUrl(
+            data_get($config, '_logo.url')
+            ?? data_get($config, '_logo.path')
+            ?? ($config['business_logo'] ?? null)
+            ?? ($config['logo'] ?? null),
+        );
         $storeBanner = $this->publicImageUrl(data_get($store?->data, 'banner'));
         $businessBanner = $this->publicImageUrl($config['business_banner'] ?? $config['banner'] ?? null);
 
@@ -211,6 +217,28 @@ class PublicShopCatalogController extends Controller
         $trimmed = trim((string) ($value ?? ''));
 
         return $trimmed !== '' ? $trimmed : null;
+    }
+
+    /**
+     * Featured / best-sellers strip: prefer products with images, then the rest.
+     *
+     * @param  Collection<int, array<string, mixed>>  $products
+     * @return list<array<string, mixed>>
+     */
+    private function featuredProducts(Collection $products): array
+    {
+        $withImage = $products->filter(
+            fn (array $product): bool => filled($product['image'] ?? null),
+        );
+        $withoutImage = $products->reject(
+            fn (array $product): bool => filled($product['image'] ?? null),
+        );
+
+        return $withImage
+            ->concat($withoutImage)
+            ->take(12)
+            ->values()
+            ->all();
     }
 
     /**

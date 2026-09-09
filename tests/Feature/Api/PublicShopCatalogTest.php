@@ -115,17 +115,49 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.products.0.url', 'https://shop.idoneo.dev/p/www.repuestosav.com/40975')
             ->assertJsonPath('data.url', 'https://shop.idoneo.dev/www.repuestosav.com')
             ->assertJsonCount(1, 'data.products')
+            ->assertJsonCount(1, 'data.featured_products')
             ->assertJsonStructure([
                 'data' => [
                     'address',
                     'phone',
                     'whatsapp',
                     'hours_label',
+                    'logo',
+                    'banner',
+                    'featured_products',
                     'categories',
                     'stores',
                     'social' => ['facebook', 'instagram', 'youtube'],
                 ],
             ]);
+    }
+
+    public function test_catalog_uses_business_profile_logo_asset(): void
+    {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        $team = Team::factory()->create();
+        $team->setSetting('business_config', [
+            'business_name' => 'Repuestos Avenida',
+            'business_website' => 'https://www.repuestosav.com',
+            '_logo' => [
+                'path' => 'business/'.$team->id.'/logo.png',
+                'width' => 200,
+                'height' => 200,
+            ],
+        ], [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+        $team->setSetting('public_catalog_enabled', true, [
+            'group' => 'public_shop',
+            'type' => 'boolean',
+            'is_encrypted' => false,
+        ]);
+
+        $this->getJson('/api/public-shop/www.repuestosav.com')
+            ->assertOk()
+            ->assertJsonPath('data.logo', url('storage/business/'.$team->id.'/logo.png'));
     }
 
     public function test_catalog_lists_all_active_stores_in_storefront_meta(): void
