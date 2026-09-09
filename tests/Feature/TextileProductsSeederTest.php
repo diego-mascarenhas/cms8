@@ -76,5 +76,11 @@ class TextileProductsSeederTest extends TestCase
         $this->assertStringContainsString('Camiseta básica unisex', $shirt->short_description);
         $this->assertNotNull($shirt->image);
         $this->assertStringStartsWith('https://images.unsplash.com/', $shirt->image);
+
+        $config = $team->getDecodedBusinessConfig();
+        $this->assertSame('business/'.$team->id.'/logo.png', $config['_logo']['path'] ?? null);
+        $this->assertSame('business/'.$team->id.'/banner.png', $config['business_banner'] ?? null);
+        $this->assertTrue(\Illuminate\Support\Facades\Storage::disk('public')->exists($config['_logo']['path']));
+        $this->assertTrue(\Illuminate\Support\Facades\Storage::disk('public')->exists($config['business_banner']));
     }
 }
