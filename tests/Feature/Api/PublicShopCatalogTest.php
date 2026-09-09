@@ -35,8 +35,8 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.code', '40975')
             ->assertJsonPath('data.short_description', 'HELIX HX8')
             ->assertJsonPath('data.shop_name', 'Repuestos Avenida')
-            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/p/www.repuestosav.com/40975')
-            ->assertJsonPath('data.shop_url', 'https://shop.idoneo.dev/www.repuestosav.com');
+            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/p/repuestos-avenida/40975')
+            ->assertJsonPath('data.shop_url', 'https://shop.idoneo.dev/repuestos-avenida');
     }
 
     public function test_draft_product_is_hidden(): void
@@ -110,10 +110,10 @@ class PublicShopCatalogTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.shop_name', 'Repuestos Avenida')
-            ->assertJsonPath('data.slug', 'www.repuestosav.com')
+            ->assertJsonPath('data.slug', 'repuestos-avenida')
             ->assertJsonPath('data.products.0.code', '40975')
-            ->assertJsonPath('data.products.0.url', 'https://shop.idoneo.dev/p/www.repuestosav.com/40975')
-            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/www.repuestosav.com')
+            ->assertJsonPath('data.products.0.url', 'https://shop.idoneo.dev/p/repuestos-avenida/40975')
+            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/repuestos-avenida')
             ->assertJsonCount(1, 'data.products')
             ->assertJsonCount(0, 'data.featured_products')
             ->assertJsonStructure([

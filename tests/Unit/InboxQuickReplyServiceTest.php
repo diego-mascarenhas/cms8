@@ -63,7 +63,7 @@ class InboxQuickReplyServiceTest extends TestCase
         $this->assertStringContainsString('REM-001', $resolved['messages'][0]);
         $this->assertStringContainsString('12.500,00', $resolved['messages'][0]);
         $this->assertStringContainsString('Algodón peinado', $resolved['messages'][0]);
-        $this->assertStringContainsString('https://shop.idoneo.dev/p/www.repuestosav.com/REM-001', $resolved['messages'][0]);
+        $this->assertStringContainsString('https://shop.idoneo.dev/p/repuestos-avenida/REM-001', $resolved['messages'][0]);
         $this->assertArrayNotHasKey('media', $resolved);
     }
 
