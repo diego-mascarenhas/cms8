@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\ProductVariantCatalogService;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Textile demo: only categories Ropa, Calzado, Accesorios and their products (local DB, no WooCommerce).
@@ -195,7 +196,72 @@ class TextileProductsSeeder extends Seeder
 
         $this->command?->info('✅ Textile seed done: '.count($catalogue).' products, 3 categories (Ropa, Calzado, Accesorios).');
 
+        $this->seedDemoStorefrontBranding($team);
         $this->syncDemoTeamModulesFromPricingPlan($team);
+    }
+
+    /**
+     * Pedimos Fácil logo + banner for the Demo public catalog (/demo).
+     */
+    private function seedDemoStorefrontBranding(Team $team): void
+    {
+        if (! in_array($team->name, ['Demo', "Demo's Team"], true))
+        {
+            return;
+        }
+
+        $logoSource = database_path('seeders/assets/demo-shop/logo.png');
+        $bannerSource = database_path('seeders/assets/demo-shop/banner.png');
+
+        if (! is_file($logoSource) || ! is_file($bannerSource))
+        {
+            $this->command?->warn('TextileProductsSeeder: demo-shop logo/banner assets missing under database/seeders/assets/demo-shop.');
+
+            return;
+        }
+
+        $dir = 'business/'.$team->id;
+        Storage::disk('public')->makeDirectory($dir);
+
+        $logoPath = $dir.'/logo.png';
+        $bannerPath = $dir.'/banner.png';
+        Storage::disk('public')->put($logoPath, (string) file_get_contents($logoSource));
+        Storage::disk('public')->put($bannerPath, (string) file_get_contents($bannerSource));
+
+        $logoSize = @getimagesize(Storage::disk('public')->path($logoPath));
+        $config = $team->getDecodedBusinessConfig();
+        $config['_logo'] = [
+            'path' => $logoPath,
+            'width' => is_array($logoSize) ? (int) $logoSize[0] : null,
+            'height' => is_array($logoSize) ? (int) $logoSize[1] : null,
+        ];
+        $config['business_banner'] = $bannerPath;
+        if (empty($config['business_name']))
+        {
+            $config['business_name'] = 'Demo';
+        }
+
+        $team->setSetting('business_config', $config, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+
+        $mainStore = Store::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->where('status', true)
+            ->orderByDesc('is_main')
+            ->orderBy('id')
+            ->first();
+
+        if ($mainStore)
+        {
+            $data = is_array($mainStore->data) ? $mainStore->data : [];
+            $data['banner'] = $bannerPath;
+            $mainStore->data = $data;
+            $mainStore->save();
+        }
+
+        $this->command?->info('🎨 Demo storefront branding set (Pedimos Fácil logo + banner).');
     }
 
     /**
