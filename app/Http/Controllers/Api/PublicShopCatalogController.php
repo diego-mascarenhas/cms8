@@ -23,11 +23,12 @@ class PublicShopCatalogController extends Controller
         }
 
         $products = Product::withoutGlobalScope('team')
-            ->with(['brand', 'currency', 'category', 'store', 'stores'])
+            ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
             ->where('team_id', $team->id)
             ->where('catalog_status', ProductCatalogStatus::Publish)
             ->whereNotNull('code')
             ->where('code', '!=', '')
+            ->orderByDesc('is_featured')
             ->orderBy('name')
             ->limit(200)
             ->get();
@@ -64,7 +65,7 @@ class PublicShopCatalogController extends Controller
         }
 
         $product = Product::withoutGlobalScope('team')
-            ->with(['brand', 'currency', 'category', 'store', 'stores'])
+            ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
             ->where('team_id', $team->id)
             ->where('catalog_status', ProductCatalogStatus::Publish)
             ->whereRaw('LOWER(code) = ?', [$normalized])
@@ -220,23 +221,16 @@ class PublicShopCatalogController extends Controller
     }
 
     /**
-     * Featured / best-sellers strip: prefer products with images, then the rest.
+     * Featured strip: only products marked is_featured in the admin form.
      *
      * @param  Collection<int, array<string, mixed>>  $products
      * @return list<array<string, mixed>>
      */
     private function featuredProducts(Collection $products): array
     {
-        $withImage = $products->filter(
-            fn (array $product): bool => filled($product['image'] ?? null),
-        );
-        $withoutImage = $products->reject(
-            fn (array $product): bool => filled($product['image'] ?? null),
-        );
-
-        return $withImage
-            ->concat($withoutImage)
-            ->take(12)
+        return $products
+            ->filter(fn (array $product): bool => (bool) ($product['is_featured'] ?? false))
+            ->take(24)
             ->values()
             ->all();
     }
@@ -367,14 +361,46 @@ class PublicShopCatalogController extends Controller
             'short_description' => $product->short_description ? trim(strip_tags((string) $product->short_description)) : null,
             'price' => $this->priceLine($product),
             'price_amount' => $showsPrice ? (float) $product->currentSellingPrice() : null,
+            'compare_at_price' => $this->compareAtPriceLine($product),
+            'compare_at_price_amount' => $showsPrice && $product->isOnSale() ? (float) $product->price : null,
+            'on_sale' => $showsPrice && $product->isOnSale(),
             'currency_symbol' => $showsPrice ? ($product->currency?->symbol ?? '$') : null,
             'image' => $image,
             'images' => $images,
+            'options' => $this->publicOptions($product),
             'configurator' => $this->normalizeConfigurator($product->configurator),
+            'is_featured' => (bool) $product->is_featured,
             'shop_name' => $this->shopName($team),
             'shop_url' => $team->publicCatalogShopUrl(),
             'url' => $team->publicCatalogProductUrl($code),
         ];
+    }
+
+    /**
+     * @return list<array{name: string, values: list<string>}>
+     */
+    private function publicOptions(Product $product): array
+    {
+        $options = [];
+        foreach ($product->options as $option)
+        {
+            $values = $option->values
+                ->sortBy('position')
+                ->map(fn ($value): string => trim((string) $value->value))
+                ->filter(fn (string $value): bool => $value !== '')
+                ->values()
+                ->all();
+            if ($values === [])
+            {
+                continue;
+            }
+            $options[] = [
+                'name' => (string) $option->name,
+                'values' => $values,
+            ];
+        }
+
+        return $options;
     }
 
     /**
@@ -483,6 +509,18 @@ class PublicShopCatalogController extends Controller
         $symbol = $product->currency?->symbol ?? '$';
 
         return $symbol.number_format($product->currentSellingPrice(), 2, ',', '.');
+    }
+
+    private function compareAtPriceLine(Product $product): ?string
+    {
+        if (! $product->catalogShowsPrice() || ! $product->isOnSale())
+        {
+            return null;
+        }
+
+        $symbol = $product->currency?->symbol ?? '$';
+
+        return $symbol.number_format((float) $product->price, 2, ',', '.');
     }
 
     private function publicImageUrl(mixed $image): ?string

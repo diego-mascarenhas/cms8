@@ -879,7 +879,8 @@ class Team extends JetstreamTeam
     }
 
     /**
-     * URL segment from business_config.business_name (fallback: team name) for /shop/{slug}.
+     * URL segment from business_config.business_name (fallback: team name) for the public store path.
+     * Preferred over website host when building canonical catalog URLs.
      */
     public function getPublicCatalogNameSlug(): ?string
     {
@@ -904,9 +905,12 @@ class Team extends JetstreamTeam
         return rtrim((string) config('services.shop.url', 'https://shop.idoneo.dev'), '/');
     }
 
+    /**
+     * Prefer business_name (fallback: team name), then business website host.
+     */
     public function publicCatalogPathSlug(): ?string
     {
-        return $this->getPublicCatalogShopDomain() ?? $this->getPublicCatalogNameSlug();
+        return $this->getPublicCatalogNameSlug() ?? $this->getPublicCatalogShopDomain();
     }
 
     public function publicCatalogShopUrl(): ?string

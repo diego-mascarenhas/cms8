@@ -90,6 +90,7 @@ class ProductFactory extends Factory
             'stock_quantity' => null,
             'assortment_size' => null,
             'whatsapp_enabled' => true,
+            'is_featured' => false,
             'team_id' => Team::inRandomOrder()->first()?->id ?? 1,
             'image' => null,
         ];
@@ -113,6 +114,13 @@ class ProductFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'whatsapp_enabled' => false,
+        ]);
+    }
+
+    public function featured(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_featured' => true,
         ]);
     }
 

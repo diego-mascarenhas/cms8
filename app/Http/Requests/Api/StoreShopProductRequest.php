@@ -13,6 +13,7 @@ class StoreShopProductRequest extends StoreLocalProductRequest
         $merged = [
             'manage_stock' => $this->toFlag('manage_stock'),
             'whatsapp_enabled' => $this->toFlag('whatsapp_enabled'),
+            'is_featured' => $this->toFlag('is_featured'),
         ];
 
         if ($this->exists('available_in_all_stores'))

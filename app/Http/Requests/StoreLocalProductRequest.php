@@ -135,6 +135,7 @@ class StoreLocalProductRequest extends FormRequest
             'manage_stock' => ['required', Rule::in([0, 1, '0', '1'])],
             'stock_quantity' => ['nullable', 'integer', 'min:0', 'required_if:manage_stock,1'],
             'whatsapp_enabled' => ['required', Rule::in([0, 1, '0', '1'])],
+            'is_featured' => ['sometimes', Rule::in([0, 1, '0', '1', true, false])],
             'image' => ['nullable', 'string', 'max:2048', 'url'],
         ];
     }

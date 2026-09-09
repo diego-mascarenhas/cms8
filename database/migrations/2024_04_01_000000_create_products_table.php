@@ -37,6 +37,7 @@ return new class extends Migration
             $table->json('configurator')->nullable();
             $table->string('image', 2048)->nullable();
             $table->boolean('whatsapp_enabled')->default(true);
+            $table->boolean('is_featured')->default(false);
             $table->timestamps();
 
             $table->foreign('currency_id')->references('id')->on('currencies')->onDelete('cascade');
@@ -49,6 +50,7 @@ return new class extends Migration
             $table->index(['team_id', 'brand_id']);
             $table->index(['category_id', 'status']);
             $table->index('whatsapp_enabled');
+            $table->index(['team_id', 'is_featured']);
         });
     }
 

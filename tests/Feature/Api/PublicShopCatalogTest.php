@@ -35,8 +35,8 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.code', '40975')
             ->assertJsonPath('data.short_description', 'HELIX HX8')
             ->assertJsonPath('data.shop_name', 'Repuestos Avenida')
-            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/p/www.repuestosav.com/40975')
-            ->assertJsonPath('data.shop_url', 'https://shop.idoneo.dev/www.repuestosav.com');
+            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/p/repuestos-avenida/40975')
+            ->assertJsonPath('data.shop_url', 'https://shop.idoneo.dev/repuestos-avenida');
     }
 
     public function test_draft_product_is_hidden(): void
@@ -110,12 +110,12 @@ class PublicShopCatalogTest extends TestCase
             ->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.shop_name', 'Repuestos Avenida')
-            ->assertJsonPath('data.slug', 'www.repuestosav.com')
+            ->assertJsonPath('data.slug', 'repuestos-avenida')
             ->assertJsonPath('data.products.0.code', '40975')
-            ->assertJsonPath('data.products.0.url', 'https://shop.idoneo.dev/p/www.repuestosav.com/40975')
-            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/www.repuestosav.com')
+            ->assertJsonPath('data.products.0.url', 'https://shop.idoneo.dev/p/repuestos-avenida/40975')
+            ->assertJsonPath('data.url', 'https://shop.idoneo.dev/repuestos-avenida')
             ->assertJsonCount(1, 'data.products')
-            ->assertJsonCount(1, 'data.featured_products')
+            ->assertJsonCount(0, 'data.featured_products')
             ->assertJsonStructure([
                 'data' => [
                     'address',
@@ -130,6 +130,35 @@ class PublicShopCatalogTest extends TestCase
                     'social' => ['facebook', 'instagram', 'youtube'],
                 ],
             ]);
+    }
+
+    public function test_catalog_featured_products_only_includes_starred_items(): void
+    {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        $team = $this->makeCatalogTeam();
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Normal',
+            'code' => 'NORMAL-1',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+            'is_featured' => false,
+        ]);
+        Product::factory()->featured()->create([
+            'team_id' => $team->id,
+            'name' => 'Destacado',
+            'code' => 'FEAT-1',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+
+        $this->getJson('/api/public-shop/www.repuestosav.com')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.products')
+            ->assertJsonCount(1, 'data.featured_products')
+            ->assertJsonPath('data.featured_products.0.code', 'FEAT-1')
+            ->assertJsonPath('data.featured_products.0.is_featured', true);
     }
 
     public function test_catalog_uses_business_profile_logo_asset(): void
@@ -277,6 +306,44 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.configurator.groups.0.type', 'single')
             ->assertJsonPath('data.configurator.groups.1.type', 'quantity')
             ->assertJsonPath('data.configurator.groups.1.choices.0.units', 6);
+    }
+
+    public function test_catalog_exposes_sale_price_and_variant_options(): void
+    {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        $team = $this->makeCatalogTeam();
+        $product = Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Camiseta oferta',
+            'code' => 'CAM-OFERTA',
+            'price' => 24990,
+            'sale_price' => 19990,
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+
+        app(\App\Services\ProductVariantCatalogService::class)->sync(
+            $product,
+            [
+                ['name' => 'Talle', 'values' => ['S', 'M']],
+                ['name' => 'Color', 'values' => ['Negro']],
+            ],
+            [],
+        );
+
+        $this->getJson('/api/public-shop/www.repuestosav.com')
+            ->assertOk()
+            ->assertJsonPath('data.products.0.code', 'CAM-OFERTA')
+            ->assertJsonPath('data.products.0.on_sale', true)
+            ->assertJsonPath('data.products.0.price_amount', 19990)
+            ->assertJsonPath('data.products.0.compare_at_price_amount', 24990)
+            ->assertJsonPath('data.products.0.compare_at_price', '$24.990,00')
+            ->assertJsonPath('data.products.0.price', '$19.990,00')
+            ->assertJsonPath('data.products.0.options.0.name', 'Talle')
+            ->assertJsonPath('data.products.0.options.0.values.0', 'S')
+            ->assertJsonPath('data.products.0.options.1.name', 'Color')
+            ->assertJsonPath('data.products.0.options.1.values.0', 'Negro');
     }
 
     private function makeCatalogTeam(): Team
