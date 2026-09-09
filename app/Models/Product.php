@@ -37,6 +37,7 @@ class Product extends Model
         'assortment_size',
         'configurator',
         'whatsapp_enabled',
+        'is_featured',
         'team_id',
         'image',
     ];
@@ -46,6 +47,7 @@ class Product extends Model
         'sale_price' => 'decimal:2',
         'status' => 'boolean',
         'whatsapp_enabled' => 'boolean',
+        'is_featured' => 'boolean',
         'available_in_all_stores' => 'boolean',
         'manage_stock' => 'boolean',
         'stock_quantity' => 'integer',

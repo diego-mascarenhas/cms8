@@ -28,6 +28,7 @@ class PublicShopCatalogController extends Controller
             ->where('catalog_status', ProductCatalogStatus::Publish)
             ->whereNotNull('code')
             ->where('code', '!=', '')
+            ->orderByDesc('is_featured')
             ->orderBy('name')
             ->limit(200)
             ->get();
@@ -220,23 +221,16 @@ class PublicShopCatalogController extends Controller
     }
 
     /**
-     * Featured / best-sellers strip: prefer products with images, then the rest.
+     * Featured strip: only products marked is_featured in the admin form.
      *
      * @param  Collection<int, array<string, mixed>>  $products
      * @return list<array<string, mixed>>
      */
     private function featuredProducts(Collection $products): array
     {
-        $withImage = $products->filter(
-            fn (array $product): bool => filled($product['image'] ?? null),
-        );
-        $withoutImage = $products->reject(
-            fn (array $product): bool => filled($product['image'] ?? null),
-        );
-
-        return $withImage
-            ->concat($withoutImage)
-            ->take(12)
+        return $products
+            ->filter(fn (array $product): bool => (bool) ($product['is_featured'] ?? false))
+            ->take(24)
             ->values()
             ->all();
     }
@@ -371,6 +365,7 @@ class PublicShopCatalogController extends Controller
             'image' => $image,
             'images' => $images,
             'configurator' => $this->normalizeConfigurator($product->configurator),
+            'is_featured' => (bool) $product->is_featured,
             'shop_name' => $this->shopName($team),
             'shop_url' => $team->publicCatalogShopUrl(),
             'url' => $team->publicCatalogProductUrl($code),

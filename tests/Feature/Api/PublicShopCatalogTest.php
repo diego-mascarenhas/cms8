@@ -115,7 +115,7 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.products.0.url', 'https://shop.idoneo.dev/p/www.repuestosav.com/40975')
             ->assertJsonPath('data.url', 'https://shop.idoneo.dev/www.repuestosav.com')
             ->assertJsonCount(1, 'data.products')
-            ->assertJsonCount(1, 'data.featured_products')
+            ->assertJsonCount(0, 'data.featured_products')
             ->assertJsonStructure([
                 'data' => [
                     'address',
@@ -130,6 +130,35 @@ class PublicShopCatalogTest extends TestCase
                     'social' => ['facebook', 'instagram', 'youtube'],
                 ],
             ]);
+    }
+
+    public function test_catalog_featured_products_only_includes_starred_items(): void
+    {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        $team = $this->makeCatalogTeam();
+        Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Normal',
+            'code' => 'NORMAL-1',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+            'is_featured' => false,
+        ]);
+        Product::factory()->featured()->create([
+            'team_id' => $team->id,
+            'name' => 'Destacado',
+            'code' => 'FEAT-1',
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+
+        $this->getJson('/api/public-shop/www.repuestosav.com')
+            ->assertOk()
+            ->assertJsonCount(2, 'data.products')
+            ->assertJsonCount(1, 'data.featured_products')
+            ->assertJsonPath('data.featured_products.0.code', 'FEAT-1')
+            ->assertJsonPath('data.featured_products.0.is_featured', true);
     }
 
     public function test_catalog_uses_business_profile_logo_asset(): void
