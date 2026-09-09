@@ -308,6 +308,44 @@ class PublicShopCatalogTest extends TestCase
             ->assertJsonPath('data.configurator.groups.1.choices.0.units', 6);
     }
 
+    public function test_catalog_exposes_sale_price_and_variant_options(): void
+    {
+        config(['services.shop.url' => 'https://shop.idoneo.dev']);
+
+        $team = $this->makeCatalogTeam();
+        $product = Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Camiseta oferta',
+            'code' => 'CAM-OFERTA',
+            'price' => 24990,
+            'sale_price' => 19990,
+            'catalog_status' => ProductCatalogStatus::Publish,
+            'status' => true,
+        ]);
+
+        app(\App\Services\ProductVariantCatalogService::class)->sync(
+            $product,
+            [
+                ['name' => 'Talle', 'values' => ['S', 'M']],
+                ['name' => 'Color', 'values' => ['Negro']],
+            ],
+            [],
+        );
+
+        $this->getJson('/api/public-shop/www.repuestosav.com')
+            ->assertOk()
+            ->assertJsonPath('data.products.0.code', 'CAM-OFERTA')
+            ->assertJsonPath('data.products.0.on_sale', true)
+            ->assertJsonPath('data.products.0.price_amount', 19990)
+            ->assertJsonPath('data.products.0.compare_at_price_amount', 24990)
+            ->assertJsonPath('data.products.0.compare_at_price', '$24.990,00')
+            ->assertJsonPath('data.products.0.price', '$19.990,00')
+            ->assertJsonPath('data.products.0.options.0.name', 'Talle')
+            ->assertJsonPath('data.products.0.options.0.values.0', 'S')
+            ->assertJsonPath('data.products.0.options.1.name', 'Color')
+            ->assertJsonPath('data.products.0.options.1.values.0', 'Negro');
+    }
+
     private function makeCatalogTeam(): Team
     {
         $team = Team::factory()->create();
