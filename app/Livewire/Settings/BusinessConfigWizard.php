@@ -418,7 +418,7 @@ class BusinessConfigWizard extends Component
                     messages: [],
                     tools: [],
                 );
-                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'), AiTasks::model('summary'));
                 $this->summary = $response->text ?? '';
             }
         } catch (\Throwable $e)

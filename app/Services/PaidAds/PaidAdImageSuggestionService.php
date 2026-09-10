@@ -39,7 +39,7 @@ class PaidAdImageSuggestionService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, [], AiTasks::provider('insight'));
+            $response = $agent->prompt($userMessage, [], AiTasks::provider('insight'), AiTasks::model('insight'));
             $text = (string) ($response->text ?? '');
         } catch (\Throwable $exception)
         {

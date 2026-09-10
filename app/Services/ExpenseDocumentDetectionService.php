@@ -68,7 +68,9 @@ PROMPT;
 
         $ocrResult = $this->extractOcrText($absolutePath, $teamId);
         $heuristicData = $this->extractStructuredDataWithHeuristics($ocrResult['text'], $teamId);
-        $aiData = $this->extractStructuredDataWithAi($ocrResult['text'], $teamId, $ocrResult['mode']);
+        $aiData = $this->detectedDataIsIncomplete($heuristicData)
+            ? $this->extractStructuredDataWithAi($ocrResult['text'], $teamId, $ocrResult['mode'], $absolutePath)
+            : null;
         $detectedData = $this->mergeDetectedData($heuristicData, $aiData);
 
         $supplierResolution = $this->supplierService->resolveForDetectedInvoice(
@@ -125,26 +127,15 @@ PROMPT;
     private function extractOcrText(string $absolutePath, int $teamId): array
     {
         $mode = $this->resolveOcrMode($teamId);
-        $localText = null;
+        $localText = $this->ocrService->extractTextFromLocalFile($absolutePath);
         $aiText = null;
-        $enginesRan = [];
+        $enginesRan = ['local'];
+        $localLooksComplete = $this->ocrTextLooksComplete($localText);
 
-        if ($mode === 'local' || $mode === 'hybrid')
-        {
-            $localText = $this->ocrService->extractTextFromLocalFile($absolutePath);
-            $enginesRan[] = 'local';
-        }
-
-        if ($mode === 'ai' || $mode === 'hybrid')
+        if ($mode === 'hybrid' || ($mode === 'ai' && ! $localLooksComplete))
         {
             $aiText = $this->aiOcrService->extractTextFromLocalFile($absolutePath, $teamId);
             $enginesRan[] = 'ai';
-        }
-
-        if ($mode === 'ai' && $aiText === null)
-        {
-            $localText = $this->ocrService->extractTextFromLocalFile($absolutePath);
-            $enginesRan[] = 'local_fallback';
         }
 
         $chosenText = null;
@@ -156,8 +147,15 @@ PROMPT;
             $engineUsed = $localText !== null ? 'local' : null;
         } elseif ($mode === 'ai')
         {
-            $chosenText = $aiText ?? $localText;
-            $engineUsed = $aiText !== null ? 'ai' : ($localText !== null ? 'local_fallback' : null);
+            if ($localLooksComplete)
+            {
+                $chosenText = $localText;
+                $engineUsed = 'local';
+            } else
+            {
+                $chosenText = $aiText ?? $localText;
+                $engineUsed = $aiText !== null ? 'ai' : ($localText !== null ? 'local' : null);
+            }
         } else
         {
             $localLength = mb_strlen((string) ($localText ?? ''));
@@ -180,6 +178,36 @@ PROMPT;
             'engine_used' => $engineUsed,
             'engines_ran' => $enginesRan,
         ];
+    }
+
+    private function ocrTextLooksComplete(?string $text): bool
+    {
+        $value = trim((string) $text);
+        if (mb_strlen($value) < 80)
+        {
+            return false;
+        }
+
+        $normalized = Str::lower($value);
+
+        return str_contains($normalized, 'invoice')
+            || str_contains($normalized, 'factura')
+            || str_contains($normalized, 'total')
+            || preg_match('/\b(usd|eur|gbp|ars)\b/i', $value) === 1;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function detectedDataIsIncomplete(array $data): bool
+    {
+        $lines = is_array($data['lines'] ?? null) ? $data['lines'] : [];
+
+        return ! filled($data['document_number'] ?? null)
+            || ! filled($data['invoice_date'] ?? null)
+            || ! filled($data['currency_code'] ?? null)
+            || ! filled($data['total_amount'] ?? null)
+            || $lines === [];
     }
 
     /**
@@ -206,8 +234,23 @@ PROMPT;
         $knownPhones = $this->extractPhoneCandidates($text);
         $enterpriseName = $this->extractEnterpriseName($text, $teamId);
         $documentNumber = $this->extractDocumentNumber($text, $knownPhones);
-        $invoiceDate = $this->extractDateByLabel($text, ['fecha factura', 'fecha', 'invoice date', 'date']);
-        $dueDate = $this->extractDateByLabel($text, ['fecha vencimiento', 'vencimiento', 'due date', 'payment due']);
+        $invoiceDate = $this->extractDateByLabel($text, [
+            'date of issue',
+            'fecha de emision',
+            'fecha de emisión',
+            'fecha factura',
+            'invoice date',
+            'issued on',
+            'fecha',
+            'date',
+        ]);
+        $dueDate = $this->extractDateByLabel($text, [
+            'date due',
+            'fecha vencimiento',
+            'vencimiento',
+            'due date',
+            'payment due',
+        ]);
         $currencyCode = $this->extractCurrencyCode($text);
         $vatPercent = $this->extractPercentageByLabel($text, ['iva', 'vat']);
         $retentionPercent = $this->extractPercentageByLabel($text, ['retención', 'retencion', 'withholding']);
@@ -250,7 +293,7 @@ PROMPT;
     /**
      * @return array<string, mixed>|null
      */
-    private function extractStructuredDataWithAi(?string $ocrText, int $teamId, string $mode): ?array
+    private function extractStructuredDataWithAi(?string $ocrText, int $teamId, string $mode, ?string $absolutePath = null): ?array
     {
         if (! in_array($mode, ['ai', 'hybrid'], true))
         {
@@ -258,11 +301,22 @@ PROMPT;
         }
 
         $text = trim((string) $ocrText);
+        $attachments = [];
 
-        if ($text === '')
+        if (is_string($absolutePath) && $absolutePath !== '' && is_file($absolutePath))
+        {
+            $attachments[] = $this->uploadedFileFromPath($absolutePath);
+        }
+
+        if ($text === '' && $attachments === [])
         {
             return null;
         }
+
+        $task = $attachments !== [] ? 'vision' : 'ocr';
+        $prompt = $text !== ''
+            ? $text
+            : 'Extract all expense invoice fields from the attached document.';
 
         try
         {
@@ -270,7 +324,12 @@ PROMPT;
                 instructions: self::AI_EXTRACTION_INSTRUCTIONS,
                 messages: [],
                 tools: [],
-            )->prompt($text, [], provider: AiTasks::provider('ocr'));
+            )->prompt(
+                $prompt,
+                $attachments,
+                provider: AiTasks::provider($task),
+                model: AiTasks::model($task),
+            );
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: $teamId,
@@ -426,7 +485,8 @@ PROMPT;
     private function extractDocumentNumber(string $text, array $knownPhones): ?string
     {
         $patterns = [
-            '/(?:n[úu]m(?:ero)?\s+(?:de\s+)?factura|n[º°o]\s*factura|factura\s*(?:n[º°o]|#|num(?:ero)?)|invoice\s*(?:no|number|#)|ref(?:erencia)?\s+factura)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
+            '/(?:n[úu]m(?:ero)?\s+(?:de\s+)?factura|n[º°o]\s*factura|factura\s*(?:n[º°o]|#|num(?:ero)?)|invoice\s*(?:no\.?|number|#)|ref(?:erencia)?\s+factura)\s*[:#\-]?\s*([A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
+            '/(?:factura|invoice)\s*[:#\-]?\s*([A-Z]{2,}[-\/][A-Z0-9][A-Z0-9\-\/\.]{2,})/iu',
             '/(?:factura|invoice)\s*[:#\-]?\s*([A-Z]{1,4}[-\/]?[0-9][A-Z0-9\-\/\.]{2,})/iu',
         ];
 
@@ -447,13 +507,20 @@ PROMPT;
 
     private function extractDateByLabel(string $text, array $labels): ?string
     {
+        $monthNameDate = $this->monthNameDatePattern();
+
         foreach ($labels as $label)
         {
-            $pattern = '/'.preg_quote($label, '/').'\s*[:\-]?\s*([0-9]{1,4}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{1,4})/iu';
+            $pattern = '/'.preg_quote($label, '/').'\s*[:\-]?\s*('.$monthNameDate.'|[0-9]{1,4}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{1,4})/iu';
             if (preg_match($pattern, $text, $matches) === 1)
             {
                 return $this->normalizeDate((string) ($matches[1] ?? null));
             }
+        }
+
+        if (preg_match('/\b('.$monthNameDate.')\b/iu', $text, $matches) === 1)
+        {
+            return $this->normalizeDate((string) ($matches[1] ?? null));
         }
 
         if (preg_match('/\b([0-9]{4}[\/\.\-][0-9]{1,2}[\/\.\-][0-9]{1,2})\b/u', $text, $matches) === 1)
@@ -467,6 +534,13 @@ PROMPT;
         }
 
         return null;
+    }
+
+    private function monthNameDatePattern(): string
+    {
+        $month = 'Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?';
+
+        return '(?:(?:'.$month.')\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:'.$month.')\s+\d{4})';
     }
 
     private function normalizeDate(?string $value): ?string
@@ -497,7 +571,7 @@ PROMPT;
 
         try
         {
-            return Carbon::parse($normalized)->format('Y-m-d');
+            return Carbon::parse($dateValue)->format('Y-m-d');
         } catch (\Throwable)
         {
             return null;
@@ -541,7 +615,9 @@ PROMPT;
     private function extractTotalAmount(string $text): ?float
     {
         $patterns = [
-            '/(?:total(?:\s+a\s+pagar)?|importe\s+total|amount\s+due)\s*[:\-]?\s*([$€]?\s*[0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)/iu',
+            '/(?:total(?:\s+a\s+pagar)?|importe\s+total|amount\s+due|amount\s+paid|total\s+due)\s*[:\-]?\s*([$€]?\s*[0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)/iu',
+            '/\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2}))\s*USD\b/iu',
+            '/\b([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2}))\s*(?:USD|EUR|GBP)\b/iu',
         ];
 
         foreach ($patterns as $pattern)
@@ -585,6 +661,35 @@ PROMPT;
         }
 
         return (float) $numeric;
+    }
+
+    /**
+     * @param  array<string, string|null>  $supplier
+     * @return array<string, string|null>
+     */
+    private function uploadedFileFromPath(string $absolutePath): UploadedFile
+    {
+        $mime = mime_content_type($absolutePath) ?: 'application/octet-stream';
+        $name = basename($absolutePath);
+
+        if (pathinfo($name, PATHINFO_EXTENSION) === '')
+        {
+            $extension = match (true)
+            {
+                str_contains($mime, 'pdf') => 'pdf',
+                str_contains($mime, 'jpeg'), str_contains($mime, 'jpg') => 'jpg',
+                str_contains($mime, 'png') => 'png',
+                str_contains($mime, 'webp') => 'webp',
+                default => '',
+            };
+
+            if ($extension !== '')
+            {
+                $name .= '.'.$extension;
+            }
+        }
+
+        return new UploadedFile($absolutePath, $name, $mime, null, true);
     }
 
     /**
@@ -1105,7 +1210,9 @@ PROMPT;
             || str_contains($normalizedLine, 'cif')
             || str_contains($normalizedLine, 'iban')
             || str_contains($normalizedLine, 'cliente')
-            || str_contains($normalizedLine, 'destinatario');
+            || str_contains($normalizedLine, 'destinatario')
+            || str_contains($normalizedLine, 'amount due')
+            || preg_match('/\b(?:usd|eur|gbp)\s+due\b/u', $normalizedLine) === 1;
     }
 
     /**

@@ -43,13 +43,7 @@ class DocumentAiOcrService
         {
             try
             {
-                $uploadedFile = new UploadedFile(
-                    $absolutePath,
-                    basename($absolutePath),
-                    mime_content_type($absolutePath) ?: null,
-                    null,
-                    true,
-                );
+                $uploadedFile = $this->uploadedFileFromPath($absolutePath);
                 $ocrAgent = agent(
                     instructions: 'You are an OCR engine. Return only extracted text.',
                     messages: [],
@@ -141,6 +135,31 @@ class DocumentAiOcrService
             'completion_tokens' => $completion,
             'total_tokens' => $total,
         ];
+    }
+
+    private function uploadedFileFromPath(string $absolutePath): UploadedFile
+    {
+        $mime = mime_content_type($absolutePath) ?: 'application/octet-stream';
+        $name = basename($absolutePath);
+
+        if (pathinfo($name, PATHINFO_EXTENSION) === '')
+        {
+            $extension = match (true)
+            {
+                str_contains($mime, 'pdf') => 'pdf',
+                str_contains($mime, 'jpeg'), str_contains($mime, 'jpg') => 'jpg',
+                str_contains($mime, 'png') => 'png',
+                str_contains($mime, 'webp') => 'webp',
+                default => '',
+            };
+
+            if ($extension !== '')
+            {
+                $name .= '.'.$extension;
+            }
+        }
+
+        return new UploadedFile($absolutePath, $name, $mime, null, true);
     }
 
     private function providerFor(string $model): string

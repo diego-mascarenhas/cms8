@@ -8,9 +8,9 @@ use App\Helpers\WhatsAppNaturalCartPhrase;
 use App\Models\Prompt;
 use App\Models\User;
 use App\Services\Assistant\AssistantActorContextService;
+use App\Support\AiTasks;
 use App\Support\AssistantCustomerText;
 use App\Tools\AssistantTool;
-use Laravel\Ai\AiManager;
 use Laravel\Ai\Messages\AssistantMessage;
 use Laravel\Ai\Messages\UserMessage;
 
@@ -397,11 +397,9 @@ class ChatAssistantReplyService
         try
         {
             $historyMessages = $this->historyToMessages($history);
-            $provider = (string) config('ai.assistant_provider', 'anthropic');
-            $failover = config('ai.assistant_failover');
-            $providerParam = is_array($failover) && $failover !== [] ? array_merge([$provider], $failover) : $provider;
-            $configuredModel = config('ai.assistant_model', 'cheapest');
-            $modelParam = $this->resolveAssistantModel($provider, $configuredModel);
+            $providerParam = AiTasks::provider('assistant');
+            $modelParam = AiTasks::model('assistant');
+            $provider = is_array($providerParam) ? (string) ($providerParam[0] ?? 'anthropic') : $providerParam;
             $timeout = (int) config('ai.assistant_timeout', 60);
 
             $agent = agent(
@@ -493,35 +491,6 @@ class ChatAssistantReplyService
             'completion_tokens' => $completion,
             'total_tokens' => $total > 0 ? $total : ($prompt + $completion),
         ];
-    }
-
-    /**
-     * Resolve assistant model from config. "cheapest" maps to provider cheapest text model.
-     */
-    private function resolveAssistantModel(string $provider, mixed $configuredModel): ?string
-    {
-        $model = is_string($configuredModel) ? trim($configuredModel) : null;
-        if ($model === null || $model === '')
-        {
-            return null;
-        }
-
-        if (strtolower($model) !== 'cheapest')
-        {
-            return $model;
-        }
-
-        try
-        {
-            $ai = app(AiManager::class);
-            $textProvider = $ai->textProvider($provider);
-            $cheapest = $textProvider->cheapestTextModel();
-
-            return is_string($cheapest) && trim($cheapest) !== '' ? trim($cheapest) : null;
-        } catch (\Throwable)
-        {
-            return null;
-        }
     }
 
     /**

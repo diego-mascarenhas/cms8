@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
@@ -9,6 +10,12 @@ use Illuminate\Support\Facades\Log;
 
 class TeamSetting extends Model
 {
+    /** @var list<string> */
+    private const SHOP_CATALOG_SETTING_KEYS = [
+        'business_config',
+        'public_catalog_enabled',
+    ];
+
     protected $fillable = [
         'team_id',
         'key',
@@ -23,6 +30,22 @@ class TeamSetting extends Model
         'is_encrypted' => 'boolean',
     ];
 
+    protected static function booted(): void
+    {
+        $bumpCatalog = function (self $setting): void
+        {
+            if (! $setting->team_id || ! in_array($setting->key, self::SHOP_CATALOG_SETTING_KEYS, true))
+            {
+                return;
+            }
+
+            ShopCatalogApiCache::bumpTeam((int) $setting->team_id);
+        };
+
+        static::saved($bumpCatalog);
+        static::deleted($bumpCatalog);
+    }
+
     public function team()
     {
         return $this->belongsTo(Team::class);
@@ -35,8 +58,7 @@ class TeamSetting extends Model
             try
             {
                 $value = Crypt::decryptString($value);
-            }
-            catch (DecryptException $e)
+            } catch (DecryptException $e)
             {
                 Log::warning('TeamSetting decryption failed (key changed or corrupted)', [
                     'team_id' => $this->team_id,

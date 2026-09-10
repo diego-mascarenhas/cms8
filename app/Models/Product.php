@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProductCatalogStatus;
 use App\Enums\ProductStockStatus;
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -81,6 +82,17 @@ class Product extends Model
 
             $product->status = $product->catalog_status === ProductCatalogStatus::Publish;
         });
+
+        $bumpCatalog = function (Product $product): void
+        {
+            if ($product->team_id)
+            {
+                ShopCatalogApiCache::bumpTeam((int) $product->team_id);
+            }
+        };
+
+        static::saved($bumpCatalog);
+        static::deleted($bumpCatalog);
     }
 
     /**

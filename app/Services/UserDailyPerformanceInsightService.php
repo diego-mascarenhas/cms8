@@ -252,7 +252,7 @@ PROMPT;
                 tools: [],
             );
 
-            $response = $agent->prompt($userPrompt, [], AiTasks::provider('insight'));
+            $response = $agent->prompt($userPrompt, [], AiTasks::provider('insight'), AiTasks::model('insight'));
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: (int) $team->id,

@@ -8,7 +8,6 @@ use App\Models\TokenUsageLog;
 use App\Support\AiTasks;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
 use function Laravel\Ai\agent;
@@ -144,7 +143,7 @@ class TeamPromptController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, [], AiTasks::provider('assistant'));
+            $response = $agent->prompt($userMessage, [], AiTasks::provider('assistant'), AiTasks::model('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
@@ -214,7 +213,7 @@ class TeamPromptController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, [], AiTasks::provider('assistant'));
+            $response = $agent->prompt($userMessage, [], AiTasks::provider('assistant'), AiTasks::model('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {

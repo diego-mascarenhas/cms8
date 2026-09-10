@@ -85,7 +85,7 @@ PROMPT;
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($text, [], AiTasks::provider('sentiment'));
+            $response = $agent->prompt($text, [], AiTasks::provider('sentiment'), AiTasks::model('sentiment'));
 
             if ($teamId !== null)
             {

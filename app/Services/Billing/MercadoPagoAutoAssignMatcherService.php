@@ -494,6 +494,7 @@ PROMPT;
                 json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?: '{}',
                 [],
                 provider: AiTasks::provider('summary'),
+                model: AiTasks::model('summary'),
             );
 
             $decoded = json_decode((string) ($response->text ?? ''), true);

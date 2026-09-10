@@ -522,7 +522,7 @@ PROMPT;
         {
             $aiStartedAt = now();
             $agent = agent(instructions: $instruction, messages: [], tools: []);
-            $response = $agent->prompt($fullContext, [], AiTasks::provider('insight'));
+            $response = $agent->prompt($fullContext, [], AiTasks::provider('insight'), AiTasks::model('insight'));
             $aiFinishedAt = now();
 
             $teamId = $teamId ?? $session?->team_id;

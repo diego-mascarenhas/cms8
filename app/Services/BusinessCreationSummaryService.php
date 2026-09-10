@@ -68,7 +68,7 @@ class BusinessCreationSummaryService
             {
                 $defaultInstruction = 'Eres un consultor de negocio. Con el contexto que te proporcionan (datos del negocio, problemática actual y arquetipo humano por fecha de nacimiento), genera un resumen muy conciso (máximo 1 párrafo corto o 3-5 puntos) de lo que esta empresa necesita para mejorar. Sé directo y práctico.';
                 $agent = agent(instructions: $defaultInstruction, messages: [], tools: []);
-                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'), AiTasks::model('summary'));
                 $summary = $response->text ?? '';
 
                 TokenUsageLogService::logFromAiResponse(

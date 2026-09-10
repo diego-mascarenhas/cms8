@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -36,6 +37,19 @@ class Store extends Model
                 $builder->where($builder->getModel()->qualifyColumn('team_id'), auth()->user()->currentTeam->id);
             }
         });
+
+        $bumpCatalog = function (Store $store): void
+        {
+            if ($store->team_id)
+            {
+                ShopCatalogApiCache::bumpTeam((int) $store->team_id);
+            }
+        };
+
+        static::saved($bumpCatalog);
+        static::deleted($bumpCatalog);
+        static::restored($bumpCatalog);
+        static::forceDeleted($bumpCatalog);
     }
 
     public function team()

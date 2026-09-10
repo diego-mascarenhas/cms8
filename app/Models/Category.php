@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -33,6 +34,22 @@ class Category extends Model
         'data' => 'array',
         'status' => 'boolean',
     ];
+
+    protected static function booted(): void
+    {
+        $bumpCatalog = function (self $category): void
+        {
+            if ($category->team_id)
+            {
+                ShopCatalogApiCache::bumpTeam((int) $category->team_id);
+            }
+        };
+
+        static::saved($bumpCatalog);
+        static::deleted($bumpCatalog);
+        static::restored($bumpCatalog);
+        static::forceDeleted($bumpCatalog);
+    }
 
     /**
      * Primary keys that still exist and are not soft-deleted. Use before writing the contact_category pivot.

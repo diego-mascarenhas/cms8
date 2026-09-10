@@ -273,7 +273,7 @@ class BusinessProfileService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
+            $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'), AiTasks::model('summary'));
             $summary = trim((string) ($response->text ?? ''));
         } catch (\Throwable $exception)
         {

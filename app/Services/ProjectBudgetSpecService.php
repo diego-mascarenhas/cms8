@@ -92,7 +92,7 @@ class ProjectBudgetSpecService
                 $userMessage,
                 [],
                 AiTasks::provider('assistant'),
-                null,
+                AiTasks::model('assistant'),
                 $this->budgetSpecTimeout(),
             );
             $text = $response->text ?: '';
@@ -247,7 +247,7 @@ class ProjectBudgetSpecService
                 $userMessage,
                 [],
                 AiTasks::provider('assistant'),
-                null,
+                AiTasks::model('assistant'),
                 $this->budgetSpecTimeout(),
             );
             $text = $response->text ?: '';
@@ -370,7 +370,7 @@ class ProjectBudgetSpecService
                 $userMessage,
                 [],
                 AiTasks::provider('assistant'),
-                null,
+                AiTasks::model('assistant'),
                 $this->budgetSpecTimeout(),
             );
             $text = $response->text ?: '';

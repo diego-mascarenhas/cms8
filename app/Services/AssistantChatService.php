@@ -118,7 +118,7 @@ class AssistantChatService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userContent, $attachments, AiTasks::provider('assistant'));
+            $response = $agent->prompt($userContent, $attachments, AiTasks::provider('assistant'), AiTasks::model('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
@@ -235,7 +235,7 @@ class AssistantChatService
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($routerMessage, [], AiTasks::provider('assistant'));
+            $response = $agent->prompt($routerMessage, [], AiTasks::provider('assistant'), AiTasks::model('assistant'));
             $text = trim($response->text ?: '');
         } catch (\Throwable $e)
         {
