@@ -175,4 +175,146 @@ class ExpenseDocumentDetectionServiceTest extends TestCase
         $this->assertSame(21.0, $detected['lines'][0]['vat_percent']);
         $this->assertSame(16.0, $detected['payment_amount']);
     }
+
+    public function test_detect_from_uploaded_file_extracts_anthropic_english_invoice_fields(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'local', ['group' => 'documents']);
+
+        Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 2,
+            'status_id' => 1,
+            'name' => 'Anthropic, PBC',
+        ]);
+
+        $currency = Currency::query()->create([
+            'code' => 'USD',
+            'name' => 'US Dollar',
+            'symbol' => '$',
+            'status' => true,
+        ]);
+
+        $ocrText = implode("\n", [
+            'Invoice',
+            'Invoice number OWZPCFGE-0030',
+            'Date of issue July 29, 2026',
+            'Date due July 29, 2026',
+            'Anthropic, PBC',
+            '548 Market Street',
+            'San Francisco, California 94104',
+            'United States',
+            'support@anthropic.com',
+            'Bill to',
+            'REVISION ALPHA S.L.',
+            'Calle González Besada 39 4º B',
+            '33007 Oviedo Asturias',
+            'Spain',
+            '$200.00 USD due July 29, 2026',
+            'API Usage 1 $200.00 $200.00',
+            'Subtotal $200.00',
+            'Total $200.00',
+            'Amount due $200.00',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            app(\App\Services\ExpenseSupplierService::class),
+        );
+        $uploadedFile = UploadedFile::fake()->create('Invoice-OWZPCFGE-0030.pdf', 128, 'application/pdf');
+
+        $detected = $service->detectFromUploadedFile($uploadedFile, $team->id);
+
+        $this->assertSame('OWZPCFGE-0030', $detected['document_number']);
+        $this->assertSame('2026-07-29', $detected['date']);
+        $this->assertSame('2026-07-29', $detected['due_date']);
+        $this->assertSame('USD', $detected['currency_code']);
+        $this->assertSame($currency->id, $detected['currency_id']);
+        $this->assertSame(200.0, $detected['payment_amount']);
+        $this->assertNotEmpty($detected['lines']);
+        $this->assertSame(200.0, $detected['lines'][0]['base_amount']);
+    }
+
+    public function test_ai_mode_skips_ai_ocr_when_local_pdf_text_is_complete(): void
+    {
+        $team = Team::factory()->create([
+            'name' => 'REVISION ALPHA S.L.',
+        ]);
+        $team->setSetting('documents_ocr_mode', 'ai', ['group' => 'documents']);
+
+        Currency::query()->create([
+            'code' => 'USD',
+            'name' => 'US Dollar',
+            'symbol' => '$',
+            'status' => true,
+        ]);
+
+        $ocrText = implode("\n", [
+            'Invoice',
+            'Invoice number OWZPCFGE-0030',
+            'Date of issue July 29, 2026',
+            'Date due July 29, 2026',
+            'Anthropic, PBC',
+            '$200.00 USD due July 29, 2026',
+            'API Usage 1 200.00',
+            'Total $200.00',
+        ]);
+
+        $ocrService = $this->createMock(DocumentOcrService::class);
+        $ocrService->expects($this->once())
+            ->method('extractTextFromLocalFile')
+            ->willReturn($ocrText);
+
+        $aiOcrService = $this->createMock(DocumentAiOcrService::class);
+        $aiOcrService->expects($this->never())
+            ->method('extractTextFromLocalFile');
+
+        $supplierService = $this->createMock(\App\Services\ExpenseSupplierService::class);
+        $supplierService->expects($this->once())
+            ->method('resolveForDetectedInvoice')
+            ->willReturn([
+                'enterprise_id' => null,
+                'enterprise_name' => 'Anthropic, PBC',
+                'match' => ['status' => 'unmatched', 'source' => null, 'confidence' => 0.0],
+                'supplier' => [
+                    'legal_name' => 'Anthropic, PBC',
+                    'brand_name' => 'Anthropic',
+                    'identification_number' => null,
+                    'email' => 'support@anthropic.com',
+                    'phone' => null,
+                    'website' => null,
+                    'address' => null,
+                    'postal_code' => null,
+                    'locality' => null,
+                    'province' => null,
+                    'country' => 'US',
+                ],
+            ]);
+
+        $service = new ExpenseDocumentDetectionService(
+            $ocrService,
+            $aiOcrService,
+            $supplierService,
+        );
+
+        $detected = $service->detectFromUploadedFile(
+            UploadedFile::fake()->create('Invoice-OWZPCFGE-0030.pdf', 128, 'application/pdf'),
+            $team->id,
+        );
+
+        $this->assertSame('OWZPCFGE-0030', $detected['document_number']);
+        $this->assertSame('local', $detected['ocr']['engine_used']);
+    }
 }
