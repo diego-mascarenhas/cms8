@@ -270,7 +270,7 @@ PROMPT;
                 instructions: self::AI_EXTRACTION_INSTRUCTIONS,
                 messages: [],
                 tools: [],
-            )->prompt($text, [], provider: AiTasks::provider('ocr'));
+            )->prompt($text, [], provider: AiTasks::provider('ocr'), model: AiTasks::model('ocr'));
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: $teamId,

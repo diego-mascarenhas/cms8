@@ -37,15 +37,30 @@ return [
     */
     'default_task_provider' => env('AI_DEFAULT_TASK_PROVIDER', 'anthropic'),
 
+    'default_task_model' => env('AI_DEFAULT_TASK_MODEL', 'cheapest'),
+
     'tasks_failover' => env('AI_TASKS_FAILOVER') !== null
         ? array_values(array_filter(array_map('trim', explode(',', (string) env('AI_TASKS_FAILOVER')))))
         : ['openai'],
 
     'tasks' => [
-        'assistant' => [],
+        'assistant' => [
+            'provider' => env('AI_ASSISTANT_PROVIDER', 'anthropic'),
+            'model' => env('AI_ASSISTANT_MODEL', 'cheapest'),
+            'failover' => env('AI_ASSISTANT_FAILOVER') !== null
+                ? array_values(array_filter(array_map('trim', explode(',', (string) env('AI_ASSISTANT_FAILOVER')))))
+                : null,
+        ],
         'insight' => [],
-        'sentiment' => [],
-        'summary' => [],
+        'sentiment' => [
+            'provider' => env('AI_SENTIMENT_PROVIDER', 'deepseek'),
+        ],
+        'summary' => [
+            'provider' => env('AI_SUMMARY_PROVIDER', 'deepseek'),
+        ],
+        'shop' => [
+            'provider' => env('AI_SHOP_PROVIDER', 'deepseek'),
+        ],
         'template' => [],
         'vision' => [],
         'ocr' => [
@@ -68,7 +83,9 @@ return [
     */
     'assistant_provider' => env('AI_ASSISTANT_PROVIDER', 'anthropic'),
     'assistant_model' => env('AI_ASSISTANT_MODEL', 'cheapest'),
-    'assistant_failover' => env('AI_ASSISTANT_FAILOVER') ? array_values(array_filter(array_map('trim', explode(',', (string) env('AI_ASSISTANT_FAILOVER'))))) : null,
+    'assistant_failover' => env('AI_ASSISTANT_FAILOVER') !== null
+        ? array_values(array_filter(array_map('trim', explode(',', (string) env('AI_ASSISTANT_FAILOVER')))))
+        : ['openai'],
     'assistant_timeout' => (int) env('AI_ASSISTANT_TIMEOUT', 60),
 
     /*
@@ -128,6 +145,13 @@ return [
         'anthropic' => [
             'driver' => 'anthropic',
             'key' => env('ANTHROPIC_API_KEY'),
+            'models' => [
+                'text' => [
+                    'default' => env('AI_ANTHROPIC_DEFAULT_MODEL', 'claude-haiku-4-5-20251001'),
+                    'cheapest' => env('AI_ANTHROPIC_CHEAPEST_MODEL', 'claude-haiku-4-5-20251001'),
+                    'smartest' => env('AI_ANTHROPIC_SMARTEST_MODEL', 'claude-opus-4-6'),
+                ],
+            ],
         ],
 
         'azure' => [
