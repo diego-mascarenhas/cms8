@@ -123,4 +123,19 @@ return [
 
     'team_posts_index_ttl' => env('TEAM_POSTS_INDEX_CACHE_TTL', '-1'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public shop catalog API cache (GET /api/public-shop/{slug}[+ /products/{code}])
+    |--------------------------------------------------------------------------
+    |
+    | -1 (default): cache until invalidated (rememberForever + generation bump).
+    | 0: disabled (always hit the database).
+    | >0: TTL in seconds (safety net so old generation keys eventually expire).
+    |
+    | Uses the default cache store (set CACHE_DRIVER=redis in production).
+    |
+    */
+
+    'shop_catalog_ttl' => env('SHOP_CATALOG_CACHE_TTL', '-1'),
+
 ];

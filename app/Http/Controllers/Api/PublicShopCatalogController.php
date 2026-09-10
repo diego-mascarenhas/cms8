@@ -8,8 +8,10 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Services\ProductImageService;
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class PublicShopCatalogController extends Controller
@@ -22,29 +24,21 @@ class PublicShopCatalogController extends Controller
             return $this->shopNotFound();
         }
 
-        $products = Product::withoutGlobalScope('team')
-            ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
-            ->where('team_id', $team->id)
-            ->where('catalog_status', ProductCatalogStatus::Publish)
-            ->whereNotNull('code')
-            ->where('code', '!=', '')
-            ->orderByDesc('is_featured')
-            ->orderBy('name')
-            ->limit(200)
-            ->get();
+        $ttlSeconds = (int) config('cache.shop_catalog_ttl', 0);
+        if ($ttlSeconds === 0)
+        {
+            return response()->json($this->buildIndexPayload($team, $slug));
+        }
 
-        $transformed = $products
-            ->map(fn (Product $product): array => $this->transform($team, $product))
-            ->values();
+        $generation = ShopCatalogApiCache::currentGeneration((int) $team->id);
+        $cacheKey = ShopCatalogApiCache::indexCacheKey((int) $team->id, $generation, $slug);
+        $resolver = fn (): array => $this->buildIndexPayload($team, $slug);
 
-        return response()->json([
-            'success' => true,
-            'data' => array_merge($this->storefrontMeta($team, $slug), [
-                'categories' => $this->categoriesFromProducts($products),
-                'products' => $transformed,
-                'featured_products' => $this->featuredProducts($transformed),
-            ]),
-        ]);
+        $payload = $ttlSeconds < 0
+            ? Cache::rememberForever($cacheKey, $resolver)
+            : Cache::remember($cacheKey, $ttlSeconds, $resolver);
+
+        return response()->json($payload);
     }
 
     public function show(string $slug, string $code): JsonResponse
@@ -64,25 +58,87 @@ class PublicShopCatalogController extends Controller
             ], 404);
         }
 
+        $ttlSeconds = (int) config('cache.shop_catalog_ttl', 0);
+        if ($ttlSeconds === 0)
+        {
+            return $this->executeShow($team, $normalized);
+        }
+
+        $generation = ShopCatalogApiCache::currentGeneration((int) $team->id);
+        $cacheKey = ShopCatalogApiCache::productCacheKey((int) $team->id, $generation, $slug, $normalized);
+        $resolver = fn (): array => $this->buildShowPayload($team, $normalized);
+
+        $payload = $ttlSeconds < 0
+            ? Cache::rememberForever($cacheKey, $resolver)
+            : Cache::remember($cacheKey, $ttlSeconds, $resolver);
+
+        $status = ($payload['success'] ?? false) ? 200 : 404;
+
+        return response()->json($payload, $status);
+    }
+
+    /**
+     * @return array{success: true, data: array<string, mixed>}
+     */
+    private function buildIndexPayload(Team $team, string $slug): array
+    {
+        $products = Product::withoutGlobalScope('team')
+            ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
+            ->where('team_id', $team->id)
+            ->where('catalog_status', ProductCatalogStatus::Publish)
+            ->whereNotNull('code')
+            ->where('code', '!=', '')
+            ->orderByDesc('is_featured')
+            ->orderBy('name')
+            ->limit(200)
+            ->get();
+
+        $transformed = $products
+            ->map(fn (Product $product): array => $this->transform($team, $product))
+            ->values();
+
+        return [
+            'success' => true,
+            'data' => array_merge($this->storefrontMeta($team, $slug), [
+                'categories' => $this->categoriesFromProducts($products),
+                'products' => $transformed,
+                'featured_products' => $this->featuredProducts($transformed),
+            ]),
+        ];
+    }
+
+    private function executeShow(Team $team, string $normalizedCode): JsonResponse
+    {
+        $payload = $this->buildShowPayload($team, $normalizedCode);
+        $status = ($payload['success'] ?? false) ? 200 : 404;
+
+        return response()->json($payload, $status);
+    }
+
+    /**
+     * @return array{success: bool, message?: string, data?: array<string, mixed>}
+     */
+    private function buildShowPayload(Team $team, string $normalizedCode): array
+    {
         $product = Product::withoutGlobalScope('team')
             ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
             ->where('team_id', $team->id)
             ->where('catalog_status', ProductCatalogStatus::Publish)
-            ->whereRaw('LOWER(code) = ?', [$normalized])
+            ->whereRaw('LOWER(code) = ?', [$normalizedCode])
             ->first();
 
         if (! $product)
         {
-            return response()->json([
+            return [
                 'success' => false,
                 'message' => __('Product not found.'),
-            ], 404);
+            ];
         }
 
-        return response()->json([
+        return [
             'success' => true,
             'data' => $this->transform($team, $product),
-        ]);
+        ];
     }
 
     /**
