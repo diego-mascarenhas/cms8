@@ -85,7 +85,7 @@ TEXT;
                 tools: [],
             );
 
-            $response = $agent->prompt($userPrompt, [], AiTasks::provider('template'));
+            $response = $agent->prompt($userPrompt, [], AiTasks::provider('template'), AiTasks::model('template'));
 
             if ($team !== null)
             {

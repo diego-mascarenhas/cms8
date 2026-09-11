@@ -221,6 +221,7 @@ PROMPT;
                 'Identify the supplier on this purchase invoice. Prioritize logo and branding.',
                 [$uploadedFile],
                 provider: AiTasks::provider('vision'),
+                model: AiTasks::model('vision'),
             );
 
             TokenUsageLogService::logFromAiResponse(

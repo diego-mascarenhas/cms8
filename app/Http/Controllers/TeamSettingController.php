@@ -170,7 +170,7 @@ class TeamSettingController extends Controller
                     messages: [],
                     tools: [],
                 );
-                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'), AiTasks::model('summary'));
                 $summary = $response->text ?: '';
 
                 TokenUsageLogService::logFromAiResponse(

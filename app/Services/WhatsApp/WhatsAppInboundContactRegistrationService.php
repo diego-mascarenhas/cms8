@@ -220,7 +220,7 @@ PROMPT;
                 instructions: self::FULL_NAME_INSTRUCTIONS,
                 messages: [],
                 tools: [],
-            )->prompt($name, [], AiTasks::provider('registration'));
+            )->prompt($name, [], AiTasks::provider('registration'), AiTasks::model('registration'));
 
             if ($teamId !== null)
             {

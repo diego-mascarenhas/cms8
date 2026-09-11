@@ -336,6 +336,7 @@ class ProductController extends Controller
                 ? (int) $validated['assortment_size']
                 : null,
             'whatsapp_enabled' => (bool) (int) $validated['whatsapp_enabled'],
+            'is_featured' => (bool) (int) ($validated['is_featured'] ?? 0),
             'image' => $validated['image'] ?? null,
         ];
     }

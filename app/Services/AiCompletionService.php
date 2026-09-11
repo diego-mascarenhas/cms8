@@ -60,6 +60,7 @@ class AiCompletionService
                 $prompt,
                 [],
                 AiTasks::provider('assistant'),
+                AiTasks::model('assistant'),
             );
         } catch (\Throwable $e)
         {

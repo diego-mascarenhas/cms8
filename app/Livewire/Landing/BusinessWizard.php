@@ -317,7 +317,7 @@ class BusinessWizard extends Component
             {
                 $defaultInstruction = 'Eres un consultor de negocio. Con el contexto que te proporcionan (datos del negocio, problemática actual y arquetipo humano por fecha de nacimiento), genera un resumen muy conciso (máximo 1 párrafo corto o 3-5 puntos) de lo que esta empresa necesita para mejorar. Sé directo y práctico.';
                 $agent = agent(instructions: $defaultInstruction, messages: [], tools: []);
-                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'));
+                $response = $agent->prompt($userMessage, [], AiTasks::provider('summary'), AiTasks::model('summary'));
                 $this->summary = $response->text ?? '';
             }
             $aiFinishedAt = now();
@@ -797,7 +797,7 @@ PROMPT;
         {
             $aiStartedAt = now();
             $agent = agent(instructions: $instruction, messages: [], tools: []);
-            $response = $agent->prompt($fullContext, [], AiTasks::provider('insight'));
+            $response = $agent->prompt($fullContext, [], AiTasks::provider('insight'), AiTasks::model('insight'));
             $aiFinishedAt = now();
             $text = $response->text ? trim($response->text) : null;
 

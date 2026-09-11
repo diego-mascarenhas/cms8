@@ -99,6 +99,19 @@ class LookupController extends Controller
                     ['key' => 'cancelled', 'label' => __('Cancelado')],
                 ],
                 'cart_channels' => $this->enumOptions(ShoppingCartChannel::cases()),
+                'catalog_slug' => $team->publicCatalogPathSlug(),
+                'catalog_url' => $team->publicCatalogShopUrl(),
+                'shop_name' => (static function () use ($team): ?string
+                {
+                    $config = $team->getDecodedBusinessConfig();
+                    $name = trim((string) ($config['business_name'] ?? ''));
+                    if ($name === '')
+                    {
+                        $name = trim((string) $team->name);
+                    }
+
+                    return $name !== '' ? $name : null;
+                })(),
             ],
         ]);
     }

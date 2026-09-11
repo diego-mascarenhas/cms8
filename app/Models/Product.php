@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProductCatalogStatus;
 use App\Enums\ProductStockStatus;
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,7 @@ class Product extends Model
         'assortment_size',
         'configurator',
         'whatsapp_enabled',
+        'is_featured',
         'team_id',
         'image',
     ];
@@ -46,6 +48,7 @@ class Product extends Model
         'sale_price' => 'decimal:2',
         'status' => 'boolean',
         'whatsapp_enabled' => 'boolean',
+        'is_featured' => 'boolean',
         'available_in_all_stores' => 'boolean',
         'manage_stock' => 'boolean',
         'stock_quantity' => 'integer',
@@ -79,6 +82,17 @@ class Product extends Model
 
             $product->status = $product->catalog_status === ProductCatalogStatus::Publish;
         });
+
+        $bumpCatalog = function (Product $product): void
+        {
+            if ($product->team_id)
+            {
+                ShopCatalogApiCache::bumpTeam((int) $product->team_id);
+            }
+        };
+
+        static::saved($bumpCatalog);
+        static::deleted($bumpCatalog);
     }
 
     /**

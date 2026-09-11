@@ -1963,6 +1963,15 @@
                 if ($('#currency_id option[value="' + currencyValue + '"]').length > 0) {
                     $('#currency_id').val(currencyValue).trigger('change');
                 }
+            } else if (data.currency_code) {
+                var currencyCode = String(data.currency_code).toUpperCase();
+                var $currencyOption = $('#currency_id option').filter(function () {
+                    return $.trim($(this).text()).toUpperCase().indexOf(currencyCode + ' ') === 0;
+                }).first();
+
+                if ($currencyOption.length) {
+                    $('#currency_id').val($currencyOption.val()).trigger('change');
+                }
             }
 
             if (Array.isArray(data.lines) && data.lines.length > 0) {

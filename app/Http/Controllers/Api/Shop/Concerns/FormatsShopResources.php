@@ -123,6 +123,7 @@ trait FormatsShopResources
                 ->values()
                 ->all(),
             'whatsapp_enabled' => (bool) $product->whatsapp_enabled,
+            'is_featured' => (bool) $product->is_featured,
             'image' => $product->image,
             'images' => app(ProductImageService::class)->variantsForUrl($product->image),
             'status' => (bool) $product->status,
@@ -247,6 +248,7 @@ trait FormatsShopResources
                 ? (int) $validated['assortment_size']
                 : null,
             'whatsapp_enabled' => (bool) (int) $validated['whatsapp_enabled'],
+            'is_featured' => (bool) (int) ($validated['is_featured'] ?? 0),
             'image' => $validated['image'] ?? null,
         ];
     }

@@ -200,7 +200,7 @@ class PromptController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($userMessage, $attachments, AiTasks::provider('assistant'));
+            $response = $agent->prompt($userMessage, $attachments, AiTasks::provider('assistant'), AiTasks::model('assistant'));
             $text = $response->text ?: '';
         } catch (\Throwable $e)
         {
@@ -282,7 +282,7 @@ class PromptController extends Controller
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($routerMessage, [], AiTasks::provider('assistant'));
+            $response = $agent->prompt($routerMessage, [], AiTasks::provider('assistant'), AiTasks::model('assistant'));
             $text = trim($response->text ?: '');
         } catch (\Throwable $e)
         {

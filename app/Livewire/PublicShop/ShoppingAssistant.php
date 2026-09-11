@@ -243,7 +243,7 @@ TXT;
                 messages: [],
                 tools: [],
             );
-            $res = $ag->prompt($instructions, [], AiTasks::provider('assistant'));
+            $res = $ag->prompt($instructions, [], AiTasks::provider('shop'), AiTasks::model('shop'));
             $full = trim((string) ($res->text ?? ''));
         } catch (\Throwable $e)
         {

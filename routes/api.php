@@ -901,7 +901,7 @@ Route::middleware('team.token')->prefix('team')->group(function ()
 
     // List prompts available for the team (module_prompts, modules enabled for team)
     Route::get('prompts', [TeamPromptController::class, 'list'])->name('api.team.prompts.list');
-    // Invoke prompt by prompt_id (DB) or prompt_name (file); body: test_message required
+    // Invoke prompt by prompt_id or prompt_name (module_prompts); body: test_message required
     Route::post('prompt', TeamPromptController::class)->name('api.team.prompt');
     // Assistant chat (router + flows); body: message required, optional prompt_key
     Route::post('assistant/chat', [TeamAssistantController::class, 'chat'])->name('api.team.assistant.chat');

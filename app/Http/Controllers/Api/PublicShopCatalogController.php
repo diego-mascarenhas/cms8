@@ -8,8 +8,10 @@ use App\Models\Product;
 use App\Models\Store;
 use App\Models\Team;
 use App\Services\ProductImageService;
+use App\Support\ShopCatalogApiCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class PublicShopCatalogController extends Controller
@@ -22,27 +24,21 @@ class PublicShopCatalogController extends Controller
             return $this->shopNotFound();
         }
 
-        $products = Product::withoutGlobalScope('team')
-            ->with(['brand', 'currency', 'category', 'store', 'stores'])
-            ->where('team_id', $team->id)
-            ->where('catalog_status', ProductCatalogStatus::Publish)
-            ->whereNotNull('code')
-            ->where('code', '!=', '')
-            ->orderBy('name')
-            ->limit(200)
-            ->get();
+        $ttlSeconds = (int) config('cache.shop_catalog_ttl', 0);
+        if ($ttlSeconds === 0)
+        {
+            return response()->json($this->buildIndexPayload($team, $slug));
+        }
 
-        $transformed = $products
-            ->map(fn (Product $product): array => $this->transform($team, $product))
-            ->values();
+        $generation = ShopCatalogApiCache::currentGeneration((int) $team->id);
+        $cacheKey = ShopCatalogApiCache::indexCacheKey((int) $team->id, $generation, $slug);
+        $resolver = fn (): array => $this->buildIndexPayload($team, $slug);
 
-        return response()->json([
-            'success' => true,
-            'data' => array_merge($this->storefrontMeta($team, $slug), [
-                'categories' => $this->categoriesFromProducts($products),
-                'products' => $transformed,
-            ]),
-        ]);
+        $payload = $ttlSeconds < 0
+            ? Cache::rememberForever($cacheKey, $resolver)
+            : Cache::remember($cacheKey, $ttlSeconds, $resolver);
+
+        return response()->json($payload);
     }
 
     public function show(string $slug, string $code): JsonResponse
@@ -62,25 +58,87 @@ class PublicShopCatalogController extends Controller
             ], 404);
         }
 
-        $product = Product::withoutGlobalScope('team')
-            ->with(['brand', 'currency', 'category', 'store', 'stores'])
+        $ttlSeconds = (int) config('cache.shop_catalog_ttl', 0);
+        if ($ttlSeconds === 0)
+        {
+            return $this->executeShow($team, $normalized);
+        }
+
+        $generation = ShopCatalogApiCache::currentGeneration((int) $team->id);
+        $cacheKey = ShopCatalogApiCache::productCacheKey((int) $team->id, $generation, $slug, $normalized);
+        $resolver = fn (): array => $this->buildShowPayload($team, $normalized);
+
+        $payload = $ttlSeconds < 0
+            ? Cache::rememberForever($cacheKey, $resolver)
+            : Cache::remember($cacheKey, $ttlSeconds, $resolver);
+
+        $status = ($payload['success'] ?? false) ? 200 : 404;
+
+        return response()->json($payload, $status);
+    }
+
+    /**
+     * @return array{success: true, data: array<string, mixed>}
+     */
+    private function buildIndexPayload(Team $team, string $slug): array
+    {
+        $products = Product::withoutGlobalScope('team')
+            ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
             ->where('team_id', $team->id)
             ->where('catalog_status', ProductCatalogStatus::Publish)
-            ->whereRaw('LOWER(code) = ?', [$normalized])
+            ->whereNotNull('code')
+            ->where('code', '!=', '')
+            ->orderByDesc('is_featured')
+            ->orderBy('name')
+            ->limit(200)
+            ->get();
+
+        $transformed = $products
+            ->map(fn (Product $product): array => $this->transform($team, $product))
+            ->values();
+
+        return [
+            'success' => true,
+            'data' => array_merge($this->storefrontMeta($team, $slug), [
+                'categories' => $this->categoriesFromProducts($products),
+                'products' => $transformed,
+                'featured_products' => $this->featuredProducts($transformed),
+            ]),
+        ];
+    }
+
+    private function executeShow(Team $team, string $normalizedCode): JsonResponse
+    {
+        $payload = $this->buildShowPayload($team, $normalizedCode);
+        $status = ($payload['success'] ?? false) ? 200 : 404;
+
+        return response()->json($payload, $status);
+    }
+
+    /**
+     * @return array{success: bool, message?: string, data?: array<string, mixed>}
+     */
+    private function buildShowPayload(Team $team, string $normalizedCode): array
+    {
+        $product = Product::withoutGlobalScope('team')
+            ->with(['brand', 'currency', 'category', 'store', 'stores', 'options.values'])
+            ->where('team_id', $team->id)
+            ->where('catalog_status', ProductCatalogStatus::Publish)
+            ->whereRaw('LOWER(code) = ?', [$normalizedCode])
             ->first();
 
         if (! $product)
         {
-            return response()->json([
+            return [
                 'success' => false,
                 'message' => __('Product not found.'),
-            ], 404);
+            ];
         }
 
-        return response()->json([
+        return [
             'success' => true,
             'data' => $this->transform($team, $product),
-        ]);
+        ];
     }
 
     /**
@@ -124,7 +182,12 @@ class PublicShopCatalogController extends Controller
         $whatsapp = trim((string) (data_get($store?->data, 'whatsapp') ?: $team->getWhatsAppFrom() ?: ''));
         $address = trim((string) ($store?->address ?: ($config['business_address'] ?? '')));
         $notes = trim((string) (data_get($store?->data, 'notes') ?: ''));
-        $logo = $this->publicImageUrl($config['business_logo'] ?? $config['logo'] ?? null);
+        $logo = $this->publicImageUrl(
+            data_get($config, '_logo.url')
+            ?? data_get($config, '_logo.path')
+            ?? ($config['business_logo'] ?? null)
+            ?? ($config['logo'] ?? null),
+        );
         $storeBanner = $this->publicImageUrl(data_get($store?->data, 'banner'));
         $businessBanner = $this->publicImageUrl($config['business_banner'] ?? $config['banner'] ?? null);
 
@@ -211,6 +274,21 @@ class PublicShopCatalogController extends Controller
         $trimmed = trim((string) ($value ?? ''));
 
         return $trimmed !== '' ? $trimmed : null;
+    }
+
+    /**
+     * Featured strip: only products marked is_featured in the admin form.
+     *
+     * @param  Collection<int, array<string, mixed>>  $products
+     * @return list<array<string, mixed>>
+     */
+    private function featuredProducts(Collection $products): array
+    {
+        return $products
+            ->filter(fn (array $product): bool => (bool) ($product['is_featured'] ?? false))
+            ->take(24)
+            ->values()
+            ->all();
     }
 
     /**
@@ -339,14 +417,46 @@ class PublicShopCatalogController extends Controller
             'short_description' => $product->short_description ? trim(strip_tags((string) $product->short_description)) : null,
             'price' => $this->priceLine($product),
             'price_amount' => $showsPrice ? (float) $product->currentSellingPrice() : null,
+            'compare_at_price' => $this->compareAtPriceLine($product),
+            'compare_at_price_amount' => $showsPrice && $product->isOnSale() ? (float) $product->price : null,
+            'on_sale' => $showsPrice && $product->isOnSale(),
             'currency_symbol' => $showsPrice ? ($product->currency?->symbol ?? '$') : null,
             'image' => $image,
             'images' => $images,
+            'options' => $this->publicOptions($product),
             'configurator' => $this->normalizeConfigurator($product->configurator),
+            'is_featured' => (bool) $product->is_featured,
             'shop_name' => $this->shopName($team),
             'shop_url' => $team->publicCatalogShopUrl(),
             'url' => $team->publicCatalogProductUrl($code),
         ];
+    }
+
+    /**
+     * @return list<array{name: string, values: list<string>}>
+     */
+    private function publicOptions(Product $product): array
+    {
+        $options = [];
+        foreach ($product->options as $option)
+        {
+            $values = $option->values
+                ->sortBy('position')
+                ->map(fn ($value): string => trim((string) $value->value))
+                ->filter(fn (string $value): bool => $value !== '')
+                ->values()
+                ->all();
+            if ($values === [])
+            {
+                continue;
+            }
+            $options[] = [
+                'name' => (string) $option->name,
+                'values' => $values,
+            ];
+        }
+
+        return $options;
     }
 
     /**
@@ -455,6 +565,18 @@ class PublicShopCatalogController extends Controller
         $symbol = $product->currency?->symbol ?? '$';
 
         return $symbol.number_format($product->currentSellingPrice(), 2, ',', '.');
+    }
+
+    private function compareAtPriceLine(Product $product): ?string
+    {
+        if (! $product->catalogShowsPrice() || ! $product->isOnSale())
+        {
+            return null;
+        }
+
+        $symbol = $product->currency?->symbol ?? '$';
+
+        return $symbol.number_format((float) $product->price, 2, ',', '.');
     }
 
     private function publicImageUrl(mixed $image): ?string

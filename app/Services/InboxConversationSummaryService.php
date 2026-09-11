@@ -86,7 +86,7 @@ PROMPT;
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt($thread, [], AiTasks::provider('summary'));
+            $response = $agent->prompt($thread, [], AiTasks::provider('summary'), AiTasks::model('summary'));
 
             TokenUsageLogService::logFromAiResponse(
                 teamId: $teamId,
