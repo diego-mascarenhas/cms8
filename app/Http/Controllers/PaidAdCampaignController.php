@@ -14,6 +14,7 @@ use App\Models\AdPlatformConnection;
 use App\Models\PaidAdAudience;
 use App\Models\PaidAdCampaign;
 use App\Services\PaidAdMetricsAggregator;
+use App\Services\PaidAdPublishOrchestrator;
 use App\Services\PaidAds\PaidAdCampaignCalendarSyncer;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -145,9 +146,10 @@ class PaidAdCampaignController extends Controller
     {
         $this->ensureModule();
 
-        $campaign = PaidAdCampaign::query()->findOrFail($id);
+        $campaign = PaidAdCampaign::query()->with('platforms.connection')->findOrFail($id);
         $this->authorize('publish', $campaign);
 
+        app(PaidAdPublishOrchestrator::class)->pause($campaign);
         $campaign->forceFill(['status' => PaidAdCampaignStatus::Paused])->save();
 
         return back()->with('success', __('Campaign paused.'));
@@ -157,9 +159,10 @@ class PaidAdCampaignController extends Controller
     {
         $this->ensureModule();
 
-        $campaign = PaidAdCampaign::query()->findOrFail($id);
+        $campaign = PaidAdCampaign::query()->with('platforms.connection')->findOrFail($id);
         $this->authorize('publish', $campaign);
 
+        app(PaidAdPublishOrchestrator::class)->resume($campaign);
         $campaign->forceFill(['status' => PaidAdCampaignStatus::Active])->save();
 
         return back()->with('success', __('Campaign resumed.'));

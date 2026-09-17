@@ -1,6 +1,6 @@
 @php
     $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
-    $budgetService->applyTeamTokenPricing($project->team);
+    $budgetService->applyProjectTokenPresentation($project);
     $discriminateTokens = $budgetService->showsTokenLines();
     $includeTokens = $budgetService->includesTokenCharges();
     $projectName = trim((string) ($project->real_name ?: $project->name));

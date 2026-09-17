@@ -24,10 +24,11 @@ trait ChecksTeamModule
     }
 
     /**
-     * Activate a catalog module for the team when missing.
+     * Best-effort enable of a catalog module for the Humano menu.
      *
-     * These flags drive the Humano backend menu. Idoneo apps should not
-     * be blocked by them — first API use turns the module on.
+     * Idoneo SPAs (Ads, Shop, Mailer, …) must keep working even when the
+     * team flag is off or the catalog row is missing. Those flags only
+     * control which items appear in the cms8/Humano menu.
      */
     protected function ensureTeamModule(Team $team, string $moduleKey): ?JsonResponse
     {
@@ -36,16 +37,9 @@ trait ChecksTeamModule
             return null;
         }
 
-        if ($team->enableModule($moduleKey))
-        {
-            $team->unsetRelation('modules');
+        $team->enableModule($moduleKey);
+        $team->unsetRelation('modules');
 
-            return null;
-        }
-
-        return response()->json([
-            'success' => false,
-            'message' => __('Este módulo no está disponible en tu plan.'),
-        ], 403);
+        return null;
     }
 }

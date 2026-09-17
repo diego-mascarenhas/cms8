@@ -169,7 +169,7 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(0.0, $service->normalizeAiUsagePercent(-10));
         $this->assertSame(100.0, $service->normalizeAiUsagePercent(150));
         $this->assertSame(ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT, $service->normalizeAiUsagePercent(null));
-        $this->assertSame(70.0, ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
+        $this->assertSame(30.0, ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT);
     }
 
     #[Test]
@@ -414,5 +414,86 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
         $this->assertSame(1000, $withoutTokens['grand_total']);
         $this->assertSame(1000, $withoutTokens['payable_total']);
         $this->assertFalse($withoutTokens['token_include']);
+    }
+
+    #[Test]
+    public function it_uses_project_token_flags_over_team_defaults(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'discount' => 0,
+            'price' => null,
+            'data' => [
+                'ai_usage_percent' => 0,
+                'token_include' => false,
+                'token_discriminate' => true,
+                'token_consumption' => ['savings_percent' => 57],
+                'suggested_tasks' => [
+                    [
+                        'title' => 'Module A',
+                        'included' => true,
+                        'estimated_hours' => 1,
+                        'unit_price' => 1000,
+                        'estimated_tokens' => 1_000_000,
+                    ],
+                ],
+            ],
+        ]);
+
+        $totals = $service->setTokenInclude(true)->setTokenDiscriminate(true)->computeQuoteTotals($project);
+
+        $this->assertFalse($totals['token_include']);
+        $this->assertFalse($totals['token_discriminate']);
+        $this->assertSame(1000, $totals['grand_total']);
+    }
+
+    #[Test]
+    public function it_uses_project_token_model_rates(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'data' => [
+                'token_include' => true,
+                'token_model' => [
+                    'id' => 'ibm-granite/granite-4.2-8b',
+                    'name' => 'IBM: Granite 4.2 8B',
+                    'prompt_per_million' => 0.1,
+                    'completion_per_million' => 0.15,
+                ],
+            ],
+        ]);
+
+        $service->applyProjectTokenPresentation($project);
+
+        $this->assertSame(0.1, $service->tokenInputRate());
+        $this->assertSame(0.15, $service->tokenOutputRate());
+    }
+
+    #[Test]
+    public function it_derives_ai_usage_percent_from_the_token_model(): void
+    {
+        $service = new ProjectBudgetSpecService;
+
+        $this->assertSame(
+            $service->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
+            $service->resolveProjectAiUsagePercent([]),
+        );
+        $this->assertSame(0.0, $service->setTokenInclude(false)->resolveProjectAiUsagePercent([]));
+        $service->setTokenInclude(true);
+
+        $this->assertSame(0.0, $service->aiUsagePercentFromTokenModel([
+            'prompt_per_million' => 0,
+            'completion_per_million' => 0,
+        ]));
+        $this->assertSame(30.0, $service->aiUsagePercentFromTokenModel([
+            'prompt_per_million' => 3,
+            'completion_per_million' => 3,
+        ]));
+        $this->assertSame(55.0, $service->aiUsagePercentFromTokenModel([
+            'prompt_per_million' => 30,
+            'completion_per_million' => 30,
+        ]));
+        $this->assertSame('openai/gpt-4.1', $service->normalizeTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL)['id'] ?? null);
+        $this->assertNull($service->normalizeTokenModel(['name' => 'Broken']));
     }
 }

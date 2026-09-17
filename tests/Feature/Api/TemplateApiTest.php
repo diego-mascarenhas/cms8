@@ -182,7 +182,7 @@ class TemplateApiTest extends TestCase
         $this->assertTrue($team->fresh()->hasModule('templates'));
     }
 
-    public function test_templates_forbidden_when_catalog_module_missing(): void
+    public function test_templates_work_when_catalog_module_missing(): void
     {
         if (! Features::hasTeamFeatures())
         {
@@ -198,8 +198,8 @@ class TemplateApiTest extends TestCase
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/templates')
-            ->assertForbidden()
-            ->assertJsonPath('success', false);
+            ->assertOk()
+            ->assertJsonPath('success', true);
 
         $this->assertFalse($team->fresh()->hasModule('templates'));
     }

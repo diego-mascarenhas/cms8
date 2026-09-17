@@ -106,4 +106,103 @@ class AdPlatformGatewayTest extends TestCase
         $this->assertSame(5.0, $metrics[0]->spend);
         $this->assertSame(4, $metrics[0]->conversions);
     }
+
+    public function test_google_gateway_publishes_search_campaign_for_argentina(): void
+    {
+        Http::fake(function (\Illuminate\Http\Client\Request $request)
+        {
+            if (str_contains($request->url(), 'googleAds:mutate'))
+            {
+                return Http::response([
+                    'mutateOperationResponses' => [
+                        ['campaignBudgetResult' => ['resourceName' => 'customers/123/campaignBudgets/1']],
+                        ['campaignResult' => ['resourceName' => 'customers/123/campaigns/456']],
+                    ],
+                ], 200);
+            }
+
+            return Http::response(['results' => []], 200);
+        });
+
+        $campaign = PaidAdCampaign::factory()->create([
+            'name' => 'PF | Search | AR | Tienda WhatsApp',
+            'budget_amount' => 10,
+            'currency' => 'EUR',
+            'targeting' => [
+                'locations' => 'Argentina',
+                'interests' => 'tienda online whatsapp, menu digital qr',
+            ],
+            'creative' => [
+                'headline' => 'Pedidos por WhatsApp',
+                'body' => 'Creá tu tienda y recibí pedidos por WhatsApp. Sin comisión por venta.',
+                'url' => 'https://pedimosfacil.com/register',
+            ],
+        ]);
+        $connection = AdPlatformConnection::factory()->create([
+            'team_id' => $campaign->team_id,
+            'platform' => AdPlatform::GoogleAds,
+            'ad_account_id' => '123-456-7890',
+        ]);
+        $campaignPlatform = PaidAdCampaignPlatform::factory()->create([
+            'paid_ad_campaign_id' => $campaign->id,
+            'ad_platform_connection_id' => $connection->id,
+            'platform' => AdPlatform::GoogleAds,
+        ]);
+
+        $result = app(GoogleAdsGateway::class)->publish($campaignPlatform->load(['connection', 'campaign']));
+
+        $this->assertTrue($result->success);
+        $this->assertSame('customers/123/campaigns/456', $result->externalCampaignId);
+
+        $mutate = collect(Http::recorded())
+            ->first(fn (array $pair) => str_contains($pair[0]->url(), 'googleAds:mutate'));
+
+        $this->assertNotNull($mutate);
+        $payload = $mutate[0]->data();
+
+        $this->assertSame(10_000_000, data_get($payload, 'mutateOperations.0.campaignBudgetOperation.create.amountMicros'));
+        $this->assertSame(
+            'geoTargetConstants/2032',
+            data_get($payload, 'mutateOperations.2.campaignCriterionOperation.create.location.geoTargetConstant'),
+        );
+        $this->assertSame(
+            'tienda online whatsapp',
+            data_get($payload, 'mutateOperations.5.adGroupCriterionOperation.create.keyword.text'),
+        );
+        $this->assertSame(
+            ['https://pedimosfacil.com/register'],
+            data_get($payload, 'mutateOperations.11.adGroupAdOperation.create.ad.finalUrls'),
+        );
+        $this->assertSame(
+            'SEARCH',
+            data_get($payload, 'mutateOperations.1.campaignOperation.create.advertisingChannelType'),
+        );
+    }
+
+    public function test_google_gateway_pauses_published_campaign(): void
+    {
+        Http::fake([
+            'googleads.googleapis.com/*/campaigns:mutate' => Http::response(['results' => [[]]], 200),
+        ]);
+
+        $campaign = PaidAdCampaign::factory()->create();
+        $connection = AdPlatformConnection::factory()->create([
+            'team_id' => $campaign->team_id,
+            'platform' => AdPlatform::GoogleAds,
+            'ad_account_id' => '1234567890',
+        ]);
+        $campaignPlatform = PaidAdCampaignPlatform::factory()->published('customers/1234567890/campaigns/456')->create([
+            'paid_ad_campaign_id' => $campaign->id,
+            'ad_platform_connection_id' => $connection->id,
+            'platform' => AdPlatform::GoogleAds,
+        ]);
+
+        app(GoogleAdsGateway::class)->pause($campaignPlatform->load('connection'));
+
+        Http::assertSent(function (\Illuminate\Http\Client\Request $request)
+        {
+            return str_contains($request->url(), 'campaigns:mutate')
+                && data_get($request->data(), 'operations.0.update.status') === 'PAUSED';
+        });
+    }
 }

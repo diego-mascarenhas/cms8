@@ -20,12 +20,28 @@ class PublishPaidAdCampaignTest extends TestCase
     public function test_orchestrator_publishes_google_campaign(): void
     {
         Http::fake([
-            'googleads.googleapis.com/*' => Http::response([
-                'results' => [['resourceName' => 'customers/123/campaigns/456']],
+            'googleads.googleapis.com/*/googleAds:mutate' => Http::response([
+                'mutateOperationResponses' => [
+                    ['campaignBudgetResult' => ['resourceName' => 'customers/123/campaignBudgets/1']],
+                    ['campaignResult' => ['resourceName' => 'customers/123/campaigns/456']],
+                ],
             ], 200),
+            'googleads.googleapis.com/*' => Http::response(['results' => []], 200),
         ]);
 
-        $campaign = PaidAdCampaign::factory()->create();
+        $campaign = PaidAdCampaign::factory()->create([
+            'budget_amount' => 10,
+            'currency' => 'EUR',
+            'targeting' => [
+                'locations' => 'Argentina',
+                'interests' => 'tienda online whatsapp, catalogo digital',
+            ],
+            'creative' => [
+                'headline' => 'Pedidos por WhatsApp',
+                'body' => 'Creá tu tienda y recibí pedidos por WhatsApp.',
+                'url' => 'https://pedimosfacil.com/register',
+            ],
+        ]);
         $connection = AdPlatformConnection::factory()->create([
             'team_id' => $campaign->team_id,
             'platform' => AdPlatform::GoogleAds,
@@ -53,7 +69,19 @@ class PublishPaidAdCampaignTest extends TestCase
             'googleads.googleapis.com/*' => Http::response(['error' => 'bad request'], 400),
         ]);
 
-        $campaign = PaidAdCampaign::factory()->create();
+        $campaign = PaidAdCampaign::factory()->create([
+            'budget_amount' => 10,
+            'currency' => 'EUR',
+            'targeting' => [
+                'locations' => 'Argentina',
+                'interests' => 'tienda online whatsapp, catalogo digital',
+            ],
+            'creative' => [
+                'headline' => 'Pedidos por WhatsApp',
+                'body' => 'Creá tu tienda y recibí pedidos por WhatsApp.',
+                'url' => 'https://pedimosfacil.com/register',
+            ],
+        ]);
         $connection = AdPlatformConnection::factory()->create([
             'team_id' => $campaign->team_id,
             'platform' => AdPlatform::GoogleAds,
