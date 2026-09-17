@@ -12,6 +12,7 @@ use App\Http\Requests\SuggestPaidAdImageRequest;
 use App\Http\Requests\UpdatePaidAdCampaignRequest;
 use App\Jobs\PublishPaidAdCampaignJob;
 use App\Jobs\SyncPaidAdMetricsJob;
+use App\Services\PaidAdPublishOrchestrator;
 use App\Services\PaidAds\PaidAdCampaignApiService;
 use App\Services\PaidAds\PaidAdCopySuggestionService;
 use App\Services\PaidAds\PaidAdImageGenerationService;
@@ -434,6 +435,17 @@ class PaidAdCampaignController extends Controller
                 'success' => false,
                 'message' => __('Campaign not found'),
             ], 404);
+        }
+
+        $orchestrator = app(PaidAdPublishOrchestrator::class);
+        if ($status === PaidAdCampaignStatus::Paused)
+        {
+            $orchestrator->pause($campaign);
+        }
+
+        if ($status === PaidAdCampaignStatus::Active)
+        {
+            $orchestrator->resume($campaign);
         }
 
         $campaign->forceFill(['status' => $status])->save();

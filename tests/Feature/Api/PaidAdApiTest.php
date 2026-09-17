@@ -79,6 +79,27 @@ class PaidAdApiTest extends TestCase
         $this->assertTrue($team->fresh()->hasModule('paid_ads'));
     }
 
+    public function test_paid_ads_work_when_catalog_module_is_missing(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $token = $user->createToken('idoneo-ads-no-catalog')->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/paid-ads')
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertFalse($team->fresh()->hasModule('paid_ads'));
+    }
+
     public function test_can_crud_campaign_and_publish(): void
     {
         Queue::fake();

@@ -39,6 +39,16 @@ class PaidAdPublishOrchestrator
         return ['published' => $published, 'failed' => $failed];
     }
 
+    public function pause(PaidAdCampaign $campaign): void
+    {
+        $this->setPlatformStatuses($campaign, pause: true);
+    }
+
+    public function resume(PaidAdCampaign $campaign): void
+    {
+        $this->setPlatformStatuses($campaign, pause: false);
+    }
+
     public function publishPlatform(PaidAdCampaignPlatform $campaignPlatform): bool
     {
         $campaignPlatform->forceFill([
@@ -48,7 +58,9 @@ class PaidAdPublishOrchestrator
 
         try
         {
-            $result = $this->gateways->make($campaignPlatform->platform)->publish($campaignPlatform);
+            $result = $this->gateways->make($campaignPlatform->platform)
+                ->forTeam($campaignPlatform->connection?->team ?? $campaign->team)
+                ->publish($campaignPlatform);
         } catch (Throwable $e)
         {
             $campaignPlatform->forceFill([
@@ -87,5 +99,26 @@ class PaidAdPublishOrchestrator
         }
 
         return PaidAdCampaignStatus::Active;
+    }
+
+    private function setPlatformStatuses(PaidAdCampaign $campaign, bool $pause): void
+    {
+        $campaign->loadMissing('platforms.connection');
+
+        foreach ($campaign->platforms as $campaignPlatform)
+        {
+            try
+            {
+                $gateway = $this->gateways->make($campaignPlatform->platform)
+                    ->forTeam($campaignPlatform->connection?->team ?? $campaign->team);
+
+                $pause
+                    ? $gateway->pause($campaignPlatform)
+                    : $gateway->resume($campaignPlatform);
+            } catch (Throwable)
+            {
+                continue;
+            }
+        }
     }
 }
