@@ -4,6 +4,7 @@
 ; Colas:
 ;   task-communications — emails del Kanban (prioridad alta)
 ;   notifications       — notificaciones a contactos
+;   communications      — Communications transaccionales (email, WhatsApp, SMS)
 ;   mailer              — mensajes / reenvíos
 ;   campaign            — envíos masivos de campaña
 ;
@@ -11,7 +12,7 @@
 
 [program:humano-queue-email]
 directory=/home/forge/staging.humano.app
-command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,communications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
 process_name=%(program_name)s_%(process_num)02d
 autostart=true
 autorestart=true

@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\BusinessProfileController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\FareController;
@@ -657,6 +658,14 @@ Route::middleware('auth.api')->group(function ()
     Route::get('mailer/sender', [MailerSenderController::class, 'show']);
     Route::put('mailer/sender', [MailerSenderController::class, 'update']);
 
+    // Communications (idoneo-communications SPA)
+    Route::get('communications/stats', [CommunicationController::class, 'stats']);
+    Route::get('communications/channels', [CommunicationController::class, 'channels']);
+    Route::get('communications', [CommunicationController::class, 'index']);
+    Route::post('communications', [CommunicationController::class, 'store']);
+    Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id');
+    Route::post('communications/{id}/retry', [CommunicationController::class, 'retry'])->whereNumber('id');
+
     // Templates (idoneo-mailer SPA)
     Route::get('templates', [TemplateController::class, 'index']);
     Route::post('templates', [TemplateController::class, 'store']);
@@ -906,6 +915,8 @@ Route::middleware('team.token')->prefix('team')->group(function ()
     // Assistant chat (router + flows); body: message required, optional prompt_key
     Route::post('assistant/chat', [TeamAssistantController::class, 'chat'])->name('api.team.assistant.chat');
     Route::post('whatsapp/send', [TeamWhatsAppController::class, 'send'])->name('api.team.whatsapp.send');
+    Route::post('communications', [CommunicationController::class, 'store'])->name('api.team.communications.store');
+    Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id')->name('api.team.communications.show');
     Route::get('/settings', [TeamController::class, 'settings']);
 
     // Team contacts

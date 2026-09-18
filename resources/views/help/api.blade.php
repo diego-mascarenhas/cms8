@@ -223,6 +223,10 @@
                                     <i class="ti ti-brand-whatsapp me-2"></i>
                                     {{ __('WhatsApp API') }}
                                 </a>
+                                <a href="{{ route('help.api.communications') }}" class="btn btn-primary">
+                                    <i class="ti ti-mail-forward me-2"></i>
+                                    {{ __('Communications API') }}
+                                </a>
                                 <a href="{{ route('help.api.enterprises') }}" class="btn btn-secondary">
                                     <i class="ti ti-building me-2"></i>
                                     {{ __('Enterprises API') }}
