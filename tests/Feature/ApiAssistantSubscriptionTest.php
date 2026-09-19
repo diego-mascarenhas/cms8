@@ -1019,6 +1019,8 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.can_checkout', true);
         $response->assertJsonPath('data.mailer_usage.price_per_email', '0.002');
         $response->assertJsonPath('data.mailer_usage.emails_included', 10000);
+        $response->assertJsonPath('data.mailer_usage.emails_sent', 0);
+        $response->assertJsonPath('data.mailer_usage.amount_due_cents', 0);
         $this->assertSame(
             ['mailer_basic', 'mailer_foundation', 'mailer_scale'],
             collect($response->json('data.plans'))->pluck('id')->all(),
@@ -1032,6 +1034,29 @@ class ApiAssistantSubscriptionTest extends TestCase
             collect($response->json('data.plans'))->pluck('subscribers_limit')->all(),
         );
         $this->assertSame('Mailer Scale', $response->json('data.plans.2.name'));
+    }
+
+    public function test_mailer_catalog_bills_sent_emails_in_current_period(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+        config(['emailer.payg.price_per_email' => 0.002]);
+
+        MailerUsageLog::factory()->create([
+            'team_id' => $team->id,
+            'source' => 'communications',
+            'count' => 6,
+            'sent_at' => now(),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=mailer');
+
+        $response->assertOk();
+        $response->assertJsonPath('data.mailer_usage.emails_sent', 6);
+        $response->assertJsonPath('data.mailer_usage.period_emails_sent', 6);
+        $response->assertJsonPath('data.mailer_usage.amount_due_cents', 1);
+        $response->assertJsonPath('data.mailer_usage.emails_included', 10000);
+        $this->assertSame(0.002, $response->json('data.mailer_usage.our_rate'));
     }
 
     public function test_mailer_catalog_ignores_active_assistant_subscription(): void

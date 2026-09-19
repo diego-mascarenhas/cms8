@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Communication;
 use App\Models\MessageDelivery;
 use App\Services\MailBabyService;
 use Illuminate\Http\Request;
@@ -55,12 +56,14 @@ class MailBabyWebhookController extends Controller
                 return response('No message ID', 400);
             }
 
-            // Find the message delivery by provider message ID
             $delivery = MessageDelivery::where('provider_message_id', $mailbabyId)
                 ->where('email_provider', 'mailbaby')
                 ->first();
+            $communication = Communication::withoutGlobalScopes()
+                ->where('metadata->provider_message_id', $mailbabyId)
+                ->first();
 
-            if (! $delivery)
+            if (! $delivery && ! $communication)
             {
                 Log::warning('MailBaby webhook: Message delivery not found', [
                     'mailbaby_id' => $mailbabyId,
@@ -68,6 +71,16 @@ class MailBabyWebhookController extends Controller
                 ]);
 
                 return response('Message not found', 404);
+            }
+
+            if ($communication)
+            {
+                $this->handleCommunicationEvent($communication, $eventType, $data);
+            }
+
+            if (! $delivery)
+            {
+                return response('OK', 200);
             }
 
             // Process different event types
@@ -117,6 +130,39 @@ class MailBabyWebhookController extends Controller
 
             return response('Error processing webhook', 500);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function handleCommunicationEvent(Communication $communication, string $eventType, array $data): void
+    {
+        $message = $data['reason'] ?? $data['message'] ?? $data['response'] ?? null;
+        $message = is_string($message) && $message !== '' ? $message : null;
+
+        match ($eventType)
+        {
+            'opened', 'open' => $communication->markOpened($message),
+            'delivered', 'delivery' => $this->recordCommunicationEvent($communication, 'delivered', $message),
+            'bounced', 'bounce' => $this->recordCommunicationEvent($communication, 'bounced', $message),
+            'failed', 'error' => $this->recordCommunicationEvent($communication, 'failed', $message),
+            default => null,
+        };
+    }
+
+    private function recordCommunicationEvent(Communication $communication, string $type, ?string $message): void
+    {
+        foreach ($communication->events() as $event)
+        {
+            if (($event['type'] ?? '') === $type)
+            {
+                return;
+            }
+        }
+
+        $communication->forceFill([
+            'metadata' => $communication->withEvent($type, $message),
+        ])->save();
     }
 
     /**

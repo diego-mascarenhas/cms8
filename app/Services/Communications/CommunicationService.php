@@ -168,6 +168,15 @@ class CommunicationService
                 'size' => $media->size,
                 'url' => $media->getUrl(),
             ])->values()->all(),
+            'tracking' => [
+                'opened' => $communication->hasOpened(),
+                'provider' => is_array($communication->metadata)
+                    ? ($communication->metadata['email_provider'] ?? null)
+                    : null,
+                'mail_id' => is_array($communication->metadata)
+                    ? ($communication->metadata['provider_message_id'] ?? null)
+                    : null,
+            ],
         ];
 
         if ($includeMessage)

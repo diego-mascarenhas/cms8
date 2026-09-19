@@ -1453,6 +1453,9 @@ Route::prefix('profile-update')->name('profile-update.')->middleware(['auth', 'v
 
 Route::get('message/track/{token}', [MessageTrackingController::class, 'track'])->name('message.track');
 Route::get('message/track/click/{token}', [MessageTrackingController::class, 'trackClick'])->name('message.track.click');
+Route::get('communications/track/{token}', [App\Http\Controllers\CommunicationTrackingController::class, 'open'])
+    ->where('token', '[0-9]+\.[A-Fa-f0-9]{32}')
+    ->name('communications.track.open');
 
 // MailBaby webhooks (public route - no authentication required)
 Route::post('webhooks/mailbaby', [App\Http\Controllers\MailBabyWebhookController::class, 'handle'])->name('mailbaby.webhook');
