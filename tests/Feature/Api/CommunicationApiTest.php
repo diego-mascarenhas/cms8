@@ -287,6 +287,32 @@ class CommunicationApiTest extends TestCase
         $this->assertSame(1, $communication->getMedia('attachments')->count());
     }
 
+    public function test_docs_token_requires_authentication(): void
+    {
+        $this->getJson('/api/communications/docs-token')->assertUnauthorized();
+    }
+
+    public function test_docs_token_returns_team_api_token_when_present(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+        $created = $team->createApiToken('Docs', '*');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/docs-token')
+            ->assertOk()
+            ->assertJsonPath('data.api_token', $created['plain']);
+    }
+
+    public function test_docs_token_is_null_when_team_has_no_api_token(): void
+    {
+        [, , $token] = $this->adminWithToken();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/docs-token')
+            ->assertOk()
+            ->assertJsonPath('data.api_token', null);
+    }
+
     public function test_channels_endpoint_returns_configuration_flags(): void
     {
         [, , $token] = $this->adminWithToken();
