@@ -85,7 +85,7 @@ class AssistantSubscriptionService
             'token_usage' => $this->tokenUsagePayload($team, $stripe),
             'whatsapp_usage' => $this->whatsappUsagePayload($team, $stripe),
             'mailer_usage' => $catalog === HumanoPricingCatalog::MAILER
-                ? $this->mailerUsagePayload($team)
+                ? array_merge($this->mailerUsagePayload($team), $this->mailerPeriodUsagePayload($team, $stripe))
                 : $this->mailerPeriodUsagePayload($team, $stripe),
             'estimator_usage' => $catalog === HumanoPricingCatalog::ESTIMATOR
                 ? $this->estimatorUsagePayload($team, $stripe)
