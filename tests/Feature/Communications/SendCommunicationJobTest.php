@@ -31,6 +31,8 @@ class SendCommunicationJobTest extends TestCase
 
         $user = User::factory()->withPersonalTeam()->create();
         $team = $user->ownedTeams()->first();
+        $team->setSetting('mail_from_address', 'billing@example.test');
+        $team->setSetting('mail_from_name', 'Billing');
         $communication = Communication::factory()->forTeamAndUser($team, $user)->email()->create([
             'recipient_email' => 'ada@example.test',
             'subject' => 'Invoice',
@@ -55,6 +57,31 @@ class SendCommunicationJobTest extends TestCase
             'count' => 1,
         ]);
         $this->assertSame(1, MailerUsageLog::query()->where('team_id', $team->id)->sum('count'));
+    }
+
+    public function test_email_job_fails_without_sender(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Mail::fake();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $communication = Communication::factory()->forTeamAndUser($team, $user)->email()->create();
+
+        try
+        {
+            app(CommunicationSender::class)->send($communication->fresh(['team']));
+            $this->fail('Expected missing sender to throw.');
+        } catch (RuntimeException $exception)
+        {
+            $this->assertStringContainsString('remitente', $exception->getMessage());
+        }
+
+        Mail::assertNothingSent();
     }
 
     public function test_whatsapp_job_does_not_record_mailer_usage(): void

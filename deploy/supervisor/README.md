@@ -1,25 +1,33 @@
 # Supervisor / Laravel Forge — workers
 
-Dos daemons en Forge: uno para **correo** y otro para el **resto**.
+Tres daemons en Forge: **Communications** (prioridad), **correo** y el **resto**.
 
 ## 1. Worker general (editar el daemon existente)
 
 Sustituye el `command` del daemon actual por el de `forge-queue-general.conf.example`.
 
-No incluyas `mailer`, `campaign`, `notifications` ni `task-communications`.
+No incluyas `mailer`, `campaign`, `notifications`, `task-communications` ni `communications`.
 
-## 2. Worker de email (daemon nuevo en Forge)
+## 2. Worker de email (daemon existente)
 
-Crea un **Queue Worker** nuevo y pega `forge-queue-email.conf.example` (o copia solo `command` + `directory`).
+`mailer` y `campaign`. Pega `forge-queue-email.conf.example` (o copia solo `command` + `directory`).
 
-## 3. `.env` (staging / producción)
+No incluyas `communications`.
+
+## 3. Worker de Communications (daemon nuevo)
+
+Crea un **Queue Worker** nuevo y pega `forge-queue-communications.conf.example`.
+
+Cola sola: `communications`. Así un envío masivo no retrasa email/WhatsApp/SMS transaccional.
+
+## 4. `.env` (staging / producción)
 
 ```env
 QUEUE_CONNECTION=redis
 MESSAGE_DELIVERY_QUEUE_CONNECTION=redis
 ```
 
-## 4. Tras cambiar daemons o desplegar
+## 5. Tras cambiar daemons o desplegar
 
 ```bash
 php artisan queue:restart
@@ -32,7 +40,7 @@ sudo supervisorctl reread
 sudo supervisorctl update
 ```
 
-## 5. Comprobar
+## 6. Comprobar
 
 ```bash
 # Encolar un envío de prueba y ver el log del worker de email

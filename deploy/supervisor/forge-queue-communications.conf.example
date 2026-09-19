@@ -1,0 +1,25 @@
+; Forge / Supervisor — worker solo para Communications (transaccional)
+; Daemon distinto a mailer/campaign para que un envío masivo no lo bloquee.
+;
+; Cola:
+;   communications — SendCommunicationJob (email, WhatsApp, SMS)
+;
+; Prioridad: proceso dedicado. No lo mezcles con mailer ni campaign.
+
+[program:humano-queue-communications]
+directory=/home/forge/admin.idoneo.dev
+command=php8.4 /home/forge/admin.idoneo.dev/artisan queue:work redis --queue=communications --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+process_name=%(program_name)s_%(process_num)02d
+autostart=true
+autorestart=true
+user=forge
+numprocs=1
+startsecs=1
+redirect_stderr=true
+stdout_logfile=/home/forge/admin.idoneo.dev/storage/logs/queue-communications.log
+stdout_logfile_maxbytes=5MB
+stdout_logfile_backups=3
+stopwaitsecs=3600
+stopsignal=SIGTERM
+stopasgroup=true
+killasgroup=true

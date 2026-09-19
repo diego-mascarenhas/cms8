@@ -4,13 +4,20 @@ Guide to queues, `.env` settings, workers in development/production, and failure
 
 ## 1) Queues by type
 
+### Communications (dedicated high-priority worker)
+
+| Queue | Job | Usage |
+|------|-----|-----|
+| `communications` | `SendCommunicationJob` | Transactional Communications (email, WhatsApp, SMS) |
+
+Own daemon so campaign/mailer jobs never block it.
+
 ### Email (dedicated worker)
 
 | Queue | Job | Usage |
 |------|-----|-----|
 | `task-communications` | `SendTaskCommunication` | Emails from the Kanban |
 | `notifications` | `SendNotificationJob` | Notifications to contacts |
-| `communications` | `SendCommunicationJob` | Transactional Communications (email, WhatsApp, SMS) |
 | `mailer` | `SendMessageCampaignJob` | Messages, resends, tests |
 | `campaign` | `SendMessageCampaignJob` | Bulk campaign sends |
 
@@ -53,17 +60,21 @@ MAIL_FROM_NAME="Humano"
 ### Development (two terminals)
 
 ```bash
-# Email
-php artisan queue:work redis --queue=task-communications,notifications,communications,mailer,campaign --sleep=3 --tries=3 --timeout=120
+# Communications (priority)
+php artisan queue:work redis --queue=communications --sleep=3 --tries=3 --timeout=120
+
+# Email / campaigns
+php artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120
 
 # Everything else
 php artisan queue:work redis --queue=default,domain-info,domain-updates,domain-version,whm-sync,whm-tests,ovh-sync --sleep=3 --tries=3 --timeout=120
 ```
 
-### Production / Forge (two daemons)
+### Production / Forge (three daemons)
 
 Ready-to-copy examples for Forge:
 
+- `deploy/supervisor/forge-queue-communications.conf.example`
 - `deploy/supervisor/forge-queue-email.conf.example`
 - `deploy/supervisor/forge-queue-general.conf.example`
 - `deploy/supervisor/README.md`
@@ -76,11 +87,19 @@ directory=/home/forge/staging.humano.app
 numprocs=2
 ```
 
-**Daemon 2 — email** (new in Forge → Queue → New Worker):
+**Daemon 2 — email** (existing mailer/campaign worker):
 
 ```ini
-command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,communications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+command=php8.4 /home/forge/staging.humano.app/artisan queue:work redis --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
 directory=/home/forge/staging.humano.app
+numprocs=1
+```
+
+**Daemon 3 — Communications** (new, do not mix with mailer/campaign):
+
+```ini
+command=php8.4 /home/forge/admin.idoneo.dev/artisan queue:work redis --queue=communications --sleep=3 --tries=3 --timeout=120 --max-time=3600 --memory=256
+directory=/home/forge/admin.idoneo.dev
 numprocs=1
 ```
 
@@ -91,7 +110,7 @@ After every deploy: `php artisan queue:restart`.
 ## 5) Deployment checklist
 
 1. `.env` with `QUEUE_CONNECTION=redis` and mail configured.
-2. Two active daemons (general + email).
+2. Three active daemons (general + email + communications).
 3. `php artisan queue:restart` in the deploy script.
 
 ## 6) Monitoring and recovery

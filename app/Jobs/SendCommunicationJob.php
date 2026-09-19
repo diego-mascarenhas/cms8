@@ -2,7 +2,6 @@
 
 namespace App\Jobs;
 
-use App\Enums\CommunicationStatus;
 use App\Exceptions\WhatsAppSessionWindowClosedException;
 use App\Models\Communication;
 use App\Services\Communications\CommunicationSender;
@@ -52,6 +51,7 @@ class SendCommunicationJob implements ShouldQueue
         {
             $communication->forceFill([
                 'error_message' => $exception->getMessage(),
+                'metadata' => $communication->withEvent('attempt_failed', $exception->getMessage()),
             ])->save();
 
             throw $exception;
@@ -60,11 +60,12 @@ class SendCommunicationJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Communication::withoutGlobalScopes()
-            ->whereKey($this->communicationId)
-            ->update([
-                'status' => CommunicationStatus::Failed->value,
-                'error_message' => $exception->getMessage(),
-            ]);
+        $communication = Communication::withoutGlobalScopes()->find($this->communicationId);
+        if (! $communication)
+        {
+            return;
+        }
+
+        $communication->markFailed($exception->getMessage());
     }
 }
