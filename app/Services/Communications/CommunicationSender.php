@@ -111,6 +111,11 @@ class CommunicationSender
         {
             throw new RuntimeException('MailBaby API request failed: '.($result['error'] ?? 'Unknown error'));
         }
+
+        $communication->storeProviderTracking(
+            'mailbaby',
+            is_string($result['message_id'] ?? null) ? $result['message_id'] : null,
+        );
     }
 
     /**

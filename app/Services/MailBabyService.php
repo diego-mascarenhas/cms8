@@ -71,7 +71,7 @@ class MailBabyService
 
                 return [
                     'success' => true,
-                    'message_id' => $data['id'] ?? null,
+                    'message_id' => $this->extractMailId(is_array($data) ? $data : []),
                     'data' => $data,
                 ];
             } else
@@ -103,10 +103,81 @@ class MailBabyService
     }
 
     /**
+     * @param  array<string, mixed>  $data
+     */
+    public function extractMailId(array $data): ?string
+    {
+        foreach (['id', 'text', 'mailid'] as $key)
+        {
+            $value = $data[$key] ?? null;
+            if (is_string($value) && preg_match('/^[a-f0-9]{18,19}$/i', $value))
+            {
+                return strtolower($value);
+            }
+        }
+
+        $text = $data['text'] ?? null;
+
+        return is_string($text) && $text !== '' ? $text : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function getMailLog(?string $mailId, array $filters = []): ?array
+    {
+        try
+        {
+            $query = array_filter([
+                'mailid' => $mailId,
+                'to' => $filters['to'] ?? null,
+                'subject' => $filters['subject'] ?? null,
+                'limit' => $filters['limit'] ?? 1,
+            ], fn ($value) => $value !== null && $value !== '');
+
+            $response = Http::withHeaders([
+                'X-API-KEY' => $this->apiKey,
+                'Accept' => 'application/json',
+            ])->get($this->baseUrl.'/mail/log', $query);
+
+            if ($response->successful())
+            {
+                return $response->json();
+            }
+
+            Log::error('MailBaby: Failed to get mail log', [
+                'status' => $response->status(),
+                'response' => $response->body(),
+                'mailid' => $mailId,
+            ]);
+
+            return null;
+        } catch (\Exception $e)
+        {
+            Log::error('MailBaby: Exception getting mail log', [
+                'error' => $e->getMessage(),
+                'mailid' => $mailId,
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * Get email status by ID
      */
     public function getEmailStatus($mailbabyId)
     {
+        $log = $this->getMailLog(is_string($mailbabyId) ? $mailbabyId : null);
+        if (is_array($log))
+        {
+            $emails = $log['emails'] ?? [];
+            if (is_array($emails) && $emails !== [])
+            {
+                return $emails[0];
+            }
+        }
+
         try
         {
             $response = Http::withHeaders([

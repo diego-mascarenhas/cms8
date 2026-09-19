@@ -27,5 +27,6 @@ class VerifyCsrfToken extends Middleware
         'stripe/webhook', // Stripe webhook handler (default and per-category)
         'stripe/webhook/*',
         'unsubscribe/*',
+        'webhooks/mailbaby',
     ];
 }

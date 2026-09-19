@@ -94,7 +94,10 @@ class SendCommunicationJobTest extends TestCase
 
         Mail::fake();
         Http::fake([
-            'https://api.mailbaby.net/mail/send' => Http::response(['id' => 'mb-comm-1'], 200),
+            'https://api.mailbaby.net/mail/send' => Http::response([
+                'status' => 'ok',
+                'text' => '1a0b9f105f6000dfc3',
+            ], 200),
         ]);
 
         config([
@@ -123,7 +126,11 @@ class SendCommunicationJobTest extends TestCase
                 && str_contains((string) $request['from'], 'billing@example.test');
         });
 
-        $this->assertSame(CommunicationStatus::Sent, $communication->fresh()->status);
+        $communication->refresh();
+        $this->assertSame(CommunicationStatus::Sent, $communication->status);
+        $this->assertSame('mailbaby', $communication->metadata['email_provider'] ?? null);
+        $this->assertSame('1a0b9f105f6000dfc3', $communication->metadata['provider_message_id'] ?? null);
+        $this->assertStringContainsString('/communications/track/', $communication->trackingUrl());
     }
 
     public function test_whatsapp_job_does_not_record_mailer_usage(): void
