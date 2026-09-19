@@ -661,6 +661,7 @@ Route::middleware('auth.api')->group(function ()
     // Communications (idoneo-communications SPA)
     Route::get('communications/stats', [CommunicationController::class, 'stats']);
     Route::get('communications/channels', [CommunicationController::class, 'channels']);
+    Route::get('communications/docs-token', [CommunicationController::class, 'docsToken']);
     Route::get('communications', [CommunicationController::class, 'index']);
     Route::post('communications', [CommunicationController::class, 'store']);
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id');

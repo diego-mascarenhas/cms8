@@ -205,6 +205,22 @@ class CommunicationController extends Controller
         ]);
     }
 
+    public function docsToken(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'api_token' => $this->plainTeamApiToken($team),
+            ],
+        ]);
+    }
+
     private function findForTeam(Team $team, int $id): ?Communication
     {
         return Communication::query()
@@ -224,5 +240,24 @@ class CommunicationController extends Controller
         }
 
         return $this->teamOrError($request);
+    }
+
+    private function plainTeamApiToken(Team $team): ?string
+    {
+        $tokens = $team->getApiTokens();
+        $plainToken = $tokens[0]['plain'] ?? $team->getSetting('api_token_plain', null);
+        if (is_string($plainToken) && $plainToken !== '')
+        {
+            return $plainToken;
+        }
+
+        if ($tokens !== [] || $team->getSetting('api_token_hash'))
+        {
+            $created = $team->createApiToken('API Access Token', '*');
+
+            return $created['plain'];
+        }
+
+        return null;
     }
 }
