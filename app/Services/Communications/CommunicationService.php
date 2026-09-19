@@ -28,6 +28,16 @@ class CommunicationService
         $phone = $this->normalizePhone($data['recipient_phone'] ?? null);
         $contact = $this->resolveContact($team, $data['contact_id'] ?? null, $email, $phone);
 
+        $metadata = is_array($data['metadata'] ?? null) ? $data['metadata'] : [];
+        $attachmentCount = count($attachments);
+        $metadata['events'] = [[
+            'type' => 'queued',
+            'at' => now()->toIso8601String(),
+            'message' => $attachmentCount > 0
+                ? $attachmentCount === 1 ? '1 adjunto' : $attachmentCount.' adjuntos'
+                : null,
+        ]];
+
         $communication = Communication::query()->create([
             'team_id' => $team->id,
             'user_id' => $user?->id,
@@ -39,7 +49,7 @@ class CommunicationService
             'subject' => $this->nullableString($data['subject'] ?? null),
             'message' => (string) $data['message'],
             'status' => CommunicationStatus::Pending,
-            'metadata' => $data['metadata'] ?? null,
+            'metadata' => $metadata,
         ]);
 
         foreach ($attachments as $attachment)
@@ -58,6 +68,7 @@ class CommunicationService
             'status' => CommunicationStatus::Pending,
             'error_message' => null,
             'sent_at' => null,
+            'metadata' => $communication->withEvent('retried'),
         ])->save();
 
         SendCommunicationJob::dispatch($communication->id);
@@ -162,9 +173,68 @@ class CommunicationService
         if ($includeMessage)
         {
             $payload['message'] = $communication->message;
+            $payload['events'] = $this->events($communication);
         }
 
         return $payload;
+    }
+
+    /**
+     * @return array<int, array{type: string, at: ?string, message: ?string}>
+     */
+    private function events(Communication $communication): array
+    {
+        $stored = is_array($communication->metadata) ? ($communication->metadata['events'] ?? null) : null;
+        if (is_array($stored) && $stored !== [])
+        {
+            return array_values(array_map(function (mixed $event) use ($communication): array
+            {
+                $event = is_array($event) ? $event : [];
+
+                return [
+                    'type' => (string) ($event['type'] ?? 'queued'),
+                    'at' => isset($event['at']) ? (string) $event['at'] : $communication->created_at?->toIso8601String(),
+                    'message' => isset($event['message']) && $event['message'] !== ''
+                        ? (string) $event['message']
+                        : null,
+                ];
+            }, $stored));
+        }
+
+        $events = [[
+            'type' => 'queued',
+            'at' => $communication->created_at?->toIso8601String(),
+            'message' => null,
+        ]];
+
+        if ($communication->status === CommunicationStatus::Sent && $communication->sent_at)
+        {
+            $events[] = [
+                'type' => 'sent',
+                'at' => $communication->sent_at->toIso8601String(),
+                'message' => null,
+            ];
+        }
+
+        if ($communication->status === CommunicationStatus::Failed)
+        {
+            $events[] = [
+                'type' => 'failed',
+                'at' => $communication->updated_at?->toIso8601String(),
+                'message' => $communication->error_message,
+            ];
+        }
+
+        if ($communication->status === CommunicationStatus::Pending && $communication->error_message)
+        {
+            $events[] = [
+                'type' => 'attempt_failed',
+                'at' => $communication->updated_at?->toIso8601String(),
+                'message' => $communication->error_message,
+            ];
+        }
+
+        return $events;
     }
 
     public function resolveContact(Team $team, mixed $contactId, ?string $email, ?string $phone): ?Contact

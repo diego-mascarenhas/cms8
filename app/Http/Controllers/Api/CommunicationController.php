@@ -188,11 +188,11 @@ class CommunicationController extends Controller
             ], 404);
         }
 
-        if (! $communication->isFailed())
+        if (! $communication->canResend())
         {
             return response()->json([
                 'success' => false,
-                'message' => __('Only failed communications can be retried.'),
+                'message' => __('Only sent or failed communications can be resent.'),
             ], 422);
         }
 

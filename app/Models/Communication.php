@@ -81,6 +81,7 @@ class Communication extends Model implements HasMedia
             'status' => CommunicationStatus::Sent,
             'sent_at' => now(),
             'error_message' => null,
+            'metadata' => $this->withEvent('sent'),
         ])->save();
 
         $this->recordMailerUsageIfEmail();
@@ -91,12 +92,49 @@ class Communication extends Model implements HasMedia
         $this->forceFill([
             'status' => CommunicationStatus::Failed,
             'error_message' => $message,
+            'metadata' => $this->withEvent('failed', $message),
         ])->save();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function withEvent(string $type, ?string $message = null): array
+    {
+        $metadata = is_array($this->metadata) ? $this->metadata : [];
+        $events = isset($metadata['events']) && is_array($metadata['events'])
+            ? $metadata['events']
+            : [];
+
+        if ($events === [])
+        {
+            $events[] = [
+                'type' => 'queued',
+                'at' => $this->created_at?->toIso8601String() ?? now()->toIso8601String(),
+                'message' => null,
+            ];
+        }
+
+        $events[] = [
+            'type' => $type,
+            'at' => now()->toIso8601String(),
+            'message' => $message,
+        ];
+
+        $metadata['events'] = $events;
+
+        return $metadata;
     }
 
     public function isFailed(): bool
     {
         return $this->status === CommunicationStatus::Failed;
+    }
+
+    public function canResend(): bool
+    {
+        return $this->status === CommunicationStatus::Sent
+            || $this->status === CommunicationStatus::Failed;
     }
 
     private function recordMailerUsageIfEmail(): void

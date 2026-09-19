@@ -38,6 +38,17 @@ class CommunicationSender
             throw new RuntimeException('Recipient email is required for email communications.');
         }
 
+        $sender = $team->getTeamEmailSender();
+        if ($sender['from_address'] === '')
+        {
+            $sender = $team->getMailerEmailSender();
+        }
+
+        if ($sender['from_address'] === '' && ! $team->hasOutgoingEmailConfig())
+        {
+            throw new RuntimeException(__('Configurá el remitente de email en Configuración antes de enviar.'));
+        }
+
         $this->configureMailForTeam($team, false);
 
         Mail::to($communication->recipient_email, $communication->recipient_name)

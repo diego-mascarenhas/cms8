@@ -83,7 +83,8 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.channel', 'email')
             ->assertJsonPath('data.status', 'pending')
             ->assertJsonPath('data.recipient_email', 'ada@example.test')
-            ->assertJsonPath('data.metadata.source', 'erp');
+            ->assertJsonPath('data.metadata.source', 'erp')
+            ->assertJsonPath('data.events.0.type', 'queued');
 
         $this->assertDatabaseHas('communications', [
             'team_id' => $team->id,
@@ -184,11 +185,42 @@ class CommunicationApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/communications/'.$failed->id.'/retry')
             ->assertOk()
-            ->assertJsonPath('data.status', 'pending');
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.events.0.type', 'queued')
+            ->assertJsonPath('data.events.1.type', 'retried');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/communications/'.$failed->id.'/retry')
             ->assertStatus(422);
+    }
+
+    public function test_show_synthesizes_timeline_when_events_are_missing(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $sent = Communication::factory()->forTeamAndUser($team, $user)->email()->sent()->create([
+            'subject' => 'Tu factura',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications/'.$sent->id)
+            ->assertOk()
+            ->assertJsonPath('data.events.0.type', 'queued')
+            ->assertJsonPath('data.events.1.type', 'sent');
+    }
+
+    public function test_can_resend_sent_communication(): void
+    {
+        Queue::fake();
+        [$user, $team, $token] = $this->adminWithToken();
+        $sent = Communication::factory()->forTeamAndUser($team, $user)->email()->sent()->create();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/communications/'.$sent->id.'/retry')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'pending')
+            ->assertJsonPath('data.events.1.type', 'retried');
+
+        Queue::assertPushed(SendCommunicationJob::class);
     }
 
     public function test_cannot_retry_pending_communication(): void
