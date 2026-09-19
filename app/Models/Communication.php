@@ -82,6 +82,8 @@ class Communication extends Model implements HasMedia
             'sent_at' => now(),
             'error_message' => null,
         ])->save();
+
+        $this->recordMailerUsageIfEmail();
     }
 
     public function markFailed(string $message): void
@@ -95,5 +97,20 @@ class Communication extends Model implements HasMedia
     public function isFailed(): bool
     {
         return $this->status === CommunicationStatus::Failed;
+    }
+
+    private function recordMailerUsageIfEmail(): void
+    {
+        if ($this->channel !== CommunicationChannel::Email || ! $this->team_id)
+        {
+            return;
+        }
+
+        MailerUsageLog::query()->create([
+            'team_id' => $this->team_id,
+            'source' => 'communications',
+            'count' => 1,
+            'sent_at' => $this->sent_at ?? now(),
+        ]);
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\CommunicationStatus;
 use App\Jobs\SendCommunicationJob;
 use App\Mail\CommunicationMail;
 use App\Models\Communication;
+use App\Models\MailerUsageLog;
 use App\Models\User;
 use App\Services\Communications\CommunicationSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,6 +49,29 @@ class SendCommunicationJobTest extends TestCase
         $this->assertSame(CommunicationStatus::Sent, $communication->status);
         $this->assertNotNull($communication->sent_at);
         $this->assertNull($communication->error_message);
+        $this->assertDatabaseHas('mailer_usage_logs', [
+            'team_id' => $team->id,
+            'source' => 'communications',
+            'count' => 1,
+        ]);
+        $this->assertSame(1, MailerUsageLog::query()->where('team_id', $team->id)->sum('count'));
+    }
+
+    public function test_whatsapp_job_does_not_record_mailer_usage(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $communication = Communication::factory()->forTeamAndUser($team, $user)->whatsapp()->create();
+
+        $communication->markSent();
+
+        $this->assertSame(CommunicationStatus::Sent, $communication->fresh()->status);
+        $this->assertSame(0, MailerUsageLog::query()->where('team_id', $team->id)->count());
     }
 
     public function test_job_failed_marks_communication_failed(): void
