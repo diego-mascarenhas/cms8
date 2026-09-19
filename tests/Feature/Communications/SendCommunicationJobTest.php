@@ -123,7 +123,8 @@ class SendCommunicationJobTest extends TestCase
         {
             return $request->url() === 'https://api.mailbaby.net/mail/send'
                 && $request['to'] === 'ada@example.test'
-                && str_contains((string) $request['from'], 'billing@example.test');
+                && str_contains((string) $request['from'], 'billing@example.test')
+                && str_contains((string) $request['body'], '/communications/track/');
         });
 
         $communication->refresh();
