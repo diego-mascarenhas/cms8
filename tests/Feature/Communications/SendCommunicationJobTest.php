@@ -10,6 +10,7 @@ use App\Models\MailerUsageLog;
 use App\Models\User;
 use App\Services\Communications\CommunicationSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Jetstream\Features;
 use Mockery;
@@ -82,6 +83,47 @@ class SendCommunicationJobTest extends TestCase
         }
 
         Mail::assertNothingSent();
+    }
+
+    public function test_email_job_uses_mailbaby_when_enabled(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Mail::fake();
+        Http::fake([
+            'https://api.mailbaby.net/mail/send' => Http::response(['id' => 'mb-comm-1'], 200),
+        ]);
+
+        config([
+            'services.mailbaby.enabled' => true,
+            'services.mailbaby.api_key' => 'test-key',
+            'services.mailbaby.api_url' => 'https://api.mailbaby.net',
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->setSetting('mail_from_address', 'billing@example.test');
+        $team->setSetting('mail_from_name', 'Billing');
+        $communication = Communication::factory()->forTeamAndUser($team, $user)->email()->create([
+            'recipient_email' => 'ada@example.test',
+            'subject' => 'Invoice',
+            'message' => 'Your invoice is ready.',
+        ]);
+
+        (new SendCommunicationJob($communication->id))->handle(app(CommunicationSender::class));
+
+        Mail::assertNothingSent();
+        Http::assertSent(function ($request)
+        {
+            return $request->url() === 'https://api.mailbaby.net/mail/send'
+                && $request['to'] === 'ada@example.test'
+                && str_contains((string) $request['from'], 'billing@example.test');
+        });
+
+        $this->assertSame(CommunicationStatus::Sent, $communication->fresh()->status);
     }
 
     public function test_whatsapp_job_does_not_record_mailer_usage(): void
