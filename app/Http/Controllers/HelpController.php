@@ -274,6 +274,16 @@ class HelpController extends Controller
     }
 
     /**
+     * Display communications send/show API documentation
+     */
+    public function apiCommunications()
+    {
+        return view('help.api-communications', [
+            'apiToken' => $this->getUserApiToken(),
+        ]);
+    }
+
+    /**
      * Stripe webhook URL and events (Cashier + Humano handlers).
      */
     public function stripeWebhook()

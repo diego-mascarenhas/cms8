@@ -176,6 +176,10 @@ return [
         'url' => env('MAILER_APP_URL', 'https://idoneo-mailer.test'),
     ],
 
+    'communications' => [
+        'url' => env('COMMUNICATIONS_APP_URL', 'https://idoneo-communications.test'),
+    ],
+
     'affiliates' => [
         'url' => env('AFFILIATES_APP_URL', 'https://idoneo-affiliates.test'),
     ],

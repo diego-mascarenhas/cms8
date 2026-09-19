@@ -55,7 +55,7 @@ module.exports = {
             script: 'artisan',
             interpreter: 'php',
             args:
-                'queue:work database --queue=task-communications,notifications,mailer,campaign --sleep=3 --tries=3 --timeout=120',
+                'queue:work database --queue=task-communications,notifications,communications,mailer,campaign --sleep=3 --tries=3 --timeout=120',
             autorestart: true,
             watch: false,
             max_restarts: 20,

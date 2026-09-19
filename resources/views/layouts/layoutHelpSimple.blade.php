@@ -252,6 +252,13 @@ $container = (isset($configData['contentLayout']) && $configData['contentLayout'
             <div>{{ __('WhatsApp') }}</div>
           </a>
         </li>
+
+        <li class="menu-item {{ request()->routeIs('help.api.communications') ? 'active' : '' }}">
+          <a href="{{ route('help.api.communications') }}" class="menu-link">
+            <i class="menu-icon tf-icons ti ti-mail-forward"></i>
+            <div>{{ __('Communications') }}</div>
+          </a>
+        </li>
       </ul>
     </aside>
 

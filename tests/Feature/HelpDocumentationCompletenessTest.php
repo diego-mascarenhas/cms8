@@ -28,6 +28,7 @@ class HelpDocumentationCompletenessTest extends TestCase
             'help.api.tasks',
             'help.api.prompts',
             'help.api.whatsapp',
+            'help.api.communications',
             'help.environment-variables',
             'help.environment-variables.google-analytics',
             'help.environment-variables.google-people-calendar',
