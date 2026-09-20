@@ -133,7 +133,7 @@
   -d '{
     "channel": "email",
     "recipient_email": "ada@example.com",
-    "recipient_name": "Ada",
+    "recipient_name": "Tester",
     "subject": "Tu factura",
     "message": "Adjuntamos la factura del período. https://idoneo.dev",
     "metadata": { "source": "erp", "external_id": "INV-1042" }
@@ -184,7 +184,7 @@
     "status_label": "Pendiente",
     "recipient_email": "ada@example.com",
     "recipient_phone": null,
-    "recipient_name": "Ada",
+    "recipient_name": "Tester",
     "subject": "Tu factura",
     "message": "Adjuntamos la factura del período. https://idoneo.dev",
     "error_message": null,
@@ -251,7 +251,7 @@
     "created_at": "2026-09-18T13:54:00+00:00",
     "contact": {
       "id": 88,
-      "name": "Ada",
+      "name": "Tester",
       "email": "ada@example.com",
       "phone": null
     },
