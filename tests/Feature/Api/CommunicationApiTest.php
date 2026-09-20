@@ -194,7 +194,16 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.total', 3)
             ->assertJsonPath('data.failed', 1)
             ->assertJsonPath('data.pending', 1)
-            ->assertJsonPath('data.sent', 1);
+            ->assertJsonPath('data.sent', 1)
+            ->assertJsonPath('data.sent_today', 1)
+            ->assertJsonCount(14, 'data.daily')
+            ->assertJsonPath('data.daily.13.sent', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications?sent_today=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 'sent');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/communications/'.$failed->id.'/retry')
