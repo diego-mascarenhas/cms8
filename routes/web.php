@@ -1456,6 +1456,9 @@ Route::get('message/track/click/{token}', [MessageTrackingController::class, 'tr
 Route::get('communications/track/{token}', [App\Http\Controllers\CommunicationTrackingController::class, 'open'])
     ->where('token', '[0-9]+\.[A-Fa-f0-9]{32}')
     ->name('communications.track.open');
+Route::get('communications/track/{token}/click', [App\Http\Controllers\CommunicationTrackingController::class, 'click'])
+    ->where('token', '[0-9]+\.[A-Fa-f0-9]{32}')
+    ->name('communications.track.click');
 
 // MailBaby webhooks (public route - no authentication required)
 Route::post('webhooks/mailbaby', [App\Http\Controllers\MailBabyWebhookController::class, 'handle'])->name('mailbaby.webhook');

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Communication;
+use App\Services\Communications\CommunicationLinkTracker;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 class CommunicationTrackingController extends Controller
@@ -24,5 +27,24 @@ class CommunicationTrackingController extends Controller
             'Pragma' => 'no-cache',
             'Expires' => '0',
         ]);
+    }
+
+    public function click(Request $request, string $token, CommunicationLinkTracker $tracker): RedirectResponse
+    {
+        $url = (string) $request->query('url');
+        $signature = (string) $request->query('sig');
+        $communication = Communication::findByTrackingToken($token);
+
+        if (
+            ! $communication
+            || ! $tracker->isSafeHttpUrl($url)
+            || ! hash_equals($communication->clickSignature($url), $signature)
+        ) {
+            abort(404);
+        }
+
+        $communication->markClicked($url);
+
+        return redirect()->away($url);
     }
 }

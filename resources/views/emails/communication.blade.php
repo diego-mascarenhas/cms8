@@ -30,7 +30,7 @@
 </head>
 <body>
     <div class="message-content">
-        {!! nl2br(e($communication->message)) !!}
+        {!! $communication->trackedMessageHtml() !!}
     </div>
 
     <div class="footer">
