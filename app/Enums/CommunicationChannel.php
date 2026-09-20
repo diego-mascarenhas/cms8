@@ -30,6 +30,6 @@ enum CommunicationChannel: string
 
     public function allowsAttachments(): bool
     {
-        return $this === self::Email;
+        return $this === self::Email || $this === self::WhatsApp;
     }
 }

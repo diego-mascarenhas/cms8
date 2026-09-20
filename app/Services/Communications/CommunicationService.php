@@ -102,7 +102,64 @@ class CommunicationService
             'sent' => $sent,
             'sent_today' => $sentToday,
             'success_rate' => $successRate,
+            'daily' => $this->dailyStats($team),
         ];
+    }
+
+    /**
+     * @return list<array{date: string, sent: int, failed: int, pending: int}>
+     */
+    private function dailyStats(Team $team): array
+    {
+        $from = Carbon::today()->subDays(13)->startOfDay();
+        $days = [];
+
+        for ($offset = 13; $offset >= 0; $offset--)
+        {
+            $date = Carbon::today()->subDays($offset)->toDateString();
+            $days[$date] = [
+                'date' => $date,
+                'sent' => 0,
+                'failed' => 0,
+                'pending' => 0,
+            ];
+        }
+
+        $rows = Communication::query()
+            ->where('team_id', $team->id)
+            ->where(function ($builder) use ($from)
+            {
+                $builder->where('created_at', '>=', $from)
+                    ->orWhere('sent_at', '>=', $from);
+            })
+            ->get(['status', 'sent_at', 'created_at']);
+
+        foreach ($rows as $row)
+        {
+            $createdDay = $row->created_at?->toDateString();
+            $sentDay = $row->sent_at?->toDateString();
+
+            if ($row->status === CommunicationStatus::Sent && $sentDay && isset($days[$sentDay]))
+            {
+                $days[$sentDay]['sent']++;
+
+                continue;
+            }
+
+            if ($row->status === CommunicationStatus::Failed && $createdDay && isset($days[$createdDay]))
+            {
+                $days[$createdDay]['failed']++;
+
+                continue;
+            }
+
+            if ($row->status === CommunicationStatus::Pending && $createdDay && isset($days[$createdDay]))
+            {
+                $days[$createdDay]['pending']++;
+            }
+        }
+
+        return array_values($days);
     }
 
     /**

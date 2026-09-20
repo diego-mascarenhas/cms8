@@ -18,6 +18,11 @@ class HelpApiCommunicationsDocumentationTest extends TestCase
         $response->assertSee('"channel": "whatsapp"', false);
         $response->assertSee('"channel": "sms"', false);
         $response->assertSee('attachments[]=', false);
+        $response->assertSee('-F "channel=whatsapp"', false);
+        $response->assertDontSee('"attachments": []', false);
+        $response->assertSee('"file_name": "factura.pdf"', false);
+        $response->assertSee('"file_name": "recibo-de-pago.pdf"', false);
+        $response->assertSee('attachments[]=@./recibo-de-pago.pdf', false);
         $response->assertSee('/api/team/communications/1842', false);
         $response->assertSee('"status": "pending"', false);
         $response->assertSee('"status": "sent"', false);

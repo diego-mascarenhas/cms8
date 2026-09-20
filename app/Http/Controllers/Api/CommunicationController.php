@@ -32,6 +32,7 @@ class CommunicationController extends Controller
             'search' => 'nullable|string|max:255',
             'channel' => 'nullable|string',
             'status' => 'nullable|string',
+            'sent_today' => 'nullable|boolean',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
@@ -48,7 +49,11 @@ class CommunicationController extends Controller
         }
 
         $status = CommunicationStatus::tryFrom((string) ($validated['status'] ?? ''));
-        if ($status)
+        if ($request->boolean('sent_today'))
+        {
+            $query->where('status', CommunicationStatus::Sent)
+                ->whereDate('sent_at', now()->toDateString());
+        } elseif ($status)
         {
             $query->where('status', $status);
         }

@@ -6,12 +6,15 @@ use App\Enums\CommunicationStatus;
 use App\Jobs\SendCommunicationJob;
 use App\Mail\CommunicationMail;
 use App\Models\Communication;
+use App\Models\Conversation;
 use App\Models\MailerUsageLog;
 use App\Models\User;
 use App\Services\Communications\CommunicationSender;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Mockery;
 use RuntimeException;
@@ -133,6 +136,63 @@ class SendCommunicationJobTest extends TestCase
         $this->assertSame('mailbaby', $communication->metadata['email_provider'] ?? null);
         $this->assertSame('1a0b9f105f6000dfc3', $communication->metadata['provider_message_id'] ?? null);
         $this->assertStringContainsString('/communications/track/', $communication->trackingUrl());
+    }
+
+    public function test_whatsapp_job_sends_media_like_assistant(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Storage::fake('public');
+        config([
+            'whatsapp.driver' => 'local',
+            'whatsapp.local.base_url' => 'http://baileys.test',
+            'whatsapp.local.webhook_secret' => '',
+        ]);
+        Http::fake([
+            'http://baileys.test/*' => Http::response(['id' => 'wa-media-1', 'success' => true], 200),
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->setSetting('whatsapp_service_url', 'http://baileys.test');
+        $communication = Communication::factory()->forTeamAndUser($team, $user)->whatsapp()->create([
+            'recipient_phone' => '34600111222',
+            'message' => 'Adjuntamos la factura',
+        ]);
+        $communication->addMedia(UploadedFile::fake()->create('factura.pdf', 80, 'application/pdf'))
+            ->toMediaCollection('attachments');
+
+        Conversation::create([
+            'message_sid' => 'wa_in_'.uniqid(),
+            'channel' => 'whatsapp',
+            'from' => '34600111222',
+            'to' => '34900000000',
+            'body' => 'Hola',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ]);
+
+        (new SendCommunicationJob($communication->id))->handle(app(CommunicationSender::class));
+
+        Http::assertSent(function ($request): bool
+        {
+            if (! str_contains($request->url(), '/send-media'))
+            {
+                return false;
+            }
+
+            $data = $request->data();
+
+            return ($data['to'] ?? '') === '34600111222'
+                && ($data['caption'] ?? '') === 'Adjuntamos la factura'
+                && ($data['media_file_name'] ?? '') === 'factura.pdf';
+        });
+
+        $communication->refresh();
+        $this->assertSame(CommunicationStatus::Sent, $communication->status);
     }
 
     public function test_whatsapp_job_does_not_record_mailer_usage(): void

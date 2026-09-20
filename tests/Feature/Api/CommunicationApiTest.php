@@ -163,6 +163,20 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.0.subject', 'Mine');
     }
 
+    public function test_index_includes_open_tracking_on_sent_communications(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $sent = Communication::factory()->forTeamAndUser($team, $user)->email()->sent()->create([
+            'subject' => 'Test 5',
+        ]);
+        $sent->markOpened();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications')
+            ->assertOk()
+            ->assertJsonPath('data.0.tracking.opened', true);
+    }
+
     public function test_stats_and_retry(): void
     {
         Queue::fake();
@@ -180,7 +194,16 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.total', 3)
             ->assertJsonPath('data.failed', 1)
             ->assertJsonPath('data.pending', 1)
-            ->assertJsonPath('data.sent', 1);
+            ->assertJsonPath('data.sent', 1)
+            ->assertJsonPath('data.sent_today', 1)
+            ->assertJsonCount(14, 'data.daily')
+            ->assertJsonPath('data.daily.13.sent', 1);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications?sent_today=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.status', 'sent');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/communications/'.$failed->id.'/retry')
@@ -317,6 +340,55 @@ class CommunicationApiTest extends TestCase
         $communication = Communication::query()->first();
         $this->assertNotNull($communication);
         $this->assertSame(1, $communication->getMedia('attachments')->count());
+    }
+
+    public function test_whatsapp_attachments_are_stored(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        [, , $token] = $this->adminWithToken();
+
+        $file = UploadedFile::fake()->create('invoice.pdf', 120, 'application/pdf');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/communications', [
+                'channel' => CommunicationChannel::WhatsApp->value,
+                'recipient_phone' => '+34 600 111 222',
+                'message' => 'See attachment',
+                'attachments' => [$file],
+            ], [
+                'Authorization' => 'Bearer '.$token,
+                'Accept' => 'application/json',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.channel', 'whatsapp')
+            ->assertJsonPath('data.attachments.0.file_name', 'invoice.pdf');
+
+        $communication = Communication::query()->first();
+        $this->assertNotNull($communication);
+        $this->assertSame(1, $communication->getMedia('attachments')->count());
+    }
+
+    public function test_sms_rejects_attachments(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        [, , $token] = $this->adminWithToken();
+
+        $file = UploadedFile::fake()->create('invoice.pdf', 120, 'application/pdf');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/communications', [
+                'channel' => CommunicationChannel::Sms->value,
+                'recipient_phone' => '34600111222',
+                'message' => 'See attachment',
+                'attachments' => [$file],
+            ], [
+                'Authorization' => 'Bearer '.$token,
+                'Accept' => 'application/json',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['attachments']);
     }
 
     public function test_docs_token_requires_authentication(): void
