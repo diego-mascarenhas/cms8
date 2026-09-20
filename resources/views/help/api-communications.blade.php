@@ -133,9 +133,10 @@
   -F "recipient_email=ada@example.com" \
   -F "recipient_name=Tester" \
   -F "subject=Tu factura" \
-  -F "message=Adjuntamos la factura del período. https://idoneo.dev" \
+  -F "message=Adjuntamos la factura y el recibo de pago. https://idoneo.dev" \
   -F "metadata={\"source\":\"erp\",\"external_id\":\"INV-1042\"}" \
-  -F "attachments[]=@./factura.pdf"</code></pre>
+  -F "attachments[]=@./factura.pdf" \
+  -F "attachments[]=@./recibo-de-pago.pdf"</code></pre>
 
                         <h6 class="mt-3">{{ __('Example request (email JSON, no files)') }}</h6>
                         <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
@@ -157,8 +158,9 @@
   -H "Accept: application/json" \
   -F "channel=whatsapp" \
   -F "recipient_phone=+34 600 111 222" \
-  -F "message=Adjuntamos la factura del período." \
-  -F "attachments[]=@./factura.pdf"</code></pre>
+  -F "message=Adjuntamos la factura y el recibo de pago." \
+  -F "attachments[]=@./factura.pdf" \
+  -F "attachments[]=@./recibo-de-pago.pdf"</code></pre>
 
                         <h6 class="mt-3">{{ __('Example request (WhatsApp JSON, no files)') }}</h6>
                         <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
@@ -196,7 +198,7 @@
     "recipient_phone": null,
     "recipient_name": "Tester",
     "subject": "Tu factura",
-    "message": "Adjuntamos la factura del período. https://idoneo.dev",
+    "message": "Adjuntamos la factura y el recibo de pago. https://idoneo.dev",
     "error_message": null,
     "metadata": { "source": "erp", "external_id": "INV-1042" },
     "sent_at": null,
@@ -209,6 +211,13 @@
         "mime_type": "application/pdf",
         "size": 122880,
         "url": "{{ url('/') }}/storage/12/factura.pdf"
+      },
+      {
+        "id": 13,
+        "file_name": "recibo-de-pago.pdf",
+        "mime_type": "application/pdf",
+        "size": 81920,
+        "url": "{{ url('/') }}/storage/13/recibo-de-pago.pdf"
       }
     ]
   }
@@ -263,7 +272,7 @@
     "status_label": "Enviado",
     "recipient_email": "ada@example.com",
     "subject": "Tu factura",
-    "message": "Adjuntamos la factura del período. https://idoneo.dev",
+    "message": "Adjuntamos la factura y el recibo de pago. https://idoneo.dev",
     "error_message": null,
     "sent_at": "2026-09-18T13:54:08+00:00",
     "created_at": "2026-09-18T13:54:00+00:00",
@@ -280,6 +289,13 @@
         "mime_type": "application/pdf",
         "size": 122880,
         "url": "{{ url('/') }}/storage/12/factura.pdf"
+      },
+      {
+        "id": 13,
+        "file_name": "recibo-de-pago.pdf",
+        "mime_type": "application/pdf",
+        "size": 81920,
+        "url": "{{ url('/') }}/storage/13/recibo-de-pago.pdf"
       }
     ]
   }
