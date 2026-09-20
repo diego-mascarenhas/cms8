@@ -113,7 +113,7 @@ class SendCommunicationJobTest extends TestCase
         $communication = Communication::factory()->forTeamAndUser($team, $user)->email()->create([
             'recipient_email' => 'ada@example.test',
             'subject' => 'Invoice',
-            'message' => 'Your invoice is ready.',
+            'message' => "Your invoice is ready.\nhttps://idoneo.dev",
         ]);
 
         (new SendCommunicationJob($communication->id))->handle(app(CommunicationSender::class));
@@ -124,7 +124,8 @@ class SendCommunicationJobTest extends TestCase
             return $request->url() === 'https://api.mailbaby.net/mail/send'
                 && $request['to'] === 'ada@example.test'
                 && str_contains((string) $request['from'], 'billing@example.test')
-                && str_contains((string) $request['body'], '/communications/track/');
+                && str_contains((string) $request['body'], '/communications/track/')
+                && str_contains((string) $request['body'], '/click');
         });
 
         $communication->refresh();

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CommunicationChannel;
 use App\Enums\CommunicationStatus;
+use App\Services\Communications\CommunicationLinkTracker;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -149,6 +150,25 @@ class Communication extends Model implements HasMedia
         return route('communications.track.open', ['token' => $this->trackingToken()]);
     }
 
+    public function trackedMessageHtml(): string
+    {
+        return app(CommunicationLinkTracker::class)->render($this);
+    }
+
+    public function clickSignature(string $url): string
+    {
+        return substr(hash_hmac('sha256', 'c-click-'.$this->id.'|'.$url, (string) config('app.key')), 0, 32);
+    }
+
+    public function clickTrackingUrl(string $url): string
+    {
+        return route('communications.track.click', [
+            'token' => $this->trackingToken(),
+            'url' => $url,
+            'sig' => $this->clickSignature($url),
+        ]);
+    }
+
     public static function findByTrackingToken(string $token): ?self
     {
         if (! preg_match('/^(\d+)\.([a-f0-9]{32})$/', $token, $matches))
@@ -187,6 +207,15 @@ class Communication extends Model implements HasMedia
 
         $this->forceFill([
             'metadata' => $this->withEvent('opened', $message),
+        ])->save();
+    }
+
+    public function markClicked(string $url): void
+    {
+        $this->markOpened();
+        $this->refresh();
+        $this->forceFill([
+            'metadata' => $this->withEvent('clicked', $url),
         ])->save();
     }
 

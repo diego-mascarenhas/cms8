@@ -135,7 +135,7 @@
     "recipient_email": "ada@example.com",
     "recipient_name": "Ada",
     "subject": "Tu factura",
-    "message": "Adjuntamos la factura del período.",
+    "message": "Adjuntamos la factura del período. https://idoneo.dev",
     "metadata": { "source": "erp", "external_id": "INV-1042" }
   }'</code></pre>
 
@@ -168,7 +168,7 @@
   -F "channel=email" \
   -F "recipient_email=ada@example.com" \
   -F "subject=Tu factura" \
-  -F "message=Adjuntamos la factura del período." \
+  -F "message=Adjuntamos la factura del período. https://idoneo.dev" \
   -F "metadata={\"source\":\"erp\",\"external_id\":\"INV-1042\"}" \
   -F "attachments[]=@./factura.pdf"</code></pre>
 
@@ -186,7 +186,7 @@
     "recipient_phone": null,
     "recipient_name": "Ada",
     "subject": "Tu factura",
-    "message": "Adjuntamos la factura del período.",
+    "message": "Adjuntamos la factura del período. https://idoneo.dev",
     "error_message": null,
     "metadata": { "source": "erp", "external_id": "INV-1042" },
     "sent_at": null,
@@ -245,7 +245,7 @@
     "status_label": "Enviado",
     "recipient_email": "ada@example.com",
     "subject": "Tu factura",
-    "message": "Adjuntamos la factura del período.",
+    "message": "Adjuntamos la factura del período. https://idoneo.dev",
     "error_message": null,
     "sent_at": "2026-09-18T13:54:08+00:00",
     "created_at": "2026-09-18T13:54:00+00:00",

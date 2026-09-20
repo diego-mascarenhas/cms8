@@ -170,6 +170,7 @@ class CommunicationService
             ])->values()->all(),
             'tracking' => [
                 'opened' => $communication->hasOpened(),
+                'clicks' => collect($communication->events())->where('type', 'clicked')->count(),
                 'provider' => is_array($communication->metadata)
                     ? ($communication->metadata['email_provider'] ?? null)
                     : null,
