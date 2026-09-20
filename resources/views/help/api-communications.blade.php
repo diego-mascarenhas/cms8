@@ -55,7 +55,7 @@
                     </div>
                     <div class="card-body">
                         <code class="d-block mb-3">{{ url('/') }}/api/team/communications</code>
-                        <p>{{ __('Queue one message to one recipient. Email requires recipient_email and subject. WhatsApp and SMS require recipient_phone (10–15 digits). Attachments are email-only (max 5 files, 10 MB each).') }}</p>
+                        <p>{{ __('Queue one message to one recipient. Email requires recipient_email and subject. WhatsApp and SMS require recipient_phone (10–15 digits). Attachments are allowed on email and WhatsApp (max 5 files, 10 MB each). SMS returns 422 if files are sent. JSON cannot carry files: send attachments as multipart with attachments[].') }}</p>
 
                         <h6>{{ __('Request body') }}</h6>
                         <table class="table table-sm">
@@ -120,12 +120,24 @@
                                     <td><code>attachments</code></td>
                                     <td>file[]</td>
                                     <td>{{ __('No') }}</td>
-                                    <td>{{ __('Email only. Field name attachments[]. WhatsApp and SMS return 422 if files are sent.') }}</td>
+                                    <td>{{ __('Email and WhatsApp. Field name attachments[]. SMS returns 422 if files are sent.') }}</td>
                                 </tr>
                             </tbody>
                         </table>
 
                         <h6 class="mt-3">{{ __('Example request (email)') }}</h6>
+                        <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
+  -H "Authorization: Bearer {{ $apiToken }}" \
+  -H "Accept: application/json" \
+  -F "channel=email" \
+  -F "recipient_email=ada@example.com" \
+  -F "recipient_name=Tester" \
+  -F "subject=Tu factura" \
+  -F "message=Adjuntamos la factura del período. https://idoneo.dev" \
+  -F "metadata={\"source\":\"erp\",\"external_id\":\"INV-1042\"}" \
+  -F "attachments[]=@./factura.pdf"</code></pre>
+
+                        <h6 class="mt-3">{{ __('Example request (email JSON, no files)') }}</h6>
                         <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Content-Type: application/json" \
@@ -135,11 +147,20 @@
     "recipient_email": "ada@example.com",
     "recipient_name": "Tester",
     "subject": "Tu factura",
-    "message": "Adjuntamos la factura del período. https://idoneo.dev",
+    "message": "Tu factura del período está lista. https://idoneo.dev",
     "metadata": { "source": "erp", "external_id": "INV-1042" }
   }'</code></pre>
 
                         <h6 class="mt-3">{{ __('Example request (WhatsApp)') }}</h6>
+                        <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
+  -H "Authorization: Bearer {{ $apiToken }}" \
+  -H "Accept: application/json" \
+  -F "channel=whatsapp" \
+  -F "recipient_phone=+34 600 111 222" \
+  -F "message=Adjuntamos la factura del período." \
+  -F "attachments[]=@./factura.pdf"</code></pre>
+
+                        <h6 class="mt-3">{{ __('Example request (WhatsApp JSON, no files)') }}</h6>
                         <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
   -H "Authorization: Bearer {{ $apiToken }}" \
   -H "Content-Type: application/json" \
@@ -161,17 +182,6 @@
     "message": "Código 4821. Caduca en 10 minutos."
   }'</code></pre>
 
-                        <h6 class="mt-3">{{ __('Example request (email with attachment)') }}</h6>
-                        <pre class="docs-code"><code class="language-bash">curl -X POST "{{ url('/') }}/api/team/communications" \
-  -H "Authorization: Bearer {{ $apiToken }}" \
-  -H "Accept: application/json" \
-  -F "channel=email" \
-  -F "recipient_email=ada@example.com" \
-  -F "subject=Tu factura" \
-  -F "message=Adjuntamos la factura del período. https://idoneo.dev" \
-  -F "metadata={\"source\":\"erp\",\"external_id\":\"INV-1042\"}" \
-  -F "attachments[]=@./factura.pdf"</code></pre>
-
                         <h6 class="mt-3">{{ __('Success response (201)') }}</h6>
                         <pre><code class="language-json">{
   "success": true,
@@ -192,7 +202,15 @@
     "sent_at": null,
     "created_at": "2026-09-18T13:54:00+00:00",
     "contact": null,
-    "attachments": []
+    "attachments": [
+      {
+        "id": 12,
+        "file_name": "factura.pdf",
+        "mime_type": "application/pdf",
+        "size": 122880,
+        "url": "{{ url('/') }}/storage/12/factura.pdf"
+      }
+    ]
   }
 }</code></pre>
 

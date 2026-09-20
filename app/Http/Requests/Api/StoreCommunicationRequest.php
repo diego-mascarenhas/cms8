@@ -49,7 +49,13 @@ class StoreCommunicationRequest extends FormRequest
             ],
             'metadata' => ['nullable', 'array'],
             'attachments' => ['nullable', 'array', 'max:5'],
-            'attachments.*' => ['file', 'max:10240'],
+            'attachments.*' => array_values(array_filter([
+                'file',
+                'max:10240',
+                $this->input('channel') === CommunicationChannel::WhatsApp->value
+                    ? 'mimes:jpg,jpeg,png,webp,gif,pdf,csv,txt,doc,docx,xls,xlsx'
+                    : null,
+            ])),
         ];
     }
 
@@ -65,6 +71,7 @@ class StoreCommunicationRequest extends FormRequest
             'recipient_email.email' => __('Ingresá un email válido.'),
             'attachments.max' => __('Podés adjuntar hasta 5 archivos.'),
             'attachments.*.max' => __('Cada archivo puede pesar hasta 10 MB.'),
+            'attachments.*.mimes' => __('Documento no permitido.'),
         ];
     }
 

@@ -2,16 +2,19 @@
 
 namespace App\Services\Communications;
 
+use App\Contracts\WhatsAppGateway;
 use App\Enums\CommunicationChannel;
 use App\Mail\CommunicationMail;
 use App\Models\Communication;
 use App\Models\Team;
 use App\Services\MailBabyService;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppMessageService;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class CommunicationSender
 {
@@ -151,10 +154,54 @@ class CommunicationSender
         }
 
         $service = new WhatsAppMessageService($team);
-        $service->sendWhatsApp($to, $communication->message, [
-            'source' => 'communications',
-            'communication_id' => $communication->id,
-        ]);
+        $attachments = $communication->getMedia('attachments');
+        if ($attachments->isEmpty())
+        {
+            $service->sendWhatsApp($to, $communication->message, [
+                'source' => 'communications',
+                'communication_id' => $communication->id,
+            ]);
+
+            return;
+        }
+
+        $gateway = $this->whatsAppGateway($team, $service);
+
+        foreach ($attachments->values() as $index => $media)
+        {
+            $caption = $index === 0 && trim($communication->message) !== ''
+                ? $communication->message
+                : null;
+
+            if (! $gateway->sendMedia($to, $this->whatsAppMediaPath($media), $caption))
+            {
+                throw new RuntimeException(__('No se pudo enviar el archivo.'));
+            }
+        }
+    }
+
+    private function whatsAppGateway(Team $team, WhatsAppMessageService $service): WhatsAppGateway
+    {
+        if ($team->usesLocalWhatsApp() && $team->getWhatsAppServiceBaseUrl() !== '')
+        {
+            return new LocalWhatsAppGateway(
+                $team->getWhatsAppServiceBaseUrl(),
+                (string) config('whatsapp.local.webhook_secret'),
+                $team->id,
+            );
+        }
+
+        if (app()->bound(WhatsAppGateway::class))
+        {
+            return app(WhatsAppGateway::class);
+        }
+
+        return $service;
+    }
+
+    private function whatsAppMediaPath(Media $media): string
+    {
+        return 'storage/'.$media->getPathRelativeToRoot();
     }
 
     public function sendSms(Communication $communication, Team $team): void

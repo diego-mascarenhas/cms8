@@ -342,6 +342,55 @@ class CommunicationApiTest extends TestCase
         $this->assertSame(1, $communication->getMedia('attachments')->count());
     }
 
+    public function test_whatsapp_attachments_are_stored(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        [, , $token] = $this->adminWithToken();
+
+        $file = UploadedFile::fake()->create('invoice.pdf', 120, 'application/pdf');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/communications', [
+                'channel' => CommunicationChannel::WhatsApp->value,
+                'recipient_phone' => '+34 600 111 222',
+                'message' => 'See attachment',
+                'attachments' => [$file],
+            ], [
+                'Authorization' => 'Bearer '.$token,
+                'Accept' => 'application/json',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.channel', 'whatsapp')
+            ->assertJsonPath('data.attachments.0.file_name', 'invoice.pdf');
+
+        $communication = Communication::query()->first();
+        $this->assertNotNull($communication);
+        $this->assertSame(1, $communication->getMedia('attachments')->count());
+    }
+
+    public function test_sms_rejects_attachments(): void
+    {
+        Queue::fake();
+        Storage::fake('public');
+        [, , $token] = $this->adminWithToken();
+
+        $file = UploadedFile::fake()->create('invoice.pdf', 120, 'application/pdf');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->post('/api/communications', [
+                'channel' => CommunicationChannel::Sms->value,
+                'recipient_phone' => '34600111222',
+                'message' => 'See attachment',
+                'attachments' => [$file],
+            ], [
+                'Authorization' => 'Bearer '.$token,
+                'Accept' => 'application/json',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['attachments']);
+    }
+
     public function test_docs_token_requires_authentication(): void
     {
         $this->getJson('/api/communications/docs-token')->assertUnauthorized();
