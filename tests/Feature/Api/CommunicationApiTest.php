@@ -163,6 +163,20 @@ class CommunicationApiTest extends TestCase
             ->assertJsonPath('data.0.subject', 'Mine');
     }
 
+    public function test_index_includes_open_tracking_on_sent_communications(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        $sent = Communication::factory()->forTeamAndUser($team, $user)->email()->sent()->create([
+            'subject' => 'Test 5',
+        ]);
+        $sent->markOpened();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/communications')
+            ->assertOk()
+            ->assertJsonPath('data.0.tracking.opened', true);
+    }
+
     public function test_stats_and_retry(): void
     {
         Queue::fake();
