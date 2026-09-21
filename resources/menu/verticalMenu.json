@@ -185,6 +185,13 @@
       "module_key": "users"
     },
     {
+      "url": "organization",
+      "name": "Organización",
+      "icon": "menu-icon tf-icons ti ti-hierarchy-2",
+      "slug": "organization.index",
+      "module_key": "departments"
+    },
+    {
       "url": "department/list",
       "name": "Departments",
       "icon": "menu-icon tf-icons ti ti-users-group",
