@@ -171,6 +171,12 @@ return [
     'affiliate_commission_percent' => (float) env('HUMANO_AFFILIATE_COMMISSION_PERCENT', 30),
 
     /*
+     * | Agency commission % when the affiliate recommends a Stripe customer (cus_…),
+     * | not a single product subscription (sub_…).
+     */
+    'agency_commission_percent' => (float) env('HUMANO_AGENCY_COMMISSION_PERCENT', 10),
+
+    /*
      * | Team that stores platform-wide affiliate settings (commission %). Defaults to CMS_TEAM_ID.
      */
     'platform_team_id' => (int) env('CMS_TEAM_ID', 0),

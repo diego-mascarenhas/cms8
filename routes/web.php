@@ -1293,15 +1293,18 @@ Route::get('/affiliate/capture', [App\Http\Controllers\AffiliateReferralCaptureC
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
 Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');
-Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
-Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
+Route::middleware('auth')->group(function ()
+{
+    Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');
+    Route::resource('organization', EnterpriseOrganizationController::class)->except(['index', 'show']);
 
-Route::get('/department/list', [EnterpriseDepartmentController::class, 'index'])->name('department.index');
-Route::get('/department/create', [EnterpriseDepartmentController::class, 'create'])->name('department.create');
-Route::post('/department', [EnterpriseDepartmentController::class, 'store'])->name('department.store');
-Route::get('/department/{department}/edit', [EnterpriseDepartmentController::class, 'edit'])->name('department.edit');
-Route::put('/department/{department}', [EnterpriseDepartmentController::class, 'update'])->name('department.update');
-Route::delete('/department/{department}', [EnterpriseDepartmentController::class, 'destroy'])->name('department.destroy');
+    Route::get('/department/list', [EnterpriseDepartmentController::class, 'index'])->name('department.index');
+    Route::get('/department/create', [EnterpriseDepartmentController::class, 'create'])->name('department.create');
+    Route::post('/department', [EnterpriseDepartmentController::class, 'store'])->name('department.store');
+    Route::get('/department/{department}/edit', [EnterpriseDepartmentController::class, 'edit'])->name('department.edit');
+    Route::put('/department/{department}', [EnterpriseDepartmentController::class, 'update'])->name('department.update');
+    Route::delete('/department/{department}', [EnterpriseDepartmentController::class, 'destroy'])->name('department.destroy');
+});
 
 Route::get('/notes', function ()
 {

@@ -29,6 +29,18 @@ class EnterpriseDepartmentSeeder extends Seeder
                 'name' => 'Desarrollo',
                 'color' => '#88e1ff',
             ],
+            [
+                'name' => 'Publicidad',
+                'color' => '#ffb3c6',
+            ],
+            [
+                'name' => 'Medio',
+                'color' => '#d4b3ff',
+            ],
+            [
+                'name' => 'Producto',
+                'color' => '#b3f0e0',
+            ],
         ];
 
         foreach ($departments as $department)

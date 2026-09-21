@@ -5,14 +5,17 @@ namespace App\Services;
 use App\Mail\AffiliatePurchaseInvitationMail;
 use App\Models\AffiliateInvitation;
 use App\Models\BillingAffiliateCommission;
+use App\Models\ServiceSync;
 use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\User;
 use App\Support\AffiliateCommission;
 use App\Traits\ConfiguresTeamMail;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AffiliateProgramService
@@ -30,6 +33,7 @@ class AffiliateProgramService
      *     reason: string|null,
      *     referral_code: string|null,
      *     commission_percent: float,
+     *     agency_commission_percent: float,
      *     plans: list<array<string, mixed>>,
      *     invitations: list<array<string, mixed>>,
      *     referrals: list<array<string, mixed>>,
@@ -48,6 +52,7 @@ class AffiliateProgramService
                 'reason' => __('Los equipos referidos no pueden usar el programa de afiliados.'),
                 'referral_code' => null,
                 'commission_percent' => AffiliateCommission::percent(),
+                'agency_commission_percent' => AffiliateCommission::agencyPercent(),
                 'plans' => [],
                 'invitations' => [],
                 'referrals' => [],
@@ -92,17 +97,25 @@ class AffiliateProgramService
             ->limit(100)
             ->get();
 
+        $referrals = $this->buildReferrals($team, $invitations, $commissionsAsReferrer);
+        $totalsAsReferrer = $this->sumCommissionsByCurrency($commissionsAsReferrer);
+        if ($totalsAsReferrer === [])
+        {
+            $totalsAsReferrer = $this->sumReferralCommissions($referrals);
+        }
+
         return [
             'eligible' => true,
             'reason' => null,
             'referral_code' => $referralCode,
             'commission_percent' => AffiliateCommission::percent(),
+            'agency_commission_percent' => AffiliateCommission::agencyPercent(),
             'plans' => $plans,
             'invitations' => $invitations->map(fn (AffiliateInvitation $invitation): array => $this->serializeInvitation($invitation))->values()->all(),
-            'referrals' => $this->buildReferrals($team, $invitations, $commissionsAsReferrer),
+            'referrals' => $referrals,
             'commissions_as_referrer' => $commissionsAsReferrer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'paying'))->values()->all(),
             'commissions_as_payer' => $commissionsAsPayer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'referrer'))->values()->all(),
-            'totals_as_referrer' => $this->sumCommissionsByCurrency($commissionsAsReferrer),
+            'totals_as_referrer' => $totalsAsReferrer,
             'totals_as_payer' => $this->sumCommissionsByCurrency($commissionsAsPayer),
         ];
     }
@@ -241,14 +254,16 @@ class AffiliateProgramService
             ]);
         }
 
-        $payingTeam = $this->findPayingTeamBySubscriptionCode($subscriptionCode);
+        $target = $this->resolveClaimTarget($subscriptionCode);
 
-        if ($payingTeam === null)
+        if ($target === null)
         {
             throw ValidationException::withMessages([
                 'subscription_code' => __('No encontramos una suscripción con ese código.'),
             ]);
         }
+
+        [$payingTeam, $subscription] = $target;
 
         if ((int) $payingTeam->id === (int) $referrer->id)
         {
@@ -257,34 +272,28 @@ class AffiliateProgramService
             ]);
         }
 
-        $existing = trim((string) ($payingTeam->referred_by ?? ''));
-        if ($existing !== '')
+        if ($subscription !== null)
         {
-            if (strcasecmp($existing, $referrerCode) === 0)
-            {
-                throw ValidationException::withMessages([
-                    'subscription_code' => __('Ese cliente ya está en tus recomendaciones.'),
-                ]);
-            }
-
-            throw ValidationException::withMessages([
-                'subscription_code' => __('Esa suscripción ya tiene un referente.'),
-            ]);
+            $this->claimSpecificSubscription($payingTeam, $subscription, $referrerCode);
+        } else
+        {
+            $this->claimCustomer($payingTeam, $referrerCode);
         }
 
-        $payingTeam->forceFill(['referred_by' => $referrerCode])->save();
-        $this->stampUnattributedSubscriptions($payingTeam, $referrerCode);
-
         return $this->serializeReferralFromTeam(
-            $payingTeam->loadMissing('owner'),
+            $payingTeam->unsetRelation('subscriptions')->loadMissing('owner'),
             $referrer->billingAffiliateCommissionsAsReferrer()
                 ->where('paying_team_id', $payingTeam->id)
                 ->get()
                 ->all(),
+            $referrerCode,
         );
     }
 
-    private function findPayingTeamBySubscriptionCode(string $code): ?Team
+    /**
+     * @return array{0: Team, 1: Subscription|null}|null
+     */
+    private function resolveClaimTarget(string $code): ?array
     {
         $code = trim($code);
         if ($code === '')
@@ -294,17 +303,70 @@ class AffiliateProgramService
 
         if (str_starts_with(strtolower($code), 'cus_'))
         {
-            return Team::findByStripeCustomerId($code);
+            $team = Team::findByStripeCustomerId($code);
+
+            return $team !== null ? [$team, null] : null;
         }
 
         $subscription = Subscription::query()
             ->where('stripe_id', $code)
             ->first();
 
-        return $subscription?->team;
+        if ($subscription?->team === null)
+        {
+            return null;
+        }
+
+        return [$subscription->team, $subscription];
     }
 
-    private function stampUnattributedSubscriptions(Team $payingTeam, string $referrerCode): void
+    private function claimSpecificSubscription(Team $payingTeam, Subscription $subscription, string $referrerCode): void
+    {
+        $existingSubscriptionReferrer = trim((string) ($subscription->referred_by ?? ''));
+        if ($existingSubscriptionReferrer !== '' && strcasecmp($existingSubscriptionReferrer, $referrerCode) !== 0)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Esa suscripción ya tiene un referente.'),
+            ]);
+        }
+
+        if ($existingSubscriptionReferrer === '')
+        {
+            $subscription->forceFill([
+                'referred_by' => $referrerCode,
+                'affiliate_commission_percent' => AffiliateCommission::percent(),
+            ])->save();
+        }
+
+        if (trim((string) ($payingTeam->referred_by ?? '')) === '')
+        {
+            $payingTeam->forceFill(['referred_by' => $referrerCode])->save();
+        }
+    }
+
+    private function claimCustomer(Team $payingTeam, string $referrerCode): void
+    {
+        $existing = trim((string) ($payingTeam->referred_by ?? ''));
+        if ($existing !== '' && strcasecmp($existing, $referrerCode) !== 0)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Esa suscripción ya tiene un referente.'),
+            ]);
+        }
+
+        if ($existing === '')
+        {
+            $payingTeam->forceFill(['referred_by' => $referrerCode])->save();
+        }
+
+        $this->stampUnattributedSubscriptions(
+            $payingTeam,
+            $referrerCode,
+            AffiliateCommission::agencyPercent(),
+        );
+    }
+
+    private function stampUnattributedSubscriptions(Team $payingTeam, string $referrerCode, float $percent): void
     {
         foreach ($payingTeam->subscriptions as $subscription)
         {
@@ -316,7 +378,7 @@ class AffiliateProgramService
 
             $subscription->forceFill([
                 'referred_by' => $referrerCode,
-                'affiliate_commission_percent' => AffiliateCommission::percent(),
+                'affiliate_commission_percent' => $percent,
             ])->save();
         }
     }
@@ -370,7 +432,7 @@ class AffiliateProgramService
         $referralCode = $this->linkBuilder->referralCode($team);
 
         $referredTeams = Team::query()
-            ->with('owner')
+            ->with(['owner', 'subscriptions'])
             ->when(
                 $referralCode !== null,
                 fn ($query) => $query->where('referred_by', $referralCode),
@@ -416,10 +478,14 @@ class AffiliateProgramService
                 $usedEmails[$email] = true;
             }
 
-            $referrals[] = $this->serializeReferralFromInvitation(
-                $invitation,
-                $teamsByEmail[$email] ?? null,
-                $commissionsByEmail[$email] ?? [],
+            array_push(
+                $referrals,
+                ...$this->serializeInvitationReferrals(
+                    $invitation,
+                    $teamsByEmail[$email] ?? null,
+                    $commissionsByEmail[$email] ?? [],
+                    $referralCode,
+                ),
             );
         }
 
@@ -431,7 +497,7 @@ class AffiliateProgramService
             }
 
             $usedEmails[$email] = true;
-            $referrals[] = $this->serializeReferralFromTeam($referred, $commissionsByEmail[$email] ?? []);
+            array_push($referrals, ...$this->serializeTeamReferrals($referred, $commissionsByEmail[$email] ?? [], $referralCode));
         }
 
         foreach ($commissions as $row)
@@ -445,7 +511,7 @@ class AffiliateProgramService
             if ($email !== '' && $row->payingTeam !== null)
             {
                 $usedEmails[$email] = true;
-                $referrals[] = $this->serializeReferralFromTeam($row->payingTeam, $commissionsByEmail[$email]);
+                array_push($referrals, ...$this->serializeTeamReferrals($row->payingTeam, $commissionsByEmail[$email], $referralCode));
 
                 continue;
             }
@@ -453,19 +519,28 @@ class AffiliateProgramService
             $referrals[] = $this->serializeReferralFromCommission($row);
         }
 
-        return $referrals;
+        return $this->sortReferralsByRenewal($referrals);
     }
 
     /**
      * @param  list<BillingAffiliateCommission>  $commissionRows
-     * @return array<string, mixed>
+     * @return list<array<string, mixed>>
      */
-    private function serializeReferralFromInvitation(AffiliateInvitation $invitation, ?Team $referred, array $commissionRows): array
+    private function serializeInvitationReferrals(AffiliateInvitation $invitation, ?Team $referred, array $commissionRows, ?string $referrerCode = null): array
     {
+        if ($referred !== null)
+        {
+            $rows = $this->serializeTeamReferrals($referred, $commissionRows, $referrerCode, $invitation);
+            if ($rows !== [])
+            {
+                return $rows;
+            }
+        }
+
         $summary = $this->summarizeCommissionRows($commissionRows);
         $contracted = $referred !== null || $commissionRows !== [];
 
-        return [
+        return [[
             'id' => 'invitation-'.$invitation->id,
             'name' => $invitation->invitee_name,
             'email' => $invitation->invitee_email,
@@ -475,18 +550,75 @@ class AffiliateProgramService
             'clicked_at' => $invitation->clicked_at?->toIso8601String(),
             'contracted' => $contracted,
             'contracted_at' => $summary['first_paid_at'] ?? $referred?->created_at?->toIso8601String(),
+            'renews_at' => null,
             'commission_cents' => $summary['commission_cents'],
             'commission_percent' => $summary['commission_percent'],
             'currency' => $summary['currency'],
             'status' => $contracted ? 'Contrató' : $invitation->statusLabel(),
-        ];
+        ]];
     }
 
     /**
      * @param  list<BillingAffiliateCommission>  $commissionRows
      * @return array<string, mixed>
      */
-    private function serializeReferralFromTeam(Team $referred, array $commissionRows): array
+    private function serializeReferralFromTeam(Team $referred, array $commissionRows, ?string $referrerCode = null): array
+    {
+        $rows = $this->serializeTeamReferrals($referred, $commissionRows, $referrerCode);
+
+        return $rows[0] ?? $this->serializeTeamFallback($referred, $commissionRows);
+    }
+
+    /**
+     * @param  list<BillingAffiliateCommission>  $commissionRows
+     * @return list<array<string, mixed>>
+     */
+    private function serializeTeamReferrals(Team $referred, array $commissionRows, ?string $referrerCode = null, ?AffiliateInvitation $invitation = null): array
+    {
+        $subscriptions = $this->referredSubscriptions($referred, $referrerCode);
+        if ($subscriptions->isEmpty())
+        {
+            return $invitation === null ? [$this->serializeTeamFallback($referred, $commissionRows)] : [];
+        }
+
+        $summary = $this->summarizeCommissionRows($commissionRows);
+        $billing = $this->subscriptionBillingByStripeId($subscriptions);
+        $rows = [];
+
+        foreach ($subscriptions as $subscription)
+        {
+            $stripeId = (string) $subscription->stripe_id;
+            $rowBilling = $billing[$stripeId] ?? ['renews_at' => null, 'amount_cents' => 0, 'currency' => null];
+            $percent = $this->commissionPercentForSubscription($subscription, $summary['commission_percent']);
+            $currency = $rowBilling['currency'] ?? $summary['currency'];
+            $commissionCents = $this->expectedCommissionCents((int) $rowBilling['amount_cents'], $percent);
+
+            $rows[] = [
+                'id' => 'subscription-'.$subscription->id,
+                'name' => $invitation?->invitee_name ?? $referred->name,
+                'email' => $invitation?->invitee_email ?? $referred->owner?->email,
+                'plan_name' => $this->serviceNameForType((string) $subscription->type),
+                'sent_at' => $invitation?->sent_at?->toIso8601String(),
+                'opened_at' => $invitation?->opened_at?->toIso8601String(),
+                'clicked_at' => $invitation?->clicked_at?->toIso8601String(),
+                'contracted' => true,
+                'contracted_at' => $summary['first_paid_at'] ?? $referred->created_at?->toIso8601String(),
+                'renews_at' => $rowBilling['renews_at'] ?? null,
+                'commission_cents' => $commissionCents,
+                'commission_percent' => $percent,
+                'currency' => $commissionCents > 0 ? ($currency ?? 'EUR') : $currency,
+                'status' => 'Contrató',
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<BillingAffiliateCommission>  $commissionRows
+     * @return array<string, mixed>
+     */
+    private function serializeTeamFallback(Team $referred, array $commissionRows): array
     {
         $summary = $this->summarizeCommissionRows($commissionRows);
 
@@ -500,6 +632,7 @@ class AffiliateProgramService
             'clicked_at' => null,
             'contracted' => true,
             'contracted_at' => $summary['first_paid_at'] ?? $referred->created_at?->toIso8601String(),
+            'renews_at' => null,
             'commission_cents' => $summary['commission_cents'],
             'commission_percent' => $summary['commission_percent'],
             'currency' => $summary['currency'],
@@ -522,11 +655,231 @@ class AffiliateProgramService
             'clicked_at' => null,
             'contracted' => true,
             'contracted_at' => $row->created_at?->toIso8601String(),
+            'renews_at' => null,
             'commission_cents' => (int) $row->commission_amount_cents,
             'commission_percent' => (float) $row->commission_percent,
             'currency' => strtoupper((string) $row->currency),
             'status' => 'Contrató',
         ];
+    }
+
+    /**
+     * @return Collection<int, Subscription>
+     */
+    private function referredSubscriptions(Team $referred, ?string $referrerCode): Collection
+    {
+        $referred->loadMissing('subscriptions');
+
+        return $referred->subscriptions
+            ->filter(function (Subscription $subscription) use ($referrerCode): bool
+            {
+                $subscriptionReferrer = trim((string) ($subscription->referred_by ?? ''));
+
+                return $referrerCode !== null
+                    && $subscriptionReferrer !== ''
+                    && strcasecmp($subscriptionReferrer, $referrerCode) === 0;
+            })
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, Subscription>  $subscriptions
+     * @return array<string, array{renews_at: string|null, amount_cents: int, currency: string|null}>
+     */
+    private function subscriptionBillingByStripeId(Collection $subscriptions): array
+    {
+        $ids = $subscriptions->pluck('stripe_id')->filter()->unique()->values()->all();
+        $syncs = collect();
+
+        if ($ids !== [])
+        {
+            $syncs = ServiceSync::query()
+                ->whereIn('stripe_id', $ids)
+                ->get(['stripe_id', 'current_period_end', 'amount_total', 'unit_amount', 'price_currency']);
+        }
+
+        $byStripeId = $syncs->keyBy(fn (ServiceSync $sync): string => (string) $sync->stripe_id);
+        $billing = [];
+
+        foreach ($subscriptions as $subscription)
+        {
+            $stripeId = (string) $subscription->stripe_id;
+            $sync = $byStripeId->get($stripeId);
+            $amountCents = $sync instanceof ServiceSync
+                ? $this->amountCentsFromSync($sync)
+                : 0;
+
+            if ($amountCents <= 0)
+            {
+                $amountCents = $this->planAmountCents((string) $subscription->type);
+            }
+
+            $currency = $sync instanceof ServiceSync
+                ? strtoupper(trim((string) ($sync->price_currency ?? '')))
+                : '';
+
+            $billing[$stripeId] = [
+                'renews_at' => $sync?->current_period_end?->toIso8601String() ?? $this->renewalDateFromSubscription($subscription),
+                'amount_cents' => $amountCents,
+                'currency' => $currency !== '' ? $currency : null,
+            ];
+        }
+
+        return $billing;
+    }
+
+    private function amountCentsFromSync(ServiceSync $sync): int
+    {
+        $total = (float) $sync->amount_total;
+        if ($total > 0)
+        {
+            return (int) round($total * 100);
+        }
+
+        $unit = (float) $sync->unit_amount;
+        if ($unit >= 100)
+        {
+            return (int) round($unit);
+        }
+
+        if ($unit > 0)
+        {
+            return (int) round($unit * 100);
+        }
+
+        return 0;
+    }
+
+    private function planAmountCents(string $type): int
+    {
+        foreach (config('humano_pricing.plans', []) as $plan)
+        {
+            if (! is_array($plan) || (string) ($plan['id'] ?? '') !== $type)
+            {
+                continue;
+            }
+
+            $amount = $plan['monthly_amount'] ?? '';
+            if ($amount === '' || ! is_numeric($amount))
+            {
+                return 0;
+            }
+
+            return (int) round(((float) $amount) * 100);
+        }
+
+        return 0;
+    }
+
+    private function commissionPercentForSubscription(Subscription $subscription, float $fallback): float
+    {
+        $stored = $subscription->affiliate_commission_percent;
+        if ($stored !== null && (float) $stored > 0)
+        {
+            return max(0.0, min(100.0, (float) $stored));
+        }
+
+        return max(0.0, min(100.0, $fallback));
+    }
+
+    private function expectedCommissionCents(int $amountCents, float $percent): int
+    {
+        if ($amountCents <= 0 || $percent <= 0)
+        {
+            return 0;
+        }
+
+        return (int) round($amountCents * ($percent / 100.0));
+    }
+
+    private function renewalDateFromSubscription(Subscription $subscription): ?string
+    {
+        $data = is_array($subscription->data) ? $subscription->data : [];
+        $raw = $data['current_period_end'] ?? $data['renews_at'] ?? null;
+
+        if (is_numeric($raw))
+        {
+            return Carbon::createFromTimestamp((int) $raw)->toIso8601String();
+        }
+
+        if (is_string($raw) && trim($raw) !== '')
+        {
+            try
+            {
+                return Carbon::parse($raw)->toIso8601String();
+            } catch (\Throwable)
+            {
+            }
+        }
+
+        return $subscription->ends_at?->toIso8601String();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $referrals
+     * @return list<array<string, mixed>>
+     */
+    private function sortReferralsByRenewal(array $referrals): array
+    {
+        usort($referrals, function (array $left, array $right): int
+        {
+            $leftDate = $left['renews_at'] ?? null;
+            $rightDate = $right['renews_at'] ?? null;
+
+            if ($leftDate === $rightDate)
+            {
+                return 0;
+            }
+
+            if ($leftDate === null)
+            {
+                return 1;
+            }
+
+            if ($rightDate === null)
+            {
+                return -1;
+            }
+
+            return strcmp((string) $leftDate, (string) $rightDate);
+        });
+
+        return $referrals;
+    }
+
+    private function serviceNameForType(string $type): string
+    {
+        $type = trim($type);
+        if ($type === '')
+        {
+            return '';
+        }
+
+        $marketing = $this->linkBuilder->planMarketing($type);
+        $marketingName = is_array($marketing) ? trim((string) ($marketing['name'] ?? '')) : '';
+        if ($marketingName !== '')
+        {
+            return $marketingName;
+        }
+
+        $key = "humano_pricing.plans.{$type}.name";
+        $translated = __($key);
+        if (is_string($translated) && $translated !== $key)
+        {
+            return $translated;
+        }
+
+        return match (strtolower($type))
+        {
+            'assistant' => 'Assistant',
+            'hosting' => 'Hosting',
+            'hunter' => 'Hunter',
+            'business' => 'Business',
+            'mailer' => 'Mailer',
+            'ads' => 'Ads',
+            'projects' => 'Projects',
+            default => Str::title(str_replace('_', ' ', $type)),
+        };
     }
 
     /**
@@ -582,6 +935,34 @@ class AffiliateProgramService
             }
             $totals[$currency]['paid_cents'] += (int) $row->amount_paid_cents;
             $totals[$currency]['commission_cents'] += (int) $row->commission_amount_cents;
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $referrals
+     * @return array<string, array{paid_cents: int, commission_cents: int}>
+     */
+    private function sumReferralCommissions(array $referrals): array
+    {
+        $totals = [];
+
+        foreach ($referrals as $referral)
+        {
+            $commissionCents = (int) ($referral['commission_cents'] ?? 0);
+            $currency = strtoupper(trim((string) ($referral['currency'] ?? '')));
+            if ($commissionCents <= 0 || $currency === '')
+            {
+                continue;
+            }
+
+            if (! isset($totals[$currency]))
+            {
+                $totals[$currency] = ['paid_cents' => 0, 'commission_cents' => 0];
+            }
+
+            $totals[$currency]['commission_cents'] += $commissionCents;
         }
 
         return $totals;
