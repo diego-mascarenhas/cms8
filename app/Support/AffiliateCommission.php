@@ -33,11 +33,31 @@ class AffiliateCommission
 
     public static function percent(): float
     {
+        return self::resolvePercent('affiliate_commission_percent', 30);
+    }
+
+    public static function agencyPercent(): float
+    {
+        return self::resolvePercent('agency_commission_percent', 10);
+    }
+
+    public static function displayPercent(): string
+    {
+        return self::formatPercent(self::percent());
+    }
+
+    public static function displayAgencyPercent(): string
+    {
+        return self::formatPercent(self::agencyPercent());
+    }
+
+    private static function resolvePercent(string $key, float $default): float
+    {
         $team = self::platformTeam();
 
         if ($team !== null)
         {
-            $stored = $team->getSetting('affiliate_commission_percent');
+            $stored = $team->getSetting($key);
 
             if ($stored !== null && $stored !== '')
             {
@@ -45,13 +65,11 @@ class AffiliateCommission
             }
         }
 
-        return self::clampPercent((float) config('humano_pricing.affiliate_commission_percent', 30));
+        return self::clampPercent((float) config('humano_pricing.'.$key, $default));
     }
 
-    public static function displayPercent(): string
+    private static function formatPercent(float $percent): string
     {
-        $percent = self::percent();
-
         return rtrim(rtrim(number_format($percent, 2, '.', ''), '0'), '.');
     }
 

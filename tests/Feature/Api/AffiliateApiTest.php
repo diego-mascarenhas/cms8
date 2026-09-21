@@ -24,7 +24,10 @@ class AffiliateApiTest extends TestCase
         parent::setUp();
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        config(['humano_pricing.affiliate_commission_percent' => 30]);
+        config([
+            'humano_pricing.affiliate_commission_percent' => 30,
+            'humano_pricing.agency_commission_percent' => 10,
+        ]);
     }
 
     /**
@@ -193,9 +196,62 @@ class AffiliateApiTest extends TestCase
             ->assertJsonPath('data.referrals.1.plan_name', 'Assistant')
             ->assertJsonPath('data.referrals.1.commission_cents', 1470)
             ->assertJsonPath('data.referrals.1.currency', 'EUR')
-            ->assertJsonPath('data.totals_as_referrer.EUR.commission_cents', 2130);
+            ->assertJsonPath('data.totals_as_referrer.EUR.commission_cents', 2130)
+            ->assertJsonPath('data.agency_commission_percent', 10);
         $this->assertStringStartsWith('2026-10-15', (string) $response->json('data.referrals.0.renews_at'));
         $this->assertStringStartsWith('2026-11-01', (string) $response->json('data.referrals.1.renews_at'));
+    }
+
+    public function test_dashboard_uses_agency_percent_for_customer_claim(): void
+    {
+        [, , $token] = $this->adminWithAffiliatesModule([
+            'stripe_id' => 'cus_agency_referrer',
+            'referred_by' => null,
+        ]);
+
+        $payingOwner = User::factory()->create([
+            'email' => 'agencia@example.com',
+        ]);
+        $payingTeam = Team::factory()->create([
+            'name' => 'Cliente Agencia',
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_agency_paying',
+            'referred_by' => null,
+        ]);
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hosting',
+            'stripe_id' => 'sub_agency_hosting',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hosting_monthly',
+            'quantity' => 1,
+            'data' => ['current_period_end' => '2026-10-15T00:00:00+00:00'],
+        ]);
+        ServiceSync::query()->create([
+            'stripe_id' => 'sub_agency_hosting',
+            'provider' => 'stripe',
+            'type' => 'sell',
+            'team_id' => $payingTeam->id,
+            'status' => 'active',
+            'amount_total' => 21.99,
+            'price_currency' => 'EUR',
+            'current_period_end' => '2026-10-15T00:00:00+00:00',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/affiliates/claim', [
+                'subscription_code' => 'cus_agency_paying',
+            ])
+            ->assertOk();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/affiliates/dashboard')
+            ->assertOk()
+            ->assertJsonPath('data.referrals.0.name', 'Cliente Agencia')
+            ->assertJsonPath('data.referrals.0.plan_name', 'Hosting')
+            ->assertJsonPath('data.referrals.0.commission_percent', 10)
+            ->assertJsonPath('data.referrals.0.commission_cents', 220)
+            ->assertJsonPath('data.totals_as_referrer.EUR.commission_cents', 220);
     }
 
     public function test_dashboard_marks_referred_team_as_ineligible(): void
@@ -407,6 +463,11 @@ class AffiliateApiTest extends TestCase
             'cus_claim_referrer',
             $payingTeam->subscriptions()->first()?->referred_by,
         );
+        $this->assertEqualsWithDelta(
+            30.0,
+            (float) $payingTeam->subscriptions()->first()?->affiliate_commission_percent,
+            0.0001,
+        );
     }
 
     public function test_can_claim_existing_subscriber_by_customer_code(): void
@@ -422,6 +483,14 @@ class AffiliateApiTest extends TestCase
             'stripe_id' => 'cus_already_paying',
             'referred_by' => null,
         ]);
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hosting',
+            'stripe_id' => 'sub_customer_hosting',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hosting_monthly',
+            'quantity' => 1,
+        ]);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/affiliates/claim', [
@@ -431,6 +500,15 @@ class AffiliateApiTest extends TestCase
             ->assertJsonPath('success', true);
 
         $this->assertSame('cus_claim_by_customer', $payingTeam->fresh()->referred_by);
+        $this->assertSame(
+            'cus_claim_by_customer',
+            $payingTeam->subscriptions()->first()?->referred_by,
+        );
+        $this->assertEqualsWithDelta(
+            10.0,
+            (float) $payingTeam->subscriptions()->first()?->affiliate_commission_percent,
+            0.0001,
+        );
     }
 
     public function test_claim_rejects_unknown_subscription_code(): void

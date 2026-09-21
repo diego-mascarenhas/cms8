@@ -33,6 +33,7 @@ class AffiliateProgramService
      *     reason: string|null,
      *     referral_code: string|null,
      *     commission_percent: float,
+     *     agency_commission_percent: float,
      *     plans: list<array<string, mixed>>,
      *     invitations: list<array<string, mixed>>,
      *     referrals: list<array<string, mixed>>,
@@ -51,6 +52,7 @@ class AffiliateProgramService
                 'reason' => __('Los equipos referidos no pueden usar el programa de afiliados.'),
                 'referral_code' => null,
                 'commission_percent' => AffiliateCommission::percent(),
+                'agency_commission_percent' => AffiliateCommission::agencyPercent(),
                 'plans' => [],
                 'invitations' => [],
                 'referrals' => [],
@@ -107,6 +109,7 @@ class AffiliateProgramService
             'reason' => null,
             'referral_code' => $referralCode,
             'commission_percent' => AffiliateCommission::percent(),
+            'agency_commission_percent' => AffiliateCommission::agencyPercent(),
             'plans' => $plans,
             'invitations' => $invitations->map(fn (AffiliateInvitation $invitation): array => $this->serializeInvitation($invitation))->values()->all(),
             'referrals' => $referrals,
@@ -356,10 +359,14 @@ class AffiliateProgramService
             $payingTeam->forceFill(['referred_by' => $referrerCode])->save();
         }
 
-        $this->stampUnattributedSubscriptions($payingTeam, $referrerCode);
+        $this->stampUnattributedSubscriptions(
+            $payingTeam,
+            $referrerCode,
+            AffiliateCommission::agencyPercent(),
+        );
     }
 
-    private function stampUnattributedSubscriptions(Team $payingTeam, string $referrerCode): void
+    private function stampUnattributedSubscriptions(Team $payingTeam, string $referrerCode, float $percent): void
     {
         foreach ($payingTeam->subscriptions as $subscription)
         {
@@ -371,7 +378,7 @@ class AffiliateProgramService
 
             $subscription->forceFill([
                 'referred_by' => $referrerCode,
-                'affiliate_commission_percent' => AffiliateCommission::percent(),
+                'affiliate_commission_percent' => $percent,
             ])->save();
         }
     }
