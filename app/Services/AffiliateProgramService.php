@@ -95,6 +95,13 @@ class AffiliateProgramService
             ->limit(100)
             ->get();
 
+        $referrals = $this->buildReferrals($team, $invitations, $commissionsAsReferrer);
+        $totalsAsReferrer = $this->sumCommissionsByCurrency($commissionsAsReferrer);
+        if ($totalsAsReferrer === [])
+        {
+            $totalsAsReferrer = $this->sumReferralCommissions($referrals);
+        }
+
         return [
             'eligible' => true,
             'reason' => null,
@@ -102,10 +109,10 @@ class AffiliateProgramService
             'commission_percent' => AffiliateCommission::percent(),
             'plans' => $plans,
             'invitations' => $invitations->map(fn (AffiliateInvitation $invitation): array => $this->serializeInvitation($invitation))->values()->all(),
-            'referrals' => $this->buildReferrals($team, $invitations, $commissionsAsReferrer),
+            'referrals' => $referrals,
             'commissions_as_referrer' => $commissionsAsReferrer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'paying'))->values()->all(),
             'commissions_as_payer' => $commissionsAsPayer->map(fn (BillingAffiliateCommission $row): array => $this->serializeCommission($row, 'referrer'))->values()->all(),
-            'totals_as_referrer' => $this->sumCommissionsByCurrency($commissionsAsReferrer),
+            'totals_as_referrer' => $totalsAsReferrer,
             'totals_as_payer' => $this->sumCommissionsByCurrency($commissionsAsPayer),
         ];
     }
@@ -921,6 +928,34 @@ class AffiliateProgramService
             }
             $totals[$currency]['paid_cents'] += (int) $row->amount_paid_cents;
             $totals[$currency]['commission_cents'] += (int) $row->commission_amount_cents;
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $referrals
+     * @return array<string, array{paid_cents: int, commission_cents: int}>
+     */
+    private function sumReferralCommissions(array $referrals): array
+    {
+        $totals = [];
+
+        foreach ($referrals as $referral)
+        {
+            $commissionCents = (int) ($referral['commission_cents'] ?? 0);
+            $currency = strtoupper(trim((string) ($referral['currency'] ?? '')));
+            if ($commissionCents <= 0 || $currency === '')
+            {
+                continue;
+            }
+
+            if (! isset($totals[$currency]))
+            {
+                $totals[$currency] = ['paid_cents' => 0, 'commission_cents' => 0];
+            }
+
+            $totals[$currency]['commission_cents'] += $commissionCents;
         }
 
         return $totals;

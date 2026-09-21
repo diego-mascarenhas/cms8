@@ -192,7 +192,8 @@ class AffiliateApiTest extends TestCase
             ->assertJsonPath('data.referrals.0.currency', 'EUR')
             ->assertJsonPath('data.referrals.1.plan_name', 'Assistant')
             ->assertJsonPath('data.referrals.1.commission_cents', 1470)
-            ->assertJsonPath('data.referrals.1.currency', 'EUR');
+            ->assertJsonPath('data.referrals.1.currency', 'EUR')
+            ->assertJsonPath('data.totals_as_referrer.EUR.commission_cents', 2130);
         $this->assertStringStartsWith('2026-10-15', (string) $response->json('data.referrals.0.renews_at'));
         $this->assertStringStartsWith('2026-11-01', (string) $response->json('data.referrals.1.renews_at'));
     }
