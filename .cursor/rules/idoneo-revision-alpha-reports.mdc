@@ -1,0 +1,60 @@
+---
+description: Serie de 3 informes IDONEO REVISION ALPHA (organización, finanzas, plan) — regenerar y avanzar
+alwaysApply: false
+globs: storage/app/generate-idoneo-*.php, storage/app/report-*.json, storage/app/stripe-summary.json
+---
+
+# Informes IDONEO · REVISION ALPHA
+
+Serie de **3 PDFs** en iCloud:
+
+`/Users/magoo/Library/Mobile Documents/com~apple~CloudDocs/REVISION ALPHA/Análisis/`
+
+| # | Archivo | Generador |
+|---|---------|-----------|
+| 01 | `IDONEO · 01 Organización · IDN-RA-01-ORG-YYYY-MM-DD.pdf` | `php storage/app/generate-idoneo-org-report-org.php` |
+| 02 | `IDONEO · 02 Finanzas · IDN-RA-02-FIN-YYYY-MM-DD.pdf` | `php storage/app/generate-idoneo-fin-report.php` |
+| 03 | `IDONEO · 03 Plan de acción · IDN-RA-03-PLAN-YYYY-MM-DD.pdf` | `php storage/app/generate-idoneo-plan-report.php` |
+
+## Fuentes de datos
+
+- Organización: `App\Support\RevisionAlphaOrganization`
+- Stripe: `storage/app/stripe-summary.json` (MCP live REVISION ALPHA)
+- Proyectos del informe 02: **`storage/app/report-active-projects-curated.json`** (no el dump crudo de la API)
+- Dump crudo API (referencia): `storage/app/report-active-projects.json`
+
+## Correcciones de proyectos (curated)
+
+**Incluir con precio corregido:**
+
+- Hormétika (`id` 1722): **€567** (no el 7650 del panel)
+
+**Excluir del informe (no salen):**
+
+- Actualización de WordPress ×2 (`1702`, `1698`)
+- Actibiz (`1724`)
+- Estación meteorológica (`1726`)
+- Sitio web Clean Up Buenos Aires (`1730`)
+
+Al actualizar precios o la lista, editar `report-active-projects-curated.json` y regenerar el 02 (y el 03 si menciona proyectos).
+
+## Conteos de bandeja (informe 01 y 03)
+
+- Emails: **234**
+- WhatsApp sin responder: **~17**
+- Hipótesis tiempo: 5 min/email · 3 min/WA
+
+## Cómo avanzar en chats nuevos
+
+1. Abrir o mencionar los generadores / esta rule.
+2. Pedir el cambio concreto (precio, hire, mes, Stripe refresh, etc.).
+3. Regenerar solo el PDF afectado (o los 3 si el dato es transversal).
+4. Dejar **solo los 3 archivos de la serie** en Análisis (no mezclar FULL ni borradores).
+
+## Estilo
+
+- Logo IDONEO · acento `#DA291C`
+- Destinatarios: equipo y socios
+- 01 = solo organizacional (sin Stripe/CAC)
+- 02 = solo financiero
+- 03 = plan minucioso mes a mes (oct–mar) + cómo afrontar
