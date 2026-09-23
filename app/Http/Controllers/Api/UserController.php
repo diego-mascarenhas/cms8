@@ -23,6 +23,7 @@ class UserController extends Controller
      *
      * Query params:
      * - assignable=1: only staff profiles (admin, collaborator, editor, etc.). Excludes clients.
+     * - assignees=1: team owner plus members whose team role is admin or collaborator.
      * - admins=1: team owner plus users with the admin role.
      * - assistant=1 / basic=1: team owner plus admin and collaborator profiles.
      */
@@ -263,6 +264,11 @@ class UserController extends Controller
             return AssignableTeamUsers::forTeam($team);
         }
 
+        if ($request->boolean('assignees'))
+        {
+            return $this->assignees($team);
+        }
+
         $users = $team->allUsers()->load('roles')->sortBy('name')->values();
         if ($request->boolean('assistant') || $request->boolean('basic'))
         {
@@ -290,6 +296,32 @@ class UserController extends Controller
                 return ($ownerId > 0 && (int) $teamUser->id === $ownerId)
                     || $teamUser->hasRole('admin');
             })
+            ->values();
+    }
+
+    /**
+     * Team owner plus members whose team role is admin or collaborator.
+     *
+     * @return Collection<int, User>
+     */
+    private function assignees(Team $team): Collection
+    {
+        $ownerId = (int) $team->user_id;
+
+        return $team->allUsers()
+            ->load('roles')
+            ->filter(function (User $teamUser) use ($ownerId)
+            {
+                if ($ownerId > 0 && (int) $teamUser->id === $ownerId)
+                {
+                    return true;
+                }
+
+                $role = $teamUser->membership->role ?? null;
+
+                return in_array($role, ['admin', 'collaborator'], true);
+            })
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
     }
 

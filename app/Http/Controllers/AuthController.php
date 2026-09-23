@@ -122,6 +122,42 @@ class AuthController extends Controller
         return response()->json($response, 401);
     }
 
+    public function loginWithSignedToken(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => ['required', 'string'],
+        ]);
+
+        $user = TokenHelper::validateSignedToken($validated['token']);
+        if ($user === null)
+        {
+            return response()->json([
+                'message' => 'Token inválido o expirado',
+            ], 401);
+        }
+
+        if (! $user->currentTeam)
+        {
+            $team = $user->allTeams()->first();
+            if ($team)
+            {
+                $user->switchTeam($team);
+            }
+        }
+
+        EnsureRegisteredUserRole::assignIfMissing($user);
+        $user->load(['currentTeam', 'roles']);
+        $token = $user->createToken('IDONEO Access Token')->plainTextToken;
+        $profile = $this->profilePayload($user);
+
+        return response()->json([
+            'email' => $user->email,
+            'token' => $token,
+            'user' => $profile,
+            'current_team' => $profile['current_team'],
+        ]);
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
