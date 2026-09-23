@@ -74,6 +74,7 @@ use App\Http\Controllers\Api\TeamPromptController;
 use App\Http\Controllers\Api\TeamWhatsAppController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TemplateImportController;
+use App\Http\Controllers\Api\TicketController as ApiTicketController;
 use App\Http\Controllers\Api\TimeController;
 use App\Http\Controllers\Api\TodayController;
 use App\Http\Controllers\Api\UserAssistantController;
@@ -666,6 +667,20 @@ Route::middleware('auth.api')->group(function ()
     Route::post('communications', [CommunicationController::class, 'store']);
     Route::get('communications/{id}', [CommunicationController::class, 'show'])->whereNumber('id');
     Route::post('communications/{id}/retry', [CommunicationController::class, 'retry'])->whereNumber('id');
+
+    // Tickets (idoneo-tickets SPA)
+    Route::get('tickets/stats', [ApiTicketController::class, 'stats']);
+    Route::get('tickets', [ApiTicketController::class, 'index']);
+    Route::post('tickets', [ApiTicketController::class, 'store']);
+    Route::get('tickets/{id}', [ApiTicketController::class, 'show'])->whereNumber('id');
+    Route::match(['put', 'post'], 'tickets/{id}', [ApiTicketController::class, 'update'])->whereNumber('id');
+    Route::post('tickets/{id}/response', [ApiTicketController::class, 'addResponse'])->whereNumber('id');
+    Route::post('tickets/{id}/status', [ApiTicketController::class, 'updateStatus'])->whereNumber('id');
+    Route::post('tickets/{id}/assign', [ApiTicketController::class, 'assign'])->whereNumber('id');
+    Route::post('tickets/{id}/priority', [ApiTicketController::class, 'updatePriority'])->whereNumber('id');
+    Route::post('tickets/{id}/close', [ApiTicketController::class, 'close'])->whereNumber('id');
+    Route::post('tickets/{id}/rate', [ApiTicketController::class, 'rate'])->whereNumber('id');
+    Route::get('tickets/{id}/attachments/{media}', [ApiTicketController::class, 'downloadAttachment'])->whereNumber(['id', 'media']);
 
     // Templates (idoneo-mailer SPA)
     Route::get('templates', [TemplateController::class, 'index']);
