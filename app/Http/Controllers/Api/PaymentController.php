@@ -13,10 +13,15 @@ class PaymentController extends Controller
      */
     public function index(Request $request)
     {
+        if ($request->attributes->get('auth_via') === 'team_token')
+        {
+            return app(TeamPaymentController::class)->index($request);
+        }
+
         // Get the authenticated user
         $user = $request->user();
 
-        if (!$user)
+        if (! $user)
         {
             return response()->json([
                 'success' => false,
@@ -25,7 +30,7 @@ class PaymentController extends Controller
         }
 
         // Check if user has a current team
-        if (!$user->currentTeam)
+        if (! $user->currentTeam)
         {
             return response()->json([
                 'success' => false,
@@ -36,7 +41,13 @@ class PaymentController extends Controller
         try
         {
             $query = Payment::query()
-                ->with(['enterprise', 'invoice', 'account', 'type']);
+                ->with(['enterprise', 'invoice', 'account.currency', 'type']);
+
+            if (! $user->canAccessBilling())
+            {
+                $enterpriseIds = \App\Policies\InvoicePolicy::clientEnterpriseIds($user);
+                $query->whereIn('enterprise_id', $enterpriseIds === [] ? [0] : $enterpriseIds);
+            }
 
             // Filter by transaction type if provided
             if ($request->has('transaction_type'))
@@ -99,9 +110,14 @@ class PaymentController extends Controller
      */
     public function show(Request $request, string $id)
     {
+        if ($request->attributes->get('auth_via') === 'team_token')
+        {
+            return app(TeamPaymentController::class)->show($request, $id);
+        }
+
         $user = $request->user();
 
-        if (!$user || !$user->currentTeam)
+        if (! $user || ! $user->currentTeam)
         {
             return response()->json([
                 'success' => false,

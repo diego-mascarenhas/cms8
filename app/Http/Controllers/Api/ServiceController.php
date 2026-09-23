@@ -42,7 +42,7 @@ class ServiceController extends Controller
             });
         }
 
-        $services = $query->with(['client:id,name', 'responsible:id,name'])
+        $services = $query->with(['client:id,name', 'responsible:id,name', 'currency:id,code'])
             ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 20));
 

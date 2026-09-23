@@ -39,9 +39,11 @@ class InvoiceController extends Controller
         }
 
         $invoices = $query
-            ->with(['enterprise:id,name', 'type:id,name'])
+            ->with(['enterprise:id,name', 'type:id,name', 'currency:id,code', 'stripeInvoiceSync'])
             ->orderBy('created_at', 'desc')
             ->paginate($request->get('per_page', 20));
+
+        $invoices->getCollection()->transform(fn (Invoice $invoice) => $this->present($invoice));
 
         return response()->json([
             'success' => true,
@@ -123,7 +125,7 @@ class InvoiceController extends Controller
     public function show(string $id)
     {
         $user = auth()->user();
-        $invoice = Invoice::with(['enterprise:id,name', 'type:id,name'])->find($id);
+        $invoice = Invoice::with(['enterprise:id,name', 'type:id,name', 'currency:id,code', 'stripeInvoiceSync'])->find($id);
 
         if (! $invoice)
         {
@@ -144,7 +146,7 @@ class InvoiceController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Invoice retrieved successfully',
-            'data' => $invoice,
+            'data' => $this->present($invoice),
             'user_info' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -263,5 +265,16 @@ class InvoiceController extends Controller
                 'message' => 'Error deleting invoice: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    private function present(Invoice $invoice): Invoice
+    {
+        $invoice->setAttribute('status_label', $invoice->status_label);
+        $invoice->setAttribute('currency_code', $invoice->currency_code);
+        $invoice->setAttribute('payment_url', $invoice->stripeHostedInvoiceUrl());
+        $invoice->setAttribute('pdf_url', $invoice->stripeInvoiceSync?->invoice_pdf);
+        $invoice->setAttribute('is_credit_note', $invoice->isCreditNote());
+
+        return $invoice;
     }
 }

@@ -34,7 +34,7 @@ class Service extends Model
         // Ownership for non-admins
         static::addGlobalScope('ownership', function (Builder $builder)
         {
-            if (auth()->check() && ! auth()->user()->hasRole('admin'))
+            if (auth()->check() && ! auth()->user()->hasRole('admin') && ! auth()->user()->hasRole('client'))
             {
                 $builder->where('responsible_id', auth()->id());
             }

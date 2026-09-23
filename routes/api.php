@@ -39,6 +39,7 @@ use App\Http\Controllers\Api\PaidAdAudienceController as ApiPaidAdAudienceContro
 use App\Http\Controllers\Api\PaidAdCampaignController as ApiPaidAdCampaignController;
 use App\Http\Controllers\Api\PaidAdCreativeAssetController as ApiPaidAdCreativeAssetController;
 use App\Http\Controllers\Api\PaidAdDashboardController as ApiPaidAdDashboardController;
+use App\Http\Controllers\Api\PaymentController as ApiPaymentController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectFunnelController;
 use App\Http\Controllers\Api\PublicAutomationEmbedController;
@@ -815,6 +816,10 @@ Route::middleware('auth.api')->group(function ()
     Route::put('services/{id}', [ServiceController::class, 'update']);
     Route::delete('services/{id}', [ServiceController::class, 'destroy']);
 
+    // Payments - Sanctum users, and team tokens via the same auth middleware
+    Route::get('payments', [ApiPaymentController::class, 'index'])->name('api.payments.index');
+    Route::get('payments/{id}', [ApiPaymentController::class, 'show'])->whereNumber('id')->name('api.payments.show');
+
     // Invoices - for user-based authentication (Sanctum tokens)
     Route::get('invoices', [InvoiceController::class, 'index']);
     Route::get('invoices/{id}', [InvoiceController::class, 'show']);
@@ -973,10 +978,6 @@ Route::middleware('team.token')->prefix('team')->group(function ()
 // Additional routes with team.token middleware but without /team prefix
 Route::middleware('team.token')->group(function ()
 {
-    // Payments - available at /api/payments (using team token)
-    Route::get('payments', [TeamPaymentController::class, 'index'])->name('api.payments.index');
-    Route::get('payments/{id}', [TeamPaymentController::class, 'show'])->name('api.payments.show');
-
     // Products - available at /api/products (using team token)
     Route::get('products', [TeamProductController::class, 'index'])->name('api.products.index');
     Route::get('products/{id}', [TeamProductController::class, 'show'])->name('api.products.show');
