@@ -92,6 +92,7 @@ class PasswordResetFrontendUrl
             config('services.ads.url'),
             config('services.projects.url'),
             config('services.paid_ads.spa_url'),
+            config('services.revisionalpha.url'),
         ] as $candidate)
         {
             $normalized = rtrim((string) $candidate, '/');

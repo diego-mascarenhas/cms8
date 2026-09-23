@@ -196,6 +196,10 @@ return [
         'url' => env('SHOP_APP_URL', 'https://shop.idoneo.dev'),
     ],
 
+    'revisionalpha' => [
+        'url' => env('REVISIONALPHA_APP_URL', 'https://revisionalpha.test'),
+    ],
+
     'apollo' => [
         'api_key' => env('APOLLO_API_KEY', ''),
     ],

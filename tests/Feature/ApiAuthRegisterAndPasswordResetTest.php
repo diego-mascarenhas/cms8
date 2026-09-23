@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Helpers\TokenHelper;
 use App\Models\Automation;
 use App\Models\Team;
 use App\Models\User;
@@ -255,5 +256,50 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             'password' => 'New-password-1',
             'password_confirmation' => 'New-password-1',
         ])->assertStatus(422);
+    }
+
+    public function test_forgot_password_sends_reset_link_to_revisionalpha_url(): void
+    {
+        Notification::fake();
+        config([
+            'services.assistant.url' => 'https://idoneo-assistant.test',
+            'services.revisionalpha.url' => 'https://revisionalpha.test',
+        ]);
+
+        $user = User::factory()->create(['email' => 'ana@example.com']);
+
+        $this->postJson('/api/auth/forgot-password', [
+            'email' => $user->email,
+            'frontend_url' => 'https://revisionalpha.test',
+        ])->assertOk();
+
+        Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user)
+        {
+            $mail = $notification->toMail($user);
+
+            return str_contains((string) $mail->actionUrl, 'https://revisionalpha.test/reset-password?')
+                && str_contains((string) $mail->actionUrl, 'email='.urlencode($user->email))
+                && str_contains((string) $mail->actionUrl, 'token=');
+        });
+    }
+
+    public function test_login_with_signed_token_returns_access_token(): void
+    {
+        $user = User::factory()->create(['email' => 'ana@example.com']);
+        $signed = TokenHelper::generateSignedToken($user, 'account_owner_autologin', 1);
+
+        $this->postJson('/api/auth/login-token', [
+            'token' => $signed,
+        ])->assertOk()
+            ->assertJsonPath('email', 'ana@example.com')
+            ->assertJsonStructure(['token', 'user' => ['id', 'email']]);
+    }
+
+    public function test_login_with_signed_token_rejects_invalid_token(): void
+    {
+        $this->postJson('/api/auth/login-token', [
+            'token' => 'not-a-signed-token',
+        ])->assertStatus(401)
+            ->assertJsonPath('message', 'Token inválido o expirado');
     }
 }
