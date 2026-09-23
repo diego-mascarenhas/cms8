@@ -15,7 +15,11 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Category::query()->select('id', 'name')->orderBy('name');
+        $query = Category::query()
+            ->select('id', 'name', 'parent_id')
+            ->with('parent:id,name')
+            ->orderBy('order')
+            ->orderBy('name');
 
         $teamId = $request->user()?->currentTeam?->id;
         if ($teamId)

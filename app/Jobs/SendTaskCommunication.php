@@ -97,7 +97,8 @@ class SendTaskCommunication implements ShouldQueue
             {
                 if ($task->project && $task->project->enterprise && $task->project->enterprise->email)
                 {
-                    $responseUrl = route('task.communication.respond', ['token' => $this->communication->response_token]);
+                    $responseUrl = rtrim((string) config('services.projects.url'), '/')
+                        .'/consulta/'.$this->communication->response_token;
 
                     Mail::send('emails.task-communication', [
                         'task' => $task,

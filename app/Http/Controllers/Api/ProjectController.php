@@ -744,7 +744,7 @@ class ProjectController extends Controller
             ], 401);
         }
 
-        $project = Project::with('board')->findOrFail($id);
+        $project = Project::with(['board', 'enterprise'])->findOrFail($id);
         $this->authorize('view', $project);
 
         if (! $project->board_id)
@@ -761,7 +761,16 @@ class ProjectController extends Controller
         }
 
         $tasks = Task::where('board_id', $project->board_id)
-            ->with(['status', 'responsible'])
+            ->with([
+                'status',
+                'responsible',
+                'category',
+                'media',
+                'times' => function ($query) use ($user)
+                {
+                    $query->where('user_id', $user->id)->whereNull('end_time');
+                },
+            ])
             ->orderBy('order')
             ->orderBy('id')
             ->get();
@@ -793,6 +802,11 @@ class ProjectController extends Controller
                     'id' => $project->id,
                     'name' => $project->name,
                     'board_id' => $project->board_id,
+                    'client' => $project->enterprise ? [
+                        'id' => $project->enterprise->id,
+                        'name' => $project->enterprise->name,
+                        'has_email' => filled($project->enterprise->email),
+                    ] : null,
                 ],
                 'board' => [
                     'id' => $project->board?->id,
@@ -880,6 +894,11 @@ class ProjectController extends Controller
             'due_date' => $task->due_date?->format('Y-m-d'),
             'status_id' => $task->status_id,
             'responsible_id' => $task->responsible_id,
+            'category_id' => $task->category_id,
+            'category' => $task->category ? [
+                'id' => $task->category->id,
+                'name' => $task->category->name,
+            ] : null,
             'status' => [
                 'id' => $task->status?->id,
                 'name' => $task->status?->name,
@@ -892,6 +911,37 @@ class ProjectController extends Controller
                 'name' => $task->responsible->name,
                 'email' => $task->responsible->email,
             ] : null,
+            'attachment' => $task->attachmentUrl(),
+            'active_time' => $this->activeTimePayload($task),
+        ];
+    }
+
+    /**
+     * @return array{id: int, started_at: string}|null
+     */
+    private function activeTimePayload(Task $task): ?array
+    {
+        $userId = auth()->id();
+
+        $activeTime = $task->relationLoaded('times')
+            ? $task->times->first(function (Time $time) use ($userId)
+            {
+                return $time->end_time === null && (int) $time->user_id === (int) $userId;
+            })
+            : Time::query()
+                ->where('task_id', $task->id)
+                ->where('user_id', $userId)
+                ->whereNull('end_time')
+                ->first();
+
+        if (! $activeTime?->start_time)
+        {
+            return null;
+        }
+
+        return [
+            'id' => $activeTime->id,
+            'started_at' => $activeTime->start_time->toIso8601String(),
         ];
     }
 

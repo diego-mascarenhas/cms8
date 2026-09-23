@@ -102,6 +102,34 @@ class UserApiTest extends TestCase
         $this->assertFalse($ids->contains($editor->id));
     }
 
+    public function test_assignees_filter_keeps_admins_and_collaborators(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $collaborator = User::factory()->create(['name' => 'Colaborador Visible']);
+        $team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->assignRole('collaborator');
+
+        $editor = User::factory()->create(['name' => 'Editor Oculto']);
+        $team->users()->attach($editor, ['role' => 'editor']);
+        $editor->assignRole('admin');
+
+        $client = User::factory()->create(['name' => 'AF Construcciones S.R.L.']);
+        $team->users()->attach($client, ['role' => 'client']);
+        $client->assignRole('admin');
+        $client->assignRole('client');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?assignees=1');
+
+        $response->assertOk();
+        $ids = collect($response->json('users'))->pluck('id');
+        $this->assertTrue($ids->contains($admin->id));
+        $this->assertTrue($ids->contains($collaborator->id));
+        $this->assertFalse($ids->contains($editor->id));
+        $this->assertFalse($ids->contains($client->id));
+    }
+
     public function test_assistant_filter_includes_collaborators_and_excludes_clients(): void
     {
         [$admin, $team, $token] = $this->adminWithToken();

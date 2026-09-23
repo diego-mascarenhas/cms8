@@ -167,6 +167,13 @@ class Task extends Model implements HasMedia
             ]);
     }
 
+    public function attachmentUrl(): ?string
+    {
+        $url = $this->getFirstMediaUrl('attachments');
+
+        return $url !== '' ? $url : null;
+    }
+
     /**
      * Configure activity logging options
      */

@@ -511,6 +511,8 @@ Route::post('time/store-by-project-key', [TimeController::class, 'storeByProject
 
 // Tasks by project key or by context key (project + user); no API token
 Route::get('tasks-by-project-key', [TaskController::class, 'tasksByProjectKey']);
+Route::get('task-communication/{token}', [TaskController::class, 'showClientConsultation']);
+Route::post('task-communication/{token}', [TaskController::class, 'storeClientConsultation']);
 Route::get('tasks-by-context-key', [TaskController::class, 'tasksByContextKey']);
 Route::post('task-assign-and-start', [TaskController::class, 'taskAssignAndStart']);
 Route::post('task-complete-by-context-key', [TaskController::class, 'taskCompleteByContextKey']);
@@ -622,6 +624,11 @@ Route::middleware('auth.api')->group(function ()
         Route::post('/', [TaskController::class, 'store']);
         Route::get('/{id}', [TaskController::class, 'show']);
         Route::put('/{id}', [TaskController::class, 'update']);
+        Route::post('/{id}/attachment', [TaskController::class, 'storeAttachment']);
+        Route::delete('/{id}/attachment', [TaskController::class, 'destroyAttachment']);
+        Route::get('/{id}/activities', [TaskController::class, 'activities']);
+        Route::get('/{id}/communications', [TaskController::class, 'communications']);
+        Route::post('/{id}/communications', [TaskController::class, 'storeCommunication']);
         Route::delete('/{id}', [TaskController::class, 'destroy']);
         Route::post('/{id}/start', [TaskController::class, 'start']);
         Route::post('/{id}/stop', [TaskController::class, 'stop']);
