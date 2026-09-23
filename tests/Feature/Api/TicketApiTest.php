@@ -112,10 +112,16 @@ class TicketApiTest extends TestCase
             ->assertJsonPath('data.status', 'open')
             ->assertJsonPath('data.responses.0.is_internal_note', true);
 
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
+
         $this->withHeader('Authorization', 'Bearer '.$clientToken)
             ->getJson('/api/tickets/'.$ticket->id)
             ->assertOk()
             ->assertJsonPath('data.responses', []);
+
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
 
         $this->withHeader('Authorization', 'Bearer '.$adminToken)
             ->postJson('/api/tickets/'.$ticket->id.'/response', [
@@ -266,6 +272,37 @@ class TicketApiTest extends TestCase
             ->assertJsonPath('data.total', 2)
             ->assertJsonPath('data.open', 1)
             ->assertJsonPath('data.closed', 1)
-            ->assertJsonPath('data.mine', 1);
+            ->assertJsonPath('data.mine', 1)
+            ->assertJsonPath('data.scope', 'global');
+    }
+
+    public function test_admin_sees_tickets_from_every_team(): void
+    {
+        [$user, $team, $token] = $this->userWithToken();
+        $other = User::factory()->withPersonalTeam()->create();
+        $otherTeam = $other->ownedTeams()->first();
+
+        Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'subject' => 'Del equipo actual',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $otherTeam->id,
+            'user_id' => $other->id,
+            'subject' => 'De otro equipo',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 2);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets/stats')
+            ->assertOk()
+            ->assertJsonPath('data.total', 2)
+            ->assertJsonPath('data.open', 2)
+            ->assertJsonPath('data.scope', 'global');
     }
 }

@@ -27,7 +27,7 @@ class InvoicePolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->canAccessBilling();
+        return $user->canAccessBilling() || $user->hasRole('client');
     }
 
     /**
@@ -35,8 +35,17 @@ class InvoicePolicy
      */
     public function view(User $user, Invoice $invoice): bool
     {
-        return $user->canAccessBilling()
-            && $invoice->team_id === $user->currentTeam->id;
+        if ($user->canAccessBilling())
+        {
+            return $invoice->team_id === $user->currentTeam?->id;
+        }
+
+        if ($user->hasRole('client'))
+        {
+            return in_array($invoice->enterprise_id, self::clientEnterpriseIds($user), true);
+        }
+
+        return false;
     }
 
     /**
@@ -92,7 +101,30 @@ class InvoicePolicy
                 return $query->where('team_id', $user->currentTeam->id);
             }
 
+            if ($user->hasRole('client'))
+            {
+                $enterpriseIds = self::clientEnterpriseIds($user);
+
+                return $enterpriseIds === []
+                    ? $query->whereRaw('1 = 0')
+                    : $query->whereIn('enterprise_id', $enterpriseIds);
+            }
+
             return $query->whereRaw('1 = 0');
         };
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public static function clientEnterpriseIds(User $user): array
+    {
+        $contact = $user->contact;
+        if (! $contact)
+        {
+            return [];
+        }
+
+        return $contact->enterprises()->pluck('enterprises.id')->map(fn ($id) => (int) $id)->all();
     }
 }

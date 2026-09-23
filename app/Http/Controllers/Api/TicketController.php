@@ -16,6 +16,7 @@ use App\Models\Ticket;
 use App\Models\TicketRating;
 use App\Models\TicketResponse;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -51,20 +52,10 @@ class TicketController extends Controller
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
-        $query = Ticket::query()
-            ->where('team_id', $team->id)
-            ->with(['user', 'assignedTo'])
+        $query = $this->ticketQuery($user, $team)
+            ->with(['user', 'assignedTo', 'team'])
             ->withCount('responses')
             ->latest('id');
-
-        if (! $user->can('viewAny', Ticket::class))
-        {
-            $query->where(function ($builder) use ($user)
-            {
-                $builder->where('user_id', $user->id)
-                    ->orWhere('assigned_to', $user->id);
-            });
-        }
 
         if (! empty($validated['status']))
         {
@@ -123,15 +114,7 @@ class TicketController extends Controller
         }
 
         $user = $request->user();
-        $base = Ticket::query()->where('team_id', $team->id);
-        if (! $user->can('viewAny', Ticket::class))
-        {
-            $base->where(function ($builder) use ($user)
-            {
-                $builder->where('user_id', $user->id)
-                    ->orWhere('assigned_to', $user->id);
-            });
-        }
+        $base = $this->ticketQuery($user, $team);
 
         $counts = (clone $base)
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -141,11 +124,13 @@ class TicketController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
+                'scope' => $user->hasRole('admin') ? 'global' : 'team',
                 'total' => (int) $counts->sum(),
                 'open' => (int) ($counts['open'] ?? 0),
                 'in_progress' => (int) ($counts['in_progress'] ?? 0),
                 'waiting_client' => (int) ($counts['waiting_client'] ?? 0),
                 'closed' => (int) ($counts['closed'] ?? 0),
+                'unassigned' => (int) (clone $base)->whereNull('assigned_to')->count(),
                 'mine' => (int) (clone $base)->where('assigned_to', $user->id)->where('status', '!=', 'closed')->count(),
             ],
         ]);
@@ -428,11 +413,44 @@ class TicketController extends Controller
         return $team;
     }
 
+    private function visibleTickets(User $user, Team $team): Builder
+    {
+        $query = Ticket::query()->withoutGlobalScope('team');
+
+        if (! $user->hasRole('admin'))
+        {
+            $query->where('team_id', $team->id);
+        }
+
+        return $query;
+    }
+
+    private function ticketQuery(User $user, Team $team): Builder
+    {
+        $query = $this->visibleTickets($user, $team);
+
+        if (! $user->can('viewAny', Ticket::class))
+        {
+            $query->where(function (Builder $builder) use ($user)
+            {
+                $builder->where('user_id', $user->id)
+                    ->orWhere('assigned_to', $user->id);
+            });
+        }
+
+        return $query;
+    }
+
     private function findTicket(Team $team, int $id): Ticket
     {
-        return Ticket::query()
-            ->where('team_id', $team->id)
-            ->with(['user', 'assignedTo', 'rating.user', 'responses.user', 'media', 'responses.media'])
+        $user = auth()->user();
+        if (! $user instanceof User)
+        {
+            abort(401);
+        }
+
+        return $this->visibleTickets($user, $team)
+            ->with(['user', 'assignedTo', 'team', 'rating.user', 'responses.user', 'media', 'responses.media'])
             ->withCount('responses')
             ->findOrFail($id);
     }
@@ -448,6 +466,10 @@ class TicketController extends Controller
             'description' => $ticket->description,
             'status' => $ticket->status,
             'priority' => $ticket->priority,
+            'team' => $ticket->team ? [
+                'id' => $ticket->team->id,
+                'name' => $ticket->team->name,
+            ] : null,
             'user' => $this->formatUser($ticket->user),
             'assigned_to' => $this->formatUser($ticket->assignedTo),
             'responses_count' => (int) ($ticket->responses_count ?? $ticket->responses->count()),
@@ -499,7 +521,7 @@ class TicketController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string}|null
+     * @return array{id: int, name: string, email: string}|null
      */
     private function formatUser(?User $user): ?array
     {
@@ -511,6 +533,7 @@ class TicketController extends Controller
         return [
             'id' => $user->id,
             'name' => $user->name,
+            'email' => $user->email,
         ];
     }
 
