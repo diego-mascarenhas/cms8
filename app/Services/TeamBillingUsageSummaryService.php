@@ -233,6 +233,34 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function forClosedWindow(Team $team, Carbon $from, Carbon $closesOn, TeamBillingFrequency $frequency): array
+    {
+        $to = $closesOn->copy()->subSecond();
+        if ($to->lt($from))
+        {
+            $to = $from->copy();
+        }
+
+        return $this->forPeriod($team, $from, $to, false, $frequency);
+    }
+
+    /**
+     * Stripe lines: the three billable items, skipping zero amounts.
+     *
+     * @param  array<string, mixed>  $usage
+     * @return list<array{kind: string, description: string, detail: string, amount_cents: int, formatted_amount: string}>
+     */
+    public function billableLines(array $usage, string $periodLabel): array
+    {
+        return array_values(array_filter(
+            $this->invoiceLines($usage, $periodLabel),
+            fn (array $line): bool => $line['kind'] !== 'token_source' && $line['amount_cents'] > 0,
+        ));
+    }
+
+    /**
      * @return Collection<int, array<string, mixed>>
      */
     public function pastMonths(Team $team, int $months = 12): Collection

@@ -41,7 +41,7 @@
             @if(!empty($invoicePreview['has_adjustments']))
                 Incluye ajuste del ciclo anterior.
             @endif
-            Aún no se emite.
+            Al cerrar el ciclo se crea un draft en Stripe. No se cobra hasta que se finalice.
         </p>
     </div>
     <div class="card-body">
@@ -302,7 +302,7 @@
                 const fromLabel = preview && preview.from_frequency ? preview.from_frequency : '';
                 const toLabel = preview && preview.to_frequency ? preview.to_frequency : frequency.options[frequency.selectedIndex].text;
 
-                const html = '<p class="mb-2 text-start">Se cierra el ciclo ' + fromLabel.toLowerCase() + ' y arranca ' + toLabel.toLowerCase() + ' hoy. Aún no se emite en Stripe.</p>'
+                const html = '<p class="mb-2 text-start">Se cierra el ciclo ' + fromLabel.toLowerCase() + ' y arranca ' + toLabel.toLowerCase() + ' hoy. El draft de Stripe se crea en el siguiente barrido.</p>'
                     + (tokens ? '<p class="mb-2 text-start"><strong>Tokens totales:</strong> ' + escapeHtml(tokens) + '</p>' : '')
                     + '<div class="table-responsive text-start"><table class="table table-sm mb-0 text-start"><thead><tr><th class="text-start">Ítem</th><th class="text-start">Detalle</th><th class="text-end text-nowrap">Importe</th></tr></thead><tbody>'
                     + rows

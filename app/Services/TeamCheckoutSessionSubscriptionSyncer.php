@@ -6,6 +6,7 @@ use App\Enums\EmailPlan;
 use App\Enums\ProspectPlan;
 use App\Models\SubscriptionProduct;
 use App\Models\Team;
+use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Stripe\Checkout\Session;
@@ -179,6 +180,18 @@ class TeamCheckoutSessionSubscriptionSyncer
             {
                 $team->assignEmailPlan($plan, $actingUserId);
             }
+        }
+
+        $periodStart = $stripeSubscription->current_period_start
+            ?? $stripeSubscription->billing_cycle_anchor
+            ?? $stripeSubscription->start_date
+            ?? null;
+        if ($periodStart)
+        {
+            TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+                $team,
+                Carbon::createFromTimestamp((int) $periodStart),
+            );
         }
 
         if ($subscriptionType === 'prospecting')

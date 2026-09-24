@@ -85,6 +85,7 @@
         <h5 class="mt-4">{{ __('help_team_billing.cli_heading') }}</h5>
         <p class="mb-2">{{ __('help_team_billing.cli_body') }}</p>
         <pre class="language-bash mb-2"><code>{{ __('help_team_billing.cli_example') }}</code></pre>
+        <pre class="language-bash mb-2"><code>{{ __('help_team_billing.cli_drafts') }}</code></pre>
         <p class="mb-0">{{ __('help_team_billing.cli_products') }}</p>
 
         <h5 class="mt-4">{{ __('help_team_billing.related_heading') }}</h5>

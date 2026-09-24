@@ -11,6 +11,7 @@ use App\Models\TokenUsageLog;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamBillingDataService;
+use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -328,6 +329,67 @@ class ApiAssistantSubscriptionTest extends TestCase
 
         $this->assertEqualsWithDelta($periodStart->timestamp, $from->timestamp, 2);
         $this->assertGreaterThan($firstUse->fresh()->created_at->timestamp, $from->timestamp);
+    }
+
+    public function test_mailer_catalog_uses_the_team_usage_cycle_not_its_own_plan_period(): void
+    {
+        [, $team, $token] = $this->assistantUserWithToken();
+
+        TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+            $team,
+            Carbon::parse('2026-08-24 12:07:00'),
+        );
+
+        $inCycle = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $inCycle->forceFill(['created_at' => Carbon::parse('2026-09-10 10:00:00')])->save();
+
+        $beforeCycle = TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'module_id' => null,
+            'service' => 'PromptController',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => 1_000_000,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+        $beforeCycle->forceFill(['created_at' => Carbon::parse('2026-08-20 10:00:00')])->save();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 12:00:00'));
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/assistant/subscription?catalog=mailer');
+
+        $response->assertOk();
+        $this->assertEqualsWithDelta(
+            Carbon::parse('2026-08-24 12:07:00')->timestamp,
+            Carbon::parse($response->json('data.token_usage.period_start'))->timestamp,
+            2,
+        );
+        $this->assertEqualsWithDelta(
+            Carbon::parse('2026-09-24 12:07:00')->timestamp,
+            Carbon::parse($response->json('data.token_usage.period_end'))->timestamp,
+            2,
+        );
+        $response->assertJsonPath('data.token_usage.total_tokens_used', 10_000_000);
+        $this->assertEqualsWithDelta(
+            Carbon::parse('2026-08-24 12:07:00')->timestamp,
+            Carbon::parse($response->json('data.mailer_usage.period_start'))->timestamp,
+            2,
+        );
+
+        Carbon::setTestNow();
     }
 
     public function test_subscription_token_usage_bills_tokens_used_in_current_period(): void

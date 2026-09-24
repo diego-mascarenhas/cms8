@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Enums\TeamBillingFrequency;
 use App\Models\Team;
 use App\Models\TeamUsageInvoiceAdjustment;
+use App\Services\Billing\AssistantSubscriptionService;
 use Carbon\Carbon;
 
 class TeamUsageInvoiceFrequency
@@ -48,12 +49,30 @@ class TeamUsageInvoiceFrequency
     }
 
     /**
+     * Lock usage billing to the first plan renewal. Later Shop/Mailer/Assistant
+     * subscriptions do not move this window.
+     */
+    public static function rememberCycleFromFirstSubscription(Team $team, Carbon $from): bool
+    {
+        if (self::periodStartsAt($team) !== null)
+        {
+            return false;
+        }
+
+        self::setPeriodStartsAt($team, $from, false);
+        self::setAnchorDay($team, $from->day);
+
+        return true;
+    }
+
+    /**
      * @return array{0: Carbon, 1: Carbon}
      */
     public static function window(Team $team, ?TeamBillingFrequency $frequency = null, ?Carbon $now = null): array
     {
         $frequency ??= self::for($team);
         $now = ($now ?? now())->copy();
+        self::ensureCycleSeeded($team);
         $cycleStart = self::periodStartsAt($team);
 
         if ($cycleStart === null)
@@ -82,7 +101,15 @@ class TeamUsageInvoiceFrequency
 
         $day = min($anchorDay, Carbon::create($year, $month, 1)->daysInMonth);
 
-        return Carbon::create($year, $month, $day, 0, 0, 0, $from->timezone);
+        return $from->copy()->setDate($year, $month, $day);
+    }
+
+    public static function previousMonthlyAnniversary(Carbon $closesOn, int $anchorDay): Carbon
+    {
+        $previous = $closesOn->copy()->subMonthNoOverflow();
+        $day = min(min(31, max(1, $anchorDay)), $previous->daysInMonth);
+
+        return $previous->copy()->day($day);
     }
 
     public static function set(Team $team, TeamBillingFrequency $frequency): void
@@ -145,7 +172,7 @@ class TeamUsageInvoiceFrequency
      */
     public static function monthlyWindow(Carbon $cycleStart, int $anchorDay, Carbon $now): array
     {
-        $from = $cycleStart->copy()->startOfDay();
+        $from = $cycleStart->copy();
         $closesOn = self::nextMonthlyAnniversary($from, $anchorDay);
         $guard = 0;
 
@@ -157,6 +184,98 @@ class TeamUsageInvoiceFrequency
         }
 
         return [$from, $closesOn];
+    }
+
+    /**
+     * Closed billing windows that ended at or before $now, starting from $since.
+     *
+     * @return list<array{from: Carbon, closes_on: Carbon, frequency: TeamBillingFrequency}>
+     */
+    public static function closedWindows(Team $team, ?Carbon $now = null, ?Carbon $since = null): array
+    {
+        $now = ($now ?? now())->copy();
+        $frequency = self::for($team);
+        $since = ($since ?? $now->copy()->subMonthsNoOverflow(3))->copy()->startOfDay();
+        [$openFrom, $openTo] = self::window($team, $frequency, $now);
+        $windows = [];
+
+        if ($openTo->lte($now) && $openFrom->gte($since))
+        {
+            $windows[] = [
+                'from' => $openFrom->copy(),
+                'closes_on' => $openTo->copy(),
+                'frequency' => $frequency,
+            ];
+        }
+
+        $closesOn = $openFrom->copy();
+        $anchorDay = self::anchorDay($team) ?? $openFrom->day;
+        $guard = 0;
+
+        while ($closesOn->gt($since) && $guard < 260)
+        {
+            $from = $frequency === TeamBillingFrequency::Weekly
+                ? $closesOn->copy()->subWeek()
+                : self::previousMonthlyAnniversary($closesOn, $anchorDay);
+
+            if ($closesOn->lte($now) && $from->gte($since))
+            {
+                $windows[] = [
+                    'from' => $from->copy(),
+                    'closes_on' => $closesOn->copy(),
+                    'frequency' => $frequency,
+                ];
+            }
+
+            $closesOn = $from;
+            $guard++;
+        }
+
+        usort($windows, fn (array $left, array $right): int => $left['from']->timestamp <=> $right['from']->timestamp);
+
+        return $windows;
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    public static function subscriptionPeriod(Team $team): ?array
+    {
+        return app(AssistantSubscriptionService::class)->subscribedUsagePeriod($team);
+    }
+
+    /**
+     * @return list<array{from: Carbon, closes_on: Carbon, frequency: TeamBillingFrequency}>
+     */
+    public static function closedCalendarWindows(TeamBillingFrequency $frequency, Carbon $since, Carbon $now): array
+    {
+        $windows = [];
+        $from = $frequency === TeamBillingFrequency::Weekly
+            ? $since->copy()->startOfWeek(Carbon::MONDAY)
+            : $since->copy()->startOfMonth();
+        $guard = 0;
+
+        while ($from->lt($now) && $guard < 260)
+        {
+            $closesOn = $frequency === TeamBillingFrequency::Weekly
+                ? $from->copy()->addWeek()
+                : $from->copy()->addMonth();
+
+            if ($closesOn->gt($now))
+            {
+                break;
+            }
+
+            $windows[] = [
+                'from' => $from->copy(),
+                'closes_on' => $closesOn->copy(),
+                'frequency' => $frequency,
+            ];
+            $from = $closesOn->copy();
+            $guard++;
+        }
+
+        return $windows;
     }
 
     private static function closeOpenPeriod(
@@ -186,9 +305,26 @@ class TeamUsageInvoiceFrequency
         }
     }
 
-    private static function setPeriodStartsAt(Team $team, Carbon $from): void
+    private static function ensureCycleSeeded(Team $team): void
     {
-        $team->setSetting(self::PERIOD_STARTS_AT_KEY, $from->copy()->startOfDay()->toIso8601String(), [
+        if (self::periodStartsAt($team) !== null)
+        {
+            return;
+        }
+
+        $subscription = self::subscriptionPeriod($team);
+        if ($subscription === null)
+        {
+            return;
+        }
+
+        self::rememberCycleFromFirstSubscription($team, $subscription[0]);
+    }
+
+    private static function setPeriodStartsAt(Team $team, Carbon $from, bool $startOfDay = true): void
+    {
+        $value = $startOfDay ? $from->copy()->startOfDay() : $from->copy();
+        $team->setSetting(self::PERIOD_STARTS_AT_KEY, $value->toIso8601String(), [
             'type' => 'string',
             'group' => 'billing',
         ]);

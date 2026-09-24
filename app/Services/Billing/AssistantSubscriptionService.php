@@ -21,6 +21,7 @@ use App\Services\TeamWhatsAppUsageStatsService;
 use App\Services\TokenBillingRateService;
 use App\Support\HumanoPricingCatalog;
 use App\Support\StripeErrorMessage;
+use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
@@ -591,7 +592,7 @@ class AssistantSubscriptionService
      */
     private function tokenUsagePayload(Team $team, array $stripe): array
     {
-        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        [$from, $to] = $this->usagePeriod($team);
         $stats = TeamApiUsageStatsService::forTeam((int) $team->id, $from, $to);
         $currency = TokenBillingRateService::displayCurrency();
         $presenter = app(ClientTokenPresenter::class)->usingTeam($team);
@@ -630,7 +631,7 @@ class AssistantSubscriptionService
      */
     private function whatsappUsagePayload(Team $team, array $stripe): array
     {
-        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        [$from, $to] = $this->usagePeriod($team);
         $stats = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
 
         return [
@@ -650,21 +651,60 @@ class AssistantSubscriptionService
     }
 
     /**
-     * Same window the subscription token/WhatsApp widgets use: the paid
-     * Assistant cycle when Stripe has one, otherwise first real use → now.
+     * Oldest active plan on the team (Assistant, Mailer, Shop, or any other).
+     */
+    public function firstPaidSubscription(Team $team): ?Subscription
+    {
+        return $team->subscriptions()
+            ->whereIn('stripe_status', ['active', 'trialing', 'past_due'])
+            ->reorder()
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->first();
+    }
+
+    /**
+     * Stripe cycle of the first paid plan, or null when Stripe has no period.
+     *
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    public function subscribedUsagePeriod(Team $team): ?array
+    {
+        $subscription = $this->firstPaidSubscription($team);
+        [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
+        if ($periodStart === null)
+        {
+            return null;
+        }
+
+        $from = Carbon::createFromTimestamp((int) $periodStart);
+        $to = $periodEnd !== null
+            ? Carbon::createFromTimestamp((int) $periodEnd)
+            : now();
+
+        return [$from, $to];
+    }
+
+    /**
+     * Team-wide usage window for tokens, WhatsApp, and email. Locked to the
+     * first plan renewal; later catalogs do not open a second period.
      *
      * @return array{0: Carbon, 1: Carbon}
      */
     public function usagePeriod(Team $team): array
     {
-        $subscription = $this->findAssistantSubscription($team);
-        [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
-        $stripe = [
-            'current_period_start' => $periodStart ? date('c', (int) $periodStart) : null,
-            'current_period_end' => $periodEnd ? date('c', (int) $periodEnd) : null,
-        ];
+        $subscribed = $this->subscribedUsagePeriod($team);
+        if ($subscribed !== null)
+        {
+            TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription($team, $subscribed[0]);
+        }
 
-        return $this->tokenUsagePeriod($team, $stripe);
+        if (TeamUsageInvoiceFrequency::periodStartsAt($team) !== null)
+        {
+            return TeamUsageInvoiceFrequency::window($team);
+        }
+
+        return [$this->assistantUsageStartedAt($team), now()];
     }
 
     /**
@@ -859,7 +899,7 @@ class AssistantSubscriptionService
      */
     private function mailerPeriodUsagePayload(Team $team, array $stripe): array
     {
-        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        [$from, $to] = $this->usagePeriod($team);
         $stats = TeamMailerUsageStatsService::forTeam($team, $from, $to);
 
         return [
@@ -879,7 +919,7 @@ class AssistantSubscriptionService
      */
     private function estimatorUsagePayload(Team $team, array $stripe): array
     {
-        [$from, $to] = $this->tokenUsagePeriod($team, $stripe);
+        [$from, $to] = $this->usagePeriod($team);
 
         return [
             'emails_sent' => app(ProjectBudgetQuoteMailService::class)->countSentForTeam(
