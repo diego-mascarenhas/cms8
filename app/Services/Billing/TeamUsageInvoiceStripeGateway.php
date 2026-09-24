@@ -21,12 +21,18 @@ class TeamUsageInvoiceStripeGateway
         ]);
     }
 
+    public function deleteDraftInvoice(string $invoiceId): object
+    {
+        return $this->client()->invoices->delete($invoiceId);
+    }
+
     public function addInvoiceItem(
         string $customerId,
         string $invoiceId,
         string $description,
         int $amountCents,
         string $currency,
+        int $quantity = 1,
     ): object {
         return $this->client()->invoiceItems->create([
             'customer' => $customerId,
@@ -34,6 +40,7 @@ class TeamUsageInvoiceStripeGateway
             'currency' => strtolower($currency),
             'description' => $description,
             'amount' => $amountCents,
+            'quantity' => max(1, $quantity),
         ]);
     }
 

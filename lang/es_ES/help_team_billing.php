@@ -25,7 +25,7 @@ return [
     'rates_history' => 'Al guardar una tarifa nueva, la anterior se conserva (SCD2) para el consumo ya ocurrido. El historial de la página muestra Desde / Hasta / Actual.',
 
     'frequency_heading' => 'Frecuencia',
-    'frequency_intro' => 'Mensual o semanal, por equipo. La primera fecha de renovación de cualquier plan (Assistant, Mailer, Shop…) queda anclada para tokens, WhatsApp y emails de todas las apps. Un plan contratado después no abre otro ciclo. Sin plan, el mes va del 1 al 1 y la semana de lunes a lunes. Al cambiar la frecuencia, ese día queda como ancla.',
+    'frequency_intro' => 'Mensual o semanal, por equipo. Si hay Assistant, tokens, WhatsApp y emails de todas las apps siguen su ciclo (del 24 al 24 si Assistant renueva el 24). Si no hay Assistant, se usa el plan más antiguo. Un Shop u otro plan posterior no abre otro ciclo. Sin plan, el mes va del 1 al 1 y la semana de lunes a lunes. Al cambiar a semanal, ese día queda como ancla.',
     'frequency_weekly' => 'Semanal: ventanas de 7 días desde el día del cambio (miércoles a miércoles si cambias un miércoles).',
     'frequency_monthly' => 'Mensual: del día D al D (del 15 al 15 si cambias un día 15).',
     'frequency_anchor' => 'Si el ancla es 29, 30 o 31 y el mes no tiene ese día, se usa el último día del mes. Al mes siguiente se recupera el ancla (31 ene → 28/29 feb → 31 mar → 30 abr → 31 may).',

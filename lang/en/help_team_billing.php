@@ -25,7 +25,7 @@ return [
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',
 
     'frequency_heading' => 'Frequency',
-    'frequency_intro' => 'Monthly or weekly, per team. The first renewal date of any plan (Assistant, Mailer, Shop…) is locked for tokens, WhatsApp, and email across every app. A plan bought later does not open another usage cycle. Without a plan, the month runs from the 1st to the 1st and the week from Monday to Monday. Changing frequency sets that day as the anchor.',
+    'frequency_intro' => 'Monthly or weekly, per team. If the team has Assistant, tokens, WhatsApp, and email across every app follow that cycle (the 24th to the 24th if Assistant renews on the 24th). Without Assistant, the oldest plan is used. A later Shop or other plan does not open another usage cycle. Without a plan, the month runs from the 1st to the 1st and the week from Monday to Monday. Switching to weekly sets that day as the anchor.',
     'frequency_weekly' => 'Weekly: 7-day windows from the change day (Wednesday to Wednesday if you change on a Wednesday).',
     'frequency_monthly' => 'Monthly: from day D to day D (the 15th to the 15th if you change on the 15th).',
     'frequency_anchor' => 'If the anchor is 29, 30, or 31 and the month is shorter, the last day of the month is used. The next month restores the anchor (31 Jan → 28/29 Feb → 31 Mar → 30 Apr → 31 May).',

@@ -3,7 +3,7 @@
     $primaryName = $account->responsiblePersonName();
     $subtitle = $primaryName !== '' && strcasecmp($primaryName, $teamName) !== 0 ? $teamName : '';
 @endphp
-<div class="d-flex flex-column overflow-hidden" style="max-width: 18rem;">
+<div class="d-flex flex-column overflow-hidden" style="max-width: 12rem;">
     <a href="{{ route('account.edit', $account->id) }}" class="fw-medium text-body text-truncate" title="{{ $primaryName }}">
         {{ $primaryName }}
     </a>

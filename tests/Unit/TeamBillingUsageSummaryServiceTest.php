@@ -183,10 +183,10 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $first = app(\App\Services\Billing\AssistantSubscriptionService::class)->firstPaidSubscription($team);
+        $billing = app(\App\Services\Billing\AssistantSubscriptionService::class);
 
-        $this->assertNotNull($first);
-        $this->assertSame('sub_mailer_first', $first->stripe_id);
+        $this->assertSame('sub_mailer_first', $billing->firstPaidSubscription($team)?->stripe_id);
+        $this->assertSame('sub_assistant_later', $billing->preferredUsageSubscription($team)?->stripe_id);
     }
 
     public function test_switching_to_weekly_mid_month_opens_an_adjustment_for_elapsed_weeks(): void
@@ -357,6 +357,33 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertFalse(collect($lines)->contains(fn (array $line): bool => $line['kind'] === 'token_source'));
         $this->assertTrue(collect($lines)->every(fn (array $line): bool => $line['amount_cents'] > 0));
         $this->assertSame('tokens', $lines[0]['kind']);
+        $this->assertSame(10_000_000, $lines[0]['quantity']);
+    }
+
+    public function test_open_window_bills_usage_until_now_for_the_cycle(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $this->fakeTokenCatalog();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 11:00:00'));
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-09-10 10:00:00'));
+
+        $usage = app(TeamBillingUsageSummaryService::class)
+            ->forOpenWindow($team, Carbon::parse('2026-09-24 12:07:00'));
+
+        $this->assertSame(10_000_000, $usage['tokens_billed']);
+        $this->assertGreaterThan(0, $usage['billed_cents']);
+        $this->assertStringContainsString('EUR', $usage['formatted']['billed']);
+
+        Carbon::setTestNow();
     }
 
     public function test_past_months_exclude_the_current_month_and_empty_months(): void

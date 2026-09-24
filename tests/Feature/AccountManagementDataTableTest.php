@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Account;
 use App\Models\Contact;
+use App\Models\Team;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Support\TeamUsageInvoiceFrequency;
+use Carbon\Carbon;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -20,6 +23,20 @@ use Tests\TestCase;
 class AccountManagementDataTableTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'services.openrouter.cache_store' => 'array',
+            'humano_pricing.token_billing.currency' => 'EUR',
+            'humano_pricing.token_billing.client_token_multiplier' => 10,
+        ]);
+        Http::fake([
+            'https://openrouter.ai/api/v1/models' => Http::response(['data' => []], 200),
+        ]);
+    }
 
     public function test_account_management_datatable_returns_all_teams_including_those_without_owner(): void
     {
@@ -77,9 +94,13 @@ class AccountManagementDataTableTest extends TestCase
         $this->assertStringNotContainsString('title="Miembros"', $html);
         $this->assertStringNotContainsString('title="Tiempo"', $html);
         $this->assertStringContainsString('title="Acciones"', $html);
+        $this->assertStringContainsString('title="Renovación"', $html);
+        $this->assertStringContainsString('title="A facturar"', $html);
+        $this->assertStringNotContainsString('title="Clientes"', $html);
+        $this->assertStringNotContainsString('title="Planes"', $html);
     }
 
-    public function test_account_management_datatable_shows_token_usage_in_subscriptions_column(): void
+    public function test_account_management_datatable_shows_open_cycle_usage_to_bill(): void
     {
         config([
             'services.openrouter.cache_store' => 'array',
@@ -118,8 +139,8 @@ class AccountManagementDataTableTest extends TestCase
         ])->get(route('account-management').'?'.http_build_query($this->accountDataTableBaseQuery()));
 
         $response->assertOk();
-        $html = collect($response->json('data'))->pluck('subscriptions_count')->implode(' ');
-        $this->assertStringContainsString('10.000.000 / 10,00 EUR', $html);
+        $html = collect($response->json('data'))->pluck('usage_billed')->implode(' ');
+        $this->assertStringContainsString('10,00 EUR', $html);
     }
 
     public function test_account_management_datatable_shows_owner_as_title_and_team_as_truncated_subtitle(): void
@@ -394,6 +415,139 @@ class AccountManagementDataTableTest extends TestCase
         $this->assertStringContainsString('ti-currency-euro', $actions);
     }
 
+    public function test_account_management_datatable_shows_renewal_and_sorts_by_it(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $root = User::factory()->create();
+        $root->assignRole('root');
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 11:00:00'));
+
+        $soon = Account::query()->create([
+            'name' => 'Renovación 24',
+            'user_id' => User::factory()->create()->id,
+            'personal_team' => false,
+        ]);
+        $later = Account::query()->create([
+            'name' => 'Renovación 4',
+            'user_id' => User::factory()->create()->id,
+            'personal_team' => false,
+        ]);
+
+        Team::query()->findOrFail($soon->id)->setSetting(
+            TeamUsageInvoiceFrequency::PERIOD_STARTS_AT_KEY,
+            '2026-08-24T12:07:00+00:00',
+            ['type' => 'string', 'group' => 'billing'],
+        );
+        Team::query()->findOrFail($later->id)->setSetting(
+            TeamUsageInvoiceFrequency::PERIOD_STARTS_AT_KEY,
+            '2026-08-04T15:55:19+00:00',
+            ['type' => 'string', 'group' => 'billing'],
+        );
+
+        $payload = $this->actingAs($root)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('account-management').'?'.http_build_query($this->accountDataTableBaseQuery()))
+            ->assertOk()
+            ->json();
+
+        $rows = collect($payload['data']);
+        $named = $rows->filter(fn (array $row): bool => str_contains((string) $row['name'], 'Renovación'))->values();
+
+        $this->assertCount(2, $named);
+        $this->assertStringContainsString('Renovación 24', $named[0]['name']);
+        $this->assertStringContainsString('24/09/2026', $named[0]['renews_at']);
+        $this->assertStringContainsString('0,00 EUR', $named[0]['usage_billed']);
+        $this->assertStringContainsString('Renovación 4', $named[1]['name']);
+        $this->assertStringContainsString('04/10/2026', $named[1]['renews_at']);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_account_management_datatable_sorts_by_usage_to_bill(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $root = User::factory()->create();
+        $root->assignRole('root');
+
+        $high = Account::query()->create([
+            'name' => 'Consumo Alto',
+            'user_id' => User::factory()->create()->id,
+            'personal_team' => false,
+        ]);
+        $low = Account::query()->create([
+            'name' => 'Consumo Bajo',
+            'user_id' => User::factory()->create()->id,
+            'personal_team' => false,
+        ]);
+        Account::query()->create([
+            'name' => 'Consumo Cero',
+            'user_id' => User::factory()->create()->id,
+            'personal_team' => false,
+        ]);
+
+        $this->createTokenUsage($high->id, 2_000_000);
+        $this->createTokenUsage($low->id, 1_000_000);
+
+        $desc = $this->accountDataTableBaseQuery();
+        $desc['order'] = [['column' => 4, 'dir' => 'desc']];
+
+        $descRows = $this->actingAs($root)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('account-management').'?'.http_build_query($desc))
+            ->assertOk()
+            ->json('data');
+
+        $named = collect($descRows)
+            ->filter(fn (array $row): bool => str_contains((string) $row['name'], 'Consumo'))
+            ->values();
+
+        $this->assertCount(3, $named);
+        $this->assertStringContainsString('Consumo Alto', $named[0]['name']);
+        $this->assertStringContainsString('20,00 EUR', $named[0]['usage_billed']);
+        $this->assertStringContainsString('Consumo Bajo', $named[1]['name']);
+        $this->assertStringContainsString('10,00 EUR', $named[1]['usage_billed']);
+        $this->assertStringContainsString('Consumo Cero', $named[2]['name']);
+        $this->assertStringContainsString('0,00 EUR', $named[2]['usage_billed']);
+
+        $asc = $desc;
+        $asc['order'] = [['column' => 4, 'dir' => 'asc']];
+
+        $ascRows = $this->actingAs($root)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('account-management').'?'.http_build_query($asc))
+            ->assertOk()
+            ->json('data');
+
+        $namedAsc = collect($ascRows)
+            ->filter(fn (array $row): bool => str_contains((string) $row['name'], 'Consumo'))
+            ->values();
+
+        $this->assertStringContainsString('Consumo Cero', $namedAsc[0]['name']);
+        $this->assertStringContainsString('Consumo Bajo', $namedAsc[1]['name']);
+        $this->assertStringContainsString('Consumo Alto', $namedAsc[2]['name']);
+    }
+
+    private function createTokenUsage(int $teamId, int $jsonTokens): void
+    {
+        TokenUsageLog::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'module_id' => null,
+            'service' => 'ContactSentimentAnalysisService',
+            'json_size' => 10,
+            'toon_size' => 0,
+            'json_tokens' => $jsonTokens,
+            'toon_tokens' => 0,
+            'savings_percentage' => 0,
+            'used_toon' => false,
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -412,7 +566,7 @@ class AccountManagementDataTableTest extends TestCase
             'start' => 0,
             'length' => 25,
             'search' => ['value' => '', 'regex' => 'false'],
-            'order' => [['column' => 1, 'dir' => 'asc']],
+            'order' => [['column' => 3, 'dir' => 'asc']],
             'columns' => $columns,
         ];
     }
@@ -437,8 +591,8 @@ class AccountManagementDataTableTest extends TestCase
             ['data' => 'id', 'name' => 'id', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'owner_name', 'name' => 'owner_name', 'searchable' => 'true', 'orderable' => 'true'],
-            ['data' => 'active_clients_count', 'name' => 'active_clients_count', 'searchable' => 'false', 'orderable' => 'true'],
-            ['data' => 'subscriptions_count', 'name' => 'subscriptions_count', 'searchable' => 'false', 'orderable' => 'true'],
+            ['data' => 'renews_at', 'name' => 'renews_at', 'searchable' => 'false', 'orderable' => 'true'],
+            ['data' => 'usage_billed', 'name' => 'usage_billed', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false'],
         ];
     }

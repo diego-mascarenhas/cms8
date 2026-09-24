@@ -247,10 +247,39 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
+     * Open consumption cycle (tokens, WhatsApp, mail) without calling Stripe.
+     *
+     * @return array<string, mixed>
+     */
+    public function forOpenWindow(Team $team, ?Carbon $closesOn = null): array
+    {
+        $frequency = TeamUsageInvoiceFrequency::for($team);
+
+        if ($closesOn === null)
+        {
+            [$from, $closesOn] = TeamUsageInvoiceFrequency::calendarWindow($frequency);
+        } elseif ($frequency === TeamBillingFrequency::Weekly)
+        {
+            $from = $closesOn->copy()->subWeek();
+        } else
+        {
+            $from = TeamUsageInvoiceFrequency::previousMonthlyAnniversary($closesOn, $closesOn->day);
+        }
+
+        $to = now()->lt($closesOn) ? now() : $closesOn->copy()->subSecond();
+        if ($from->gt($to))
+        {
+            $to = $from->copy();
+        }
+
+        return $this->forPeriod($team, $from, $to, true, $frequency);
+    }
+
+    /**
      * Stripe lines: the three billable items, skipping zero amounts.
      *
      * @param  array<string, mixed>  $usage
-     * @return list<array{kind: string, description: string, detail: string, amount_cents: int, formatted_amount: string}>
+     * @return list<array{kind: string, description: string, detail: string, quantity: int, amount_cents: int, formatted_amount: string}>
      */
     public function billableLines(array $usage, string $periodLabel): array
     {
@@ -362,7 +391,7 @@ final class TeamBillingUsageSummaryService
 
     /**
      * @param  array<string, mixed>  $usage
-     * @return list<array{kind: string, description: string, detail: string, amount_cents: int, formatted_amount: string}>
+     * @return list<array{kind: string, description: string, detail: string, quantity: int, amount_cents: int, formatted_amount: string}>
      */
     private function invoiceLines(array $usage, string $periodLabel): array
     {
@@ -371,6 +400,7 @@ final class TeamBillingUsageSummaryService
                 'kind' => 'tokens',
                 'description' => 'Tokens IA · '.$periodLabel,
                 'detail' => $usage['formatted']['tokens'],
+                'quantity' => max(1, (int) $usage['tokens_billed']),
                 'amount_cents' => $usage['token_billed_cents'],
                 'formatted_amount' => $usage['formatted']['token_billed'],
             ],
@@ -382,6 +412,7 @@ final class TeamBillingUsageSummaryService
                 'kind' => 'token_source',
                 'description' => $source['name'],
                 'detail' => $source['formatted'],
+                'quantity' => max(1, (int) ($source['tokens_billed'] ?? 1)),
                 'amount_cents' => 0,
                 'formatted_amount' => '',
             ];
@@ -391,6 +422,7 @@ final class TeamBillingUsageSummaryService
             'kind' => 'whatsapp',
             'description' => 'Envíos WhatsApp · '.$periodLabel,
             'detail' => $this->formatCount((int) $usage['whatsapp_messages']).' envíos',
+            'quantity' => max(1, (int) $usage['whatsapp_messages']),
             'amount_cents' => $usage['whatsapp_billed_cents'],
             'formatted_amount' => $usage['formatted']['whatsapp_billed'],
         ];
@@ -398,6 +430,7 @@ final class TeamBillingUsageSummaryService
             'kind' => 'mailer',
             'description' => 'Envíos email · '.$periodLabel,
             'detail' => $this->formatCount((int) $usage['mailer_emails']).' envíos',
+            'quantity' => max(1, (int) $usage['mailer_emails']),
             'amount_cents' => $usage['mailer_billed_cents'],
             'formatted_amount' => $usage['formatted']['mailer_billed'],
         ];
