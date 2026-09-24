@@ -170,9 +170,10 @@ class TeamUsageInvoiceDraftIssuer
                 $this->stripe->addInvoiceItem(
                     (string) $team->stripe_id,
                     (string) $stripeInvoice->id,
-                    $line['description'].' · '.$line['detail'],
+                    $line['description'],
                     $line['amount_cents'],
                     $usage['currency'],
+                    (int) ($line['quantity'] ?? 1),
                 );
             }
 

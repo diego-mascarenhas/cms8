@@ -32,6 +32,7 @@ class TeamUsageInvoiceStripeGateway
         string $description,
         int $amountCents,
         string $currency,
+        int $quantity = 1,
     ): object {
         return $this->client()->invoiceItems->create([
             'customer' => $customerId,
@@ -39,6 +40,7 @@ class TeamUsageInvoiceStripeGateway
             'currency' => strtolower($currency),
             'description' => $description,
             'amount' => $amountCents,
+            'quantity' => max(1, $quantity),
         ]);
     }
 

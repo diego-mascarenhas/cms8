@@ -32,6 +32,16 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
                 ->andReturn((object) ['id' => 'in_draft_usage_1']);
             $mock->shouldReceive('addInvoiceItem')
                 ->once()
+                ->withArgs(function (string $customer, string $invoice, string $description, int $amount, string $currency, int $quantity): bool
+                {
+                    return $customer === 'cus_test_usage'
+                        && $invoice === 'in_draft_usage_1'
+                        && $description === 'Tokens IA · Agosto 2026'
+                        && ! str_contains($description, 'envíos')
+                        && $quantity === 10_000_000
+                        && $amount > 0
+                        && $currency === 'EUR';
+                })
                 ->andReturn((object) ['id' => 'ii_usage_1']);
         });
 
