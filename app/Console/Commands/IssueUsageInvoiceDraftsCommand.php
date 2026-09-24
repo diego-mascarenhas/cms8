@@ -52,6 +52,14 @@ class IssueUsageInvoiceDraftsCommand extends Command
             ])->all(),
         );
 
+        foreach ($results as $row)
+        {
+            if (($row['status'] ?? '') === 'error' && filled($row['error'] ?? null))
+            {
+                $this->error('Team '.$row['team_id'].': '.$row['error']);
+            }
+        }
+
         return $results->contains(fn (array $row): bool => $row['status'] === 'error')
             ? self::FAILURE
             : self::SUCCESS;

@@ -33,13 +33,12 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
                 ->andReturn((object) ['id' => 'in_draft_usage_1']);
             $mock->shouldReceive('addInvoiceItem')
                 ->once()
-                ->withArgs(function (string $customer, string $invoice, string $description, int $amount, string $currency, int $quantity): bool
+                ->withArgs(function (string $customer, string $invoice, string $description, int $amount, string $currency): bool
                 {
                     return $customer === 'cus_test_usage'
                         && $invoice === 'in_draft_usage_1'
-                        && $description === 'Tokens IA · Agosto 2026'
+                        && $description === 'Tokens IA · Agosto 2026 · 10.000.000'
                         && ! str_contains($description, 'envíos')
-                        && $quantity === 10_000_000
                         && $amount > 0
                         && $currency === 'EUR';
                 })
@@ -226,6 +225,29 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
             ->assertSuccessful();
 
         $this->assertDatabaseCount('team_usage_invoices', 0);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_artisan_command_prints_stripe_errors(): void
+    {
+        $team = $this->teamWithStripe();
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-15 10:00:00'));
+
+        $this->mock(TeamUsageInvoiceStripeGateway::class, function ($mock)
+        {
+            $mock->shouldReceive('createDraftInvoice')
+                ->once()
+                ->andThrow(new \RuntimeException('Keys for idempotent requests can only be used once.'));
+        });
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 12:00:00'));
+
+        $this->artisan('billing:issue-usage-invoice-drafts', [
+            '--team' => $team->id,
+        ])
+            ->expectsOutputToContain('Team '.$team->id.': Keys for idempotent requests can only be used once.')
+            ->assertFailed();
 
         Carbon::setTestNow();
     }
