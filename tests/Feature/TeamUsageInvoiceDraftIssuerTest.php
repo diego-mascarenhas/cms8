@@ -252,6 +252,35 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_deletes_orphan_stripe_draft_when_adding_items_fails(): void
+    {
+        $team = $this->teamWithStripe();
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-15 10:00:00'));
+
+        $this->mock(TeamUsageInvoiceStripeGateway::class, function ($mock)
+        {
+            $mock->shouldReceive('createDraftInvoice')
+                ->once()
+                ->andReturn((object) ['id' => 'in_orphan_empty']);
+            $mock->shouldReceive('addInvoiceItem')
+                ->once()
+                ->andThrow(new \RuntimeException('No such payment_method'));
+            $mock->shouldReceive('deleteDraftInvoice')
+                ->once()
+                ->with('in_orphan_empty')
+                ->andReturn((object) ['id' => 'in_orphan_empty', 'deleted' => true]);
+        });
+
+        $results = app(TeamUsageInvoiceDraftIssuer::class)->issueDueDrafts(
+            $team,
+            false,
+            Carbon::parse('2026-09-24 12:00:00'),
+        );
+
+        $this->assertTrue($results->contains(fn (array $row): bool => $row['status'] === 'error'));
+        $this->assertDatabaseCount('team_usage_invoices', 0);
+    }
+
     public function test_discard_command_deletes_the_stripe_draft_and_humano_row(): void
     {
         $team = $this->teamWithStripe();

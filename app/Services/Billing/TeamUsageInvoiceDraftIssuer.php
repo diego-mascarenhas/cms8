@@ -154,6 +154,8 @@ class TeamUsageInvoiceDraftIssuer
             ];
         }
 
+        $stripeInvoiceId = null;
+
         try
         {
             $stripeInvoice = $this->stripe->createDraftInvoice($team, $usage['currency'], [
@@ -164,6 +166,7 @@ class TeamUsageInvoiceDraftIssuer
                 'humano_period_from' => $job['from']->toIso8601String(),
                 'humano_period_to' => $job['closes_on']->toIso8601String(),
             ]);
+            $stripeInvoiceId = (string) $stripeInvoice->id;
 
             foreach ($lines as $line)
             {
@@ -175,7 +178,7 @@ class TeamUsageInvoiceDraftIssuer
 
                 $this->stripe->addInvoiceItem(
                     (string) $team->stripe_id,
-                    (string) $stripeInvoice->id,
+                    $stripeInvoiceId,
                     $description,
                     $line['amount_cents'],
                     $usage['currency'],
@@ -190,7 +193,7 @@ class TeamUsageInvoiceDraftIssuer
                 'period_to' => $job['closes_on'],
                 'billed_cents' => $usage['billed_cents'],
                 'currency' => $usage['currency'],
-                'stripe_invoice_id' => $stripeInvoice->id,
+                'stripe_invoice_id' => $stripeInvoiceId,
                 'status' => TeamUsageInvoice::STATUS_DRAFT,
                 'adjustment_id' => $job['adjustment']?->id,
                 'issued_at' => now(),
@@ -213,10 +216,26 @@ class TeamUsageInvoiceDraftIssuer
             ];
         } catch (Throwable $e)
         {
+            if ($stripeInvoiceId !== null)
+            {
+                try
+                {
+                    $this->stripe->deleteDraftInvoice($stripeInvoiceId);
+                } catch (Throwable $cleanupError)
+                {
+                    Log::warning('Failed to discard orphan usage invoice draft', [
+                        'team_id' => $team->id,
+                        'stripe_invoice_id' => $stripeInvoiceId,
+                        'message' => $cleanupError->getMessage(),
+                    ]);
+                }
+            }
+
             Log::error('Failed to create usage invoice draft', [
                 'team_id' => $team->id,
                 'period_from' => $job['from']->toIso8601String(),
                 'period_to' => $job['closes_on']->toIso8601String(),
+                'stripe_invoice_id' => $stripeInvoiceId,
                 'message' => $e->getMessage(),
             ]);
 
