@@ -34,6 +34,11 @@ class TeamUsageInvoiceDraftIssuer
 
         foreach ($teams as $team)
         {
+            if ($this->teamHasComplimentaryUsageAccess($team))
+            {
+                continue;
+            }
+
             foreach ($this->dueJobs($team, $now) as $job)
             {
                 $results->push($dryRun ? $this->previewJob($team, $job) : $this->issueJob($team, $job));
@@ -288,6 +293,21 @@ class TeamUsageInvoiceDraftIssuer
             'open', 'uncollectible' => TeamUsageInvoice::STATUS_OPEN,
             default => TeamUsageInvoice::STATUS_DRAFT,
         };
+    }
+
+    /**
+     * Complimentary teams (CMS8_USAGE_ACCESS_TEAM_IDS) skip usage invoices.
+     * Empty list = bill every Stripe team.
+     */
+    private function teamHasComplimentaryUsageAccess(Team $team): bool
+    {
+        $ids = config('humano_pricing.usage_invoices.access_team_ids', []);
+        if (! is_array($ids) || $ids === [])
+        {
+            return false;
+        }
+
+        return in_array((int) $team->id, array_map('intval', $ids), true);
     }
 
     private function alreadyIssued(Team $team, Carbon $from, Carbon $closesOn): bool
