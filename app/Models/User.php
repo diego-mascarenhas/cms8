@@ -162,6 +162,11 @@ class User extends Authenticatable
             return true;
         }
 
+        if ($this->actsAsClientOnTeam($team))
+        {
+            return false;
+        }
+
         return $this->belongsToTeam($team) && ($this->hasRole('admin') || $this->hasTeamRole($team, 'admin'));
     }
 

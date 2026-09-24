@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateUserProfilePhotoRequest;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Billing\AssistantSubscriptionService;
+use App\Services\TeamClientContextActivator;
 use App\Services\TeamModulesByPricingPlanSyncer;
 use App\Services\TeamSiteAssistantPromptService;
 use App\Support\AuthIntendedUrlGuard;
@@ -27,6 +28,10 @@ use Illuminate\Validation\ValidationException;
 class AuthController extends Controller
 {
     use PasswordValidationRules;
+
+    public function __construct(
+        private TeamClientContextActivator $teamClientContextActivator,
+    ) {}
 
     public function register(Request $request)
     {
@@ -95,11 +100,7 @@ class AuthController extends Controller
         {
             if ($request->filled('team_id'))
             {
-                $belongsToTeam = $user->teams()->where('teams.id', $request->team_id)->exists();
-                if ($belongsToTeam)
-                {
-                    $user->forceFill(['current_team_id' => $request->team_id])->save();
-                }
+                $this->teamClientContextActivator->activate($user, (int) $request->team_id);
             }
 
             EnsureRegisteredUserRole::assignIfMissing($user);
@@ -137,9 +138,9 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (! empty($validated['team_id']) && $user->teams()->where('teams.id', $validated['team_id'])->exists())
+        if (! empty($validated['team_id']))
         {
-            $user->forceFill(['current_team_id' => $validated['team_id']])->save();
+            $this->teamClientContextActivator->activate($user, (int) $validated['team_id']);
         } elseif (! $user->currentTeam)
         {
             $team = $user->allTeams()->first();
@@ -351,7 +352,8 @@ class AuthController extends Controller
             'name' => $user->name,
             'email' => $user->email,
             'phone' => $user->phone !== null ? (string) $user->phone : null,
-            'role' => $this->formatUserRoleLabel($user),
+            'role' => $user->actsAsClientOnTeam($team) ? 'Client' : $this->formatUserRoleLabel($user),
+            'membership_role' => $team ? $user->teamRole($team)?->key : null,
             'profile_photo_url' => ChatMessageAvatar::forUser($user)['photo_url'] ?? null,
             'current_team' => $team ? [
                 'id' => $team->id,

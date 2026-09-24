@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -334,5 +335,55 @@ class TicketApiTest extends TestCase
             ->assertJsonPath('data.total', 1)
             ->assertJsonPath('data.open', 1)
             ->assertJsonPath('data.scope', 'team');
+    }
+
+    public function test_foreign_admin_login_with_team_id_only_lists_own_tickets(): void
+    {
+        $provider = User::factory()->withPersonalTeam()->create();
+        $providerTeam = $provider->ownedTeams()->first();
+        $this->enableTeamModules($providerTeam, ['tickets']);
+
+        $customer = User::factory()->withPersonalTeam()->create([
+            'email' => 'b2b2c@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+        $customer->assignRole('admin');
+
+        $own = Ticket::factory()->open()->create([
+            'team_id' => $providerTeam->id,
+            'user_id' => $customer->id,
+            'subject' => 'El mío',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $providerTeam->id,
+            'user_id' => $provider->id,
+            'subject' => 'De RA',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $customer->ownedTeams()->first()->id,
+            'user_id' => $customer->id,
+            'subject' => 'De su Humano',
+        ]);
+
+        $login = $this->postJson('/api/auth/login', [
+            'email' => 'b2b2c@example.com',
+            'password' => 'secret12',
+            'team_id' => $providerTeam->id,
+        ])->assertOk();
+
+        $this->assertSame('Client', $login->json('user.role'));
+        $this->assertFalse($login->json('current_team.can_manage'));
+
+        $this->withHeader('Authorization', 'Bearer '.$login->json('token'))
+            ->getJson('/api/tickets')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.id', $own->id);
+
+        $this->withHeader('Authorization', 'Bearer '.$login->json('token'))
+            ->getJson('/api/tickets/stats')
+            ->assertOk()
+            ->assertJsonPath('data.scope', 'own')
+            ->assertJsonPath('data.total', 1);
     }
 }
