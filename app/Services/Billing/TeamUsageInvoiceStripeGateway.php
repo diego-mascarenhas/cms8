@@ -16,8 +16,6 @@ class TeamUsageInvoiceStripeGateway
             'collection_method' => 'charge_automatically',
             'currency' => strtolower($currency),
             'metadata' => $metadata,
-        ], [
-            'idempotency_key' => $this->idempotencyKey($team, $metadata),
         ]);
     }
 
@@ -32,7 +30,6 @@ class TeamUsageInvoiceStripeGateway
         string $description,
         int $amountCents,
         string $currency,
-        int $quantity = 1,
     ): object {
         return $this->client()->invoiceItems->create([
             'customer' => $customerId,
@@ -40,26 +37,11 @@ class TeamUsageInvoiceStripeGateway
             'currency' => strtolower($currency),
             'description' => $description,
             'amount' => $amountCents,
-            'quantity' => max(1, $quantity),
         ]);
     }
 
     private function client(): StripeClient
     {
         return new StripeClient((string) config('cashier.secret'));
-    }
-
-    /**
-     * @param  array<string, string>  $metadata
-     */
-    private function idempotencyKey(Team $team, array $metadata): string
-    {
-        return implode('-', [
-            'usage',
-            (string) $team->id,
-            $metadata['humano_period_from'] ?? '',
-            $metadata['humano_period_to'] ?? '',
-            $metadata['humano_kind'] ?? 'cycle',
-        ]);
     }
 }

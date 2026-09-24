@@ -7,6 +7,7 @@ use App\Models\TeamUsageInvoice;
 use App\Models\TeamUsageInvoiceAdjustment;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamUsageInvoiceDraftIssuer;
 use App\Services\Billing\TeamUsageInvoiceStripeGateway;
 use App\Support\TeamUsageInvoiceFrequency;
@@ -32,13 +33,12 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
                 ->andReturn((object) ['id' => 'in_draft_usage_1']);
             $mock->shouldReceive('addInvoiceItem')
                 ->once()
-                ->withArgs(function (string $customer, string $invoice, string $description, int $amount, string $currency, int $quantity): bool
+                ->withArgs(function (string $customer, string $invoice, string $description, int $amount, string $currency): bool
                 {
                     return $customer === 'cus_test_usage'
                         && $invoice === 'in_draft_usage_1'
-                        && $description === 'Tokens IA · Agosto 2026'
+                        && $description === 'Tokens IA · Agosto 2026 · 10.000.000'
                         && ! str_contains($description, 'envíos')
-                        && $quantity === 10_000_000
                         && $amount > 0
                         && $currency === 'EUR';
                 })
@@ -229,6 +229,29 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_artisan_command_prints_stripe_errors(): void
+    {
+        $team = $this->teamWithStripe();
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-15 10:00:00'));
+
+        $this->mock(TeamUsageInvoiceStripeGateway::class, function ($mock)
+        {
+            $mock->shouldReceive('createDraftInvoice')
+                ->once()
+                ->andThrow(new \RuntimeException('Keys for idempotent requests can only be used once.'));
+        });
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 12:00:00'));
+
+        $this->artisan('billing:issue-usage-invoice-drafts', [
+            '--team' => $team->id,
+        ])
+            ->expectsOutputToContain('Team '.$team->id.': Keys for idempotent requests can only be used once.')
+            ->assertFailed();
+
+        Carbon::setTestNow();
+    }
+
     public function test_discard_command_deletes_the_stripe_draft_and_humano_row(): void
     {
         $team = $this->teamWithStripe();
@@ -255,6 +278,32 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         $this->assertDatabaseMissing('team_usage_invoices', [
             'stripe_invoice_id' => 'in_wrong_window',
         ]);
+    }
+
+    public function test_due_jobs_use_assistant_day_when_first_plan_anchor_differs(): void
+    {
+        $team = $this->teamWithStripe();
+        TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+            $team,
+            Carbon::parse('2026-08-04 15:55:19'),
+        );
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('subscribedUsagePeriod')->andReturn([
+                Carbon::parse('2026-08-24 19:33:08'),
+                Carbon::parse('2026-09-24 19:33:08'),
+            ]);
+        });
+
+        $jobs = app(TeamUsageInvoiceDraftIssuer::class)->dueJobs(
+            $team,
+            Carbon::parse('2026-09-24 12:10:22'),
+        );
+
+        $this->assertCount(1, $jobs);
+        $this->assertSame('2026-07-24', $jobs[0]['from']->toDateString());
+        $this->assertSame('2026-08-24', $jobs[0]['closes_on']->toDateString());
     }
 
     private function teamWithStripe(): \App\Models\Team

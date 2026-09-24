@@ -7,6 +7,7 @@ use App\Models\Conversation;
 use App\Models\Module;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\TeamBillingUsageSummaryService;
 use App\Support\TeamUsageInvoiceFrequency;
 use Carbon\Carbon;
@@ -144,6 +145,67 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
                 $window['from']->toDateString(),
                 $window['closes_on']->toDateString(),
             ], $windows),
+        );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_closed_windows_walk_back_from_the_live_cycle_day_not_the_first_plan_anchor(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 12:10:22'));
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $this->assertTrue(TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+            $team,
+            Carbon::parse('2026-08-04 15:55:19'),
+        ));
+        $this->assertSame(4, TeamUsageInvoiceFrequency::anchorDay($team));
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('subscribedUsagePeriod')->andReturn([
+                Carbon::parse('2026-08-24 19:33:08'),
+                Carbon::parse('2026-09-24 19:33:08'),
+            ]);
+        });
+
+        $openWindows = TeamUsageInvoiceFrequency::closedWindows(
+            $team,
+            Carbon::parse('2026-09-24 12:10:22'),
+            Carbon::parse('2026-07-24 00:00:00'),
+        );
+        $this->assertSame(
+            [
+                ['2026-07-24', '2026-08-24'],
+            ],
+            array_map(fn (array $window): array => [
+                $window['from']->toDateString(),
+                $window['closes_on']->toDateString(),
+            ], $openWindows),
+        );
+
+        $closedWindows = TeamUsageInvoiceFrequency::closedWindows(
+            $team,
+            Carbon::parse('2026-09-24 19:33:08'),
+            Carbon::parse('2026-07-24 00:00:00'),
+        );
+        $this->assertSame(
+            [
+                ['2026-07-24', '2026-08-24'],
+                ['2026-08-24', '2026-09-24'],
+            ],
+            array_map(fn (array $window): array => [
+                $window['from']->toDateString(),
+                $window['closes_on']->toDateString(),
+            ], $closedWindows),
         );
 
         Carbon::setTestNow();

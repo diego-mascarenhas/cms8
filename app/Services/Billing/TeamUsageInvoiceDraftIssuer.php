@@ -167,13 +167,18 @@ class TeamUsageInvoiceDraftIssuer
 
             foreach ($lines as $line)
             {
+                $description = $line['description'];
+                if (filled($line['detail'] ?? null))
+                {
+                    $description .= ' · '.$line['detail'];
+                }
+
                 $this->stripe->addInvoiceItem(
                     (string) $team->stripe_id,
                     (string) $stripeInvoice->id,
-                    $line['description'],
+                    $description,
                     $line['amount_cents'],
                     $usage['currency'],
-                    (int) ($line['quantity'] ?? 1),
                 );
             }
 
