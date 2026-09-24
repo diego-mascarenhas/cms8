@@ -124,7 +124,7 @@ class TicketController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'scope' => $user->hasRole('admin') ? 'global' : 'team',
+                'scope' => $user->actsAsClientOnTeam($team) ? 'own' : 'team',
                 'total' => (int) $counts->sum(),
                 'open' => (int) ($counts['open'] ?? 0),
                 'in_progress' => (int) ($counts['in_progress'] ?? 0),
@@ -415,21 +415,16 @@ class TicketController extends Controller
 
     private function visibleTickets(User $user, Team $team): Builder
     {
-        $query = Ticket::query()->withoutGlobalScope('team');
-
-        if (! $user->hasRole('admin'))
-        {
-            $query->where('team_id', $team->id);
-        }
-
-        return $query;
+        return Ticket::query()
+            ->withoutGlobalScope('team')
+            ->where('team_id', $team->id);
     }
 
     private function ticketQuery(User $user, Team $team): Builder
     {
         $query = $this->visibleTickets($user, $team);
 
-        if (! $user->can('viewAny', Ticket::class))
+        if (! $user->can('viewAny', Ticket::class) || $user->actsAsClientOnTeam($team))
         {
             $query->where(function (Builder $builder) use ($user)
             {

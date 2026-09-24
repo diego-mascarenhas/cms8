@@ -12,6 +12,11 @@ class TicketPolicy
 
     public function before(User $user, string $ability): ?bool
     {
+        if ($user->actsAsClientOnTeam($user->currentTeam))
+        {
+            return null;
+        }
+
         if ($user->hasRole('admin'))
         {
             return true;
@@ -22,7 +27,7 @@ class TicketPolicy
 
     public function viewAny(User $user): bool
     {
-        if (! $user->currentTeam)
+        if (! $user->currentTeam || $user->actsAsClientOnTeam($user->currentTeam))
         {
             return false;
         }
@@ -57,8 +62,7 @@ class TicketPolicy
             return false;
         }
 
-        // End customers (e.g. WhatsApp contact with client team role) can open a ticket for this team.
-        if ($user->hasRole('client'))
+        if ($user->hasRole('client') || $user->actsAsClientOnTeam($user->currentTeam))
         {
             return true;
         }

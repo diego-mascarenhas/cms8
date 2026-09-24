@@ -126,6 +126,7 @@ class AuthController extends Controller
     {
         $validated = $request->validate([
             'token' => ['required', 'string'],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
         ]);
 
         $user = TokenHelper::validateSignedToken($validated['token']);
@@ -136,7 +137,10 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (! $user->currentTeam)
+        if (! empty($validated['team_id']) && $user->teams()->where('teams.id', $validated['team_id'])->exists())
+        {
+            $user->forceFill(['current_team_id' => $validated['team_id']])->save();
+        } elseif (! $user->currentTeam)
         {
             $team = $user->allTeams()->first();
             if ($team)

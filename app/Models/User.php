@@ -100,7 +100,36 @@ class User extends Authenticatable
      */
     public function canAccessBilling(): bool
     {
+        if ($this->actsAsClientOnTeam($this->currentTeam))
+        {
+            return false;
+        }
+
         return $this->hasAnyRole(['admin', 'root']);
+    }
+
+    /**
+     * End-customer membership on this team, even if the user is Spatie admin
+     * of a personal Humano workspace.
+     */
+    public function actsAsClientOnTeam(?Team $team): bool
+    {
+        if ($this->hasRole('root'))
+        {
+            return false;
+        }
+
+        if (! $team instanceof Team)
+        {
+            return $this->hasRole('client');
+        }
+
+        if ($this->ownsTeam($team))
+        {
+            return false;
+        }
+
+        return $this->hasTeamRole($team, 'client');
     }
 
     /**
