@@ -72,20 +72,31 @@ class TeamUsageInvoiceFrequency
     {
         $frequency ??= self::for($team);
         $now = ($now ?? now())->copy();
-        self::ensureCycleSeeded($team);
-        $cycleStart = self::periodStartsAt($team);
-
-        if ($cycleStart === null)
-        {
-            return self::calendarWindow($frequency, $now);
-        }
 
         if ($frequency === TeamBillingFrequency::Weekly)
         {
-            return self::weeklyWindow($cycleStart, $now);
+            $cycleStart = self::periodStartsAt($team);
+            if ($cycleStart !== null)
+            {
+                return self::weeklyWindow($cycleStart, $now);
+            }
+
+            return self::calendarWindow($frequency, $now);
         }
 
-        return self::monthlyWindow($cycleStart, self::anchorDay($team) ?? $cycleStart->day, $now);
+        $subscription = self::subscriptionPeriod($team);
+        if ($subscription !== null)
+        {
+            return $subscription;
+        }
+
+        $cycleStart = self::periodStartsAt($team);
+        if ($cycleStart !== null)
+        {
+            return self::monthlyWindow($cycleStart, self::anchorDay($team) ?? $cycleStart->day, $now);
+        }
+
+        return self::calendarWindow($frequency, $now);
     }
 
     public static function nextMonthlyAnniversary(Carbon $from, int $anchorDay): Carbon

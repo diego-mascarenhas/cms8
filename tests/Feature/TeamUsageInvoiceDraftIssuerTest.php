@@ -219,6 +219,34 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_discard_command_deletes_the_stripe_draft_and_humano_row(): void
+    {
+        $team = $this->teamWithStripe();
+
+        TeamUsageInvoice::factory()->create([
+            'team_id' => $team->id,
+            'stripe_invoice_id' => 'in_wrong_window',
+            'period_from' => Carbon::parse('2026-08-04 15:55:19'),
+            'period_to' => Carbon::parse('2026-09-04 15:55:19'),
+        ]);
+
+        $this->mock(TeamUsageInvoiceStripeGateway::class, function ($mock)
+        {
+            $mock->shouldReceive('deleteDraftInvoice')
+                ->once()
+                ->with('in_wrong_window')
+                ->andReturn((object) ['id' => 'in_wrong_window', 'deleted' => true]);
+        });
+
+        $this->artisan('billing:discard-usage-invoice-draft', [
+            'invoice' => 'in_wrong_window',
+        ])->assertSuccessful();
+
+        $this->assertDatabaseMissing('team_usage_invoices', [
+            'stripe_invoice_id' => 'in_wrong_window',
+        ]);
+    }
+
     private function teamWithStripe(): \App\Models\Team
     {
         if (! Features::hasTeamFeatures())

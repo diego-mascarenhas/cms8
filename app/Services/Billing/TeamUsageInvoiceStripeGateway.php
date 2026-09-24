@@ -21,6 +21,11 @@ class TeamUsageInvoiceStripeGateway
         ]);
     }
 
+    public function deleteDraftInvoice(string $invoiceId): object
+    {
+        return $this->client()->invoices->delete($invoiceId);
+    }
+
     public function addInvoiceItem(
         string $customerId,
         string $invoiceId,

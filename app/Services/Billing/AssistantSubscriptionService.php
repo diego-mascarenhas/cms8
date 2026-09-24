@@ -3,6 +3,7 @@
 namespace App\Services\Billing;
 
 use App\Enums\EmailPlan;
+use App\Enums\TeamBillingFrequency;
 use App\Models\AgentConversationMessage;
 use App\Models\Conversation;
 use App\Models\MailerUsageLog;
@@ -664,13 +665,28 @@ class AssistantSubscriptionService
     }
 
     /**
-     * Stripe cycle of the first paid plan, or null when Stripe has no period.
+     * Assistant cycle when the team has one; otherwise the oldest paid plan.
+     */
+    public function preferredUsageSubscription(Team $team): ?Subscription
+    {
+        $assistant = $this->findAssistantSubscription($team);
+        if ($assistant && $this->subscriptionIsActive($assistant))
+        {
+            return $assistant;
+        }
+
+        return $this->firstPaidSubscription($team);
+    }
+
+    /**
+     * Stripe cycle used for team-wide usage invoices. Assistant wins over an
+     * older Mailer/Shop renewal so tokens and emails share the Assistant day.
      *
      * @return array{0: Carbon, 1: Carbon}|null
      */
     public function subscribedUsagePeriod(Team $team): ?array
     {
-        $subscription = $this->firstPaidSubscription($team);
+        $subscription = $this->preferredUsageSubscription($team);
         [$periodStart, $periodEnd] = $this->periodFromLocalSubscription($subscription);
         if ($periodStart === null)
         {
@@ -686,14 +702,20 @@ class AssistantSubscriptionService
     }
 
     /**
-     * Team-wide usage window for tokens, WhatsApp, and email. Locked to the
-     * first plan renewal; later catalogs do not open a second period.
+     * Team-wide usage window for tokens, WhatsApp, and email.
      *
      * @return array{0: Carbon, 1: Carbon}
      */
     public function usagePeriod(Team $team): array
     {
         $subscribed = $this->subscribedUsagePeriod($team);
+        $frequency = TeamUsageInvoiceFrequency::for($team);
+
+        if ($subscribed !== null && $frequency === TeamBillingFrequency::Monthly)
+        {
+            return $subscribed;
+        }
+
         if ($subscribed !== null)
         {
             TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription($team, $subscribed[0]);

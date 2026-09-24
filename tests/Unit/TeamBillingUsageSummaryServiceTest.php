@@ -183,10 +183,10 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $first = app(\App\Services\Billing\AssistantSubscriptionService::class)->firstPaidSubscription($team);
+        $billing = app(\App\Services\Billing\AssistantSubscriptionService::class);
 
-        $this->assertNotNull($first);
-        $this->assertSame('sub_mailer_first', $first->stripe_id);
+        $this->assertSame('sub_mailer_first', $billing->firstPaidSubscription($team)?->stripe_id);
+        $this->assertSame('sub_assistant_later', $billing->preferredUsageSubscription($team)?->stripe_id);
     }
 
     public function test_switching_to_weekly_mid_month_opens_an_adjustment_for_elapsed_weeks(): void
