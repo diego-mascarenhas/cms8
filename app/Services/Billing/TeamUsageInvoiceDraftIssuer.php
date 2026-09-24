@@ -185,6 +185,33 @@ class TeamUsageInvoiceDraftIssuer
                 );
             }
 
+            $status = TeamUsageInvoice::STATUS_DRAFT;
+            $finalized = false;
+
+            if ((bool) config('humano_pricing.usage_invoices.auto_charge', false))
+            {
+                $stripeInvoice = $this->stripe->finalizeInvoice($stripeInvoiceId);
+                $finalized = true;
+                $status = TeamUsageInvoice::STATUS_OPEN;
+
+                if (($stripeInvoice->status ?? null) !== 'paid')
+                {
+                    try
+                    {
+                        $stripeInvoice = $this->stripe->payInvoice($stripeInvoiceId);
+                    } catch (Throwable $payError)
+                    {
+                        Log::warning('Usage invoice finalized but automatic charge failed', [
+                            'team_id' => $team->id,
+                            'stripe_invoice_id' => $stripeInvoiceId,
+                            'message' => $payError->getMessage(),
+                        ]);
+                    }
+                }
+
+                $status = $this->statusFromStripeInvoice($stripeInvoice);
+            }
+
             $record = TeamUsageInvoice::query()->create([
                 'team_id' => $team->id,
                 'kind' => $job['kind'],
@@ -194,7 +221,7 @@ class TeamUsageInvoiceDraftIssuer
                 'billed_cents' => $usage['billed_cents'],
                 'currency' => $usage['currency'],
                 'stripe_invoice_id' => $stripeInvoiceId,
-                'status' => TeamUsageInvoice::STATUS_DRAFT,
+                'status' => $status,
                 'adjustment_id' => $job['adjustment']?->id,
                 'issued_at' => now(),
             ]);
@@ -211,12 +238,12 @@ class TeamUsageInvoiceDraftIssuer
                 'period_to' => $job['closes_on']->toDateString(),
                 'billed_cents' => $usage['billed_cents'],
                 'lines' => count($lines),
-                'status' => TeamUsageInvoice::STATUS_DRAFT,
+                'status' => $status,
                 'stripe_invoice_id' => $record->stripe_invoice_id,
             ];
         } catch (Throwable $e)
         {
-            if ($stripeInvoiceId !== null)
+            if ($stripeInvoiceId !== null && ! ($finalized ?? false))
             {
                 try
                 {
@@ -251,6 +278,16 @@ class TeamUsageInvoiceDraftIssuer
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    private function statusFromStripeInvoice(object $stripeInvoice): string
+    {
+        return match ((string) ($stripeInvoice->status ?? ''))
+        {
+            'paid' => TeamUsageInvoice::STATUS_PAID,
+            'open', 'uncollectible' => TeamUsageInvoice::STATUS_OPEN,
+            default => TeamUsageInvoice::STATUS_DRAFT,
+        };
     }
 
     private function alreadyIssued(Team $team, Carbon $from, Carbon $closesOn): bool

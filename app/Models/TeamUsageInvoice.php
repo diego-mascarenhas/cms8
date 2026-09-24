@@ -18,6 +18,10 @@ class TeamUsageInvoice extends Model
 
     public const STATUS_DRAFT = 'draft';
 
+    public const STATUS_OPEN = 'open';
+
+    public const STATUS_PAID = 'paid';
+
     protected $fillable = [
         'team_id',
         'kind',

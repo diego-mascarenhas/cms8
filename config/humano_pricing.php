@@ -89,6 +89,19 @@ return [
     ],
 
     /*
+     * | Usage invoice issuance (billing:issue-usage-invoice-drafts).
+     * | When auto_charge is false (default), Stripe keeps a draft for manual review.
+     * | When true, the draft is finalized and Stripe attempts to charge the
+     * | customer's default payment method immediately.
+     */
+    'usage_invoices' => [
+        'auto_charge' => filter_var(
+            env('CMS8_USAGE_INVOICE_AUTO_CHARGE', false),
+            FILTER_VALIDATE_BOOLEAN,
+        ),
+    ],
+
+    /*
      * | Baileys WhatsApp outbound message billing (EUR per sent message).
      * | our_amount is what we charge. reference_amount is the Twilio-like BSP
      * | handling fee used to show savings (Meta Cloud API service replies in

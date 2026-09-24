@@ -40,6 +40,16 @@ class TeamUsageInvoiceStripeGateway
         ]);
     }
 
+    public function finalizeInvoice(string $invoiceId): object
+    {
+        return $this->client()->invoices->finalizeInvoice($invoiceId);
+    }
+
+    public function payInvoice(string $invoiceId): object
+    {
+        return $this->client()->invoices->pay($invoiceId);
+    }
+
     private function client(): StripeClient
     {
         return new StripeClient((string) config('cashier.secret'));
