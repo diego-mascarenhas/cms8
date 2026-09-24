@@ -154,6 +154,18 @@ class ProjectBudgetPreviewTest extends TestCase
     }
 
     #[Test]
+    public function public_budget_preview_keeps_the_cms_report_when_requested(): void
+    {
+        config(['projects.budget_preview_base_url' => 'https://presu.humano.app']);
+        $created = $this->createBudgetPreviewProject();
+
+        $this->get(route('project.budget-preview', ['token' => $created['token'], 'report' => 1]))
+            ->assertOk()
+            ->assertSee('iOS signing', false)
+            ->assertSee('name="report"', false);
+    }
+
+    #[Test]
     public function public_budget_preview_uses_budget_logo_url_from_config(): void
     {
         config(['variables.logo.budget_path' => 'https://mi.humano.app/assets/logo-dark.svg']);

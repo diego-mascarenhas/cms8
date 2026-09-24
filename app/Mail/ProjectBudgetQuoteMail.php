@@ -21,7 +21,6 @@ class ProjectBudgetQuoteMail extends Mailable
     public function build(): self
     {
         $projectName = trim((string) ($this->project->real_name ?: $this->project->name));
-        $this->previewUrl = route('project.budget-email.track-click', $this->trackingToken);
         $trackingPixelUrl = route('project.budget-email.track-open', $this->trackingToken);
 
         return $this->subject(__('Quote: :project', ['project' => $projectName]))

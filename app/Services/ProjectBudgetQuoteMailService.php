@@ -124,8 +124,7 @@ class ProjectBudgetQuoteMailService
         $from = $ready['from'];
 
         $trackingToken = Str::random(48);
-        $previewUrl = \App\Support\BudgetPreviewUrl::forToken($previewToken, $project)
-            ?? route('project.budget-preview', $previewToken);
+        $previewUrl = $this->clientReportUrl($previewToken);
 
         $mail = new ProjectBudgetQuoteMail(
             project: $project->fresh(['enterprise', 'team']),
@@ -363,9 +362,15 @@ class ProjectBudgetQuoteMailService
 
         $previewToken = trim((string) data_get($project->data, 'budget_preview_token', ''));
 
-        return $previewToken !== ''
-            ? (\App\Support\BudgetPreviewUrl::forToken($previewToken, $project) ?? route('project.budget-preview', $previewToken))
-            : null;
+        return $previewToken !== '' ? $this->clientReportUrl($previewToken) : null;
+    }
+
+    private function clientReportUrl(string $previewToken): string
+    {
+        return route('project.budget-preview', [
+            'token' => $previewToken,
+            'report' => 1,
+        ], true);
     }
 
     public function countSentForTeam(int $teamId, ?CarbonInterface $from = null, ?CarbonInterface $to = null): int

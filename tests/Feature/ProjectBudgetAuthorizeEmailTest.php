@@ -39,7 +39,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         ]);
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        config(['projects.budget_preview_base_url' => null]);
+        config(['projects.budget_preview_base_url' => 'https://presu.humano.app']);
     }
 
     #[Test]
@@ -69,9 +69,13 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
             app(ProjectBudgetQuoteMailService::class)->countSentForTeam((int) $user->current_team_id),
         );
 
-        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact): bool
+        Mail::assertSent(ProjectBudgetQuoteMail::class, function (ProjectBudgetQuoteMail $mail) use ($contact, $project): bool
         {
             $html = $mail->render();
+            $reportUrl = route('project.budget-preview', [
+                'token' => data_get($project->data, 'budget_preview_token'),
+                'report' => 1,
+            ]);
 
             return $mail->hasTo($contact->email)
                 && $mail->hasFrom('quotes@example.test')
@@ -92,8 +96,10 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
                 && ! str_contains($html, 'Certificate setup')
                 && ! str_contains($html, 'Estimado')
                 && ! str_contains($html, 'Dear ')
+                && str_contains($html, $reportUrl)
                 && str_contains($html, '/p/budget-mail/')
-                && str_contains($html, '/click')
+                && ! str_contains($html, '/click')
+                && ! str_contains($html, 'presu.humano.app')
                 && ! str_contains($html, 'localhost:3007')
                 && str_contains($html, '#0d9488')
                 && ! str_contains($html, '#4361f7')
@@ -225,7 +231,7 @@ class ProjectBudgetAuthorizeEmailTest extends TestCase
         $this->assertNotNull(data_get($project->data, 'budget_email.opened_at'));
 
         $this->get(route('project.budget-email.track-click', $trackingToken))
-            ->assertRedirect(route('project.budget-preview', $previewToken));
+            ->assertRedirect(route('project.budget-preview', ['token' => $previewToken, 'report' => 1]));
 
         $project->refresh();
         $this->assertNotNull(data_get($project->data, 'budget_email.clicked_at'));
