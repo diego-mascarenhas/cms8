@@ -220,7 +220,7 @@ class TeamUsageInvoiceFrequency
         }
 
         $closesOn = $openFrom->copy();
-        $anchorDay = self::anchorDay($team) ?? $openFrom->day;
+        $anchorDay = $openFrom->day;
         $guard = 0;
 
         while ($closesOn->gt($since) && $guard < 260)

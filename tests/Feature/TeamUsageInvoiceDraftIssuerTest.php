@@ -7,6 +7,7 @@ use App\Models\TeamUsageInvoice;
 use App\Models\TeamUsageInvoiceAdjustment;
 use App\Models\TokenUsageLog;
 use App\Models\User;
+use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\Billing\TeamUsageInvoiceDraftIssuer;
 use App\Services\Billing\TeamUsageInvoiceStripeGateway;
 use App\Support\TeamUsageInvoiceFrequency;
@@ -255,6 +256,32 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         $this->assertDatabaseMissing('team_usage_invoices', [
             'stripe_invoice_id' => 'in_wrong_window',
         ]);
+    }
+
+    public function test_due_jobs_use_assistant_day_when_first_plan_anchor_differs(): void
+    {
+        $team = $this->teamWithStripe();
+        TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+            $team,
+            Carbon::parse('2026-08-04 15:55:19'),
+        );
+
+        $this->mock(AssistantSubscriptionService::class, function ($mock)
+        {
+            $mock->shouldReceive('subscribedUsagePeriod')->andReturn([
+                Carbon::parse('2026-08-24 19:33:08'),
+                Carbon::parse('2026-09-24 19:33:08'),
+            ]);
+        });
+
+        $jobs = app(TeamUsageInvoiceDraftIssuer::class)->dueJobs(
+            $team,
+            Carbon::parse('2026-09-24 12:10:22'),
+        );
+
+        $this->assertCount(1, $jobs);
+        $this->assertSame('2026-07-24', $jobs[0]['from']->toDateString());
+        $this->assertSame('2026-08-24', $jobs[0]['closes_on']->toDateString());
     }
 
     private function teamWithStripe(): \App\Models\Team
