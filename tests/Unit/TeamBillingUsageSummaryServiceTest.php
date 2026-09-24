@@ -92,6 +92,103 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_invoice_preview_follows_the_first_plan_renewal_cycle(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $this->fakeTokenCatalog();
+
+        Carbon::setTestNow(Carbon::parse('2026-09-24 12:00:00'));
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $this->assertTrue(TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+            $team,
+            Carbon::parse('2026-08-24 12:07:00'),
+        ));
+        $this->assertFalse(TeamUsageInvoiceFrequency::rememberCycleFromFirstSubscription(
+            $team,
+            Carbon::parse('2026-09-10 09:00:00'),
+        ));
+
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-25 10:00:00'));
+        $this->createTokenLog((int) $team->id, 500_000, Carbon::parse('2026-09-10 10:00:00'));
+        $this->createTokenLog((int) $team->id, 200_000, Carbon::parse('2026-08-20 10:00:00'));
+
+        $preview = app(TeamBillingUsageSummaryService::class)->invoicePreview($team);
+
+        $this->assertSame('24/09/2026', $preview['closes_on']);
+        $this->assertSame(1_500_000, $preview['tokens_real']);
+        $this->assertSame(1500, $preview['token_billed_cents']);
+        $this->assertStringContainsString('24', $preview['period_label']);
+
+        [$from, $closesOn] = TeamUsageInvoiceFrequency::window($team);
+        $this->assertSame('2026-08-24 12:07:00', $from->format('Y-m-d H:i:s'));
+        $this->assertSame('2026-09-24 12:07:00', $closesOn->format('Y-m-d H:i:s'));
+
+        $windows = TeamUsageInvoiceFrequency::closedWindows(
+            $team,
+            Carbon::parse('2026-09-24 12:00:00'),
+            Carbon::parse('2026-07-24 00:00:00'),
+        );
+        $this->assertSame(
+            [
+                ['2026-07-24', '2026-08-24'],
+            ],
+            array_map(fn (array $window): array => [
+                $window['from']->toDateString(),
+                $window['closes_on']->toDateString(),
+            ], $windows),
+        );
+
+        Carbon::setTestNow();
+    }
+
+    public function test_first_paid_subscription_is_the_oldest_active_plan(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $mailer = $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'mailer',
+            'stripe_id' => 'sub_mailer_first',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_mailer_monthly',
+            'quantity' => 1,
+        ]);
+        $assistant = $team->subscriptions()->create([
+            'user_id' => $user->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_assistant_later',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant_monthly',
+            'quantity' => 1,
+        ]);
+        $team->subscriptions()->whereKey($mailer->id)->update([
+            'created_at' => now()->subMonth(),
+        ]);
+        $team->subscriptions()->whereKey($assistant->id)->update([
+            'created_at' => now(),
+        ]);
+
+        $first = app(\App\Services\Billing\AssistantSubscriptionService::class)->firstPaidSubscription($team);
+
+        $this->assertNotNull($first);
+        $this->assertSame('sub_mailer_first', $first->stripe_id);
+    }
+
     public function test_switching_to_weekly_mid_month_opens_an_adjustment_for_elapsed_weeks(): void
     {
         if (! Features::hasTeamFeatures())
@@ -229,6 +326,37 @@ class TeamBillingUsageSummaryServiceTest extends TestCase
         $this->assertSame('80.000', $weekly['lines'][1]['detail']);
 
         Carbon::setTestNow();
+    }
+
+    public function test_billable_lines_omit_token_sources_and_zero_amounts(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        $this->fakeTokenCatalog();
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam ?? $user->ownedTeams()->first();
+        $this->assertNotNull($team);
+
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-15 10:00:00'));
+
+        $service = app(TeamBillingUsageSummaryService::class);
+        $usage = $service->forClosedWindow(
+            $team,
+            Carbon::parse('2026-08-01'),
+            Carbon::parse('2026-09-01'),
+            TeamBillingFrequency::Monthly,
+        );
+
+        $lines = $service->billableLines($usage, $usage['period_label']);
+
+        $this->assertNotSame([], $lines);
+        $this->assertFalse(collect($lines)->contains(fn (array $line): bool => $line['kind'] === 'token_source'));
+        $this->assertTrue(collect($lines)->every(fn (array $line): bool => $line['amount_cents'] > 0));
+        $this->assertSame('tokens', $lines[0]['kind']);
     }
 
     public function test_past_months_exclude_the_current_month_and_empty_months(): void

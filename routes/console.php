@@ -34,6 +34,13 @@ Schedule::command('stripe:suspend-overdue')
     ->daily()
     ->at('03:00');
 
+Schedule::command('billing:issue-usage-invoice-drafts')
+    ->dailyAt('04:00')
+    ->name('usage-invoice-drafts')
+    ->description('Create Stripe draft invoices for closed team usage periods')
+    ->withoutOverlapping()
+    ->runInBackground();
+
 Schedule::command('stripe:sync-service-syncs')
     ->hourly()
     ->name('service-syncs-stripe-sync')

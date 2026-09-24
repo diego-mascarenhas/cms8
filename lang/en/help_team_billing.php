@@ -6,7 +6,7 @@ return [
     'sidebar_title' => 'Usage rates',
     'index_card_title' => 'Usage rates',
     'index_card_body' => 'Invoice preview, SCD2 rates, monthly or weekly frequency, and token breakdown by module. Root only.',
-    'intro' => 'Token, WhatsApp, and mail-overage usage is billed separately from the plan quota. Each team can have its own rates and a monthly or weekly cadence. The Rates page previews what should be invoiced; Stripe does not issue those invoices yet.',
+    'intro' => 'Token, WhatsApp, and mail usage is billed separately from the plan quota. Each team can have its own rates and a monthly or weekly cadence. When a cycle closes, Stripe gets a draft invoice; it is not charged until that draft is finalized.',
 
     'where_heading' => 'Where to find it',
     'where_body' => 'Only the root role sees this screen. In Account management, the euro icon on each row opens that team’s rates.',
@@ -15,7 +15,7 @@ return [
 
     'two_invoices_heading' => 'Two separate invoices',
     'two_invoices_plan' => 'Plan quota: Assistant, Business, or another subscribed product. This still appears on Stripe subscription invoices.',
-    'two_invoices_usage' => 'Usage: AI tokens, WhatsApp sends, and overage emails. One usage invoice per team and period. Not issued in Stripe yet.',
+    'two_invoices_usage' => 'Usage: AI tokens, WhatsApp sends, and emails. One usage invoice per team and period. A Stripe draft is created when the cycle closes.',
 
     'rates_heading' => 'Rates',
     'rates_intro' => 'There are three products. If the team has no row, the platform default is used, then config.',
@@ -25,7 +25,7 @@ return [
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',
 
     'frequency_heading' => 'Frequency',
-    'frequency_intro' => 'Monthly or weekly, per team. With no anchor, the month runs from the 1st to the 1st and the week from Monday to Monday. Changing frequency sets that day as the anchor.',
+    'frequency_intro' => 'Monthly or weekly, per team. The first renewal date of any plan (Assistant, Mailer, Shop…) is locked for tokens, WhatsApp, and email across every app. A plan bought later does not open another usage cycle. Without a plan, the month runs from the 1st to the 1st and the week from Monday to Monday. Changing frequency sets that day as the anchor.',
     'frequency_weekly' => 'Weekly: 7-day windows from the change day (Wednesday to Wednesday if you change on a Wednesday).',
     'frequency_monthly' => 'Monthly: from day D to day D (the 15th to the 15th if you change on the 15th).',
     'frequency_anchor' => 'If the anchor is 29, 30, or 31 and the month is shorter, the last day of the month is used. The next month restores the anchor (31 Jan → 28/29 Feb → 31 Mar → 30 Apr → 31 May).',
@@ -34,7 +34,7 @@ return [
     'change_intro' => 'Changing only amounts and keeping the same frequency saves with no prompt. Switching Monthly ↔ Weekly shows the Change billing? alert with line items and the total.',
     'change_close' => 'The open cycle closes at 00:00 on the change day. That slice becomes an adjustment invoice.',
     'change_open' => 'The change day belongs to the new cycle. The new cadence starts that day at 00:00.',
-    'change_stripe' => 'Confirming closes the cycle in Humano. Nothing is issued in Stripe yet.',
+    'change_stripe' => 'Confirming closes the cycle in Humano. The Stripe draft is created on the next daily sweep.',
 
     'items_heading' => 'What is printed on the invoice',
     'items_intro' => 'Each document (adjustment or open cycle) has the same three lines, even when the amount is 0.00 EUR:',
@@ -50,14 +50,15 @@ return [
     'preview_months' => 'Previous months uses calendar months, not 15–15 or Wed–Wed cycles.',
 
     'status_heading' => 'Current status',
-    'status_not_issued' => 'Usage is calculated and shown. No Stripe usage invoice is created.',
-    'status_adjustments' => 'Changing frequency stores a pending adjustment (invoiced_at empty). The preview includes it when that slice had usage.',
-    'status_weeks' => 'Weeks that already closed while the team stays on weekly are not queued on their own. Usage stays in the database and will show when invoicing or when the cadence changes.',
+    'status_not_issued' => 'When a cycle (or a frequency adjustment) closes, a Stripe draft is created. It must be finalized before anything is charged.',
+    'status_adjustments' => 'Changing frequency stores a pending adjustment (invoiced_at empty). The daily sweep turns it into a draft when that slice had usage.',
+    'status_weeks' => 'Closed weeks become drafts on the daily sweep (the last two weeks).',
     'status_mailer' => 'The email cap is applied to each period slice. A split month can show 0 overage even if the full month would have exceeded the cap.',
 
     'cli_heading' => 'Command line',
     'cli_body' => 'To set a rate without the screen (team_id 0 = platform default):',
     'cli_example' => 'php artisan billing:set-team-rate {team_id} {product} {amount}',
+    'cli_drafts' => 'php artisan billing:issue-usage-invoice-drafts [--team=] [--dry-run]',
     'cli_products' => 'product: tokens_multiplier, whatsapp_send, or mailer_send. Optional: --from= and --currency=.',
 
     'related_heading' => 'Related',

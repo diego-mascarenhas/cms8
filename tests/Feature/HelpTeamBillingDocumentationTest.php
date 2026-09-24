@@ -16,6 +16,7 @@ class HelpTeamBillingDocumentationTest extends TestCase
         $response->assertSee('Tokens IA', false);
         $response->assertSee('Chat, Projects, Insights', false);
         $response->assertSee('billing:set-team-rate', false);
+        $response->assertSee('billing:issue-usage-invoice-drafts', false);
         $response->assertSee('¿Cambiar facturación?', false);
         $response->assertSee(route('help.stripe-webhook', [], false), false);
         $response->assertSee(route('manual.billing', [], false), false);
