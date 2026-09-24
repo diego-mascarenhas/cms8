@@ -281,6 +281,59 @@ class TeamUsageInvoiceDraftIssuerTest extends TestCase
         $this->assertDatabaseCount('team_usage_invoices', 0);
     }
 
+    public function test_skips_complimentary_usage_access_teams(): void
+    {
+        $team = $this->teamWithStripe();
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-15 10:00:00'));
+
+        config(['humano_pricing.usage_invoices.access_team_ids' => [(int) $team->id]]);
+
+        $this->mock(TeamUsageInvoiceStripeGateway::class, function ($mock)
+        {
+            $mock->shouldNotReceive('createDraftInvoice');
+            $mock->shouldNotReceive('addInvoiceItem');
+        });
+
+        $results = app(TeamUsageInvoiceDraftIssuer::class)->issueDueDrafts(
+            $team,
+            false,
+            Carbon::parse('2026-09-24 12:00:00'),
+        );
+
+        $this->assertTrue($results->isEmpty());
+        $this->assertDatabaseCount('team_usage_invoices', 0);
+    }
+
+    public function test_bills_teams_not_on_complimentary_list(): void
+    {
+        $team = $this->teamWithStripe();
+        $this->createTokenLog((int) $team->id, 1_000_000, Carbon::parse('2026-08-15 10:00:00'));
+
+        config(['humano_pricing.usage_invoices.access_team_ids' => [(int) $team->id + 999]]);
+
+        $this->mock(TeamUsageInvoiceStripeGateway::class, function ($mock)
+        {
+            $mock->shouldReceive('createDraftInvoice')
+                ->once()
+                ->andReturn((object) ['id' => 'in_billed']);
+            $mock->shouldReceive('addInvoiceItem')
+                ->once()
+                ->andReturn((object) ['id' => 'ii_billed']);
+        });
+
+        $results = app(TeamUsageInvoiceDraftIssuer::class)->issueDueDrafts(
+            $team,
+            false,
+            Carbon::parse('2026-09-24 12:00:00'),
+        );
+
+        $this->assertCount(1, $results->where('status', TeamUsageInvoice::STATUS_DRAFT));
+        $this->assertDatabaseHas('team_usage_invoices', [
+            'team_id' => $team->id,
+            'stripe_invoice_id' => 'in_billed',
+        ]);
+    }
+
     public function test_discard_command_deletes_the_stripe_draft_and_humano_row(): void
     {
         $team = $this->teamWithStripe();
