@@ -12,6 +12,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Jetstream\Features;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class ApiAuthRegisterAndPasswordResetTest extends TestCase
@@ -301,5 +303,116 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             'token' => 'not-a-signed-token',
         ])->assertStatus(401)
             ->assertJsonPath('message', 'Token inválido o expirado');
+    }
+
+    public function test_login_with_team_id_attaches_foreign_admin_as_client(): void
+    {
+        $this->skipWithoutTeams();
+        $this->ensureSpatieRole('admin');
+
+        $customer = User::factory()->withPersonalTeam()->create([
+            'email' => 'cliente@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+        $customer->assignRole('admin');
+        $personalTeam = $customer->ownedTeams()->first();
+
+        $providerOwner = User::factory()->withPersonalTeam()->create();
+        $providerTeam = $providerOwner->ownedTeams()->first();
+
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'cliente@example.com',
+            'password' => 'secret12',
+            'team_id' => $providerTeam->id,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.role', 'Client')
+            ->assertJsonPath('user.membership_role', 'client')
+            ->assertJsonPath('current_team.id', $providerTeam->id)
+            ->assertJsonPath('current_team.can_manage', false)
+            ->assertJsonPath('current_team.is_owner', false);
+
+        $customer->refresh();
+        $this->assertSame($providerTeam->id, $customer->current_team_id);
+        $this->assertTrue($customer->hasTeamRole($providerTeam, 'client'));
+        $this->assertTrue($customer->hasRole('admin'));
+        $this->assertTrue($customer->ownsTeam($personalTeam));
+        $this->assertFalse($customer->canManageTeam($providerTeam));
+    }
+
+    public function test_login_with_team_id_keeps_provider_staff_and_owner(): void
+    {
+        $this->skipWithoutTeams();
+        $this->ensureSpatieRole('admin');
+
+        $owner = User::factory()->withPersonalTeam()->create([
+            'email' => 'owner@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+        $owner->assignRole('admin');
+        $providerTeam = $owner->ownedTeams()->first();
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'owner@example.com',
+            'password' => 'secret12',
+            'team_id' => $providerTeam->id,
+        ])->assertOk()
+            ->assertJsonPath('user.membership_role', 'owner')
+            ->assertJsonPath('current_team.id', $providerTeam->id)
+            ->assertJsonPath('current_team.can_manage', true)
+            ->assertJsonPath('current_team.is_owner', true);
+
+        $staff = User::factory()->withPersonalTeam()->create([
+            'email' => 'staff@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+        $staff->assignRole('admin');
+        $providerTeam->users()->attach($staff, ['role' => 'admin']);
+
+        $this->postJson('/api/auth/login', [
+            'email' => 'staff@example.com',
+            'password' => 'secret12',
+            'team_id' => $providerTeam->id,
+        ])->assertOk()
+            ->assertJsonPath('user.role', 'Admin')
+            ->assertJsonPath('user.membership_role', 'admin')
+            ->assertJsonPath('current_team.id', $providerTeam->id)
+            ->assertJsonPath('current_team.can_manage', true);
+
+        $this->assertTrue($staff->fresh()->hasTeamRole($providerTeam, 'admin'));
+    }
+
+    public function test_login_with_signed_token_activates_provider_team_as_client(): void
+    {
+        $this->skipWithoutTeams();
+        $this->ensureSpatieRole('admin');
+
+        $customer = User::factory()->withPersonalTeam()->create(['email' => 'token-cliente@example.com']);
+        $customer->assignRole('admin');
+        $providerTeam = User::factory()->withPersonalTeam()->create()->ownedTeams()->first();
+        $signed = TokenHelper::generateSignedToken($customer, 'account_owner_autologin', 1);
+
+        $this->postJson('/api/auth/login-token', [
+            'token' => $signed,
+            'team_id' => $providerTeam->id,
+        ])->assertOk()
+            ->assertJsonPath('user.role', 'Client')
+            ->assertJsonPath('user.membership_role', 'client')
+            ->assertJsonPath('current_team.id', $providerTeam->id)
+            ->assertJsonPath('current_team.can_manage', false);
+    }
+
+    private function skipWithoutTeams(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+    }
+
+    private function ensureSpatieRole(string $name): void
+    {
+        Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
     }
 }

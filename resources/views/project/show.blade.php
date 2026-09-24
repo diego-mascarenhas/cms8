@@ -81,7 +81,7 @@
 				<i class="ti ti-layout-kanban me-1"></i>{{ __('Board') }}
 			</a>
 			@if(data_get($project->data, 'budget_preview_token') && auth()->user()->can('manageBudget', $project))
-				<a href="{{ route('project.budget-preview', data_get($project->data, 'budget_preview_token')) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary waves-effect waves-light">
+				<a href="{{ route('project.budget-preview', ['token' => data_get($project->data, 'budget_preview_token'), 'report' => 1]) }}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-primary waves-effect waves-light">
 					<i class="ti ti-file-invoice me-1"></i>{{ __('Preview') }}
 				</a>
 			@endif

@@ -419,6 +419,9 @@
 
             <form method="POST" action="{{ route('project.budget-preview.accept', $budgetToken) }}" class="accept-form" novalidate>
                 @csrf
+                @if (request()->boolean('report'))
+                    <input type="hidden" name="report" value="1">
+                @endif
                 <div class="field">
                     <label for="accepted_by_name">{{ __('Your name') }} ({{ __('optional') }})</label>
                     <input type="text" id="accepted_by_name" name="accepted_by_name" value="{{ old('accepted_by_name') }}" maxlength="255" class="@error('accepted_by_name') is-invalid @enderror" placeholder="{{ __('Your name') }}">
@@ -442,6 +445,9 @@
             <dialog id="reformulate-dialog">
                 <form method="POST" action="{{ route('project.budget-preview.reformulate', $budgetToken) }}" novalidate>
                     @csrf
+                    @if (request()->boolean('report'))
+                        <input type="hidden" name="report" value="1">
+                    @endif
                     <h2 style="margin:0 0 8px;font-size:16px;">{{ __('Request reformulation') }}</h2>
                     <p style="margin:0 0 12px;color:#4b5563;">{{ __('Tell us what you would like to change in this quote.') }}</p>
                     <div class="field">

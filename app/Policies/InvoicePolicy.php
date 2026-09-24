@@ -14,12 +14,17 @@ class InvoicePolicy
      */
     public function before(User $user, string $ability): ?bool
     {
+        if ($user->actsAsClientOnTeam($user->currentTeam))
+        {
+            return null;
+        }
+
         if ($user->hasRole('admin'))
         {
             return true;
         }
 
-        return null;  // Continue to specific policy methods
+        return null;
     }
 
     /**
@@ -40,7 +45,7 @@ class InvoicePolicy
             return $invoice->team_id === $user->currentTeam?->id;
         }
 
-        if ($user->hasRole('client'))
+        if ($user->actsAsClientOnTeam($user->currentTeam) || $user->hasRole('client'))
         {
             return in_array($invoice->enterprise_id, self::clientEnterpriseIds($user), true);
         }
@@ -96,18 +101,18 @@ class InvoicePolicy
     {
         return function (Builder $query) use ($user)
         {
-            if ($user->canAccessBilling())
-            {
-                return $query->where('team_id', $user->currentTeam->id);
-            }
-
-            if ($user->hasRole('client'))
+            if ($user->actsAsClientOnTeam($user->currentTeam) || $user->hasRole('client'))
             {
                 $enterpriseIds = self::clientEnterpriseIds($user);
 
                 return $enterpriseIds === []
                     ? $query->whereRaw('1 = 0')
                     : $query->whereIn('enterprise_id', $enterpriseIds);
+            }
+
+            if ($user->canAccessBilling())
+            {
+                return $query->where('team_id', $user->currentTeam->id);
             }
 
             return $query->whereRaw('1 = 0');

@@ -6,6 +6,7 @@ use App\Models\Ticket;
 use App\Models\TicketResponse;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -168,6 +169,35 @@ class TicketApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_spatie_admin_who_is_client_on_team_only_lists_own_tickets(): void
+    {
+        [, $team] = $this->userWithToken();
+
+        $client = User::factory()->withPersonalTeam()->create();
+        $client->assignRole('admin');
+        $team->users()->attach($client, ['role' => 'client']);
+        $client->forceFill(['current_team_id' => $team->id])->save();
+        $token = $client->createToken('idoneo-tickets-client-admin')->plainTextToken;
+
+        $own = Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => $client->id,
+            'subject' => 'El mío',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => User::factory(),
+            'subject' => 'Ajeno',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.id', $own->id)
+            ->assertJsonPath('data.0.subject', 'El mío');
+    }
+
     public function test_assign_status_close_and_rate(): void
     {
         [$admin, $team, $token] = $this->userWithToken();
@@ -273,10 +303,10 @@ class TicketApiTest extends TestCase
             ->assertJsonPath('data.open', 1)
             ->assertJsonPath('data.closed', 1)
             ->assertJsonPath('data.mine', 1)
-            ->assertJsonPath('data.scope', 'global');
+            ->assertJsonPath('data.scope', 'team');
     }
 
-    public function test_admin_sees_tickets_from_every_team(): void
+    public function test_admin_does_not_see_tickets_from_another_team(): void
     {
         [$user, $team, $token] = $this->userWithToken();
         $other = User::factory()->withPersonalTeam()->create();
@@ -296,13 +326,64 @@ class TicketApiTest extends TestCase
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/tickets')
             ->assertOk()
-            ->assertJsonPath('pagination.total', 2);
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.subject', 'Del equipo actual');
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/tickets/stats')
             ->assertOk()
-            ->assertJsonPath('data.total', 2)
-            ->assertJsonPath('data.open', 2)
-            ->assertJsonPath('data.scope', 'global');
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.open', 1)
+            ->assertJsonPath('data.scope', 'team');
+    }
+
+    public function test_foreign_admin_login_with_team_id_only_lists_own_tickets(): void
+    {
+        $provider = User::factory()->withPersonalTeam()->create();
+        $providerTeam = $provider->ownedTeams()->first();
+        $this->enableTeamModules($providerTeam, ['tickets']);
+
+        $customer = User::factory()->withPersonalTeam()->create([
+            'email' => 'b2b2c@example.com',
+            'password' => Hash::make('secret12'),
+        ]);
+        $customer->assignRole('admin');
+
+        $own = Ticket::factory()->open()->create([
+            'team_id' => $providerTeam->id,
+            'user_id' => $customer->id,
+            'subject' => 'El mío',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $providerTeam->id,
+            'user_id' => $provider->id,
+            'subject' => 'De RA',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $customer->ownedTeams()->first()->id,
+            'user_id' => $customer->id,
+            'subject' => 'De su Humano',
+        ]);
+
+        $login = $this->postJson('/api/auth/login', [
+            'email' => 'b2b2c@example.com',
+            'password' => 'secret12',
+            'team_id' => $providerTeam->id,
+        ])->assertOk();
+
+        $this->assertSame('Client', $login->json('user.role'));
+        $this->assertFalse($login->json('current_team.can_manage'));
+
+        $this->withHeader('Authorization', 'Bearer '.$login->json('token'))
+            ->getJson('/api/tickets')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.id', $own->id);
+
+        $this->withHeader('Authorization', 'Bearer '.$login->json('token'))
+            ->getJson('/api/tickets/stats')
+            ->assertOk()
+            ->assertJsonPath('data.scope', 'own')
+            ->assertJsonPath('data.total', 1);
     }
 }

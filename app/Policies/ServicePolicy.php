@@ -14,11 +14,17 @@ class ServicePolicy
      */
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('admin')) {
+        if ($user->actsAsClientOnTeam($user->currentTeam))
+        {
+            return null;
+        }
+
+        if ($user->hasRole('admin'))
+        {
             return true;
         }
 
-        return null; // Continue to specific policy methods
+        return null;
     }
 
     /**
@@ -129,25 +135,12 @@ class ServicePolicy
     {
         return function (Builder $query) use ($user)
         {
-            if ($user->hasRole('admin'))
+            if ($user->actsAsClientOnTeam($user->currentTeam) || $user->hasRole('client'))
             {
-                // Admin can see all services in their team
-                return $query;
-            }
-
-            if ($user->hasRole('collaborator'))
-            {
-                // Collaborator can see services they are responsible for
-                return $query->where('responsible_id', $user->id);
-            }
-
-            if ($user->hasRole('client'))
-            {
-                // Client can see services of their enterprises
                 $contact = $user->contact;
                 if (! $contact)
                 {
-                    return $query->whereRaw('1 = 0'); // Return no results
+                    return $query->whereRaw('1 = 0');
                 }
 
                 $enterpriseIds = $contact->enterprises()->pluck('enterprises.id')->toArray();
@@ -155,7 +148,16 @@ class ServicePolicy
                 return $query->whereIn('enterprise_id', $enterpriseIds);
             }
 
-            // Other roles have no access
+            if ($user->hasRole('admin'))
+            {
+                return $query;
+            }
+
+            if ($user->hasRole('collaborator'))
+            {
+                return $query->where('responsible_id', $user->id);
+            }
+
             return $query->whereRaw('1 = 0');
         };
     }

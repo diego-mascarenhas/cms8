@@ -869,7 +869,7 @@
 				<p class="text-muted small mb-1">{{ __('Summary of requested quote and values, ready to copy into an email.') }}</p>
 				@if(isset($data->id) && data_get($data, 'data.budget_preview_token'))
 					<p class="small mb-1">
-						<a href="{{ route('project.budget-preview', data_get($data, 'data.budget_preview_token')) }}" target="_blank" rel="noopener noreferrer">{{ __('Preview') }}</a>
+						<a href="{{ route('project.budget-preview', ['token' => data_get($data, 'data.budget_preview_token'), 'report' => 1]) }}" target="_blank" rel="noopener noreferrer">{{ __('Preview') }}</a>
 					</p>
 				@endif
 				<div id="budget-preview-toolbar">

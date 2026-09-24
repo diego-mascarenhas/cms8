@@ -233,7 +233,7 @@ class ProjectController extends Controller
         $frontendUrl = \App\Support\BudgetPreviewUrl::forToken($token, $project);
         $currentUrl = rtrim($request->schemeAndHttpHost(), '/');
         $frontendBase = \App\Support\BudgetPreviewUrl::frontendBase($project);
-        if (is_string($frontendUrl) && is_string($frontendBase) && $frontendBase !== $currentUrl)
+        if (! $request->boolean('report') && is_string($frontendUrl) && is_string($frontendBase) && $frontendBase !== $currentUrl)
         {
             if ($request->boolean('download'))
             {
@@ -268,7 +268,7 @@ class ProjectController extends Controller
         if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
         {
             return redirect()
-                ->route('project.budget-preview', $token)
+                ->route('project.budget-preview', $this->budgetPreviewRouteParameters($request, $token))
                 ->with('budget_response_error', __('This quote was already answered.'));
         }
 
@@ -286,7 +286,7 @@ class ProjectController extends Controller
         $project->save();
 
         return redirect()
-            ->route('project.budget-preview', $token)
+            ->route('project.budget-preview', $this->budgetPreviewRouteParameters($request, $token))
             ->with('budget_response_success', __('Thank you. The quote was accepted. The project will not start until 30% of the payment is received.'));
     }
 
@@ -300,7 +300,7 @@ class ProjectController extends Controller
         if ($project->isBudgetApproved() || in_array($existing, ['accepted', 'reformulation_requested'], true))
         {
             return redirect()
-                ->route('project.budget-preview', $token)
+                ->route('project.budget-preview', $this->budgetPreviewRouteParameters($request, $token))
                 ->with('budget_response_error', __('This quote was already answered.'));
         }
 
@@ -317,8 +317,22 @@ class ProjectController extends Controller
         $project->save();
 
         return redirect()
-            ->route('project.budget-preview', $token)
+            ->route('project.budget-preview', $this->budgetPreviewRouteParameters($request, $token))
             ->with('budget_response_success', __('Thanks. We received your reformulation request and will review it shortly.'));
+    }
+
+    /**
+     * @return array<string, int|string>
+     */
+    private function budgetPreviewRouteParameters(Request $request, string $token): array
+    {
+        $parameters = ['token' => $token];
+        if ($request->boolean('report'))
+        {
+            $parameters['report'] = 1;
+        }
+
+        return $parameters;
     }
 
     /**
