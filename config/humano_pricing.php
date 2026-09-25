@@ -89,6 +89,27 @@ return [
     ],
 
     /*
+     * | Usage invoice issuance (billing:issue-usage-invoice-drafts).
+     * | When auto_charge is false (default), Stripe keeps a draft for manual review.
+     * | When true, the draft is finalized and Stripe attempts to charge the
+     * | customer's default payment method immediately.
+     * |
+     * | access_team_ids: complimentary teams that skip usage invoices (same idea
+     * | as plan_access_team_ids). Empty = bill every Stripe team. When set
+     * | (e.g. 1,2,3,102), those teams are exempt; everyone else is billed.
+     */
+    'usage_invoices' => [
+        'auto_charge' => filter_var(
+            env('CMS8_USAGE_INVOICE_AUTO_CHARGE', false),
+            FILTER_VALIDATE_BOOLEAN,
+        ),
+        'access_team_ids' => array_values(array_unique(array_filter(
+            array_map('intval', preg_split('/\s*,\s*/', (string) env('CMS8_USAGE_ACCESS_TEAM_IDS', ''), -1, PREG_SPLIT_NO_EMPTY) ?: []),
+            static fn (int $id): bool => $id > 0,
+        ))),
+    ],
+
+    /*
      * | Baileys WhatsApp outbound message billing (EUR per sent message).
      * | our_amount is what we charge. reference_amount is the Twilio-like BSP
      * | handling fee used to show savings (Meta Cloud API service replies in

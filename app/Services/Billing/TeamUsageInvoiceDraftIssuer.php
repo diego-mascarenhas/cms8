@@ -34,6 +34,11 @@ class TeamUsageInvoiceDraftIssuer
 
         foreach ($teams as $team)
         {
+            if ($this->teamHasComplimentaryUsageAccess($team))
+            {
+                continue;
+            }
+
             foreach ($this->dueJobs($team, $now) as $job)
             {
                 $results->push($dryRun ? $this->previewJob($team, $job) : $this->issueJob($team, $job));
@@ -154,6 +159,8 @@ class TeamUsageInvoiceDraftIssuer
             ];
         }
 
+        $stripeInvoiceId = null;
+
         try
         {
             $stripeInvoice = $this->stripe->createDraftInvoice($team, $usage['currency'], [
@@ -164,6 +171,7 @@ class TeamUsageInvoiceDraftIssuer
                 'humano_period_from' => $job['from']->toIso8601String(),
                 'humano_period_to' => $job['closes_on']->toIso8601String(),
             ]);
+            $stripeInvoiceId = (string) $stripeInvoice->id;
 
             foreach ($lines as $line)
             {
@@ -175,11 +183,38 @@ class TeamUsageInvoiceDraftIssuer
 
                 $this->stripe->addInvoiceItem(
                     (string) $team->stripe_id,
-                    (string) $stripeInvoice->id,
+                    $stripeInvoiceId,
                     $description,
                     $line['amount_cents'],
                     $usage['currency'],
                 );
+            }
+
+            $status = TeamUsageInvoice::STATUS_DRAFT;
+            $finalized = false;
+
+            if ((bool) config('humano_pricing.usage_invoices.auto_charge', false))
+            {
+                $stripeInvoice = $this->stripe->finalizeInvoice($stripeInvoiceId);
+                $finalized = true;
+                $status = TeamUsageInvoice::STATUS_OPEN;
+
+                if (($stripeInvoice->status ?? null) !== 'paid')
+                {
+                    try
+                    {
+                        $stripeInvoice = $this->stripe->payInvoice($stripeInvoiceId);
+                    } catch (Throwable $payError)
+                    {
+                        Log::warning('Usage invoice finalized but automatic charge failed', [
+                            'team_id' => $team->id,
+                            'stripe_invoice_id' => $stripeInvoiceId,
+                            'message' => $payError->getMessage(),
+                        ]);
+                    }
+                }
+
+                $status = $this->statusFromStripeInvoice($stripeInvoice);
             }
 
             $record = TeamUsageInvoice::query()->create([
@@ -190,8 +225,8 @@ class TeamUsageInvoiceDraftIssuer
                 'period_to' => $job['closes_on'],
                 'billed_cents' => $usage['billed_cents'],
                 'currency' => $usage['currency'],
-                'stripe_invoice_id' => $stripeInvoice->id,
-                'status' => TeamUsageInvoice::STATUS_DRAFT,
+                'stripe_invoice_id' => $stripeInvoiceId,
+                'status' => $status,
                 'adjustment_id' => $job['adjustment']?->id,
                 'issued_at' => now(),
             ]);
@@ -208,15 +243,31 @@ class TeamUsageInvoiceDraftIssuer
                 'period_to' => $job['closes_on']->toDateString(),
                 'billed_cents' => $usage['billed_cents'],
                 'lines' => count($lines),
-                'status' => TeamUsageInvoice::STATUS_DRAFT,
+                'status' => $status,
                 'stripe_invoice_id' => $record->stripe_invoice_id,
             ];
         } catch (Throwable $e)
         {
+            if ($stripeInvoiceId !== null && ! ($finalized ?? false))
+            {
+                try
+                {
+                    $this->stripe->deleteDraftInvoice($stripeInvoiceId);
+                } catch (Throwable $cleanupError)
+                {
+                    Log::warning('Failed to discard orphan usage invoice draft', [
+                        'team_id' => $team->id,
+                        'stripe_invoice_id' => $stripeInvoiceId,
+                        'message' => $cleanupError->getMessage(),
+                    ]);
+                }
+            }
+
             Log::error('Failed to create usage invoice draft', [
                 'team_id' => $team->id,
                 'period_from' => $job['from']->toIso8601String(),
                 'period_to' => $job['closes_on']->toIso8601String(),
+                'stripe_invoice_id' => $stripeInvoiceId,
                 'message' => $e->getMessage(),
             ]);
 
@@ -232,6 +283,31 @@ class TeamUsageInvoiceDraftIssuer
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    private function statusFromStripeInvoice(object $stripeInvoice): string
+    {
+        return match ((string) ($stripeInvoice->status ?? ''))
+        {
+            'paid' => TeamUsageInvoice::STATUS_PAID,
+            'open', 'uncollectible' => TeamUsageInvoice::STATUS_OPEN,
+            default => TeamUsageInvoice::STATUS_DRAFT,
+        };
+    }
+
+    /**
+     * Complimentary teams (CMS8_USAGE_ACCESS_TEAM_IDS) skip usage invoices.
+     * Empty list = bill every Stripe team.
+     */
+    private function teamHasComplimentaryUsageAccess(Team $team): bool
+    {
+        $ids = config('humano_pricing.usage_invoices.access_team_ids', []);
+        if (! is_array($ids) || $ids === [])
+        {
+            return false;
+        }
+
+        return in_array((int) $team->id, array_map('intval', $ids), true);
     }
 
     private function alreadyIssued(Team $team, Carbon $from, Carbon $closesOn): bool
