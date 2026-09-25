@@ -63,7 +63,7 @@
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @endcan
-            @if ($data->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical'])))
+            @if ($data->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical', 'marketing'])))
                 <a href="{{ $data->chatIndexUrl() }}"
                     class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
             @endif
@@ -94,12 +94,13 @@
                                 width="100" alt="User avatar" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
-                                @if ($data->enterprises->first() && $data->enterprises->first()->code)
+                                @if (auth()->user()->seesFullContactProfile() && $data->enterprises->first() && $data->enterprises->first()->code)
                                     <span class="badge bg-label-secondary mt-1">#{{ $data->enterprises->first()->code }}</span>
                                 @endif
                             </div>
                         </div>
                     </div>
+                    @if (auth()->user()->seesFullContactProfile())
                     <div class="d-flex justify-content-start flex-wrap mt-3 pt-3 pb-4 border-bottom">
                         <div class="d-flex align-items-start me-4 mt-3 gap-2">
                             <span class="badge bg-label-primary p-2 rounded">
@@ -124,6 +125,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                     <div class="mt-4 info-container">
                         <ul class="list-unstyled">
                             <li class="mb-2 pt-1">
@@ -142,6 +144,7 @@
                                     <span>{{ $data->phone }}</span>
                                 </li>
                             @endif
+                            @if (auth()->user()->seesFullContactProfile())
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">{{ __('WhatsApp assistant:') }}</span>
                                 @php
@@ -151,15 +154,20 @@
                                     {{ $contactWaAssistantActive ? __('Automatic replies on') : __('Automatic replies off') }}
                                 </span>
                             </li>
+                            @endif
                             @if ($data->enterprises->count())
                                 <li class="mb-2 pt-1">
                                     <span class="fw-medium me-1">Empresa:</span>
                                     <span>
                                         @if ($data->enterprises->count() === 1)
                                             @php $linkedEnterprise = $data->enterprises->first(); @endphp
-                                            <a href="{{ route('empresas.show', $linkedEnterprise->id) }}" class="text-decoration-none" title="{{ __('View company') }}">
+                                            @if (auth()->user()->seesFullContactProfile())
+                                                <a href="{{ route('empresas.show', $linkedEnterprise->id) }}" class="text-decoration-none" title="{{ __('View company') }}">
+                                                    <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}</span>
+                                                </a>
+                                            @else
                                                 <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}</span>
-                                            </a>
+                                            @endif
                                         @else
                                             <span class="d-inline-flex align-items-center gap-2">
                                                 <select id="current-enterprise-selector" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 200px;">
@@ -230,6 +238,7 @@
                                 <span class="fw-medium me-1">Asesor:</span>
                                 <span>{{ $data->responsible->name ?? 'No asignado' }}</span>
                             </li>
+                            @if (auth()->user()->seesFullContactProfile())
                             <li class="mb-2 pt-1">
                                 <span class="fw-medium me-1">Horarios:</span>
                                 <span>Sin especificar</span>
@@ -249,6 +258,8 @@
                                 <span class="fw-medium me-1">Superior:</span>
                                 <span>{{ $data->creator->name ?? 'No asignado' }}</span>
                             </li>
+                            @endif
+                            @if (auth()->user()->seesFullContactProfile())
                             <li class="mb-2 pt-3">
                                 @if ($data->user_id && $data->user)
                                     @php $linkedUser = $data->user; @endphp
@@ -280,6 +291,7 @@
                                     @endcan
                                 @endif
                             </li>
+                            @endif
                         </ul>
                         <div class="d-flex justify-content-center">
                             {{-- <a href="javascript:;" class="btn btn-primary me-3" data-bs-target="#editUser"
@@ -336,6 +348,7 @@
                         <i class="ti ti-user ti-xs me-1"></i>General
                     </a>
                 </li>
+                @if (auth()->user()->seesFullContactProfile())
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="activity-tab" data-bs-toggle="tab" href="#activity" role="tab"
                         aria-controls="activity" aria-selected="false">
@@ -348,6 +361,7 @@
                         <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
                     </a>
                 </li>
+                @endif
                 @role('admin')
                 <li class="nav-item" role="presentation">
                     <a class="nav-link" id="balance-tab" data-bs-toggle="tab" href="#balance" role="tab"
@@ -372,6 +386,7 @@
                     @include('contact.partials.general')
                 </div>
 
+                @if (auth()->user()->seesFullContactProfile())
                 <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
                     @include('contact.partials.activity')
                 </div>
@@ -379,6 +394,7 @@
                     aria-labelledby="emotional-balance-tab">
                     @include('contact.partials.emotional')
                 </div>
+                @endif
                 @role('admin')
                 <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
                     @include('contact.partials.balance')

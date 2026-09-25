@@ -196,6 +196,10 @@ return [
         'url' => env('SHOP_APP_URL', 'https://shop.idoneo.dev'),
     ],
 
+    'go' => [
+        'url' => env('GO_APP_URL', 'https://go.idoneo.dev'),
+    ],
+
     'revisionalpha' => [
         'url' => env('REVISIONALPHA_APP_URL', 'https://revisionalpha.test'),
     ],

@@ -15,6 +15,7 @@ class JetstreamTeamRoleSynchronizer
     public const ROLE_MAP = [
         'admin' => 'admin',
         'editor' => 'editor',
+        'marketing' => 'marketing',
         'collaborator' => 'collaborator',
         'developer' => 'developer',
         'technical' => 'technical',

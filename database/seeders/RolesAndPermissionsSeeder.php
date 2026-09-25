@@ -621,6 +621,7 @@ class RolesAndPermissionsSeeder extends Seeder
         */
 
         $editorRole = Role::firstOrCreate(['name' => 'editor']);
+        Role::firstOrCreate(['name' => 'marketing']);
         /*
         $editorRole->syncPermissions([
             'profile.show',

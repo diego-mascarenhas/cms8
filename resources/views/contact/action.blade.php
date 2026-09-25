@@ -1,6 +1,6 @@
 <div class="d-flex justify-content-center align-items-center">
     <a href="javascript:;" class="text-body edit-sentiment" data-id="{{ $contact->id }}"><i class="ti ti-mood-happy ti-sm me-2"></i></a>
-    @if ($contact->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical'])))
+    @if ($contact->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical', 'marketing'])))
         <a href="{{ $contact->chatIndexUrl() }}" class="text-body" title="{{ __('Chat') }}"><i class="ti ti-message-chatbot ti-sm me-2"></i></a>
     @endif
     @can('view', $contact)

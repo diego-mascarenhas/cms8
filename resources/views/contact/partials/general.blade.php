@@ -1,3 +1,10 @@
+@if (! auth()->user()->seesFullContactProfile())
+    <div class="card">
+        <div class="card-body">
+            <p class="text-muted mb-0">Directorio: nombre, email, teléfono y empresa. Sin historial CRM ni facturación.</p>
+        </div>
+    </div>
+@else
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="col-12">
@@ -174,3 +181,4 @@
         </div>
     </div>
 </div>
+@endif
