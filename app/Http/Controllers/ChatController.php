@@ -146,7 +146,7 @@ class ChatController extends Controller
             return true;
         }
 
-        if ($user->hasAnyRole(['collaborator', 'developer', 'editor', 'technical', 'employee']))
+        if ($user->hasAnyRole(['collaborator', 'developer', 'editor', 'marketing', 'technical', 'employee']))
         {
             return true;
         }

@@ -46,6 +46,11 @@ class ContactPolicy
             return true;
         }
 
+        if ($user->isMarketing())
+        {
+            return true;
+        }
+
         // Clients can see their own contact information
         if ($user->hasRole('client'))
         {
@@ -79,6 +84,11 @@ class ContactPolicy
 
         // Collaborators can see all contacts in their team
         if ($user->hasRole('collaborator'))
+        {
+            return $contact->team_id === $user->currentTeam->id;
+        }
+
+        if ($user->isMarketing())
         {
             return $contact->team_id === $user->currentTeam->id;
         }
@@ -132,6 +142,7 @@ class ContactPolicy
         return $user->hasRole([
             'admin',
             'collaborator',
+            'marketing',
             'developer',
             'technical',
             'editor',
@@ -209,6 +220,11 @@ class ContactPolicy
             return true;
         }
 
+        if ($user->isMarketing())
+        {
+            return true;
+        }
+
         if ($user->hasRole(['developer', 'editor', 'technical']))
         {
             return true;
@@ -251,6 +267,11 @@ class ContactPolicy
 
             // Collaborators can see all contacts in their team
             if ($user->hasRole('collaborator'))
+            {
+                return $query->where('team_id', $user->currentTeam->id);
+            }
+
+            if ($user->isMarketing())
             {
                 return $query->where('team_id', $user->currentTeam->id);
             }

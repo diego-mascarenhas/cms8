@@ -13,6 +13,7 @@ class TeamClientContextActivator
     private const STAFF_TEAM_ROLES = [
         'admin',
         'editor',
+        'marketing',
         'collaborator',
         'technical',
         'developer',

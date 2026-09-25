@@ -65,7 +65,7 @@ class Contact extends Model implements HasMedia
             if (auth()->check())
             {
                 $user = auth()->user();
-                if ($user->hasRole(['admin', 'root', 'collaborator']))
+                if ($user->hasRole(['admin', 'root', 'collaborator', 'marketing']))
                 {
                     return;
                 }

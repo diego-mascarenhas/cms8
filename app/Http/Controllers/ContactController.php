@@ -245,6 +245,7 @@ class ContactController extends Controller
 
         $team = auth()->user()->currentTeam->load('settings');
         $canViewContactBalance = auth()->user()->canAccessBilling();
+        $canViewContactStripe = auth()->user()->seesFullContactProfile();
 
         $stripeData = [
             'subscription' => null,
@@ -254,7 +255,7 @@ class ContactController extends Controller
             'metrics' => null,
         ];
 
-        if ($team->getSetting('stripe_secret'))
+        if ($canViewContactStripe && $team->getSetting('stripe_secret'))
         {
             $stripeData = [
                 'public_key' => $team->getSetting('stripe_public'),
@@ -289,7 +290,7 @@ class ContactController extends Controller
         // Determine the enterprise again (outside to keep structure clear)
         $enterpriseForStripe = $data->currentEnterprise ?: $data->enterprises->first();
 
-        if ($enterpriseForStripe && $enterpriseForStripe->code && $team->getSetting('stripe_secret'))
+        if ($canViewContactStripe && $enterpriseForStripe && $enterpriseForStripe->code && $team->getSetting('stripe_secret'))
         {
             try
             {

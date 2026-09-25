@@ -70,6 +70,10 @@ class JetstreamServiceProvider extends ServiceProvider
             'read', 'create', 'update',
         ])->description('Editor users have the ability to read, create, and update.');
 
+        Jetstream::role('marketing', 'Marketing', [
+            'read', 'create', 'update',
+        ])->description('Marketing users can run campaigns and see a contact directory without billing.');
+
         Jetstream::role('collaborator', 'Collaborator', [
             'read', 'create', 'update',
         ])->description('Collaborator users can read, create, and update.');

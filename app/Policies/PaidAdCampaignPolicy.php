@@ -22,36 +22,36 @@ class PaidAdCampaignPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->hasAnyRole(['collaborator', 'developer', 'technical', 'editor']);
+        return $user->hasAnyRole(['collaborator', 'developer', 'technical', 'editor', 'marketing']);
     }
 
     public function view(User $user, PaidAdCampaign $campaign): bool
     {
         return $this->belongsToTeam($user, $campaign)
-            && $user->hasAnyRole(['collaborator', 'developer', 'technical', 'editor']);
+            && $user->hasAnyRole(['collaborator', 'developer', 'technical', 'editor', 'marketing']);
     }
 
     public function create(User $user): bool
     {
-        return $user->hasAnyRole(['collaborator', 'developer', 'technical']);
+        return $user->hasAnyRole(['collaborator', 'developer', 'technical', 'marketing']);
     }
 
     public function update(User $user, PaidAdCampaign $campaign): bool
     {
         return $this->belongsToTeam($user, $campaign)
-            && $user->hasAnyRole(['collaborator', 'developer', 'technical']);
+            && $user->hasAnyRole(['collaborator', 'developer', 'technical', 'marketing']);
     }
 
     public function delete(User $user, PaidAdCampaign $campaign): bool
     {
         return $this->belongsToTeam($user, $campaign)
-            && $user->hasAnyRole(['collaborator', 'developer', 'technical']);
+            && $user->hasAnyRole(['collaborator', 'developer', 'technical', 'marketing']);
     }
 
     public function publish(User $user, PaidAdCampaign $campaign): bool
     {
         return $this->belongsToTeam($user, $campaign)
-            && $user->hasAnyRole(['collaborator', 'developer', 'technical']);
+            && $user->hasAnyRole(['collaborator', 'developer', 'technical', 'marketing']);
     }
 
     private function belongsToTeam(User $user, PaidAdCampaign $campaign): bool

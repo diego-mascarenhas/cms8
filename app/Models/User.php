@@ -108,6 +108,19 @@ class User extends Authenticatable
         return $this->hasAnyRole(['admin', 'root']);
     }
 
+    public function isMarketing(): bool
+    {
+        return $this->hasRole('marketing');
+    }
+
+    /**
+     * Marketing sees a contact directory (name, email, phone) without CRM or billing tabs.
+     */
+    public function seesFullContactProfile(): bool
+    {
+        return ! $this->isMarketing();
+    }
+
     /**
      * End-customer membership on this team, even if the user is Spatie admin
      * of a personal Humano workspace.

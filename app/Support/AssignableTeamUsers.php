@@ -19,6 +19,7 @@ class AssignableTeamUsers
         'admin',
         'collaborator',
         'editor',
+        'marketing',
         'developer',
         'technical',
         'employee',
