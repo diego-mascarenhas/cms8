@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\Shop\BrandController as ShopBrandController;
 use App\Http\Controllers\Api\Shop\CartController as ShopCartController;
 use App\Http\Controllers\Api\Shop\CategoryController as ShopCategoryController;
 use App\Http\Controllers\Api\Shop\DashboardController as ShopDashboardController;
+use App\Http\Controllers\Api\Shop\GoLinkController as ShopGoLinkController;
 use App\Http\Controllers\Api\Shop\LookupController as ShopLookupController;
 use App\Http\Controllers\Api\Shop\OrderController as ShopOrderController;
 use App\Http\Controllers\Api\Shop\ProductController as ShopProductController;
@@ -740,6 +741,7 @@ Route::middleware('auth.api')->group(function ()
     Route::prefix('shop')->group(function ()
     {
         Route::get('lookups', [ShopLookupController::class, 'index']);
+        Route::post('go-links/catalog-qr', [ShopGoLinkController::class, 'ensureCatalogQr']);
         Route::get('dashboard', [ShopDashboardController::class, 'index']);
         Route::post('categories', [ShopCategoryController::class, 'store']);
         Route::get('brands', [ShopBrandController::class, 'index']);

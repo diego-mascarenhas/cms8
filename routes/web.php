@@ -1286,6 +1286,11 @@ Route::match(['get', 'post'], '/unsubscribe/{email}', [MessageController::class,
 Route::get('/track/{token}', [NotificationTrackingController::class, 'track'])->name('notification.track');
 Route::get('/track/{token}/click', [NotificationTrackingController::class, 'trackClick'])->name('notification.track.click');
 
+// go.idoneo.dev short links (QR first; same app via Forge alias)
+Route::get('/q/{code}', [App\Http\Controllers\GoRedirectController::class, 'show'])
+    ->where('code', '[A-Za-z0-9]+')
+    ->name('go.redirect');
+
 // Affiliate invitation tracking (no auth required)
 Route::get('/affiliate-invite/track/{token}/open', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackOpen'])->name('affiliate-invite.track.open');
 Route::get('/affiliate-invite/track/{token}/click', [App\Http\Controllers\AffiliateInvitationTrackingController::class, 'trackClick'])->name('affiliate-invite.track.click');
