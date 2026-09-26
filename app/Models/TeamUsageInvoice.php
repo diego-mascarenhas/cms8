@@ -20,6 +20,8 @@ class TeamUsageInvoice extends Model
 
     public const STATUS_OPEN = 'open';
 
+    public const STATUS_UNCOLLECTIBLE = 'uncollectible';
+
     public const STATUS_PAID = 'paid';
 
     protected $fillable = [

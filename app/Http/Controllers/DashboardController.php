@@ -11,6 +11,7 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\SubscriptionProduct;
+use App\Models\TeamUsageInvoice;
 use App\Models\UserContactAction;
 use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
@@ -122,6 +123,8 @@ class DashboardController extends Controller
 
         $dashboardCalendarData = $this->buildDashboardCalendarData($activeTeam);
 
+        $usageBillingAttentions = $this->buildUsageBillingAttentions();
+
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
@@ -150,6 +153,7 @@ class DashboardController extends Controller
             'latestRegisteredContacts',
             'dailyPerformanceInsight',
             'dashboardCalendarData',
+            'usageBillingAttentions',
         ));
     }
 
@@ -423,6 +427,162 @@ class DashboardController extends Controller
     }
 
     /**
+     * Platform billing queue: usage invoices still draft, open, or uncollectible (root only).
+     *
+     * @return array{
+     *     draft_count: int,
+     *     open_count: int,
+     *     overdue_count: int,
+     *     uncollectible_count: int,
+     *     total_cents: int,
+     *     currency: string,
+     *     items: list<array{
+     *         id: int,
+     *         team_id: int,
+     *         team_name: string,
+     *         status: string,
+     *         status_label: string,
+     *         status_badge: string,
+     *         billed_cents: int,
+     *         currency: string,
+     *         period_label: string,
+     *         period_from: string,
+     *         period_to: string,
+     *         stripe_invoice_id: ?string,
+     *         stripe_url: ?string,
+     *         account_url: ?string
+     *     }>
+     * }|null
+     */
+    private function buildUsageBillingAttentions(): ?array
+    {
+        if (! auth()->user()?->hasRole('root'))
+        {
+            return null;
+        }
+
+        $attentionStatuses = [
+            TeamUsageInvoice::STATUS_DRAFT,
+            TeamUsageInvoice::STATUS_OPEN,
+            TeamUsageInvoice::STATUS_UNCOLLECTIBLE,
+        ];
+
+        $draftCount = TeamUsageInvoice::query()
+            ->where('status', TeamUsageInvoice::STATUS_DRAFT)
+            ->count();
+        $openCount = TeamUsageInvoice::query()
+            ->where('status', TeamUsageInvoice::STATUS_OPEN)
+            ->count();
+        $uncollectibleCount = TeamUsageInvoice::query()
+            ->where('status', TeamUsageInvoice::STATUS_UNCOLLECTIBLE)
+            ->count();
+
+        $invoices = TeamUsageInvoice::query()
+            ->with(['team' => fn ($q) => $q->select('id', 'name')])
+            ->whereIn('status', $attentionStatuses)
+            ->orderByRaw("CASE status WHEN 'uncollectible' THEN 0 WHEN 'open' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
+            ->orderByDesc('issued_at')
+            ->orderByDesc('id')
+            ->limit(20)
+            ->get();
+
+        $currency = strtolower((string) ($invoices->first()?->currency ?: 'eur'));
+        $stripeBase = str_starts_with((string) config('cashier.key'), 'pk_test_')
+            ? 'https://dashboard.stripe.com/test/'
+            : 'https://dashboard.stripe.com/';
+
+        $items = $invoices->map(function (TeamUsageInvoice $invoice) use ($stripeBase): array
+        {
+            $from = $invoice->period_from?->format('d/m/Y') ?? '—';
+            $to = $invoice->period_to?->format('d/m/Y') ?? '—';
+            $stripeId = $invoice->stripe_invoice_id;
+            [$statusLabel, $statusBadge] = $this->usageInvoiceAttentionPresentation($invoice);
+
+            return [
+                'id' => (int) $invoice->id,
+                'team_id' => (int) $invoice->team_id,
+                'team_name' => $invoice->team?->name ?? ('Team #'.$invoice->team_id),
+                'status' => (string) $invoice->status,
+                'status_label' => $statusLabel,
+                'status_badge' => $statusBadge,
+                'billed_cents' => (int) $invoice->billed_cents,
+                'currency' => strtolower((string) ($invoice->currency ?: 'eur')),
+                'period_label' => $from.' – '.$to,
+                'period_from' => $from,
+                'period_to' => $to,
+                'stripe_invoice_id' => $stripeId,
+                'stripe_url' => $stripeId ? $stripeBase.'invoices/'.$stripeId : null,
+                'account_url' => route('account.edit', $invoice->team_id),
+            ];
+        })->values()->all();
+
+        $overdueCutoff = now()->subDays(7);
+        $overdueCount = TeamUsageInvoice::query()
+            ->where('status', TeamUsageInvoice::STATUS_OPEN)
+            ->where(function ($query) use ($overdueCutoff)
+            {
+                $query->where(function ($q) use ($overdueCutoff)
+                {
+                    $q->whereNotNull('issued_at')->where('issued_at', '<', $overdueCutoff);
+                })->orWhere(function ($q) use ($overdueCutoff)
+                {
+                    $q->whereNull('issued_at')
+                        ->whereNotNull('period_to')
+                        ->where('period_to', '<', $overdueCutoff);
+                });
+            })
+            ->count();
+
+        return [
+            'draft_count' => $draftCount,
+            'open_count' => $openCount,
+            'overdue_count' => $overdueCount,
+            'uncollectible_count' => $uncollectibleCount,
+            'total_cents' => (int) $invoices->sum('billed_cents'),
+            'currency' => $currency,
+            'items' => $items,
+        ];
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: bool}
+     */
+    private function usageInvoiceAttentionPresentation(TeamUsageInvoice $invoice): array
+    {
+        if ($invoice->status === TeamUsageInvoice::STATUS_UNCOLLECTIBLE)
+        {
+            return [__('Incobrable'), 'bg-label-dark', true];
+        }
+
+        if ($invoice->status === TeamUsageInvoice::STATUS_OPEN)
+        {
+            $reference = $invoice->issued_at ?? $invoice->period_to;
+            $isOverdue = $reference !== null && $reference->lt(now()->subDays(7));
+
+            if ($isOverdue)
+            {
+                return [__('Vencida / fallida'), 'bg-label-danger', true];
+            }
+
+            return [__('Sin cobrar'), 'bg-label-danger', false];
+        }
+
+        if ($invoice->status === TeamUsageInvoice::STATUS_DRAFT)
+        {
+            $isPastPeriod = $invoice->period_to !== null && $invoice->period_to->lt(now());
+
+            if ($isPastPeriod)
+            {
+                return [__('Borrador vencido'), 'bg-label-warning', true];
+            }
+
+            return [__('Borrador'), 'bg-label-warning', false];
+        }
+
+        return [__('Borrador'), 'bg-label-warning', false];
+    }
+
+    /**
      * @return array{dates: list<mixed>, visitors: list<mixed>, pageViews: list<mixed>}|null
      */
     private function cachedAnalyticsChartData($activeTeam): ?array
@@ -436,7 +596,7 @@ class DashboardController extends Controller
         }
 
         return Cache::remember(
-            "dashboard.analytics.{$activeTeam->id}",
+            "dashboard.analytics.v3.{$activeTeam->id}",
             self::ANALYTICS_CACHE_SECONDS,
             function () use ($propertyId, $credentialsJson)
             {
@@ -453,12 +613,29 @@ class DashboardController extends Controller
 
                 try
                 {
-                    $collection = Analytics::fetchTotalVisitorsAndPageViews(Period::days(7), 7);
+                    $period = Period::days(30);
+                    $collection = Analytics::fetchTotalVisitorsAndPageViews($period, 30);
+
+                    $dates = $collection->pluck('date')->map(fn ($d) => $d instanceof Carbon ? $d->format('Y-m-d') : $d)->values()->all();
+                    $visitors = $collection->pluck('activeUsers')->map(fn ($v) => (int) $v)->values()->all();
+                    $pageViews = $collection->pluck('screenPageViews')->map(fn ($v) => (int) $v)->values()->all();
+
+                    $totalVisitors = array_sum($visitors);
+                    $totalPageViews = array_sum($pageViews);
+                    $userTypes = $this->analyticsUserTypeCounts($period);
 
                     return [
-                        'dates' => $collection->pluck('date')->map(fn ($d) => $d instanceof Carbon ? $d->format('Y-m-d') : $d)->values()->all(),
-                        'visitors' => $collection->pluck('activeUsers')->values()->all(),
-                        'pageViews' => $collection->pluck('screenPageViews')->values()->all(),
+                        'dates' => $dates,
+                        'visitors' => $visitors,
+                        'pageViews' => $pageViews,
+                        'totals' => [
+                            'visitors' => $totalVisitors,
+                            'page_views' => $totalPageViews,
+                            'new_users' => $userTypes['new'],
+                            'returning_users' => $userTypes['returning'],
+                        ],
+                        'top_pages' => $this->analyticsTopPages($period, 5),
+                        'top_countries' => $this->analyticsTopCountries($period, 5),
                     ];
                 } catch (\Throwable $e)
                 {
@@ -468,6 +645,76 @@ class DashboardController extends Controller
                 }
             },
         );
+    }
+
+    /**
+     * @return list<array{title: string, url: string, views: int}>
+     */
+    private function analyticsTopPages(Period $period, int $limit = 5): array
+    {
+        try
+        {
+            return Analytics::fetchMostVisitedPages($period, $limit)
+                ->map(fn ($row): array => [
+                    'title' => (string) ($row['pageTitle'] ?? __('Sin título')),
+                    'url' => (string) ($row['fullPageUrl'] ?? ''),
+                    'views' => (int) ($row['screenPageViews'] ?? 0),
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable $e)
+        {
+            \Log::warning('Dashboard GA top pages failed: '.$e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
+     * @return list<array{country: string, views: int}>
+     */
+    private function analyticsTopCountries(Period $period, int $limit = 5): array
+    {
+        try
+        {
+            return Analytics::fetchTopCountries($period, $limit)
+                ->map(fn ($row): array => [
+                    'country' => (string) ($row['country'] ?? __('Desconocido')),
+                    'views' => (int) ($row['screenPageViews'] ?? 0),
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable $e)
+        {
+            \Log::warning('Dashboard GA top countries failed: '.$e->getMessage());
+
+            return [];
+        }
+    }
+
+    /**
+     * @return array{new: int, returning: int}
+     */
+    private function analyticsUserTypeCounts(Period $period): array
+    {
+        $counts = ['new' => 0, 'returning' => 0];
+
+        try
+        {
+            foreach (Analytics::fetchUserTypes($period) as $row)
+            {
+                $type = strtolower((string) ($row['newVsReturning'] ?? ''));
+                if (array_key_exists($type, $counts))
+                {
+                    $counts[$type] = (int) ($row['activeUsers'] ?? 0);
+                }
+            }
+        } catch (\Throwable $e)
+        {
+            \Log::warning('Dashboard GA user types failed: '.$e->getMessage());
+        }
+
+        return $counts;
     }
 
     /**

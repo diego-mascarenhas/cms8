@@ -31,11 +31,24 @@
             const analyticsChartEl = document.querySelector('#analyticsChart');
             if (analyticsChartEl) {
                 const chartData = @json($analyticsChartData);
+                const analyticsTheme = typeof config !== 'undefined' ? config : {};
+                const analyticsIsDark = typeof isDarkStyle !== 'undefined' && isDarkStyle;
+                const analyticsLabelColor = analyticsIsDark
+                    ? (analyticsTheme.colors_dark?.headingColor || analyticsTheme.colors_dark?.textMuted || '#cfd3ec')
+                    : (analyticsTheme.colors?.headingColor || analyticsTheme.colors?.textMuted || '#6f6b7d');
+                const analyticsMutedColor = analyticsIsDark
+                    ? (analyticsTheme.colors_dark?.textMuted || '#a1acb8')
+                    : (analyticsTheme.colors?.textMuted || '#a5a3ae');
+                const analyticsBorderColor = analyticsIsDark
+                    ? (analyticsTheme.colors_dark?.borderColor || '#444564')
+                    : (analyticsTheme.colors?.borderColor || '#e7e7e7');
+
                 new ApexCharts(analyticsChartEl, {
                     chart: {
                         type: 'line',
-                        height: 280,
+                        height: 220,
                         fontFamily: 'Public Sans',
+                        foreColor: analyticsLabelColor,
                         toolbar: { show: false },
                         zoom: { enabled: false },
                         parentHeightOffset: 0,
@@ -43,27 +56,41 @@
                     },
                     stroke: { curve: 'smooth', width: 2 },
                     series: [
-                        { name: 'Visitors', data: chartData.visitors },
-                        { name: 'Page Views', data: chartData.pageViews }
+                        { name: @json(__('Visitantes')), data: chartData.visitors },
+                        { name: @json(__('Páginas vistas')), data: chartData.pageViews }
                     ],
                     xaxis: {
                         categories: chartData.dates,
                         labels: {
+                            style: { colors: analyticsMutedColor },
                             formatter: function(val) {
                                 return val ? new Date(val).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : val;
                             }
-                        }
+                        },
+                        axisBorder: { show: false, color: analyticsBorderColor },
+                        axisTicks: { show: false, color: analyticsBorderColor },
                     },
                     yaxis: {
-                        labels: { formatter: function(val) { return val ? parseInt(val, 10) : val; } }
+                        labels: {
+                            style: { colors: analyticsMutedColor },
+                            formatter: function(val) { return val ? parseInt(val, 10) : val; }
+                        }
                     },
-                    legend: { position: 'top', horizontalAlign: 'left', offsetX: 0 },
+                    legend: {
+                        position: 'top',
+                        horizontalAlign: 'left',
+                        offsetX: 0,
+                        labels: { colors: analyticsLabelColor },
+                    },
                     colors: ['#696cff', '#71dd37'],
                     dataLabels: { enabled: false },
                     grid: {
-                        borderColor: '#e7e7e7',
+                        borderColor: analyticsBorderColor,
                         strokeDashArray: 4,
                         padding: { right: 16, left: 4, top: 4 },
+                    },
+                    tooltip: {
+                        theme: analyticsIsDark ? 'dark' : 'light',
                     },
                 }).render();
             }
@@ -944,24 +971,176 @@
     </div>
     @endif
 
-    @if(!empty($analyticsChartData) && !empty($analyticsChartData['dates']))
-    <!-- Google Analytics -->
-    <div class="row mb-4 dashboard-analytics-row">
-        <div class="col-12">
-            <div class="card dashboard-analytics-card">
-                <div class="card-header pb-0 d-flex justify-content-between">
+    @php
+        $hasAnalyticsChart = ! empty($analyticsChartData) && ! empty($analyticsChartData['dates']);
+        $hasUsageBillingAttentions = is_array($usageBillingAttentions ?? null);
+    @endphp
+
+    @if ($hasAnalyticsChart || $hasUsageBillingAttentions)
+    <div class="row mb-4 dashboard-analytics-row g-4">
+        @if ($hasAnalyticsChart)
+        <div class="{{ $hasUsageBillingAttentions ? 'col-lg-7' : 'col-12' }}">
+            <div class="card dashboard-analytics-card h-100">
+                <div class="card-header pb-0">
                     <div class="card-title mb-0">
                         <h5 class="mb-0">Google Analytics</h5>
-                        <small class="text-muted">Visitors and page views (last 7 days)</small>
+                        <small class="text-muted">{{ __('Visitors and page views (últimos 30 días)') }}</small>
                     </div>
                 </div>
                 <div class="card-body pt-2 overflow-hidden">
+                    @php
+                        $analyticsTotals = $analyticsChartData['totals'] ?? [];
+                        $analyticsTopPages = $analyticsChartData['top_pages'] ?? [];
+                        $analyticsTopCountries = $analyticsChartData['top_countries'] ?? [];
+                        $analyticsNewUsers = (int) ($analyticsTotals['new_users'] ?? 0);
+                        $analyticsReturningUsers = (int) ($analyticsTotals['returning_users'] ?? 0);
+                        $analyticsAudience = $analyticsNewUsers + $analyticsReturningUsers;
+                        $analyticsNewPct = $analyticsAudience > 0
+                            ? (int) round(($analyticsNewUsers / $analyticsAudience) * 100)
+                            : 0;
+                    @endphp
+                    <div class="row g-3 mb-3">
+                        <div class="col-4">
+                            <div class="small text-muted">{{ __('Visitantes') }}</div>
+                            <div class="fw-semibold">{{ number_format((int) ($analyticsTotals['visitors'] ?? 0), 0, ',', '.') }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">{{ __('Páginas vistas') }}</div>
+                            <div class="fw-semibold">{{ number_format((int) ($analyticsTotals['page_views'] ?? 0), 0, ',', '.') }}</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="small text-muted">{{ __('Usuarios nuevos') }}</div>
+                            <div class="fw-semibold">
+                                {{ number_format($analyticsNewUsers, 0, ',', '.') }}
+                                @if ($analyticsAudience > 0)
+                                    <span class="text-muted fw-normal small">({{ $analyticsNewPct }}%)</span>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
                     <div id="analyticsChart" class="dashboard-analytics-chart"></div>
+                    @if ($analyticsTopPages !== [] || $analyticsTopCountries !== [])
+                        <div class="row g-3 mt-2 pt-2 border-top">
+                            @if ($analyticsTopPages !== [])
+                                <div class="col-md-6">
+                                    <div class="small text-muted mb-2">{{ __('Páginas top') }}</div>
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach ($analyticsTopPages as $page)
+                                            <li class="d-flex justify-content-between gap-2 mb-1 small">
+                                                <span class="text-truncate" title="{{ $page['title'] }}{{ $page['url'] !== '' ? ' — '.$page['url'] : '' }}">
+                                                    {{ $page['title'] }}
+                                                </span>
+                                                <span class="text-muted text-nowrap">{{ number_format($page['views'], 0, ',', '.') }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                            @if ($analyticsTopCountries !== [])
+                                <div class="col-md-6">
+                                    <div class="small text-muted mb-2">{{ __('Países top') }}</div>
+                                    <ul class="list-unstyled mb-0">
+                                        @foreach ($analyticsTopCountries as $country)
+                                            <li class="d-flex justify-content-between gap-2 mb-1 small">
+                                                <span class="text-truncate">{{ $country['country'] }}</span>
+                                                <span class="text-muted text-nowrap">{{ number_format($country['views'], 0, ',', '.') }}</span>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
+        @endif
+
+        @if ($hasUsageBillingAttentions)
+        <div class="{{ $hasAnalyticsChart ? 'col-lg-5' : 'col-12' }}">
+            <div class="card h-100">
+                <div class="card-header pb-0">
+                    <div class="card-title mb-0">
+                        <h5 class="mb-0">{{ __('Cobros de consumo') }}</h5>
+                        <small class="text-muted">{{ __('Borradores, fallidas y vencidas (todos los equipos)') }}</small>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                        <span class="badge bg-label-warning">
+                            {{ $usageBillingAttentions['draft_count'] }} {{ __('borrador') }}{{ $usageBillingAttentions['draft_count'] === 1 ? '' : 'es' }}
+                        </span>
+                        <span class="badge bg-label-danger">
+                            {{ $usageBillingAttentions['open_count'] }} {{ __('sin cobrar') }}
+                        </span>
+                        @if (($usageBillingAttentions['overdue_count'] ?? 0) > 0)
+                            <span class="badge bg-label-danger">
+                                {{ $usageBillingAttentions['overdue_count'] }} {{ __('vencida') }}{{ $usageBillingAttentions['overdue_count'] === 1 ? '' : 's' }}
+                            </span>
+                        @endif
+                        @if (($usageBillingAttentions['uncollectible_count'] ?? 0) > 0)
+                            <span class="badge bg-label-dark">
+                                {{ $usageBillingAttentions['uncollectible_count'] }} {{ __('incobrable') }}{{ $usageBillingAttentions['uncollectible_count'] === 1 ? '' : 's' }}
+                            </span>
+                        @endif
+                        <span class="badge bg-label-secondary">
+                            {{ number_format($usageBillingAttentions['total_cents'] / 100, 2, ',', '.') }}
+                            {{ strtoupper($usageBillingAttentions['currency'] ?? 'EUR') }}
+                        </span>
+                    </div>
+                </div>
+                <div class="card-body pt-3">
+                    @if (empty($usageBillingAttentions['items']))
+                        <div class="text-center text-muted py-4">
+                            <i class="ti ti-circle-check ti-lg d-block mb-2 text-success"></i>
+                            {{ __('No hay consumos pendientes de emitir o cobrar.') }}
+                        </div>
+                    @else
+                        <div class="table-responsive" style="max-height: 280px;">
+                            <table class="table table-sm table-borderless mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('Equipo') }}</th>
+                                        <th>{{ __('Periodo') }}</th>
+                                        <th class="text-end">{{ __('Importe') }}</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($usageBillingAttentions['items'] as $item)
+                                        <tr>
+                                            <td>
+                                                <a href="{{ $item['account_url'] }}" class="text-body fw-medium">{{ $item['team_name'] }}</a>
+                                            </td>
+                                            <td class="small text-muted">
+                                                <span class="d-block text-nowrap">{{ $item['period_from'] }}</span>
+                                                <span class="d-block text-nowrap">{{ $item['period_to'] }}</span>
+                                            </td>
+                                            <td class="text-end text-nowrap">
+                                                <div>
+                                                    {{ number_format($item['billed_cents'] / 100, 2, ',', '.') }}
+                                                    {{ strtoupper($item['currency']) }}
+                                                </div>
+                                                <div class="small">
+                                                    <span class="badge {{ $item['status_badge'] }}">{{ $item['status_label'] }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="text-end text-nowrap">
+                                                @if (! empty($item['stripe_url']))
+                                                    <a href="{{ $item['stripe_url'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-icon btn-label-secondary" title="Stripe">
+                                                        <i class="ti ti-brand-stripe ti-xs"></i>
+                                                    </a>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
-    <!-- / Google Analytics -->
     @endif
 
 @endsection
@@ -1104,6 +1283,14 @@
     .dashboard-analytics-chart .apexcharts-canvas,
     .dashboard-analytics-chart svg {
         max-width: 100% !important;
+    }
+
+    .dark-style .dashboard-analytics-chart .apexcharts-legend-text,
+    .dark-style .dashboard-analytics-chart .apexcharts-xaxis text,
+    .dark-style .dashboard-analytics-chart .apexcharts-yaxis text,
+    .dark-style .dashboard-analytics-chart .apexcharts-text {
+        fill: #cfd3ec !important;
+        color: #cfd3ec !important;
     }
 
     @media (min-width: 992px) {
