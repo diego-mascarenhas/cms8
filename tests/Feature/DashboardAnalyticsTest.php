@@ -38,7 +38,7 @@ class DashboardAnalyticsTest extends TestCase
         }
     }
 
-    public function test_dashboard_shows_invoice_summary_cards_when_invoices_module_enabled(): void
+    public function test_dashboard_does_not_show_invoice_summary_cards(): void
     {
         $this->seed([
             EnterpriseTypeSeeder::class,
@@ -87,74 +87,14 @@ class DashboardAnalyticsTest extends TestCase
             'status' => 1,
         ]);
 
-        \App\Models\Invoice::withoutGlobalScopes()->create([
-            'team_id' => $team->id,
-            'enterprise_id' => $enterprise->id,
-            'type_id' => 1,
-            'operation' => 'sell',
-            'number' => 'F-OVERDUE',
-            'date' => now()->toDateString(),
-            'due_date' => now()->subDays(5)->toDateString(),
-            'gross_amount' => 50,
-            'discount' => 0,
-            'total_amount' => 50,
-            'balance' => 50,
-            'status' => 2,
-        ]);
-
         $this->actingAs($user);
         $response = $this->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('Pendientes de pago', false);
-        $response->assertSee('Vencidas', false);
-        $response->assertSee('Gastos', false);
-        $response->assertSee('Beneficio anual', false);
-        $response->assertSee('1 factura', false);
-        $response->assertSee(route('invoice.index', ['summary_filter' => 'unpaid']), false);
-        $response->assertSee(route('invoice.index', ['summary_filter' => 'overdue']), false);
-        $response->assertSee(route('finance-dashboard.projection', ['year' => now()->year]), false);
-        $response->assertDontSee('Notas de crédito', false);
-    }
-
-    public function test_dashboard_shows_invoice_summary_cards_in_english_locale(): void
-    {
-        $this->seed([
-            EnterpriseTypeSeeder::class,
-            EnterpriseStatusSeeder::class,
-            InvoiceTypeSeeder::class,
-            CurrencySeeder::class,
-        ]);
-
-        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-
-        $user = User::factory()->withPersonalTeam()->create();
-        $team = $user->ownedTeams()->first();
-        $user->forceFill(['current_team_id' => $team->id])->save();
-        $user->assignRole('admin');
-
-        Module::query()->firstOrCreate(
-            ['key' => 'invoices'],
-            [
-                'name' => 'Invoices',
-                'icon' => 'file-invoice',
-                'description' => 'Team invoices',
-                'status' => 1,
-            ],
-        );
-        $team->enableModule('invoices');
-
-        app()->setLocale('en');
-        session()->put('locale', 'en');
-
-        $this->actingAs($user);
-        $response = $this->get(route('dashboard'));
-
-        $response->assertOk();
-        $response->assertSee(__('app.invoice_summary_unpaid_title'), false);
-        $response->assertSee(__('app.invoice_summary_overdue_title'), false);
-        $response->assertSee(__('app.invoice_summary_expenses_title'), false);
-        $response->assertSee(__('app.invoice_summary_profit_title'), false);
+        $response->assertDontSee('Pendientes de pago', false);
+        $response->assertDontSee('Vencidas', false);
+        $response->assertDontSee(__('app.invoice_summary_expenses_title'), false);
+        $response->assertDontSee(__('app.invoice_summary_profit_title'), false);
     }
 
     public function test_dashboard_hides_invoice_summary_cards_when_invoices_module_disabled(): void

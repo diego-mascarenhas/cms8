@@ -7,7 +7,6 @@ use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Enterprise;
-use App\Models\Invoice;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\ProjectStatus;
@@ -15,7 +14,6 @@ use App\Models\SubscriptionProduct;
 use App\Models\UserContactAction;
 use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
-use App\Services\Finance\InvoiceSummaryService;
 use App\Services\UserDailyPerformanceInsightService;
 use App\Support\DemoTeam;
 use Carbon\Carbon;
@@ -28,8 +26,6 @@ class DashboardController extends Controller
     private const AGGREGATES_CACHE_SECONDS = 600;
 
     private const ANALYTICS_CACHE_SECONDS = 3600;
-
-    private const INVOICE_STATS_CACHE_SECONDS = 300;
 
     public function __construct(
         private readonly ContactDailySentimentService $contactDailySentimentService,
@@ -126,16 +122,6 @@ class DashboardController extends Controller
 
         $dashboardCalendarData = $this->buildDashboardCalendarData($activeTeam);
 
-        $invoiceStats = null;
-        if ($activeTeam->hasModule('invoices') && auth()->user()->can('viewAny', Invoice::class))
-        {
-            $invoiceStats = Cache::remember(
-                "dashboard.invoice_stats.{$activeTeam->id}",
-                self::INVOICE_STATS_CACHE_SECONDS,
-                fn () => app(InvoiceSummaryService::class)->buildDashboardStats((int) $activeTeam->id),
-            );
-        }
-
         return view('dashboard', compact(
             'activeTeam',
             'totalTeamMinutes',
@@ -164,7 +150,6 @@ class DashboardController extends Controller
             'latestRegisteredContacts',
             'dailyPerformanceInsight',
             'dashboardCalendarData',
-            'invoiceStats',
         ));
     }
 

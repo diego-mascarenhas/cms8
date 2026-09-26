@@ -15,6 +15,8 @@ return [
      */
     'default' => env('DB_CONNECTION', 'mysql'),
 
+    'pg_bin' => env('PG_BIN'),
+
     /*
      * |--------------------------------------------------------------------------
      * | Database Connections

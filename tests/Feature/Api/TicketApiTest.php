@@ -169,6 +169,35 @@ class TicketApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_email_filter_lists_only_that_users_tickets(): void
+    {
+        [$admin, $team, $token] = $this->userWithToken();
+        $client = User::factory()->create(['email' => 'ana@example.com']);
+
+        Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => $client->id,
+            'subject' => 'Ticket de Ana',
+        ]);
+        Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => $admin->id,
+            'subject' => 'Ticket del equipo',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets?email=ana@example.com')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.subject', 'Ticket de Ana');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets/stats?email=ANA@example.com')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.open', 1);
+    }
+
     public function test_portal_token_only_lists_the_users_own_tickets(): void
     {
         [$admin, $team] = $this->userWithToken();

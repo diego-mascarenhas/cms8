@@ -48,12 +48,14 @@ class TicketController extends Controller
             'status' => 'nullable|in:open,in_progress,waiting_client,closed',
             'priority' => 'nullable|in:low,medium,high,urgent',
             'assigned' => 'nullable|in:me,unassigned',
+            'email' => 'nullable|email|max:255',
             'page' => 'nullable|integer|min:1',
             'per_page' => 'nullable|integer|min:1|max:50',
         ]);
 
-        $query = $this->ticketQuery($user, $team)
-            ->with(['user', 'assignedTo', 'team'])
+        $query = $this->ticketQuery($user, $team);
+        $this->restrictToEmail($query, $validated['email'] ?? null);
+        $query->with(['user', 'assignedTo', 'team'])
             ->withCount('responses')
             ->latest('id');
 
@@ -114,7 +116,11 @@ class TicketController extends Controller
         }
 
         $user = $request->user();
+        $validated = $request->validate([
+            'email' => 'nullable|email|max:255',
+        ]);
         $base = $this->ticketQuery($user, $team);
+        $this->restrictToEmail($base, $validated['email'] ?? null);
 
         $counts = (clone $base)
             ->selectRaw('status, COUNT(*) as aggregate')
@@ -418,6 +424,20 @@ class TicketController extends Controller
         return Ticket::query()
             ->withoutGlobalScope('team')
             ->where('team_id', $team->id);
+    }
+
+    private function restrictToEmail(Builder $query, mixed $email): void
+    {
+        if (! is_string($email) || trim($email) === '')
+        {
+            return;
+        }
+
+        $email = strtolower(trim($email));
+        $query->whereHas('user', function (Builder $builder) use ($email): void
+        {
+            $builder->whereRaw('LOWER(email) = ?', [$email]);
+        });
     }
 
     private function ticketQuery(User $user, Team $team): Builder

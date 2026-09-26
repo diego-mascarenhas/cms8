@@ -846,16 +846,6 @@
         </div>
     </div>
 
-    @if ($invoiceStats ?? null)
-        @include('partials.invoice-summary-cards', [
-            'invoiceStats' => $invoiceStats,
-            'visibleFilters' => \App\Services\Finance\InvoiceSummaryService::DASHBOARD_CARDS,
-            'linkToInvoiceList' => true,
-            'columnClass' => 'col-6 col-xl-3',
-            'rowClass' => 'mb-4',
-        ])
-    @endif
-
     @if(isset($activeTeam) && $activeTeam->hasModule('projects'))
     <div class="row mb-4">
         <div class="col-12">

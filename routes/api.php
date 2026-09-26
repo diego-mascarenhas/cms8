@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\BusinessProfileController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\CertificationController;
 use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\ClientPortalController;
 use App\Http\Controllers\Api\CommunicationController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\DashboardController;
@@ -485,6 +486,23 @@ Route::post('/mailgun/webhook', function (Request $request)
     }
 
     return response()->json(['status' => 'success']);
+});
+
+Route::prefix('client')->group(function ()
+{
+    Route::post('auth/email', [ClientPortalController::class, 'requestCode'])->middleware('throttle:6,1');
+    Route::post('auth/register', [ClientPortalController::class, 'register'])->middleware('throttle:6,1');
+    Route::post('auth/verify', [ClientPortalController::class, 'verify'])->middleware('throttle:6,1');
+
+    Route::middleware('auth.api')->group(function ()
+    {
+        Route::post('auth/logout', [ClientPortalController::class, 'logout']);
+        Route::get('dashboard', [ClientPortalController::class, 'dashboard']);
+        Route::get('profile', [ClientPortalController::class, 'profile']);
+        Route::put('profile', [ClientPortalController::class, 'updateProfile']);
+        Route::get('invoices', [ClientPortalController::class, 'invoices']);
+        Route::get('tickets', [ClientPortalController::class, 'tickets']);
+    });
 });
 
 Route::group(['prefix' => 'auth'], function ()
