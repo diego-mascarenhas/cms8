@@ -290,7 +290,8 @@ class TeamUsageInvoiceDraftIssuer
         return match ((string) ($stripeInvoice->status ?? ''))
         {
             'paid' => TeamUsageInvoice::STATUS_PAID,
-            'open', 'uncollectible' => TeamUsageInvoice::STATUS_OPEN,
+            'uncollectible' => TeamUsageInvoice::STATUS_UNCOLLECTIBLE,
+            'open' => TeamUsageInvoice::STATUS_OPEN,
             default => TeamUsageInvoice::STATUS_DRAFT,
         };
     }

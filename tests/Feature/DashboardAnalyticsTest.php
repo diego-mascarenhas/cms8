@@ -472,11 +472,19 @@ class DashboardAnalyticsTest extends TestCase
                 'date' => Carbon::today()->subDays(2),
                 'activeUsers' => 10,
                 'screenPageViews' => 25,
+                'pageTitle' => 'Home',
+                'fullPageUrl' => 'example.com/',
+                'country' => 'Spain',
+                'newVsReturning' => 'new',
             ],
             [
                 'date' => Carbon::today()->subDays(1),
                 'activeUsers' => 15,
                 'screenPageViews' => 30,
+                'pageTitle' => 'Pricing',
+                'fullPageUrl' => 'example.com/pricing',
+                'country' => 'Argentina',
+                'newVsReturning' => 'returning',
             ],
         ]);
         Analytics::fake($fakeData);
@@ -486,6 +494,10 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('analyticsChart', false);
+        $response->assertSee(__('Visitantes'), false);
+        $response->assertSee(__('Páginas vistas'), false);
+        $response->assertSee(__('Páginas top'), false);
+        $response->assertSee(__('Países top'), false);
     }
 
     public function test_team_settings_analytics_group_can_be_edited(): void
@@ -576,5 +588,57 @@ class DashboardAnalyticsTest extends TestCase
 
         $this->assertSame(0, $contactDateGroupQueries);
         $this->assertTrue(\Illuminate\Support\Facades\Cache::has("dashboard.aggregates.{$team->id}"));
+    }
+
+    public function test_root_dashboard_shows_usage_billing_attentions_for_draft_invoices(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('root');
+
+        $clientTeam = \App\Models\Team::factory()->create(['name' => 'Cliente Cobro SL']);
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $clientTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 1250,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_test_draft_attention',
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Cobros de consumo', false);
+        $response->assertSee('Cliente Cobro SL', false);
+        $response->assertSee('Borrador vencido', false);
+        $response->assertSee('12,50', false);
+        $response->assertSee('in_test_draft_attention', false);
+    }
+
+    public function test_non_root_dashboard_hides_usage_billing_attentions(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $team->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 9999,
+        ]);
+
+        $this->actingAs($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Cobros de consumo', false);
     }
 }
