@@ -114,7 +114,11 @@ class MailInbox extends Component
         $this->expandedSenderKey = MailInboxService::senderKeyFromAddress((string) $email->from_address);
         if (! $email->seen)
         {
-            $email->update(['seen' => true]);
+            $team = $this->currentTeam();
+            if ($team)
+            {
+                $this->inboxService->markRead($team, [$emailId], true);
+            }
             $this->broadcastInboxCountChanged();
         }
     }
@@ -614,5 +618,6 @@ class MailInbox extends Component
     private function broadcastInboxCountChanged(): void
     {
         $this->dispatch('mail-inbox-updated');
+        $this->dispatch('mail-inbox-updated')->to(MailNavbarIcon::class);
     }
 }

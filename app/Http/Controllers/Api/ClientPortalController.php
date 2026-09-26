@@ -7,6 +7,7 @@ use App\Mail\ClientLoginCodeMail;
 use App\Models\Team;
 use App\Models\TeamSetting;
 use App\Models\User;
+use App\Services\RevisionAlphaBilling;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -113,12 +114,14 @@ class ClientPortalController extends Controller
         ]);
     }
 
-    public function dashboard(): JsonResponse
+    public function dashboard(Request $request, RevisionAlphaBilling $billing): JsonResponse
     {
+        $account = $billing->forEmail((string) $request->user()->email);
+
         return response()->json([
-            'invoices' => [],
-            'services' => [],
-            'payments' => [],
+            'invoices' => $account['invoices'],
+            'services' => $account['services'],
+            'payments' => $account['payments'],
             'usage' => [
                 'emails' => 0,
                 'whatsapp' => 0,
@@ -171,9 +174,11 @@ class ClientPortalController extends Controller
         return response()->json($this->profilePayload($user->fresh()));
     }
 
-    public function invoices(): JsonResponse
+    public function invoices(Request $request, RevisionAlphaBilling $billing): JsonResponse
     {
-        return response()->json(['invoices' => []]);
+        return response()->json([
+            'invoices' => $billing->forEmail((string) $request->user()->email)['invoices'],
+        ]);
     }
 
     public function tickets(): JsonResponse

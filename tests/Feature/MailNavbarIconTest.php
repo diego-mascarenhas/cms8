@@ -75,6 +75,25 @@ class MailNavbarIconTest extends TestCase
             ->assertDontSee('badge-notifications', false);
     }
 
+    public function test_navbar_refreshes_unread_count_when_inbox_updated_event_is_dispatched(): void
+    {
+        $user = $this->userWithMailboxModule();
+        $team = $user->currentTeam;
+
+        $email = $this->createEmail($team, ['seen' => false, 'folder' => EmailFolder::Inbox]);
+
+        $component = Livewire::actingAs($user)
+            ->test(MailNavbarIcon::class)
+            ->assertSet('unreadCount', 1);
+
+        $email->update(['seen' => true]);
+
+        $component
+            ->dispatch('mail-inbox-updated')
+            ->assertSet('unreadCount', 0)
+            ->assertDontSee('badge-notifications', false);
+    }
+
     public function test_navbar_mail_icon_appears_on_dashboard_when_mailbox_module_enabled(): void
     {
         $user = $this->userWithMailboxModule();

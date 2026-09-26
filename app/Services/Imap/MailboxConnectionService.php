@@ -130,6 +130,9 @@ class MailboxConnectionService
             ? $existing->folder->value
             : ($existing?->folder ?? $folder->value);
 
+        $imapSeen = $message->hasFlag('Seen');
+        $seen = self::resolveSeenForSync($existing, $imapSeen);
+
         $email = Email::updateOrCreate(
             [
                 'mailbox_id' => $mailbox->id,
@@ -143,7 +146,7 @@ class MailboxConnectionService
                 'from_address' => $from ?: 'unknown',
                 'to_address' => $to,
                 'message_date' => $carbonDate,
-                'seen' => $message->hasFlag('Seen'),
+                'seen' => $seen,
                 'flagged' => $message->hasFlag('Flagged'),
                 'folder' => $folderValue,
             ],
@@ -161,6 +164,19 @@ class MailboxConnectionService
         }
 
         return $email;
+    }
+
+    /**
+     * Local mark-as-read must survive IMAP sync until the server flag is also Seen.
+     */
+    public static function resolveSeenForSync(?Email $existing, bool $imapSeen): bool
+    {
+        if ($existing === null)
+        {
+            return $imapSeen;
+        }
+
+        return (bool) $existing->seen || $imapSeen;
     }
 
     protected function getMessageIdString(Message $message): string

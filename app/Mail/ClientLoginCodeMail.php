@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
@@ -20,7 +21,8 @@ class ClientLoginCodeMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Tu código de acceso',
+            from: new Address('administracion@revisionalpha.com', 'REVISION ALPHA'),
+            subject: 'Acceso al Área de Clienes - REVSION ALPHA',
         );
     }
 
