@@ -169,6 +169,39 @@ class TicketApiTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_portal_token_only_lists_the_users_own_tickets(): void
+    {
+        [$admin, $team] = $this->userWithToken();
+        $token = $admin->createToken('Revision Alpha Portal')->plainTextToken;
+
+        $own = Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => $admin->id,
+            'subject' => 'El mío',
+        ]);
+        $other = Ticket::factory()->open()->create([
+            'team_id' => $team->id,
+            'user_id' => User::factory(),
+            'subject' => 'De otro cliente',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets')
+            ->assertOk()
+            ->assertJsonPath('pagination.total', 1)
+            ->assertJsonPath('data.0.id', $own->id);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets/'.$other->id)
+            ->assertNotFound();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tickets/stats')
+            ->assertOk()
+            ->assertJsonPath('data.total', 1)
+            ->assertJsonPath('data.open', 1);
+    }
+
     public function test_spatie_admin_who_is_client_on_team_only_lists_own_tickets(): void
     {
         [, $team] = $this->userWithToken();

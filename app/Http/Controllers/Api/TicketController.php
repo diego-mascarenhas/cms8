@@ -424,6 +424,11 @@ class TicketController extends Controller
     {
         $query = $this->visibleTickets($user, $team);
 
+        if ($this->isPortalToken($user))
+        {
+            return $query->where('user_id', $user->id);
+        }
+
         if (! $user->can('viewAny', Ticket::class) || $user->actsAsClientOnTeam($team))
         {
             $query->where(function (Builder $builder) use ($user)
@@ -444,7 +449,13 @@ class TicketController extends Controller
             abort(401);
         }
 
-        return $this->visibleTickets($user, $team)
+        $query = $this->visibleTickets($user, $team);
+        if ($this->isPortalToken($user))
+        {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query
             ->with(['user', 'assignedTo', 'team', 'rating.user', 'responses.user', 'media', 'responses.media'])
             ->withCount('responses')
             ->findOrFail($id);
@@ -582,6 +593,13 @@ class TicketController extends Controller
         }
 
         return null;
+    }
+
+    private function isPortalToken(User $user): bool
+    {
+        $token = $user->currentAccessToken();
+
+        return $token !== null && $token->name === 'Revision Alpha Portal';
     }
 
     private function canSeeInternalNotes(User $user): bool

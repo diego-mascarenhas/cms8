@@ -403,6 +403,32 @@ class ApiAuthRegisterAndPasswordResetTest extends TestCase
             ->assertJsonPath('current_team.can_manage', false);
     }
 
+    public function test_portal_session_returns_an_access_token_for_the_site_login(): void
+    {
+        config(['services.revisionalpha.portal_secret' => 'portal-secret']);
+
+        $user = User::factory()->create(['email' => 'ana@example.com']);
+
+        $this->postJson('/api/auth/portal-session', [
+            'email' => $user->email,
+            'secret' => 'portal-secret',
+        ])->assertOk()
+            ->assertJsonPath('email', 'ana@example.com')
+            ->assertJsonStructure(['token', 'user' => ['id', 'email']]);
+    }
+
+    public function test_portal_session_rejects_a_missing_secret(): void
+    {
+        config(['services.revisionalpha.portal_secret' => 'portal-secret']);
+
+        User::factory()->create(['email' => 'ana@example.com']);
+
+        $this->postJson('/api/auth/portal-session', [
+            'email' => 'ana@example.com',
+        ])->assertStatus(401)
+            ->assertJsonPath('message', 'No autorizado');
+    }
+
     private function skipWithoutTeams(): void
     {
         if (! Features::hasTeamFeatures())
