@@ -4,12 +4,15 @@ namespace App\Services\Mail;
 
 use App\Enums\EmailFolder;
 use App\Models\Email;
+use App\Models\Mailbox;
 use App\Models\Team;
+use App\Services\Imap\MailboxConnectionService;
 use App\Support\ApplicationDateTime;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class MailInboxService
 {
@@ -201,7 +204,14 @@ class MailInboxService
      */
     public function markRead(Team $team, array $emailIds, bool $read): int
     {
-        return $this->scopedIds($team, $emailIds)->update(['seen' => $read]);
+        $emails = $this->scopedIds($team, $emailIds)
+            ->with('mailbox')
+            ->get(['id', 'mailbox_id', 'message_id']);
+
+        $updated = $this->scopedIds($team, $emailIds)->update(['seen' => $read]);
+        $this->pushSeenFlagsToImap($emails, $read);
+
+        return $updated;
     }
 
     public function markAllReadInFolder(Team $team, string $folder, bool $read = true): int
@@ -212,7 +222,11 @@ class MailInboxService
 
         $query = $this->applyFolderFilter($query, $folder);
 
-        return $query->update(['seen' => $read]);
+        $emails = (clone $query)->with('mailbox')->get(['id', 'mailbox_id', 'message_id']);
+        $updated = $query->update(['seen' => $read]);
+        $this->pushSeenFlagsToImap($emails, $read);
+
+        return $updated;
     }
 
     /**
@@ -282,6 +296,50 @@ class MailInboxService
         return Email::query()
             ->where('team_id', $team->id)
             ->whereIn('id', $emailIds);
+    }
+
+    /**
+     * @param  Collection<int, Email>  $emails
+     */
+    private function pushSeenFlagsToImap(Collection $emails, bool $seen): void
+    {
+        if ($emails->isEmpty())
+        {
+            return;
+        }
+
+        $imap = app(MailboxConnectionService::class);
+
+        $emails
+            ->groupBy('mailbox_id')
+            ->each(function (Collection $group, mixed $mailboxId) use ($imap, $seen): void
+            {
+                $mailbox = $group->first()?->mailbox;
+                if (! $mailbox instanceof Mailbox)
+                {
+                    $mailbox = Mailbox::query()->find($mailboxId);
+                }
+
+                if (! $mailbox instanceof Mailbox)
+                {
+                    return;
+                }
+
+                try
+                {
+                    $imap->applySeenFlags(
+                        $mailbox,
+                        $group->pluck('message_id')->filter()->values()->all(),
+                        $seen,
+                    );
+                } catch (\Throwable $e)
+                {
+                    Log::warning('Mail mark-read IMAP push failed', [
+                        'mailbox_id' => $mailbox->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            });
     }
 
     public function detectFolderForIncoming(string $fromAddress, string $mailboxUsername): EmailFolder

@@ -10,18 +10,18 @@ class MailNavbarIcon extends Component
 {
     public int $unreadCount = 0;
 
-    public function mount(MailInboxService $mailInboxService): void
+    public function mount(): void
     {
-        $this->refreshUnreadCount($mailInboxService);
+        $this->refreshUnreadCount();
     }
 
     #[On('mail-inbox-updated')]
-    public function handleInboxUpdated(MailInboxService $mailInboxService): void
+    public function handleInboxUpdated(): void
     {
-        $this->refreshUnreadCount($mailInboxService);
+        $this->refreshUnreadCount();
     }
 
-    public function refreshUnreadCount(MailInboxService $mailInboxService): void
+    public function refreshUnreadCount(): void
     {
         $team = auth()->user()?->currentTeam;
 
@@ -32,7 +32,7 @@ class MailNavbarIcon extends Component
             return;
         }
 
-        $counts = $mailInboxService->folderCounts($team);
+        $counts = app(MailInboxService::class)->folderCounts($team);
         $this->unreadCount = (int) ($counts['inbox_unread'] ?? 0);
     }
 

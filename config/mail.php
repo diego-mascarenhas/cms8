@@ -71,6 +71,16 @@ return [
             'transport' => 'array',
         ],
 
+        'mailpit' => [
+            'transport' => 'smtp',
+            'host' => env('MAILPIT_HOST', '127.0.0.1'),
+            'port' => env('MAILPIT_PORT', 1025),
+            'encryption' => null,
+            'username' => null,
+            'password' => null,
+            'timeout' => null,
+        ],
+
         'failover' => [
             'transport' => 'failover',
             'mailers' => [

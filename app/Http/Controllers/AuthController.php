@@ -163,6 +163,56 @@ class AuthController extends Controller
         ]);
     }
 
+    public function portalSession(Request $request)
+    {
+        $secret = (string) config('services.revisionalpha.portal_secret');
+        $given = (string) $request->input('secret', '');
+
+        if ($secret === '' || ! hash_equals($secret, $given))
+        {
+            return response()->json([
+                'message' => 'No autorizado',
+            ], 401);
+        }
+
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'team_id' => ['nullable', 'integer', 'exists:teams,id'],
+        ]);
+
+        $user = User::where('email', $validated['email'])->first();
+        if ($user === null)
+        {
+            return response()->json([
+                'message' => 'No hay una cuenta de IDONEO para este email.',
+            ], 404);
+        }
+
+        if (! empty($validated['team_id']))
+        {
+            $this->teamClientContextActivator->activate($user, (int) $validated['team_id']);
+        } elseif (! $user->currentTeam)
+        {
+            $team = $user->allTeams()->first();
+            if ($team)
+            {
+                $user->switchTeam($team);
+            }
+        }
+
+        EnsureRegisteredUserRole::assignIfMissing($user);
+        $user->load(['currentTeam', 'roles']);
+        $token = $user->createToken('Revision Alpha Portal')->plainTextToken;
+        $profile = $this->profilePayload($user);
+
+        return response()->json([
+            'email' => $user->email,
+            'token' => $token,
+            'user' => $profile,
+            'current_team' => $profile['current_team'],
+        ]);
+    }
+
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();

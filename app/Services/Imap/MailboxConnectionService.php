@@ -44,7 +44,8 @@ class MailboxConnectionService
         $client = $this->createClient($mailbox);
         $client->connect();
 
-        $folder = $client->getFolder($mailbox->folder ?? 'INBOX');
+        $imapFolderName = $mailbox->folder ?? 'INBOX';
+        $folder = $client->getFolder($imapFolderName);
         if ($folder === null)
         {
             $client->disconnect();
@@ -52,7 +53,11 @@ class MailboxConnectionService
             return 0;
         }
 
-        $query = $folder->query()->all();
+        $status = $folder->examine();
+        $exists = (int) (is_array($status) ? ($status['exists'] ?? 0) : ($status->exists ?? 0));
+
+        // Newest first so limited refreshes still pick up recent mail + Seen flags from other clients.
+        $query = $folder->query()->all()->leaveUnread()->setFetchOrderDesc();
         if ($limit !== null)
         {
             $query->limit($limit);
@@ -60,6 +65,7 @@ class MailboxConnectionService
         $messages = $query->get();
 
         $count = 0;
+        $syncedMessageIds = [];
         foreach ($messages as $message)
         {
             if (! $message instanceof Message)
@@ -68,7 +74,8 @@ class MailboxConnectionService
             }
             try
             {
-                $this->persistMessage($mailbox, $message);
+                $email = $this->persistMessage($mailbox, $message);
+                $syncedMessageIds[] = $email->message_id;
                 $count++;
             } catch (\Throwable $e)
             {
@@ -81,7 +88,141 @@ class MailboxConnectionService
 
         $client->disconnect();
 
+        $fetchedCompleteFolder = $limit === null
+            || $exists <= $count
+            || ($limit !== null && $exists <= $limit);
+
+        if ($fetchedCompleteFolder)
+        {
+            $localFolder = $this->localFolderForImapName($imapFolderName);
+            $pruned = $this->pruneLocalFolderEmailsNotOnServer($mailbox, $localFolder, $syncedMessageIds);
+            if ($pruned > 0)
+            {
+                Log::info('Mail sync pruned local emails missing from IMAP', [
+                    'mailbox_id' => $mailbox->id,
+                    'folder' => $localFolder->value,
+                    'pruned' => $pruned,
+                    'imap_exists' => $exists,
+                ]);
+            }
+        }
+
         return $count;
+    }
+
+    /**
+     * Remove local copies that no longer exist in the IMAP folder (stale DB / dump leftovers).
+     *
+     * @param  list<string>  $serverMessageIds
+     */
+    public function pruneLocalFolderEmailsNotOnServer(Mailbox $mailbox, EmailFolder $folder, array $serverMessageIds): int
+    {
+        $serverMessageIds = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $id): string => trim((string) $id, " \t\n\r\0\x0B<>"),
+            $serverMessageIds,
+        ))));
+
+        $query = Email::query()
+            ->where('mailbox_id', $mailbox->id)
+            ->where('folder', $folder->value);
+
+        if ($serverMessageIds !== [])
+        {
+            $query->whereNotIn('message_id', $serverMessageIds);
+        }
+
+        return (int) $query->delete();
+    }
+
+    private function localFolderForImapName(string $imapFolderName): EmailFolder
+    {
+        $normalized = strtolower(trim($imapFolderName));
+
+        return match (true)
+        {
+            $normalized === 'inbox' || str_ends_with($normalized, 'inbox') => EmailFolder::Inbox,
+            str_contains($normalized, 'sent') => EmailFolder::Sent,
+            str_contains($normalized, 'draft') => EmailFolder::Draft,
+            str_contains($normalized, 'junk') || str_contains($normalized, 'spam') => EmailFolder::Spam,
+            str_contains($normalized, 'trash') || str_contains($normalized, 'deleted') => EmailFolder::Trash,
+            str_contains($normalized, 'archive') => EmailFolder::Archive,
+            default => EmailFolder::Inbox,
+        };
+    }
+
+    /**
+     * Push local read/unread state to IMAP so Apple Mail / other clients stay aligned.
+     *
+     * @param  list<string>  $messageIds  RFC Message-ID values (without requiring angle brackets)
+     */
+    public function applySeenFlags(Mailbox $mailbox, array $messageIds, bool $seen): int
+    {
+        $messageIds = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $id): string => trim((string) $id, " \t\n\r\0\x0B<>"),
+            $messageIds,
+        ))));
+
+        if ($messageIds === [])
+        {
+            return 0;
+        }
+
+        try
+        {
+            $client = $this->createClient($mailbox);
+            $client->connect();
+            $folder = $client->getFolder($mailbox->folder ?? 'INBOX');
+            if ($folder === null)
+            {
+                $client->disconnect();
+
+                return 0;
+            }
+
+            $updated = 0;
+            foreach ($messageIds as $messageId)
+            {
+                try
+                {
+                    $messages = $folder->query()->leaveUnread()->whereMessageId($messageId)->get();
+                    foreach ($messages as $message)
+                    {
+                        if (! $message instanceof Message)
+                        {
+                            continue;
+                        }
+
+                        if ($seen)
+                        {
+                            $message->setFlag('Seen');
+                        } else
+                        {
+                            $message->unsetFlag('Seen');
+                        }
+                        $updated++;
+                    }
+                } catch (\Throwable $e)
+                {
+                    Log::warning('Mail IMAP flag update failed for message', [
+                        'mailbox_id' => $mailbox->id,
+                        'message_id' => $messageId,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            $client->disconnect();
+
+            return $updated;
+        } catch (\Throwable $e)
+        {
+            Log::warning('Mail IMAP flag sync skipped', [
+                'mailbox_id' => $mailbox->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return 0;
+        }
     }
 
     protected function createClient(Mailbox $mailbox): Client
@@ -130,6 +271,9 @@ class MailboxConnectionService
             ? $existing->folder->value
             : ($existing?->folder ?? $folder->value);
 
+        $imapSeen = $message->hasFlag('Seen');
+        $seen = self::resolveSeenForSync($existing, $imapSeen);
+
         $email = Email::updateOrCreate(
             [
                 'mailbox_id' => $mailbox->id,
@@ -143,7 +287,7 @@ class MailboxConnectionService
                 'from_address' => $from ?: 'unknown',
                 'to_address' => $to,
                 'message_date' => $carbonDate,
-                'seen' => $message->hasFlag('Seen'),
+                'seen' => $seen,
                 'flagged' => $message->hasFlag('Flagged'),
                 'folder' => $folderValue,
             ],
@@ -161,6 +305,19 @@ class MailboxConnectionService
         }
 
         return $email;
+    }
+
+    /**
+     * Local mark-as-read must survive IMAP sync until the server flag is also Seen.
+     */
+    public static function resolveSeenForSync(?Email $existing, bool $imapSeen): bool
+    {
+        if ($existing === null)
+        {
+            return $imapSeen;
+        }
+
+        return (bool) $existing->seen || $imapSeen;
     }
 
     protected function getMessageIdString(Message $message): string

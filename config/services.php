@@ -202,6 +202,7 @@ return [
 
     'revisionalpha' => [
         'url' => env('REVISIONALPHA_APP_URL', 'https://revisionalpha.test'),
+        'portal_secret' => env('CMS8_PORTAL_SECRET'),
     ],
 
     'apollo' => [
