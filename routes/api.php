@@ -501,7 +501,9 @@ Route::prefix('client')->group(function ()
         Route::get('profile', [ClientPortalController::class, 'profile']);
         Route::put('profile', [ClientPortalController::class, 'updateProfile']);
         Route::get('invoices', [ClientPortalController::class, 'invoices']);
+        Route::post('invoices/{invoice}/payment', [ClientPortalController::class, 'reportPayment']);
         Route::get('tickets', [ClientPortalController::class, 'tickets']);
+        Route::post('tickets', [ClientPortalController::class, 'storeTicket']);
     });
 });
 

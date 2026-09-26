@@ -84,7 +84,7 @@ class MailInbox extends Component
         {
             try
             {
-                $synced += $mailboxService->syncMessages($mailbox, 100);
+                $synced += $mailboxService->syncMessages($mailbox, 250);
             } catch (ConnectionFailedException $e)
             {
                 Log::warning('Mail refresh sync failed', ['mailbox_id' => $mailbox->id, 'error' => $e->getMessage()]);
