@@ -17,19 +17,19 @@ class OpenGraphMetaTagsTest extends TestCase
 
     public function test_help_page_includes_share_preview_image(): void
     {
-        $expectedOgImageUrl = url('/images/system-onboarding/whatsapp-image.jpg');
+        $expectedOgImageUrl = url('/images/system-onboarding/og-idoneo.png');
 
         $this->get(route('help.index'))
             ->assertOk()
             ->assertSee('property="og:image" content="'.$expectedOgImageUrl.'"', false)
             ->assertSee('name="twitter:image" content="'.$expectedOgImageUrl.'"', false)
-            ->assertSee('property="og:image:width" content="552"', false)
-            ->assertSee('property="og:image:height" content="552"', false);
+            ->assertSee('property="og:image:width" content="1200"', false)
+            ->assertSee('property="og:image:height" content="630"', false);
     }
 
     public function test_manual_page_includes_share_preview_image(): void
     {
-        $expectedOgImageUrl = url('/images/system-onboarding/whatsapp-image.jpg');
+        $expectedOgImageUrl = url('/images/system-onboarding/og-idoneo.png');
 
         $this->get(route('manual.index'))
             ->assertOk()
