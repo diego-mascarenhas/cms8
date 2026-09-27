@@ -886,17 +886,32 @@
                             <thead>
                                 <tr>
                                     <th>{{ __('Project') }}</th>
+                                    <th>{{ __('Responsible') }}</th>
                                     <th class="text-center">{{ __('Status') }}</th>
-                                    <th class="text-center">{{ __('Hours') }}</th>
+                                    <th style="min-width: 140px;">{{ __('Hours') }}</th>
                                     <th class="text-center">{{ __('Tasks') }}</th>
+                                    <th>{{ __('Completion') }}</th>
+                                    <th class="text-center"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($ongoingProjects as $project)
+                                    @php
+                                        $workedHours = (float) ($project->dashboard_worked_hours ?? 0);
+                                        $estimatedHours = (float) ($project->dashboard_estimated_hours ?? 0);
+                                        $openTasks = (int) ($project->dashboard_open_tasks ?? 0);
+                                        $totalTasks = (int) ($project->dashboard_total_tasks ?? 0);
+                                        $hoursProgress = $estimatedHours > 0
+                                            ? min(100, (int) round(($workedHours / $estimatedHours) * 100))
+                                            : ($workedHours > 0 ? 100 : 0);
+                                        $dueDate = $project->date_end;
+                                        $dueOverdue = $dueDate !== null && $dueDate->lt(now()->startOfDay());
+                                        $dueSoon = $dueDate !== null && ! $dueOverdue && $dueDate->lte(now()->copy()->addDays(7)->startOfDay());
+                                    @endphp
                                     <tr>
                                         <td>
                                             <div class="d-flex flex-column">
-                                                <h6 class="mb-0 text-truncate" style="max-width: 250px;">
+                                                <h6 class="mb-0">
                                                     @can('view', $project)
                                                         <a href="{{ route('project.show', $project->id) }}" class="text-body text-decoration-none">{{ $project->name }}</a>
                                                     @else
@@ -911,34 +926,60 @@
                                                             {{ $project->client->name }}
                                                         @endcan
                                                     @else
-                                                        N/A
+                                                        —
                                                     @endif
                                                 </small>
                                             </div>
                                         </td>
+                                        <td>
+                                            @if ($project->responsible)
+                                                <span class="text-body">{{ $project->responsible->name }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             {!! $project->status_label !!}
                                         </td>
-                                        <td class="text-center">
-                                            <div class="d-flex flex-column align-items-center">
-                                                @php
-                                                    $totalHours = $project->total_hours ?? 0;
-                                                    $estimatedHours = $project->estimated_hours ?? 0;
-                                                @endphp
-                                                <span class="fw-semibold">{{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
-                                                @if($estimatedHours > 0)
-                                                    <small class="text-muted">/ {{ \App\Helpers\Helpers::formatHoursHuman($estimatedHours) }}</small>
-                                                @endif
+                                        <td>
+                                            <div class="d-flex justify-content-between small mb-1">
+                                                <span class="fw-semibold">{{ \App\Helpers\Helpers::formatHoursHuman($workedHours) }}</span>
+                                                <span class="text-muted">
+                                                    @if ($estimatedHours > 0)
+                                                        / {{ \App\Helpers\Helpers::formatHoursHuman($estimatedHours) }}
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </span>
+                                            </div>
+                                            <div class="progress" style="height: 4px;">
+                                                <div class="progress-bar {{ $estimatedHours > 0 && $hoursProgress >= 100 ? 'bg-warning' : 'bg-primary' }}"
+                                                    role="progressbar"
+                                                    style="width: {{ $hoursProgress }}%;"
+                                                    aria-valuenow="{{ $hoursProgress }}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100"></div>
                                             </div>
                                         </td>
+                                        <td class="text-center text-nowrap">
+                                            <span class="fw-semibold">{{ $openTasks }}</span>
+                                            <span class="text-muted">/ {{ $totalTasks }}</span>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @if ($dueDate)
+                                                <span class="{{ $dueOverdue ? 'text-danger' : ($dueSoon ? 'text-warning' : 'text-body') }}">
+                                                    {{ $dueDate->format('d/m/Y') }}
+                                                </span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
-                                            @if($project->status_id == 9)
-                                                {{-- IN_PROGRESS: Show Kanban icon --}}
+                                            @if((int) $project->status_id === \App\Models\ProjectStatus::STATUS_IN_PROGRESS)
                                                 <a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="text-body" title="{{ __('View Kanban') }}">
                                                     <i class="ti ti-layout-kanban ti-sm"></i>
                                                 </a>
                                             @else
-                                                {{-- BUDGET/BUDGETED: Show eye icon to view details --}}
                                                 <a href="{{ route('project.show', $project->id) }}" class="text-body" title="{{ __('View Details') }}">
                                                     <i class="ti ti-eye ti-sm"></i>
                                                 </a>
@@ -947,7 +988,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center py-4">
+                                        <td colspan="7" class="text-center py-4">
                                             <i class="ti ti-mood-check text-success ti-3x mb-3"></i>
                                             <h5>{{ __('No ongoing projects') }}</h5>
                                             <p class="text-muted">{{ __('All projects are completed or not yet started') }}</p>

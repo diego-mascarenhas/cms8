@@ -11,7 +11,10 @@ use App\Models\List60;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\SubscriptionProduct;
+use App\Models\Task;
+use App\Models\TaskStatus;
 use App\Models\TeamUsageInvoice;
+use App\Models\Time;
 use App\Models\UserContactAction;
 use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
@@ -99,6 +102,8 @@ class DashboardController extends Controller
                 ->orderBy('updated_at', 'desc')
                 ->take(10)
                 ->get();
+
+            $this->attachOngoingProjectDashboardMetrics($ongoingProjects, $activeTeam->id);
         }
 
         $formattedActivities = collect();
@@ -594,6 +599,89 @@ class DashboardController extends Controller
             'currency' => $currency,
             'items' => $items,
         ];
+    }
+
+    /**
+     * Attach hours/task counters for the dashboard projects table (avoids N+1 accessors).
+     *
+     * @param  \Illuminate\Support\Collection<int, Project>  $projects
+     */
+    private function attachOngoingProjectDashboardMetrics($projects, int $teamId): void
+    {
+        $boardIds = $projects->pluck('board_id')->filter()->unique()->values();
+
+        $statsByBoard = [];
+        foreach ($boardIds as $boardId)
+        {
+            $statsByBoard[(int) $boardId] = [
+                'worked_hours' => 0.0,
+                'estimated_hours' => 0.0,
+                'open_tasks' => 0,
+                'total_tasks' => 0,
+            ];
+        }
+
+        if ($boardIds->isNotEmpty())
+        {
+            $doneStatusId = TaskStatus::query()->where('name', 'DONE')->value('id');
+
+            $taskRows = Task::query()
+                ->where('team_id', $teamId)
+                ->whereIn('board_id', $boardIds)
+                ->select(['id', 'board_id', 'status_id', 'estimated_hours'])
+                ->get();
+
+            $taskIdsByBoard = [];
+            foreach ($taskRows as $task)
+            {
+                $boardId = (int) $task->board_id;
+                $statsByBoard[$boardId]['total_tasks']++;
+                $statsByBoard[$boardId]['estimated_hours'] += (float) ($task->estimated_hours ?? 0);
+                if ($doneStatusId === null || (int) $task->status_id !== (int) $doneStatusId)
+                {
+                    $statsByBoard[$boardId]['open_tasks']++;
+                }
+                $taskIdsByBoard[$boardId][] = (int) $task->id;
+            }
+
+            $allTaskIds = $taskRows->pluck('id')->all();
+            if ($allTaskIds !== [])
+            {
+                $secondsByTask = Time::query()
+                    ->where('team_id', $teamId)
+                    ->whereIn('task_id', $allTaskIds)
+                    ->selectRaw('task_id, SUM(duration_seconds) as total_seconds')
+                    ->groupBy('task_id')
+                    ->pluck('total_seconds', 'task_id');
+
+                foreach ($taskIdsByBoard as $boardId => $taskIds)
+                {
+                    $seconds = 0;
+                    foreach ($taskIds as $taskId)
+                    {
+                        $seconds += (int) ($secondsByTask[$taskId] ?? 0);
+                    }
+                    $statsByBoard[$boardId]['worked_hours'] = round($seconds / 3600, 1);
+                }
+            }
+
+            foreach ($statsByBoard as $boardId => $stats)
+            {
+                $statsByBoard[$boardId]['estimated_hours'] = round($stats['estimated_hours'], 1);
+            }
+        }
+
+        foreach ($projects as $project)
+        {
+            $stats = $project->board_id
+                ? ($statsByBoard[(int) $project->board_id] ?? null)
+                : null;
+
+            $project->setAttribute('dashboard_worked_hours', (float) ($stats['worked_hours'] ?? 0));
+            $project->setAttribute('dashboard_estimated_hours', (float) ($stats['estimated_hours'] ?? 0));
+            $project->setAttribute('dashboard_open_tasks', (int) ($stats['open_tasks'] ?? 0));
+            $project->setAttribute('dashboard_total_tasks', (int) ($stats['total_tasks'] ?? 0));
+        }
     }
 
     /**
