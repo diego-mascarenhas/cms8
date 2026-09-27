@@ -405,17 +405,49 @@ class ProjectController extends Controller
 
     /**
      * Align project workflow status with the client quote response when needed.
+     *
+     * Only syncs while the project is still in the quote pipeline. Once the team
+     * advances past approval (in progress, to invoice, etc.), do not overwrite
+     * their status from the stored client response.
      */
     private function syncProjectStatusFromBudgetResponse(Project $project): void
     {
-        $targetStatusId = match (data_get($project->data, 'budget_client_response.status'))
+        $responseStatus = data_get($project->data, 'budget_client_response.status');
+        $currentStatusId = (int) $project->status_id;
+
+        $targetStatusId = match ($responseStatus)
         {
             'accepted' => ProjectStatus::STATUS_APPROVED,
             'reformulation_requested' => ProjectStatus::STATUS_WAITING_FOR_RESPONSE,
             default => null,
         };
 
-        if ($targetStatusId === null || (int) $project->status_id === $targetStatusId)
+        if ($targetStatusId === null || $currentStatusId === $targetStatusId)
+        {
+            return;
+        }
+
+        $quotePipelineStatusIds = [
+            ProjectStatus::STATUS_BUDGET,
+            ProjectStatus::STATUS_BUDGETED,
+            ProjectStatus::STATUS_AUTHORIZED,
+            ProjectStatus::STATUS_SENT,
+            ProjectStatus::STATUS_RECEIVED,
+        ];
+
+        if ($responseStatus === 'accepted')
+        {
+            // Client accepted after a reformulation round.
+            $quotePipelineStatusIds[] = ProjectStatus::STATUS_WAITING_FOR_RESPONSE;
+        }
+
+        if ($responseStatus === 'reformulation_requested')
+        {
+            // Client asked for changes on an already-approved quote.
+            $quotePipelineStatusIds[] = ProjectStatus::STATUS_APPROVED;
+        }
+
+        if (! in_array($currentStatusId, $quotePipelineStatusIds, true))
         {
             return;
         }

@@ -970,13 +970,16 @@
 					</p>
 					<div class="mb-3">
 						<label for="locked-status-id" class="form-label">{{ __('Project Status') }}</label>
-						<select id="locked-status-id" name="status_id" class="select2 form-select" data-placeholder="{{ __('Choose an option') }}" required>
+						<select id="locked-status-id" name="status_id" class="form-select" required>
 							@foreach ($lockedStatusOptions as $status)
 								<option value="{{ $status->id }}" @selected((int) $project->status_id === (int) $status->id)>
 									{{ $status->translated_name }}
 								</option>
 							@endforeach
 						</select>
+						@error('status_id')
+							<div class="invalid-feedback d-block">{{ $message }}</div>
+						@enderror
 					</div>
 				</div>
 				<div class="modal-footer">
@@ -1091,19 +1094,6 @@
 		var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
 			return new bootstrap.Tooltip(tooltipTriggerEl);
 		});
-
-		var $lockedStatus = $('#locked-status-id');
-		if ($lockedStatus.length && $.fn.select2) {
-			var $statusModal = $('#projectStatusModal');
-			$lockedStatus.select2({
-				dropdownParent: $statusModal,
-				width: '100%',
-				minimumResultsForSearch: Infinity
-			});
-			$statusModal.on('shown.bs.modal', function () {
-				$lockedStatus.trigger('change.select2');
-			});
-		}
 
 		var $timeModal = $('#projectTimeModal');
 		if ($timeModal.length && $.fn.select2) {

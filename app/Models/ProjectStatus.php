@@ -16,6 +16,8 @@ class ProjectStatus extends Model
 
     public const STATUS_SENT = 4;
 
+    public const STATUS_RECEIVED = 5;
+
     public const STATUS_APPROVED = 7;
 
     public const STATUS_WAITING_FOR_RESPONSE = 8;

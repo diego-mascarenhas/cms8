@@ -62,6 +62,29 @@ class ProjectApprovedBudgetLockTest extends TestCase
     }
 
     #[Test]
+    public function to_invoice_status_survives_show_page_when_budget_was_accepted(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->patch(route('project.update-status', $project->id), [
+                'status_id' => ProjectStatus::STATUS_TO_INVOICE,
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('success');
+
+        $this->assertSame(ProjectStatus::STATUS_TO_INVOICE, (int) $project->fresh()->status_id);
+
+        $this->actingAs($user)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertSee(__('project_status.TO_INVOICE'), false);
+
+        $this->assertSame(ProjectStatus::STATUS_TO_INVOICE, (int) $project->fresh()->status_id);
+    }
+
+    #[Test]
     public function approved_budget_rejects_disallowed_status(): void
     {
         [$user, $project] = $this->createApprovedProject();
