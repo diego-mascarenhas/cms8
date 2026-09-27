@@ -631,19 +631,6 @@
                                         <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
                                         <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
                                     @endif
-                                    @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
-                                        <div class="mt-auto pt-2">
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-primary waves-effect waves-light"
-                                                data-bs-toggle="offcanvas"
-                                                data-bs-target="#assistant-offcanvas"
-                                                aria-controls="assistant-offcanvas"
-                                                title="{{ __('app.assistant_fab_title') }}"
-                                                aria-label="{{ __('app.assistant_fab_title') }}: {{ __('app.dashboard_open_assistant') }}"
-                                            ><i class="ti ti-sparkles ti-sm me-1" aria-hidden="true"></i>{{ __('app.dashboard_open_assistant') }}</button>
-                                        </div>
-                                    @endif
                                 @else
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
                                         <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-sparkles ti-sm"></i></span>
@@ -668,11 +655,10 @@
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
-                                {{-- Strategy & Organization: hidden for now; restore by changing to @if(true) --}}
-                                @if(false)
-                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Strategia</a>
-                                <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
-                                @endif
+                                <div class="mt-auto pt-2">
+                                    <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Estrategia</a>
+                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
+                                </div>
                     </div>
                     <div class="dashboard-insight-illustration" aria-hidden="true">
                         <img src="{{ asset('assets/img/illustrations/card-advance-sale.png') }}" height="140"
