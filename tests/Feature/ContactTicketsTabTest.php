@@ -75,6 +75,7 @@ class ContactTicketsTabTest extends TestCase
         $this->actingAs($admin)
             ->get(route('contact.show', $contact->id))
             ->assertOk()
+            ->assertSee('rounded-circle', false)
             ->assertSee('id="tickets-tab"', false)
             ->assertDontSee('id="emotional-balance-tab"', false)
             ->assertSee('Histórico emocional', false)

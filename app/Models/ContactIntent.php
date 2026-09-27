@@ -10,6 +10,14 @@ class ContactIntent extends Model
 
     protected $fillable = ['key', 'name'];
 
+    public function displayName(): string
+    {
+        $key = 'contact_intents.'.$this->key;
+        $translated = __($key);
+
+        return $translated !== $key ? $translated : (string) $this->name;
+    }
+
     public function getEmojiAttribute(): string
     {
         return match ($this->key)
@@ -34,7 +42,7 @@ class ContactIntent extends Model
         {
             return [
                 'id' => $intent->id,
-                'name' => $intent->name.' '.$intent->emoji,
+                'name' => $intent->displayName().' '.$intent->emoji,
             ];
         })->values()->all();
     }

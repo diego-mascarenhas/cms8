@@ -65,6 +65,24 @@ class ContactAvatarUrlTest extends TestCase
         $this->assertStringNotContainsString('data:image/svg+xml', $url);
     }
 
+    public function test_uses_argentina_whatsapp_number_when_crm_phone_omits_the_mobile_nine(): void
+    {
+        Storage::fake('public');
+
+        $contact = new Contact;
+        $contact->team_id = 3;
+        $contact->phone = '541171024567';
+        $contact->name = 'Jose Maria';
+
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        app(WhatsAppProfilePhotoStore::class)->storeFromBase64(3, '5491171024567', $png, 'image/png');
+
+        $url = $contact->avatarUrl();
+
+        $this->assertStringContainsString('whatsapp/avatars/3/5491171024567.jpg', $url);
+        $this->assertStringNotContainsString('data:image/svg+xml', $url);
+    }
+
     public function test_dispatch_for_contact_skips_when_phone_is_missing(): void
     {
         Bus::fake();

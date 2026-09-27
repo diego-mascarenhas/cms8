@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Contact;
+use App\Models\ContactSentimentHistory;
 use App\Models\Module;
 use App\Models\User;
+use Database\Seeders\ContactSentimentSeeder;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -98,6 +100,54 @@ class ContactDataTableSearchNormalizationTest extends TestCase
             'creator_id' => $this->user->id,
         ]);
 
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $response = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('contact-list').'?'.http_build_query($this->contactDataTableBaseQuery()));
+
+        $response->assertOk();
+        $queries = collect(DB::getQueryLog())->pluck('query')->implode("\n");
+        $this->assertStringNotContainsString('contact_sources', $queries);
+
+        $row = collect($response->json('data'))->firstWhere('DT_RowId', (string) $contact->id);
+        $this->assertNotNull($row);
+        $this->assertStringContainsString(route('contact.show', $contact->id), $row['name']);
+        $this->assertStringContainsString('<a href', $row['name']);
+        $this->assertStringContainsString('rounded-circle', $row['name']);
+        $this->assertStringNotContainsString('title="', $row['name']);
+        $this->assertStringNotContainsString('ti-mail', $row['action']);
+        $eye = strpos($row['action'], 'ti-eye');
+        $mood = strpos($row['action'], 'ti-mood-happy');
+        $this->assertNotFalse($eye);
+        $this->assertNotFalse($mood);
+        $this->assertLessThan($mood, $eye);
+    }
+
+    public function test_contact_datatable_name_cell_shows_avatar_with_sentiment_badge(): void
+    {
+        $this->seed(ContactSentimentSeeder::class);
+
+        $team = $this->user->currentTeam;
+
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Jose',
+            'surname' => 'Maria',
+            'email' => 'jose.maria@example.test',
+            'profile' => '',
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+
+        ContactSentimentHistory::create([
+            'contact_id' => $contact->id,
+            'sentiment_id' => 4,
+            'notes' => 'Positive',
+        ]);
+
         $response = $this->actingAs($this->user)->withHeaders([
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'application/json',
@@ -107,8 +157,9 @@ class ContactDataTableSearchNormalizationTest extends TestCase
 
         $row = collect($response->json('data'))->firstWhere('DT_RowId', (string) $contact->id);
         $this->assertNotNull($row);
-        $this->assertStringContainsString(route('contact.show', $contact->id), $row['name']);
-        $this->assertStringContainsString('<a href', $row['name']);
+        $this->assertStringContainsString('<img ', $row['name']);
+        $this->assertStringContainsString('🙂', $row['name']);
+        $this->assertStringContainsString('title="Positivo"', $row['name']);
     }
 
     public function test_contact_datatable_search_matches_linked_enterprise_name_without_accents(): void
@@ -203,7 +254,6 @@ class ContactDataTableSearchNormalizationTest extends TestCase
             ['data' => 'name', 'name' => 'name', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'current_sentiment', 'name' => 'current_sentiment', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'current_intent', 'name' => 'current_intent', 'searchable' => 'true', 'orderable' => 'false'],
-            ['data' => 'sources', 'name' => 'sources', 'searchable' => 'false', 'orderable' => 'false'],
             ['data' => 'responsible_name', 'name' => 'responsible_name', 'searchable' => 'false', 'orderable' => 'false'],
             ['data' => 'categories', 'name' => 'categories', 'searchable' => 'true', 'orderable' => 'false'],
             ['data' => 'status_id', 'name' => 'status_id', 'searchable' => 'true', 'orderable' => 'true'],

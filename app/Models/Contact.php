@@ -136,14 +136,17 @@ class Contact extends Model implements HasMedia
      */
     public function avatarUrl(int $size = 100): string
     {
-        $phone = $this->whatsAppDigits();
         $teamId = (int) ($this->team_id ?? 0);
-        if ($phone !== '' && $teamId > 0)
+        if ($teamId > 0)
         {
-            $url = app(WhatsAppProfilePhotoStore::class)->publicUrl($teamId, $phone);
-            if ($url !== null)
+            $store = app(WhatsAppProfilePhotoStore::class);
+            foreach ($this->whatsAppDigitCandidates() as $phone)
             {
-                return $url;
+                $url = $store->publicUrl($teamId, $phone);
+                if ($url !== null)
+                {
+                    return $url;
+                }
             }
         }
 
@@ -177,21 +180,61 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * Phone variants that may already have a stored WhatsApp photo.
+     * Argentina mobiles are often saved as 54… in the CRM and 549… on WhatsApp.
+     *
+     * @return array<int, string>
+     */
+    public function whatsAppDigitCandidates(): array
+    {
+        $primary = $this->whatsAppDigits();
+        if ($primary === '')
+        {
+            return [];
+        }
+
+        $candidates = [$primary];
+        if (preg_match('/^54(?!9)(\d{10,})$/', $primary, $matches) === 1)
+        {
+            $candidates[] = '549'.$matches[1];
+        }
+        if (preg_match('/^549(\d{10,})$/', $primary, $matches) === 1)
+        {
+            $candidates[] = '54'.$matches[1];
+        }
+
+        return array_values(array_unique($candidates));
+    }
+
+    /**
      * Fetch the WhatsApp profile photo when this team uses the local gateway and none is stored yet.
      */
     public function refreshWhatsAppAvatar(): void
     {
-        $digits = $this->whatsAppDigits();
+        $candidates = $this->whatsAppDigitCandidates();
         $teamId = (int) ($this->team_id ?? 0);
-        if ($digits === '' || $teamId < 1)
+        if ($candidates === [] || $teamId < 1)
         {
             return;
         }
 
         $store = app(WhatsAppProfilePhotoStore::class);
-        if ($store->isFresh($teamId, $digits))
+        foreach ($candidates as $digits)
         {
-            return;
+            if ($store->isFresh($teamId, $digits))
+            {
+                return;
+            }
+        }
+
+        $digits = $candidates[0];
+        foreach ($candidates as $candidate)
+        {
+            if (str_starts_with($candidate, '549'))
+            {
+                $digits = $candidate;
+                break;
+            }
         }
 
         $team = Team::withoutGlobalScopes()->find($teamId);

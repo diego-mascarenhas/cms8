@@ -89,9 +89,9 @@
                 <div class="card-body">
                     <div class="user-avatar-section">
                         <div class=" d-flex align-items-center flex-column">
-                            <img class="img-fluid rounded mb-3 pt-1 mt-4"
+                            <img class="rounded-circle mb-3 mt-4"
                                 src="{{ $data->avatarUrl(100) }}" height="100"
-                                width="100" alt="User avatar" />
+                                width="100" alt="User avatar" style="object-fit:cover" />
                             <div class="user-info text-center">
                                 <h4 class="mb-2">{{ $data->name }}</h4>
                                 @if (auth()->user()->seesFullContactProfile() && $data->enterprises->first() && $data->enterprises->first()->code)
