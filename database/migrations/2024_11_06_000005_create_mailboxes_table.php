@@ -15,6 +15,8 @@ return new class extends Migration
         {
             $table->id();
             $table->foreignId('team_id')->constrained()->onDelete('cascade');
+            // null = team/shared company mailbox; set = personal mailbox for that user
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
             $table->string('host');
             $table->unsignedSmallInteger('port')->default(993);

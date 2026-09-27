@@ -302,6 +302,49 @@ class User extends Authenticatable
     }
 
     /**
+     * Personal IMAP mailboxes owned by this user (any team).
+     */
+    public function personalMailboxes()
+    {
+        return $this->hasMany(Mailbox::class);
+    }
+
+    /**
+     * Prefer first personal mailbox username for insight delivery; fall back to login email.
+     */
+    public function insightDeliveryEmail(): ?string
+    {
+        $personalUsername = $this->personalMailboxes()
+            ->orderBy('name')
+            ->value('username');
+
+        $candidate = strtolower(trim((string) ($personalUsername ?? '')));
+        if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_EMAIL))
+        {
+            return $candidate;
+        }
+
+        $login = strtolower(trim((string) ($this->email ?? '')));
+
+        return $login !== '' && filter_var($login, FILTER_VALIDATE_EMAIL) ? $login : null;
+    }
+
+    /**
+     * Digits-only WhatsApp number for follow-up channels (null when unset).
+     */
+    public function whatsappFollowUpDigits(): ?string
+    {
+        if ($this->phone === null || $this->phone === '')
+        {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) $this->phone);
+
+        return is_string($digits) && $digits !== '' ? $digits : null;
+    }
+
+    /**
      * Configure activity log options
      */
     public function getActivitylogOptions(): LogOptions

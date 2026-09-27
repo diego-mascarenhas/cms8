@@ -19,7 +19,9 @@ class UserDailyPerformanceInsightService
 
     private const LLM_INSTRUCTIONS = <<<'PROMPT'
 You write a daily team operations digest notification for one admin user.
-The context JSON includes team_digest (WhatsApp, email, appointments, client sentiment, tasks, projects, services, invoices, payments when present) and digest_highlights (priority bullets).
+The context JSON includes team_digest (WhatsApp, email, appointments, client sentiment, tasks, projects, services, invoices, payments when present), user_channels (personal IMAP mailboxes / WhatsApp for follow-up), and digest_highlights (priority bullets).
+When email.scoped_to_personal_email is true, unread/received counts come from that user's personal IMAP mailbox(es), not the shared company inbox.
+If user_channels.has_personal_mailbox or has_whatsapp is false, you may gently nudge configuring those channels when relevant to follow-up.
 Reply with ONLY a JSON object (no markdown code fences, no extra text). Keys:
 - "headline": exactly one word in the requested output language, optionally immediately followed by one emoji (no space) that fits the tone. Sharp stance (noun, imperative verb, or adjective). Never greetings or empty praise. Forbidden examples for the word part (any language): congratulations, bravo, hola, hello, welcome, felicidades, bienvenido, awesome, perfect, great job.
 - "focus": exactly five words (single spaces), same language, the single priority to tackle today from digest_highlights and team_digest. Start with a capital letter. You may use at most one line break inside "focus" between words; total word count remains five across both lines.

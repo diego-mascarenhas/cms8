@@ -75,6 +75,12 @@
 			</div>
 			<div class="col-md-6">
 				<x-input-general id="email" label="{{ __('Email') }} (*)" type="email" value="{{ old('email', $data->email ?? '') }}" />
+				<div class="form-text">{{ __('app.profile_login_email_help') }}</div>
+			</div>
+
+			<div class="col-md-6">
+				<x-input-general id="phone" label="{{ __('app.profile_whatsapp') }}" type="tel" value="{{ old('phone', isset($data->phone) && $data->phone !== null ? (string) $data->phone : '') }}" />
+				<div class="form-text">{{ __('app.profile_whatsapp_help') }}</div>
 			</div>
 
 			<div class="col-md-6">

@@ -71,7 +71,7 @@ class MailInbox extends Component
             return;
         }
 
-        $mailboxes = $team->mailboxes()->get();
+        $mailboxes = $team->mailboxes()->visibleTo(auth()->user())->get();
         if ($mailboxes->isEmpty())
         {
             $this->flashStatus(__('No hay casillas configuradas. Añade una en Gestionar casillas.'), 'danger');

@@ -62,9 +62,13 @@ class GenerateDailyPerformanceInsightsCommand extends Command
                     $notificationService->syncForInsight($insight, $team, markUnread: $force || ! $hadInsight);
                 }
 
-                if (config('daily_performance_insight.send_email', true) && $user->email)
+                if (config('daily_performance_insight.send_email', true))
                 {
-                    Mail::to($user->email)->send(new DailyPerformanceInsightMail($insight));
+                    $deliveryEmail = $user->insightDeliveryEmail();
+                    if ($deliveryEmail)
+                    {
+                        Mail::to($deliveryEmail)->send(new DailyPerformanceInsightMail($insight));
+                    }
                 }
             }
         }

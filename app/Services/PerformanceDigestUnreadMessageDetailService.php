@@ -36,12 +36,15 @@ class PerformanceDigestUnreadMessageDetailService
      *     action_label: string|null
      * }>
      */
-    public function forHighlightKey(string $key, Team $team): array
+    public function forHighlightKey(string $key, Team $team, ?\App\Models\User $user = null): array
     {
         return match ($key)
         {
             'whatsapp_unread', 'whatsapp_inbound' => $this->whatsappUnreadMessages($team, $key === 'whatsapp_inbound'),
-            'email_unread' => $this->unreadEmails($team),
+            'email_unread', 'email_unread_personal' => $this->unreadEmails(
+                $team,
+                $key === 'email_unread_personal' ? $user : null,
+            ),
             default => [],
         };
     }
@@ -156,16 +159,35 @@ class PerformanceDigestUnreadMessageDetailService
      *     action_label: string|null
      * }>
      */
-    private function unreadEmails(Team $team): array
+    private function unreadEmails(Team $team, ?\App\Models\User $user = null): array
     {
         if (! $team->hasModule('mailbox'))
         {
             return [];
         }
 
-        $emails = Email::query()
+        $query = Email::query()
             ->where('team_id', $team->id)
-            ->where('seen', false)
+            ->where('seen', false);
+
+        if ($user !== null)
+        {
+            $personalMailboxIds = $team->mailboxes()->forUser($user)->pluck('id')->all();
+            if ($personalMailboxIds === [])
+            {
+                return [];
+            }
+            $query->whereIn('mailbox_id', $personalMailboxIds);
+        } else
+        {
+            $teamMailboxIds = $team->teamMailboxes()->pluck('id')->all();
+            if ($teamMailboxIds !== [])
+            {
+                $query->whereIn('mailbox_id', $teamMailboxIds);
+            }
+        }
+
+        $emails = $query
             ->orderByDesc('message_date')
             ->limit(self::MAX_ITEMS)
             ->get();

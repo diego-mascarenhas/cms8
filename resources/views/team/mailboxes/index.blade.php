@@ -9,15 +9,12 @@
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ __('Casillas del equipo') }}</h4>
-        <p class="text-muted">{{ __('Manage IMAP mailboxes for your team') }}</p>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ __('Casillas de correo') }}</h4>
+        <p class="text-muted">{{ __('Manage the shared company mailbox and your personal IMAP mailboxes') }}</p>
     </div>
     <div class="d-flex align-content-center flex-wrap gap-3">
         <a href="{{ route('team-settings.index', $team) }}" class="btn btn-label-secondary">
             <i class="ti ti-arrow-left me-1"></i>{{ __('Back to Settings') }}
-        </a>
-        <a href="{{ route('team.mailboxes.create', $team) }}" class="btn btn-primary">
-            <i class="ti ti-plus me-1"></i>{{ __('Añadir casilla') }}
         </a>
     </div>
 </div>
@@ -36,6 +33,56 @@
     </div>
 @endif
 
+{{-- Team / company mailboxes --}}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2">
+    <div>
+        <h5 class="mb-0">{{ __('Casillas del equipo') }}</h5>
+        <small class="text-muted">{{ __('Shared company inbox — common to the whole team') }}</small>
+    </div>
+    <a href="{{ route('team.mailboxes.create', $team) }}" class="btn btn-primary btn-sm mt-2 mt-md-0">
+        <i class="ti ti-plus me-1"></i>{{ __('Añadir casilla') }}
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>{{ __('Name') }}</th>
+                    <th>{{ __('Host') }}</th>
+                    <th>{{ __('User') }}</th>
+                    <th class="text-center">{{ __('Actions') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse($teamMailboxes as $mailbox)
+                    @include('team.mailboxes.partials.row', ['team' => $team, 'mailbox' => $mailbox])
+                @empty
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">
+                            <i class="ti ti-mail-off mb-2" style="font-size: 2rem;"></i>
+                            <p class="mb-0">{{ __('No hay casillas configuradas') }}</p>
+                            <small>{{ __('Haz clic en "Añadir casilla" para crear la primera') }}</small>
+                        </td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{{-- Personal mailboxes --}}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-2">
+    <div>
+        <h5 class="mb-0">{{ __('Mis casillas personales') }}</h5>
+        <small class="text-muted">{{ __('Your personal IMAP accounts for performance insights and follow-up') }}</small>
+    </div>
+    <a href="{{ route('team.mailboxes.create', [$team, 'ownership' => 'personal']) }}" class="btn btn-primary btn-sm mt-2 mt-md-0">
+        <i class="ti ti-plus me-1"></i>{{ __('Añadir casilla personal') }}
+    </a>
+</div>
+
 <div class="card">
     <div class="table-responsive">
         <table class="table">
@@ -48,35 +95,14 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($mailboxes as $mailbox)
-                    <tr>
-                        <td>{{ $mailbox->name }}</td>
-                        <td>{{ $mailbox->host }}:{{ $mailbox->port }}</td>
-                        <td>{{ $mailbox->username }}</td>
-                        <td>
-                            <div class="d-flex justify-content-center align-items-center gap-2">
-                                <button type="button" class="btn btn-sm btn-info" onclick="testMailboxConnection({{ $team->id }}, {{ $mailbox->id }}, this)">
-                                    <i class="ti ti-plug me-1"></i>{{ __('Probar conexión') }}
-                                </button>
-                                <a href="{{ route('team.mailboxes.edit', [$team, $mailbox]) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="ti ti-edit me-1"></i>{{ __('Editar') }}
-                                </a>
-                                <form action="{{ route('team.mailboxes.destroy', [$team, $mailbox]) }}" method="POST" class="d-inline" onsubmit="return confirm('{{ __('¿Eliminar esta casilla?') }}');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
-                                        <i class="ti ti-trash me-1"></i>{{ __('Eliminar') }}
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
+                @forelse($personalMailboxes as $mailbox)
+                    @include('team.mailboxes.partials.row', ['team' => $team, 'mailbox' => $mailbox])
                 @empty
                     <tr>
                         <td colspan="4" class="text-center text-muted py-4">
-                            <i class="ti ti-mail-off mb-2" style="font-size: 2rem;"></i>
-                            <p class="mb-0">{{ __('No hay casillas configuradas') }}</p>
-                            <small>{{ __('Haz clic en "Añadir casilla" para crear la primera') }}</small>
+                            <i class="ti ti-user-off mb-2" style="font-size: 2rem;"></i>
+                            <p class="mb-0">{{ __('No tienes casillas personales') }}</p>
+                            <small>{{ __('Añade tu email personal (IMAP) igual que la casilla de la empresa') }}</small>
                         </td>
                     </tr>
                 @endforelse

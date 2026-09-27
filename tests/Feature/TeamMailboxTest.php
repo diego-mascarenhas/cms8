@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Mailbox;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -73,6 +72,7 @@ class TeamMailboxTest extends TestCase
             'name' => 'Support',
             'host' => 'imap.example.com',
             'username' => 'support@example.com',
+            'user_id' => null,
         ]);
     }
 
@@ -194,5 +194,93 @@ class TeamMailboxTest extends TestCase
         $response = $this->get(route('team.mailboxes.edit', [$team, $mailbox]));
 
         $response->assertStatus(404);
+    }
+
+    public function test_personal_mailbox_can_be_stored_for_current_user(): void
+    {
+        $user = $this->createUserWithTeam();
+        $team = $user->currentTeam;
+        $this->actingAs($user);
+
+        $response = $this->post(route('team.mailboxes.store', $team), [
+            '_token' => csrf_token(),
+            'ownership' => 'personal',
+            'name' => 'Personal Gmail',
+            'host' => 'imap.gmail.com',
+            'port' => 993,
+            'encryption' => 'ssl',
+            'username' => 'diego.personal@example.com',
+            'password' => 'secret',
+            'protocol' => 'imap',
+            'folder' => 'INBOX',
+        ]);
+
+        $response->assertRedirect(route('team.mailboxes.index', $team));
+        $this->assertDatabaseHas('mailboxes', [
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'name' => 'Personal Gmail',
+            'username' => 'diego.personal@example.com',
+        ]);
+    }
+
+    public function test_mailbox_index_lists_team_and_personal_sections(): void
+    {
+        $user = $this->createUserWithTeam();
+        $team = $user->currentTeam;
+        $team->mailboxes()->create([
+            'name' => 'Empresa',
+            'host' => 'imap.example.com',
+            'port' => 993,
+            'encryption' => 'ssl',
+            'username' => 'info@example.com',
+            'password' => 'secret',
+            'user_id' => null,
+        ]);
+        $team->mailboxes()->create([
+            'name' => 'Mio',
+            'host' => 'imap.gmail.com',
+            'port' => 993,
+            'encryption' => 'ssl',
+            'username' => 'yo@gmail.com',
+            'password' => 'secret',
+            'user_id' => $user->id,
+        ]);
+        $this->actingAs($user);
+
+        $response = $this->get(route('team.mailboxes.index', $team));
+
+        $response->assertStatus(200);
+        $response->assertSee(__('Casillas del equipo'), false);
+        $response->assertSee(__('Mis casillas personales'), false);
+        $response->assertSee('Empresa', false);
+        $response->assertSee('Mio', false);
+        $response->assertSee(__('Añadir casilla personal'), false);
+    }
+
+    public function test_user_cannot_edit_another_users_personal_mailbox(): void
+    {
+        $owner = $this->createUserWithTeam();
+        $team = $owner->currentTeam;
+        $other = User::factory()->create();
+        $team->users()->attach($other, ['role' => 'editor']);
+        $other->forceFill(['current_team_id' => $team->id])->save();
+        $other = $other->fresh();
+
+        $mailbox = $team->mailboxes()->create([
+            'name' => 'Owner Personal',
+            'host' => 'imap.gmail.com',
+            'port' => 993,
+            'encryption' => 'ssl',
+            'username' => 'owner@gmail.com',
+            'password' => 'secret',
+            'user_id' => $owner->id,
+        ]);
+
+        $this->assertTrue($other->belongsToTeam($team));
+
+        $response = $this->actingAs($other)->get(route('team.mailboxes.edit', [$team, $mailbox]));
+
+        $response->assertRedirect(url('/misc-not-authorized'));
     }
 }

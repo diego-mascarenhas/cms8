@@ -40,6 +40,10 @@
 						<p class="form-control-static">{{ $user->email }}</p>
 					</div>
 					<div class="col-12 mb-3">
+						<label class="form-label">{{ __('app.profile_whatsapp') }}</label>
+						<p class="form-control-static">{{ $user->phone !== null ? (string) $user->phone : '—' }}</p>
+					</div>
+					<div class="col-12 mb-3">
 						<label class="form-label">{{ __('Email Verification') }}</label>
 						<p class="form-control-static">
 							@if ($user->email_verified_at)

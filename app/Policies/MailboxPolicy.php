@@ -11,42 +11,47 @@ class MailboxPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Determine whether the user can view any mailboxes for the team.
-     */
     public function viewAny(User $user, Team $team): bool
     {
         return $user->belongsToTeam($team);
     }
 
-    /**
-     * Determine whether the user can view the mailbox.
-     */
     public function view(User $user, Mailbox $mailbox): bool
     {
-        return $mailbox->team_id === $user->currentTeam?->id && $user->belongsToTeam($mailbox->team);
+        if (! $this->sameTeam($user, $mailbox))
+        {
+            return false;
+        }
+
+        return $mailbox->isTeamShared() || (int) $mailbox->user_id === (int) $user->id;
     }
 
-    /**
-     * Determine whether the user can create mailboxes for the team.
-     */
     public function create(User $user, Team $team): bool
     {
         return $user->belongsToTeam($team);
     }
 
-    /**
-     * Determine whether the user can update the mailbox.
-     */
     public function update(User $user, Mailbox $mailbox): bool
     {
-        return $mailbox->team_id === $user->currentTeam?->id && $user->belongsToTeam($mailbox->team);
+        if (! $this->sameTeam($user, $mailbox))
+        {
+            return false;
+        }
+
+        if ($mailbox->isPersonal())
+        {
+            return (int) $mailbox->user_id === (int) $user->id;
+        }
+
+        return true;
     }
 
-    /**
-     * Determine whether the user can delete the mailbox.
-     */
     public function delete(User $user, Mailbox $mailbox): bool
+    {
+        return $this->update($user, $mailbox);
+    }
+
+    private function sameTeam(User $user, Mailbox $mailbox): bool
     {
         return $mailbox->team_id === $user->currentTeam?->id && $user->belongsToTeam($mailbox->team);
     }

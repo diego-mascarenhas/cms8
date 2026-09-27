@@ -1,11 +1,11 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Edit Mailbox'))
+@section('title', $isPersonal ? __('Edit personal mailbox') : __('Edit Mailbox'))
 
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ __('Editar casilla') }}</h4>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ $isPersonal ? __('Editar casilla personal') : __('Editar casilla') }}</h4>
         <p class="text-muted">{{ $mailbox->name }}</p>
     </div>
     <div class="mt-3 mt-md-0">

@@ -139,11 +139,19 @@ class Team extends JetstreamTeam
     }
 
     /**
-     * Get the mailboxes for the team.
+     * All mailboxes for the team (shared + personal). Prefer {@see teamMailboxes()} or scopes when listing UI.
      */
     public function mailboxes()
     {
         return $this->hasMany(Mailbox::class);
+    }
+
+    /**
+     * Shared company mailboxes (not owned by a user).
+     */
+    public function teamMailboxes()
+    {
+        return $this->hasMany(Mailbox::class)->whereNull('user_id');
     }
 
     public function getSetting($key, $default = null)

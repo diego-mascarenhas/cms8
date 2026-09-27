@@ -271,6 +271,7 @@ return [
     'performance_digest_highlight_whatsapp_unread' => '{1} :count mensaje de WhatsApp sin leer pendiente de respuesta|[2,*] :count mensajes de WhatsApp sin leer pendientes de respuesta',
     'performance_digest_highlight_whatsapp_inbound' => '{1} :count mensaje de WhatsApp recibido en las últimas 24 horas|[2,*] :count mensajes de WhatsApp recibidos en las últimas 24 horas',
     'performance_digest_highlight_email_unread' => '{1} :count correo sin leer en el buzón|[2,*] :count correos sin leer en el buzón',
+    'performance_digest_highlight_email_unread_personal' => '{1} :count correo sin leer dirigido a ti en el buzón compartido|[2,*] :count correos sin leer dirigidos a ti en el buzón compartido',
     'performance_digest_highlight_appointments_today' => '{1} :count cita programada para hoy|[2,*] :count citas programadas para hoy',
     'performance_digest_highlight_stressed_clients' => '{1} :count cliente con estado emocional negativo|[2,*] :count clientes con estado emocional negativo',
     'performance_digest_highlight_tasks_overdue' => '{1} :count tarea vencida asignada a ti|[2,*] :count tareas vencidas asignadas a ti',
