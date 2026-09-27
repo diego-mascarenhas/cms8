@@ -2,6 +2,7 @@
 
 return [
     'Tickets' => 'Tickets',
+    'No tickets for this contact' => 'This contact has no tickets.',
     'Support tickets' => 'Tickets de soporte',
     'New ticket' => 'Nuevo ticket',
     'Create' => 'Crear',

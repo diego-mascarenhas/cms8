@@ -14,11 +14,13 @@ class TicketDataTable extends DataTable
     public function dataTable(QueryBuilder $query): EloquentDataTable
     {
         return (new EloquentDataTable($query))
-            ->addColumn('action', 'ticket.action')
             ->setRowId('id')
             ->editColumn('subject', function (Ticket $ticket)
             {
-                return '<a href="'.route('ticket.show', $ticket->id).'" class="text-body">'.e($ticket->subject).'</a>';
+                $creator = e($ticket->user?->name ?? '—');
+
+                return '<a href="'.route('ticket.show', $ticket->id).'" class="text-body">'.e($ticket->subject).'</a>'
+                    .'<div class="text-muted small mt-1">'.$creator.'</div>';
             })
             ->editColumn('status', function (Ticket $ticket)
             {
@@ -28,31 +30,16 @@ class TicketDataTable extends DataTable
             {
                 return '<span class="badge bg-'.$ticket->priority_color.'">'.$ticket->priority_label.'</span>';
             })
-            ->editColumn('user_id', function (Ticket $ticket)
+            ->rawColumns(['subject', 'status', 'priority'])
+            ->filterColumn('subject', function (QueryBuilder $query, $keyword)
             {
-                return $ticket->user?->name ?? '—';
-            })
-            ->editColumn('assigned_to', function (Ticket $ticket)
-            {
-                return $ticket->assignedTo?->name ?? '—';
-            })
-            ->editColumn('created_at', function (Ticket $ticket)
-            {
-                return $ticket->created_at->format('d/m/Y H:i');
-            })
-            ->rawColumns(['action', 'subject', 'status', 'priority'])
-            ->filterColumn('user_id', function (QueryBuilder $query, $keyword)
-            {
-                $query->whereHas('user', function ($q) use ($keyword)
+                $query->where(function (QueryBuilder $inner) use ($keyword)
                 {
-                    $q->where('name', 'like', "%{$keyword}%");
-                });
-            })
-            ->filterColumn('assigned_to', function (QueryBuilder $query, $keyword)
-            {
-                $query->whereHas('assignedTo', function ($q) use ($keyword)
-                {
-                    $q->where('name', 'like', "%{$keyword}%");
+                    $inner->where('subject', 'like', "%{$keyword}%")
+                        ->orWhereHas('user', function ($userQuery) use ($keyword)
+                        {
+                            $userQuery->where('name', 'like', "%{$keyword}%");
+                        });
                 });
             });
     }
@@ -60,7 +47,7 @@ class TicketDataTable extends DataTable
     public function query(Ticket $model): QueryBuilder
     {
         return $model->newQuery()
-            ->with(['user', 'assignedTo']);
+            ->with(['user']);
     }
 
     public function html(): HtmlBuilder
@@ -72,6 +59,9 @@ class TicketDataTable extends DataTable
             ->dom('frtip')
             ->orderBy(0, 'desc')
             ->responsive(true)
+            ->parameters([
+                'select' => false,
+            ])
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json']);
     }
 
@@ -85,16 +75,6 @@ class TicketDataTable extends DataTable
             Column::make('subject')->title(__('tickets.Subject'))->addClass('all'),
             Column::make('status')->title(__('tickets.Status'))->className('text-center')->addClass('min-tablet'),
             Column::make('priority')->title(__('tickets.Priority'))->className('text-center')->addClass('min-tablet'),
-            Column::make('user_id')->title(__('tickets.Created by'))->addClass('min-desktop')->orderable(false),
-            Column::make('assigned_to')->title(__('tickets.Assigned to'))->addClass('min-desktop')->orderable(false),
-            Column::make('created_at')->title(__('tickets.Created'))->addClass('min-desktop'),
-            Column::computed('action')
-                ->title(__('tickets.Actions'))
-                ->className('text-center')
-                ->addClass('min-desktop')
-                ->exportable(false)
-                ->printable(false)
-                ->width(80),
         ];
     }
 

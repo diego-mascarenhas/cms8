@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Helpers\AvatarHelper;
 use App\Jobs\FetchWhatsAppProfilePhotoJob;
 use App\Models\Contact;
+use App\Models\User;
 use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
@@ -39,6 +40,28 @@ class ContactAvatarUrlTest extends TestCase
         $url = $contact->avatarUrl();
 
         $this->assertStringContainsString('whatsapp/avatars/3/5491100000001.jpg', $url);
+        $this->assertStringNotContainsString('data:image/svg+xml', $url);
+    }
+
+    public function test_uses_linked_user_phone_when_contact_phone_is_empty(): void
+    {
+        Storage::fake('public');
+
+        $user = new User;
+        $user->phone = '5491100000002';
+
+        $contact = new Contact;
+        $contact->team_id = 3;
+        $contact->phone = null;
+        $contact->name = 'Sin Telefono';
+        $contact->setRelation('user', $user);
+
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        app(WhatsAppProfilePhotoStore::class)->storeFromBase64(3, '5491100000002', $png, 'image/png');
+
+        $url = $contact->avatarUrl();
+
+        $this->assertStringContainsString('whatsapp/avatars/3/5491100000002.jpg', $url);
         $this->assertStringNotContainsString('data:image/svg+xml', $url);
     }
 

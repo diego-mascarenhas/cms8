@@ -20,6 +20,7 @@ use App\Models\EnterpriseStatus;
 use App\Models\MessageDelivery;
 use App\Models\Opportunity;
 use App\Models\Source;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Services\AstralChartService;
 use App\Services\MessageDeliveryDispatcher;
@@ -28,7 +29,9 @@ use App\Support\SearchNormalizer;
 use App\Support\StripeInvoiceMetrics;
 use App\Traits\TracksContactActions;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Stripe\CreditNote;
@@ -472,6 +475,7 @@ class ContactController extends Controller
                     $balanceMetrics = StripeInvoiceMetrics::contactBalanceMetrics(
                         $stripeData['invoices'],
                         $stripeData['unpaid_invoices'],
+                        $metricsCurrency,
                     );
 
                     $stripeData['metrics'] = [
@@ -574,10 +578,83 @@ class ContactController extends Controller
             $contactOpportunities = Opportunity::query()->where('contact_id', $data->id)->orderBy('name')->get();
         }
 
+        $contactTickets = $this->contactTickets($data);
+
+        if (! app()->runningUnitTests())
+        {
+            $data->refreshWhatsAppAvatar();
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets'),
         );
+    }
+
+    /**
+     * @return Collection<int, Ticket>
+     */
+    private function contactTickets(Contact $contact): Collection
+    {
+        if (! auth()->user()->can('viewAny', Ticket::class))
+        {
+            return collect();
+        }
+
+        $emails = collect([$contact->email, $contact->user?->email])
+            ->filter(fn ($email) => is_string($email) && trim($email) !== '')
+            ->map(fn ($email) => strtolower(trim($email)))
+            ->unique()
+            ->values();
+
+        if ($contact->user_id === null && $emails->isEmpty())
+        {
+            return collect();
+        }
+
+        return Ticket::query()
+            ->where(function (Builder $query) use ($contact, $emails)
+            {
+                $matchedUser = false;
+
+                if ($contact->user_id)
+                {
+                    $query->where('user_id', $contact->user_id);
+                    $matchedUser = true;
+                }
+
+                if ($emails->isEmpty())
+                {
+                    return;
+                }
+
+                $byEmail = function (Builder $user) use ($emails)
+                {
+                    $user->where(function (Builder $inner) use ($emails)
+                    {
+                        foreach ($emails as $index => $email)
+                        {
+                            if ($index === 0)
+                            {
+                                $inner->whereRaw('LOWER(email) = ?', [$email]);
+                            } else
+                            {
+                                $inner->orWhereRaw('LOWER(email) = ?', [$email]);
+                            }
+                        }
+                    });
+                };
+
+                if ($matchedUser)
+                {
+                    $query->orWhereHas('user', $byEmail);
+                } else
+                {
+                    $query->whereHas('user', $byEmail);
+                }
+            })
+            ->latest('id')
+            ->get();
     }
 
     /**

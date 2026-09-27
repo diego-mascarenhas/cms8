@@ -286,6 +286,36 @@ class WhatsAppLocalWebhookTest extends TestCase
         Storage::disk('public')->assertExists('whatsapp/avatars/'.$team->id.'/5491100000099.jpg');
     }
 
+    public function test_contact_refresh_stores_whatsapp_avatar_for_profile(): void
+    {
+        Storage::fake('public');
+
+        $team = Team::factory()->create();
+        $contact = Contact::factory()->create([
+            'team_id' => $team->id,
+            'phone' => '5491100000088',
+            'name' => 'Con Foto',
+        ]);
+        $png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+
+        Http::fake([
+            'localhost:3000/*' => Http::response([
+                'pictures' => [
+                    '5491100000088' => [
+                        'profile_pic_base64' => $png,
+                        'profile_pic_content_type' => 'image/png',
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $contact->refreshWhatsAppAvatar();
+
+        $url = $contact->avatarUrl();
+        $this->assertStringContainsString('whatsapp/avatars/'.$team->id.'/5491100000088.jpg', $url);
+        $this->assertStringNotContainsString('data:image/svg+xml', $url);
+    }
+
     public function test_webhook_creates_document_ingestion_for_incoming_media(): void
     {
         $team = Team::factory()->create();

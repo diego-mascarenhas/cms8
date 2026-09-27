@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Helpers\AvatarHelper;
+use App\Services\WhatsApp\LocalWhatsAppGateway;
 use App\Services\WhatsApp\WhatsAppProfilePhotoStore;
 use App\Traits\HasSourceIcons;
 use Carbon\Carbon;
@@ -135,7 +136,7 @@ class Contact extends Model implements HasMedia
      */
     public function avatarUrl(int $size = 100): string
     {
-        $phone = preg_replace('/[^0-9]/', '', (string) ($this->phone ?? '')) ?? '';
+        $phone = $this->whatsAppDigits();
         $teamId = (int) ($this->team_id ?? 0);
         if ($phone !== '' && $teamId > 0)
         {
@@ -149,6 +150,64 @@ class Contact extends Model implements HasMedia
         $name = trim((string) $this->name.' '.(string) ($this->surname ?? ''));
 
         return AvatarHelper::generate($name !== '' ? $name : 'Contacto', $size);
+    }
+
+    /**
+     * Digits used to match a stored WhatsApp profile photo.
+     */
+    public function whatsAppDigits(): string
+    {
+        $phone = preg_replace('/[^0-9]/', '', (string) ($this->phone ?? '')) ?? '';
+        if ($phone !== '')
+        {
+            return $phone;
+        }
+
+        if (! $this->relationLoaded('user'))
+        {
+            if (! $this->exists)
+            {
+                return '';
+            }
+
+            $this->loadMissing('user');
+        }
+
+        return preg_replace('/[^0-9]/', '', (string) ($this->user?->phone ?? '')) ?? '';
+    }
+
+    /**
+     * Fetch the WhatsApp profile photo when this team uses the local gateway and none is stored yet.
+     */
+    public function refreshWhatsAppAvatar(): void
+    {
+        $digits = $this->whatsAppDigits();
+        $teamId = (int) ($this->team_id ?? 0);
+        if ($digits === '' || $teamId < 1)
+        {
+            return;
+        }
+
+        $store = app(WhatsAppProfilePhotoStore::class);
+        if ($store->isFresh($teamId, $digits))
+        {
+            return;
+        }
+
+        $team = Team::withoutGlobalScopes()->find($teamId);
+        $baseUrl = $team?->getWhatsAppServiceBaseUrl() ?? '';
+        if ($team === null || ! $team->usesLocalWhatsApp() || $baseUrl === '')
+        {
+            return;
+        }
+
+        $gateway = new LocalWhatsAppGateway(
+            $baseUrl,
+            config('whatsapp.local.webhook_secret'),
+            $teamId,
+        );
+
+        $store->hydrateFromGateway($gateway, $teamId, [$digits]);
     }
 
     /**

@@ -66,7 +66,7 @@ class SupportWhatsAppHelperTest extends TestCase
             'app.wapify_whatsapp_phone' => '',
         ]);
 
-        $this->assertSame('tel:+34624159557', SupportWhatsAppHelper::telUrl());
-        $this->assertSame('+34 624 15 95 57', SupportWhatsAppHelper::phoneDisplay());
+        $this->assertSame('tel:+34613194131', SupportWhatsAppHelper::telUrl());
+        $this->assertSame('+34 613 19 41 31', SupportWhatsAppHelper::phoneDisplay());
     }
 }

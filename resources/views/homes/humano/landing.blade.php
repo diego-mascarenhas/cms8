@@ -283,7 +283,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
         <span class="badge bg-label-primary">Contacto</span>
       </div>
       <h3 class="text-center mb-1"><span class="section-title">Hablemos</span> de tu negocio</h3>
-      <p class="text-center mb-4 mb-lg-5 pb-md-3">¿Alguna duda? Escríbenos o visitá la web principal.</p>
+      <p class="text-center mb-4 mb-lg-5 pb-md-3">¿Alguna duda? Escríbenos.</p>
       <div class="row justify-content-center">
         <div class="col-lg-8">
           <div class="card">
@@ -294,7 +294,7 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
                     <div class="badge bg-label-primary rounded p-2 me-3"><i class="ti ti-mail ti-sm"></i></div>
                     <div>
                       <p class="mb-0 text-muted">Email</p>
-                      <h5 class="mb-0"><a href="mailto:hola@humano.app" class="text-heading">hola@humano.app</a></h5>
+                      <h5 class="mb-0"><a href="mailto:hola@idoneo.dev" class="text-heading">hola@idoneo.dev</a></h5>
                     </div>
                   </div>
                 </div>
@@ -303,12 +303,9 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
                     <div class="badge bg-label-success rounded p-2 me-3"><i class="ti ti-phone-call ti-sm"></i></div>
                     <div>
                       <p class="mb-0 text-muted">Teléfono</p>
-                      <h5 class="mb-0"><a href="tel:+34624159557" class="text-heading">+34 624 15 95 57</a></h5>
+                      <h5 class="mb-0"><a href="tel:+34613194131" class="text-heading">+34 613 194 131</a></h5>
                     </div>
                   </div>
-                </div>
-                <div class="col-12 text-center pt-2">
-                  <a href="https://humano.app" class="btn btn-primary" target="_blank" rel="noopener">Ir a humano.app</a>
                 </div>
               </div>
             </div>

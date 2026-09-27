@@ -93,9 +93,11 @@
                     @endif
                     <div class="d-flex gap-3 mb-4 pb-3 border-bottom">
                         <div class="flex-shrink-0">
-                            <span class="avatar avatar-sm bg-label-{{ $response->user_id === $ticket->user_id ? 'primary' : ($response->is_internal_note ? 'warning' : 'success') }} rounded">
-                                {{ strtoupper(substr($response->user?->name ?? '?', 0, 1)) }}
-                            </span>
+                            <div class="avatar avatar-sm">
+                                <span class="avatar-initial rounded bg-label-{{ $response->user_id === $ticket->user_id ? 'primary' : ($response->is_internal_note ? 'warning' : 'success') }}">
+                                    {{ strtoupper(substr($response->user?->name ?? '?', 0, 1)) }}
+                                </span>
+                            </div>
                         </div>
                         <div class="flex-grow-1">
                             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">

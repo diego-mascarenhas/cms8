@@ -20,7 +20,7 @@ class FetchWhatsAppProfilePhotoJob implements ShouldQueue
 
     public static function dispatchForContact(Contact $contact): void
     {
-        $phone = preg_replace('/[^0-9]/', '', (string) ($contact->phone ?? '')) ?? '';
+        $phone = $contact->whatsAppDigits();
         $teamId = (int) ($contact->team_id ?? 0);
         if ($phone === '' || $teamId < 1)
         {
