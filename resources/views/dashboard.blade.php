@@ -613,23 +613,29 @@
                                 @php
                                     $insightCardFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?? '';
                                 @endphp
-                                @if(auth()->user()->hasAnyRole(['admin', 'root']))
-                                    @if($dailyPerformanceInsight ?? null)
-                                        <h5 class="card-title mb-1 fw-semibold">
+                                @if($canShowPerformanceInsight ?? false)
+                                    <h5 class="card-title mb-1 fw-semibold">
+                                        @if($dailyPerformanceInsight ?? null)
                                             <x-notification-subject :subject="$dailyPerformanceInsight->headline" />
-                                        </h5>
-                                        <p class="mb-1 text-muted small">{!! nl2br(e($dailyPerformanceInsight->focus)) !!}</p>
-                                        <p class="mb-2 text-body">{{ e($dailyPerformanceInsight->message) }}</p>
-                                        @if(!empty($dailyPerformanceInsight->context_snapshot['highlights'] ?? []))
-                                            <ul class="list-unstyled mb-2 small text-muted">
-                                                @foreach(array_slice($dailyPerformanceInsight->context_snapshot['highlights'], 0, 4) as $highlight)
-                                                    <li class="mb-1"><i class="ti ti-point-filled ti-xs me-1"></i>{{ $highlight }}</li>
-                                                @endforeach
-                                            </ul>
+                                        @else
+                                            {{ e(__('app.dashboard_performance_focus_title')) }}
                                         @endif
+                                    </h5>
+                                    @if(($dailyPerformanceInsight ?? null) && filled($dailyPerformanceInsight->focus))
+                                        <p class="mb-2 text-muted small">{!! nl2br(e($dailyPerformanceInsight->focus)) !!}</p>
                                     @else
-                                        <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
-                                        <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
+                                        <p class="mb-2 text-muted small">{{ e(__('app.dashboard_performance_focus_subtitle')) }}</p>
+                                    @endif
+                                    @if(!empty($performanceInsightActions))
+                                        <ul class="list-unstyled mb-2 small">
+                                            @foreach($performanceInsightActions as $action)
+                                                <li class="mb-1 text-body">
+                                                    <i class="ti ti-checkbox ti-xs me-1 text-primary"></i>{{ $action['label'] }}
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @else
+                                        <p class="mb-2 text-body small">{{ e(__('app.dashboard_performance_focus_empty')) }}</p>
                                     @endif
                                 @else
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
@@ -1008,7 +1014,7 @@
                     @if ($analyticsTopPages !== [] || $analyticsTopCountries !== [])
                         <div class="row g-3 mt-2 pt-2 border-top">
                             @if ($analyticsTopPages !== [])
-                                <div class="col-md-6">
+                                <div class="col-md-8">
                                     <div class="small text-muted mb-2">{{ __('Páginas top') }}</div>
                                     <ul class="list-unstyled mb-0">
                                         @foreach ($analyticsTopPages as $page)
@@ -1023,7 +1029,7 @@
                                 </div>
                             @endif
                             @if ($analyticsTopCountries !== [])
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="small text-muted mb-2">{{ __('Países top') }}</div>
                                     <ul class="list-unstyled mb-0">
                                         @foreach ($analyticsTopCountries as $country)
@@ -1048,7 +1054,7 @@
                 <div class="card-header pb-0">
                     <div class="card-title mb-0">
                         <h5 class="mb-0">{{ __('Cobros de consumo') }}</h5>
-                        <small class="text-muted">{{ __('Borradores, fallidas y vencidas (todos los equipos)') }}</small>
+                        <small class="text-muted">{{ __('Borradores de Stripe (todos los equipos)') }}</small>
                     </div>
                     <div class="d-flex flex-wrap gap-2 mt-3">
                         <span class="badge bg-label-warning">
@@ -1077,15 +1083,14 @@
                     @if (empty($usageBillingAttentions['items']))
                         <div class="text-center text-muted py-4">
                             <i class="ti ti-circle-check ti-lg d-block mb-2 text-success"></i>
-                            {{ __('No hay consumos pendientes de emitir o cobrar.') }}
+                            {{ __('No hay borradores de Stripe pendientes.') }}
                         </div>
                     @else
-                        <div class="table-responsive" style="max-height: 280px;">
+                        <div class="table-responsive" style="max-height: 360px;">
                             <table class="table table-sm table-borderless mb-0">
                                 <thead>
                                     <tr>
                                         <th>{{ __('Equipo') }}</th>
-                                        <th>{{ __('Periodo') }}</th>
                                         <th class="text-end">{{ __('Importe') }}</th>
                                         <th></th>
                                     </tr>
@@ -1093,26 +1098,18 @@
                                 <tbody>
                                     @foreach ($usageBillingAttentions['items'] as $item)
                                         <tr>
-                                            <td>
-                                                <a href="{{ $item['account_url'] }}" class="text-body fw-medium">{{ $item['team_name'] }}</a>
+                                            <td class="align-middle">
+                                                <a href="{{ $item['account_url'] }}" class="text-body fw-medium d-block">{{ $item['team_name'] }}</a>
+                                                <span class="small text-muted text-nowrap">{{ $item['period_from'] }} – {{ $item['period_to'] }}</span>
                                             </td>
-                                            <td class="small text-muted">
-                                                <span class="d-block text-nowrap">{{ $item['period_from'] }}</span>
-                                                <span class="d-block text-nowrap">{{ $item['period_to'] }}</span>
+                                            <td class="align-middle text-end text-nowrap">
+                                                {{ number_format($item['billed_cents'] / 100, 2, ',', '.') }}
+                                                {{ strtoupper($item['currency']) }}
                                             </td>
-                                            <td class="text-end text-nowrap">
-                                                <div>
-                                                    {{ number_format($item['billed_cents'] / 100, 2, ',', '.') }}
-                                                    {{ strtoupper($item['currency']) }}
-                                                </div>
-                                                <div class="small">
-                                                    <span class="badge {{ $item['status_badge'] }}">{{ $item['status_label'] }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="text-end text-nowrap">
+                                            <td class="align-middle text-end text-nowrap">
                                                 @if (! empty($item['stripe_url']))
-                                                    <a href="{{ $item['stripe_url'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-icon btn-label-secondary" title="Stripe">
-                                                        <i class="ti ti-brand-stripe ti-xs"></i>
+                                                    <a href="{{ $item['stripe_url'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-icon btn-label-secondary" title="{{ __('Abrir en Stripe') }}">
+                                                        <i class="ti ti-external-link ti-xs"></i>
                                                     </a>
                                                 @endif
                                             </td>

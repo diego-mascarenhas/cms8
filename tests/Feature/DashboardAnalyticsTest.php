@@ -600,6 +600,7 @@ class DashboardAnalyticsTest extends TestCase
         $user->assignRole('root');
 
         $clientTeam = \App\Models\Team::factory()->create(['name' => 'Cliente Cobro SL']);
+        $otherTeam = \App\Models\Team::factory()->create(['name' => 'Otro Cliente SA']);
 
         \App\Models\TeamUsageInvoice::factory()->create([
             'team_id' => $clientTeam->id,
@@ -607,6 +608,38 @@ class DashboardAnalyticsTest extends TestCase
             'billed_cents' => 1250,
             'currency' => 'EUR',
             'stripe_invoice_id' => 'in_test_draft_attention',
+            'period_from' => now()->subMonths(2)->startOfMonth(),
+            'period_to' => now()->subMonth()->startOfMonth(),
+        ]);
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $otherTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 4500,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_test_draft_second',
+            'period_from' => now()->subMonths(2)->startOfMonth(),
+            'period_to' => now()->subMonth()->startOfMonth(),
+        ]);
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $otherTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 999,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => null,
+            'period_from' => now()->subMonths(3)->startOfMonth(),
+            'period_to' => now()->subMonths(2)->startOfMonth(),
+        ]);
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $clientTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_OPEN,
+            'billed_cents' => 8000,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_test_open_hidden',
+            'period_from' => now()->subMonths(3)->startOfMonth(),
+            'period_to' => now()->subMonths(2)->startOfMonth(),
         ]);
 
         $this->actingAs($user);
@@ -614,10 +647,15 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Cobros de consumo', false);
+        $response->assertSee('Borradores de Stripe (todos los equipos)', false);
         $response->assertSee('Cliente Cobro SL', false);
-        $response->assertSee('Borrador vencido', false);
+        $response->assertSee('Otro Cliente SA', false);
         $response->assertSee('12,50', false);
+        $response->assertSee('45,00', false);
         $response->assertSee('in_test_draft_attention', false);
+        $response->assertSee('in_test_draft_second', false);
+        $response->assertDontSee('in_test_open_hidden', false);
+        $response->assertDontSee('9,99', false);
     }
 
     public function test_non_root_dashboard_hides_usage_billing_attentions(): void

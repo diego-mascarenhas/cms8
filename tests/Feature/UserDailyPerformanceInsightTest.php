@@ -488,7 +488,7 @@ class UserDailyPerformanceInsightTest extends TestCase
         ]);
     }
 
-    public function test_dashboard_does_not_persist_daily_insight_and_shows_assistant_prompt(): void
+    public function test_dashboard_does_not_persist_daily_insight_and_shows_focus_actions(): void
     {
         $this->seedInsightDependencies();
         $user = $this->createUserWithRole('admin');
@@ -505,11 +505,12 @@ class UserDailyPerformanceInsightTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-        $firstName = explode(' ', (string) $user->name, 2)[0];
-        $response->assertSee(e(__('app.dashboard_assistant_greeting', ['name' => $firstName])), false);
-        $response->assertSee(e(__('app.dashboard_assistant_subtitle')), false);
-        $response->assertSee(__('app.dashboard_open_assistant'), false);
-        $response->assertSee('data-bs-target="#assistant-offcanvas"', false);
+        $response->assertSee(__('app.dashboard_performance_focus_title'), false);
+        $response->assertSee(__('app.dashboard_performance_focus_subtitle'), false);
+        $response->assertDontSee(__('app.dashboard_assistant_greeting', ['name' => explode(' ', (string) $user->name, 2)[0]]), false);
+        $response->assertDontSee(__('app.dashboard_open_assistant'), false);
+        $response->assertSee('Estrategia', false);
+        $response->assertSee('Organización', false);
     }
 
     public function test_find_today_insight_returns_null_without_row(): void

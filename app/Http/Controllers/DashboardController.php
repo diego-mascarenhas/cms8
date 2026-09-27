@@ -15,6 +15,7 @@ use App\Models\TeamUsageInvoice;
 use App\Models\UserContactAction;
 use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
+use App\Services\DailyTeamDigestMetricsCollector;
 use App\Services\UserDailyPerformanceInsightService;
 use App\Support\DemoTeam;
 use Carbon\Carbon;
@@ -112,6 +113,7 @@ class DashboardController extends Controller
         $analyticsChartData = $this->cachedAnalyticsChartData($activeTeam);
 
         $dailyPerformanceInsight = null;
+        $performanceInsightActions = [];
         $canShowPerformanceInsight = auth()->user()->hasAnyRole(['admin', 'root'])
             && ($activeTeam->hasModule('performance_insights') || DemoTeam::isDemoTeam($activeTeam));
 
@@ -119,6 +121,11 @@ class DashboardController extends Controller
         {
             $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
                 ->findTodayInsight(auth()->user(), $activeTeam);
+            $performanceInsightActions = $this->resolvePerformanceInsightActions(
+                auth()->user(),
+                $activeTeam,
+                $dailyPerformanceInsight,
+            );
         }
 
         $dashboardCalendarData = $this->buildDashboardCalendarData($activeTeam);
@@ -152,9 +159,60 @@ class DashboardController extends Controller
             'teamInteractionsLast30DaysCount',
             'latestRegisteredContacts',
             'dailyPerformanceInsight',
+            'canShowPerformanceInsight',
+            'performanceInsightActions',
             'dashboardCalendarData',
             'usageBillingAttentions',
         ));
+    }
+
+    /**
+     * Up to 3 actionable digest bullets for the dashboard card. Never persists an insight.
+     *
+     * @return list<array{label: string}>
+     */
+    private function resolvePerformanceInsightActions(
+        \App\Models\User $user,
+        \App\Models\Team $team,
+        ?\App\Models\UserDailyPerformanceInsight $insight,
+    ): array {
+        $items = [];
+
+        if ($insight !== null)
+        {
+            $snapshot = $insight->context_snapshot ?? [];
+            $items = is_array($snapshot['highlight_items'] ?? null) ? $snapshot['highlight_items'] : [];
+
+            if ($items === [] && is_array($snapshot['highlights'] ?? null))
+            {
+                foreach ($snapshot['highlights'] as $label)
+                {
+                    if (is_string($label) && trim($label) !== '')
+                    {
+                        $items[] = ['label' => trim($label)];
+                    }
+                }
+            }
+        }
+
+        if ($items === [])
+        {
+            $digest = app(DailyTeamDigestMetricsCollector::class)->collect($user, $team);
+            $items = is_array($digest['highlight_items'] ?? null) ? $digest['highlight_items'] : [];
+        }
+
+        $actions = [];
+        foreach (array_slice($items, 0, 3) as $item)
+        {
+            $label = trim((string) ($item['label'] ?? ''));
+            if ($label === '')
+            {
+                continue;
+            }
+            $actions[] = ['label' => $label];
+        }
+
+        return $actions;
     }
 
     /**
@@ -427,7 +485,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * Platform billing queue: usage invoices still draft, open, or uncollectible (root only).
+     * Root-only: all Stripe draft usage invoices across teams (plus open/uncollectible counts).
      *
      * @return array{
      *     draft_count: int,
@@ -461,14 +519,9 @@ class DashboardController extends Controller
             return null;
         }
 
-        $attentionStatuses = [
-            TeamUsageInvoice::STATUS_DRAFT,
-            TeamUsageInvoice::STATUS_OPEN,
-            TeamUsageInvoice::STATUS_UNCOLLECTIBLE,
-        ];
-
         $draftCount = TeamUsageInvoice::query()
             ->where('status', TeamUsageInvoice::STATUS_DRAFT)
+            ->whereNotNull('stripe_invoice_id')
             ->count();
         $openCount = TeamUsageInvoice::query()
             ->where('status', TeamUsageInvoice::STATUS_OPEN)
@@ -479,11 +532,10 @@ class DashboardController extends Controller
 
         $invoices = TeamUsageInvoice::query()
             ->with(['team' => fn ($q) => $q->select('id', 'name')])
-            ->whereIn('status', $attentionStatuses)
-            ->orderByRaw("CASE status WHEN 'uncollectible' THEN 0 WHEN 'open' THEN 1 WHEN 'draft' THEN 2 ELSE 3 END")
-            ->orderByDesc('issued_at')
+            ->where('status', TeamUsageInvoice::STATUS_DRAFT)
+            ->whereNotNull('stripe_invoice_id')
+            ->orderByDesc('period_to')
             ->orderByDesc('id')
-            ->limit(20)
             ->get();
 
         $currency = strtolower((string) ($invoices->first()?->currency ?: 'eur'));
