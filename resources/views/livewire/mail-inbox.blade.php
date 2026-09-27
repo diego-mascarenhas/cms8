@@ -57,6 +57,25 @@
                     </li>
                 @endforeach
             </ul>
+            <div class="email-filters pt-0">
+                <p class="text-uppercase text-muted small fw-semibold px-3 mb-2">{{ __('Mailbox') }}</p>
+                <ul class="email-filter-folders list-unstyled mb-0">
+                    @foreach ([
+                        'all' => ['icon' => 'ti-mails', 'label' => __('All mailboxes')],
+                        'team' => ['icon' => 'ti-building', 'label' => __('Team')],
+                        'personal' => ['icon' => 'ti-user', 'label' => __('Personal')],
+                    ] as $scopeKey => $scopeMeta)
+                        <li class="d-flex justify-content-between align-items-center {{ $mailboxScope === $scopeKey ? 'active' : '' }}"
+                            wire:key="mailbox-scope-{{ $scopeKey }}">
+                            <a href="javascript:void(0);" class="d-flex align-items-center flex-grow-1"
+                                wire:click.prevent="setMailboxScope('{{ $scopeKey }}')">
+                                <i class="ti {{ $scopeMeta['icon'] }} ti-sm me-2"></i>
+                                <span class="align-middle">{{ $scopeMeta['label'] }}</span>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -206,6 +225,11 @@
                                     </div>
                                     <div class="email-list-item-content ms-2 ms-sm-0 me-2">
                                         <span class="h6 email-list-item-username me-2 {{ $hasUnread ? 'fw-semibold' : '' }}">{{ $fromDisplay }}</span>
+                                        @if (($group['mailbox_scope'] ?? 'team') === 'personal')
+                                            <span class="badge rounded-pill bg-label-info me-2" title="{{ $group['mailbox_name'] ?? __('Personal') }}">{{ __('Personal') }}</span>
+                                        @else
+                                            <span class="badge rounded-pill bg-label-secondary me-2" title="{{ $group['mailbox_name'] ?? __('Team') }}">{{ __('Team') }}</span>
+                                        @endif
                                         @if ($messageCount > 1)
                                             <span class="badge rounded-pill {{ $hasUnread ? 'bg-label-primary' : 'bg-label-secondary' }} me-2">{{ $messageCount }}</span>
                                         @endif
@@ -272,6 +296,12 @@
                         <h6 class="text-truncate mb-0 me-2" id="email-view-subject">
                             {{ $this->selectedEmail['subject'] ?? __('Select a message') }}
                         </h6>
+                        @if ($this->selectedEmail)
+                            <span class="badge rounded-pill {{ ($this->selectedEmail['mailbox_scope'] ?? 'team') === 'personal' ? 'bg-label-info' : 'bg-label-secondary' }} flex-shrink-0"
+                                title="{{ $this->selectedEmail['mailbox_name'] ?? '' }}">
+                                {{ $this->selectedEmail['mailbox_label'] ?? __('Team') }}
+                            </span>
+                        @endif
                     </div>
                     <div class="d-flex align-items-center">
                         @if ($this->selectedEmail)

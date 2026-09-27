@@ -6,6 +6,7 @@ use App\Enums\EmailFolder;
 use App\Models\Email;
 use App\Models\Mailbox;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\Imap\MailboxConnectionService;
 use App\Support\ApplicationDateTime;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -18,12 +19,30 @@ class MailInboxService
 {
     public const PER_PAGE = 10;
 
-    public function baseQuery(Team $team): Builder
+    public function baseQuery(Team $team, ?User $viewer = null): Builder
     {
-        return Email::query()
+        $query = Email::query()
             ->where('team_id', $team->id)
+            ->with(['mailbox:id,team_id,user_id,name,username'])
             ->orderByDesc('message_date')
             ->orderByDesc('id');
+
+        if ($viewer !== null)
+        {
+            $mailboxIds = $team->mailboxes()
+                ->visibleTo($viewer)
+                ->pluck('id')
+                ->all();
+
+            if ($mailboxIds === [])
+            {
+                return $query->whereRaw('1 = 0');
+            }
+
+            $query->whereIn('mailbox_id', $mailboxIds);
+        }
+
+        return $query;
     }
 
     public function applyFolderFilter(Builder $query, string $folderKey): Builder
@@ -58,14 +77,14 @@ class MailInboxService
         });
     }
 
-    public function paginate(Team $team, string $folder, string $search, int $page = 1): LengthAwarePaginator
+    public function paginate(Team $team, string $folder, string $search, int $page = 1, ?User $viewer = null, string $mailboxScope = 'all'): LengthAwarePaginator
     {
-        return $this->paginateGrouped($team, $folder, $search, $page);
+        return $this->paginateGrouped($team, $folder, $search, $page, $viewer, $mailboxScope);
     }
 
-    public function paginateGrouped(Team $team, string $folder, string $search, int $page = 1): LengthAwarePaginator
+    public function paginateGrouped(Team $team, string $folder, string $search, int $page = 1, ?User $viewer = null, string $mailboxScope = 'all'): LengthAwarePaginator
     {
-        $groups = $this->senderGroups($team, $folder, $search);
+        $groups = $this->senderGroups($team, $folder, $search, $viewer, $mailboxScope);
         $total = $groups->count();
         $items = $groups->slice(($page - 1) * self::PER_PAGE, self::PER_PAGE)->values();
 
@@ -81,11 +100,12 @@ class MailInboxService
     /**
      * @return Collection<int, array<string, mixed>>
      */
-    public function senderGroups(Team $team, string $folder, string $search): Collection
+    public function senderGroups(Team $team, string $folder, string $search, ?User $viewer = null, string $mailboxScope = 'all'): Collection
     {
-        $query = $this->baseQuery($team);
+        $query = $this->baseQuery($team, $viewer);
         $query = $this->applyFolderFilter($query, $folder);
         $query = $this->applySearch($query, $search);
+        $query = $this->applyMailboxScope($query, $team, $viewer, $mailboxScope);
 
         return $query
             ->get()
@@ -98,9 +118,9 @@ class MailInboxService
     /**
      * @return list<array<string, mixed>>
      */
-    public function threadForSender(Team $team, string $folder, string $search, string $senderKey): array
+    public function threadForSender(Team $team, string $folder, string $search, string $senderKey, ?User $viewer = null, string $mailboxScope = 'all'): array
     {
-        $group = $this->senderGroups($team, $folder, $search)
+        $group = $this->senderGroups($team, $folder, $search, $viewer, $mailboxScope)
             ->firstWhere('sender_key', $senderKey);
 
         return $group['emails'] ?? [];
@@ -151,6 +171,10 @@ class MailInboxService
             'emails' => $formattedEmails,
             'flagged' => $latest->flagged,
             'id' => $latest->id,
+            'mailbox_id' => $latest->mailbox_id,
+            'mailbox_scope' => $this->mailboxScopeFor($latest),
+            'mailbox_label' => $this->mailboxLabelFor($latest),
+            'mailbox_name' => $latest->mailbox?->name,
         ];
     }
 
@@ -166,23 +190,25 @@ class MailInboxService
     /**
      * @return array<string, int>
      */
-    public function folderCounts(Team $team): array
+    public function folderCounts(Team $team, ?User $viewer = null): array
     {
-        $counts = Email::query()
-            ->where('team_id', $team->id)
+        $scoped = fn (): Builder => $this->baseQuery($team, $viewer);
+
+        $counts = (clone $scoped())
+            ->reorder()
             ->selectRaw('folder, COUNT(*) as aggregate')
             ->groupBy('folder')
             ->pluck('aggregate', 'folder')
             ->all();
 
-        $starred = Email::query()
-            ->where('team_id', $team->id)
+        $starred = (clone $scoped())
+            ->reorder()
             ->where('flagged', true)
             ->whereNotIn('folder', [EmailFolder::Trash->value, EmailFolder::Spam->value])
             ->count();
 
-        $unreadInbox = Email::query()
-            ->where('team_id', $team->id)
+        $unreadInbox = (clone $scoped())
+            ->reorder()
             ->where('folder', EmailFolder::Inbox->value)
             ->where('seen', false)
             ->count();
@@ -269,6 +295,10 @@ class MailInboxService
     public function formatForList(Email $email): array
     {
         $messageDate = $email->message_date;
+        if (! $email->relationLoaded('mailbox'))
+        {
+            $email->loadMissing('mailbox:id,team_id,user_id,name,username');
+        }
 
         return [
             'id' => $email->id,
@@ -285,7 +315,43 @@ class MailInboxService
             'seen' => $email->seen,
             'flagged' => $email->flagged,
             'folder' => $email->folder instanceof EmailFolder ? $email->folder->value : (string) $email->folder,
+            'mailbox_id' => $email->mailbox_id,
+            'mailbox_scope' => $this->mailboxScopeFor($email),
+            'mailbox_label' => $this->mailboxLabelFor($email),
+            'mailbox_name' => $email->mailbox?->name,
         ];
+    }
+
+    private function applyMailboxScope(Builder $query, Team $team, ?User $viewer, string $mailboxScope): Builder
+    {
+        $scope = in_array($mailboxScope, ['all', 'team', 'personal'], true) ? $mailboxScope : 'all';
+        if ($scope === 'all' || $viewer === null)
+        {
+            return $query;
+        }
+
+        if ($scope === 'team')
+        {
+            $ids = $team->teamMailboxes()->pluck('id')->all();
+
+            return $ids === [] ? $query->whereRaw('1 = 0') : $query->whereIn('mailbox_id', $ids);
+        }
+
+        $ids = $team->mailboxes()->forUser($viewer)->pluck('id')->all();
+
+        return $ids === [] ? $query->whereRaw('1 = 0') : $query->whereIn('mailbox_id', $ids);
+    }
+
+    private function mailboxScopeFor(Email $email): string
+    {
+        return $email->mailbox?->isPersonal() ? 'personal' : 'team';
+    }
+
+    private function mailboxLabelFor(Email $email): string
+    {
+        return $email->mailbox?->isPersonal()
+            ? (string) __('Personal')
+            : (string) __('Team');
     }
 
     /**
