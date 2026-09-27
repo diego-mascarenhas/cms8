@@ -132,6 +132,60 @@ class InvoiceSummaryServiceTest extends TestCase
 
         $this->assertSame(1, $stats['overdue']['count']);
         $this->assertSame(['EUR' => 50.0], $stats['overdue']['totals_by_currency']);
+
+        $this->assertSame(0, $stats['draft']['count']);
+        $this->assertSame([], $stats['draft']['totals_by_currency']);
+    }
+
+    public function test_index_stats_include_draft_invoices(): void
+    {
+        Carbon::setTestNow('2026-06-06 12:00:00');
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-DRAFT',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 75,
+            'discount' => 0,
+            'total_amount' => 75,
+            'balance' => 75,
+            'status' => 9,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-OPEN',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(5)->toDateString(),
+            'gross_amount' => 40,
+            'discount' => 0,
+            'total_amount' => 40,
+            'balance' => 40,
+            'status' => 2,
+        ]);
+
+        $stats = $this->service->buildIndexStats($team->id);
+
+        $this->assertSame(1, $stats['draft']['count']);
+        $this->assertSame(['EUR' => 75.0], $stats['draft']['totals_by_currency']);
+        $this->assertSame(1, $stats['unpaid']['count']);
     }
 
     public function test_unpaid_excludes_bonificada_even_when_balance_is_positive(): void

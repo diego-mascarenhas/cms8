@@ -72,6 +72,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^[+\-\d\s()]*$/'],
             'password' => 'required|string|min:8|confirmed',
             'role_ids' => 'required|array|min:1',
             'role_ids.*' => 'exists:roles,id',
@@ -90,9 +91,12 @@ class UserController extends Controller
             return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
         }
 
+        $phoneDigits = preg_replace('/\D+/', '', (string) ($validated['phone'] ?? ''));
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $phoneDigits !== '' ? (int) $phoneDigits : null,
             'password' => Hash::make($validated['password']),
         ]);
 
@@ -183,6 +187,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^[+\-\d\s()]*$/'],
             'password' => 'nullable|string|min:8|confirmed',
             'role_ids' => 'required|array|min:1',
             'role_ids.*' => 'exists:roles,id',
@@ -202,9 +207,12 @@ class UserController extends Controller
             return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
         }
 
+        $phoneDigits = preg_replace('/\D+/', '', (string) ($validated['phone'] ?? ''));
+
         $updateData = [
             'name' => $validated['name'],
             'email' => $validated['email'],
+            'phone' => $phoneDigits !== '' ? (int) $phoneDigits : null,
         ];
 
         if (! empty($validated['password']))

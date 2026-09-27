@@ -249,6 +249,59 @@ class MailInboxTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_inbox_shows_team_and_personal_mailbox_badges_and_filter(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+
+        $teamMailbox = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'name' => 'Empresa',
+        ]);
+        $personalMailbox = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'name' => 'Personal Diego',
+        ]);
+
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $teamMailbox->id,
+            'subject' => 'Team invoice',
+            'from_address' => 'billing@client.com',
+            'folder' => EmailFolder::Inbox,
+        ]);
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $personalMailbox->id,
+            'subject' => 'Personal note',
+            'from_address' => 'friend@gmail.com',
+            'folder' => EmailFolder::Inbox,
+        ]);
+
+        $service = app(MailInboxService::class);
+        $all = $service->senderGroups($team, 'inbox', '', $user, 'all');
+        $this->assertCount(2, $all);
+        $this->assertContains('team', $all->pluck('mailbox_scope')->all());
+        $this->assertContains('personal', $all->pluck('mailbox_scope')->all());
+
+        $personalOnly = $service->senderGroups($team, 'inbox', '', $user, 'personal');
+        $this->assertCount(1, $personalOnly);
+        $this->assertSame('personal', $personalOnly->first()['mailbox_scope']);
+        $this->assertSame('Personal note', $personalOnly->first()['subject']);
+
+        Livewire::actingAs($user)
+            ->test(MailInbox::class)
+            ->assertSee('Team invoice')
+            ->assertSee('Personal note')
+            ->assertSee(__('Team'))
+            ->assertSee(__('Personal'))
+            ->call('setMailboxScope', 'personal')
+            ->assertSee('Personal note')
+            ->assertDontSee('Team invoice');
+    }
+
     public function test_mark_group_unread_updates_all_emails_in_sender_group(): void
     {
         $user = $this->userWithTeam();

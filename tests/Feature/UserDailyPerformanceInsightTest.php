@@ -488,7 +488,7 @@ class UserDailyPerformanceInsightTest extends TestCase
         ]);
     }
 
-    public function test_dashboard_does_not_persist_daily_insight_and_shows_assistant_prompt(): void
+    public function test_dashboard_does_not_persist_daily_insight_and_shows_focus_actions(): void
     {
         $this->seedInsightDependencies();
         $user = $this->createUserWithRole('admin');
@@ -505,11 +505,12 @@ class UserDailyPerformanceInsightTest extends TestCase
             'user_id' => $user->id,
         ]);
 
-        $firstName = explode(' ', (string) $user->name, 2)[0];
-        $response->assertSee(e(__('app.dashboard_assistant_greeting', ['name' => $firstName])), false);
-        $response->assertSee(e(__('app.dashboard_assistant_subtitle')), false);
-        $response->assertSee(__('app.dashboard_open_assistant'), false);
-        $response->assertSee('data-bs-target="#assistant-offcanvas"', false);
+        $response->assertSee(__('app.dashboard_performance_focus_title'), false);
+        $response->assertSee(__('app.dashboard_performance_focus_subtitle'), false);
+        $response->assertDontSee(__('app.dashboard_assistant_greeting', ['name' => explode(' ', (string) $user->name, 2)[0]]), false);
+        $response->assertDontSee(__('app.dashboard_open_assistant'), false);
+        $response->assertSee('Estrategia', false);
+        $response->assertSee('Organización', false);
     }
 
     public function test_find_today_insight_returns_null_without_row(): void
@@ -726,5 +727,95 @@ class UserDailyPerformanceInsightTest extends TestCase
             ['text' => 'Solo', 'emoji' => ''],
             UserDailyPerformanceInsight::splitHeadlineWordAndTrailingEmoji('Solo'),
         );
+    }
+
+    public function test_digest_scopes_email_metrics_to_personal_mailboxes_when_configured(): void
+    {
+        $this->seedInsightDependencies();
+        $user = $this->createUserWithRole('admin');
+        $team = $user->currentTeam;
+        $user->forceFill(['phone' => 34600111222])->save();
+
+        Module::firstOrCreate(['key' => 'mailbox'], ['name' => 'Mailbox', 'is_core' => false]);
+        $team->enableModule('mailbox');
+        $team = $team->fresh();
+
+        $teamMailbox = \App\Models\Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+            'username' => 'empresa@example.com',
+        ]);
+        $personalMailbox = \App\Models\Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+            'username' => 'diego.personal@example.com',
+        ]);
+
+        \App\Models\Email::factory()->create([
+            'mailbox_id' => $personalMailbox->id,
+            'team_id' => $team->id,
+            'seen' => false,
+            'message_date' => now(),
+        ]);
+        \App\Models\Email::factory()->create([
+            'mailbox_id' => $teamMailbox->id,
+            'team_id' => $team->id,
+            'seen' => false,
+            'message_date' => now(),
+        ]);
+
+        $digest = app(DailyTeamDigestMetricsCollector::class)->collect($user->fresh(), $team);
+
+        $this->assertTrue($digest['email']['scoped_to_personal_email']);
+        $this->assertSame(1, $digest['email']['unread']);
+        $this->assertContains('diego.personal@example.com', $digest['user_channels']['personal_mailbox_usernames']);
+        $this->assertSame('34600111222', $digest['user_channels']['whatsapp']);
+        $this->assertSame('email_unread_personal', $digest['highlight_items'][0]['key'] ?? null);
+    }
+
+    public function test_insight_email_is_sent_to_personal_mailbox_username_when_set(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        \App\Models\Mailbox::factory()->create([
+            'team_id' => $admin->current_team_id,
+            'user_id' => $admin->id,
+            'username' => 'insight.inbox@example.com',
+        ]);
+
+        Mail::fake();
+        config([
+            'daily_performance_insight.send_email' => true,
+            'daily_performance_insight.use_llm' => false,
+        ]);
+
+        $this->artisan('performance-insights:generate', [
+            '--team' => $admin->current_team_id,
+            '--user' => $admin->id,
+            '--force' => true,
+        ])->assertSuccessful();
+
+        Mail::assertSent(DailyPerformanceInsightMail::class, function (DailyPerformanceInsightMail $mail)
+        {
+            return $mail->hasTo('insight.inbox@example.com');
+        });
+    }
+
+    public function test_user_can_update_whatsapp_on_edit_form(): void
+    {
+        $this->seedInsightDependencies();
+        $admin = $this->createUserWithRole('admin');
+        $role = Role::firstOrCreate(['name' => 'admin']);
+
+        $response = $this->actingAs($admin)->put(route('user.update', $admin->id), [
+            'name' => $admin->name,
+            'email' => $admin->email,
+            'phone' => '+34 600 111 222',
+            'role_ids' => [$role->id],
+        ]);
+
+        $response->assertRedirect(route('user.index'));
+        $admin->refresh();
+        $this->assertSame(34600111222, (int) $admin->phone);
     }
 }

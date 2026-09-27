@@ -1,12 +1,12 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('Add Mailbox'))
+@section('title', $isPersonal ? __('Add personal mailbox') : __('Add Mailbox'))
 
 @section('content')
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
     <div class="d-flex flex-column justify-content-center">
-        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ __('Añadir casilla') }}</h4>
-        <p class="text-muted">{{ __('Configure a new IMAP mailbox for the team') }}</p>
+        <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Settings') }}/</span> {{ $isPersonal ? __('Añadir casilla personal') : __('Añadir casilla') }}</h4>
+        <p class="text-muted">{{ $isPersonal ? __('Configure a personal IMAP mailbox (same settings as the company mailbox)') : __('Configure a new IMAP mailbox for the team') }}</p>
     </div>
     <div class="mt-3 mt-md-0">
         <a href="{{ route('team.mailboxes.index', $team) }}" class="btn btn-label-secondary">{{ __('Cancel') }}</a>
@@ -17,6 +17,7 @@
     <div class="card-body">
         <form action="{{ route('team.mailboxes.store', $team) }}" method="POST">
             @csrf
+            <input type="hidden" name="ownership" value="{{ $isPersonal ? 'personal' : 'team' }}">
 
             <div class="row g-3">
                 <div class="col-md-6">

@@ -20,6 +20,7 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:50', 'regex:/^[+\-\d\s()]*$/'],
             'photo' => ['nullable', 'mimes:jpg,jpeg,png', 'max:1024'],
         ])->validateWithBag('updateProfileInformation');
 
@@ -28,32 +29,41 @@ class UpdateUserProfileInformation implements UpdatesUserProfileInformation
             $user->updateProfilePhoto($input['photo']);
         }
 
+        $phoneDigits = $this->normalizePhoneDigits($input['phone'] ?? null);
+
         if ($input['email'] !== $user->email &&
             $user instanceof MustVerifyEmail)
         {
-            $this->updateVerifiedUser($user, $input);
+            $this->updateVerifiedUser($user, $input, $phoneDigits);
         } else
         {
             $user->forceFill([
                 'name' => $input['name'],
                 'email' => $input['email'],
+                'phone' => $phoneDigits,
             ])->save();
         }
     }
 
     /**
-     * Update the given verified user's profile information.
-     *
      * @param  array<string, string>  $input
      */
-    protected function updateVerifiedUser(User $user, array $input): void
+    protected function updateVerifiedUser(User $user, array $input, ?int $phoneDigits): void
     {
         $user->forceFill([
             'name' => $input['name'],
             'email' => $input['email'],
+            'phone' => $phoneDigits,
             'email_verified_at' => null,
         ])->save();
 
         $user->sendEmailVerificationNotification();
+    }
+
+    private function normalizePhoneDigits(mixed $phone): ?int
+    {
+        $digits = preg_replace('/\D+/', '', (string) ($phone ?? ''));
+
+        return is_string($digits) && $digits !== '' ? (int) $digits : null;
     }
 }

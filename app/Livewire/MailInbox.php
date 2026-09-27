@@ -21,6 +21,9 @@ class MailInbox extends Component
 
     public string $folder = 'inbox';
 
+    /** all | team | personal */
+    public string $mailboxScope = 'all';
+
     public string $search = '';
 
     /** @var list<int> */
@@ -61,6 +64,15 @@ class MailInbox extends Component
         $this->clearSelection();
     }
 
+    public function setMailboxScope(string $scope): void
+    {
+        $this->mailboxScope = in_array($scope, ['all', 'team', 'personal'], true) ? $scope : 'all';
+        $this->resetPage();
+        $this->selectedEmailId = null;
+        $this->expandedSenderKey = null;
+        $this->clearSelection();
+    }
+
     public function refreshMailbox(MailboxConnectionService $mailboxService): void
     {
         $team = $this->currentTeam();
@@ -71,7 +83,7 @@ class MailInbox extends Component
             return;
         }
 
-        $mailboxes = $team->mailboxes()->get();
+        $mailboxes = $team->mailboxes()->visibleTo(auth()->user())->get();
         if ($mailboxes->isEmpty())
         {
             $this->flashStatus(__('No hay casillas configuradas. Añade una en Gestionar casillas.'), 'danger');
@@ -426,7 +438,7 @@ class MailInbox extends Component
             return [];
         }
 
-        return $this->inboxService->folderCounts($team);
+        return $this->inboxService->folderCounts($team, auth()->user());
     }
 
     public function getPaginationLabelProperty(): string
@@ -459,7 +471,14 @@ class MailInbox extends Component
             return [];
         }
 
-        return $this->inboxService->threadForSender($team, $this->folder, $this->search, $this->expandedSenderKey);
+        return $this->inboxService->threadForSender(
+            $team,
+            $this->folder,
+            $this->search,
+            $this->expandedSenderKey,
+            auth()->user(),
+            $this->mailboxScope,
+        );
     }
 
     public function render()
@@ -482,7 +501,14 @@ class MailInbox extends Component
             return new \Illuminate\Pagination\LengthAwarePaginator([], 0, MailInboxService::PER_PAGE);
         }
 
-        return $this->inboxService->paginateGrouped($team, $this->folder, $this->search, $this->getPage());
+        return $this->inboxService->paginateGrouped(
+            $team,
+            $this->folder,
+            $this->search,
+            $this->getPage(),
+            auth()->user(),
+            $this->mailboxScope,
+        );
     }
 
     private function bulkMarkRead(bool $read): void
@@ -601,6 +627,11 @@ class MailInbox extends Component
         return Email::query()
             ->where('team_id', $team->id)
             ->whereKey($emailId)
+            ->whereIn(
+                'mailbox_id',
+                $team->mailboxes()->visibleTo(auth()->user())->pluck('id'),
+            )
+            ->with(['mailbox:id,team_id,user_id,name,username'])
             ->first();
     }
 

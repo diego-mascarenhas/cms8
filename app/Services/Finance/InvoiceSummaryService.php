@@ -27,7 +27,10 @@ class InvoiceSummaryService
     public const COLLECTED_EXCLUDED_STATUSES = [3, 4, 6, 7, 9];
 
     /** @var list<string> */
-    public const SUMMARY_FILTERS = ['unpaid', 'credit_notes', 'collected', 'overdue'];
+    public const SUMMARY_FILTERS = ['unpaid', 'credit_notes', 'collected', 'overdue', 'draft'];
+
+    /** Status id for Stripe/local draft invoices. */
+    public const DRAFT_STATUS = 9;
 
     /** @var list<string> Dashboard KPI cards (not invoice list filters). */
     public const DASHBOARD_CARDS = ['unpaid', 'overdue', 'expenses', 'profit'];
@@ -49,6 +52,7 @@ class InvoiceSummaryService
      *     credit_notes: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
      *     collected: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
      *     overdue: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
+     *     draft: array{count: int, amount_label: string, totals_by_currency: array<string, float>},
      * }
      */
     public function buildIndexStats(int $teamId): array
@@ -58,6 +62,7 @@ class InvoiceSummaryService
             'credit_notes' => $this->buildCreditNotesMetric($teamId),
             'collected' => $this->buildCollectedMetric($teamId),
             'overdue' => $this->buildOverdueMetric($teamId),
+            'draft' => $this->buildDraftMetric($teamId),
         ];
     }
 
@@ -155,6 +160,17 @@ class InvoiceSummaryService
         return $this->buildMetric($query, 'balance');
     }
 
+    /**
+     * @return array{count: int, amount_label: string, totals_by_currency: array<string, float>}
+     */
+    private function buildDraftMetric(int $teamId): array
+    {
+        $query = Invoice::withoutGlobalScopes()->where('team_id', $teamId);
+        $this->applySummaryFilter($query, 'draft');
+
+        return $this->buildMetric($query, 'total_amount');
+    }
+
     public function resolveListFilter(?string $filter): string
     {
         $filter = $filter ?? self::DEFAULT_LIST_FILTER;
@@ -177,6 +193,11 @@ class InvoiceSummaryService
         if ($filter === 'all')
         {
             return $query;
+        }
+
+        if ($filter === 'draft')
+        {
+            return $query->where('invoices.status', self::DRAFT_STATUS);
         }
 
         $this->constrainToSales($query);

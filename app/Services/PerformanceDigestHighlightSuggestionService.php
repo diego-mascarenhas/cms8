@@ -27,7 +27,7 @@ class PerformanceDigestHighlightSuggestionService
             $items = $this->digestCollector->buildHighlightItems($this->digestSubsetFromSnapshot($snapshot), $team);
         }
 
-        return $this->enrichItems($items, $team);
+        return $this->enrichItems($items, $team, $insight->user);
     }
 
     /**
@@ -43,7 +43,7 @@ class PerformanceDigestHighlightSuggestionService
      *     messages: list<array<string, mixed>>
      * }>
      */
-    public function enrichItems(array $items, Team $team): array
+    public function enrichItems(array $items, Team $team, ?\App\Models\User $user = null): array
     {
         $enriched = [];
 
@@ -58,10 +58,11 @@ class PerformanceDigestHighlightSuggestionService
                 continue;
             }
 
-            $messages = $this->messageDetailService->forHighlightKey($key, $team);
+            $messages = $this->messageDetailService->forHighlightKey($key, $team, $user);
             $detailMode = $messages !== [] ? 'messages' : 'single';
 
-            $translationKey = 'app.performance_digest_suggestion_'.$key;
+            $suggestionKey = $key === 'email_unread_personal' ? 'email_unread' : $key;
+            $translationKey = 'app.performance_digest_suggestion_'.$suggestionKey;
             $suggestion = __($translationKey, ['count' => $count]);
             if ($suggestion === $translationKey)
             {
@@ -74,7 +75,7 @@ class PerformanceDigestHighlightSuggestionService
 
             if ($actionLabel === null && $actionUrl !== null)
             {
-                $actionLabelKey = 'app.performance_digest_suggestion_action_'.$key;
+                $actionLabelKey = 'app.performance_digest_suggestion_action_'.$suggestionKey;
                 $actionLabel = __($actionLabelKey);
                 if ($actionLabel === $actionLabelKey)
                 {
@@ -129,7 +130,7 @@ class PerformanceDigestHighlightSuggestionService
             }
         }
 
-        if ($key === 'email_unread')
+        if (in_array($key, ['email_unread', 'email_unread_personal'], true))
         {
             $parsed = PerformanceDigestReplyParser::parseEmailSuggestion($suggestion);
             $recipient = $this->firstScheduleRecipientFromMessages($messages, 'email');
@@ -229,7 +230,7 @@ class PerformanceDigestHighlightSuggestionService
         $route = match ($key)
         {
             'whatsapp_unread', 'whatsapp_inbound' => Route::has('chat.index') ? 'chat.index' : null,
-            'email_unread' => Route::has('mail-list') ? 'mail-list' : null,
+            'email_unread', 'email_unread_personal' => Route::has('mail-list') ? 'mail-list' : null,
             'appointments_today' => Route::has('app-calendar') ? 'app-calendar' : null,
             'stressed_clients' => Route::has('contact-list') ? 'contact-list' : null,
             'tasks_overdue', 'tasks_due_today', 'tasks_pending', 'quiet_day' => Route::has('task.index') ? 'task.index' : null,

@@ -260,7 +260,7 @@ class MailController extends Controller
             return redirect()->route('mail-list')->with('mail_error', __('No hay equipo seleccionado.'));
         }
 
-        $mailboxes = $team->mailboxes()->get();
+        $mailboxes = $team->mailboxes()->visibleTo(auth()->user())->get();
         if ($mailboxes->isEmpty())
         {
             return redirect()->route('mail-list')->with('mail_error', __('No hay casillas configuradas. Añade una en Gestionar casillas.'));

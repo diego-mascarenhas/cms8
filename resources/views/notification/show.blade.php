@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } else if (context.channel === 'whatsapp' && context.schedule_recipient) {
             context.schedule_action = 'whatsapp';
             context.action_label = scheduleWhatsAppLabel;
-        } else if (context.key === 'email_unread' && context.schedule_recipient) {
+        } else if ((context.key === 'email_unread' || context.key === 'email_unread_personal') && context.schedule_recipient) {
             context.schedule_action = 'email';
             context.action_label = scheduleEmailLabel;
         } else if ((context.key === 'whatsapp_unread' || context.key === 'whatsapp_inbound') && context.schedule_recipient) {

@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 class DailyTeamDigestMetricsCollector
 {
-    public const DIGEST_VERSION = 3;
+    public const DIGEST_VERSION = 4;
 
     /**
      * Team-wide operational digest plus user activity (calls, interactions, tasks).
@@ -41,6 +41,20 @@ class DailyTeamDigestMetricsCollector
             'digest_version' => self::DIGEST_VERSION,
             'insight_date' => $anchor->toDateString(),
             'user_activity' => $this->collectUserActivity($user, $team, $since7d),
+            'user_channels' => [
+                'login_email' => $user->email,
+                'personal_mailbox_usernames' => $user->personalMailboxes()
+                    ->where('team_id', $team->id)
+                    ->orderBy('name')
+                    ->pluck('username')
+                    ->filter()
+                    ->values()
+                    ->all(),
+                'insight_delivery_email' => $user->insightDeliveryEmail(),
+                'whatsapp' => $user->whatsappFollowUpDigits(),
+                'has_personal_mailbox' => $user->personalMailboxes()->where('team_id', $team->id)->exists(),
+                'has_whatsapp' => $user->whatsappFollowUpDigits() !== null,
+            ],
         ];
 
         if ($team->hasModule('chat'))
@@ -50,7 +64,7 @@ class DailyTeamDigestMetricsCollector
 
         if ($team->hasModule('mailbox'))
         {
-            $digest['email'] = $this->collectEmailMetrics($team, $since7d, $since24h);
+            $digest['email'] = $this->collectEmailMetrics($user, $team, $since7d, $since24h);
         }
 
         if ($team->hasModule('calendar'))
@@ -152,16 +166,39 @@ class DailyTeamDigestMetricsCollector
     }
 
     /**
-     * @return array<string, int>
+     * Prefer personal IMAP mailbox traffic when the user has personal mailboxes;
+     * otherwise use the shared company mailbox totals.
+     *
+     * @return array<string, int|bool|list<int>>
      */
-    private function collectEmailMetrics(Team $team, CarbonInterface $since7d, CarbonInterface $since24h): array
+    private function collectEmailMetrics(User $user, Team $team, CarbonInterface $since7d, CarbonInterface $since24h): array
     {
+        $personalMailboxIds = $team->mailboxes()
+            ->forUser($user)
+            ->pluck('id')
+            ->all();
+
+        $scopedToPersonal = $personalMailboxIds !== [];
         $base = Email::query()->where('team_id', $team->id);
+
+        if ($scopedToPersonal)
+        {
+            $base->whereIn('mailbox_id', $personalMailboxIds);
+        } else
+        {
+            $teamMailboxIds = $team->teamMailboxes()->pluck('id')->all();
+            if ($teamMailboxIds !== [])
+            {
+                $base->whereIn('mailbox_id', $teamMailboxIds);
+            }
+        }
 
         return [
             'received_24h' => (clone $base)->where('message_date', '>=', $since24h)->count(),
             'received_7d' => (clone $base)->where('message_date', '>=', $since7d)->count(),
             'unread' => (clone $base)->where('seen', false)->count(),
+            'scoped_to_personal_email' => $scopedToPersonal,
+            'personal_mailbox_ids' => $personalMailboxIds,
         ];
     }
 
@@ -381,7 +418,10 @@ class DailyTeamDigestMetricsCollector
 
         if (isset($digest['email']) && ($digest['email']['unread'] ?? 0) > 0)
         {
-            $items[] = $this->highlightItem('email_unread', (int) $digest['email']['unread']);
+            $key = ($digest['email']['scoped_to_personal_email'] ?? false)
+                ? 'email_unread_personal'
+                : 'email_unread';
+            $items[] = $this->highlightItem($key, (int) $digest['email']['unread']);
         }
 
         if (isset($digest['appointments']) && ($digest['appointments']['today'] ?? 0) > 0)

@@ -240,10 +240,12 @@ class AuthController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
         ]);
 
+        $phoneDigits = preg_replace('/\D+/', '', (string) ($validated['phone'] ?? ''));
+
         $user->fill([
             'name' => $validated['name'],
             'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
+            'phone' => $phoneDigits !== '' ? (int) $phoneDigits : null,
         ]);
         $user->save();
 

@@ -613,36 +613,29 @@
                                 @php
                                     $insightCardFirstName = explode(' ', (string) auth()->user()->name, 2)[0] ?? '';
                                 @endphp
-                                @if(auth()->user()->hasAnyRole(['admin', 'root']))
-                                    @if($dailyPerformanceInsight ?? null)
-                                        <h5 class="card-title mb-1 fw-semibold">
+                                @if($canShowPerformanceInsight ?? false)
+                                    <h5 class="card-title mb-1 fw-semibold">
+                                        @if($dailyPerformanceInsight ?? null)
                                             <x-notification-subject :subject="$dailyPerformanceInsight->headline" />
-                                        </h5>
-                                        <p class="mb-1 text-muted small">{!! nl2br(e($dailyPerformanceInsight->focus)) !!}</p>
-                                        <p class="mb-2 text-body">{{ e($dailyPerformanceInsight->message) }}</p>
-                                        @if(!empty($dailyPerformanceInsight->context_snapshot['highlights'] ?? []))
-                                            <ul class="list-unstyled mb-2 small text-muted">
-                                                @foreach(array_slice($dailyPerformanceInsight->context_snapshot['highlights'], 0, 4) as $highlight)
-                                                    <li class="mb-1"><i class="ti ti-point-filled ti-xs me-1"></i>{{ $highlight }}</li>
-                                                @endforeach
-                                            </ul>
+                                        @else
+                                            {{ e(__('app.dashboard_performance_focus_title')) }}
                                         @endif
+                                    </h5>
+                                    @if(($dailyPerformanceInsight ?? null) && filled($dailyPerformanceInsight->focus))
+                                        <p class="mb-2 text-muted small">{!! nl2br(e($dailyPerformanceInsight->focus)) !!}</p>
                                     @else
-                                        <h5 class="card-title mb-1 fw-semibold">{{ e(__('app.dashboard_assistant_greeting', ['name' => $insightCardFirstName])) }}</h5>
-                                        <p class="mb-2 text-body">{{ e(__('app.dashboard_assistant_subtitle')) }}</p>
+                                        <p class="mb-2 text-muted small">{{ e(__('app.dashboard_performance_focus_subtitle')) }}</p>
                                     @endif
-                                    @if(auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'root']))
-                                        <div class="mt-auto pt-2">
-                                            <button
-                                                type="button"
-                                                class="btn btn-sm btn-primary waves-effect waves-light"
-                                                data-bs-toggle="offcanvas"
-                                                data-bs-target="#assistant-offcanvas"
-                                                aria-controls="assistant-offcanvas"
-                                                title="{{ __('app.assistant_fab_title') }}"
-                                                aria-label="{{ __('app.assistant_fab_title') }}: {{ __('app.dashboard_open_assistant') }}"
-                                            ><i class="ti ti-sparkles ti-sm me-1" aria-hidden="true"></i>{{ __('app.dashboard_open_assistant') }}</button>
-                                        </div>
+                                    @if(!empty($performanceInsightActions))
+                                        <ul class="list-unstyled mb-2 small">
+                                            @foreach($performanceInsightActions as $action)
+                                                <li class="mb-1 text-body">
+                                                    <i class="ti ti-checkbox ti-xs me-1 text-primary"></i>{{ $action['label'] }}
+                                                </li>
+                                            @endforeach
+                                        </ul>
+                                    @else
+                                        <p class="mb-2 text-body small">{{ e(__('app.dashboard_performance_focus_empty')) }}</p>
                                     @endif
                                 @else
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
@@ -668,11 +661,10 @@
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
-                                {{-- Strategy & Organization: hidden for now; restore by changing to @if(true) --}}
-                                @if(false)
-                                <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Strategia</a>
-                                <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
-                                @endif
+                                <div class="mt-auto pt-2">
+                                    <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Estrategia</a>
+                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
+                                </div>
                     </div>
                     <div class="dashboard-insight-illustration" aria-hidden="true">
                         <img src="{{ asset('assets/img/illustrations/card-advance-sale.png') }}" height="140"
@@ -894,17 +886,32 @@
                             <thead>
                                 <tr>
                                     <th>{{ __('Project') }}</th>
+                                    <th>{{ __('Responsible') }}</th>
                                     <th class="text-center">{{ __('Status') }}</th>
-                                    <th class="text-center">{{ __('Hours') }}</th>
+                                    <th style="min-width: 140px;">{{ __('Hours') }}</th>
                                     <th class="text-center">{{ __('Tasks') }}</th>
+                                    <th>{{ __('Completion') }}</th>
+                                    <th class="text-center"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($ongoingProjects as $project)
+                                    @php
+                                        $workedHours = (float) ($project->dashboard_worked_hours ?? 0);
+                                        $estimatedHours = (float) ($project->dashboard_estimated_hours ?? 0);
+                                        $openTasks = (int) ($project->dashboard_open_tasks ?? 0);
+                                        $totalTasks = (int) ($project->dashboard_total_tasks ?? 0);
+                                        $hoursProgress = $estimatedHours > 0
+                                            ? min(100, (int) round(($workedHours / $estimatedHours) * 100))
+                                            : ($workedHours > 0 ? 100 : 0);
+                                        $dueDate = $project->date_end;
+                                        $dueOverdue = $dueDate !== null && $dueDate->lt(now()->startOfDay());
+                                        $dueSoon = $dueDate !== null && ! $dueOverdue && $dueDate->lte(now()->copy()->addDays(7)->startOfDay());
+                                    @endphp
                                     <tr>
                                         <td>
                                             <div class="d-flex flex-column">
-                                                <h6 class="mb-0 text-truncate" style="max-width: 250px;">
+                                                <h6 class="mb-0">
                                                     @can('view', $project)
                                                         <a href="{{ route('project.show', $project->id) }}" class="text-body text-decoration-none">{{ $project->name }}</a>
                                                     @else
@@ -919,34 +926,60 @@
                                                             {{ $project->client->name }}
                                                         @endcan
                                                     @else
-                                                        N/A
+                                                        —
                                                     @endif
                                                 </small>
                                             </div>
                                         </td>
+                                        <td>
+                                            @if ($project->responsible)
+                                                <span class="text-body">{{ $project->responsible->name }}</span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
                                             {!! $project->status_label !!}
                                         </td>
-                                        <td class="text-center">
-                                            <div class="d-flex flex-column align-items-center">
-                                                @php
-                                                    $totalHours = $project->total_hours ?? 0;
-                                                    $estimatedHours = $project->estimated_hours ?? 0;
-                                                @endphp
-                                                <span class="fw-semibold">{{ \App\Helpers\Helpers::formatHoursHuman($totalHours) }}</span>
-                                                @if($estimatedHours > 0)
-                                                    <small class="text-muted">/ {{ \App\Helpers\Helpers::formatHoursHuman($estimatedHours) }}</small>
-                                                @endif
+                                        <td>
+                                            <div class="d-flex justify-content-between small mb-1">
+                                                <span class="fw-semibold">{{ \App\Helpers\Helpers::formatHoursHuman($workedHours) }}</span>
+                                                <span class="text-muted">
+                                                    @if ($estimatedHours > 0)
+                                                        / {{ \App\Helpers\Helpers::formatHoursHuman($estimatedHours) }}
+                                                    @else
+                                                        —
+                                                    @endif
+                                                </span>
+                                            </div>
+                                            <div class="progress" style="height: 4px;">
+                                                <div class="progress-bar {{ $estimatedHours > 0 && $hoursProgress >= 100 ? 'bg-warning' : 'bg-primary' }}"
+                                                    role="progressbar"
+                                                    style="width: {{ $hoursProgress }}%;"
+                                                    aria-valuenow="{{ $hoursProgress }}"
+                                                    aria-valuemin="0"
+                                                    aria-valuemax="100"></div>
                                             </div>
                                         </td>
+                                        <td class="text-center text-nowrap">
+                                            <span class="fw-semibold">{{ $openTasks }}</span>
+                                            <span class="text-muted">/ {{ $totalTasks }}</span>
+                                        </td>
+                                        <td class="text-nowrap">
+                                            @if ($dueDate)
+                                                <span class="{{ $dueOverdue ? 'text-danger' : ($dueSoon ? 'text-warning' : 'text-body') }}">
+                                                    {{ $dueDate->format('d/m/Y') }}
+                                                </span>
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
                                         <td class="text-center">
-                                            @if($project->status_id == 9)
-                                                {{-- IN_PROGRESS: Show Kanban icon --}}
+                                            @if((int) $project->status_id === \App\Models\ProjectStatus::STATUS_IN_PROGRESS)
                                                 <a href="{{ route('task.index', ['view' => 'kanban', 'project_id' => $project->id]) }}" class="text-body" title="{{ __('View Kanban') }}">
                                                     <i class="ti ti-layout-kanban ti-sm"></i>
                                                 </a>
                                             @else
-                                                {{-- BUDGET/BUDGETED: Show eye icon to view details --}}
                                                 <a href="{{ route('project.show', $project->id) }}" class="text-body" title="{{ __('View Details') }}">
                                                     <i class="ti ti-eye ti-sm"></i>
                                                 </a>
@@ -955,7 +988,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="4" class="text-center py-4">
+                                        <td colspan="7" class="text-center py-4">
                                             <i class="ti ti-mood-check text-success ti-3x mb-3"></i>
                                             <h5>{{ __('No ongoing projects') }}</h5>
                                             <p class="text-muted">{{ __('All projects are completed or not yet started') }}</p>
@@ -1022,7 +1055,7 @@
                     @if ($analyticsTopPages !== [] || $analyticsTopCountries !== [])
                         <div class="row g-3 mt-2 pt-2 border-top">
                             @if ($analyticsTopPages !== [])
-                                <div class="col-md-6">
+                                <div class="col-md-8">
                                     <div class="small text-muted mb-2">{{ __('Páginas top') }}</div>
                                     <ul class="list-unstyled mb-0">
                                         @foreach ($analyticsTopPages as $page)
@@ -1037,7 +1070,7 @@
                                 </div>
                             @endif
                             @if ($analyticsTopCountries !== [])
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <div class="small text-muted mb-2">{{ __('Países top') }}</div>
                                     <ul class="list-unstyled mb-0">
                                         @foreach ($analyticsTopCountries as $country)
@@ -1060,9 +1093,14 @@
         <div class="{{ $hasAnalyticsChart ? 'col-lg-5' : 'col-12' }}">
             <div class="card h-100">
                 <div class="card-header pb-0">
-                    <div class="card-title mb-0">
-                        <h5 class="mb-0">{{ __('Cobros de consumo') }}</h5>
-                        <small class="text-muted">{{ __('Borradores, fallidas y vencidas (todos los equipos)') }}</small>
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="card-title mb-0">
+                            <h5 class="mb-0">{{ __('Cobros de consumo') }}</h5>
+                            <small class="text-muted">{{ __('Borradores de Stripe (todos los equipos)') }}</small>
+                        </div>
+                        <a href="{{ route('invoice.index', ['summary_filter' => 'draft']) }}" class="btn btn-sm btn-label-secondary text-nowrap">
+                            <i class="ti ti-file-invoice ti-xs me-1"></i>{{ __('View drafts') }}
+                        </a>
                     </div>
                     <div class="d-flex flex-wrap gap-2 mt-3">
                         <span class="badge bg-label-warning">
@@ -1091,15 +1129,14 @@
                     @if (empty($usageBillingAttentions['items']))
                         <div class="text-center text-muted py-4">
                             <i class="ti ti-circle-check ti-lg d-block mb-2 text-success"></i>
-                            {{ __('No hay consumos pendientes de emitir o cobrar.') }}
+                            {{ __('No hay borradores de Stripe pendientes.') }}
                         </div>
                     @else
-                        <div class="table-responsive" style="max-height: 280px;">
+                        <div class="table-responsive" style="max-height: 360px;">
                             <table class="table table-sm table-borderless mb-0">
                                 <thead>
                                     <tr>
                                         <th>{{ __('Equipo') }}</th>
-                                        <th>{{ __('Periodo') }}</th>
                                         <th class="text-end">{{ __('Importe') }}</th>
                                         <th></th>
                                     </tr>
@@ -1107,26 +1144,18 @@
                                 <tbody>
                                     @foreach ($usageBillingAttentions['items'] as $item)
                                         <tr>
-                                            <td>
-                                                <a href="{{ $item['account_url'] }}" class="text-body fw-medium">{{ $item['team_name'] }}</a>
+                                            <td class="align-middle">
+                                                <a href="{{ $item['account_url'] }}" class="text-body fw-medium d-block">{{ $item['team_name'] }}</a>
+                                                <span class="small text-muted text-nowrap">{{ $item['period_from'] }} – {{ $item['period_to'] }}</span>
                                             </td>
-                                            <td class="small text-muted">
-                                                <span class="d-block text-nowrap">{{ $item['period_from'] }}</span>
-                                                <span class="d-block text-nowrap">{{ $item['period_to'] }}</span>
+                                            <td class="align-middle text-end text-nowrap">
+                                                {{ number_format($item['billed_cents'] / 100, 2, ',', '.') }}
+                                                {{ strtoupper($item['currency']) }}
                                             </td>
-                                            <td class="text-end text-nowrap">
-                                                <div>
-                                                    {{ number_format($item['billed_cents'] / 100, 2, ',', '.') }}
-                                                    {{ strtoupper($item['currency']) }}
-                                                </div>
-                                                <div class="small">
-                                                    <span class="badge {{ $item['status_badge'] }}">{{ $item['status_label'] }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="text-end text-nowrap">
+                                            <td class="align-middle text-end text-nowrap">
                                                 @if (! empty($item['stripe_url']))
-                                                    <a href="{{ $item['stripe_url'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-icon btn-label-secondary" title="Stripe">
-                                                        <i class="ti ti-brand-stripe ti-xs"></i>
+                                                    <a href="{{ $item['stripe_url'] }}" target="_blank" rel="noopener" class="btn btn-sm btn-icon btn-label-secondary" title="{{ __('Abrir en Stripe') }}">
+                                                        <i class="ti ti-external-link ti-xs"></i>
                                                     </a>
                                                 @endif
                                             </td>
