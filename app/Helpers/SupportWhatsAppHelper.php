@@ -4,7 +4,7 @@ namespace App\Helpers;
 
 class SupportWhatsAppHelper
 {
-    private const DEFAULT_PHONE = '34624159557';
+    private const DEFAULT_PHONE = '34613194131';
 
     public static function phoneDigits(): string
     {

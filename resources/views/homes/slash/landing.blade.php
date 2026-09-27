@@ -544,14 +544,14 @@
             <span class="slash-card-icon">@include('homes.slash.partials.icon', ['name' => 'mail'])</span>
             <div>
               <span>{{ __('slash_landing.contact.email') }}</span>
-              <strong><a href="mailto:hola@humano.app">hola@humano.app</a></strong>
+              <strong><a href="mailto:hola@idoneo.dev">hola@idoneo.dev</a></strong>
             </div>
           </div>
           <div class="slash-contact-card">
             <span class="slash-card-icon">@include('homes.slash.partials.icon', ['name' => 'phone'])</span>
             <div>
               <span>{{ __('slash_landing.contact.phone') }}</span>
-              <strong><a href="{{ $whatsappSupportUrl ?? '#contacto' }}" target="_blank" rel="noopener noreferrer">{{ $supportPhoneDisplay ?? '+34 624 15 95 57' }}</a></strong>
+              <strong><a href="{{ $whatsappSupportUrl ?? '#contacto' }}" target="_blank" rel="noopener noreferrer">{{ $supportPhoneDisplay ?? '+34 613 194 131' }}</a></strong>
             </div>
           </div>
         </div>
