@@ -580,6 +580,11 @@ class ContactController extends Controller
 
         $contactTickets = $this->contactTickets($data);
 
+        if (! app()->runningUnitTests())
+        {
+            $data->refreshWhatsAppAvatar();
+        }
+
         return view(
             'contact.show',
             compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets'),
