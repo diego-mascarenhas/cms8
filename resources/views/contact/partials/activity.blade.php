@@ -4,13 +4,13 @@
     $occurredAtDefault = is_string($occurredAtDefault) ? str_replace('T', ' ', $occurredAtDefault) : now()->format('Y-m-d H:i');
     $showOpportunitySelect = auth()->user()->currentTeam?->hasModule('opportunities') && $contactOpportunities->isNotEmpty();
 @endphp
+@can('logInteraction', $data)
 <div class="card mb-4">
     <h5 class="card-header d-flex justify-content-between align-items-center">
         <span>{{ __('Activity') }}</span>
     </h5>
     <div class="card-body">
-        @can('logInteraction', $data)
-            <form action="{{ route('contact.interactions.store', $data->id) }}" method="POST" class="mb-4 border-bottom pb-4">
+            <form action="{{ route('contact.interactions.store', $data->id) }}" method="POST">
                 @csrf
                 <div class="row g-3">
                     <div class="col-12 col-md-6">
@@ -57,11 +57,12 @@
                     </div>
                 </div>
             </form>
-        @endcan
-
-        @include('contact.partials.activity-history')
     </div>
 </div>
+@endcan
+
+@include('contact.partials.activity-history', ['historyAsCard' => true])
+@include('contact.partials.emotional')
 
 @push('scripts')
     <script>

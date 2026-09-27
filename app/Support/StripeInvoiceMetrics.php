@@ -114,8 +114,8 @@ class StripeInvoiceMetrics
         $primaryCurrency = strtoupper(trim((string) ($primaryCurrency ?? config('cashier.currency', 'usd'))));
 
         return [
-            'total_paid' => self::formatMetricTotalsWithPrimaryEquivalent($paidByCurrency, $primaryCurrency),
-            'unpaid' => self::formatMetricTotalsWithPrimaryEquivalent($unpaidByCurrency, $primaryCurrency),
+            'total_paid' => self::formatEuroTotal($paidByCurrency),
+            'unpaid' => self::formatEuroTotal($unpaidByCurrency),
             'paid_by_currency' => $paidByCurrency,
             'unpaid_by_currency' => $unpaidByCurrency,
             'total_paid_raw' => array_sum($paidByCurrency),
@@ -138,7 +138,7 @@ class StripeInvoiceMetrics
             return $fromMetrics;
         }
 
-        return self::formatMetricTotalsForDisplay(self::sumAmountsByCurrency($rows));
+        return self::formatEuroTotal(self::sumAmountsByCurrency($rows));
     }
 
     /**
@@ -162,6 +162,16 @@ class StripeInvoiceMetrics
         ksort($sums);
 
         return $sums;
+    }
+
+    /**
+     * Euro amount only, for the contact balance cards.
+     *
+     * @param  array<string, float>  $sumsByCurrency
+     */
+    public static function formatEuroTotal(array $sumsByCurrency): string
+    {
+        return number_format((float) ($sumsByCurrency['EUR'] ?? 0), 2).' EUR';
     }
 
     /**

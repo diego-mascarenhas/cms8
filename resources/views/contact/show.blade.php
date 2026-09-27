@@ -355,12 +355,6 @@
                         <i class="ti ti-history ti-xs me-1"></i>{{ __('Activity') }}
                     </a>
                 </li>
-                <li class="nav-item" role="presentation">
-                    <a class="nav-link" id="emotional-balance-tab" data-bs-toggle="tab" href="#emotional-balance"
-                        role="tab" aria-controls="emotional-balance" aria-selected="false">
-                        <i class="ti ti-mood-happy ti-xs me-1"></i>Emociones
-                    </a>
-                </li>
                 @endif
                 @role('admin')
                 <li class="nav-item" role="presentation">
@@ -378,6 +372,14 @@
                     </a>
                 </li>
                 @endrole
+                @can('viewAny', \App\Models\Ticket::class)
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link" id="tickets-tab" data-bs-toggle="tab" href="#tickets" role="tab"
+                        aria-controls="tickets" aria-selected="false">
+                        <i class="ti ti-ticket ti-xs me-1"></i>{{ __('tickets.Tickets') }}
+                    </a>
+                </li>
+                @endcan
             </ul>
             <!--/ User Pills -->
 
@@ -390,10 +392,6 @@
                 <div class="tab-pane fade" id="activity" role="tabpanel" aria-labelledby="activity-tab">
                     @include('contact.partials.activity')
                 </div>
-                <div class="tab-pane fade" id="emotional-balance" role="tabpanel"
-                    aria-labelledby="emotional-balance-tab">
-                    @include('contact.partials.emotional')
-                </div>
                 @endif
                 @role('admin')
                 <div class="tab-pane fade" id="balance" role="tabpanel" aria-labelledby="balance-tab">
@@ -405,6 +403,11 @@
                     @include('contact.partials.billing')
                 </div>
                 @endrole
+                @can('viewAny', \App\Models\Ticket::class)
+                <div class="tab-pane fade" id="tickets" role="tabpanel" aria-labelledby="tickets-tab">
+                    @include('contact.partials.tickets')
+                </div>
+                @endcan
             </div>
 
 
@@ -470,13 +473,15 @@
 
     <script>
         (function () {
-            if (window.location.hash === '#activity') {
-                var trigger = document.querySelector('a[href="#activity"][data-bs-toggle="tab"]');
-                if (trigger && typeof bootstrap !== 'undefined') {
-                    var tab = bootstrap.Tab.getOrCreateInstance(trigger);
-                    tab.show();
+            ['#activity', '#tickets'].forEach(function (hash) {
+                if (window.location.hash !== hash) {
+                    return;
                 }
-            }
+                var trigger = document.querySelector('a[href="' + hash + '"][data-bs-toggle="tab"]');
+                if (trigger && typeof bootstrap !== 'undefined') {
+                    bootstrap.Tab.getOrCreateInstance(trigger).show();
+                }
+            });
         })();
 
         function toggleNotesEdit() {
