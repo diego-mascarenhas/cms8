@@ -648,6 +648,8 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertOk();
         $response->assertSee('Cobros de consumo', false);
         $response->assertSee('Borradores de Stripe (todos los equipos)', false);
+        $response->assertSee(__('View drafts'), false);
+        $response->assertSee(route('invoice.index', ['summary_filter' => 'draft'], false), false);
         $response->assertSee('Cliente Cobro SL', false);
         $response->assertSee('Otro Cliente SA', false);
         $response->assertSee('12,50', false);

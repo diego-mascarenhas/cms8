@@ -7,9 +7,10 @@
 @endonce
 
 @php
-    $visibleFilters = $visibleFilters ?? ['unpaid', 'credit_notes', 'collected', 'overdue'];
+    $visibleFilters = $visibleFilters ?? ['unpaid', 'credit_notes', 'collected', 'overdue', 'draft'];
     $linkToInvoiceList = $linkToInvoiceList ?? false;
     $currentYear = now()->year;
+    $columnClass = $columnClass ?? 'col-6 col-md-4 col-xl';
 
     $invoiceSummaryCards = [
         'unpaid' => [
@@ -48,6 +49,15 @@
             'count_plural' => __('app.invoice_summary_count_invoice_plural'),
             'filter_title' => __('app.invoice_summary_overdue_filter'),
         ],
+        'draft' => [
+            'title' => __('app.invoice_summary_draft_title'),
+            'subtitle' => __('app.invoice_summary_draft_subtitle'),
+            'icon' => 'ti-file-text',
+            'color' => 'secondary',
+            'count_singular' => __('app.invoice_summary_count_invoice_singular'),
+            'count_plural' => __('app.invoice_summary_count_invoice_plural'),
+            'filter_title' => __('app.invoice_summary_draft_filter'),
+        ],
         'expenses' => [
             'title' => __('app.invoice_summary_expenses_title'),
             'subtitle' => __('app.invoice_summary_expenses_subtitle', ['year' => $currentYear]),
@@ -82,7 +92,7 @@
             $count = array_key_exists('count', $stats ?? []) ? $stats['count'] : null;
         @endphp
         @if ($card && $stats)
-            <div class="{{ $columnClass ?? 'col-sm-6 col-xl-3' }}">
+            <div class="{{ $columnClass }}">
                 @if ($cardUrl)
                     <a href="{{ $cardUrl }}" class="card text-body h-100" title="{{ $card['filter_title'] }}">
                         <div class="card-body">

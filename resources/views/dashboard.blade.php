@@ -1093,9 +1093,14 @@
         <div class="{{ $hasAnalyticsChart ? 'col-lg-5' : 'col-12' }}">
             <div class="card h-100">
                 <div class="card-header pb-0">
-                    <div class="card-title mb-0">
-                        <h5 class="mb-0">{{ __('Cobros de consumo') }}</h5>
-                        <small class="text-muted">{{ __('Borradores de Stripe (todos los equipos)') }}</small>
+                    <div class="d-flex align-items-start justify-content-between gap-2">
+                        <div class="card-title mb-0">
+                            <h5 class="mb-0">{{ __('Cobros de consumo') }}</h5>
+                            <small class="text-muted">{{ __('Borradores de Stripe (todos los equipos)') }}</small>
+                        </div>
+                        <a href="{{ route('invoice.index', ['summary_filter' => 'draft']) }}" class="btn btn-sm btn-label-secondary text-nowrap">
+                            <i class="ti ti-file-invoice ti-xs me-1"></i>{{ __('View drafts') }}
+                        </a>
                     </div>
                     <div class="d-flex flex-wrap gap-2 mt-3">
                         <span class="badge bg-label-warning">
