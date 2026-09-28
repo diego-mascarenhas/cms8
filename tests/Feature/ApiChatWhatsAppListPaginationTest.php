@@ -95,6 +95,39 @@ class ApiChatWhatsAppListPaginationTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_unread_conversations_are_listed_before_read_ones(): void
+    {
+        [$token] = $this->inboxWithConversations(0);
+
+        Conversation::create([
+            'message_sid' => 'SM_unread_old',
+            'channel' => 'whatsapp',
+            'from' => '34600000011',
+            'to' => self::TEAM_NUMBER,
+            'body' => 'Unread older',
+            'status' => 'received',
+            'direction' => 'inbound',
+        ])->forceFill(['created_at' => now()->subHour()])->save();
+
+        Conversation::create([
+            'message_sid' => 'SM_read_new',
+            'channel' => 'whatsapp',
+            'from' => '34600000022',
+            'to' => self::TEAM_NUMBER,
+            'body' => 'Read newer',
+            'status' => 'read',
+            'direction' => 'inbound',
+        ])->forceFill(['created_at' => now()])->save();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/chat/whatsapp-list?limit=2');
+
+        $response->assertOk();
+        $this->assertSame(['34600000011', '34600000022'], $this->phonesIn($response->json('contacts')));
+        $this->assertSame(1, (int) $response->json('contacts.0.unread_count'));
+        $this->assertSame(0, (int) $response->json('contacts.1.unread_count'));
+    }
+
     /**
      * @return array{0: string, 1: User, 2: Team}
      */

@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\Conversation;
+use App\Services\WhatsApp\WhatsAppChatArchiveService;
+use App\Services\WhatsApp\WhatsAppInboxContactStarter;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 
@@ -17,14 +19,17 @@ class HelpCenterIcon extends Component
         $inboundCount = Cache::remember(
             $cacheKey,
             15,
-            function () use ($teamNumber)
+            function () use ($team, $teamNumber)
             {
-                if ($teamNumber === '')
+                if ($teamNumber === '' || $team === null)
                 {
                     return 0;
                 }
 
-                return Conversation::where('channel', 'whatsapp')
+                $archivedPhones = app(WhatsAppChatArchiveService::class)->archivedPhoneSet((int) $team->id);
+
+                $query = Conversation::query()
+                    ->where('channel', 'whatsapp')
                     ->where('direction', 'inbound')
                     ->where('status', 'received')
                     ->where(function ($q) use ($teamNumber)
@@ -33,6 +38,19 @@ class HelpCenterIcon extends Component
                             ->orWhere('to', $teamNumber)
                             ->orWhere('from', 'like', $teamNumber.':%')
                             ->orWhere('to', 'like', $teamNumber.':%');
+                    });
+
+                if ($archivedPhones === [])
+                {
+                    return (int) $query->count();
+                }
+
+                return $query->get(['from'])
+                    ->filter(function ($row) use ($archivedPhones): bool
+                    {
+                        $digits = WhatsAppInboxContactStarter::normalizeInboxPhone((string) $row->from);
+
+                        return $digits !== '' && ! isset($archivedPhones[$digits]);
                     })
                     ->count();
             },

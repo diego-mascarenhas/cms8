@@ -2,7 +2,7 @@
 	<a class="nav-link dropdown-toggle hide-arrow" href="{{ route('chat.index', ['view' => 'assistant']) }}">
 		<i class="ti ti-messages ti-md text-body"></i>
 		@if ($inboundCount > 0)
-			<span class="badge bg-danger rounded-pill badge-notifications">{{ $inboundCount }}</span>
+			<span class="badge bg-danger rounded-pill badge-notifications">{{ $inboundCount > 100 ? '+100' : $inboundCount }}</span>
 		@endif
 	</a>
 </li>

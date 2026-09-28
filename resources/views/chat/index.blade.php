@@ -1936,11 +1936,24 @@
             if (!listEl) return;
             var chatUrl = listEl.getAttribute('data-chat-url') || '{{ route("chat.index") }}';
             var listUrl = '{{ route("chat.list") }}';
+            var pageSize = parseInt(listEl.getAttribute('data-page-size'), 10) || 20;
+            var hasMore = listEl.getAttribute('data-has-more') === '1';
+            var loadingMore = false;
+            var sidebarBody = document.querySelector('#app-chat-contacts .sidebar-body');
 
-            function chatListFetchUrl() {
+            function loadedCount() {
+                return listEl.querySelectorAll('.chat-contact-list-item[data-phone]').length;
+            }
+
+            function chatListFetchUrl(limit, offset) {
+                var params = [];
                 var sel = document.getElementById('chat-contact-status-filter');
-                if (!sel || !sel.value) return listUrl;
-                return listUrl + (listUrl.indexOf('?') >= 0 ? '&' : '?') + 'crm_status=' + encodeURIComponent(sel.value);
+                if (sel && sel.value) {
+                    params.push('crm_status=' + encodeURIComponent(sel.value));
+                }
+                params.push('limit=' + encodeURIComponent(String(limit)));
+                params.push('offset=' + encodeURIComponent(String(offset)));
+                return listUrl + (listUrl.indexOf('?') >= 0 ? '&' : '?') + params.join('&');
             }
             function buildChatIndexHrefWithPhone(fromDigits) {
                 var qs = [];
@@ -1961,9 +1974,25 @@
                 if (str == null) return '';
                 return String(str).length > n ? String(str).slice(0, n) + '...' : String(str);
             }
-            function renderChatList(contacts, selectedPhone) {
+            function contactListItemHtml(c, selectedPhone) {
                 selectedPhone = selectedPhone || '';
-                if (!contacts || contacts.length === 0) {
+                var active = (c.from === selectedPhone) ? ' active' : '';
+                var name = escapeHtml(c.user_name || c.from);
+                var lastMsg = escapeHtml(limit(c.last_message, 30));
+                var time = escapeHtml(c.last_message_time || '');
+                var fromSuffix = String(c.from).slice(-2);
+                var unread = parseInt(c.unread_count, 10) || 0;
+                var badge = unread > 0 ? '<span class="badge bg-success rounded-pill text-white" style="font-size: 0.7rem; min-width: 1.25rem;">' + (unread > 99 ? '99+' : unread) + '</span>' : '';
+                var avatar = c.user_photo
+                    ? '<img src="' + escapeHtml(c.user_photo) + '" alt="' + name + '" class="rounded-circle">'
+                    : '<span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span>';
+                var href = buildChatIndexHrefWithPhone(c.from);
+                var rightCol = '<div class="d-flex flex-column align-items-end flex-shrink-0 gap-1"><small class="text-muted">' + time + '</small>' + (badge ? badge : '') + '</div>';
+                return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
+            }
+            function renderChatList(contacts, selectedPhone, append) {
+                selectedPhone = selectedPhone || '';
+                if (!append && (!contacts || contacts.length === 0)) {
                     var hasWa = listEl.getAttribute('data-team-has-wa-number') === '1';
                     var msg = hasWa ? '{{ __("No WhatsApp conversations") }}' : '{{ __("Link a WhatsApp number in the sidebar to see conversations here.") }}';
                     listEl.innerHTML =
@@ -1976,30 +2005,32 @@
                     }
                     return;
                 }
-                var html = contacts.map(function (c) {
-                    var active = (c.from === selectedPhone) ? ' active' : '';
-                    var name = escapeHtml(c.user_name || c.from);
-                    var lastMsg = escapeHtml(limit(c.last_message, 30));
-                    var time = escapeHtml(c.last_message_time || '');
-                    var fromSuffix = String(c.from).slice(-2);
-                    var unread = parseInt(c.unread_count, 10) || 0;
-                    var badge = unread > 0 ? '<span class="badge bg-success rounded-pill text-white" style="font-size: 0.7rem; min-width: 1.25rem;">' + (unread > 99 ? '99+' : unread) + '</span>' : '';
-                    var avatar = c.user_photo
-                        ? '<img src="' + escapeHtml(c.user_photo) + '" alt="' + name + '" class="rounded-circle">'
-                        : '<span class="avatar-initial rounded-circle bg-label-success">' + escapeHtml(fromSuffix) + '</span>';
-                    var href = buildChatIndexHrefWithPhone(c.from);
-                    var rightCol = '<div class="d-flex flex-column align-items-end flex-shrink-0 gap-1"><small class="text-muted">' + time + '</small>' + (badge ? badge : '') + '</div>';
-                    return '<li class="chat-contact-list-item' + active + '" data-phone="' + escapeHtml(c.from) + '"><a href="' + escapeHtml(href) + '" class="d-flex align-items-center"><div class="flex-shrink-0 avatar">' + avatar + '</div><div class="chat-contact-info flex-grow-1 ms-2 min-w-0"><h6 class="chat-contact-name text-truncate m-0">' + name + '</h6><p class="chat-contact-status text-muted text-truncate mb-0">' + lastMsg + '</p></div>' + rightCol + '</a></li>';
+                var html = (contacts || []).map(function (c) {
+                    return contactListItemHtml(c, selectedPhone);
                 }).join('');
-                listEl.innerHTML = html;
+                if (append) {
+                    listEl.insertAdjacentHTML('beforeend', html);
+                } else {
+                    listEl.innerHTML = html;
+                }
                 if (typeof window.applyChatSidebarSearch === 'function') {
                     window.applyChatSidebarSearch();
                 }
             }
-            function fetchChatList() {
+            function fetchChatList(opts) {
+                opts = opts || {};
+                var append = !!opts.append;
+                if (append && (loadingMore || !hasMore)) {
+                    return;
+                }
+                var offset = append ? loadedCount() : 0;
+                var limit = append ? pageSize : Math.max(pageSize, loadedCount() || pageSize);
+                if (append) {
+                    loadingMore = true;
+                }
                 var body = document.getElementById('chat-history-body');
                 var isAssistantView = body && body.getAttribute('data-view-assistant') === '1';
-                fetch(chatListFetchUrl(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                fetch(chatListFetchUrl(limit, offset), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         var selected = listEl.getAttribute('data-selected-phone') || '';
@@ -2007,12 +2038,28 @@
                         if (isAssistantView) {
                             selected = '';
                         }
-                        renderChatList(contacts, selected);
+                        hasMore = !!data.has_more;
+                        listEl.setAttribute('data-has-more', hasMore ? '1' : '0');
+                        renderChatList(contacts, selected, append);
                     })
-                    .catch(function () {});
+                    .catch(function () {})
+                    .finally(function () {
+                        loadingMore = false;
+                    });
             }
-            setInterval(fetchChatList, 5000);
-            window.addEventListener('focus', fetchChatList);
+            setInterval(function () { fetchChatList(); }, 5000);
+            window.addEventListener('focus', function () { fetchChatList(); });
+
+            if (sidebarBody) {
+                sidebarBody.addEventListener('scroll', function () {
+                    if (loadingMore || !hasMore) {
+                        return;
+                    }
+                    if (sidebarBody.scrollTop + sidebarBody.clientHeight >= sidebarBody.scrollHeight - 80) {
+                        fetchChatList({ append: true });
+                    }
+                });
+            }
 
             var crmStatusFilterSel = document.getElementById('chat-contact-status-filter');
             if (crmStatusFilterSel) {
@@ -2024,6 +2071,8 @@
                         nextUrl.searchParams.set('crm_status', crmStatusFilterSel.value);
                     }
                     window.history.replaceState({}, '', nextUrl.toString());
+                    hasMore = true;
+                    listEl.setAttribute('data-has-more', '1');
                     fetchChatList();
                 });
             }
@@ -2893,7 +2942,7 @@
                         <div class="chat-contact-list-item-title">
                             <h6 class="text-muted text-uppercase mb-0 px-4 pt-1 pb-2">{{ __('WhatsApp') }}</h6>
                         </div>
-                        <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}">
+                        <ul class="list-unstyled chat-contact-list mb-0" id="chat-list-whatsapp" data-chat-url="{{ route('chat.index') }}" data-selected-phone="{{ $selectedPhone ?? '' }}" data-team-has-wa-number="{{ !empty($teamWhatsAppNumber) ? '1' : '0' }}" data-has-more="{{ !empty($chatListHasMore) ? '1' : '0' }}" data-page-size="20">
                         @if ($contacts->isEmpty())
                             <li class="chat-contact-list-item chat-list-item-0">
                                 <a href="#"
