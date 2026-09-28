@@ -213,6 +213,60 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
         $this->assertSame(1, $defaults['type_id']);
     }
 
+    public function test_form_defaults_prefer_mercado_pago_when_included(): void
+    {
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $mpAccount = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'mp',
+            'name' => 'Mercado Pago',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-mp',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 2,
+        ]);
+
+        $defaults = $this->service->formDefaults($invoice, includeMercadoPago: true);
+
+        $this->assertSame($mpAccount->id, $defaults['account_id']);
+        $this->assertContains($mpAccount->id, $defaults['mercadopago_account_ids']);
+    }
+
     public function test_register_creates_payment_and_reduces_invoice_balance(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

@@ -493,18 +493,19 @@ class InvoiceController extends Controller
         $electronicPaymentSyncOptions = $canLinkElectronicPayment
             ? $this->invoiceElectronicPaymentLinkService->syncOptions($invoice)
             : [];
+        $hasElectronicSyncOptions = $electronicPaymentSyncOptions !== [];
         if ($canLinkElectronicPayment)
         {
             $this->mercadoPagoPaymentImportService->ensureMercadoPagoPaymentAccount((int) $invoice->team_id);
         }
         $canRegisterPayment = $this->invoicePaymentRegistrationService->canRegisterPayment(auth()->user(), $invoice);
-        $paymentFormDefaults = ($canRegisterPayment || $canLinkElectronicPayment)
+        $paymentFormDefaults = ($canRegisterPayment || ($canLinkElectronicPayment && $hasElectronicSyncOptions))
             ? $this->invoicePaymentRegistrationService->formDefaults(
                 $invoice,
-                includeMercadoPago: $canLinkElectronicPayment,
+                includeMercadoPago: $canLinkElectronicPayment && $hasElectronicSyncOptions,
             )
             : null;
-        if ($paymentFormDefaults !== null && ! $canRegisterPayment && $canLinkElectronicPayment)
+        if ($paymentFormDefaults !== null && ! $canRegisterPayment && $canLinkElectronicPayment && $hasElectronicSyncOptions)
         {
             // Electronic-only: keep Mercado Pago accounts so the sync selector can appear.
             $paymentFormDefaults['accounts'] = array_values(array_filter(

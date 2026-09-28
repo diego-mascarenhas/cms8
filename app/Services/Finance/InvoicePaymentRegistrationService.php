@@ -126,18 +126,28 @@ class InvoicePaymentRegistrationService
             $accounts = $accounts->sortBy('name')->values();
         }
 
-        $preferredAccount = $accounts->first(function (PaymentAccount $account): bool
+        $preferredAccount = null;
+
+        if ($includeMercadoPago)
         {
-            if ($this->isMercadoPagoAccount($account))
+            $preferredAccount = $accounts->first(fn (PaymentAccount $account): bool => $this->isMercadoPagoAccount($account));
+        }
+
+        if ($preferredAccount === null)
+        {
+            $preferredAccount = $accounts->first(function (PaymentAccount $account): bool
             {
-                return false;
-            }
+                if ($this->isMercadoPagoAccount($account))
+                {
+                    return false;
+                }
 
-            $name = mb_strtolower((string) $account->name);
+                $name = mb_strtolower((string) $account->name);
 
-            return str_contains($name, 'efectivo') || preg_match('/\bcash\b/u', $name) === 1;
-        }) ?? $accounts->first(fn (PaymentAccount $account): bool => ! $this->isMercadoPagoAccount($account))
-            ?? $accounts->first();
+                return str_contains($name, 'efectivo') || preg_match('/\bcash\b/u', $name) === 1;
+            }) ?? $accounts->first(fn (PaymentAccount $account): bool => ! $this->isMercadoPagoAccount($account))
+                ?? $accounts->first();
+        }
 
         $paymentTypes = PaymentType::query()
             ->whereKey(self::CASH_PAYMENT_TYPE_ID)
