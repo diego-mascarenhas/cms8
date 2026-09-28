@@ -84,6 +84,7 @@ use App\Http\Controllers\ServiceController;
 use App\Http\Controllers\SLAController;
 use App\Http\Controllers\SoftwareController;
 use App\Http\Controllers\StoreController;
+use App\Http\Controllers\StrategyController;
 use App\Http\Controllers\StylebookController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
@@ -257,6 +258,7 @@ Route::get('/p/budget-mail/{token}/click', [ProjectController::class, 'trackBudg
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
 Route::get('/weekly-plan', [WeeklyWorkPlanController::class, 'index'])->name('weekly-plan.index')->middleware('auth');
+Route::post('/weekly-plan/regenerate', [WeeklyWorkPlanController::class, 'regenerate'])->name('weekly-plan.regenerate')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
@@ -1299,7 +1301,9 @@ Route::get('/affiliate-invite/track/{token}/click', [App\Http\Controllers\Affili
 Route::get('/affiliate/capture', [App\Http\Controllers\AffiliateReferralCaptureController::class, 'capture'])->name('affiliate.referral.capture');
 Route::get('/notification/{notification}/stats', [NotificationTrackingController::class, 'getStats'])->name('notification.stats')->middleware('auth');
 
-Route::view('/strategy', 'strategy.index')->name('strategy.index')->middleware('auth');
+Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index')->middleware('auth');
+Route::post('/strategy', [StrategyController::class, 'update'])->name('strategy.update')->middleware('auth');
+Route::post('/strategy/advance', [StrategyController::class, 'advance'])->name('strategy.advance')->middleware('auth');
 Route::middleware('auth')->group(function ()
 {
     Route::get('/organization', [EnterpriseOrganizationController::class, 'index'])->name('organization.index');

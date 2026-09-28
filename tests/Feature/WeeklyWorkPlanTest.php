@@ -107,6 +107,9 @@ class WeeklyWorkPlanTest extends TestCase
         $this->assertSame('Cerrar más propuestas este mes', $plan['challenge']);
         $this->assertSame([
             'sales_objective',
+            'strategy_level',
+            'business_challenge',
+            'marketing',
             'company_email',
             'personal_email',
             'draft_invoices',
@@ -121,7 +124,14 @@ class WeeklyWorkPlanTest extends TestCase
         $list = collect($plan['items'])->firstWhere('key', 'list60');
         $this->assertSame('Cliente Lista', $list['details'][0]['label']);
         $this->assertStringContainsString('Hola Cliente', $list['details'][0]['note']);
-        $this->assertSame('Presentar impuestos del T3 2026 (hasta el 20 de octubre)', $plan['items'][5]['label']);
+        $tax = collect($plan['items'])->firstWhere('key', 'tax_filing');
+        $this->assertSame('Presentar impuestos del T3 2026 (hasta el 20 de octubre)', $tax['label']);
+        $challenge = collect($plan['items'])->firstWhere('key', 'business_challenge');
+        $this->assertNotNull($challenge);
+        $this->assertStringContainsString('Cerrar más propuestas', $challenge['label']);
+        $marketing = collect($plan['items'])->firstWhere('key', 'marketing');
+        $this->assertNotNull($marketing);
+        $this->assertSame('linkedin', $marketing['social_channel']);
     }
 
     public function test_midweek_keeps_the_monday_plan(): void
@@ -152,7 +162,8 @@ class WeeklyWorkPlanTest extends TestCase
         $wednesday = app(WeeklyWorkPlanService::class)->present($user, $team);
 
         $this->assertSame($monday['items'], $wednesday['items']);
-        $this->assertSame(2, $wednesday['items'][0]['count']);
+        $companyEmail = collect($wednesday['items'])->firstWhere('key', 'company_email');
+        $this->assertSame(2, $companyEmail['count']);
     }
 
     public function test_friday_reviews_what_is_still_open(): void
@@ -210,7 +221,8 @@ class WeeklyWorkPlanTest extends TestCase
 
         $plan = app(WeeklyWorkPlanService::class)->present($user, $team);
 
-        $this->assertSame([], array_column($plan['items'], 'key'));
+        $this->assertSame(['strategy_level', 'marketing'], array_column($plan['items'], 'key'));
+        $this->assertNull(collect($plan['items'])->firstWhere('key', 'tax_filing'));
     }
 
     public function test_week_before_the_filing_month_includes_tax(): void
@@ -222,8 +234,9 @@ class WeeklyWorkPlanTest extends TestCase
 
         $plan = app(WeeklyWorkPlanService::class)->present($user, $team);
 
-        $this->assertSame(['tax_filing'], array_column($plan['items'], 'key'));
-        $this->assertStringContainsString('T3 2026', $plan['items'][0]['label']);
+        $this->assertSame(['strategy_level', 'marketing', 'tax_filing'], array_column($plan['items'], 'key'));
+        $tax = collect($plan['items'])->firstWhere('key', 'tax_filing');
+        $this->assertStringContainsString('T3 2026', $tax['label']);
     }
 
     public function test_dashboard_card_shows_the_weekly_plan(): void
@@ -242,7 +255,7 @@ class WeeklyWorkPlanTest extends TestCase
         $response->assertSee('Presentar impuestos del T3 2026 (hasta el 20 de octubre)', false);
         $response->assertSee(route('weekly-plan.index'), false);
         $response->assertSee('ti-sitemap', false);
-        $response->assertDontSee(route('strategy.index'), false);
+        $response->assertSee(route('strategy.index'), false);
         $response->assertDontSee('Haz tenido una gran IDEA', false);
     }
 
@@ -386,6 +399,122 @@ class WeeklyWorkPlanTest extends TestCase
             ->assertSee('VENCIDA-3', false)
             ->assertSee('Hosting corporativo', false)
             ->assertSee('Diagnóstico de empatía', false);
+    }
+
+    public function test_force_rebuild_refreshes_counts_midweek(): void
+    {
+        Carbon::setTestNow('2026-10-05');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+        $company = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+        ]);
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $company->id,
+            'seen' => false,
+        ]);
+
+        app(WeeklyWorkPlanService::class)->present($user, $team);
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $company->id,
+            'seen' => false,
+        ]);
+        Carbon::setTestNow('2026-10-07');
+
+        $forced = app(WeeklyWorkPlanService::class)->present($user, $team, null, true);
+        $companyEmail = collect($forced['items'])->firstWhere('key', 'company_email');
+        $this->assertSame(2, $companyEmail['count']);
+    }
+
+    public function test_regenerate_endpoint_is_unavailable_outside_local(): void
+    {
+        [$user] = $this->planner();
+        $this->actingAs($user);
+
+        $this->post(route('weekly-plan.regenerate'))
+            ->assertNotFound();
+    }
+
+    public function test_strategy_advance_persists_level(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $this->assertSame(1, app(WeeklyWorkPlanService::class)->strategyLevel($team));
+
+        $this->post(route('strategy.advance'))
+            ->assertRedirect(route('strategy.index'));
+
+        $this->assertSame(2, app(WeeklyWorkPlanService::class)->strategyLevel($team->fresh()));
+    }
+
+    public function test_strategy_fields_persist_in_business_config(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $this->post(route('strategy.update'), [
+            'strategy' => [
+                'ideal_client' => 'PYMEs de servicios',
+                'destination' => 'Cerrar 10 clientes/mes',
+                'offer' => 'Auditoría + plan 90 días',
+                'storytelling' => 'De caos operativo a sistema que vende solo',
+            ],
+        ])->assertRedirect(route('strategy.index'));
+
+        $config = $team->fresh()->getSetting('business_config', []);
+        if (is_string($config))
+        {
+            $config = json_decode($config, true) ?: [];
+        }
+
+        $this->assertSame('PYMEs de servicios', $config['strategy']['ideal_client']);
+        $this->assertSame('De caos operativo a sistema que vende solo', $config['strategy']['storytelling']);
+
+        $plans = app(WeeklyWorkPlanService::class);
+        $step = $plans->strategyStep($team->fresh());
+        $this->assertSame(4, $step['filled']);
+        $this->assertSame(4, $step['total']);
+
+        $progress = $plans->strategyStepsProgress($team->fresh());
+        $this->assertTrue($progress[1]['complete']);
+        $this->assertFalse($progress[2]['complete']);
+    }
+
+    public function test_strategy_page_shows_saved_storytelling(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $team->setSetting('business_config', [
+            'strategy_level' => 1,
+            'strategy' => [
+                'storytelling' => 'Historia guardada en JSON',
+            ],
+        ], ['type' => 'json', 'group' => 'business-config']);
+
+        $this->get(route('strategy.index'))
+            ->assertOk()
+            ->assertSee('Historia guardada en JSON', false)
+            ->assertSee('Storytelling', false);
+    }
+
+    public function test_social_advisor_prefers_linkedin_for_b2b_challenge(): void
+    {
+        [$user, $team] = $this->planner();
+        $team->setSetting('business_config', [
+            'business_challenge' => 'Cerrar más propuestas B2B este mes',
+            'business_industry' => 'Consultoría SaaS',
+        ], ['type' => 'json', 'group' => 'business-config']);
+
+        $tip = app(\App\Services\WeeklyPlanSocialChannelAdvisor::class)->recommend($team);
+
+        $this->assertSame('linkedin', $tip['channel']);
+        $this->assertStringContainsString('LinkedIn', $tip['label']);
     }
 
     /**

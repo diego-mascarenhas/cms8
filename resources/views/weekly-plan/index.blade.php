@@ -21,8 +21,23 @@
                     {{ __('app.weekly_plan_next') }}<i class="ti ti-chevron-right ms-1"></i>
                 </a>
             @endif
+            @if(!empty($canRegenerate) && ($report['is_current'] ?? false))
+                <form method="POST" action="{{ route('weekly-plan.regenerate') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-primary">
+                        <i class="ti ti-refresh me-1"></i>{{ __('app.weekly_plan_regenerate') }}
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
+
+    @if (session('success'))
+        <div class="alert alert-success alert-dismissible" role="alert">
+            {{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    @endif
 
     <div class="card">
         <div class="card-body">

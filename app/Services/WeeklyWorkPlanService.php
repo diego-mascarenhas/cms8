@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Enums\CampaignStatus;
+use App\Enums\PaidAdCampaignStatus;
+use App\Models\Campaign;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Email;
@@ -9,6 +12,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\List60;
 use App\Models\MessageDelivery;
+use App\Models\PaidAdCampaign;
 use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\Service;
@@ -30,6 +34,9 @@ class WeeklyWorkPlanService
      */
     private const ORDER = [
         'sales_objective',
+        'strategy_level',
+        'business_challenge',
+        'marketing',
         'company_email',
         'personal_email',
         'whatsapp',
@@ -45,10 +52,16 @@ class WeeklyWorkPlanService
 
     private const DETAIL_LIMIT = 30;
 
+    private const STRATEGY_MAX = 12;
+
+    public function __construct(
+        private WeeklyPlanSocialChannelAdvisor $socialAdvisor,
+    ) {}
+
     /**
      * @return array{mode: string, title: string, challenge: ?string, items: list<array<string, mixed>>}
      */
-    public function present(User $user, Team $team, ?CarbonInterface $today = null): array
+    public function present(User $user, Team $team, ?CarbonInterface $today = null, bool $forceRebuild = false): array
     {
         $today = Carbon::parse($today ?? now())->startOfDay();
         $weekStart = $today->copy()->startOfWeek(Carbon::MONDAY);
@@ -70,11 +83,11 @@ class WeeklyWorkPlanService
         }
 
         $refreshShape = $plan->exists && $this->itemsLackBreakdown($plan->items);
-        if (! $plan->exists || $today->isMonday() || $refreshShape)
+        if ($forceRebuild || ! $plan->exists || $today->isMonday() || $refreshShape)
         {
             $plan->challenge = $this->monthlyChallenge($team);
             $plan->items = $this->buildItems($user, $team, $weekStart, $weekEnd);
-            if (! $plan->exists || $today->isMonday())
+            if ($forceRebuild || ! $plan->exists || $today->isMonday())
             {
                 $plan->review = null;
                 $plan->reviewed_at = null;
@@ -143,7 +156,7 @@ class WeeklyWorkPlanService
 
         if ($selected->equalTo($current))
         {
-            $presented = $this->present($user, $team, $current);
+            $presented = $this->present($user, $team, $current, false);
         } else
         {
             $stored = WeeklyWorkPlan::query()
@@ -207,8 +220,13 @@ class WeeklyWorkPlanService
             $counts['sales_objective'] = $people + $actions;
         }
 
+        $strategy = $this->strategyStep($team);
+        $social = $this->socialAdvisor->recommend($team);
         $hooks = $this->campaignHooks($team, $weekStart);
         $details = [
+            'strategy_level' => $this->strategyDetails($strategy),
+            'business_challenge' => $this->challengeDetails($team, $social),
+            'marketing' => $this->marketingDetails($team, $social),
             'projects' => $this->projectDetails($user, $team, $weekStart, $weekEnd),
             'draft_invoices' => $this->invoiceDetails($team, 'draft'),
             'overdue_invoices' => $this->invoiceDetails($team, 'overdue'),
@@ -241,6 +259,59 @@ class WeeklyWorkPlanService
                     'details' => [],
                     'quarter_label' => $tax['quarter_label'],
                     'deadline_label' => $tax['deadline_label'],
+                ]);
+
+                continue;
+            }
+
+            if ($key === 'strategy_level')
+            {
+                $items[] = $this->scoped([
+                    'key' => $key,
+                    'count' => 1,
+                    'label' => (string) __('app.weekly_plan_strategy_level', [
+                        'level' => $strategy['number'],
+                        'title' => $strategy['title'],
+                    ]),
+                    'href' => route('strategy.index'),
+                    'details' => $details['strategy_level'],
+                    'strategy_level' => $strategy['number'],
+                ]);
+
+                continue;
+            }
+
+            if ($key === 'business_challenge')
+            {
+                $challenge = $this->monthlyChallenge($team) ?? '';
+                $items[] = $this->scoped([
+                    'key' => $key,
+                    'count' => 1,
+                    'label' => (string) __('app.weekly_plan_business_challenge_action', [
+                        'challenge' => Str::limit($challenge, 80, '…'),
+                    ]),
+                    'href' => route('team-settings.business-config', $team),
+                    'details' => $details['business_challenge'],
+                ]);
+
+                continue;
+            }
+
+            if ($key === 'marketing')
+            {
+                $campaignCount = max(0, $count - 1);
+                $items[] = $this->scoped([
+                    'key' => $key,
+                    'count' => $count,
+                    'label' => $campaignCount > 0
+                        ? (string) __('app.weekly_plan_marketing_with_campaigns', [
+                            'channel' => $social['label'],
+                            'count' => $campaignCount,
+                        ])
+                        : (string) __('app.weekly_plan_marketing', ['channel' => $social['label']]),
+                    'href' => $this->href('marketing'),
+                    'details' => $details['marketing'],
+                    'social_channel' => $social['channel'],
                 ]);
 
                 continue;
@@ -284,6 +355,45 @@ class WeeklyWorkPlanService
             $plannedCount = (int) ($item['count'] ?? 0);
             if ($key === '' || $key === 'sales_objective' || $plannedCount < 1)
             {
+                continue;
+            }
+
+            if (in_array($key, ['strategy_level', 'business_challenge'], true))
+            {
+                $task = (string) __('app.weekly_plan_task_'.$key);
+                $review[] = $this->scoped([
+                    'key' => $key,
+                    'count' => 1,
+                    'planned' => $plannedCount,
+                    'label' => (string) __('app.weekly_plan_review_open', [
+                        'task' => $task,
+                        'remaining' => 1,
+                        'planned' => $plannedCount,
+                    ]),
+                    'href' => $item['href'] ?? $this->href($key),
+                    'done' => false,
+                ]);
+
+                continue;
+            }
+
+            if ($key === 'marketing')
+            {
+                $remaining = max(1, $this->marketingActionCount($team));
+                $task = (string) __('app.weekly_plan_task_marketing');
+                $review[] = $this->scoped([
+                    'key' => $key,
+                    'count' => $remaining,
+                    'planned' => $plannedCount,
+                    'label' => (string) __('app.weekly_plan_review_open', [
+                        'task' => $task,
+                        'remaining' => $remaining,
+                        'planned' => $plannedCount,
+                    ]),
+                    'href' => $item['href'] ?? $this->href($key),
+                    'done' => false,
+                ]);
+
                 continue;
             }
 
@@ -333,6 +443,9 @@ class WeeklyWorkPlanService
     private function counts(User $user, Team $team, CarbonInterface $weekStart, CarbonInterface $weekEnd): array
     {
         return [
+            'strategy_level' => 1,
+            'business_challenge' => $this->monthlyChallenge($team) !== null ? 1 : 0,
+            'marketing' => max(1, $this->marketingActionCount($team)),
             'company_email' => $this->unreadEmails($team, $team->teamMailboxes()->pluck('id')->all()),
             'personal_email' => $this->unreadEmails($team, $team->mailboxes()->forUser($user)->pluck('id')->all()),
             'whatsapp' => $this->unreadWhatsApp($team),
@@ -984,7 +1097,348 @@ class WeeklyWorkPlanService
             'new_leads' => route('contact-list'),
             'list60', 'list60_suggestions' => route('list60-list'),
             'sales_objective' => route('weekly-plan.index'),
+            'strategy_level' => route('strategy.index'),
+            'business_challenge' => route('dashboard'),
+            'marketing' => route('campaigns.index'),
             default => route('dashboard'),
         };
+    }
+
+    /**
+     * @return array{number: int, title: string, tip: string, points: list<string>, fields: list<array{key: string, label: string, value: string}>, filled: int, total: int}
+     */
+    public function strategyStep(Team $team): array
+    {
+        $level = $this->strategyLevel($team);
+        $steps = config('strategy.steps', []);
+        $step = collect($steps)->firstWhere('number', $level) ?? ($steps[0] ?? []);
+        $values = $this->strategyFieldValues($team);
+        $fields = [];
+        foreach ($step['fields'] ?? [] as $field)
+        {
+            $key = (string) ($field['key'] ?? '');
+            if ($key === '')
+            {
+                continue;
+            }
+            $fields[] = [
+                'key' => $key,
+                'label' => (string) ($field['label'] ?? $key),
+                'value' => (string) ($values[$key] ?? ''),
+            ];
+        }
+        $filled = count(array_filter($fields, fn (array $field): bool => trim($field['value']) !== ''));
+
+        return [
+            'number' => $level,
+            'title' => (string) ($step['title'] ?? ''),
+            'tip' => (string) ($step['tip'] ?? ''),
+            'points' => array_values(array_filter(array_map('strval', $step['points'] ?? []))),
+            'fields' => $fields,
+            'filled' => $filled,
+            'total' => count($fields),
+        ];
+    }
+
+    public function strategyLevel(Team $team): int
+    {
+        $config = $this->businessConfig($team);
+        $level = (int) ($config['strategy_level'] ?? 1);
+
+        return max(1, min(self::STRATEGY_MAX, $level));
+    }
+
+    public function advanceStrategyLevel(Team $team): int
+    {
+        $next = min(self::STRATEGY_MAX, $this->strategyLevel($team) + 1);
+        $config = $this->businessConfig($team);
+        $config['strategy_level'] = $next;
+        $team->setSetting('business_config', $config, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+
+        return $next;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function strategyFieldValues(Team $team): array
+    {
+        $config = $this->businessConfig($team);
+        $strategy = $config['strategy'] ?? [];
+        if (! is_array($strategy))
+        {
+            return [];
+        }
+
+        $values = [];
+        foreach ($strategy as $key => $value)
+        {
+            if (! is_string($key))
+            {
+                continue;
+            }
+            $values[$key] = is_scalar($value) ? trim((string) $value) : '';
+        }
+
+        return $values;
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, string>
+     */
+    public function saveStrategyFields(Team $team, array $input): array
+    {
+        $allowed = $this->allowedStrategyFieldKeys();
+        $config = $this->businessConfig($team);
+        $strategy = is_array($config['strategy'] ?? null) ? $config['strategy'] : [];
+
+        foreach ($allowed as $key)
+        {
+            if (! array_key_exists($key, $input))
+            {
+                continue;
+            }
+            $value = trim((string) $input[$key]);
+            if ($value === '')
+            {
+                unset($strategy[$key]);
+            } else
+            {
+                $strategy[$key] = mb_substr($value, 0, 5000);
+            }
+        }
+
+        $config['strategy'] = $strategy;
+        $config['strategy_level'] = $this->strategyLevel($team);
+        $team->setSetting('business_config', $config, [
+            'type' => 'json',
+            'group' => 'business-config',
+        ]);
+
+        return $this->strategyFieldValues($team);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function allowedStrategyFieldKeys(): array
+    {
+        $keys = [];
+        foreach (config('strategy.steps', []) as $step)
+        {
+            foreach ($step['fields'] ?? [] as $field)
+            {
+                $key = (string) ($field['key'] ?? '');
+                if ($key !== '')
+                {
+                    $keys[] = $key;
+                }
+            }
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * Progress for every strategy step (filled / total fields).
+     *
+     * @return array<int, array{filled: int, total: int, complete: bool}>
+     */
+    public function strategyStepsProgress(Team $team): array
+    {
+        $values = $this->strategyFieldValues($team);
+        $progress = [];
+
+        foreach (config('strategy.steps', []) as $step)
+        {
+            $number = (int) ($step['number'] ?? 0);
+            $fields = $step['fields'] ?? [];
+            $total = 0;
+            $filled = 0;
+            foreach ($fields as $field)
+            {
+                $key = (string) ($field['key'] ?? '');
+                if ($key === '')
+                {
+                    continue;
+                }
+                $total++;
+                if (trim((string) ($values[$key] ?? '')) !== '')
+                {
+                    $filled++;
+                }
+            }
+            $progress[$number] = [
+                'filled' => $filled,
+                'total' => $total,
+                'complete' => $total > 0 && $filled === $total,
+            ];
+        }
+
+        return $progress;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function businessConfig(Team $team): array
+    {
+        $saved = $team->getSetting('business_config', []);
+        if (is_string($saved))
+        {
+            $saved = json_decode($saved, true) ?: [];
+        }
+
+        return is_array($saved) ? $saved : [];
+    }
+
+    /**
+     * @param  array{number: int, title: string, tip: string, points: list<string>, fields?: list<array{key: string, label: string, value: string}>, filled?: int, total?: int}  $strategy
+     * @return list<array{label: string, href: string, note?: string}>
+     */
+    private function strategyDetails(array $strategy): array
+    {
+        $details = [
+            [
+                'label' => (string) __('app.weekly_plan_strategy_focus', [
+                    'points' => implode(' · ', $strategy['points'] !== [] ? $strategy['points'] : [$strategy['title']]),
+                ]),
+                'href' => route('strategy.index'),
+                'note' => $strategy['tip'],
+            ],
+        ];
+
+        foreach ($strategy['fields'] ?? [] as $field)
+        {
+            $value = trim((string) ($field['value'] ?? ''));
+            $details[] = [
+                'label' => $value !== ''
+                    ? (string) ($field['label'] ?? '').': '.Str::limit($value, 80, '…')
+                    : (string) __('app.weekly_plan_strategy_field_empty', ['field' => $field['label'] ?? '']),
+                'href' => route('strategy.index'),
+            ];
+        }
+
+        if ($strategy['number'] < self::STRATEGY_MAX)
+        {
+            $details[] = [
+                'label' => (string) __('app.weekly_plan_strategy_advance_hint'),
+                'href' => route('strategy.index'),
+            ];
+        }
+
+        return $details;
+    }
+
+    /**
+     * @param  array{channel: string, label: string, reason: string, href: ?string}  $social
+     * @return list<array{label: string, href: string, note?: string}>
+     */
+    private function challengeDetails(Team $team, array $social): array
+    {
+        return [
+            [
+                'label' => (string) __('app.weekly_plan_social_publish', ['channel' => $social['label']]),
+                'href' => (string) ($social['href'] ?? route('team-settings.business-config', $team)),
+                'note' => $social['reason'],
+            ],
+            [
+                'label' => (string) __('app.weekly_plan_challenge_edit'),
+                'href' => route('team-settings.business-config', $team),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array{channel: string, label: string, reason: string, href: ?string}  $social
+     * @return list<array{label: string, href: string, note?: string}>
+     */
+    private function marketingDetails(Team $team, array $social): array
+    {
+        $details = [
+            [
+                'label' => (string) __('app.weekly_plan_social_publish', ['channel' => $social['label']]),
+                'href' => (string) ($social['href'] ?? 'https://www.linkedin.com/'),
+                'note' => $social['reason'],
+            ],
+        ];
+
+        if (! $team->hasModule('mailer') && ! $team->hasModule('campaigns'))
+        {
+            return $details;
+        }
+
+        $campaigns = Campaign::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->whereIn('status', [
+                CampaignStatus::PendingLaunch->value,
+                CampaignStatus::Scheduled->value,
+                CampaignStatus::Paused->value,
+                CampaignStatus::Active->value,
+            ])
+            ->orderByDesc('updated_at')
+            ->limit(self::DETAIL_LIMIT)
+            ->get(['id', 'name', 'status']);
+
+        foreach ($campaigns as $campaign)
+        {
+            $status = CampaignStatus::tryFrom((string) $campaign->status)?->label() ?? (string) $campaign->status;
+            $details[] = [
+                'label' => trim((string) $campaign->name).' · '.$status,
+                'href' => route('campaigns.show', $campaign->id),
+            ];
+        }
+
+        if ($team->hasModule('paid_ads'))
+        {
+            $ads = PaidAdCampaign::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('status', PaidAdCampaignStatus::Draft->value)
+                ->orderByDesc('updated_at')
+                ->limit(10)
+                ->get(['id', 'name']);
+
+            foreach ($ads as $ad)
+            {
+                $details[] = [
+                    'label' => (string) __('app.weekly_plan_paid_ad_draft', ['name' => $ad->name]),
+                    'href' => route('paid-ads.show', $ad->id),
+                ];
+            }
+        }
+
+        return $details;
+    }
+
+    private function marketingActionCount(Team $team): int
+    {
+        $count = 0;
+
+        if ($team->hasModule('mailer') || $team->hasModule('campaigns'))
+        {
+            $count += Campaign::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->whereIn('status', [
+                    CampaignStatus::PendingLaunch->value,
+                    CampaignStatus::Scheduled->value,
+                    CampaignStatus::Paused->value,
+                    CampaignStatus::Active->value,
+                ])
+                ->count();
+        }
+
+        if ($team->hasModule('paid_ads'))
+        {
+            $count += PaidAdCampaign::withoutGlobalScopes()
+                ->where('team_id', $team->id)
+                ->where('status', PaidAdCampaignStatus::Draft->value)
+                ->count();
+        }
+
+        return $count;
     }
 }
