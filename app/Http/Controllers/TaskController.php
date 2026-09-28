@@ -10,7 +10,6 @@ use App\Models\TaskBoard;
 use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
 use App\Models\Time;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class TaskController extends Controller
@@ -151,20 +150,15 @@ class TaskController extends Controller
             });
         }
 
-        // Options for offcanvas editing - Only admin and collaborators
-        $users = User::query()
-            ->whereHas('teams', function ($q)
-            {
-                $q->where('team_id', auth()->user()->currentTeam->id);
-            })
-            ->whereHas('roles', function ($q)
-            {
-                $q->whereIn('name', ['admin', 'collaborator']);
-            })
-            ->get()
-            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'profile_photo_url' => $u->profile_photo_url ?? null]);
+        // Options for offcanvas editing — team staff via membership pivot (excludes B2B2C clients)
+        $users = \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
+            ->map(fn ($u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'profile_photo_url' => $u->profile_photo_url ?? null,
+            ])
+            ->values();
 
-        $users = collect($users);
         if (! $users->contains('id', auth()->id()))
         {
             $currentUser = auth()->user();
@@ -173,8 +167,8 @@ class TaskController extends Controller
                 'name' => $currentUser->name,
                 'profile_photo_url' => $currentUser->profile_photo_url ?? null,
             ]);
+            $users = $users->sortBy('name')->values();
         }
-        $users = $users->sortBy('name')->values();
 
         $categories = class_exists(Category::class)
             ? Category::query()

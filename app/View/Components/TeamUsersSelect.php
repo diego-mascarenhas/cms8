@@ -54,11 +54,11 @@ class TeamUsersSelect extends Component
             return collect();
         }
 
-        // Specific role filter (legacy); otherwise staff assignable like projects.idoneo
+        // Specific role filter (legacy): use team membership pivot, not global Spatie roles
         if ($this->role)
         {
             return $team->allUsers()
-                ->filter(fn ($user) => $user->hasRole($this->role))
+                ->filter(fn ($user) => ($user->membership->role ?? null) === $this->role)
                 ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
                 ->pluck('name', 'id');
         }

@@ -34,7 +34,9 @@ class TimeController extends Controller
             ->orderBy('name')
             ->get();
         $tasks = Task::select('id', 'title')->orderBy('title')->get();
-        $users = auth()->user()->currentTeam->allUsers();
+        $users = auth()->user()->currentTeam
+            ? \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
+            : collect();
 
         return view('time.form', compact('projects', 'tasks', 'users'));
     }
@@ -80,7 +82,9 @@ class TimeController extends Controller
             ->orderBy('name')
             ->get();
         $tasks = Task::select('id', 'title')->orderBy('title')->get();
-        $users = auth()->user()->currentTeam->allUsers();
+        $users = auth()->user()->currentTeam
+            ? \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
+            : collect();
 
         return view('time.form', compact('data', 'projects', 'tasks', 'users'));
     }
@@ -250,7 +254,7 @@ class TimeController extends Controller
             'running' => $runningTimer ? true : false,
             'time' => $runningTimer,
         ])->header('Access-Control-Allow-Origin', '*')
-          ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
-          ->header('Access-Control-Allow-Headers', 'Content-Type, Accept');
+            ->header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+            ->header('Access-Control-Allow-Headers', 'Content-Type, Accept');
     }
 }

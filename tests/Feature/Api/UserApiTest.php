@@ -85,6 +85,46 @@ class UserApiTest extends TestCase
         $this->assertFalse($assignableIds->contains($client->id));
     }
 
+    public function test_assignable_users_exclude_clients_even_with_spatie_admin_role(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $foreignStaffClient = User::factory()->create(['name' => 'AF Construcciones S.R.L.']);
+        $team->users()->attach($foreignStaffClient, ['role' => 'client']);
+        $foreignStaffClient->forceFill(['current_team_id' => $team->id])->save();
+        // Global Spatie staff role from another workspace must not make them assignable here.
+        $foreignStaffClient->assignRole('admin');
+
+        $assignable = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?assignable=1');
+
+        $assignable->assertOk();
+        $assignableIds = collect($assignable->json('users'))->pluck('id');
+
+        $this->assertTrue($assignableIds->contains($admin->id));
+        $this->assertFalse($assignableIds->contains($foreignStaffClient->id));
+        $this->assertFalse(
+            collect($assignable->json('users'))->pluck('name')->contains('AF Construcciones S.R.L.'),
+        );
+    }
+
+    public function test_admins_filter_excludes_clients_with_stale_spatie_admin(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $client = User::factory()->create(['name' => 'Altromondo S.A.']);
+        $team->users()->attach($client, ['role' => 'client']);
+        $client->assignRole('admin');
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?admins=1');
+
+        $response->assertOk();
+        $ids = collect($response->json('users'))->pluck('id');
+        $this->assertTrue($ids->contains($admin->id));
+        $this->assertFalse($ids->contains($client->id));
+    }
+
     public function test_admins_filter_excludes_non_admin_members(): void
     {
         [$admin, $team, $token] = $this->adminWithToken();
@@ -138,9 +178,10 @@ class UserApiTest extends TestCase
         $team->users()->attach($collaborator, ['role' => 'editor']);
         $collaborator->assignRole('collaborator');
 
-        $client = User::factory()->create();
+        $client = User::factory()->create(['name' => 'Agrosem S.R.L.']);
         $team->users()->attach($client, ['role' => 'client']);
-        $client->assignRole('client');
+        // Stale Spatie staff role from another workspace must not leak into assistant lists.
+        $client->assignRole('admin');
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/users?assistant=1');

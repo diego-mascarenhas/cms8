@@ -9,8 +9,10 @@ use App\Http\Requests\Api\UpdateList60ResponsibleRequest;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\List60;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\InboxConversationSummaryService;
+use App\Support\AssignableTeamUsers;
 use Illuminate\Http\JsonResponse;
 use InvalidArgumentException;
 
@@ -45,7 +47,7 @@ class AssistantFollowUpController extends Controller
             ], 403);
         }
 
-        $responsible = $this->teamAdvisor($team->id, (int) $team->user_id, (int) $validated['responsible_id']);
+        $responsible = $this->teamAdvisor($team, (int) $validated['responsible_id']);
         if ($responsible === null)
         {
             return response()->json([
@@ -139,34 +141,8 @@ class AssistantFollowUpController extends Controller
         ]);
     }
 
-    private function teamAdvisor(int $teamId, int $ownerId, int $userId): ?User
+    private function teamAdvisor(Team $team, int $userId): ?User
     {
-        $teamUserIds = User::query()
-            ->whereHas('teams', function ($query) use ($teamId): void
-            {
-                $query->where('team_id', $teamId);
-            })
-            ->pluck('id')
-            ->all();
-        $teamUserIds[] = $ownerId;
-        $teamUserIds = array_values(array_unique(array_map('intval', $teamUserIds)));
-
-        if (! in_array($userId, $teamUserIds, true))
-        {
-            return null;
-        }
-
-        if ($userId === $ownerId)
-        {
-            return User::query()->find($userId);
-        }
-
-        return User::query()
-            ->where('id', $userId)
-            ->whereHas('roles', function ($query): void
-            {
-                $query->whereIn('name', ['admin', 'collaborator', 'employee']);
-            })
-            ->first();
+        return AssignableTeamUsers::forTeam($team)->firstWhere('id', $userId);
     }
 }

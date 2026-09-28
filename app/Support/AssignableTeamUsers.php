@@ -9,8 +9,10 @@ use Illuminate\Support\Collection;
 class AssignableTeamUsers
 {
     /**
-     * Staff-like Spatie roles that can be assigned as project/task responsible.
-     * Matches the IDONEO Projects SPA filter (?assignable=1).
+     * Staff-like team membership roles that can be assigned as project/task responsible.
+     * Matches Jetstream pivot roles (team_user.role), not global Spatie roles.
+     * Spatie roles are global (permission.teams=false), so a B2B2C client from another
+     * workspace may still hold Spatie "admin" while their pivot role here is "client".
      *
      * @var list<string>
      */
@@ -35,7 +37,6 @@ class AssignableTeamUsers
         $ownerId = (int) $team->user_id;
 
         return $team->allUsers()
-            ->load('roles')
             ->filter(function (User $teamUser) use ($ownerId)
             {
                 if ($ownerId > 0 && (int) $teamUser->id === $ownerId)
@@ -43,7 +44,9 @@ class AssignableTeamUsers
                     return true;
                 }
 
-                return $teamUser->hasAnyRole(self::ROLES);
+                $pivotRole = $teamUser->membership->role ?? null;
+
+                return is_string($pivotRole) && in_array($pivotRole, self::ROLES, true);
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();

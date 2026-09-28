@@ -76,7 +76,10 @@ class TicketController extends Controller
 
         $this->authorize('view', $ticket);
 
-        $teamUsers = auth()->user()->currentTeam?->allUsers() ?? collect();
+        $team = auth()->user()->currentTeam;
+        $teamUsers = $team
+            ? \App\Support\AssignableTeamUsers::forTeam($team)
+            : collect();
 
         return view('ticket.show', compact('ticket', 'teamUsers'));
     }
