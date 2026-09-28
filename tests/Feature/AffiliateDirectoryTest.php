@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BillingAffiliateCommission;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\StripeSubscriptionImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -22,6 +23,7 @@ class AffiliateDirectoryTest extends TestCase
         config([
             'humano_pricing.affiliate_commission_percent' => 30,
             'humano_pricing.agency_commission_percent' => 10,
+            'cashier.secret' => '',
         ]);
     }
 
@@ -227,6 +229,64 @@ class AffiliateDirectoryTest extends TestCase
             ->assertSessionHasErrors('subscription_code');
 
         $this->assertNull($payingTeam->subscriptions()->first()?->referred_by);
+    }
+
+    public function test_missing_subscription_is_imported_for_its_customer(): void
+    {
+        [$user, $affiliate] = $this->platformAdmin([
+            'stripe_id' => 'cus_import_referrer',
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'name' => 'Cliente Sin Suscripción Local',
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_import_paying',
+            'referred_by' => null,
+        ]);
+
+        $imported = app(StripeSubscriptionImporter::class)->importRetrieved(
+            \Stripe\Subscription::constructFrom([
+                'id' => 'sub_1UFdPsRwN51ygFdewPPUqQBX',
+                'object' => 'subscription',
+                'customer' => 'cus_import_paying',
+                'status' => 'active',
+                'trial_end' => null,
+                'items' => [
+                    'object' => 'list',
+                    'data' => [[
+                        'id' => 'si_import',
+                        'object' => 'subscription_item',
+                        'quantity' => 1,
+                        'price' => [
+                            'id' => 'price_import',
+                            'object' => 'price',
+                            'product' => 'prod_import',
+                        ],
+                    ]],
+                ],
+            ]),
+        );
+
+        $this->assertNotNull($imported);
+        $this->assertSame($payingTeam->id, $imported->team_id);
+        $this->assertSame('sub_1UFdPsRwN51ygFdewPPUqQBX', $imported->stripe_id);
+
+        $this->actingAs($user)
+            ->post(route('affiliate.store'), [
+                'team_id' => $affiliate->id,
+                'subscription_code' => 'sub_1UFdPsRwN51ygFdewPPUqQBX',
+            ])
+            ->assertRedirect(route('affiliate.show', $affiliate));
+
+        $this->assertNull($payingTeam->fresh()->referred_by);
+        $this->assertSame('cus_import_referrer', $imported->fresh()->referred_by);
+
+        $this->actingAs($user)
+            ->get(route('affiliate.show', $affiliate))
+            ->assertOk()
+            ->assertSee('sub_1UFdPsRwN51ygFdewPPUqQBX')
+            ->assertDontSee('cus_import_paying');
     }
 
     public function test_customer_referral_lists_subscriptions_that_client_grants_to_others(): void
