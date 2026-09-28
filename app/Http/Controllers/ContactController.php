@@ -69,28 +69,9 @@ class ContactController extends Controller
 
         if (auth()->user()->currentTeam?->hasModule('list60'))
         {
-            $team = auth()->user()->currentTeam;
-            $memberIds = User::query()
-                ->whereHas('teams', function ($q) use ($teamId)
-                {
-                    $q->where('team_id', $teamId);
-                })
-                ->whereHas('roles', function ($q)
-                {
-                    $q->whereIn('name', ['admin', 'collaborator', 'employee']);
-                })
-                ->pluck('name', 'id');
-
-            if ($team->user_id && ! $memberIds->has($team->user_id))
-            {
-                $owner = User::query()->find($team->user_id);
-                if ($owner && $owner->hasAnyRole(['admin', 'collaborator', 'employee']))
-                {
-                    $memberIds->put($owner->id, $owner->name);
-                }
-            }
-
-            $data['list60TeamUsers'] = $memberIds->sort();
+            $data['list60TeamUsers'] = \App\Support\AssignableTeamUsers::optionsForTeam(
+                auth()->user()->currentTeam,
+            );
         } else
         {
             $data['list60TeamUsers'] = collect();

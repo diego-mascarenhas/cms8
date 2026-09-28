@@ -26,6 +26,8 @@ return new class extends Migration
             $table->string('protocol')->default('imap');
             $table->string('folder')->default('INBOX');
             $table->timestamps();
+
+            $table->index(['team_id', 'user_id']);
         });
     }
 

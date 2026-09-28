@@ -23,6 +23,7 @@ use App\Models\PaymentType;
 use App\Services\Billing\InvoiceInboundSyncService;
 use App\Services\Billing\MercadoPagoPaymentImportService;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
+use App\Services\Billing\StripeInvoiceDraftDiscardService;
 use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
 use App\Services\Finance\InvoiceCreditNoteService;
@@ -57,6 +58,7 @@ class InvoiceController extends Controller
         private readonly InvoiceCreditNoteService $invoiceCreditNoteService,
         private readonly StripeInvoiceCreditNoteService $stripeInvoiceCreditNoteService,
         private readonly MercadoPagoPaymentImportService $mercadoPagoPaymentImportService,
+        private readonly StripeInvoiceDraftDiscardService $stripeInvoiceDraftDiscardService,
     ) {
         // Note: Manual authorization in each method due to non-standard route parameter names
         // Laravel's authorizeResource() expects {invoice} parameter, but routes use {id}
@@ -505,6 +507,7 @@ class InvoiceController extends Controller
         $paymentStatusOptions = app(PaymentStatusUpdateService::class)->selectableStatuses();
         $originalInvoice = $invoice->isCreditNote() ? $invoice->originalInvoice() : null;
         $existingCreditNote = (! $invoice->isCreditNote()) ? $invoice->existingCreditNote() : null;
+        $canDiscardDraft = $this->stripeInvoiceDraftDiscardService->canDiscard(auth()->user(), $invoice);
 
         return view('invoices.show', compact(
             'invoice',
@@ -526,7 +529,27 @@ class InvoiceController extends Controller
             'canExportFiscal',
             'originalInvoice',
             'existingCreditNote',
+            'canDiscardDraft',
         ));
+    }
+
+    public function discardDraft(Invoice $invoice): RedirectResponse
+    {
+        $this->authorize('view', $invoice);
+
+        try
+        {
+            $this->stripeInvoiceDraftDiscardService->discard(auth()->user(), $invoice);
+        } catch (ValidationException $exception)
+        {
+            return redirect()
+                ->route('invoice.show', $invoice->id)
+                ->with('error', collect($exception->errors())->flatten()->first() ?: __('Could not delete the draft invoice.'));
+        }
+
+        return redirect()
+            ->route('invoice.index')
+            ->with('success', __('Draft invoice deleted from Humano and Stripe.'));
     }
 
     public function exportFiscal(Invoice $invoice, FiscalExportService $service): RedirectResponse

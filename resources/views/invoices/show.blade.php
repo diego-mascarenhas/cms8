@@ -354,6 +354,15 @@
           {{ __('View in Stripe') }}
         </a>
         @endif
+        @if ($canDiscardDraft ?? false)
+        <form method="POST" action="{{ route('invoice.discard-draft', $invoice) }}" class="mb-2" onsubmit="return confirm(@json(__('Delete this Stripe draft from Humano and Stripe? This cannot be undone.')));">
+          @csrf
+          <button type="submit" class="btn btn-danger d-grid w-100">
+            <i class="ti ti-trash ti-xs me-2"></i>
+            {{ __('Delete draft') }}
+          </button>
+        </form>
+        @endif
         @if ($originalInvoice)
         <a class="btn btn-label-primary d-grid w-100 mb-2" href="{{ route('invoice.show', $originalInvoice->id) }}">
           <i class="ti ti-file-invoice ti-xs me-2"></i>
@@ -383,12 +392,14 @@
           {{ __('Edit Invoice') }}
         </a>
         @endcan
+        @if (! ($canDiscardDraft ?? false))
         @can('invoice.destroy')
         <button class="btn btn-danger d-grid w-100" onclick="deleteInvoice({{ $invoice->id }})">
           <i class="ti ti-trash ti-xs me-2"></i>
           {{ __('Delete Invoice') }}
         </button>
         @endcan
+        @endif
       </div>
     </div>
 

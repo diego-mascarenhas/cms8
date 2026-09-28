@@ -7,7 +7,6 @@ use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\ContactWeeklyAvailability;
 use App\Models\Language;
-use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Spatie\Activitylog\Models\Activity;
@@ -71,13 +70,10 @@ class EmployeeController extends Controller
         {
             return ['id' => $language->code, 'name' => $language->name];
         })->toArray();
-        $users = User::whereHas('roles', function ($query)
-        {
-            $query->where('name', 'employee');
-        })->get()->map(function ($user)
-        {
-            return ['id' => $user->id, 'name' => $user->name];
-        })->toArray();
+        $users = \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
+            ->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])
+            ->values()
+            ->all();
 
         return view('employee.form', compact('statuses', 'languages', 'users'));
     }
@@ -185,13 +181,10 @@ class EmployeeController extends Controller
         {
             return ['id' => $language->code, 'name' => $language->name];
         })->toArray();
-        $users = User::whereHas('roles', function ($query)
-        {
-            $query->where('name', 'employee');
-        })->get()->map(function ($user)
-        {
-            return ['id' => $user->id, 'name' => $user->name];
-        })->toArray();
+        $users = \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
+            ->map(fn ($user) => ['id' => $user->id, 'name' => $user->name])
+            ->values()
+            ->all();
 
         return view('employee.form', compact('contact', 'statuses', 'languages', 'users'));
     }

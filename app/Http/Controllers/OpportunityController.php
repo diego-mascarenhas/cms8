@@ -11,7 +11,6 @@ use App\Models\Opportunity;
 use App\Models\OpportunityStage;
 use App\Models\Product;
 use App\Models\Service;
-use App\Models\User;
 use Illuminate\Http\Request;
 
 class OpportunityController extends Controller
@@ -188,10 +187,7 @@ class OpportunityController extends Controller
 
         $stages = OpportunityStage::query()->orderBy('sort_order')->get();
 
-        $users = User::query()
-            ->whereHas('teams', fn ($q) => $q->where('teams.id', auth()->user()->current_team_id))
-            ->orderBy('name')
-            ->get();
+        $users = \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam);
 
         $currencies = Currency::query()->where('status', true)->orderBy('code')->get();
 

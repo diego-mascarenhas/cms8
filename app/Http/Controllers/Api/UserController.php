@@ -22,10 +22,10 @@ class UserController extends Controller
      * List users of the authenticated user's current team (for IDONEO app).
      *
      * Query params:
-     * - assignable=1: only staff profiles (admin, collaborator, editor, etc.). Excludes clients.
+     * - assignable=1: only staff via team membership pivot (admin, collaborator, editor, etc.). Excludes clients.
      * - assignees=1: team owner plus members whose team role is admin or collaborator.
-     * - admins=1: team owner plus users with the admin role.
-     * - assistant=1 / basic=1: team owner plus admin and collaborator profiles.
+     * - admins=1: team owner plus members whose team role is admin.
+     * - assistant=1 / basic=1: same staff set as assignable (membership pivot, excludes clients).
      */
     public function index(Request $request): JsonResponse
     {
@@ -269,33 +269,30 @@ class UserController extends Controller
             return $this->assignees($team);
         }
 
-        $users = $team->allUsers()->load('roles')->sortBy('name')->values();
         if ($request->boolean('assistant') || $request->boolean('basic'))
         {
-            $ownerId = (int) $team->user_id;
-
-            return $users
-                ->filter(function (User $teamUser) use ($ownerId)
-                {
-                    return ($ownerId > 0 && (int) $teamUser->id === $ownerId)
-                        || $teamUser->hasAnyRole(['admin', 'root', 'collaborator']);
-                })
-                ->values();
+            return AssignableTeamUsers::forTeam($team);
         }
 
         if (! $request->boolean('admins'))
         {
-            return $users;
+            return $team->allUsers()->load('roles')->sortBy('name')->values();
         }
 
         $ownerId = (int) $team->user_id;
 
-        return $users
+        return $team->allUsers()
+            ->load('roles')
             ->filter(function (User $teamUser) use ($ownerId)
             {
-                return ($ownerId > 0 && (int) $teamUser->id === $ownerId)
-                    || $teamUser->hasRole('admin');
+                if ($ownerId > 0 && (int) $teamUser->id === $ownerId)
+                {
+                    return true;
+                }
+
+                return ($teamUser->membership->role ?? null) === 'admin';
             })
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
     }
 

@@ -1076,7 +1076,9 @@ class ProjectController extends Controller
         if (auth()->user()->hasRole('admin') && ! empty($validated['user_id']))
         {
             $candidateId = (int) $validated['user_id'];
-            $teamUserIds = auth()->user()->currentTeam->allUsers()->pluck('id')->map(fn ($id) => (int) $id);
+            $teamUserIds = \App\Support\AssignableTeamUsers::forTeam(auth()->user()->currentTeam)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id);
             if (! $teamUserIds->contains($candidateId))
             {
                 return redirect()

@@ -9,7 +9,7 @@
   {{ __('slash_landing.hero.highlight.desk') }}
   <span class="highlight-muted">{{ __('slash_landing.hero.highlight.desk_why') }}</span>
   {{ __('slash_landing.hero.highlight.with_brand') }}
-  <strong class="highlight-brand">{{ __('slash_landing.hero.highlight.brand') }}</strong>
+  <strong class="highlight-brand">{{ __('slash_landing.hero.highlight.brand', ['app' => config('app.name')]) }}</strong>
   {{ __('slash_landing.hero.highlight.in_hand') }}
   <strong class="highlight-traits">{{ __('slash_landing.hero.highlight.traits') }}</strong>.
 </p>

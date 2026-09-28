@@ -590,35 +590,12 @@ class AssistantCommercialStatsService
      */
     private function advisors(Team $team): array
     {
-        $members = User::query()
-            ->where(function ($query) use ($team): void
-            {
-                $query->whereHas('teams', function ($teams) use ($team): void
-                {
-                    $teams->where('team_id', $team->id);
-                })->orWhere('id', $team->user_id);
-            })
-            ->whereHas('roles', function ($query): void
-            {
-                $query->whereIn('name', ['admin', 'collaborator', 'employee']);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $owner = $team->user_id ? User::query()->find($team->user_id, ['id', 'name']) : null;
-        if ($owner instanceof User && ! $members->contains('id', $owner->id))
-        {
-            $members->push($owner);
-        }
-
-        return $members
-            ->unique('id')
-            ->sortBy('name')
-            ->values()
+        return \App\Support\AssignableTeamUsers::forTeam($team)
             ->map(fn (User $user): array => [
                 'id' => (int) $user->id,
                 'name' => (string) $user->name,
             ])
+            ->values()
             ->all();
     }
 

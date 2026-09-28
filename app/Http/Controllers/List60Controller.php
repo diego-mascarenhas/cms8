@@ -30,19 +30,9 @@ class List60Controller extends Controller
             return redirect()->route('error-without-team');
         }
 
-        $teamUsers = User::query()
-            ->whereHas('teams', function ($q)
-            {
-                $q->where('team_id', auth()->user()->currentTeam->id);
-            })
-            ->whereHas('roles', function ($q)
-            {
-                $q->whereIn('name', ['admin', 'collaborator', 'employee']);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $dataTable->teamUsers = $teamUsers;
+        $dataTable->teamUsers = \App\Support\AssignableTeamUsers::forTeam(
+            auth()->user()->currentTeam,
+        );
 
         return $dataTable->render('list60.index');
     }
@@ -354,29 +344,9 @@ class List60Controller extends Controller
             ? (int) $responsibleId
             : (int) $user->id;
 
-        $teamUserIds = User::query()
-            ->whereHas('teams', function ($q) use ($team)
-            {
-                $q->where('team_id', $team->id);
-            })
-            ->pluck('id')
-            ->all();
+        $assignable = \App\Support\AssignableTeamUsers::forTeam($team);
 
-        $teamUserIds[] = (int) $team->user_id;
-        $teamUserIds = array_values(array_unique($teamUserIds));
-
-        if (! in_array($targetId, $teamUserIds, true))
-        {
-            return null;
-        }
-
-        return User::query()
-            ->where('id', $targetId)
-            ->whereHas('roles', function ($q)
-            {
-                $q->whereIn('name', ['admin', 'collaborator', 'employee']);
-            })
-            ->first();
+        return $assignable->firstWhere('id', $targetId);
     }
 
     private function findOutreachRecord(string $id): List60

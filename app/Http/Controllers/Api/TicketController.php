@@ -280,7 +280,8 @@ class TicketController extends Controller
         $assignedTo = $request->input('assigned_to');
         if ($assignedTo)
         {
-            $belongsToTeam = $team->allUsers()->contains('id', (int) $assignedTo);
+            $belongsToTeam = \App\Support\AssignableTeamUsers::forTeam($team)
+                ->contains('id', (int) $assignedTo);
             if (! $belongsToTeam)
             {
                 return response()->json([
