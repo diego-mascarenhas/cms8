@@ -353,7 +353,28 @@ class ChatController extends Controller
             ];
         }
 
-        usort($index, fn (array $a, array $b): int => $b['last_at'] <=> $a['last_at']);
+        // Unread threads first (then by latest activity), so the first page can fill with
+        // every unread chat and only then pad with read ones up to the page size.
+        return $this->sortWhatsAppInboxIndex($index);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $index
+     * @return list<array<string, mixed>>
+     */
+    private function sortWhatsAppInboxIndex(array $index): array
+    {
+        usort($index, function (array $a, array $b): int
+        {
+            $aUnread = ((int) ($a['unread'] ?? 0)) > 0 ? 1 : 0;
+            $bUnread = ((int) ($b['unread'] ?? 0)) > 0 ? 1 : 0;
+            if ($aUnread !== $bUnread)
+            {
+                return $bUnread <=> $aUnread;
+            }
+
+            return ((int) ($b['last_at'] ?? 0)) <=> ((int) ($a['last_at'] ?? 0));
+        });
 
         return $index;
     }
@@ -774,6 +795,18 @@ class ChatController extends Controller
         $viewAssistant = request('view') === 'assistant';
         $assistantUserId = request()->integer('user_id', 0) ?: null;
         $contacts = $this->getWhatsAppContacts(request());
+        $chatListPageSize = 20;
+        $chatListHasMore = false;
+        $teamForArchives = auth()->user()?->currentTeam;
+        if ($teamForArchives)
+        {
+            $archivedPhones = app(WhatsAppChatArchiveService::class)->archivedPhoneSet((int) $teamForArchives->id);
+            $contacts = $contacts
+                ->reject(fn ($contact): bool => isset($archivedPhones[(string) ($contact->from ?? '')]))
+                ->values();
+        }
+        $chatListHasMore = $contacts->count() > $chatListPageSize;
+        $contacts = $contacts->take($chatListPageSize)->values();
 
         // If a contact is selected, get their messages (normalize to digits so list dedupe and active state match)
         $selectedPhone = request('phone') ? preg_replace('/[^0-9]/', '', $this->normalizePhoneForList((string) request('phone'))) : null;
@@ -989,7 +1022,7 @@ class ChatController extends Controller
             selectedPhone: $selectedPhone,
         );
 
-        return view('chat.index', compact('contacts', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'siteAssistantSelectedKey', 'siteAssistantPromptOptions', 'siteAssistantCatalog', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars', 'whatsappSession'));
+        return view('chat.index', compact('contacts', 'chatListHasMore', 'messages', 'selectedPhone', 'selectedUser', 'hasContact', 'selectedContact', 'users', 'viewAssistant', 'assistantMessages', 'assistantClients', 'selectedAssistantUser', 'clientRecipientPhone', 'assistantClientPhoneDisplay', 'assistantContactId', 'userChatAiToggleDefault', 'contactChatAiToggleDefault', 'whatsappDriver', 'whatsappStatus', 'teamWhatsAppNumber', 'teamWhatsAppNumberFormatted', 'teamWhatsAppIsConnected', 'qrImageUrl', 'assistantAutoRespond', 'assistantAutoRespondAdminsWhenOff', 'assistantChatStub', 'assistantKeywordIntentRouting', 'showAssistantConversations', 'showWhatsAppConversations', 'canManageChatTeamSidebarSettings', 'siteAssistantSelectedKey', 'siteAssistantPromptOptions', 'siteAssistantCatalog', 'assistantFlowPrompts', 'contactStatuses', 'leadContactStatusId', 'chatMessageAvatars', 'whatsappSession'));
     }
 
     /**
@@ -2065,9 +2098,7 @@ class ChatController extends Controller
             ];
         }
 
-        usort($index, fn (array $left, array $right): int => $right['last_at'] <=> $left['last_at']);
-
-        return $index;
+        return $this->sortWhatsAppInboxIndex($index);
     }
 
     /**
