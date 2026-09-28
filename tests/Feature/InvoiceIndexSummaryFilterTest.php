@@ -125,4 +125,22 @@ class InvoiceIndexSummaryFilterTest extends TestCase
         $response->assertSee('window.invoiceListSearch = "acme"', false);
         $response->assertSee('stampInvoiceListLinks', false);
     }
+
+    public function test_invoice_index_ignores_datatables_search_array(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $response = $this->actingAs($user)->get(route('invoice.index', [
+            'search' => [
+                'value' => 'acme',
+                'regex' => 'false',
+            ],
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('window.invoiceListSearch = ""', false);
+    }
 }
