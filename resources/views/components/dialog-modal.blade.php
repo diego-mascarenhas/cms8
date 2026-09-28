@@ -1,6 +1,6 @@
-@props(['id' => null, 'maxWidth' => null])
+@props(['id' => null, 'maxWidth' => null, 'centered' => false])
 
-<x-modal :id="$id" :maxWidth="$maxWidth" {{ $attributes }}>
+<x-modal :id="$id" :maxWidth="$maxWidth" :centered="$centered" {{ $attributes }}>
   <div class="modal-content">
     <div class="modal-header">
       <h5 class="modal-title">{{ $title }}</h5>

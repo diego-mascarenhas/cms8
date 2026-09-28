@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Team;
 use Illuminate\Support\Facades\Log;
+use Laravel\Cashier\Cashier;
 
 class TeamStripeCustomerService
 {
@@ -78,6 +79,75 @@ class TeamStripeCustomerService
         {
             $team->forceFill(['stripe_id' => $customerId])->save();
         }
+    }
+
+    /**
+     * Stripe customer id for this email, when one already exists.
+     */
+    public function findCustomerIdByEmail(string $email): ?string
+    {
+        $email = trim($email);
+
+        if ($email === '')
+        {
+            return null;
+        }
+
+        foreach ($this->stripeCustomersWithEmail($email) as $customer)
+        {
+            if (! empty($customer->deleted))
+            {
+                continue;
+            }
+
+            if (strcasecmp(trim((string) ($customer->email ?? '')), $email) !== 0)
+            {
+                continue;
+            }
+
+            $customerId = trim((string) ($customer->id ?? ''));
+
+            if ($customerId !== '')
+            {
+                return $customerId;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Create a Stripe customer for the team and store its id.
+     */
+    public function createStripeCustomer(Team $team, string $email, string $name): string
+    {
+        $team->createAsStripeCustomer([
+            'email' => $email,
+            'name' => $name,
+            'metadata' => [
+                'team_id' => (string) $team->id,
+            ],
+        ]);
+
+        $customerId = trim((string) $team->stripe_id);
+
+        if ($customerId === '')
+        {
+            throw new \RuntimeException('Stripe customer was not created.');
+        }
+
+        return $customerId;
+    }
+
+    /**
+     * @return iterable<int, object>
+     */
+    protected function stripeCustomersWithEmail(string $email): iterable
+    {
+        return Cashier::stripe()->customers->all([
+            'email' => $email,
+            'limit' => 10,
+        ])->data;
     }
 
     /**

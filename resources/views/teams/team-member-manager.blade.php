@@ -161,13 +161,14 @@
 
           <div class="d-flex align-items-center gap-2">
             <label for="member-role-filter" class="form-label mb-0 text-muted small">{{ __('Filter by role') }}</label>
-            <select id="member-role-filter" class="form-select form-select-sm" style="width: auto;"
-              wire:model.live="roleFilter">
-              <option value="all">{{ __('All roles') }}</option>
-              @foreach ($this->roleFilterOptions as $roleOption)
-                <option value="{{ $roleOption->key }}">{{ $roleOption->name }}</option>
-              @endforeach
-            </select>
+            <div class="position-relative" style="min-width: 14rem;" wire:ignore>
+              <select id="member-role-filter" class="form-select form-select-sm select2">
+                <option value="all" @selected($roleFilter === 'all')>{{ __('All roles') }}</option>
+                @foreach ($this->roleFilterOptions as $roleOption)
+                  <option value="{{ $roleOption->key }}" @selected($roleFilter === $roleOption->key)>{{ $roleOption->name }}</option>
+                @endforeach
+              </select>
+            </div>
             <div wire:loading wire:target="roleFilter" class="spinner-border spinner-border-sm text-primary" role="status">
               <span class="visually-hidden">{{ __('Loading...') }}</span>
             </div>
@@ -179,18 +180,36 @@
             <div class="text-muted text-center py-3">
               {{ __('No members found.') }}
             </div>
+          @else
+            <div class="row text-muted small mb-1 d-none d-md-flex">
+              <div class="col-md-5">{{ __('Member') }}</div>
+              <div class="col-md-4">{{ __('Team') }}</div>
+              <div class="col-md-3 text-md-end">{{ __('Role') }}</div>
+            </div>
           @endif
 
           @foreach ($teamMembers as $user)
-          <div class="d-flex justify-content-between mt-2 mb-2" wire:key="member-{{ $user->id }}-{{ optional($user->membership)->role }}">
-            <div class="d-flex align-items-center">
+          <div class="row align-items-center gy-2 mt-2 mb-2" wire:key="member-{{ $user->id }}-{{ optional($user->membership)->role }}">
+            <div class="col-md-5 d-flex align-items-center">
               <div class="pe-2">
                 <img class="rounded-circle" width="32" height="32" style="object-fit: cover;" src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}">
               </div>
               <span class="fw-medium">{{ $user->email ? $user->name.' ('.$user->email.')' : $user->name }}</span>
             </div>
 
-            <div class="d-flex align-items-center">
+            <div class="col-md-4">
+              @if ($user->ownedTeams->isNotEmpty())
+                <span>{{ $user->ownedTeams->pluck('name')->join(', ') }}</span>
+              @elseif (Gate::check('updateTeamMember', $team))
+                <button type="button" class="btn btn-sm btn-label-primary" wire:click="confirmCreateMemberTeam({{ $user->id }})">
+                  {{ __('Create Team') }}
+                </button>
+              @else
+                <span class="text-muted">—</span>
+              @endif
+            </div>
+
+            <div class="col-md-3 d-flex align-items-center justify-content-md-end">
               @php
                 $roleKey = optional($user->membership)->role;
                 $roleObj = $roleKey ? Laravel\Jetstream\Jetstream::findRole($roleKey) : null;
@@ -241,6 +260,37 @@
     </x-action-section>
     </div>
   @endif
+
+  <x-dialog-modal wire:model.live="confirmingMemberTeam" centered>
+    <x-slot name="title">
+      {{ __('Create Team') }}
+    </x-slot>
+
+    <x-slot name="content">
+      <p class="mb-3">{{ $creatingTeamMemberName }}</p>
+      <div class="mb-0">
+        <x-label class="form-label" for="new-team-name" value="{{ __('Team Name') }}" />
+        <x-input id="new-team-name" type="text" class="{{ $errors->has('newTeamName') ? 'is-invalid' : '' }}"
+          wire:model="newTeamName" />
+        <x-input-error for="newTeamName" />
+      </div>
+      <div class="form-check mt-3">
+        <input class="form-check-input" type="checkbox" id="create-in-stripe" wire:model="createInStripe">
+        <label class="form-check-label" for="create-in-stripe">{{ __('Create in Stripe') }}</label>
+      </div>
+      <x-input-error for="createInStripe" class="d-block" />
+    </x-slot>
+
+    <x-slot name="footer">
+      <x-secondary-button wire:click="$set('confirmingMemberTeam', false)" wire:loading.attr="disabled">
+        {{ __('Cancel') }}
+      </x-secondary-button>
+
+      <x-button type="button" class="ms-2" wire:click="createMemberTeam" wire:loading.attr="disabled" wire:target="createMemberTeam">
+        {{ __('Save') }}
+      </x-button>
+    </x-slot>
+  </x-dialog-modal>
 
   <!-- Role Management Modal -->
   <x-dialog-modal wire:model="currentlyManagingRole">

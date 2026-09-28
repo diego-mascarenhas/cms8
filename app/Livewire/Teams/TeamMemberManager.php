@@ -3,6 +3,8 @@
 namespace App\Livewire\Teams;
 
 use App\Actions\Fortify\PasswordValidationRules;
+use App\Models\Team;
+use App\Services\TeamStripeCustomerService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
@@ -19,6 +21,16 @@ class TeamMemberManager extends JetstreamTeamMemberManager
     public string $roleFilter = 'admin';
 
     public string $search = '';
+
+    public ?int $creatingTeamFor = null;
+
+    public bool $confirmingMemberTeam = false;
+
+    public string $creatingTeamMemberName = '';
+
+    public string $newTeamName = '';
+
+    public bool $createInStripe = false;
 
     public function mount($team): void
     {
@@ -112,7 +124,139 @@ class TeamMemberManager extends JetstreamTeamMemberManager
             });
         }
 
-        return $query->get();
+        return $query->with(['ownedTeams' => function ($builder): void
+        {
+            $builder->orderBy('name');
+        }])->get();
+    }
+
+    /**
+     * Open the modal to create a team owned by this member.
+     */
+    public function confirmCreateMemberTeam(int $userId): void
+    {
+        Gate::forUser($this->user)->authorize('updateTeamMember', $this->team);
+
+        $member = Jetstream::findUserByIdOrFail($userId);
+
+        if (! $member->belongsToTeam($this->team))
+        {
+            abort(403);
+        }
+
+        $this->creatingTeamFor = $member->id;
+        $this->creatingTeamMemberName = $member->name;
+        $this->newTeamName = $member->name;
+        $this->createInStripe = false;
+        $this->confirmingMemberTeam = true;
+        $this->resetErrorBag('newTeamName');
+        $this->resetErrorBag('createInStripe');
+    }
+
+    /**
+     * Create a personal team for a member who does not own one.
+     */
+    public function createMemberTeam(TeamStripeCustomerService $stripeCustomers): void
+    {
+        Gate::forUser($this->user)->authorize('updateTeamMember', $this->team);
+
+        $this->validate([
+            'creatingTeamFor' => ['required', 'integer'],
+            'newTeamName' => ['required', 'string', 'max:255'],
+            'createInStripe' => ['boolean'],
+        ]);
+
+        $member = Jetstream::findUserByIdOrFail($this->creatingTeamFor);
+
+        if (! $member->belongsToTeam($this->team))
+        {
+            abort(403);
+        }
+
+        if ($member->ownedTeams()->exists())
+        {
+            $this->addError('newTeamName', __('This member already has a team.'));
+
+            return;
+        }
+
+        $existingStripeCustomerId = null;
+
+        if ($this->createInStripe)
+        {
+            $email = trim((string) $member->email);
+
+            if ($email === '')
+            {
+                $this->addError('createInStripe', __('This member has no email.'));
+
+                return;
+            }
+
+            try
+            {
+                $existingStripeCustomerId = $stripeCustomers->findCustomerIdByEmail($email);
+            } catch (\Throwable $exception)
+            {
+                Log::warning('Stripe customer lookup by email failed', [
+                    'email' => $email,
+                    'message' => $exception->getMessage(),
+                ]);
+                $this->addError('createInStripe', __('Stripe customer could not be created.'));
+
+                return;
+            }
+
+            if ($existingStripeCustomerId !== null && Team::query()->where('stripe_id', $existingStripeCustomerId)->exists())
+            {
+                $this->addError('createInStripe', __('A Stripe customer with this email already belongs to another team.'));
+
+                return;
+            }
+        }
+
+        $currentTeamId = $member->current_team_id;
+
+        $owned = $member->ownedTeams()->create([
+            'name' => $this->newTeamName,
+            'personal_team' => true,
+        ]);
+
+        $member->teams()->attach($owned->id, ['role' => 'admin']);
+
+        if ($member->current_team_id !== $currentTeamId)
+        {
+            $member->forceFill(['current_team_id' => $currentTeamId])->save();
+        }
+
+        if ($this->createInStripe)
+        {
+            try
+            {
+                if ($existingStripeCustomerId !== null)
+                {
+                    $owned->forceFill(['stripe_id' => $existingStripeCustomerId])->save();
+                } else
+                {
+                    $stripeCustomers->createStripeCustomer($owned, trim((string) $member->email), $this->newTeamName);
+                }
+            } catch (\Throwable $exception)
+            {
+                Log::warning('Stripe customer create for member team failed', [
+                    'team_id' => $owned->id,
+                    'message' => $exception->getMessage(),
+                ]);
+                $this->addError('createInStripe', __('Stripe customer could not be created.'));
+
+                return;
+            }
+        }
+
+        $this->creatingTeamFor = null;
+        $this->creatingTeamMemberName = '';
+        $this->newTeamName = '';
+        $this->createInStripe = false;
+        $this->confirmingMemberTeam = false;
     }
 
     /**
