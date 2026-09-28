@@ -16,6 +16,30 @@ $breadcrumbs = [['link' => 'home', 'name' => 'Home'], ['name' => 'Team Settings'
 
 @section('page-script')
 <script>
+  document.addEventListener('livewire:init', function () {
+    var el = document.getElementById('member-role-filter');
+    if (!el || !window.jQuery || !jQuery.fn.select2) {
+      return;
+    }
+
+    var $el = jQuery(el);
+    $el.select2({
+      width: '100%',
+      minimumResultsForSearch: Infinity,
+      dropdownParent: $el.parent()
+    });
+
+    $el.on('change', function () {
+      var root = document.getElementById('team-member-manager');
+      var componentId = root ? root.getAttribute('wire:id') : null;
+      if (!componentId || typeof Livewire === 'undefined') {
+        return;
+      }
+
+      Livewire.find(componentId).set('roleFilter', this.value);
+    });
+  });
+
   function changeTeamMemberPassword(userId) {
     Swal.fire({
       title: @json(__('Change Password')),

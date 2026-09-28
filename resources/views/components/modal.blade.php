@@ -1,4 +1,4 @@
-@props(['id', 'maxWidth', 'modal' => false])
+@props(['id', 'maxWidth', 'modal' => false, 'centered' => false])
 
 @php
 $id = $id ?? md5($attributes->wire('model'));
@@ -51,7 +51,7 @@ switch ($maxWidth ?? '') {
     aria-hidden="true"
     x-ref="{{ $id }}"
 >
-  <div class="modal-dialog{{ $maxWidth }}">
+  <div class="modal-dialog{{ $maxWidth }}{{ $centered ? ' modal-dialog-centered' : '' }}">
     {{ $slot }}
   </div>
 </div>
