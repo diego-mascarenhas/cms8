@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\BillingAffiliateCommission;
+use App\Models\ServiceSync;
 use App\Models\Team;
 use App\Models\User;
 use App\Services\Billing\StripeSubscriptionImporter;
@@ -287,6 +288,47 @@ class AffiliateDirectoryTest extends TestCase
             ->assertOk()
             ->assertSee('sub_1UFdPsRwN51ygFdewPPUqQBX')
             ->assertDontSee('cus_import_paying');
+    }
+
+    public function test_subscription_commission_uses_the_subscription_amount(): void
+    {
+        [$user, $affiliate] = $this->platformAdmin([
+            'stripe_id' => 'cus_priced_referrer',
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'name' => 'Cliente Con Precio',
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_priced_paying',
+            'referred_by' => null,
+        ]);
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hosting',
+            'stripe_id' => 'sub_priced_hosting',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hosting',
+            'quantity' => 1,
+            'referred_by' => 'cus_priced_referrer',
+            'affiliate_commission_percent' => 30,
+        ]);
+
+        ServiceSync::query()->create([
+            'stripe_id' => 'sub_priced_hosting',
+            'status' => 'active',
+            'quantity' => 1,
+            'price_currency' => 'eur',
+            'unit_amount' => 49,
+            'amount_total' => 49,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('affiliate.show', $affiliate))
+            ->assertOk()
+            ->assertSee('sub_priced_hosting')
+            ->assertSee('30%')
+            ->assertSee('EUR 14,70');
     }
 
     public function test_customer_referral_lists_subscriptions_that_client_grants_to_others(): void
