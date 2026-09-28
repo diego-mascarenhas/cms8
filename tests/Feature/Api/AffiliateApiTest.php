@@ -27,6 +27,7 @@ class AffiliateApiTest extends TestCase
         config([
             'humano_pricing.affiliate_commission_percent' => 30,
             'humano_pricing.agency_commission_percent' => 10,
+            'cashier.secret' => '',
         ]);
     }
 

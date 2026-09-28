@@ -9,6 +9,7 @@ use App\Models\ServiceSync;
 use App\Models\Subscription;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Billing\StripeSubscriptionImporter;
 use App\Support\AffiliateCommission;
 use App\Traits\ConfiguresTeamMail;
 use Illuminate\Support\Carbon;
@@ -25,6 +26,7 @@ class AffiliateProgramService
     public function __construct(
         private readonly AffiliateReferralLinkBuilder $linkBuilder,
         private readonly TeamStripeCustomerService $stripeCustomers,
+        private readonly StripeSubscriptionImporter $stripeSubscriptions,
     ) {}
 
     /**
@@ -565,6 +567,11 @@ class AffiliateProgramService
         $subscription = Subscription::query()
             ->where('stripe_id', $code)
             ->first();
+
+        if ($subscription?->team === null)
+        {
+            $subscription = $this->stripeSubscriptions->importMissing($code);
+        }
 
         if ($subscription?->team === null)
         {
