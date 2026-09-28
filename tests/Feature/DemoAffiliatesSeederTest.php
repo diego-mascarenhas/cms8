@@ -40,7 +40,28 @@ class DemoAffiliatesSeederTest extends TestCase
         $this->assertTrue($team->canUseAffiliateProgram());
         $this->assertSame(DemoAffiliatesSeeder::DEMO_REFERRER_STRIPE_ID, $team->stripe_id);
         $this->assertGreaterThanOrEqual(3, AffiliateInvitation::query()->where('team_id', $team->id)->count());
-        $this->assertGreaterThanOrEqual(3, BillingAffiliateCommission::query()->where('referrer_team_id', $team->id)->count());
+        $this->assertGreaterThanOrEqual(4, BillingAffiliateCommission::query()->where('referrer_team_id', $team->id)->count());
+        $this->assertDatabaseHas('subscriptions', [
+            'stripe_id' => 'sub_demo_norte_assistant',
+            'type' => 'assistant',
+            'referred_by' => DemoAffiliatesSeeder::DEMO_REFERRER_STRIPE_ID,
+        ]);
+        $this->assertDatabaseHas('subscriptions', [
+            'stripe_id' => 'sub_demo_norte_hosting',
+            'type' => 'hosting',
+        ]);
+        $this->assertDatabaseHas('teams', [
+            'name' => 'Demo · Afiliado Leticia',
+            'stripe_id' => 'cus_demo_referrer_leticia',
+        ]);
+        $this->assertDatabaseHas('subscriptions', [
+            'stripe_id' => 'sub_demo_clinica_cliente_assistant',
+            'type' => 'assistant',
+            'referred_by' => 'cus_demo_ref_paying_clinica',
+        ]);
+        $this->assertDatabaseMissing('subscriptions', [
+            'stripe_id' => 'sub_demo_clinica_assistant',
+        ]);
 
         $opened = AffiliateInvitation::query()
             ->where('team_id', $team->id)

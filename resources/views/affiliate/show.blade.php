@@ -67,21 +67,43 @@
             <thead>
                 <tr>
                     <th>Referido</th>
-                    <th>Email</th>
                     <th>Códigos</th>
+                    <th class="text-end">Porcentaje</th>
                     <th class="text-end">Comisión</th>
                     <th class="text-center">Acciones</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($referrals as $referral)
-                    <tr>
-                        <td>{{ $referral['name'] }}</td>
-                        <td>{{ $referral['email'] ?? '—' }}</td>
+                    <tr class="align-top">
+                        <td>
+                            <div class="d-flex flex-column">
+                                <span>{{ $referral['name'] }}</span>
+                                <small class="text-muted">{{ $referral['email'] ?? '—' }}</small>
+                            </div>
+                        </td>
                         <td>
                             <div class="d-flex flex-column gap-2">
                                 @foreach ($referral['codes'] as $code)
-                                    <span>{{ $code['code'] }}@if ($code['plan']) <span class="text-muted">({{ $code['plan'] }})</span>@endif</span>
+                                    <span>
+                                        {{ $code['code'] }}@if ($code['plan']) <span class="text-muted">({{ $code['plan'] }})</span>@endif
+                                        @if ($code['subscriber'])
+                                            <span class="text-muted small">· {{ $code['subscriber'] }}</span>
+                                        @endif
+                                        @if ($code['direct_percent'])
+                                            <span class="text-muted small">· Percibe {{ rtrim(rtrim(number_format((float) $code['direct_percent'], 2, ',', '.'), '0'), ',') }}%</span>
+                                        @endif
+                                        @if ($code['assignee'])
+                                            <span class="text-muted small">· Asignado a {{ $code['assignee'] }}</span>
+                                        @endif
+                                    </span>
+                                @endforeach
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex flex-column align-items-end gap-2">
+                                @foreach ($referral['codes'] as $code)
+                                    <span>{{ rtrim(rtrim(number_format((float) $code['percent'], 2, ',', '.'), '0'), ',') }}%</span>
                                 @endforeach
                             </div>
                         </td>
@@ -97,9 +119,13 @@
                         <td class="text-center">
                             <div class="d-flex flex-column align-items-center gap-2">
                                 @foreach ($referral['codes'] as $code)
-                                    <a href="javascript:;" class="text-danger" title="Desvincular" onclick="confirmUnlinkReferral(@js($code['code']))">
-                                        <i class="ti ti-trash ti-sm"></i>
-                                    </a>
+                                    @if ($code['can_unlink'])
+                                        <a href="javascript:;" class="text-secondary" title="Desvincular" onclick="confirmUnlinkReferral(@js($code['code']))">
+                                            <i class="ti ti-trash ti-sm"></i>
+                                        </a>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
                                 @endforeach
                             </div>
                         </td>
@@ -130,7 +156,7 @@
                     <th>Referido</th>
                     <th>Factura</th>
                     <th class="text-end">Cobro</th>
-                    <th class="text-end">%</th>
+                    <th class="text-end">Porcentaje</th>
                     <th class="text-end">Comisión</th>
                 </tr>
             </thead>

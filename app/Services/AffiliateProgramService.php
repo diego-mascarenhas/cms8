@@ -371,7 +371,7 @@ class AffiliateProgramService
      *     team_id: int,
      *     name: string,
      *     email: string|null,
-     *     codes: list<array{code: string, kind: string, plan: string|null}>,
+     *     codes: list<array{code: string, kind: string, plan: string|null, percent: float, assignee: string|null, subscriber: string|null, direct_percent: float|null, can_unlink: bool}>,
      *     commissions_by_currency: array<string, int>
      * }>
      */
@@ -410,40 +410,113 @@ class AffiliateProgramService
             ->get()
             ->groupBy('paying_team_id');
 
+        $customerStripeIds = $teams
+            ->filter(function (Team $team) use ($code): bool
+            {
+                return strcasecmp(trim((string) ($team->referred_by ?? '')), $code) === 0
+                    && trim((string) ($team->stripe_id ?? '')) !== '';
+            })
+            ->map(fn (Team $team): string => trim((string) $team->stripe_id))
+            ->unique()
+            ->values();
+
+        $grantedByCustomer = collect();
+
+        if ($customerStripeIds->isNotEmpty())
+        {
+            $grantedByCustomer = Subscription::query()
+                ->with('team')
+                ->whereIn('referred_by', $customerStripeIds->all())
+                ->get()
+                ->groupBy(fn (Subscription $subscription): string => strtolower(trim((string) $subscription->referred_by)));
+        }
+
         $rows = [];
 
         foreach ($teams as $team)
         {
             $codes = [];
+            $holdsCustomer = strcasecmp(trim((string) ($team->referred_by ?? '')), $code) === 0
+                && trim((string) ($team->stripe_id ?? '')) !== '';
 
-            if (strcasecmp(trim((string) ($team->referred_by ?? '')), $code) === 0 && trim((string) ($team->stripe_id ?? '')) !== '')
+            if ($holdsCustomer)
             {
                 $codes[] = [
                     'code' => (string) $team->stripe_id,
                     'kind' => 'cus',
                     'plan' => null,
+                    'percent' => AffiliateCommission::agencyPercent(),
+                    'assignee' => null,
+                    'subscriber' => null,
+                    'direct_percent' => null,
+                    'can_unlink' => true,
                 ];
-            }
 
-            foreach ($team->subscriptions as $subscription)
+                $granted = $grantedByCustomer->get(strtolower((string) $team->stripe_id), collect());
+
+                foreach ($granted as $subscription)
+                {
+                    if ((int) $subscription->team_id === (int) $team->id)
+                    {
+                        continue;
+                    }
+
+                    $subscriptionCode = trim((string) ($subscription->stripe_id ?? ''));
+
+                    if ($subscriptionCode === '')
+                    {
+                        continue;
+                    }
+
+                    $storedPercent = $subscription->affiliate_commission_percent;
+
+                    $codes[] = [
+                        'code' => $subscriptionCode,
+                        'kind' => 'sub',
+                        'plan' => (string) $subscription->type,
+                        'percent' => AffiliateCommission::agencyPercent(),
+                        'assignee' => null,
+                        'subscriber' => $subscription->team?->name,
+                        'direct_percent' => $storedPercent !== null && (float) $storedPercent > 0
+                            ? (float) $storedPercent
+                            : AffiliateCommission::percent(),
+                        'can_unlink' => false,
+                    ];
+                }
+            } else
             {
-                if (strcasecmp(trim((string) ($subscription->referred_by ?? '')), $code) !== 0)
+                foreach ($team->subscriptions as $subscription)
                 {
-                    continue;
+                    $subscriptionReferrer = trim((string) ($subscription->referred_by ?? ''));
+                    $owned = $subscriptionReferrer !== '' && strcasecmp($subscriptionReferrer, $code) === 0;
+
+                    if (! $owned)
+                    {
+                        continue;
+                    }
+
+                    $subscriptionCode = trim((string) ($subscription->stripe_id ?? ''));
+
+                    if ($subscriptionCode === '')
+                    {
+                        continue;
+                    }
+
+                    $storedPercent = $subscription->affiliate_commission_percent;
+
+                    $codes[] = [
+                        'code' => $subscriptionCode,
+                        'kind' => 'sub',
+                        'plan' => (string) $subscription->type,
+                        'percent' => $storedPercent !== null && (float) $storedPercent > 0
+                            ? (float) $storedPercent
+                            : AffiliateCommission::percent(),
+                        'assignee' => null,
+                        'subscriber' => null,
+                        'direct_percent' => null,
+                        'can_unlink' => true,
+                    ];
                 }
-
-                $subscriptionCode = trim((string) ($subscription->stripe_id ?? ''));
-
-                if ($subscriptionCode === '')
-                {
-                    continue;
-                }
-
-                $codes[] = [
-                    'code' => $subscriptionCode,
-                    'kind' => 'sub',
-                    'plan' => (string) $subscription->type,
-                ];
             }
 
             if ($codes === [])
@@ -503,6 +576,13 @@ class AffiliateProgramService
 
     private function claimSpecificSubscription(Team $payingTeam, Subscription $subscription, string $referrerCode): void
     {
+        if (trim((string) ($payingTeam->referred_by ?? '')) !== '')
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Ese cliente ya tiene un cus_ asignado. No se puede asignar un sub_ del mismo cliente.'),
+            ]);
+        }
+
         $existingSubscriptionReferrer = trim((string) ($subscription->referred_by ?? ''));
         if ($existingSubscriptionReferrer !== '' && strcasecmp($existingSubscriptionReferrer, $referrerCode) !== 0)
         {

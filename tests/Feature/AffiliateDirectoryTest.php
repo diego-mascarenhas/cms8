@@ -19,7 +19,10 @@ class AffiliateDirectoryTest extends TestCase
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
-        config(['humano_pricing.affiliate_commission_percent' => 30]);
+        config([
+            'humano_pricing.affiliate_commission_percent' => 30,
+            'humano_pricing.agency_commission_percent' => 10,
+        ]);
     }
 
     public function test_platform_admin_sees_affiliates_referrals_and_commissions(): void
@@ -95,9 +98,11 @@ class AffiliateDirectoryTest extends TestCase
             ->assertSee('Cliente Referido')
             ->assertSee('cliente.referido@example.com')
             ->assertSee('cus_directory_paying')
-            ->assertSee('sub_directory_assistant')
+            ->assertDontSee('sub_directory_assistant')
             ->assertSee('EUR 30,00')
-            ->assertSee('in_directory_1')
+            ->assertSee('Porcentaje')
+            ->assertSee('10%')
+            ->assertDontSee('Servicios, sin consumos')
             ->assertSee('Volver')
             ->assertSee('assignCodeModal')
             ->assertSee('¿Desvincular este código?')
@@ -182,6 +187,94 @@ class AffiliateDirectoryTest extends TestCase
 
         $this->assertSame('cus_customer_referrer', $payingTeam->fresh()->referred_by);
         $this->assertSame('cus_customer_referrer', $payingTeam->subscriptions()->first()?->referred_by);
+    }
+
+    public function test_subscription_of_a_customer_with_cus_cannot_be_assigned(): void
+    {
+        [$user, $affiliate] = $this->platformAdmin([
+            'stripe_id' => 'cus_blocked_referrer',
+        ]);
+
+        $payingOwner = User::factory()->create();
+        $payingTeam = Team::factory()->create([
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_blocked_paying',
+            'referred_by' => 'cus_other_holder',
+        ]);
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'hosting',
+            'stripe_id' => 'sub_blocked_hosting',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_hosting',
+            'quantity' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('affiliate.show', $affiliate))
+            ->post(route('affiliate.store'), [
+                'team_id' => $affiliate->id,
+                'subscription_code' => 'sub_blocked_hosting',
+            ])
+            ->assertRedirect(route('affiliate.show', $affiliate))
+            ->assertSessionHasErrors('subscription_code');
+
+        $this->assertNull($payingTeam->subscriptions()->first()?->referred_by);
+    }
+
+    public function test_customer_referral_lists_subscriptions_that_client_grants_to_others(): void
+    {
+        [$user, $affiliate] = $this->platformAdmin([
+            'name' => 'Leticia',
+            'stripe_id' => 'cus_leticia_referrer',
+        ]);
+
+        $payingOwner = User::factory()->create([
+            'email' => 'clinica@example.com',
+        ]);
+        $payingTeam = Team::factory()->create([
+            'name' => 'Clínica Sur',
+            'user_id' => $payingOwner->id,
+            'stripe_id' => 'cus_clinica_paying',
+            'referred_by' => 'cus_leticia_referrer',
+        ]);
+        $payingTeam->subscriptions()->create([
+            'user_id' => $payingOwner->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_clinica_assistant',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant',
+            'quantity' => 1,
+            'referred_by' => 'cus_leticia_referrer',
+            'affiliate_commission_percent' => 10,
+        ]);
+
+        $clientOwner = User::factory()->create();
+        $clientTeam = Team::factory()->create([
+            'name' => 'Paciente Norte',
+            'user_id' => $clientOwner->id,
+            'stripe_id' => 'cus_paciente_norte',
+        ]);
+        $clientTeam->subscriptions()->create([
+            'user_id' => $clientOwner->id,
+            'type' => 'assistant',
+            'stripe_id' => 'sub_paciente_assistant',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_assistant',
+            'quantity' => 1,
+            'referred_by' => 'cus_clinica_paying',
+            'affiliate_commission_percent' => 30,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('affiliate.show', $affiliate))
+            ->assertOk()
+            ->assertSee('cus_clinica_paying')
+            ->assertDontSee('sub_clinica_assistant')
+            ->assertSee('sub_paciente_assistant')
+            ->assertSee('Paciente Norte')
+            ->assertSee('Percibe 30%')
+            ->assertSee('10%');
     }
 
     public function test_invalid_or_unknown_code_is_rejected(): void
