@@ -540,6 +540,7 @@
     "Draft": "Borradores",
     "Draft invoice deleted from Humano and Stripe.": "Borrador eliminado de Humano y de Stripe.",
     "Draft invoice removed from Humano. Stripe does not allow deleting subscription invoices, so it was voided.": "Borrador eliminado de Humano. Stripe no permite borrar facturas de suscripción, así que se anuló.",
+    "Stripe does not allow deleting this draft, so it was archived in Humano.": "Stripe no permite eliminar este borrador, así que se archivó en Humano.",
     "Drag & Drop": "Arrastrar y soltar",
     "Drag files here or click to select": "Arrastra archivos aquí o haz clic para seleccionar",
     "Dropdowns": "Desplegables",

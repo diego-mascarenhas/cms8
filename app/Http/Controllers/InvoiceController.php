@@ -561,8 +561,8 @@ class InvoiceController extends Controller
                 ->with('error', collect($exception->errors())->flatten()->first() ?: __('Could not delete the draft invoice.'));
         }
 
-        $message = $outcome === 'voided'
-            ? __('Draft invoice removed from Humano. Stripe does not allow deleting subscription invoices, so it was voided.')
+        $message = $outcome === 'soft_deleted'
+            ? __('Stripe does not allow deleting this draft, so it was archived in Humano.')
             : __('Draft invoice deleted from Humano and Stripe.');
 
         return redirect()

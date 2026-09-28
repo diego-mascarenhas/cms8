@@ -30,6 +30,7 @@ return new class extends Migration
             $table->string('source_reference_id')->nullable();
             $table->timestamp('source_synced_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign('enterprise_id')->references('id')->on('enterprises')->onDelete('cascade');
             $table->foreign('billing_id')->references('id')->on('enterprise_billing_addresses')->onDelete('set null');

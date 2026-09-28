@@ -165,7 +165,9 @@ class InvoiceSummaryService
      */
     private function buildDraftMetric(int $teamId): array
     {
-        $query = Invoice::withoutGlobalScopes()->where('team_id', $teamId);
+        $query = Invoice::withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNull('invoices.deleted_at');
         $this->applySummaryFilter($query, 'draft');
 
         return $this->buildMetric($query, 'total_amount');

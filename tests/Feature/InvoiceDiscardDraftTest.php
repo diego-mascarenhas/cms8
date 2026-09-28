@@ -173,31 +173,18 @@ class InvoiceDiscardDraftTest extends TestCase
                 "You can't delete invoices created by subscriptions.",
                 400,
             ));
-        $invoicesApi->shouldReceive('retrieve')
-            ->once()
-            ->with('in_sub_draft')
-            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'draft']);
-        $invoicesApi->shouldReceive('update')
-            ->once()
-            ->with('in_sub_draft', ['auto_advance' => false])
-            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'draft']);
-        $invoicesApi->shouldReceive('finalizeInvoice')
-            ->once()
-            ->with('in_sub_draft')
-            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'open']);
-        $invoicesApi->shouldReceive('voidInvoice')
-            ->once()
-            ->with('in_sub_draft')
-            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'void']);
+        $invoicesApi->shouldNotReceive('retrieve');
+        $invoicesApi->shouldNotReceive('finalizeInvoice');
+        $invoicesApi->shouldNotReceive('voidInvoice');
 
         $this->bindDiscardService($this->stripeClient($invoicesApi));
 
         $this->actingAs($user)
             ->post(route('invoice.discard-draft', $invoice))
             ->assertRedirect(route('invoice.index'))
-            ->assertSessionHas('success', __('Draft invoice removed from Humano. Stripe does not allow deleting subscription invoices, so it was voided.'));
+            ->assertSessionHas('success', __('Stripe does not allow deleting this draft, so it was archived in Humano.'));
 
-        $this->assertDatabaseMissing('invoices', ['id' => $invoice->id]);
+        $this->assertSoftDeleted('invoices', ['id' => $invoice->id]);
     }
 
     public function test_non_owner_cannot_discard_draft(): void

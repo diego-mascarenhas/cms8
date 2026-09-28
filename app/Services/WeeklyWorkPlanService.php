@@ -867,6 +867,7 @@ class WeeklyWorkPlanService
     {
         return Invoice::withoutGlobalScopes()
             ->where('team_id', $team->id)
+            ->whereNull('invoices.deleted_at')
             ->where('operation', 'sell')
             ->where('status', InvoiceSummaryService::DRAFT_STATUS);
     }
