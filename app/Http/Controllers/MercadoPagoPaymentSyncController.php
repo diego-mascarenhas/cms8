@@ -193,6 +193,22 @@ class MercadoPagoPaymentSyncController extends Controller
         return redirect()->route('invoice.show', $invoice->id);
     }
 
+    /**
+     * Hide a sync from the pending queue / invoice selector when the payment
+     * was already registered manually outside Mercado Pago import.
+     */
+    public function dismiss(PaymentSync $sync): RedirectResponse
+    {
+        $this->authorize('create', Payment::class);
+        $this->ensureTeamSync($sync);
+
+        $sync->dismiss();
+
+        return redirect()
+            ->route('payments.syncs.mercadopago.index')
+            ->with('success', __('payment_sync.mercadopago.success_dismissed'));
+    }
+
     public function import(ImportMercadoPagoPaymentSyncRequest $request, PaymentSync $sync): RedirectResponse
     {
         $this->ensureTeamSync($sync);

@@ -187,6 +187,124 @@ class InvoiceElectronicPaymentLinkServiceTest extends TestCase
         $this->assertSame(['new-1', 'mid-1', 'old-1'], $ids);
     }
 
+    public function test_available_syncs_exclude_already_linked_payments(): void
+    {
+        $team = Team::factory()->create();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $account = \App\Models\PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'mp-ars',
+            'name' => 'Mercado Pago',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+        $type = \App\Models\PaymentType::query()->create(['name' => 'Transfer']);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-LINKED',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        $this->createApprovedSync($team->id, 'mp-free', '2026-08-10');
+        $this->createApprovedSync($team->id, 'mp-linked', '2026-08-11');
+        $this->createApprovedSync($team->id, 'mp-split', '2026-08-12');
+
+        \App\Models\Payment::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'transaction_type' => \App\Enums\TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'invoice_id' => $invoice->id,
+            'account_id' => $account->id,
+            'type_id' => $type->id,
+            'amount' => 100,
+            'remarks' => 'linked',
+            'status' => 2,
+            'source_provider' => 'mercadopago',
+            'source_reference_id' => 'mp-linked',
+        ]);
+
+        \App\Models\Payment::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'transaction_type' => \App\Enums\TransactionType::INCOME,
+            'date' => now()->toDateString(),
+            'invoice_id' => $invoice->id,
+            'account_id' => $account->id,
+            'type_id' => $type->id,
+            'amount' => 50,
+            'remarks' => 'split',
+            'status' => 2,
+            'source_provider' => 'mercadopago',
+            'source_reference_id' => 'mp-split:'.$invoice->id,
+        ]);
+
+        $ids = app(InvoiceElectronicPaymentLinkService::class)
+            ->availableSyncs($invoice)
+            ->pluck('external_id')
+            ->all();
+
+        $this->assertSame(['mp-free'], $ids);
+    }
+
+    public function test_available_syncs_exclude_dismissed_syncs(): void
+    {
+        $team = Team::factory()->create();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-DISMISS',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        $this->createApprovedSync($team->id, 'mp-open', '2026-08-10');
+        $dismissed = $this->createApprovedSync($team->id, 'mp-manual', '2026-08-11');
+        $dismissed->dismiss();
+
+        $ids = app(InvoiceElectronicPaymentLinkService::class)
+            ->availableSyncs($invoice)
+            ->pluck('external_id')
+            ->all();
+
+        $this->assertSame(['mp-open'], $ids);
+    }
+
     /**
      * @param  array<string, mixed>  $rawPayload
      */

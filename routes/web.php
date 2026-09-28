@@ -976,6 +976,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/payments/syncs/mercadopago/auto-assign/skip', [MercadoPagoPaymentSyncController::class, 'autoAssignSkip'])->name('payments.syncs.mercadopago.auto-assign.skip');
     Route::get('/payments/syncs/mercadopago/{sync}/linked-invoice', [MercadoPagoPaymentSyncController::class, 'linkedInvoice'])->name('payments.syncs.mercadopago.linked-invoice');
     Route::get('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'assign'])->name('payments.syncs.mercadopago.assign');
+    Route::post('/payments/syncs/mercadopago/{sync}/dismiss', [MercadoPagoPaymentSyncController::class, 'dismiss'])->name('payments.syncs.mercadopago.dismiss');
     Route::post('/payments/syncs/mercadopago/{sync}', [MercadoPagoPaymentSyncController::class, 'import'])->name('payments.syncs.mercadopago.import');
     Route::get('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoiceForm'])->name('payments.link-invoice');
     Route::post('/payments/{payment}/link-invoice', [PaymentController::class, 'linkInvoice'])->name('payments.link-invoice.store');

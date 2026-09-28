@@ -336,6 +336,26 @@ class InvoicePaymentRegistrationTest extends TestCase
             'source_provider' => 'mercadopago',
             'source_reference_id' => 'mp-electronic-1',
         ]);
+
+        // Linked sync must leave the electronic payment selector.
+        $this->actingAs($user)
+            ->get(route('invoice.show', Invoice::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'currency_id' => 32,
+                'type_id' => 1,
+                'operation' => 'sell',
+                'number' => 'F-010-B',
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(10)->toDateString(),
+                'gross_amount' => 100,
+                'discount' => 0,
+                'total_amount' => 100,
+                'balance' => 100,
+                'status' => 1,
+            ])->id))
+            ->assertOk()
+            ->assertDontSee('mp-electronic-1', false);
     }
 
     public function test_invoice_show_lists_electronic_payments_newest_first(): void

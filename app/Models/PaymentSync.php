@@ -35,12 +35,14 @@ class PaymentSync extends Model
         'description',
         'charge_created_at',
         'last_synced_at',
+        'dismissed_at',
         'raw_payload',
     ];
 
     protected $casts = [
         'charge_created_at' => 'datetime',
         'last_synced_at' => 'datetime',
+        'dismissed_at' => 'datetime',
         'raw_payload' => 'array',
     ];
 
@@ -83,6 +85,48 @@ class PaymentSync extends Model
     public function scopeProvider(Builder $query, string $provider): Builder
     {
         return $query->where('provider', strtolower($provider));
+    }
+
+    /**
+     * Exclude syncs already imported as Mercado Pago payments
+     * (exact external_id or split external_id:invoiceId).
+     */
+    public function scopeNotImportedAsPayment(Builder $query): Builder
+    {
+        return $query->whereNotExists(function ($sub): void
+        {
+            $sub->from('payments')
+                ->whereColumn('payments.team_id', 'payment_syncs.team_id')
+                ->where('payments.source_provider', 'mercadopago')
+                ->where(function ($inner): void
+                {
+                    $inner->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
+                        ->orWhereRaw("payments.source_reference_id LIKE payment_syncs.external_id || ':%'");
+                });
+        });
+    }
+
+    /**
+     * Syncs still available to assign / show in the invoice selector.
+     */
+    public function scopePendingAssignment(Builder $query): Builder
+    {
+        return $query->whereNull('dismissed_at')->notImportedAsPayment();
+    }
+
+    public function isDismissed(): bool
+    {
+        return $this->dismissed_at !== null;
+    }
+
+    public function dismiss(): void
+    {
+        if ($this->dismissed_at !== null)
+        {
+            return;
+        }
+
+        $this->forceFill(['dismissed_at' => now()])->save();
     }
 
     /**
