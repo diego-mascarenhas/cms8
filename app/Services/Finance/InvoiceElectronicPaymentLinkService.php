@@ -46,28 +46,23 @@ class InvoiceElectronicPaymentLinkService
     }
 
     /**
-     * Approved Mercado Pago syncs not yet imported, newest charge first.
+     * Approved Mercado Pago syncs not yet imported as payments, newest charge first.
+     * Already-linked syncs (from this selector or any other import) are excluded in SQL.
      *
      * @return Collection<int, PaymentSync>
      */
     public function availableSyncs(Invoice $invoice, int $limit = 40): Collection
     {
-        $syncs = PaymentSync::query()
+        return PaymentSync::query()
             ->where('team_id', $invoice->team_id)
             ->where('provider', 'mercadopago')
             ->whereRaw('LOWER(status) = ?', ['approved'])
             ->where('amount_net_cents', '>', 0)
+            ->pendingAssignment()
             ->orderByDesc('charge_created_at')
             ->orderByDesc('id')
-            ->limit(200)
-            ->get()
-            ->filter(fn (PaymentSync $sync) => ! $this->mercadoPagoPaymentImportService->isAlreadyImported($sync))
-            ->values();
-
-        return $syncs
-            ->sortByDesc(fn (PaymentSync $sync): int => $sync->charge_created_at?->getTimestamp() ?? 0)
-            ->take($limit)
-            ->values();
+            ->limit($limit)
+            ->get();
     }
 
     /**

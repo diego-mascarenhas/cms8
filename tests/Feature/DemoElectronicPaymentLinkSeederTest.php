@@ -85,7 +85,8 @@ class DemoElectronicPaymentLinkSeederTest extends TestCase
         $this->actingAs($user)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertSee(__('invoice_payment.electronic_title'), false)
+            ->assertSee(__('invoice_payment.register_title'), false)
+            ->assertSee('id="payment_sync_id"', false)
             ->assertSee('form-control select2', false)
             ->assertSeeInOrder(['10/08/2026', '07/08/2026', '16/07/2026'], false);
     }

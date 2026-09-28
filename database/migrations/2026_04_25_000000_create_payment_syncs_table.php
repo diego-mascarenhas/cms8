@@ -26,6 +26,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->timestamp('charge_created_at')->nullable()->index();
             $table->timestamp('last_synced_at')->nullable();
+            $table->timestamp('dismissed_at')->nullable()->index();
             $table->json('raw_payload')->nullable();
             $table->timestamps();
 

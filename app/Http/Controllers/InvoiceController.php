@@ -493,10 +493,31 @@ class InvoiceController extends Controller
         $electronicPaymentSyncOptions = $canLinkElectronicPayment
             ? $this->invoiceElectronicPaymentLinkService->syncOptions($invoice)
             : [];
+        $hasElectronicSyncOptions = $electronicPaymentSyncOptions !== [];
+        if ($canLinkElectronicPayment)
+        {
+            $this->mercadoPagoPaymentImportService->ensureMercadoPagoPaymentAccount((int) $invoice->team_id);
+        }
         $canRegisterPayment = $this->invoicePaymentRegistrationService->canRegisterPayment(auth()->user(), $invoice);
-        $paymentFormDefaults = $canRegisterPayment
-            ? $this->invoicePaymentRegistrationService->formDefaults($invoice)
+        $paymentFormDefaults = ($canRegisterPayment || ($canLinkElectronicPayment && $hasElectronicSyncOptions))
+            ? $this->invoicePaymentRegistrationService->formDefaults(
+                $invoice,
+                includeMercadoPago: $canLinkElectronicPayment && $hasElectronicSyncOptions,
+            )
             : null;
+        if ($paymentFormDefaults !== null && ! $canRegisterPayment && $canLinkElectronicPayment && $hasElectronicSyncOptions)
+        {
+            // Electronic-only: keep Mercado Pago accounts so the sync selector can appear.
+            $paymentFormDefaults['accounts'] = array_values(array_filter(
+                $paymentFormDefaults['accounts'],
+                fn (array $account): bool => ! empty($account['is_mercadopago']),
+            ));
+            $paymentFormDefaults['account_id'] = $paymentFormDefaults['mercadopago_account_ids'][0] ?? null;
+            if ($paymentFormDefaults['accounts'] === [])
+            {
+                $paymentFormDefaults = null;
+            }
+        }
         $canShowCreditNoteForm = $this->invoiceCreditNoteService->canShowCreditNoteForm(auth()->user(), $invoice);
         $canIssueCreditNote = $this->invoiceCreditNoteService->canIssueCreditNote(auth()->user(), $invoice);
         $creditNoteReasons = InvoiceCreditNoteService::STRIPE_REASONS;

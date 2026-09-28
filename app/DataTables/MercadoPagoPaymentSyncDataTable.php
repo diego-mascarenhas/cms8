@@ -139,18 +139,6 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
             ->where('provider', 'mercadopago')
             ->where('status', 'approved');
 
-        $notImported = function ($sub): void
-        {
-            $sub->from('payments')
-                ->whereColumn('payments.team_id', 'payment_syncs.team_id')
-                ->where('payments.source_provider', 'mercadopago')
-                ->where(function ($inner): void
-                {
-                    $inner->whereColumn('payments.source_reference_id', 'payment_syncs.external_id')
-                        ->orWhereRaw("payments.source_reference_id LIKE payment_syncs.external_id || ':%'");
-                });
-        };
-
         $stripeLinked = $this->stripeLinkedExistsCallback($teamId);
 
         if ($assignmentFilter === 'stripe')
@@ -159,14 +147,14 @@ class MercadoPagoPaymentSyncDataTable extends DataTable
         } elseif ($assignmentFilter === 'all')
         {
             // Pending queue + Stripe-linked rows (even after import).
-            $query->where(function ($outer) use ($notImported, $stripeLinked): void
+            $query->where(function ($outer) use ($stripeLinked): void
             {
-                $outer->whereNotExists($notImported)
+                $outer->where(fn ($q) => $q->pendingAssignment())
                     ->orWhereExists($stripeLinked);
             });
         } else
         {
-            $query->whereNotExists($notImported)
+            $query->pendingAssignment()
                 ->whereNotExists($stripeLinked);
         }
 

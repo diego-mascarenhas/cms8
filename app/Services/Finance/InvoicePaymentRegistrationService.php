@@ -90,20 +90,64 @@ class InvoicePaymentRegistrationService
      *     date: string,
      *     account_id: int|null,
      *     type_id: int,
-     *     accounts: array<int, array{id: int, name: string}>,
+     *     accounts: array<int, array{id: int, name: string, payment_type_ids: list<int>, is_mercadopago: bool}>,
      *     payment_types: array<int, array{id: int, name: string}>,
-     *     currency_code: string
+     *     currency_code: string,
+     *     mercadopago_account_ids: list<int>
      * }
      */
-    public function formDefaults(Invoice $invoice): array
+    public function formDefaults(Invoice $invoice, bool $includeMercadoPago = false): array
     {
         $accounts = $this->cashAccountsForInvoiceCurrency($invoice);
-        $preferredAccount = $accounts->first(function (PaymentAccount $account): bool
-        {
-            $name = mb_strtolower((string) $account->name);
 
-            return str_contains($name, 'efectivo') || preg_match('/\bcash\b/u', $name) === 1;
-        }) ?? $accounts->first();
+        if ($includeMercadoPago)
+        {
+            $mpAccounts = $this->accountsForInvoiceCurrency($invoice)
+                ->filter(fn (PaymentAccount $account): bool => $this->isMercadoPagoAccount($account));
+
+            // MP account may have null currency_id (auto-created); still offer it.
+            if ($mpAccounts->isEmpty())
+            {
+                $mpAccounts = PaymentAccount::withoutGlobalScopes()
+                    ->where('team_id', $invoice->team_id)
+                    ->where('status', 1)
+                    ->get()
+                    ->filter(fn (PaymentAccount $account): bool => $this->isMercadoPagoAccount($account));
+            }
+
+            foreach ($mpAccounts as $mpAccount)
+            {
+                if (! $accounts->contains(fn (PaymentAccount $existing): bool => (int) $existing->id === (int) $mpAccount->id))
+                {
+                    $accounts->push($mpAccount);
+                }
+            }
+
+            $accounts = $accounts->sortBy('name')->values();
+        }
+
+        $preferredAccount = null;
+
+        if ($includeMercadoPago)
+        {
+            $preferredAccount = $accounts->first(fn (PaymentAccount $account): bool => $this->isMercadoPagoAccount($account));
+        }
+
+        if ($preferredAccount === null)
+        {
+            $preferredAccount = $accounts->first(function (PaymentAccount $account): bool
+            {
+                if ($this->isMercadoPagoAccount($account))
+                {
+                    return false;
+                }
+
+                $name = mb_strtolower((string) $account->name);
+
+                return str_contains($name, 'efectivo') || preg_match('/\bcash\b/u', $name) === 1;
+            }) ?? $accounts->first(fn (PaymentAccount $account): bool => ! $this->isMercadoPagoAccount($account))
+                ?? $accounts->first();
+        }
 
         $paymentTypes = PaymentType::query()
             ->whereKey(self::CASH_PAYMENT_TYPE_ID)
@@ -112,22 +156,44 @@ class InvoicePaymentRegistrationService
             ->values()
             ->all();
 
+        $mappedAccounts = $accounts
+            ->map(fn (PaymentAccount $account) => [
+                'id' => $account->id,
+                'name' => $account->name,
+                'payment_type_ids' => [self::CASH_PAYMENT_TYPE_ID],
+                'is_mercadopago' => $this->isMercadoPagoAccount($account),
+            ])
+            ->values()
+            ->all();
+
         return [
             'amount' => round((float) $invoice->balance, 2),
             'date' => now()->toDateString(),
             'account_id' => $preferredAccount?->id,
             'type_id' => self::CASH_PAYMENT_TYPE_ID,
-            'accounts' => $accounts
-                ->map(fn (PaymentAccount $account) => [
-                    'id' => $account->id,
-                    'name' => $account->name,
-                    'payment_type_ids' => [self::CASH_PAYMENT_TYPE_ID],
-                ])
-                ->values()
-                ->all(),
+            'accounts' => $mappedAccounts,
             'payment_types' => $paymentTypes,
             'currency_code' => $invoice->currency_code,
+            'mercadopago_account_ids' => collect($mappedAccounts)
+                ->filter(fn (array $account): bool => $account['is_mercadopago'])
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->values()
+                ->all(),
         ];
+    }
+
+    public function isMercadoPagoAccount(PaymentAccount $account): bool
+    {
+        $code = mb_strtoupper(trim((string) $account->code));
+        $name = mb_strtolower((string) $account->name);
+
+        if ($code === 'MP' || str_contains($code, 'MERCADOPAGO') || str_contains($code, 'MERCADO_PAGO'))
+        {
+            return true;
+        }
+
+        return str_contains($name, 'mercado pago') || str_contains($name, 'mercadopago');
     }
 
     /**

@@ -206,14 +206,14 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertSee(__('invoice_payment.electronic_title'), false)
-            ->assertSee(__('invoice_payment.register_title'), false);
+            ->assertSee(__('invoice_payment.register_title'), false)
+            ->assertSee('id="account_id"', false);
 
         $this->actingAs($member)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.electronic_title'), false)
-            ->assertDontSee(__('invoice_payment.register_title'), false);
+            ->assertDontSee(__('invoice_payment.register_title'), false)
+            ->assertDontSee('id="account_id"', false);
     }
 
     public function test_invoice_show_hides_electronic_payment_form_when_balance_is_zero(): void
@@ -258,8 +258,8 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.electronic_title'), false)
-            ->assertDontSee(__('invoice_payment.register_title'), false);
+            ->assertDontSee(__('invoice_payment.register_title'), false)
+            ->assertDontSee(__('invoice_payment.electronic_title'), false);
     }
 
     public function test_team_owner_can_link_mercadopago_sync_from_invoice_show(): void
@@ -336,6 +336,26 @@ class InvoicePaymentRegistrationTest extends TestCase
             'source_provider' => 'mercadopago',
             'source_reference_id' => 'mp-electronic-1',
         ]);
+
+        // Linked sync must leave the electronic payment selector.
+        $this->actingAs($user)
+            ->get(route('invoice.show', Invoice::withoutGlobalScopes()->create([
+                'team_id' => $team->id,
+                'enterprise_id' => $enterprise->id,
+                'currency_id' => 32,
+                'type_id' => 1,
+                'operation' => 'sell',
+                'number' => 'F-010-B',
+                'date' => now()->toDateString(),
+                'due_date' => now()->addDays(10)->toDateString(),
+                'gross_amount' => 100,
+                'discount' => 0,
+                'total_amount' => 100,
+                'balance' => 100,
+                'status' => 1,
+            ])->id))
+            ->assertOk()
+            ->assertDontSee('mp-electronic-1', false);
     }
 
     public function test_invoice_show_lists_electronic_payments_newest_first(): void
