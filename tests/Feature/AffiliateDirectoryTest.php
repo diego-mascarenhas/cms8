@@ -144,8 +144,15 @@ class AffiliateDirectoryTest extends TestCase
             ])
             ->assertRedirect(route('affiliate.show', $affiliate));
 
-        $this->assertSame('cus_assign_referrer', $payingTeam->fresh()->referred_by);
+        $this->assertNull($payingTeam->fresh()->referred_by);
         $this->assertSame('cus_assign_referrer', $subscription->fresh()->referred_by);
+
+        $this->actingAs($user)
+            ->get(route('affiliate.show', $affiliate))
+            ->assertOk()
+            ->assertSee('sub_assign_shop')
+            ->assertSee('30%')
+            ->assertDontSee('cus_assign_paying');
 
         $this->actingAs($user)
             ->delete(route('affiliate.referrals.destroy', $affiliate), [

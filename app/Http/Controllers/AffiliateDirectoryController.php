@@ -50,9 +50,12 @@ class AffiliateDirectoryController extends Controller
 
         try
         {
+            $code = (string) $request->validated('subscription_code');
+
             $this->affiliates->claimReferral(
                 $affiliate,
-                (string) $request->validated('subscription_code'),
+                $code,
+                attributeCustomer: ! str_starts_with(strtolower($code), 'sub_'),
             );
         } catch (ValidationException $exception)
         {

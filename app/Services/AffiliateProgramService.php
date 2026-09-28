@@ -234,7 +234,7 @@ class AffiliateProgramService
      *
      * @return array<string, mixed>
      */
-    public function claimReferral(Team $referrer, string $subscriptionCode): array
+    public function claimReferral(Team $referrer, string $subscriptionCode, bool $attributeCustomer = true): array
     {
         if (! $referrer->canUseAffiliateProgram())
         {
@@ -274,7 +274,7 @@ class AffiliateProgramService
 
         if ($subscription !== null)
         {
-            $this->claimSpecificSubscription($payingTeam, $subscription, $referrerCode);
+            $this->claimSpecificSubscription($payingTeam, $subscription, $referrerCode, $attributeCustomer);
         } else
         {
             $this->claimCustomer($payingTeam, $referrerCode);
@@ -574,9 +574,9 @@ class AffiliateProgramService
         return [$subscription->team, $subscription];
     }
 
-    private function claimSpecificSubscription(Team $payingTeam, Subscription $subscription, string $referrerCode): void
+    private function claimSpecificSubscription(Team $payingTeam, Subscription $subscription, string $referrerCode, bool $attributeCustomer = true): void
     {
-        if (trim((string) ($payingTeam->referred_by ?? '')) !== '')
+        if (! $attributeCustomer && trim((string) ($payingTeam->referred_by ?? '')) !== '')
         {
             throw ValidationException::withMessages([
                 'subscription_code' => __('Ese cliente ya tiene un cus_ asignado. No se puede asignar un sub_ del mismo cliente.'),
@@ -599,7 +599,7 @@ class AffiliateProgramService
             ])->save();
         }
 
-        if (trim((string) ($payingTeam->referred_by ?? '')) === '')
+        if ($attributeCustomer && trim((string) ($payingTeam->referred_by ?? '')) === '')
         {
             $payingTeam->forceFill(['referred_by' => $referrerCode])->save();
         }
