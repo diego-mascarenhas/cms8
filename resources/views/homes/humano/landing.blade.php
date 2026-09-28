@@ -8,9 +8,9 @@ $heroImageStyle = $configData['style'] === 'dark' ? 'dark' : 'light';
 
 @extends('layouts/layoutMaster')
 
-@section('title', 'HumanoApp')
-@section('ogTitle', __('slash_landing.og_title'))
-@section('metaDescription', __('slash_landing.meta_description'))
+@section('title', config('app.name'))
+@section('ogTitle', config('app.name'))
+@section('metaDescription', __('slash_landing.meta_description', ['app' => config('app.name')]))
 
 @section('vendor-style')
 <link rel="stylesheet" href="{{ HumanoHomeAsset::url('vendor/swiper/swiper.css') }}" />

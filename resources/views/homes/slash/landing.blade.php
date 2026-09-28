@@ -30,9 +30,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <meta name="description" content="{{ __('slash_landing.meta_description') }}">
+  <meta name="description" content="{{ __('slash_landing.meta_description', ['app' => config('app.name')]) }}">
   <meta name="color-scheme" content="dark">
-  <title>{{ __('slash_landing.page_title') }}</title>
+  <title>{{ config('app.name') }}</title>
   @include('layouts.partials.favicon')
   @php
     $slashOgImagePath = config('variables.ogImage', 'assets/logo.png');
@@ -42,8 +42,8 @@
   <link rel="canonical" href="{{ $slashPageUrl }}">
   <meta property="og:type" content="website">
   <meta property="og:url" content="{{ $slashPageUrl }}">
-  <meta property="og:title" content="{{ __('slash_landing.og_title') }}">
-  <meta property="og:description" content="{{ __('slash_landing.meta_description') }}">
+  <meta property="og:title" content="{{ config('app.name') }}">
+  <meta property="og:description" content="{{ __('slash_landing.meta_description', ['app' => config('app.name')]) }}">
   <meta property="og:image" content="{{ $slashOgImageUrl }}">
   <meta property="og:image:secure_url" content="{{ $slashOgImageUrl }}">
   <meta property="og:image:width" content="{{ config('variables.ogImageWidth', 552) }}">
@@ -52,8 +52,8 @@
   <meta property="og:site_name" content="{{ config('variables.templateName') }}">
   <meta property="og:locale" content="{{ str_replace('-', '_', app()->getLocale()) }}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{{ __('slash_landing.og_title') }}">
-  <meta name="twitter:description" content="{{ __('slash_landing.meta_description') }}">
+  <meta name="twitter:title" content="{{ config('app.name') }}">
+  <meta name="twitter:description" content="{{ __('slash_landing.meta_description', ['app' => config('app.name')]) }}">
   <meta name="twitter:image" content="{{ $slashOgImageUrl }}">
   <meta name="twitter:image:alt" content="{{ config('variables.ogImageAlt', config('variables.templateName')) }}">
   @if (config('variables.twitterUrl'))

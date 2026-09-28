@@ -1,9 +1,9 @@
 <?php
 
 return [
-    'meta_description' => 'La libertad de trabajar donde quieras, cuando quieras. Eso es HumanoApp.',
-    'page_title' => 'HumanoApp',
-    'og_title' => 'HumanoApp',
+    'meta_description' => 'La libertad de trabajar donde quieras, cuando quieras. Eso es :app.',
+    'page_title' => ':app',
+    'og_title' => ':app',
     'nav' => [
         'login' => 'Iniciar sesión',
         'open_menu' => 'Abrir menú',
@@ -30,7 +30,7 @@ return [
             'desk' => 'Se acabó lo de estar pegado al ordenador todo el día:',
             'desk_why' => 'es aburrido y poco práctico.',
             'with_brand' => 'Con',
-            'brand' => 'HumanoApp',
+            'brand' => ':app',
             'in_hand' => 'tienes tu negocio en la palma de la mano:',
             'traits' => 'ligero, rápido e intuitivo',
         ],
