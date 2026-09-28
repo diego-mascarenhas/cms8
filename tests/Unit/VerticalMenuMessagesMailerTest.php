@@ -70,8 +70,8 @@ class VerticalMenuMessagesMailerTest extends TestCase
         }
 
         $this->assertNotNull($affiliates);
-        $this->assertSame('billing', $affiliates['url']);
-        $this->assertSame('billing.index', $affiliates['slug']);
+        $this->assertSame('affiliate', $affiliates['url']);
+        $this->assertSame('affiliate', $affiliates['slug']);
         $this->assertSame('affiliates', $affiliates['module_key']);
         $this->assertStringContainsString('ti-affiliate', (string) ($affiliates['icon'] ?? ''));
     }

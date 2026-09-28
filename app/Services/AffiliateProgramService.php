@@ -291,6 +291,187 @@ class AffiliateProgramService
     }
 
     /**
+     * Remove a cus_ or sub_ attribution previously claimed for this referrer.
+     */
+    public function releaseReferral(Team $referrer, string $subscriptionCode): void
+    {
+        $referrerCode = trim((string) ($referrer->stripe_id ?? ''));
+
+        if ($referrerCode === '')
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Este afiliado no tiene código de referido.'),
+            ]);
+        }
+
+        $target = $this->resolveClaimTarget($subscriptionCode);
+
+        if ($target === null)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('No encontramos una suscripción con ese código.'),
+            ]);
+        }
+
+        [$payingTeam, $subscription] = $target;
+
+        if ($subscription !== null)
+        {
+            if (strcasecmp(trim((string) ($subscription->referred_by ?? '')), $referrerCode) !== 0)
+            {
+                throw ValidationException::withMessages([
+                    'subscription_code' => __('Ese código no pertenece a este afiliado.'),
+                ]);
+            }
+
+            $subscription->forceFill([
+                'referred_by' => null,
+                'affiliate_commission_percent' => null,
+            ])->save();
+
+            $stillLinked = $payingTeam->subscriptions()
+                ->where('referred_by', $referrerCode)
+                ->exists();
+
+            if (! $stillLinked && strcasecmp(trim((string) ($payingTeam->referred_by ?? '')), $referrerCode) === 0)
+            {
+                $payingTeam->forceFill(['referred_by' => null])->save();
+            }
+
+            return;
+        }
+
+        if (strcasecmp(trim((string) ($payingTeam->referred_by ?? '')), $referrerCode) !== 0)
+        {
+            throw ValidationException::withMessages([
+                'subscription_code' => __('Ese código no pertenece a este afiliado.'),
+            ]);
+        }
+
+        $payingTeam->forceFill(['referred_by' => null])->save();
+
+        foreach ($payingTeam->subscriptions as $row)
+        {
+            if (strcasecmp(trim((string) ($row->referred_by ?? '')), $referrerCode) !== 0)
+            {
+                continue;
+            }
+
+            $row->forceFill([
+                'referred_by' => null,
+                'affiliate_commission_percent' => null,
+            ])->save();
+        }
+    }
+
+    /**
+     * Referred teams for an affiliate, with the cus_/sub_ codes that point at them and commission totals.
+     *
+     * @return list<array{
+     *     team_id: int,
+     *     name: string,
+     *     email: string|null,
+     *     codes: list<array{code: string, kind: string, plan: string|null}>,
+     *     commissions_by_currency: array<string, int>
+     * }>
+     */
+    public function referralAssignments(Team $affiliate): array
+    {
+        $code = trim((string) ($affiliate->stripe_id ?? ''));
+
+        if ($code === '')
+        {
+            return [];
+        }
+
+        $teamIds = Team::query()
+            ->where('referred_by', $code)
+            ->pluck('id');
+
+        $subscriptionTeamIds = Subscription::query()
+            ->where('referred_by', $code)
+            ->pluck('team_id');
+
+        $ids = $teamIds->merge($subscriptionTeamIds)->unique()->filter()->values();
+
+        if ($ids->isEmpty())
+        {
+            return [];
+        }
+
+        $teams = Team::query()
+            ->with(['owner', 'subscriptions'])
+            ->whereIn('id', $ids)
+            ->orderBy('name')
+            ->get();
+
+        $commissions = $affiliate->billingAffiliateCommissionsAsReferrer()
+            ->whereIn('paying_team_id', $ids)
+            ->get()
+            ->groupBy('paying_team_id');
+
+        $rows = [];
+
+        foreach ($teams as $team)
+        {
+            $codes = [];
+
+            if (strcasecmp(trim((string) ($team->referred_by ?? '')), $code) === 0 && trim((string) ($team->stripe_id ?? '')) !== '')
+            {
+                $codes[] = [
+                    'code' => (string) $team->stripe_id,
+                    'kind' => 'cus',
+                    'plan' => null,
+                ];
+            }
+
+            foreach ($team->subscriptions as $subscription)
+            {
+                if (strcasecmp(trim((string) ($subscription->referred_by ?? '')), $code) !== 0)
+                {
+                    continue;
+                }
+
+                $subscriptionCode = trim((string) ($subscription->stripe_id ?? ''));
+
+                if ($subscriptionCode === '')
+                {
+                    continue;
+                }
+
+                $codes[] = [
+                    'code' => $subscriptionCode,
+                    'kind' => 'sub',
+                    'plan' => (string) $subscription->type,
+                ];
+            }
+
+            if ($codes === [])
+            {
+                continue;
+            }
+
+            $byCurrency = [];
+
+            foreach ($commissions->get($team->id, collect()) as $commission)
+            {
+                $currency = strtoupper((string) $commission->currency);
+                $byCurrency[$currency] = ($byCurrency[$currency] ?? 0) + (int) $commission->commission_amount_cents;
+            }
+
+            $rows[] = [
+                'team_id' => (int) $team->id,
+                'name' => (string) $team->name,
+                'email' => $team->owner?->email,
+                'codes' => $codes,
+                'commissions_by_currency' => $byCurrency,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return array{0: Team, 1: Subscription|null}|null
      */
     private function resolveClaimTarget(string $code): ?array
