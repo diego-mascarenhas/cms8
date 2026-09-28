@@ -861,12 +861,34 @@ class ProjectApiTest extends TestCase
         ]);
         $contact->enterprises()->attach($enterprise->id);
 
+        $this->seed(TaskStatusSeeder::class);
+
+        $board = TaskBoard::withoutGlobalScopes()->create([
+            'team_id' => $provider->id,
+            'name' => 'Portal board',
+            'is_default' => false,
+            'order' => 0,
+        ]);
+
         $project = Project::withoutGlobalScopes()->create([
             'team_id' => $provider->id,
             'enterprise_id' => $enterprise->id,
             'name' => 'Portal website',
             'responsible_id' => $user->id,
             'status_id' => 9,
+            'board_id' => $board->id,
+        ]);
+
+        Task::withoutGlobalScopes()->create([
+            'team_id' => $provider->id,
+            'board_id' => $board->id,
+            'responsible_id' => $user->id,
+            'title' => 'Maquetar la home',
+            'estimated_hours' => 3,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'status_id' => TaskStatus::query()->where('name', 'IN_PROGRESS')->firstOrFail()->id,
+            'order' => 1,
         ]);
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
@@ -880,8 +902,12 @@ class ProjectApiTest extends TestCase
             ->getJson('/api/projects/'.$project->id);
 
         $show->assertOk()
-            ->assertJsonPath('data.name', 'Portal website');
+            ->assertJsonPath('data.name', 'Portal website')
+            ->assertJsonPath('data.tasks.0.title', 'Maquetar la home')
+            ->assertJsonPath('data.tasks.0.status.name', 'IN_PROGRESS');
         $this->assertArrayNotHasKey('responsible', $show->json('data'));
         $this->assertArrayNotHasKey('total_time_seconds', $show->json('data'));
+        $this->assertArrayNotHasKey('responsible', $show->json('data.tasks.0'));
+        $this->assertArrayNotHasKey('estimated_hours', $show->json('data.tasks.0'));
     }
 }

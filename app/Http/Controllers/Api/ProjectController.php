@@ -308,7 +308,9 @@ class ProjectController extends Controller
 
             if ($project->board_id)
             {
-                $projectTasks = Task::where('board_id', $project->board_id)
+                $projectTasks = Task::withoutGlobalScope('team')
+                    ->where('team_id', $project->team_id)
+                    ->where('board_id', $project->board_id)
                     ->with($clientView ? ['status'] : ['status', 'responsible'])
                     ->defaultOrder()
                     ->get();

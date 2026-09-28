@@ -23,7 +23,8 @@ class InvoiceListState
             ? $operation
             : null;
 
-        $search = trim((string) ($input['search'] ?? ''));
+        $searchInput = $input['search'] ?? '';
+        $search = is_string($searchInput) ? trim($searchInput) : '';
         if (mb_strlen($search) > 200)
         {
             $search = mb_substr($search, 0, 200);
