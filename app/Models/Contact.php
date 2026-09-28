@@ -71,7 +71,11 @@ class Contact extends Model implements HasMedia
                     return;
                 }
 
-                $builder->where('responsible_id', $user->id);
+                $builder->where(function ($query) use ($user)
+                {
+                    $query->where('responsible_id', $user->id)
+                        ->orWhere('user_id', $user->id);
+                });
             }
         });
     }
