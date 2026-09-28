@@ -8,8 +8,13 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskCommunication;
 use App\Models\TaskStatus;
+use App\Models\Team;
 use App\Models\Time;
+use App\Models\User;
+use App\Support\TaskTimeBudget;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
 class TaskController extends Controller
@@ -503,15 +508,19 @@ class TaskController extends Controller
 
         // Ordenamiento
         $tasks = $query->defaultOrder()->get();
+        $timesByTask = Time::query()
+            ->whereIn('task_id', $tasks->pluck('id'))
+            ->get()
+            ->groupBy('task_id');
 
         // Transformar a formato API
-        $data = $tasks->map(function ($task) use ($user)
+        $data = $tasks->map(function ($task) use ($user, $timesByTask)
         {
-            // Buscar tiempo activo para esta tarea
-            $activeTime = \App\Models\Time::where('task_id', $task->id)
-                ->where('user_id', $user->id)
-                ->whereNull('end_time')
-                ->first();
+            $taskTimes = $timesByTask->get($task->id, collect());
+            $activeTime = $taskTimes->first(function (Time $time) use ($user)
+            {
+                return (int) $time->user_id === (int) $user->id && $time->end_time === null;
+            });
 
             return [
                 'id' => $task->id,
@@ -538,6 +547,7 @@ class TaskController extends Controller
                     'name' => $task->responsible?->name,
                     'email' => $task->responsible?->email,
                 ],
+                'time_seconds' => $this->loggedSeconds($taskTimes),
                 'active_time' => $activeTime ? [
                     'id' => $activeTime->id,
                     'started_at' => $activeTime->start_time->toIso8601String(),
@@ -717,8 +727,7 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
 
-        // Validar permisos
-        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
+        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole(['admin', 'root']))
         {
             return response()->json([
                 'success' => false,
@@ -726,11 +735,26 @@ class TaskController extends Controller
             ], 403);
         }
 
-        // Si el timer de esta tarea ya está corriendo, devolverlo para que el cliente lo muestre.
-        $activeTime = Time::where('task_id', $id)
-            ->where('user_id', $request->user()->id)
-            ->whereNull('end_time')
-            ->first();
+        $logger = $this->resolveTimeLogger($request, $task);
+
+        if ($logger instanceof JsonResponse)
+        {
+            return $logger;
+        }
+
+        TaskTimeBudget::cap($task);
+
+        $remaining = TaskTimeBudget::remainingSeconds($task);
+
+        if ($remaining !== null && $remaining <= 0)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('La tarea ya alcanzó el tiempo estimado.'),
+            ], 422);
+        }
+
+        $activeTime = $this->openTimer($task, $logger->id);
 
         if ($activeTime)
         {
@@ -743,22 +767,21 @@ class TaskController extends Controller
             ]);
         }
 
-        // Stop any other running timer for this user and persist duration
-        Time::where('user_id', $request->user()->id)
-            ->where('task_id', '!=', $id)
+        Time::withoutGlobalScope('team')
+            ->where('user_id', $logger->id)
+            ->where('task_id', '!=', $task->id)
             ->whereNull('end_time')
             ->get()
-            ->each(function (Time $t)
+            ->each(function (Time $time)
             {
-                $t->update(['end_time' => now()]);
-                $t->calculateDuration();
+                $time->update(['end_time' => now()]);
+                $time->calculateDuration();
             });
 
-        // Crear nuevo registro de tiempo
         $time = Time::create([
-            'task_id' => $id,
-            'user_id' => $request->user()->id,
-            'team_id' => $request->user()->currentTeam->id,
+            'task_id' => $task->id,
+            'user_id' => $logger->id,
+            'team_id' => $task->team_id,
             'start_time' => now(),
         ]);
 
@@ -768,7 +791,7 @@ class TaskController extends Controller
             'success' => true,
             'message' => __('Tarea iniciada correctamente.'),
             'data' => $this->timerPayload($task, $time),
-        ]);
+        ], 201);
     }
 
     /**
@@ -781,8 +804,7 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
 
-        // Validar permisos
-        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole('admin'))
+        if ($task->responsible_id !== $request->user()->id && ! $request->user()->hasRole(['admin', 'root']))
         {
             return response()->json([
                 'success' => false,
@@ -790,11 +812,14 @@ class TaskController extends Controller
             ], 403);
         }
 
-        // Buscar tiempo activo
-        $activeTime = Time::where('task_id', $id)
-            ->where('user_id', $request->user()->id)
-            ->whereNull('end_time')
-            ->first();
+        $logger = $this->resolveTimeLogger($request, $task);
+
+        if ($logger instanceof JsonResponse)
+        {
+            return $logger;
+        }
+
+        $activeTime = $this->openTimer($task, $logger->id);
 
         if (! $activeTime)
         {
@@ -804,9 +829,17 @@ class TaskController extends Controller
             ], 400);
         }
 
-        // Stop the timer and persist duration so "Actual" hours are computed
-        $activeTime->update(['end_time' => now()]);
-        $activeTime->calculateDuration();
+        $exhaustion = TaskTimeBudget::exhaustionAt($task);
+
+        if ($exhaustion && $exhaustion->lessThanOrEqualTo(now()))
+        {
+            TaskTimeBudget::cap($task);
+            $activeTime->refresh();
+        } else
+        {
+            $activeTime->update(['end_time' => now()]);
+            $activeTime->calculateDuration();
+        }
 
         $duration = (int) $activeTime->duration_seconds;
 
@@ -818,6 +851,7 @@ class TaskController extends Controller
             'data' => [
                 'time_id' => $activeTime->id,
                 'task_id' => $task->id,
+                'user_id' => $activeTime->user_id,
                 'started_at' => $activeTime->start_time->toIso8601String(),
                 'ended_at' => $activeTime->end_time->toIso8601String(),
                 'duration_seconds' => $duration,
@@ -847,16 +881,98 @@ class TaskController extends Controller
      */
     private function timerPayload(Task $task, Time $time): array
     {
+        $time->loadMissing('user');
+        $stopsAt = TaskTimeBudget::exhaustionAt($task);
+
         return [
             'time_id' => $time->id,
             'task_id' => $task->id,
+            'user_id' => $time->user_id,
+            'user_name' => $time->user?->name,
             'started_at' => $time->start_time->toIso8601String(),
+            'stops_at' => $stopsAt?->toIso8601String(),
             'status' => [
                 'id' => $task->status?->id,
                 'name' => $task->status?->name,
                 'translated_name' => $task->status?->translated_name,
             ],
         ];
+    }
+
+    private function resolveTimeLogger(Request $request, Task $task): User|JsonResponse
+    {
+        $actor = $request->user();
+        $requestedId = (int) $request->input('user_id', 0);
+
+        if ($requestedId <= 0 || $requestedId === (int) $actor->id)
+        {
+            return $actor;
+        }
+
+        if (! $actor->hasRole(['admin', 'root']))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No tienes permiso para contabilizar horas de otro usuario.'),
+            ], 403);
+        }
+
+        $team = Team::query()->find($task->team_id);
+        $logger = $team?->allUsers()->first(fn (User $member): bool => (int) $member->id === $requestedId);
+
+        if (! $logger || ! $this->memberCanLogTime($team, $logger))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Ese usuario no puede contabilizar horas en este equipo.'),
+            ], 422);
+        }
+
+        return $logger;
+    }
+
+    private function memberCanLogTime(Team $team, User $member): bool
+    {
+        if ((int) $team->user_id === (int) $member->id)
+        {
+            return true;
+        }
+
+        $role = $member->membership->role ?? null;
+
+        return in_array($role, ['admin', 'collaborator'], true);
+    }
+
+    private function openTimer(Task $task, int $userId): ?Time
+    {
+        return Time::withoutGlobalScope('team')
+            ->where('team_id', $task->team_id)
+            ->where('task_id', $task->id)
+            ->where('user_id', $userId)
+            ->whereNull('end_time')
+            ->first();
+    }
+
+    /**
+     * @param  Collection<int, Time>  $times
+     */
+    private function loggedSeconds(Collection $times): int
+    {
+        $now = now()->getTimestamp();
+        $total = 0;
+
+        foreach ($times as $time)
+        {
+            if (! $time->start_time)
+            {
+                continue;
+            }
+
+            $end = $time->end_time ? $time->end_time->getTimestamp() : $now;
+            $total += max(0, $end - $time->start_time->getTimestamp());
+        }
+
+        return $total;
     }
 
     /**

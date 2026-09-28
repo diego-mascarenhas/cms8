@@ -21,6 +21,12 @@ Artisan::command('inspire', function ()
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('tasks:cap-timers', function ()
+{
+    $stopped = \App\Support\TaskTimeBudget::capOverdue();
+    $this->info("Stopped {$stopped} timer(s).");
+})->purpose('Stop task timers that reached the estimated time');
+
 /*
 |--------------------------------------------------------------------------
 | Scheduled Tasks
@@ -242,6 +248,12 @@ Schedule::command('performance-insights:generate')
     ->description('Persist daily performance insight rows for admin/root users (idempotent without --force)')
     ->withoutOverlapping(120)
     ->runInBackground();
+
+Schedule::command('tasks:cap-timers')
+    ->everyMinute()
+    ->name('tasks-cap-timers')
+    ->description('Stop task timers that have reached the estimated time')
+    ->withoutOverlapping();
 
 Schedule::command('sentiment:compute-daily')
     ->dailyAt('06:20')
