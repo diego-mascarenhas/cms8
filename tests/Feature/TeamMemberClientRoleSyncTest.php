@@ -15,7 +15,6 @@ use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Validation\ValidationException;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -28,7 +27,7 @@ class TeamMemberClientRoleSyncTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'client', 'collaborator', 'editor'] as $roleName)
+        foreach (['admin', 'client', 'collaborator', 'editor', 'marketing'] as $roleName)
         {
             Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
@@ -81,28 +80,24 @@ class TeamMemberClientRoleSyncTest extends TestCase
         $this->assertFalse($clientUser->hasRole('collaborator'));
     }
 
-    public function test_cannot_add_linked_contact_user_as_collaborator(): void
+    public function test_can_add_linked_contact_user_as_collaborator_and_unlinks_portal(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $team = $owner->currentTeam;
 
         $clientUser = User::factory()->create(['email' => 'portal-client@example.com']);
         $clientUser->assignRole('client');
-        $this->createLinkedClientContact($team, $owner, $clientUser);
+        $contact = $this->createLinkedClientContact($team, $owner, $clientUser);
 
-        try
-        {
-            app(AddTeamMember::class)->add($owner, $team, $clientUser->email, 'collaborator');
-            $this->fail('Expected validation exception when adding linked client as collaborator.');
-        } catch (ValidationException $exception)
-        {
-            $this->assertArrayHasKey('email', $exception->errors());
-        }
+        app(AddTeamMember::class)->add($owner, $team, $clientUser->email, 'collaborator');
 
-        $this->assertFalse($team->fresh()->hasUserWithEmail($clientUser->email));
+        $this->assertTrue($team->fresh()->hasUserWithEmail($clientUser->email));
+        $pivotRole = $team->fresh()->users()->where('users.id', $clientUser->id)->first()?->membership?->role;
+        $this->assertSame('collaborator', $pivotRole);
+        $this->assertNull($contact->fresh()->user_id);
     }
 
-    public function test_cannot_change_linked_contact_user_role_to_collaborator(): void
+    public function test_promoting_linked_client_to_collaborator_unlinks_portal_contact(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $team = $owner->currentTeam;
@@ -110,19 +105,14 @@ class TeamMemberClientRoleSyncTest extends TestCase
         $clientUser = User::factory()->create();
         $clientUser->assignRole('client');
         $team->users()->attach($clientUser, ['role' => 'client']);
-        $this->createLinkedClientContact($team, $owner, $clientUser);
+        $contact = $this->createLinkedClientContact($team, $owner, $clientUser);
 
-        try
-        {
-            app(UpdateTeamMemberRole::class)->update($owner, $team, $clientUser->id, 'collaborator');
-            $this->fail('Expected validation exception when changing linked client role.');
-        } catch (ValidationException $exception)
-        {
-            $this->assertArrayHasKey('role', $exception->errors());
-        }
+        app(UpdateTeamMemberRole::class)->update($owner, $team, $clientUser->id, 'collaborator');
 
-        $this->assertTrue($clientUser->fresh()->hasTeamRole($team, 'client'));
-        $this->assertTrue($clientUser->fresh()->hasRole('client'));
+        $pivotRole = $team->fresh()->users()->where('users.id', $clientUser->id)->first()?->membership?->role;
+        $this->assertSame('collaborator', $pivotRole);
+        $this->assertTrue($clientUser->fresh()->hasRole('collaborator'));
+        $this->assertNull($contact->fresh()->user_id);
     }
 
     public function test_admin_with_a_crm_contact_can_change_team_role(): void
@@ -148,7 +138,7 @@ class TeamMemberClientRoleSyncTest extends TestCase
         $this->assertTrue($adminMember->fresh()->hasRole('editor'));
     }
 
-    public function test_manage_role_save_shows_an_error_when_the_member_is_a_linked_client(): void
+    public function test_manage_role_save_promotes_linked_client_and_unlinks_contact(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $team = $owner->currentTeam;
@@ -156,20 +146,24 @@ class TeamMemberClientRoleSyncTest extends TestCase
         $clientUser = User::factory()->create(['name' => 'Portal Client User']);
         $clientUser->assignRole('client');
         $team->users()->attach($clientUser, ['role' => 'client']);
-        $this->createLinkedClientContact($team, $owner, $clientUser);
+        $contact = $this->createLinkedClientContact($team, $owner, $clientUser);
 
         $this->actingAs($owner);
 
         Livewire::test(TeamMemberManager::class, ['team' => $team])
             ->set('roleFilter', 'client')
             ->call('manageRole', $clientUser->id)
-            ->set('currentRole', 'collaborator')
+            ->set('currentRole', 'marketing')
             ->call('updateRole')
-            ->assertHasErrors(['role'])
-            ->assertSee(__('This user is linked to a client contact and must keep the Client role.'))
-            ->assertSet('currentlyManagingRole', true);
+            ->assertHasNoErrors()
+            ->assertSet('currentlyManagingRole', false);
 
-        $this->assertTrue($clientUser->fresh()->hasTeamRole($team, 'client'));
+        $this->assertSame(
+            'marketing',
+            $team->fresh()->users()->where('users.id', $clientUser->id)->first()?->membership?->role,
+        );
+        $this->assertTrue($clientUser->fresh()->hasRole('marketing'));
+        $this->assertNull($contact->fresh()->user_id);
     }
 
     public function test_sync_from_remaining_memberships_switches_current_team_after_removal(): void

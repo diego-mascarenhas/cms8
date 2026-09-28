@@ -45,9 +45,13 @@ class StripeInvoiceDraftDiscardService
     /**
      * Delete the Stripe draft and remove the Humano invoice (+ sync / usage rows).
      *
+     * Subscription drafts cannot be deleted in Stripe; those are voided instead.
+     *
+     * @return string deleted|voided
+     *
      * @throws ValidationException
      */
-    public function discard(User $user, Invoice $invoice): void
+    public function discard(User $user, Invoice $invoice): string
     {
         if (! $this->canDiscard($user, $invoice))
         {
@@ -64,7 +68,7 @@ class StripeInvoiceDraftDiscardService
             ]);
         }
 
-        $this->deleteStripeDraft($invoice, $stripeInvoiceId);
+        $outcome = $this->deleteStripeDraft($invoice, $stripeInvoiceId);
 
         DB::transaction(function () use ($invoice, $stripeInvoiceId): void
         {
@@ -80,6 +84,8 @@ class StripeInvoiceDraftDiscardService
             $invoice->items()->delete();
             $invoice->delete();
         });
+
+        return $outcome;
     }
 
     public function stripeInvoiceId(Invoice $invoice): ?string
@@ -99,7 +105,10 @@ class StripeInvoiceDraftDiscardService
         return $externalId;
     }
 
-    private function deleteStripeDraft(Invoice $invoice, string $stripeInvoiceId): void
+    /**
+     * @return string deleted|voided
+     */
+    private function deleteStripeDraft(Invoice $invoice, string $stripeInvoiceId): string
     {
         try
         {
@@ -107,18 +116,13 @@ class StripeInvoiceDraftDiscardService
             {
                 $this->usageStripeGateway->deleteDraftInvoice($stripeInvoiceId);
 
-                return;
+                return 'deleted';
             }
 
-            $secret = $this->resolveStripeSecret($invoice);
-            if ($secret === '')
-            {
-                throw ValidationException::withMessages([
-                    'invoice' => [__('Stripe is not configured for this team.')],
-                ]);
-            }
-
-            $this->makeClient($secret)->invoices->delete($stripeInvoiceId);
+            return $this->removeStripeInvoice(
+                $this->stripeClientFor($invoice, $stripeInvoiceId),
+                $stripeInvoiceId,
+            );
         } catch (ValidationException $exception)
         {
             throw $exception;
@@ -131,7 +135,7 @@ class StripeInvoiceDraftDiscardService
                     'stripe_invoice_id' => $stripeInvoiceId,
                 ]);
 
-                return;
+                return 'deleted';
             }
 
             throw ValidationException::withMessages([
@@ -147,6 +151,97 @@ class StripeInvoiceDraftDiscardService
                 ])],
             ]);
         }
+    }
+
+    private function stripeClientFor(Invoice $invoice, string $stripeInvoiceId): StripeClient
+    {
+        $secret = $this->isUsageDraft($stripeInvoiceId)
+            ? trim((string) config('cashier.secret'))
+            : $this->resolveStripeSecret($invoice);
+
+        if ($secret === '')
+        {
+            throw ValidationException::withMessages([
+                'invoice' => [__('Stripe is not configured for this team.')],
+            ]);
+        }
+
+        return $this->makeClient($secret);
+    }
+
+    /**
+     * @return string deleted|voided
+     */
+    private function removeStripeInvoice(StripeClient $client, string $stripeInvoiceId): string
+    {
+        try
+        {
+            $client->invoices->delete($stripeInvoiceId);
+
+            return 'deleted';
+        } catch (ApiErrorException $exception)
+        {
+            if ($this->isAlreadyGone($exception))
+            {
+                return 'deleted';
+            }
+
+            if (! $this->isSubscriptionInvoiceDeletionBlocked($exception))
+            {
+                throw $exception;
+            }
+
+            $this->voidSubscriptionInvoice($client, $stripeInvoiceId);
+
+            return 'voided';
+        }
+    }
+
+    private function voidSubscriptionInvoice(StripeClient $client, string $stripeInvoiceId): void
+    {
+        $stripeInvoice = $client->invoices->retrieve($stripeInvoiceId);
+        $status = strtolower((string) ($stripeInvoice->status ?? ''));
+
+        if ($status === 'void')
+        {
+            return;
+        }
+
+        if ($status === 'paid')
+        {
+            throw ValidationException::withMessages([
+                'invoice' => [__('This subscription invoice is already paid and cannot be deleted.')],
+            ]);
+        }
+
+        if ($status === 'draft')
+        {
+            $client->invoices->update($stripeInvoiceId, [
+                'auto_advance' => false,
+            ]);
+            $finalized = $client->invoices->finalizeInvoice($stripeInvoiceId);
+            $status = strtolower((string) ($finalized->status ?? 'open'));
+        }
+
+        if (! in_array($status, ['open', 'uncollectible'], true))
+        {
+            throw ValidationException::withMessages([
+                'invoice' => [__('Could not delete the Stripe draft: :message', [
+                    'message' => $status,
+                ])],
+            ]);
+        }
+
+        $client->invoices->voidInvoice($stripeInvoiceId);
+
+        Log::info('Voided Stripe subscription invoice instead of deleting it', [
+            'stripe_invoice_id' => $stripeInvoiceId,
+        ]);
+    }
+
+    private function isSubscriptionInvoiceDeletionBlocked(ApiErrorException $exception): bool
+    {
+        return str_contains(strtolower($exception->getMessage()), 'invoices created by subscriptions');
     }
 
     private function isUsageDraft(string $stripeInvoiceId): bool

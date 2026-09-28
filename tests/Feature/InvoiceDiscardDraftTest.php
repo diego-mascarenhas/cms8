@@ -15,6 +15,8 @@ use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Spatie\Permission\Models\Role;
+use Stripe\Exception\InvalidRequestException;
+use Stripe\StripeClient;
 use Tests\TestCase;
 
 class InvoiceDiscardDraftTest extends TestCase
@@ -53,14 +55,14 @@ class InvoiceDiscardDraftTest extends TestCase
         $team = $owner->currentTeam;
 
         $member = User::factory()->create();
-        $team->users()->attach($member, ['role' => 'collaborator']);
+        $team->users()->attach($member, ['role' => 'admin']);
         $member->forceFill(['current_team_id' => $team->id])->save();
-        $member->assignRole('collaborator');
+        $member->assignRole('admin');
 
         $this->actingAs($member)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('Delete draft'), false);
+            ->assertDontSee('Eliminar borrador', false);
     }
 
     public function test_team_owner_can_discard_stripe_draft_from_both_sides(): void
@@ -86,28 +88,7 @@ class InvoiceDiscardDraftTest extends TestCase
             ->with('in_discard_me')
             ->andReturn((object) ['id' => 'in_discard_me', 'deleted' => true]);
 
-        $client = Mockery::mock();
-        $client->invoices = $invoicesApi;
-
-        $this->partialMock(StripeInvoiceDraftDiscardService::class, function ($mock) use ($client): void
-        {
-            $mock->shouldAllowMockingProtectedMethods()
-                ->shouldReceive('makeClient')
-                ->once()
-                ->andReturn($client);
-        });
-
-        // Re-bind with real gateway dependency but allow makeClient override via partialMock above.
-        // The controller uses the container service; ensure our mock is used.
-        $this->app->instance(
-            StripeInvoiceDraftDiscardService::class,
-            Mockery::mock(StripeInvoiceDraftDiscardService::class, [
-                app(TeamUsageInvoiceStripeGateway::class),
-            ])->makePartial()->shouldAllowMockingProtectedMethods()
-        );
-
-        $service = app(StripeInvoiceDraftDiscardService::class);
-        $service->shouldReceive('makeClient')->once()->andReturn($client);
+        $this->bindDiscardService($this->stripeClient($invoicesApi));
 
         $response = $this->actingAs($user)
             ->from(route('invoice.show', $invoice->id))
@@ -121,6 +102,102 @@ class InvoiceDiscardDraftTest extends TestCase
             'external_id' => 'in_discard_me',
             'provider' => 'stripe',
         ]);
+    }
+
+    public function test_delete_draft_button_is_in_spanish_and_keeps_list_filters(): void
+    {
+        [$user, $invoice] = $this->createOwnerWithDraftInvoice();
+
+        $this->actingAs($user)
+            ->get(route('invoice.show', [
+                'id' => $invoice->id,
+                'summary_filter' => 'draft',
+                'search' => 'acme',
+            ]))
+            ->assertOk()
+            ->assertSee('Eliminar borrador', false)
+            ->assertSee('name="summary_filter"', false)
+            ->assertSee('value="draft"', false)
+            ->assertSee('name="search"', false)
+            ->assertSee('value="acme"', false)
+            ->assertSee('invoice/list?summary_filter=draft', false);
+    }
+
+    public function test_discard_returns_to_the_filtered_invoice_list(): void
+    {
+        [$user, $invoice] = $this->createOwnerWithDraftInvoice('in_back_to_list');
+        $team = $user->currentTeam;
+        $team->setSetting('stripe_secret', 'sk_test_example', [
+            'type' => 'string',
+            'group' => 'stripe',
+            'is_encrypted' => false,
+        ]);
+
+        $invoicesApi = Mockery::mock();
+        $invoicesApi->shouldReceive('delete')
+            ->once()
+            ->with('in_back_to_list')
+            ->andReturn((object) ['id' => 'in_back_to_list', 'deleted' => true]);
+
+        $this->bindDiscardService($this->stripeClient($invoicesApi));
+
+        $this->actingAs($user)
+            ->post(route('invoice.discard-draft', $invoice), [
+                'summary_filter' => 'draft',
+                'operation_filter' => 'sell',
+                'search' => 'DRAFT-001',
+            ])
+            ->assertRedirect(route('invoice.index', [
+                'summary_filter' => 'draft',
+                'operation_filter' => 'sell',
+                'search' => 'DRAFT-001',
+            ]))
+            ->assertSessionHas('success', __('Draft invoice deleted from Humano and Stripe.'));
+    }
+
+    public function test_subscription_draft_is_voided_and_removed_locally(): void
+    {
+        [$user, $invoice] = $this->createOwnerWithDraftInvoice('in_sub_draft');
+        $team = $user->currentTeam;
+        $team->setSetting('stripe_secret', 'sk_test_example', [
+            'type' => 'string',
+            'group' => 'stripe',
+            'is_encrypted' => false,
+        ]);
+
+        $invoicesApi = Mockery::mock();
+        $invoicesApi->shouldReceive('delete')
+            ->once()
+            ->with('in_sub_draft')
+            ->andThrow(InvalidRequestException::factory(
+                "You can't delete invoices created by subscriptions.",
+                400,
+            ));
+        $invoicesApi->shouldReceive('retrieve')
+            ->once()
+            ->with('in_sub_draft')
+            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'draft']);
+        $invoicesApi->shouldReceive('update')
+            ->once()
+            ->with('in_sub_draft', ['auto_advance' => false])
+            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'draft']);
+        $invoicesApi->shouldReceive('finalizeInvoice')
+            ->once()
+            ->with('in_sub_draft')
+            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'open']);
+        $invoicesApi->shouldReceive('voidInvoice')
+            ->once()
+            ->with('in_sub_draft')
+            ->andReturn((object) ['id' => 'in_sub_draft', 'status' => 'void']);
+
+        $this->bindDiscardService($this->stripeClient($invoicesApi));
+
+        $this->actingAs($user)
+            ->post(route('invoice.discard-draft', $invoice))
+            ->assertRedirect(route('invoice.index'))
+            ->assertSessionHas('success', __('Draft invoice removed from Humano. Stripe does not allow deleting subscription invoices, so it was voided.'));
+
+        $this->assertDatabaseMissing('invoices', ['id' => $invoice->id]);
     }
 
     public function test_non_owner_cannot_discard_draft(): void
@@ -145,6 +222,27 @@ class InvoiceDiscardDraftTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('invoices', ['id' => $invoice->id]);
+    }
+
+    private function stripeClient(object $invoicesApi): StripeClient
+    {
+        $client = Mockery::mock(StripeClient::class)->makePartial();
+        $client->shouldReceive('getService')->with('invoices')->andReturn($invoicesApi);
+
+        return $client;
+    }
+
+    private function bindDiscardService(StripeClient $client): void
+    {
+        $this->app->instance(
+            StripeInvoiceDraftDiscardService::class,
+            Mockery::mock(StripeInvoiceDraftDiscardService::class, [
+                app(TeamUsageInvoiceStripeGateway::class),
+            ])->makePartial()->shouldAllowMockingProtectedMethods(),
+        );
+
+        $service = app(StripeInvoiceDraftDiscardService::class);
+        $service->shouldReceive('makeClient')->once()->andReturn($client);
     }
 
     /**
