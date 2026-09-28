@@ -660,6 +660,68 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertDontSee('9,99', false);
     }
 
+    public function test_root_dashboard_hides_usage_drafts_already_issued_as_invoices(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('root');
+
+        $issuedTeam = \App\Models\Team::factory()->create(['name' => 'Ya Facturado SL']);
+        $pendingTeam = \App\Models\Team::factory()->create(['name' => 'Sigue Borrador SL']);
+
+        $issued = \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $issuedTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 7769,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_already_issued',
+            'period_from' => now()->subMonth()->startOfMonth(),
+            'period_to' => now()->startOfMonth(),
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $issuedTeam->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_already_issued',
+            'status' => 'paid',
+            'paid' => true,
+            'number' => 'A-2026-014',
+            'currency' => 'eur',
+        ]);
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $pendingTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 100,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_still_draft',
+            'period_from' => now()->subMonth()->startOfMonth(),
+            'period_to' => now()->startOfMonth(),
+        ]);
+
+        \App\Models\InvoiceSync::query()->create([
+            'team_id' => $pendingTeam->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_still_draft',
+            'status' => 'draft',
+            'paid' => false,
+            'number' => null,
+            'currency' => 'eur',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Sigue Borrador SL', false)
+            ->assertDontSee('Ya Facturado SL', false)
+            ->assertDontSee('77,69', false);
+
+        $this->assertSame(\App\Models\TeamUsageInvoice::STATUS_PAID, $issued->fresh()->status);
+    }
+
     public function test_root_as_guest_on_another_team_hides_usage_billing_attentions(): void
     {
         Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);

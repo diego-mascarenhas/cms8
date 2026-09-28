@@ -970,7 +970,7 @@
 					</p>
 					<div class="mb-3">
 						<label for="locked-status-id" class="form-label">{{ __('Project Status') }}</label>
-						<select id="locked-status-id" name="status_id" class="form-select" required>
+						<select id="locked-status-id" name="status_id" class="select2 form-select" required data-placeholder="{{ __('Project Status') }}">
 							@foreach ($lockedStatusOptions as $status)
 								<option value="{{ $status->id }}" @selected((int) $project->status_id === (int) $status->id)>
 									{{ $status->translated_name }}
@@ -1107,6 +1107,18 @@
 						placeholder: $el.data('placeholder') || ''
 					});
 				}
+			});
+		}
+
+		var $statusModal = $('#projectStatusModal');
+		var $statusSelect = $('#locked-status-id');
+		if ($statusModal.length && $statusSelect.length && $.fn.select2) {
+			$statusSelect.select2({
+				dropdownParent: $statusModal,
+				width: '100%',
+				allowClear: false,
+				minimumResultsForSearch: Infinity,
+				placeholder: $statusSelect.data('placeholder') || ''
 			});
 		}
 
