@@ -24,6 +24,8 @@ class TeamUsageInvoice extends Model
 
     public const STATUS_PAID = 'paid';
 
+    public const STATUS_VOID = 'void';
+
     protected $fillable = [
         'team_id',
         'kind',

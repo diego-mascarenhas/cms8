@@ -4,11 +4,17 @@ namespace Tests\Feature\Api;
 
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactStatus;
 use App\Models\Country;
 use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\Project;
 use App\Models\ProjectStatus;
+use App\Models\Task;
+use App\Models\TaskBoard;
+use App\Models\TaskStatus;
+use App\Models\Team;
+use App\Models\Time;
 use App\Models\User;
 use App\Services\ProjectBudgetSpecService;
 use Database\Seeders\ContactStatusSeeder;
@@ -17,7 +23,9 @@ use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Database\Seeders\ProjectStatusSeeder;
+use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -624,6 +632,36 @@ class ProjectApiTest extends TestCase
         $this->assertTrue(array_search($newer->id, $ids, true) < array_search($older->id, $ids, true));
     }
 
+    public function test_projects_list_can_sort_active_work_first(): void
+    {
+        [$user, $team, $token, $client] = $this->adminWithToken();
+
+        $budget = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Budget Quote',
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $inProgress = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Active Work',
+            'responsible_id' => $user->id,
+            'status_id' => 9,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects?sort=relevance');
+
+        $response->assertOk();
+
+        $ids = collect($response->json('data.data'))->pluck('id')->all();
+
+        $this->assertTrue(array_search($inProgress->id, $ids, true) < array_search($budget->id, $ids, true));
+    }
+
     public function test_project_stats_cards_match_backend_groups(): void
     {
         [$user, $team, $token, $client] = $this->adminWithToken();
@@ -695,5 +733,155 @@ class ProjectApiTest extends TestCase
         $names = collect($filtered->json('data.data'))->pluck('name');
         $this->assertTrue($names->contains('In Progress'));
         $this->assertFalse($names->contains('Budget'));
+    }
+
+    public function test_client_project_show_hides_assignee_and_hours(): void
+    {
+        [$owner, $team, $ownerToken, $enterprise] = $this->adminWithToken();
+        $this->seed(TaskStatusSeeder::class);
+        Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+
+        $clientUser = User::factory()->create();
+        $clientUser->assignRole('client');
+        $team->users()->attach($clientUser, ['role' => 'client']);
+        $clientUser->forceFill(['current_team_id' => $team->id])->save();
+
+        $contact = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Portal Client',
+            'email' => $clientUser->email,
+            'user_id' => $clientUser->id,
+            'creator_id' => $owner->id,
+            'responsible_id' => $owner->id,
+            'status_id' => ContactStatus::query()->firstOrFail()->id,
+            'language' => 'es',
+            'country' => 724,
+        ]);
+        $contact->enterprises()->attach($enterprise->id);
+
+        $board = TaskBoard::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Client board',
+            'is_default' => false,
+            'order' => 0,
+        ]);
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => 'Client portal project',
+            'responsible_id' => $owner->id,
+            'status_id' => 9,
+            'board_id' => $board->id,
+        ]);
+
+        $task = Task::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'board_id' => $board->id,
+            'responsible_id' => $owner->id,
+            'title' => 'Diseño de portada',
+            'estimated_hours' => 4,
+            'start_date' => now()->toDateString(),
+            'due_date' => now()->addWeek()->toDateString(),
+            'status_id' => TaskStatus::query()->where('name', 'IN_PROGRESS')->firstOrFail()->id,
+            'order' => 1,
+        ]);
+
+        Time::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => $owner->id,
+            'task_id' => $task->id,
+            'start_time' => now()->subHour(),
+            'end_time' => now(),
+        ]);
+
+        $token = $clientUser->createToken('client-test')->plainTextToken;
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id);
+
+        $response->assertOk()
+            ->assertJsonPath('data.tasks.0.title', 'Diseño de portada')
+            ->assertJsonPath('data.tasks.0.status.name', 'IN_PROGRESS');
+
+        $taskPayload = $response->json('data.tasks.0');
+        $this->assertArrayNotHasKey('responsible', $taskPayload);
+        $this->assertArrayNotHasKey('estimated_hours', $taskPayload);
+        $this->assertArrayNotHasKey('time_seconds', $taskPayload);
+        $this->assertArrayNotHasKey('time_formatted', $taskPayload);
+        $this->assertArrayNotHasKey('responsible', $response->json('data'));
+        $this->assertArrayNotHasKey('total_time_seconds', $response->json('data'));
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id.'/board')
+            ->assertForbidden();
+
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
+        $staff = $this->withHeader('Authorization', 'Bearer '.$ownerToken)
+            ->getJson('/api/projects/'.$project->id);
+
+        $staff->assertOk()
+            ->assertJsonPath('data.responsible.id', $owner->id)
+            ->assertJsonPath('data.tasks.0.responsible.id', $owner->id);
+        $this->assertNotNull($staff->json('data.tasks.0.estimated_hours'));
+        $this->assertArrayHasKey('time_seconds', $staff->json('data.tasks.0'));
+    }
+
+    public function test_personal_workspace_owner_sees_linked_provider_projects(): void
+    {
+        [$user, , $token] = $this->adminWithToken();
+        Role::firstOrCreate(['name' => 'client', 'guard_name' => 'web']);
+        $user->assignRole('client');
+
+        $provider = Team::factory()->create([
+            'user_id' => $user->id,
+            'name' => 'Studio',
+            'personal_team' => false,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $provider->id,
+            'name' => 'Portal Enterprise',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $contact = Contact::query()->create([
+            'team_id' => $provider->id,
+            'name' => 'Portal Client',
+            'email' => $user->email,
+            'user_id' => $user->id,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => ContactStatus::query()->firstOrFail()->id,
+            'language' => 'es',
+            'country' => 724,
+        ]);
+        $contact->enterprises()->attach($enterprise->id);
+
+        $project = Project::withoutGlobalScopes()->create([
+            'team_id' => $provider->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => 'Portal website',
+            'responsible_id' => $user->id,
+            'status_id' => 9,
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects');
+
+        $response->assertOk();
+        $names = collect($response->json('data.data'))->pluck('name');
+        $this->assertTrue($names->contains('Portal website'));
+
+        $show = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects/'.$project->id);
+
+        $show->assertOk()
+            ->assertJsonPath('data.name', 'Portal website');
+        $this->assertArrayNotHasKey('responsible', $show->json('data'));
+        $this->assertArrayNotHasKey('total_time_seconds', $show->json('data'));
     }
 }

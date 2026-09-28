@@ -108,13 +108,15 @@
                             </div>
                         </td>
                         <td class="text-end">
-                            @if ($referral['commissions_by_currency'] === [])
-                                <span class="text-muted">—</span>
-                            @else
-                                @foreach ($referral['commissions_by_currency'] as $currency => $cents)
-                                    <div>{{ $currency }} {{ number_format($cents / 100, 2, ',', '.') }}</div>
+                            <div class="d-flex flex-column align-items-end gap-2">
+                                @foreach ($referral['codes'] as $code)
+                                    @if ($code['kind'] === 'sub' || $code['commission_label'])
+                                        <span>{{ $code['commission_label'] }}</span>
+                                    @else
+                                        <span class="text-muted">—</span>
+                                    @endif
                                 @endforeach
-                            @endif
+                            </div>
                         </td>
                         <td class="text-center">
                             <div class="d-flex flex-column align-items-center gap-2">

@@ -79,6 +79,11 @@ class ProjectPolicy
             return $project->team_id === $user->currentTeam->id;
         }
 
+        if ($project->viewedAsClient($user))
+        {
+            return true;
+        }
+
         return false;
     }
 

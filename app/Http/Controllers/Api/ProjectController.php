@@ -62,10 +62,7 @@ class ProjectController extends Controller
                 ], 403);
             }
 
-            $query = Project::with(['client', 'responsible', 'status', 'board']);
-
-            $filterCallback = \App\Policies\ProjectPolicy::getQueryFilter($user);
-            $query = $filterCallback($query);
+            $query = $this->visibleProjectsQuery($user)->with(['client', 'responsible', 'status', 'board']);
 
             $search = $request->get('search');
             if (is_string($search) && trim($search) !== '')
@@ -96,9 +93,25 @@ class ProjectController extends Controller
                 $query->where('status_id', $request->integer('status_id'));
             }
 
+            if ($request->get('sort') === 'relevance')
+            {
+                $query->orderByRaw(
+                    'CASE status_id '.ProjectStatus::relevanceOrderSql().' ELSE 4 END',
+                );
+            }
+
             $query->orderByDesc('id');
 
             $projects = $query->paginate($request->get('per_page', 20));
+
+            $projects->getCollection()->each(function (Project $project) use ($user)
+            {
+                if ($project->viewedAsClient($user))
+                {
+                    $project->unsetRelation('responsible');
+                    $project->makeHidden(['responsible_id']);
+                }
+            });
 
             return response()->json([
                 'success' => true,
@@ -269,9 +282,18 @@ class ProjectController extends Controller
 
         try
         {
-            $project = Project::where('id', $id)
+            $project = $this->visibleProjectsQuery($user)
+                ->where('id', $id)
                 ->with(['client', 'responsible', 'status', 'board'])
                 ->firstOrFail();
+
+            $clientView = $project->viewedAsClient($user);
+
+            if ($clientView)
+            {
+                $project->unsetRelation('responsible');
+                $project->makeHidden(['responsible_id']);
+            }
 
             if (! $user->can('view', $project))
             {
@@ -287,12 +309,30 @@ class ProjectController extends Controller
             if ($project->board_id)
             {
                 $projectTasks = Task::where('board_id', $project->board_id)
-                    ->with(['status', 'responsible'])
+                    ->with($clientView ? ['status'] : ['status', 'responsible'])
                     ->defaultOrder()
                     ->get();
 
-                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds)
+                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView)
                 {
+                    $status = [
+                        'id' => $task->status?->id,
+                        'name' => $task->status?->name,
+                        'translated_name' => $task->status?->translated_name,
+                        'color' => $task->status?->color,
+                        'label_class' => $task->status?->label_class,
+                    ];
+
+                    if ($clientView)
+                    {
+                        return [
+                            'id' => $task->id,
+                            'title' => $task->title,
+                            'order' => $task->order,
+                            'status' => $status,
+                        ];
+                    }
+
                     $taskTime = Time::where('task_id', $task->id)
                         ->whereNotNull('end_time')
                         ->get()
@@ -311,13 +351,7 @@ class ProjectController extends Controller
                         'estimated_hours' => $task->estimated_hours,
                         'start_date' => $task->start_date?->format('Y-m-d'),
                         'due_date' => $task->due_date?->format('Y-m-d'),
-                        'status' => [
-                            'id' => $task->status?->id,
-                            'name' => $task->status?->name,
-                            'translated_name' => $task->status?->translated_name,
-                            'color' => $task->status?->color,
-                            'label_class' => $task->status?->label_class,
-                        ],
+                        'status' => $status,
                         'responsible' => [
                             'id' => $task->responsible?->id,
                             'name' => $task->responsible?->name,
@@ -328,16 +362,25 @@ class ProjectController extends Controller
                 });
             }
 
+            $data = array_merge($project->toArray(), [
+                'quote_contact' => $project->quoteRecipientSummary(),
+                'tasks' => $tasks,
+                'tasks_count' => count($tasks),
+            ]);
+
+            if ($clientView)
+            {
+                unset($data['responsible'], $data['responsible_id']);
+            } else
+            {
+                $data['total_time_seconds'] = $totalSeconds;
+                $data['total_time_formatted'] = gmdate('H:i:s', $totalSeconds);
+                $data['total_time_hours'] = round($totalSeconds / 3600, 2);
+            }
+
             return response()->json(array_merge([
                 'success' => true,
-                'data' => array_merge($project->toArray(), [
-                    'quote_contact' => $project->quoteRecipientSummary(),
-                    'tasks' => $tasks,
-                    'tasks_count' => count($tasks),
-                    'total_time_seconds' => $totalSeconds,
-                    'total_time_formatted' => gmdate('H:i:s', $totalSeconds),
-                    'total_time_hours' => round($totalSeconds / 3600, 2),
-                ]),
+                'data' => $data,
                 'access_level' => $user->hasRole('admin') ? 'full' : ($user->hasRole('collaborator') ? 'own_only' : 'permission_based'),
             ], $this->budgetPublicUrls($project)));
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e)
@@ -647,9 +690,7 @@ class ProjectController extends Controller
             ], 403);
         }
 
-        $query = Project::query();
-        $filterCallback = \App\Policies\ProjectPolicy::getQueryFilter($user);
-        $query = $filterCallback($query);
+        $query = $this->visibleProjectsQuery($user);
 
         $statusCounts = $query
             ->selectRaw('status_id, COUNT(*) as count')
@@ -744,7 +785,27 @@ class ProjectController extends Controller
             ], 401);
         }
 
-        $project = Project::with(['board', 'enterprise'])->findOrFail($id);
+        $project = $this->visibleProjectsQuery($user)
+            ->where('id', $id)
+            ->with(['board', 'enterprise'])
+            ->first();
+
+        if (! $project)
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'Proyecto no encontrado',
+            ], 404);
+        }
+
+        if ($project->viewedAsClient($user))
+        {
+            return response()->json([
+                'success' => false,
+                'error' => 'No tienes permisos para ver el tablero',
+            ], 403);
+        }
+
         $this->authorize('view', $project);
 
         if (! $project->board_id)
@@ -877,6 +938,28 @@ class ProjectController extends Controller
             'data' => $this->mapBoardTask($task),
             'message' => 'Task reordered successfully',
         ]);
+    }
+
+    private function visibleProjectsQuery(User $user): \Illuminate\Database\Eloquent\Builder
+    {
+        return Project::query()
+            ->withoutGlobalScope('team')
+            ->withoutGlobalScope('ownership')
+            ->where(function ($query) use ($user)
+            {
+                $query->where(function ($ownTeam) use ($user)
+                {
+                    \App\Policies\ProjectPolicy::getQueryFilter($user)($ownTeam);
+                });
+
+                if ($user->hasRole('client'))
+                {
+                    $query->orWhere(function ($asClient) use ($user)
+                    {
+                        $asClient->whereClientIs($user);
+                    });
+                }
+            });
     }
 
     /**

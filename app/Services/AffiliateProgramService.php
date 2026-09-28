@@ -373,7 +373,7 @@ class AffiliateProgramService
      *     team_id: int,
      *     name: string,
      *     email: string|null,
-     *     codes: list<array{code: string, kind: string, plan: string|null, percent: float, assignee: string|null, subscriber: string|null, direct_percent: float|null, can_unlink: bool}>,
+     *     codes: list<array{code: string, kind: string, plan: string|null, percent: float, assignee: string|null, subscriber: string|null, direct_percent: float|null, can_unlink: bool, commission_label: string|null}>,
      *     commissions_by_currency: array<string, int>
      * }>
      */
@@ -433,6 +433,11 @@ class AffiliateProgramService
                 ->groupBy(fn (Subscription $subscription): string => strtolower(trim((string) $subscription->referred_by)));
         }
 
+        $prices = $this->subscriptionBillingByStripeId(
+            $teams->flatMap(fn (Team $team) => $team->subscriptions)
+                ->merge($grantedByCustomer->flatten(1)),
+        );
+
         $rows = [];
 
         foreach ($teams as $team)
@@ -452,6 +457,7 @@ class AffiliateProgramService
                     'subscriber' => null,
                     'direct_percent' => null,
                     'can_unlink' => true,
+                    'commission_label' => null,
                 ];
 
                 $granted = $grantedByCustomer->get(strtolower((string) $team->stripe_id), collect());
@@ -483,6 +489,7 @@ class AffiliateProgramService
                             ? (float) $storedPercent
                             : AffiliateCommission::percent(),
                         'can_unlink' => false,
+                        'commission_label' => $this->subscriptionCommissionLabel($prices, $subscriptionCode, AffiliateCommission::agencyPercent()),
                     ];
                 }
             } else
@@ -505,18 +512,20 @@ class AffiliateProgramService
                     }
 
                     $storedPercent = $subscription->affiliate_commission_percent;
+                    $percent = $storedPercent !== null && (float) $storedPercent > 0
+                        ? (float) $storedPercent
+                        : AffiliateCommission::percent();
 
                     $codes[] = [
                         'code' => $subscriptionCode,
                         'kind' => 'sub',
                         'plan' => (string) $subscription->type,
-                        'percent' => $storedPercent !== null && (float) $storedPercent > 0
-                            ? (float) $storedPercent
-                            : AffiliateCommission::percent(),
+                        'percent' => $percent,
                         'assignee' => null,
                         'subscriber' => null,
                         'direct_percent' => null,
                         'can_unlink' => true,
+                        'commission_label' => $this->subscriptionCommissionLabel($prices, $subscriptionCode, $percent),
                     ];
                 }
             }
@@ -534,6 +543,21 @@ class AffiliateProgramService
                 $byCurrency[$currency] = ($byCurrency[$currency] ?? 0) + (int) $commission->commission_amount_cents;
             }
 
+            if ($byCurrency !== [])
+            {
+                $recorded = collect($byCurrency)
+                    ->map(fn (int $cents, string $currency): string => $this->moneyLabel($currency, $cents))
+                    ->implode(' ');
+
+                foreach ($codes as $index => $code)
+                {
+                    if ($code['kind'] === 'cus')
+                    {
+                        $codes[$index]['commission_label'] = $recorded;
+                    }
+                }
+            }
+
             $rows[] = [
                 'team_id' => (int) $team->id,
                 'name' => (string) $team->name,
@@ -544,6 +568,23 @@ class AffiliateProgramService
         }
 
         return $rows;
+    }
+
+    /**
+     * @param  array<string, array{renews_at: string|null, amount_cents: int, currency: string|null}>  $prices
+     */
+    private function subscriptionCommissionLabel(array $prices, string $stripeId, float $percent): string
+    {
+        $price = $prices[$stripeId] ?? ['amount_cents' => 0, 'currency' => 'EUR'];
+        $commissionCents = (int) round(((int) $price['amount_cents']) * ($percent / 100));
+        $currency = trim((string) ($price['currency'] ?? '')) !== '' ? (string) $price['currency'] : 'EUR';
+
+        return $this->moneyLabel($currency, $commissionCents);
+    }
+
+    private function moneyLabel(string $currency, int $cents): string
+    {
+        return strtoupper($currency).' '.number_format($cents / 100, 2, ',', '.');
     }
 
     /**

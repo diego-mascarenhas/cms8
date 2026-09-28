@@ -7,6 +7,8 @@ use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\ContactStatus;
 use App\Models\Enterprise;
+use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use App\Models\List60;
 use App\Models\Project;
 use App\Models\ProjectStatus;
@@ -531,6 +533,8 @@ class DashboardController extends Controller
             return null;
         }
 
+        $this->reconcileFinalizedUsageDrafts();
+
         $draftCount = TeamUsageInvoice::query()
             ->where('status', TeamUsageInvoice::STATUS_DRAFT)
             ->whereNotNull('stripe_invoice_id')
@@ -606,6 +610,101 @@ class DashboardController extends Controller
             'currency' => $currency,
             'items' => $items,
         ];
+    }
+
+    /**
+     * Stripe drafts that were already finalized stay listed here until the local row is updated.
+     */
+    private function reconcileFinalizedUsageDrafts(): void
+    {
+        $drafts = TeamUsageInvoice::query()
+            ->where('status', TeamUsageInvoice::STATUS_DRAFT)
+            ->whereNotNull('stripe_invoice_id')
+            ->get(['id', 'stripe_invoice_id', 'status']);
+
+        if ($drafts->isEmpty())
+        {
+            return;
+        }
+
+        $stripeIds = $drafts->pluck('stripe_invoice_id')->filter()->unique()->values()->all();
+
+        $syncs = InvoiceSync::query()
+            ->where('provider', 'stripe')
+            ->whereIn('external_id', $stripeIds)
+            ->get(['external_id', 'status', 'paid', 'number'])
+            ->keyBy('external_id');
+
+        $invoices = Invoice::withoutGlobalScopes()
+            ->whereIn('source_reference_id', $stripeIds)
+            ->whereNull('deleted_at')
+            ->get(['source_reference_id', 'status', 'number'])
+            ->keyBy('source_reference_id');
+
+        foreach ($drafts as $draft)
+        {
+            $stripeId = (string) $draft->stripe_invoice_id;
+            $sync = $syncs->get($stripeId);
+            $status = $sync !== null
+                ? $this->usageStatusFromStripe((string) $sync->status, (bool) $sync->paid, $sync->number)
+                : TeamUsageInvoice::STATUS_DRAFT;
+
+            if ($status === TeamUsageInvoice::STATUS_DRAFT)
+            {
+                $invoice = $invoices->get($stripeId);
+                if ($invoice !== null)
+                {
+                    $status = $this->usageStatusFromLocalInvoice((int) $invoice->status, $invoice->number);
+                }
+            }
+
+            if ($status === TeamUsageInvoice::STATUS_DRAFT)
+            {
+                continue;
+            }
+
+            $draft->forceFill(['status' => $status])->save();
+        }
+    }
+
+    private function usageStatusFromStripe(string $status, bool $paid, ?string $number): string
+    {
+        $status = strtolower(trim($status));
+
+        if ($status === 'void')
+        {
+            return TeamUsageInvoice::STATUS_VOID;
+        }
+
+        if ($paid || $status === 'paid')
+        {
+            return TeamUsageInvoice::STATUS_PAID;
+        }
+
+        if ($status === 'uncollectible')
+        {
+            return TeamUsageInvoice::STATUS_UNCOLLECTIBLE;
+        }
+
+        if ($status === 'open' || ($status === 'draft' && filled($number)))
+        {
+            return TeamUsageInvoice::STATUS_OPEN;
+        }
+
+        return TeamUsageInvoice::STATUS_DRAFT;
+    }
+
+    private function usageStatusFromLocalInvoice(int $status, ?string $number): string
+    {
+        return match ($status)
+        {
+            2 => TeamUsageInvoice::STATUS_PAID,
+            3 => TeamUsageInvoice::STATUS_VOID,
+            7 => TeamUsageInvoice::STATUS_UNCOLLECTIBLE,
+            1 => TeamUsageInvoice::STATUS_OPEN,
+            9 => filled($number) ? TeamUsageInvoice::STATUS_OPEN : TeamUsageInvoice::STATUS_DRAFT,
+            default => TeamUsageInvoice::STATUS_DRAFT,
+        };
     }
 
     /**

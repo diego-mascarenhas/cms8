@@ -66,6 +66,32 @@ class ProjectStatus extends Model
     }
 
     /**
+     * CASE branches for sort=relevance. Lower rank is shown first:
+     * active work, then billing, then quotes.
+     */
+    public static function relevanceOrderSql(): string
+    {
+        $groups = [
+            0 => self::inProgressStatusIds(),
+            1 => [self::STATUS_FINISHED, self::STATUS_TO_INVOICE],
+            2 => [self::STATUS_BUDGETED],
+            3 => [self::STATUS_BUDGET],
+        ];
+
+        $clauses = [];
+
+        foreach ($groups as $rank => $ids)
+        {
+            foreach ($ids as $id)
+            {
+                $clauses[] = 'WHEN '.(int) $id.' THEN '.(int) $rank;
+            }
+        }
+
+        return implode(' ', $clauses);
+    }
+
+    /**
      * Statuses listed under dashboard "Ongoing Projects" (quote pipeline + active work).
      *
      * @return list<int>

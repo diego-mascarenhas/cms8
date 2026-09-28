@@ -128,6 +128,7 @@ class ProjectDataTableFiltersTest extends TestCase
         $response->assertOk();
         $response->assertSee('project-filter-status', false);
         $response->assertSee('project-filter-category', false);
+        $response->assertDontSee('initProjectFilterSelect', false);
         $response->assertSee('status_filter', false);
         $response->assertSee('category_filter', false);
     }

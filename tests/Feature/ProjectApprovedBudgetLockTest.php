@@ -144,6 +144,7 @@ class ProjectApprovedBudgetLockTest extends TestCase
             ->get(route('project.show', $project->id))
             ->assertOk()
             ->assertSee('projectStatusModal', false)
+            ->assertSee('id="locked-status-id" name="status_id" class="select2 form-select"', false)
             ->assertSee(__('This approved budget is locked. Only the project status can be changed.'), false)
             ->assertDontSee(__('Locked'), false)
             ->assertDontSee(route('project.edit', $project->id), false);

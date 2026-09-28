@@ -219,6 +219,49 @@ class Project extends Model
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
     }
 
+    /**
+     * Projects whose client enterprise has this user as a contact.
+     */
+    public function scopeWhereClientIs(Builder $builder, User $user): Builder
+    {
+        return $builder->whereHas('client', function ($enterprise) use ($user)
+        {
+            $enterprise->withoutGlobalScopes()
+                ->whereHas('contacts', function ($contacts) use ($user)
+                {
+                    $contacts->withoutGlobalScopes()
+                        ->where(function ($match) use ($user)
+                        {
+                            $match->where('contacts.user_id', $user->id);
+
+                            if (is_string($user->email) && $user->email !== '')
+                            {
+                                $match->orWhere('contacts.email', $user->email);
+                            }
+                        });
+                });
+        });
+    }
+
+    /**
+     * The logged-in user is seeing this project through its client, not as staff of the project's team.
+     */
+    public function viewedAsClient(User $user): bool
+    {
+        $onProjectTeam = $user->currentTeam && (int) $this->team_id === (int) $user->currentTeam->id;
+
+        if ($onProjectTeam && $user->hasAnyRole(['root', 'admin', 'collaborator', 'developer', 'editor', 'technical']))
+        {
+            return false;
+        }
+
+        return static::query()
+            ->withoutGlobalScopes()
+            ->whereKey($this->id)
+            ->whereClientIs($user)
+            ->exists();
+    }
+
     public function enterprise()
     {
         return $this->belongsTo(Enterprise::class, 'enterprise_id');
