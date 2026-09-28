@@ -10,6 +10,8 @@ return [
     | Shared by the authenticated /strategy page and the public projects funnel
     | while the AI estimate is generating.
     |
+    | Field values are stored in team business_config.strategy[key].
+    |
     */
 
     'title' => 'Strategic Growth Framework',
@@ -19,6 +21,12 @@ return [
             'number' => 1,
             'title' => 'tu dossier comercial.',
             'points' => ['Cliente', 'Destino', 'Oferta', 'Storytelling'],
+            'fields' => [
+                ['key' => 'ideal_client', 'label' => 'Cliente'],
+                ['key' => 'destination', 'label' => 'Destino'],
+                ['key' => 'offer', 'label' => 'Oferta'],
+                ['key' => 'storytelling', 'label' => 'Storytelling'],
+            ],
             'tip' => 'Antes de escalar, aclara a quién le vendes, qué prometes y la historia que hace memorable tu oferta.',
             'group' => 'foundation',
         ],
@@ -26,6 +34,12 @@ return [
             'number' => 2,
             'title' => 'tu fachada digital.',
             'points' => ['Web', 'RRSS', 'SEO/SEM', 'Estrategia contenido'],
+            'fields' => [
+                ['key' => 'web', 'label' => 'Web'],
+                ['key' => 'social_networks', 'label' => 'RRSS'],
+                ['key' => 'seo_sem', 'label' => 'SEO/SEM'],
+                ['key' => 'content_strategy', 'label' => 'Estrategia contenido'],
+            ],
             'tip' => 'Tu web y redes deben atraer al cliente ideal; el contenido trabaja por ti mientras no estás en ventas.',
             'group' => 'foundation',
         ],
@@ -33,6 +47,11 @@ return [
             'number' => 3,
             'title' => 'entender tu juego.',
             'points' => ['Audiencia', 'Dinero', 'Contactos'],
+            'fields' => [
+                ['key' => 'audience', 'label' => 'Audiencia'],
+                ['key' => 'money', 'label' => 'Dinero'],
+                ['key' => 'contacts_metric', 'label' => 'Contactos'],
+            ],
             'tip' => 'Mide audiencia, margen y contactos: sin esos tres números, el crecimiento es intuición.',
             'group' => 'foundation',
         ],
@@ -40,6 +59,9 @@ return [
             'number' => 4,
             'title' => 'tu embudo en automático.',
             'points' => ['Doblar lo que funciona'],
+            'fields' => [
+                ['key' => 'double_what_works', 'label' => 'Doblar lo que funciona'],
+            ],
             'tip' => 'Automatiza lo que ya convierte. No inventes canales nuevos hasta duplicar lo que funciona.',
             'group' => 'systems',
         ],
@@ -47,6 +69,11 @@ return [
             'number' => 5,
             'title' => 'tu embudo de operaciones.',
             'points' => ['Talento', 'Herramientas', 'IA'],
+            'fields' => [
+                ['key' => 'talent', 'label' => 'Talento'],
+                ['key' => 'tools', 'label' => 'Herramientas'],
+                ['key' => 'ai', 'label' => 'IA'],
+            ],
             'tip' => 'Escalar sin procesos te ahoga: combina talento, herramientas e IA para entregar más con la misma calidad.',
             'group' => 'systems',
         ],
@@ -54,6 +81,10 @@ return [
             'number' => 6,
             'title' => 'tu business playbook.',
             'points' => ['Manual de procesos', 'Wiki Notion'],
+            'fields' => [
+                ['key' => 'process_manual', 'label' => 'Manual de procesos'],
+                ['key' => 'notion_wiki', 'label' => 'Wiki Notion'],
+            ],
             'tip' => 'Documenta cómo se hace el trabajo. Un playbook permite que el equipo crezca sin depender de ti.',
             'group' => 'systems',
         ],
@@ -61,6 +92,12 @@ return [
             'number' => 7,
             'title' => 'scale framework.',
             'points' => ['Up / Down / Cross', 'Creación de audiencia', 'Embudo stories', 'Warm up leads'],
+            'fields' => [
+                ['key' => 'up_down_cross', 'label' => 'Up / Down / Cross'],
+                ['key' => 'audience_creation', 'label' => 'Creación de audiencia'],
+                ['key' => 'stories_funnel', 'label' => 'Embudo stories'],
+                ['key' => 'warm_up_leads', 'label' => 'Warm up leads'],
+            ],
             'tip' => 'Crece vendiendo más a clientes actuales (up/cross) y calentando leads antes de pedir la venta.',
             'group' => 'systems',
         ],
@@ -68,6 +105,10 @@ return [
             'number' => 8,
             'title' => 'simplificar tu negocio.',
             'points' => ['80/20', '5\' business pitch'],
+            'fields' => [
+                ['key' => 'eighty_twenty', 'label' => '80/20'],
+                ['key' => 'business_pitch', 'label' => '5\' business pitch'],
+            ],
             'tip' => 'Aplica el 80/20: corta lo que no mueve la aguja y resume tu negocio en un pitch de 5 minutos.',
             'group' => 'scale',
         ],
@@ -75,6 +116,10 @@ return [
             'number' => 9,
             'title' => 'quitar al fundador.',
             'points' => ['Auditar Calendar', 'Buyback your time'],
+            'fields' => [
+                ['key' => 'calendar_audit', 'label' => 'Auditar Calendar'],
+                ['key' => 'buyback_time', 'label' => 'Buyback your time'],
+            ],
             'tip' => 'Audita tu calendario y recupera tiempo: si todo pasa por ti, el negocio no puede escalar.',
             'group' => 'scale',
         ],
@@ -82,6 +127,10 @@ return [
             'number' => 10,
             'title' => 'crear tus managers.',
             'points' => ['Liderazgo', 'Operativa diaria'],
+            'fields' => [
+                ['key' => 'leadership', 'label' => 'Liderazgo'],
+                ['key' => 'daily_ops', 'label' => 'Operativa diaria'],
+            ],
             'tip' => 'Forma managers que lideren la operativa diaria; tú pasas de hacedor a estratega.',
             'group' => 'scale',
         ],
@@ -89,6 +138,11 @@ return [
             'number' => 11,
             'title' => 'generar tu cultura.',
             'points' => ['Visionboard empresa', 'Visionboard empleados', 'Retiros de equipo'],
+            'fields' => [
+                ['key' => 'company_visionboard', 'label' => 'Visionboard empresa'],
+                ['key' => 'employee_visionboard', 'label' => 'Visionboard empleados'],
+                ['key' => 'team_retreats', 'label' => 'Retiros de equipo'],
+            ],
             'tip' => 'La cultura alinea al equipo cuando no estás: visión compartida, rituales y espacios de alineación.',
             'group' => 'scale',
         ],
@@ -96,6 +150,10 @@ return [
             'number' => 12,
             'title' => 'business exit.',
             'points' => ['Auditar valor empresa', 'Plan de salida'],
+            'fields' => [
+                ['key' => 'company_value_audit', 'label' => 'Auditar valor empresa'],
+                ['key' => 'exit_plan', 'label' => 'Plan de salida'],
+            ],
             'tip' => 'Construye como si fueras a vender: audita valor y ten un plan de salida, aunque no salgas mañana.',
             'group' => 'scale',
         ],

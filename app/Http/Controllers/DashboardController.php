@@ -20,6 +20,7 @@ use App\Services\ContactDailySentimentService;
 use App\Services\ContactInteractionChartDataService;
 use App\Services\DailyTeamDigestMetricsCollector;
 use App\Services\UserDailyPerformanceInsightService;
+use App\Services\WeeklyWorkPlanService;
 use App\Support\DemoTeam;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -122,6 +123,7 @@ class DashboardController extends Controller
         $canShowPerformanceInsight = auth()->user()->hasAnyRole(['admin', 'root'])
             && ($activeTeam->hasModule('performance_insights') || DemoTeam::isDemoTeam($activeTeam));
 
+        $weeklyWorkPlan = null;
         if ($canShowPerformanceInsight)
         {
             $dailyPerformanceInsight = app(UserDailyPerformanceInsightService::class)
@@ -131,6 +133,10 @@ class DashboardController extends Controller
                 $activeTeam,
                 $dailyPerformanceInsight,
             );
+        } else
+        {
+            $weeklyWorkPlan = app(WeeklyWorkPlanService::class)
+                ->present(auth()->user(), $activeTeam);
         }
 
         $dashboardCalendarData = $this->buildDashboardCalendarData($activeTeam);
@@ -166,6 +172,7 @@ class DashboardController extends Controller
             'dailyPerformanceInsight',
             'canShowPerformanceInsight',
             'performanceInsightActions',
+            'weeklyWorkPlan',
             'dashboardCalendarData',
             'usageBillingAttentions',
         ));

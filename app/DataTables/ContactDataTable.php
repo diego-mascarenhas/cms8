@@ -33,16 +33,7 @@ class ContactDataTable extends DataTable
             ->setRowId('id')
             ->editColumn('name', function ($row)
             {
-                $fullName = e($row->name);
-                if (! empty($row->surname))
-                {
-                    $fullName .= ' '.e($row->surname);
-                }
-                $companyName = $row->enterprises->first() ? e($row->enterprises->first()->name) : '';
-
-                $nameHtml = DataTableFormatter::showLink($row, 'contact.show', $fullName, 'view', [$row->id]);
-
-                return DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
+                return $this->contactNameCell($row);
             })
             ->filterColumn('name', function ($query, $keyword)
             {
@@ -70,10 +61,10 @@ class ContactDataTable extends DataTable
                 {
                     $intent = $row->currentSentiment->intent;
 
-                    return '<span style="font-size: 1.5em;" title="'.e($intent->name).'">'.$intent->emoji.'</span>';
+                    return '<span style="font-size: 1.5em;" title="'.e($intent->displayName()).'">'.$intent->emoji.'</span>';
                 }
 
-                return '<span style="font-size: 1.5em;" title="'.e(__('Unclear')).'">❔</span>';
+                return '<span style="font-size: 1.5em;" title="'.e(__('contact_intents.unclear')).'">❔</span>';
             })
             ->filterColumn('current_sentiment', function ($query, $keyword)
             {
@@ -100,10 +91,6 @@ class ContactDataTable extends DataTable
                 {
                     $query->whereRaw('0 = 1');
                 }
-            })
-            ->addColumn('sources', function ($row)
-            {
-                return $row->sources_icons_html;
             })
             ->addColumn('responsible_name', function ($contact)
             {
@@ -142,7 +129,7 @@ class ContactDataTable extends DataTable
             {
                 return $row->status_label;
             })
-            ->rawColumns(['name', 'action', 'current_sentiment', 'current_intent', 'sources', 'status_id', 'categories']);
+            ->rawColumns(['name', 'action', 'current_sentiment', 'current_intent', 'status_id', 'categories']);
     }
 
     public function query(Contact $model): QueryBuilder
@@ -155,7 +142,6 @@ class ContactDataTable extends DataTable
                 'currentSentiment.sentiment',
                 'currentSentiment.intent',
                 'status',
-                'sources',
                 'responsible:id,name',
                 'categories',
                 'user.roles',
@@ -293,25 +279,17 @@ class ContactDataTable extends DataTable
                 ->addClass('all'),
             Column::make('current_sentiment')
                 ->title(__('Sentiment'))
-                ->className('text-center')
-                ->addClass('select-filter min-tablet')
+                ->className('select-filter')
                 ->searchable(true)
                 ->orderable(false)
-                ->width(80),
+                ->hidden(),
             Column::make('current_intent')
-                ->title(__('Intent'))
+                ->title(__('contact_intents.label'))
                 ->className('text-center')
                 ->addClass('intent-filter min-tablet')
                 ->searchable(true)
                 ->orderable(false)
                 ->width(80),
-            Column::make('sources')
-                ->title(__('Networks'))
-                ->className('text-center')
-                ->addClass('min-phone')
-                ->searchable(false)
-                ->orderable(false)
-                ->width(150),
             Column::make('responsible_name')
                 ->title(__('Advisor'))
                 ->className('text-center')
@@ -342,5 +320,27 @@ class ContactDataTable extends DataTable
     protected function filename(): string
     {
         return 'Contact_'.date('YmdHis');
+    }
+
+    private function contactNameCell(Contact $row): string
+    {
+        $fullName = trim((string) $row->name.' '.((string) ($row->surname ?? '')));
+        $companyName = $row->enterprises->first()?->name;
+        $nameHtml = DataTableFormatter::showLink($row, 'contact.show', $fullName, 'view', [$row->id]);
+        $text = DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
+
+        $sentiment = $row->currentSentiment?->sentiment;
+        $badge = '';
+        if ($sentiment !== null)
+        {
+            $badge = '<span class="position-absolute top-0 start-100 translate-middle d-flex align-items-center justify-content-center rounded-circle bg-body lh-1" style="width:1.15rem;height:1.15rem;font-size:0.7rem" title="'.e($sentiment->name).'">'.$sentiment->emoji.'</span>';
+        }
+
+        $avatar = '<span class="position-relative d-inline-flex flex-shrink-0 me-3">'
+            .'<img src="'.e($row->avatarUrl(40)).'" alt="" class="rounded-circle" width="40" height="40" style="object-fit:cover">'
+            .$badge
+            .'</span>';
+
+        return '<div class="d-flex align-items-center">'.$avatar.$text.'</div>';
     }
 }

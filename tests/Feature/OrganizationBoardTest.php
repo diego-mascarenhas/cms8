@@ -26,6 +26,7 @@ class OrganizationBoardTest extends TestCase
             ->get(route('organization.index'))
             ->assertOk()
             ->assertSeeLivewire(OrganizationBoard::class)
+            ->assertSee('ti-sitemap', false)
             ->assertSee('Leticia')
             ->assertSee('Publicidad')
             ->assertSee('Medio')

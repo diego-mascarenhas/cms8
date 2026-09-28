@@ -188,7 +188,7 @@
                 </div>
                 <div class="contact-list-toolbar__filter">
                     <x-input-select id="IntentFilter" :options="$intentStates ?? []" :value="''"
-                        placeholder="{{ __('Intent') }}" />
+                        placeholder="{{ __('contact_intents.label') }}" />
                 </div>
                 <div class="contact-list-toolbar__filter">
                     <x-module-categories-select

@@ -143,6 +143,15 @@ class BusinessConfigWizard extends Component
 
         $payload = $existing;
 
+        // Keep strategy progress keys that this wizard does not edit.
+        foreach (['strategy', 'strategy_level'] as $preserveKey)
+        {
+            if (array_key_exists($preserveKey, $existing))
+            {
+                $payload[$preserveKey] = $existing[$preserveKey];
+            }
+        }
+
         foreach (self::$configKeys as $key)
         {
             $value = $this->config[$key] ?? null;
