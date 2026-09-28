@@ -138,7 +138,7 @@ class FinancialProjectionHistoryGenerator
 
         Payment::withoutGlobalScopes()->whereIn('invoice_id', $invoiceIds)->delete();
         InvoiceItem::query()->whereIn('invoice_id', $invoiceIds)->delete();
-        Invoice::withoutGlobalScopes()->whereIn('id', $invoiceIds)->delete();
+        Invoice::withoutGlobalScopes()->whereIn('id', $invoiceIds)->forceDelete();
     }
 
     /**

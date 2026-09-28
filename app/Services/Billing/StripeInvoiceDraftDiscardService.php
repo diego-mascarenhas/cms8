@@ -45,9 +45,13 @@ class StripeInvoiceDraftDiscardService
     /**
      * Delete the Stripe draft and remove the Humano invoice (+ sync / usage rows).
      *
+     * Subscription drafts cannot be deleted in Stripe; those are soft-deleted locally.
+     *
+     * @return string deleted|soft_deleted
+     *
      * @throws ValidationException
      */
-    public function discard(User $user, Invoice $invoice): void
+    public function discard(User $user, Invoice $invoice): string
     {
         if (! $this->canDiscard($user, $invoice))
         {
@@ -64,10 +68,17 @@ class StripeInvoiceDraftDiscardService
             ]);
         }
 
-        $this->deleteStripeDraft($invoice, $stripeInvoiceId);
+        $outcome = $this->deleteStripeDraft($invoice, $stripeInvoiceId);
 
-        DB::transaction(function () use ($invoice, $stripeInvoiceId): void
+        DB::transaction(function () use ($invoice, $stripeInvoiceId, $outcome): void
         {
+            if ($outcome === 'soft_deleted')
+            {
+                $invoice->delete();
+
+                return;
+            }
+
             TeamUsageInvoice::query()
                 ->where('stripe_invoice_id', $stripeInvoiceId)
                 ->delete();
@@ -78,8 +89,10 @@ class StripeInvoiceDraftDiscardService
                 ->delete();
 
             $invoice->items()->delete();
-            $invoice->delete();
+            $invoice->forceDelete();
         });
+
+        return $outcome;
     }
 
     public function stripeInvoiceId(Invoice $invoice): ?string
@@ -99,7 +112,10 @@ class StripeInvoiceDraftDiscardService
         return $externalId;
     }
 
-    private function deleteStripeDraft(Invoice $invoice, string $stripeInvoiceId): void
+    /**
+     * @return string deleted|soft_deleted
+     */
+    private function deleteStripeDraft(Invoice $invoice, string $stripeInvoiceId): string
     {
         try
         {
@@ -107,18 +123,13 @@ class StripeInvoiceDraftDiscardService
             {
                 $this->usageStripeGateway->deleteDraftInvoice($stripeInvoiceId);
 
-                return;
+                return 'deleted';
             }
 
-            $secret = $this->resolveStripeSecret($invoice);
-            if ($secret === '')
-            {
-                throw ValidationException::withMessages([
-                    'invoice' => [__('Stripe is not configured for this team.')],
-                ]);
-            }
-
-            $this->makeClient($secret)->invoices->delete($stripeInvoiceId);
+            return $this->removeStripeInvoice(
+                $this->stripeClientFor($invoice, $stripeInvoiceId),
+                $stripeInvoiceId,
+            );
         } catch (ValidationException $exception)
         {
             throw $exception;
@@ -126,12 +137,12 @@ class StripeInvoiceDraftDiscardService
         {
             if ($this->isAlreadyGone($exception))
             {
-                Log::info('Stripe draft already deleted; continuing local cleanup', [
+                Log::info('Stripe draft is not available; soft-deleting the local invoice', [
                     'invoice_id' => $invoice->id,
                     'stripe_invoice_id' => $stripeInvoiceId,
                 ]);
 
-                return;
+                return 'soft_deleted';
             }
 
             throw ValidationException::withMessages([
@@ -147,6 +158,53 @@ class StripeInvoiceDraftDiscardService
                 ])],
             ]);
         }
+    }
+
+    private function stripeClientFor(Invoice $invoice, string $stripeInvoiceId): StripeClient
+    {
+        $secret = $this->isUsageDraft($stripeInvoiceId)
+            ? trim((string) config('cashier.secret'))
+            : $this->resolveStripeSecret($invoice);
+
+        if ($secret === '')
+        {
+            throw ValidationException::withMessages([
+                'invoice' => [__('Stripe is not configured for this team.')],
+            ]);
+        }
+
+        return $this->makeClient($secret);
+    }
+
+    /**
+     * @return string deleted|soft_deleted
+     */
+    private function removeStripeInvoice(StripeClient $client, string $stripeInvoiceId): string
+    {
+        try
+        {
+            $client->invoices->delete($stripeInvoiceId);
+
+            return 'deleted';
+        } catch (ApiErrorException $exception)
+        {
+            if ($this->isAlreadyGone($exception) || $this->isSubscriptionInvoiceDeletionBlocked($exception))
+            {
+                Log::info('Stripe draft cannot be removed; soft-deleting the local invoice', [
+                    'stripe_invoice_id' => $stripeInvoiceId,
+                    'message' => $exception->getMessage(),
+                ]);
+
+                return 'soft_deleted';
+            }
+
+            throw $exception;
+        }
+    }
+
+    private function isSubscriptionInvoiceDeletionBlocked(ApiErrorException $exception): bool
+    {
+        return str_contains(strtolower($exception->getMessage()), 'invoices created by subscriptions');
     }
 
     private function isUsageDraft(string $stripeInvoiceId): bool

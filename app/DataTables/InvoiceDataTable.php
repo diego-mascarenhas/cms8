@@ -5,6 +5,7 @@ namespace App\DataTables;
 use App\Models\Invoice;
 use App\Services\Finance\InvoiceSummaryService;
 use App\Support\DataTableFormatter;
+use App\Support\InvoiceListState;
 use App\Support\InvoiceTableAmountFormatter;
 use App\Support\SearchNormalizer;
 use Carbon\Carbon;
@@ -237,38 +238,27 @@ class InvoiceDataTable extends DataTable
                 window.invoiceSummaryFilter = window.invoiceSummaryFilter === filter
                     ? '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'
                     : filter;
+                window.invoiceOperationFilter = 'all';
                 jQuery('#invoice-filter-operation').val('all');
                 syncInvoiceSummaryFilterUi();
                 api.ajax.reload();
             });
 
+            jQuery('#invoice-filter-operation').val(window.invoiceOperationFilter || 'all');
+
             jQuery('#invoice-filter-operation').off('change.invoiceOperation').on('change.invoiceOperation', function () {
+                window.invoiceOperationFilter = jQuery(this).val() || 'all';
                 api.ajax.reload();
             });
 
             syncInvoiceSummaryFilterUi();
         }";
 
-        return $this
-            ->builder()
-            ->setTableId('invoice-table')
-            ->columns($this->getColumns())
-            ->minifiedAjax(
-                '',
-                "data.summary_filter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'; data.operation_filter = ($('#invoice-filter-operation').val() || 'all');",
-            )
-            ->dom('frtip')
-            ->orderBy(2, 'desc')
-            ->responsive(true)
-            ->processing(true)
-            ->serverSide(true)
-            ->pageLength(25)
-            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
-            ->parameters([
-                'select' => false,
-                'autoWidth' => false,
-                'initComplete' => $initComplete,
-                'drawCallback' => 'function() {
+        $parameters = [
+            'select' => false,
+            'autoWidth' => false,
+            'initComplete' => $initComplete,
+            'drawCallback' => 'function() {
 					var f = jQuery("#invoice-table_filter");
 					f.addClass("d-flex flex-wrap align-items-center justify-content-between column-gap-3 row-gap-2");
 					f.find("> label").addClass("ms-auto mb-0");
@@ -278,8 +268,32 @@ class InvoiceDataTable extends DataTable
 						"-moz-user-select": "none",
 						"-ms-user-select": "none"
 					});
+					if (window.stampInvoiceListLinks) { window.stampInvoiceListLinks(); }
 				}',
-            ]);
+        ];
+
+        $listState = InvoiceListState::fromArray(request()->query());
+        if (isset($listState['search']))
+        {
+            $parameters['search'] = ['search' => $listState['search']];
+        }
+
+        return $this
+            ->builder()
+            ->setTableId('invoice-table')
+            ->columns($this->getColumns())
+            ->minifiedAjax(
+                '',
+                "data.summary_filter = window.invoiceSummaryFilter || '".InvoiceSummaryService::DEFAULT_LIST_FILTER."'; data.operation_filter = window.invoiceOperationFilter || ($('#invoice-filter-operation').val() || 'all');",
+            )
+            ->dom('frtip')
+            ->orderBy(2, 'desc')
+            ->responsive(true)
+            ->processing(true)
+            ->serverSide(true)
+            ->pageLength(25)
+            ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
+            ->parameters($parameters);
     }
 
     private function resolveOperationFilter(?string $filter): string

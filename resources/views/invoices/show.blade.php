@@ -324,7 +324,7 @@
     @endif
     <div class="card">
       <div class="card-body">
-        <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index') }}">
+        <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index', $invoiceListState ?? []) }}">
           <i class="ti ti-arrow-left ti-xs me-2"></i>
           {{ __('Back to List') }}
         </a>
@@ -357,6 +357,9 @@
         @if ($canDiscardDraft ?? false)
         <form method="POST" action="{{ route('invoice.discard-draft', $invoice) }}" class="mb-2" onsubmit="return confirm(@json(__('Delete this Stripe draft from Humano and Stripe? This cannot be undone.')));">
           @csrf
+          @foreach ($invoiceListState ?? [] as $listKey => $listValue)
+          <input type="hidden" name="{{ $listKey }}" value="{{ $listValue }}">
+          @endforeach
           <button type="submit" class="btn btn-danger d-grid w-100">
             <i class="ti ti-trash ti-xs me-2"></i>
             {{ __('Delete draft') }}

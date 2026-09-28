@@ -270,7 +270,7 @@ class ManualDocumentation
                 ],
                 'client' => [
                     'No administra usuarios ni departamentos.',
-                    'Su rol Client queda bloqueado si está vinculado a un contacto.',
+                    'Su rol Client se puede promover a staff; eso desvincula el portal del contacto.',
                 ],
                 'client_blocked' => [
                     'Gestión de usuarios, invitaciones, departamentos.',

@@ -190,6 +190,11 @@ class StripeInvoiceCoreImportService
 
         if ($existing)
         {
+            if ($existing->trashed())
+            {
+                return $existing;
+            }
+
             if ($isCreditNote && filled($existing->number))
             {
                 // Keep Humano CN numbering (e.g. 0005-0252-CN-01); Stripe's lives on invoice_syncs.

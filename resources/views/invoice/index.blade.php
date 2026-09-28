@@ -32,6 +32,33 @@
 <script src="{{asset('assets/js/ui-toasts.js')}}"></script>
 <script>
     window.invoiceSummaryFilter = @json($initialSummaryFilter ?? \App\Services\Finance\InvoiceSummaryService::DEFAULT_LIST_FILTER);
+    window.invoiceOperationFilter = @json($initialOperationFilter ?? 'all');
+    window.invoiceListSearch = @json($initialInvoiceSearch ?? '');
+    window.stampInvoiceListLinks = function () {
+        var params = new URLSearchParams();
+        var summary = window.invoiceSummaryFilter || 'all';
+        if (summary && summary !== 'all') {
+            params.set('summary_filter', summary);
+        }
+        var operation = (jQuery('#invoice-filter-operation').val() || window.invoiceOperationFilter || 'all');
+        if (operation && operation !== 'all') {
+            params.set('operation_filter', operation);
+        }
+        var searchInput = jQuery('#invoice-table_filter input[type="search"]');
+        var search = searchInput.length ? (searchInput.val() || '') : (window.invoiceListSearch || '');
+        if (search) {
+            params.set('search', search);
+        }
+        var qs = params.toString();
+        jQuery('#invoice-table a[href*="/invoices/"]').each(function () {
+            var href = this.getAttribute('href') || '';
+            var base = href.split('?')[0].split('#')[0];
+            if (!/\/invoices\/\d+$/.test(base)) {
+                return;
+            }
+            this.setAttribute('href', base + (qs ? '?' + qs : ''));
+        });
+    };
 </script>
 {!! $dataTable->scripts() !!}
 @endsection

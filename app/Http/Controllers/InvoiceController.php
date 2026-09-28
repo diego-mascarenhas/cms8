@@ -41,6 +41,7 @@ use App\Services\Fiscal\FiscalExportRouter;
 use App\Services\Fiscal\FiscalExportService;
 use App\Services\Fiscal\NullFiscalExportAdapter;
 use App\Support\ExpenseDocumentTypes;
+use App\Support\InvoiceListState;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -82,9 +83,12 @@ class InvoiceController extends Controller
             (int) auth()->user()->currentTeam->id,
         );
 
+        $invoiceListState = InvoiceListState::fromArray(request()->query());
         $initialSummaryFilter = app(InvoiceSummaryService::class)->resolveListFilter(
-            request()->query('summary_filter'),
+            $invoiceListState['summary_filter'] ?? null,
         );
+        $initialOperationFilter = $invoiceListState['operation_filter'] ?? 'all';
+        $initialInvoiceSearch = $invoiceListState['search'] ?? '';
 
         $team = auth()->user()->currentTeam;
         $inboundSyncService = app(InvoiceInboundSyncService::class);
@@ -95,6 +99,8 @@ class InvoiceController extends Controller
             'lastUpdate',
             'invoiceStats',
             'initialSummaryFilter',
+            'initialOperationFilter',
+            'initialInvoiceSearch',
             'invoiceSyncProviders',
         ));
     }
@@ -508,6 +514,7 @@ class InvoiceController extends Controller
         $originalInvoice = $invoice->isCreditNote() ? $invoice->originalInvoice() : null;
         $existingCreditNote = (! $invoice->isCreditNote()) ? $invoice->existingCreditNote() : null;
         $canDiscardDraft = $this->stripeInvoiceDraftDiscardService->canDiscard(auth()->user(), $invoice);
+        $invoiceListState = InvoiceListState::fromArray(request()->query());
 
         return view('invoices.show', compact(
             'invoice',
@@ -530,6 +537,7 @@ class InvoiceController extends Controller
             'originalInvoice',
             'existingCreditNote',
             'canDiscardDraft',
+            'invoiceListState',
         ));
     }
 
@@ -537,19 +545,29 @@ class InvoiceController extends Controller
     {
         $this->authorize('view', $invoice);
 
+        $listState = InvoiceListState::fromArray(request()->only([
+            'summary_filter',
+            'operation_filter',
+            'search',
+        ]));
+
         try
         {
-            $this->stripeInvoiceDraftDiscardService->discard(auth()->user(), $invoice);
+            $outcome = $this->stripeInvoiceDraftDiscardService->discard(auth()->user(), $invoice);
         } catch (ValidationException $exception)
         {
             return redirect()
-                ->route('invoice.show', $invoice->id)
+                ->route('invoice.show', array_merge(['id' => $invoice->id], $listState))
                 ->with('error', collect($exception->errors())->flatten()->first() ?: __('Could not delete the draft invoice.'));
         }
 
+        $message = $outcome === 'soft_deleted'
+            ? __('Stripe does not allow deleting this draft, so it was archived in Humano.')
+            : __('Draft invoice deleted from Humano and Stripe.');
+
         return redirect()
-            ->route('invoice.index')
-            ->with('success', __('Draft invoice deleted from Humano and Stripe.'));
+            ->route('invoice.index', $listState)
+            ->with('success', $message);
     }
 
     public function exportFiscal(Invoice $invoice, FiscalExportService $service): RedirectResponse

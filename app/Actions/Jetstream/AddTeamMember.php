@@ -75,7 +75,8 @@ class AddTeamMember implements AddsTeamMembers
     }
 
     /**
-     * Client portal users linked to a contact must keep the Client team role.
+     * Portal client users linked to a contact can join as staff only after unlinking
+     * the portal contact (same login cannot stay Cliente and Marketing at once).
      */
     protected function ensureLinkedContactKeepsClientRole(string $email, ?string $role): Closure
     {
@@ -88,7 +89,7 @@ class AddTeamMember implements AddsTeamMembers
 
             $member = User::query()->where('email', $email)->first();
 
-            if ($member === null || ! $member->hasRole('client'))
+            if ($member === null)
             {
                 return;
             }
@@ -102,10 +103,15 @@ class AddTeamMember implements AddsTeamMembers
                 return;
             }
 
-            $validator->errors()->add(
-                'email',
-                __('This user is linked to a client contact and must use the Client role.'),
+            Contact::withoutGlobalScopes()
+                ->where('user_id', $member->id)
+                ->update(['user_id' => null]);
+
+            session()->flash(
+                'flash.banner',
+                __('This member was unlinked from the client portal contact so they can use a staff team role.'),
             );
+            session()->flash('flash.bannerStyle', 'success');
         };
     }
 

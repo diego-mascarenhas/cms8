@@ -105,4 +105,24 @@ class InvoiceIndexSummaryFilterTest extends TestCase
         $response->assertSee('window.invoiceSummaryFilter = "draft"', false);
         $response->assertSee(__('app.invoice_summary_draft_title'), false);
     }
+
+    public function test_invoice_index_restores_search_from_query_string(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $response = $this->actingAs($user)->get(route('invoice.index', [
+            'summary_filter' => 'draft',
+            'operation_filter' => 'sell',
+            'search' => 'acme',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('window.invoiceSummaryFilter = "draft"', false);
+        $response->assertSee('window.invoiceOperationFilter = "sell"', false);
+        $response->assertSee('window.invoiceListSearch = "acme"', false);
+        $response->assertSee('stampInvoiceListLinks', false);
+    }
 }
