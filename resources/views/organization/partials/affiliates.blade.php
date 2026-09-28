@@ -7,7 +7,7 @@
                 Quien <strong>asesora</strong> a esa agencia o empresa se lleva el {{ $catalog['advisor_percent'] }}%.
             </p>
         </div>
-        <a href="{{ url('/billing') }}" class="btn btn-outline-primary">
+        <a href="{{ route('affiliate.index') }}" class="btn btn-outline-primary">
             <i class="ti ti-affiliate me-1"></i> Ver módulo de afiliados
         </a>
     </div>

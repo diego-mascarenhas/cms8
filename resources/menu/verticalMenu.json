@@ -167,10 +167,10 @@
       "permission": "access-billing-modules"
     },
     {
-      "url": "billing",
+      "url": "affiliate",
       "name": "Affiliates",
       "icon": "menu-icon tf-icons ti ti-affiliate",
-      "slug": "billing.index",
+      "slug": "affiliate",
       "module_key": "affiliates",
       "permission": "access-billing-modules"
     },
