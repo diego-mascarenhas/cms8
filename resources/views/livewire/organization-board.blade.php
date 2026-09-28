@@ -1,7 +1,7 @@
 <div>
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">Organización</h4>
+            <h4 class="mb-1 mt-3"><i class="ti ti-sitemap text-primary me-1"></i>Organización</h4>
             @if ($catalog)
                 <p class="text-muted mb-0">Quién hace qué, cuándo, y qué percibe cada uno. Mismo mapa para administradores y colaboradores.</p>
             @else

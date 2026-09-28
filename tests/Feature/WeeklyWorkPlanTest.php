@@ -1,0 +1,467 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Campaign;
+use App\Models\Contact;
+use App\Models\ContactStatus;
+use App\Models\Email;
+use App\Models\Enterprise;
+use App\Models\Invoice;
+use App\Models\List60;
+use App\Models\Mailbox;
+use App\Models\Message;
+use App\Models\MessageDelivery;
+use App\Models\Module;
+use App\Models\Project;
+use App\Models\ProjectStatus;
+use App\Models\Service;
+use App\Models\User;
+use App\Services\Finance\InvoiceSummaryService;
+use App\Services\WeeklyWorkPlanService;
+use Carbon\Carbon;
+use Database\Seeders\ContactStatusSeeder;
+use Database\Seeders\CountrySeeder;
+use Database\Seeders\CurrencySeeder;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
+use Database\Seeders\LanguageSeeder;
+use Database\Seeders\ProjectStatusSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\Models\Role;
+use Tests\TestCase;
+
+class WeeklyWorkPlanTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
+    public function test_monday_plan_orders_work_and_includes_quarterly_tax_filing(): void
+    {
+        Carbon::setTestNow('2026-10-05');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+        $team->setSetting('business_config', [
+            'business_challenge' => 'Cerrar más propuestas este mes',
+        ], ['type' => 'json', 'group' => 'business-config']);
+
+        $company = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+        ]);
+        $personal = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => $user->id,
+        ]);
+        Email::factory()->count(2)->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $company->id,
+            'seen' => false,
+        ]);
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $personal->id,
+            'seen' => false,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        $this->invoice($team->id, $enterprise->id, InvoiceSummaryService::DRAFT_STATUS, now()->addDays(10)->toDateString(), 'DRAFT-1');
+        $this->invoice($team->id, $enterprise->id, 1, now()->subDays(5)->toDateString(), 'OVERDUE-1');
+
+        $contact = Contact::query()->create([
+            'team_id' => $team->id,
+            'name' => 'Cliente Lista',
+            'email' => 'lista@example.test',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+        List60::query()->create([
+            'contact_id' => $contact->id,
+            'type_id' => 1,
+            'date_next' => '2026-10-06',
+            'responsible_id' => $user->id,
+            'status_id' => 1,
+        ]);
+
+        $plan = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        $this->assertSame('plan', $plan['mode']);
+        $this->assertSame('Plan de la semana', $plan['title']);
+        $this->assertSame('Cerrar más propuestas este mes', $plan['challenge']);
+        $this->assertSame([
+            'sales_objective',
+            'company_email',
+            'personal_email',
+            'draft_invoices',
+            'overdue_invoices',
+            'tax_filing',
+            'list60',
+        ], array_column($plan['items'], 'key'));
+        $drafts = collect($plan['items'])->firstWhere('key', 'draft_invoices');
+        $overdue = collect($plan['items'])->firstWhere('key', 'overdue_invoices');
+        $this->assertSame('DRAFT-1 · Acme SL', $drafts['details'][0]['label']);
+        $this->assertSame('OVERDUE-1 · Acme SL', $overdue['details'][0]['label']);
+        $list = collect($plan['items'])->firstWhere('key', 'list60');
+        $this->assertSame('Cliente Lista', $list['details'][0]['label']);
+        $this->assertStringContainsString('Hola Cliente', $list['details'][0]['note']);
+        $this->assertSame('Presentar impuestos del T3 2026 (hasta el 20 de octubre)', $plan['items'][5]['label']);
+    }
+
+    public function test_midweek_keeps_the_monday_plan(): void
+    {
+        Carbon::setTestNow('2026-10-05');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+        $company = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+        ]);
+        Email::factory()->count(2)->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $company->id,
+            'seen' => false,
+        ]);
+
+        $monday = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        Email::factory()->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $company->id,
+            'seen' => false,
+        ]);
+        Carbon::setTestNow('2026-10-07');
+
+        $wednesday = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        $this->assertSame($monday['items'], $wednesday['items']);
+        $this->assertSame(2, $wednesday['items'][0]['count']);
+    }
+
+    public function test_friday_reviews_what_is_still_open(): void
+    {
+        Carbon::setTestNow('2026-10-05');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+        $company = Mailbox::factory()->create([
+            'team_id' => $team->id,
+            'user_id' => null,
+        ]);
+        Email::factory()->count(2)->create([
+            'team_id' => $team->id,
+            'mailbox_id' => $company->id,
+            'seen' => false,
+        ]);
+
+        app(WeeklyWorkPlanService::class)->present($user, $team);
+        Email::query()->where('mailbox_id', $company->id)->update(['seen' => true]);
+        Carbon::setTestNow('2026-10-09');
+
+        $friday = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        $this->assertSame('review', $friday['mode']);
+        $this->assertSame('Cierre de la semana', $friday['title']);
+        $email = collect($friday['items'])->firstWhere('key', 'company_email');
+        $tax = collect($friday['items'])->firstWhere('key', 'tax_filing');
+        $this->assertTrue($email['done']);
+        $this->assertSame('Correos de la empresa. Resuelto.', $email['label']);
+        $this->assertFalse($tax['done']);
+        $this->assertStringContainsString('T3 2026', $tax['label']);
+        $this->assertStringContainsString('sigue pendiente', $tax['label']);
+    }
+
+    public function test_sunday_shows_the_plan_until_friday_has_reviewed_it(): void
+    {
+        Carbon::setTestNow('2026-10-04');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+
+        $sunday = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        $this->assertSame('plan', $sunday['mode']);
+        $this->assertSame('Plan de la semana', $sunday['title']);
+    }
+
+    public function test_week_outside_the_filing_month_omits_tax(): void
+    {
+        Carbon::setTestNow('2026-09-07');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+
+        $plan = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        $this->assertSame([], array_column($plan['items'], 'key'));
+    }
+
+    public function test_week_before_the_filing_month_includes_tax(): void
+    {
+        Carbon::setTestNow('2026-09-21');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+
+        $plan = app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        $this->assertSame(['tax_filing'], array_column($plan['items'], 'key'));
+        $this->assertStringContainsString('T3 2026', $plan['items'][0]['label']);
+    }
+
+    public function test_dashboard_card_shows_the_weekly_plan(): void
+    {
+        Carbon::setTestNow('2026-10-05');
+        app()->setLocale('es_ES');
+
+        [$user] = $this->planner();
+        $this->actingAs($user);
+
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSee('Plan de la semana', false);
+        $response->assertSee('ti-calendar-week', false);
+        $response->assertSee('Presentar impuestos del T3 2026 (hasta el 20 de octubre)', false);
+        $response->assertSee(route('weekly-plan.index'), false);
+        $response->assertSee('ti-sitemap', false);
+        $response->assertDontSee(route('strategy.index'), false);
+        $response->assertDontSee('Haz tenido una gran IDEA', false);
+    }
+
+    public function test_report_navigates_between_saved_weeks(): void
+    {
+        Carbon::setTestNow('2026-09-21');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+        app(WeeklyWorkPlanService::class)->present($user, $team);
+
+        Carbon::setTestNow('2026-10-05');
+        $this->actingAs($user);
+
+        $current = $this->get(route('weekly-plan.index'));
+        $current->assertOk();
+        $current->assertSee('Semana anterior', false);
+        $current->assertSee('T3 2026', false);
+
+        $previous = $this->get(route('weekly-plan.index', ['week' => '2026-09-21']));
+        $previous->assertOk();
+        $previous->assertSee('Semana siguiente', false);
+        $previous->assertSee('T3 2026', false);
+        $previous->assertSee('Equipo', false);
+    }
+
+    public function test_report_lists_projects_invoices_services_leads_and_campaign_dialogues(): void
+    {
+        Carbon::setTestNow('2026-10-05');
+        app()->setLocale('es_ES');
+
+        [$user, $team] = $this->planner();
+        $this->seed(ProjectStatusSeeder::class);
+        foreach (['projects', 'services', 'contacts'] as $key)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => $key,
+                    'icon' => 'box',
+                    'description' => $key,
+                    'status' => 1,
+                ],
+            );
+            $team->enableModule($key);
+        }
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+        Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'name' => 'Web de Acme',
+            'responsible_id' => $user->id,
+            'status_id' => ProjectStatus::STATUS_APPROVED,
+            'date_end' => '2026-10-07',
+        ]);
+        $this->invoice($team->id, $enterprise->id, InvoiceSummaryService::DRAFT_STATUS, now()->addDays(10)->toDateString(), 'DRAFT-9');
+        $this->invoice($team->id, $enterprise->id, 1, now()->subDays(5)->toDateString(), 'VENCIDA-3');
+        Service::withoutGlobalScope('team')->withoutGlobalScope('ownership')->create([
+            'enterprise_id' => $enterprise->id,
+            'operation' => 'sell',
+            'description' => 'Hosting corporativo',
+            'status' => 3,
+            'responsible_id' => $user->id,
+        ]);
+        Service::withoutGlobalScope('team')->withoutGlobalScope('ownership')->create([
+            'enterprise_id' => $enterprise->id,
+            'operation' => 'sell',
+            'description' => 'Ya activo',
+            'status' => 4,
+            'responsible_id' => $user->id,
+        ]);
+
+        $this->contact($user, $team->id, 'Laura Lead', (int) ContactStatus::query()->where('name', 'Lead')->value('id'));
+        $suggested = $this->contact($user, $team->id, 'Pedro Campaña', (int) ContactStatus::query()->where('name', 'En seguimiento')->value('id'));
+        $message = Message::withoutGlobalScope('team')->create([
+            'name' => 'Campaña empatía',
+            'type_id' => 1,
+            'text' => 'Medir empatía',
+            'team_id' => $team->id,
+            'status_id' => 1,
+        ]);
+        $campaign = Campaign::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Diagnóstico de empatía',
+            'summary' => 'Medir la empatía en el equipo',
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $suggested->id,
+            'campaign_id' => $campaign->id,
+            'status_id' => 1,
+            'sent_at' => now()->subDay(),
+            'opened_at' => now()->subHour(),
+        ]);
+
+        $fromMessage = $this->contact($user, $team->id, 'Nora Mensaje', (int) ContactStatus::query()->where('name', 'En seguimiento')->value('id'));
+        $newsletter = Message::withoutGlobalScope('team')->create([
+            'name' => 'News de septiembre',
+            'type_id' => 1,
+            'text' => 'Novedades del mes',
+            'team_id' => $team->id,
+            'status_id' => 1,
+        ]);
+        MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $newsletter->id,
+            'contact_id' => $fromMessage->id,
+            'status_id' => 1,
+            'sent_at' => now()->subDay(),
+            'opened_at' => now()->subHour(),
+        ]);
+
+        $plan = app(WeeklyWorkPlanService::class)->present($user, $team);
+        $byKey = collect($plan['items'])->keyBy('key');
+
+        $this->assertSame('Contactar 3 personas y 3 acciones de venta', $byKey['sales_objective']['label']);
+        $this->assertSame('Web de Acme', $byKey['projects']['details'][0]['label']);
+        $this->assertSame('DRAFT-9 · Acme SL', $byKey['draft_invoices']['details'][0]['label']);
+        $this->assertSame('VENCIDA-3 · Acme SL', $byKey['overdue_invoices']['details'][0]['label']);
+        $this->assertSame('Activar · Hosting corporativo · Acme SL', $byKey['services']['details'][0]['label']);
+        $this->assertCount(1, $byKey['services']['details']);
+        $this->assertSame('Laura Lead', $byKey['new_leads']['details'][0]['label']);
+        $this->assertSame('Hola Laura, te escribo para retomar el contacto de esta semana.', $byKey['new_leads']['details'][0]['note']);
+        $suggestions = collect($byKey['list60_suggestions']['details'])->keyBy('label');
+        $this->assertStringContainsString('Diagnóstico de empatía', $suggestions['Pedro Campaña']['note']);
+        $this->assertStringContainsString('Medir la empatía en el equipo', $suggestions['Pedro Campaña']['note']);
+        $this->assertStringContainsString('News de septiembre', $suggestions['Nora Mensaje']['note']);
+        $this->assertStringContainsString('Novedades del mes', $suggestions['Nora Mensaje']['note']);
+
+        $this->actingAs($user)
+            ->get(route('weekly-plan.index'))
+            ->assertOk()
+            ->assertSee('Web de Acme', false)
+            ->assertSee('VENCIDA-3', false)
+            ->assertSee('Hosting corporativo', false)
+            ->assertSee('Diagnóstico de empatía', false);
+    }
+
+    /**
+     * @return array{0: User, 1: \App\Models\Team}
+     */
+    private function planner(): array
+    {
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+            CurrencySeeder::class,
+        ]);
+        DB::table('list60_statuses')->insert([
+            'id' => 1,
+            'name' => 'Sin contactar',
+            'label_class' => 'bg-label-secondary',
+        ]);
+
+        foreach (['mailbox', 'invoices', 'list60'] as $key)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $key],
+                [
+                    'name' => $key,
+                    'icon' => 'box',
+                    'description' => $key,
+                    'status' => 1,
+                ],
+            );
+        }
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+        $team->enableModule('mailbox');
+        $team->enableModule('invoices');
+        $team->enableModule('list60');
+
+        return [$user, $team];
+    }
+
+    private function contact(User $user, int $teamId, string $name, int $statusId): Contact
+    {
+        return Contact::withoutGlobalScope('team')->withoutGlobalScope('ownership')->create([
+            'team_id' => $teamId,
+            'name' => $name,
+            'email' => strtolower(str_replace(' ', '.', $name)).'@example.test',
+            'language' => 'es',
+            'country' => 724,
+            'creator_id' => $user->id,
+            'responsible_id' => $user->id,
+            'status_id' => $statusId,
+        ]);
+    }
+
+    private function invoice(int $teamId, int $enterpriseId, int $status, string $dueDate, string $number): void
+    {
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'enterprise_id' => $enterpriseId,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => $number,
+            'date' => '2026-09-01',
+            'due_date' => $dueDate,
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => $status,
+        ]);
+    }
+}

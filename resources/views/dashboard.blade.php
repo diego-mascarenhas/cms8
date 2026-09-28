@@ -639,21 +639,29 @@
                                     @endif
                                 @else
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-1">
-                                        <span class="text-primary flex-shrink-0" aria-hidden="true"><i class="ti ti-sparkles ti-sm"></i></span>
-                                        <h5 class="card-title mb-0 fw-semibold">{{ __('app.performance_insight_card_greeting_default', ['name' => $insightCardFirstName]) }}</h5>
+                                        <span class="badge bg-label-primary p-1 rounded d-inline-flex align-items-center justify-content-center">
+                                            <i class="ti ti-calendar-week ti-sm"></i>
+                                        </span>
+                                        <h5 class="card-title mb-0 fw-semibold">{{ $weeklyWorkPlan['title'] ?? __('app.weekly_plan_title') }}</h5>
                                     </div>
-                                    @if($mentoringPlan)
-                                        @if($mentoringMessage)
-                                            <p class="mb-2">{{ $mentoringMessage }}</p>
-                                        @endif
-                                        @if($mentoringLevelName)
-                                            <p class="mb-4"><strong>{{ $mentoringLevelName }}</strong></p>
-                                        @endif
-                                    @elseif($subscriptionLevel)
-                                        <p class="mb-2">¡Vas viento en popa!</p>
-                                        <p class="mb-4"><span class="badge bg-primary">Plan: {{ $subscriptionLevel->getDisplayName() }}</span></p>
+                                    @if(filled($weeklyWorkPlan['challenge'] ?? null))
+                                        <p class="mb-2 text-muted small">{{ __('app.weekly_plan_challenge', ['challenge' => $weeklyWorkPlan['challenge']]) }}</p>
+                                    @endif
+                                    @if(!empty($weeklyWorkPlan['items']))
+                                        <ul class="list-unstyled mb-2 small">
+                                            @foreach($weeklyWorkPlan['items'] as $item)
+                                                <li class="mb-1 text-body">
+                                                    <i class="ti {{ !empty($item['done']) ? 'ti-circle-check text-success' : 'ti-checkbox text-primary' }} ti-xs me-1"></i>
+                                                    @if(!empty($item['href']))
+                                                        <a href="{{ $item['href'] }}" class="text-body">{{ $item['label'] }}</a>
+                                                    @else
+                                                        {{ $item['label'] }}
+                                                    @endif
+                                                </li>
+                                            @endforeach
+                                        </ul>
                                     @else
-                                        <p class="mb-4">¡Vas viento en popa!</p>
+                                        <p class="mb-2 text-body small">{{ __('app.weekly_plan_empty') }}</p>
                                     @endif
                                 @endif
 
@@ -662,8 +670,12 @@
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
                                 <div class="mt-auto pt-2">
-                                    <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">Estrategia</a>
-                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">Organización</a>
+                                    <a href="{{ route('weekly-plan.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
+                                        <i class="ti ti-report me-1"></i>{{ __('app.weekly_plan_report') }}
+                                    </a>
+                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">
+                                        <i class="ti ti-sitemap me-1"></i>{{ __('Organización') }}
+                                    </a>
                                 </div>
                     </div>
                     <div class="dashboard-insight-illustration" aria-hidden="true">

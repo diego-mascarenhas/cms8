@@ -100,6 +100,7 @@ use App\Http\Controllers\TwilioWebhookController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\UserFareController;
 use App\Http\Controllers\WebDavIntegrationController;
+use App\Http\Controllers\WeeklyWorkPlanController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -255,6 +256,7 @@ Route::get('/p/budget-mail/{token}/open', [ProjectController::class, 'trackBudge
 Route::get('/p/budget-mail/{token}/click', [ProjectController::class, 'trackBudgetEmailClick'])->name('project.budget-email.track-click');
 
 Route::get('/dashboard/analytics', [DashboardController::class, 'index'])->name('dashboard')->middleware('auth');
+Route::get('/weekly-plan', [WeeklyWorkPlanController::class, 'index'])->name('weekly-plan.index')->middleware('auth');
 Route::get('/dashboard/collaborator', [CollaboratorController::class, 'dashboard'])->name('dashboard.collaborator')->middleware('auth');
 
 // Adding routes for other dashboard types
