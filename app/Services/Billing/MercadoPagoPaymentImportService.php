@@ -702,7 +702,7 @@ class MercadoPagoPaymentImportService
         return max(0.0, $value);
     }
 
-    private function ensureMercadoPagoPaymentAccount(int $teamId): ?int
+    public function ensureMercadoPagoPaymentAccount(int $teamId): ?int
     {
         $account = PaymentAccount::withoutGlobalScopes()->firstOrCreate(
             [

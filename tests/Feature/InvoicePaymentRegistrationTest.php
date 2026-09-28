@@ -206,14 +206,14 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertSee(__('invoice_payment.electronic_title'), false)
-            ->assertSee(__('invoice_payment.register_title'), false);
+            ->assertSee(__('invoice_payment.register_title'), false)
+            ->assertSee('id="account_id"', false);
 
         $this->actingAs($member)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.electronic_title'), false)
-            ->assertDontSee(__('invoice_payment.register_title'), false);
+            ->assertDontSee(__('invoice_payment.register_title'), false)
+            ->assertDontSee('id="account_id"', false);
     }
 
     public function test_invoice_show_hides_electronic_payment_form_when_balance_is_zero(): void
@@ -258,8 +258,8 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($owner)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.electronic_title'), false)
-            ->assertDontSee(__('invoice_payment.register_title'), false);
+            ->assertDontSee(__('invoice_payment.register_title'), false)
+            ->assertDontSee(__('invoice_payment.electronic_title'), false);
     }
 
     public function test_team_owner_can_link_mercadopago_sync_from_invoice_show(): void

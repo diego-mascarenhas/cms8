@@ -407,6 +407,7 @@
     </div>
 
     @unless ($invoice->isCreditNote())
+    @if (isset($paymentDetails) && $paymentDetails->isNotEmpty())
     <div class="card mt-3">
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -420,25 +421,10 @@
           </form>
           @endif
         </div>
-        @forelse($paymentDetails as $paymentDetail)
+        @foreach ($paymentDetails as $paymentDetail)
           <div @class(['mb-0' => $loop->last, 'mb-3 pb-3 border-bottom' => ! $loop->last])>
             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
               <span class="fw-medium">{{ \Carbon\Carbon::parse($paymentDetail['date'])->format('d-m-Y') }}</span>
-              {{-- Payment status change modal temporarily disabled
-              @if($canUpdatePaymentStatus && ! empty($paymentDetail['id']))
-                <button
-                  type="button"
-                  class="btn btn-sm p-0 border-0 bg-transparent payment-status-trigger"
-                  data-payment-id="{{ $paymentDetail['id'] }}"
-                  data-payment-status="{{ $paymentDetail['status'] }}"
-                  title="{{ __('payment_status.change_title') }}"
-                >
-                  {!! $paymentDetail['status_html'] !!}
-                </button>
-              @elseif($paymentDetail['status_html'])
-                {!! $paymentDetail['status_html'] !!}
-              @endif
-              --}}
               @if($paymentDetail['status_html'])
                 {!! $paymentDetail['status_html'] !!}
               @endif
@@ -477,18 +463,37 @@
             </p>
             @endif
           </div>
-        @empty
-          <p class="mb-0 text-muted">{{ __('No payments linked to this invoice') }}</p>
-        @endforelse
+        @endforeach
       </div>
     </div>
-    @if ($canRegisterPayment && $paymentFormDefaults && ! empty($paymentFormDefaults['accounts']))
+    @endif
+    @if ($paymentFormDefaults && ! empty($paymentFormDefaults['accounts']))
+    @php
+        $manualPaymentUrl = route('invoice.payments.store', $invoice);
+        $electronicPaymentUrl = route('invoice.electronic-payments.store', $invoice);
+        $showElectronicFields = $canLinkElectronicPayment && ! empty($electronicPaymentSyncOptions);
+        $mpAccountIds = $paymentFormDefaults['mercadopago_account_ids'] ?? [];
+        $selectedAccountId = old('account_id', $paymentFormDefaults['account_id']);
+        $startInMercadoPagoMode = $showElectronicFields
+            && $selectedAccountId
+            && in_array((int) $selectedAccountId, array_map('intval', $mpAccountIds), true);
+    @endphp
     <div class="card mt-3">
       <div class="card-body">
         <h6 class="mb-3">{{ __('invoice_payment.register_title') }}</h6>
-        <form action="{{ route('invoice.payments.store', $invoice) }}" method="POST" class="row g-3" id="invoiceManualPaymentForm">
+        @if ($errors->has('payment_sync_id'))
+          <div class="alert alert-danger py-2">{{ $errors->first('payment_sync_id') }}</div>
+        @endif
+        <form
+          action="{{ $startInMercadoPagoMode ? $electronicPaymentUrl : $manualPaymentUrl }}"
+          method="POST"
+          class="row g-3"
+          id="invoiceManualPaymentForm"
+          data-manual-action="{{ $manualPaymentUrl }}"
+          data-electronic-action="{{ $electronicPaymentUrl }}"
+        >
           @csrf
-          <div class="col-12">
+          <div class="col-12 js-manual-payment-field" @if ($startInMercadoPagoMode) style="display:none" @endif>
             <label for="amount" class="form-label">{{ __('invoice_payment.amount') }} <span class="text-danger">*</span></label>
             <div class="input-group">
               <input
@@ -500,7 +505,8 @@
                 id="amount"
                 class="form-control @error('amount') is-invalid @enderror"
                 value="{{ old('amount', $paymentFormDefaults['amount']) }}"
-                required
+                @unless ($startInMercadoPagoMode) required @endunless
+                @if ($startInMercadoPagoMode) disabled @endif
               >
               <span class="input-group-text">{{ $paymentFormDefaults['currency_code'] }}</span>
             </div>
@@ -508,7 +514,7 @@
               <div class="invalid-feedback d-block">{{ $message }}</div>
             @enderror
           </div>
-          <div class="col-12">
+          <div class="col-12 js-manual-payment-field" @if ($startInMercadoPagoMode) style="display:none" @endif>
             <x-input-date
               id="date"
               label="{{ __('invoice_payment.date') }} (*)"
@@ -516,26 +522,55 @@
             />
           </div>
           <div class="col-12">
-            <x-input-select
-              id="account_id"
-              label="{{ __('invoice_payment.account') }}"
-              :options="$paymentFormDefaults['accounts']"
-              value="{{ old('account_id', $paymentFormDefaults['account_id']) }}"
-              placeholder="{{ __('Select') }}"
-              required
-            />
+            <div class="form-group">
+              <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1" style="min-height: 2.25rem;">
+                <label for="account_id" class="form-label mb-0">{{ __('invoice_payment.account') }} <span class="text-danger">*</span></label>
+              </div>
+              <select
+                id="account_id"
+                name="account_id"
+                class="form-control select2 @error('account_id') is-invalid @enderror"
+                data-placeholder="{{ __('Select') }}"
+                required
+              >
+                <option value="">{{ __('Select') }}</option>
+                @foreach ($paymentFormDefaults['accounts'] as $accountOption)
+                  <option
+                    value="{{ $accountOption['id'] }}"
+                    data-mercadopago="{{ ! empty($accountOption['is_mercadopago']) ? '1' : '0' }}"
+                    @selected((string) $selectedAccountId === (string) $accountOption['id'])
+                  >{{ $accountOption['name'] }}</option>
+                @endforeach
+              </select>
+              @error('account_id')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+              @enderror
+            </div>
           </div>
-          <div class="col-12">
+          <div class="col-12 js-manual-payment-field" id="invoicePaymentTypeField" @if ($startInMercadoPagoMode) style="display:none" @endif>
             <x-input-select
               id="type_id"
               label="{{ __('invoice_payment.type') }}"
               :options="$paymentFormDefaults['payment_types']"
               value="{{ old('type_id', $paymentFormDefaults['type_id']) }}"
               placeholder="{{ __('Select') }}"
-              required
+              :required="! $startInMercadoPagoMode"
             />
           </div>
-          <div class="col-12">
+          @if ($showElectronicFields)
+          <div class="col-12" id="invoicePaymentSyncField" @unless ($startInMercadoPagoMode) style="display:none" @endunless>
+            <x-input-select
+              id="payment_sync_id"
+              label="{{ __('invoice_payment.electronic_sync') }}"
+              :options="$electronicPaymentSyncOptions"
+              value="{{ old('payment_sync_id') }}"
+              placeholder="{{ __('invoice_payment.electronic_sync_placeholder') }}"
+              :required="$startInMercadoPagoMode"
+              help-text="{{ __('invoice_payment.electronic_hint') }}"
+            />
+          </div>
+          @endif
+          <div class="col-12 js-manual-payment-field" @if ($startInMercadoPagoMode) style="display:none" @endif>
             <x-input-textarea
               id="remarks"
               label="{{ __('invoice_payment.remarks') }}"
@@ -543,47 +578,22 @@
             />
           </div>
           <div class="col-12">
-            <button type="submit" class="btn btn-primary w-100">
-              <i class="ti ti-cash me-1"></i>{{ __('invoice_payment.submit') }}
+            <button type="submit" class="btn btn-primary w-100" id="invoicePaymentSubmitBtn">
+              <i class="ti ti-cash me-1" id="invoicePaymentSubmitIcon"></i>
+              <span id="invoicePaymentSubmitLabel">{{ $startInMercadoPagoMode ? __('invoice_payment.electronic_submit') : __('invoice_payment.submit') }}</span>
             </button>
           </div>
         </form>
       </div>
     </div>
-    @endif
-    @if ($canLinkElectronicPayment)
+    @elseif ($canLinkElectronicPayment && empty($electronicPaymentSyncOptions))
     <div class="card mt-3">
       <div class="card-body">
         <h6 class="mb-3">{{ __('invoice_payment.electronic_title') }}</h6>
-        @if ($errors->has('payment_sync_id'))
-          <div class="alert alert-danger py-2">{{ $errors->first('payment_sync_id') }}</div>
-        @endif
-        @if (empty($electronicPaymentSyncOptions))
-          <p class="mb-0 text-muted">{{ __('invoice_payment.electronic_empty') }}</p>
-          <a href="{{ route('payments.syncs.mercadopago.index') }}" class="btn btn-sm btn-label-secondary mt-2">
-            <i class="ti ti-list me-1"></i>{{ __('invoice_payment.electronic_open_queue') }}
-          </a>
-        @else
-          <form action="{{ route('invoice.electronic-payments.store', $invoice) }}" method="POST" class="row g-3">
-            @csrf
-            <div class="col-12">
-              <x-input-select
-                id="payment_sync_id"
-                label="{{ __('invoice_payment.electronic_sync') }}"
-                :options="$electronicPaymentSyncOptions"
-                value="{{ old('payment_sync_id') }}"
-                placeholder="{{ __('invoice_payment.electronic_sync_placeholder') }}"
-                required
-                help-text="{{ __('invoice_payment.electronic_hint') }}"
-              />
-            </div>
-            <div class="col-12">
-              <button type="submit" class="btn btn-primary w-100">
-                <i class="ti ti-link me-1"></i>{{ __('invoice_payment.electronic_submit') }}
-              </button>
-            </div>
-          </form>
-        @endif
+        <p class="mb-0 text-muted">{{ __('invoice_payment.electronic_empty') }}</p>
+        <a href="{{ route('payments.syncs.mercadopago.index') }}" class="btn btn-sm btn-label-secondary mt-2">
+          <i class="ti ti-list me-1"></i>{{ __('invoice_payment.electronic_open_queue') }}
+        </a>
       </div>
     </div>
     @endif
@@ -706,6 +716,96 @@ function deleteInvoice(id) {
         });
     }
 }
+
+@if (! empty($paymentFormDefaults['accounts'] ?? null))
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('invoiceManualPaymentForm');
+    if (! form) {
+        return;
+    }
+
+    const accountSelect = document.getElementById('account_id');
+    const syncField = document.getElementById('invoicePaymentSyncField');
+    const syncSelect = document.getElementById('payment_sync_id');
+    const typeSelect = document.getElementById('type_id');
+    const amountInput = document.getElementById('amount');
+    const dateInput = document.getElementById('date');
+    const remarksInput = document.getElementById('remarks');
+    const submitLabel = document.getElementById('invoicePaymentSubmitLabel');
+    const submitIcon = document.getElementById('invoicePaymentSubmitIcon');
+    const manualFields = form.querySelectorAll('.js-manual-payment-field');
+    const manualAction = form.getAttribute('data-manual-action');
+    const electronicAction = form.getAttribute('data-electronic-action');
+    const manualSubmitLabel = @json(__('invoice_payment.submit'));
+    const electronicSubmitLabel = @json(__('invoice_payment.electronic_submit'));
+
+    function setFieldEnabled(el, enabled) {
+        if (! el) {
+            return;
+        }
+        el.disabled = ! enabled;
+        if (enabled) {
+            el.setAttribute('name', el.id);
+        } else {
+            el.removeAttribute('name');
+        }
+    }
+
+    function togglePaymentMode() {
+        if (! accountSelect) {
+            return;
+        }
+
+        const selected = accountSelect.options[accountSelect.selectedIndex];
+        const isMercadoPago = selected && selected.getAttribute('data-mercadopago') === '1' && !! syncField;
+
+        form.action = isMercadoPago ? electronicAction : manualAction;
+
+        manualFields.forEach(function (field) {
+            field.style.display = isMercadoPago ? 'none' : '';
+        });
+
+        if (syncField) {
+            syncField.style.display = isMercadoPago ? '' : 'none';
+        }
+
+        setFieldEnabled(amountInput, ! isMercadoPago);
+        setFieldEnabled(dateInput, ! isMercadoPago);
+        setFieldEnabled(typeSelect, ! isMercadoPago);
+        setFieldEnabled(remarksInput, ! isMercadoPago);
+        setFieldEnabled(syncSelect, isMercadoPago);
+
+        if (amountInput) {
+            amountInput.required = ! isMercadoPago;
+        }
+        if (typeSelect) {
+            typeSelect.required = ! isMercadoPago;
+        }
+        if (syncSelect) {
+            syncSelect.required = isMercadoPago;
+        }
+
+        if (submitLabel) {
+            submitLabel.textContent = isMercadoPago ? electronicSubmitLabel : manualSubmitLabel;
+        }
+        if (submitIcon) {
+            submitIcon.className = isMercadoPago ? 'ti ti-link me-1' : 'ti ti-cash me-1';
+        }
+    }
+
+    if (window.jQuery && jQuery.fn.select2 && accountSelect && ! jQuery(accountSelect).hasClass('select2-hidden-accessible')) {
+        jQuery(accountSelect).select2();
+    }
+
+    if (window.jQuery) {
+        jQuery(accountSelect).on('change', togglePaymentMode);
+    } else if (accountSelect) {
+        accountSelect.addEventListener('change', togglePaymentMode);
+    }
+
+    togglePaymentMode();
+});
+@endif
 
 @if ($canShowCreditNoteForm ?? false)
 document.addEventListener('DOMContentLoaded', function () {
