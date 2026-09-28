@@ -660,6 +660,40 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertDontSee('9,99', false);
     }
 
+    public function test_root_as_guest_on_another_team_hides_usage_billing_attentions(): void
+    {
+        Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
+
+        $root = User::factory()->withPersonalTeam()->create();
+        $homeTeam = $root->ownedTeams()->first();
+        $root->forceFill(['current_team_id' => $homeTeam->id])->save();
+        $root->assignRole('root');
+
+        $customerOwner = User::factory()->withPersonalTeam()->create(['name' => 'Respuestos Owner']);
+        $customerTeam = $customerOwner->ownedTeams()->first();
+        $customerTeam->forceFill(['name' => 'Respuestos AV'])->save();
+
+        $customerTeam->users()->attach($root, ['role' => 'guest']);
+        $root->forceFill(['current_team_id' => $customerTeam->id])->save();
+
+        \App\Models\TeamUsageInvoice::factory()->create([
+            'team_id' => $customerTeam->id,
+            'status' => \App\Models\TeamUsageInvoice::STATUS_DRAFT,
+            'billed_cents' => 7769,
+            'currency' => 'EUR',
+            'stripe_invoice_id' => 'in_guest_should_hide',
+            'period_from' => now()->subMonth()->startOfMonth(),
+            'period_to' => now()->startOfMonth(),
+        ]);
+
+        $this->actingAs($root);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertDontSee('Cobros de consumo', false);
+        $response->assertDontSee('in_guest_should_hide', false);
+    }
+
     public function test_non_root_dashboard_hides_usage_billing_attentions(): void
     {
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);

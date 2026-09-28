@@ -122,6 +122,34 @@ class User extends Authenticatable
     }
 
     /**
+     * Cross-team Stripe usage drafts on the dashboard (platform ops).
+     * Spatie root alone is not enough: hide when the current membership is guest/client/etc.
+     */
+    public function canSeeCrossTeamUsageBilling(?Team $team = null): bool
+    {
+        if (! $this->hasRole('root'))
+        {
+            return false;
+        }
+
+        $team ??= $this->currentTeam;
+
+        if (! $team instanceof Team)
+        {
+            return false;
+        }
+
+        if ($this->ownsTeam($team))
+        {
+            return true;
+        }
+
+        $membershipRole = $this->teamRole($team)?->key;
+
+        return in_array($membershipRole, ['root', 'admin'], true);
+    }
+
+    /**
      * End-customer membership on this team, even if the user is Spatie admin
      * of a personal Humano workspace.
      */

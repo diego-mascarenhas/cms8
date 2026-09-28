@@ -526,7 +526,7 @@ class DashboardController extends Controller
      */
     private function buildUsageBillingAttentions(): ?array
     {
-        if (! auth()->user()?->hasRole('root'))
+        if (! auth()->user()?->canSeeCrossTeamUsageBilling())
         {
             return null;
         }
