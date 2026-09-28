@@ -128,6 +128,7 @@ class TeamMemberRoleFilterTest extends TestCase
 
         Livewire::test(TeamMemberManager::class, ['team' => $owner->currentTeam])
             ->assertSee(__('Create Team'))
+            ->assertSee('ti ti-plus', false)
             ->call('confirmCreateMemberTeam', $member->id)
             ->assertSet('confirmingMemberTeam', true)
             ->set('newTeamName', 'Equipo Leticia')

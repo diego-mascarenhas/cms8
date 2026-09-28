@@ -202,7 +202,7 @@
                 <span>{{ $user->ownedTeams->pluck('name')->join(', ') }}</span>
               @elseif (Gate::check('updateTeamMember', $team))
                 <button type="button" class="btn btn-sm btn-label-primary" wire:click="confirmCreateMemberTeam({{ $user->id }})">
-                  {{ __('Create Team') }}
+                  <i class="ti ti-plus me-1"></i>{{ __('Create Team') }}
                 </button>
               @else
                 <span class="text-muted">—</span>
