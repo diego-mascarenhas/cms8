@@ -7,6 +7,7 @@ enum TeamBillingProduct: string
     case TokensMultiplier = 'tokens_multiplier';
     case WhatsappSend = 'whatsapp_send';
     case MailerSend = 'mailer_send';
+    case ProspectCredit = 'prospect_credit';
 
     public function label(): string
     {
@@ -15,6 +16,7 @@ enum TeamBillingProduct: string
             self::TokensMultiplier => 'Multiplicador de tokens',
             self::WhatsappSend => 'Envío WhatsApp',
             self::MailerSend => 'Envío mail',
+            self::ProspectCredit => 'Crédito de prospección',
         };
     }
 }

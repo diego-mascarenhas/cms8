@@ -17,6 +17,7 @@ use App\Services\AssistantWhatsAppUsageByLineService;
 use App\Services\Billing\AssistantSubscriptionService;
 use App\Services\RevisionAlphaBilling;
 use App\Services\TeamMailerUsageStatsService;
+use App\Services\TeamProspectUsageStatsService;
 use App\Services\TeamWhatsAppUsageStatsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -405,7 +406,7 @@ class ClientPortalController extends Controller
     }
 
     /**
-     * @return array{emails: int, whatsapp: int, ai_tokens: int}
+     * @return array{emails: int, whatsapp: int, ai_tokens: int, prospects: int}
      */
     private function usagePayload(User $user): array
     {
@@ -413,6 +414,7 @@ class ClientPortalController extends Controller
             'emails' => 0,
             'whatsapp' => 0,
             'ai_tokens' => 0,
+            'prospects' => 0,
         ];
         $team = $user->currentTeam;
         if ($team === null)
@@ -427,6 +429,7 @@ class ClientPortalController extends Controller
             'emails' => (int) TeamMailerUsageStatsService::forTeam($team, $from, $to)['emails_sent'],
             'whatsapp' => (int) TeamWhatsAppUsageStatsService::forTeam($team, $from, $to)['messages_sent'],
             'ai_tokens' => (int) ($billed['all']['tokens'] ?? 0),
+            'prospects' => (int) TeamProspectUsageStatsService::forTeam($team, $from, $to)['credits_used'],
         ];
     }
 

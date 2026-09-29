@@ -94,6 +94,10 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.whatsapp_usage.currency', 'EUR');
         $this->assertSame(0.003, $response->json('data.whatsapp_usage.our_rate'));
         $this->assertSame(0.005, $response->json('data.whatsapp_usage.reference_rate'));
+        $response->assertJsonPath('data.prospect_usage.credits_used', 0);
+        $response->assertJsonPath('data.prospect_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.prospect_usage.currency', 'EUR');
+        $this->assertSame(0.15, $response->json('data.prospect_usage.our_rate'));
     }
 
     public function test_estimator_catalog_is_free_and_ready_for_token_billing(): void

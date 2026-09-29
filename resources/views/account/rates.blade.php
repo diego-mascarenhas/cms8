@@ -58,7 +58,7 @@
                         </span>
                     </span>
                 </div>
-                <small class="text-muted">Tokens, WhatsApp y mail</small>
+                <small class="text-muted">Tokens, WhatsApp, mail y prospección</small>
             </div>
             <div class="col-sm-6 col-lg-3">
                 <div class="d-flex align-items-start justify-content-between">
@@ -206,6 +206,14 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                     <small class="text-muted">EUR por email enviado. El plan no incluye envíos.</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="prospect_credit">Prospección (€)</label>
+                    <input type="number" step="any" min="0" class="form-control @error('prospect_credit') is-invalid @enderror" id="prospect_credit" name="prospect_credit" value="{{ old('prospect_credit', $billingRates['prospect_credit'] ?? '0.15') }}">
+                    @error('prospect_credit')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">EUR por crédito consumido al importar un prospecto.</small>
                 </div>
             </div>
 

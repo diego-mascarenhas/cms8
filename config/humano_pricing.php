@@ -125,6 +125,18 @@ return [
     ],
 
     /*
+     * | Prospect import billing (EUR per credit consumed when a prospect is imported).
+     * | Every credit used in the usage window is billed from zero, same as email sends.
+     */
+    'prospect_billing' => [
+        'currency' => env('HUMANO_PROSPECT_BILLING_CURRENCY', 'EUR'),
+        'our_amount' => (float) env('HUMANO_PROSPECT_OUR_AMOUNT', 0.15),
+        'our_amount_by_team' => [
+            // 1 => 0.10,
+        ],
+    ],
+
+    /*
      * | Default plan slug when checkout return URL omits &category= (assistant, business, or mentor).
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))

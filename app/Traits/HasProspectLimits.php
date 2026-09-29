@@ -3,6 +3,7 @@
 namespace App\Traits;
 
 use App\Enums\ProspectPlan;
+use App\Models\ProspectUsageLog;
 use Carbon\Carbon;
 
 trait HasProspectLimits
@@ -76,6 +77,16 @@ trait HasProspectLimits
         if ($fromPurchased > 0)
         {
             $this->setSetting('prospect_credits_purchased', max(0, $purchased - $fromPurchased), ['type' => 'integer', 'group' => 'prospect']);
+        }
+
+        if ($credits > 0)
+        {
+            ProspectUsageLog::query()->create([
+                'team_id' => $this->id,
+                'source' => 'import',
+                'count' => $credits,
+                'consumed_at' => now(),
+            ]);
         }
 
         return true;

@@ -426,7 +426,8 @@ class ClientPortalAuthTest extends TestCase
             ->assertOk()
             ->assertJsonPath('usage.emails', 3)
             ->assertJsonPath('usage.whatsapp', 1)
-            ->assertJsonPath('usage.ai_tokens', 10_000_000);
+            ->assertJsonPath('usage.ai_tokens', 10_000_000)
+            ->assertJsonPath('usage.prospects', 0);
     }
 
     public function test_client_can_create_a_ticket(): void

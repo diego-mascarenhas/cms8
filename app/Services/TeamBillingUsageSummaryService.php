@@ -37,6 +37,8 @@ final class TeamBillingUsageSummaryService
      *     mailer_emails: int,
      *     mailer_overage: int,
      *     mailer_billed_cents: int,
+     *     prospect_credits: int,
+     *     prospect_billed_cents: int,
      *     cost_cents: int,
      *     billed_cents: int,
      *     markup_cents: int,
@@ -73,6 +75,8 @@ final class TeamBillingUsageSummaryService
      *     mailer_emails: int,
      *     mailer_overage: int,
      *     mailer_billed_cents: int,
+     *     prospect_credits: int,
+     *     prospect_billed_cents: int,
      *     cost_cents: int,
      *     billed_cents: int,
      *     markup_cents: int,
@@ -220,6 +224,8 @@ final class TeamBillingUsageSummaryService
      *     mailer_emails: int,
      *     mailer_overage: int,
      *     mailer_billed_cents: int,
+     *     prospect_credits: int,
+     *     prospect_billed_cents: int,
      *     cost_cents: int,
      *     billed_cents: int,
      *     markup_cents: int,
@@ -247,7 +253,7 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
-     * Open consumption cycle (tokens, WhatsApp, mail) without calling Stripe.
+     * Open consumption cycle (tokens, WhatsApp, mail, prospection) without calling Stripe.
      *
      * @return array<string, mixed>
      */
@@ -276,7 +282,7 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
-     * Stripe lines: the three billable items, skipping zero amounts.
+     * Stripe lines: the billable items, skipping zero amounts.
      *
      * @param  array<string, mixed>  $usage
      * @return list<array{kind: string, description: string, detail: string, quantity: int, amount_cents: int, formatted_amount: string}>
@@ -434,6 +440,14 @@ final class TeamBillingUsageSummaryService
             'amount_cents' => $usage['mailer_billed_cents'],
             'formatted_amount' => $usage['formatted']['mailer_billed'],
         ];
+        $lines[] = [
+            'kind' => 'prospect',
+            'description' => 'Prospección · '.$periodLabel,
+            'detail' => $this->formatCount((int) ($usage['prospect_credits'] ?? 0)).' créditos',
+            'quantity' => max(1, (int) ($usage['prospect_credits'] ?? 0)),
+            'amount_cents' => (int) ($usage['prospect_billed_cents'] ?? 0),
+            'formatted_amount' => $usage['formatted']['prospect_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'EUR')),
+        ];
 
         return $lines;
     }
@@ -482,11 +496,15 @@ final class TeamBillingUsageSummaryService
 
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $mailer = $this->mailerForPeriod($team, $from, $to, $asOf);
+        $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
         $currency = TokenBillingRateService::displayCurrency();
         $multiplier = TokenBillingRateService::clientTokenMultiplier($team, $asOf);
 
         $costCents = $tokenCostCents;
-        $billedCents = $tokenBilledCents + (int) $whatsapp['our_amount_cents'] + $mailer['billed_cents'];
+        $billedCents = $tokenBilledCents
+            + (int) $whatsapp['our_amount_cents']
+            + $mailer['billed_cents']
+            + (int) $prospect['our_amount_cents'];
         $markupCents = $tokenMarkupCents;
         $periodLabel = $this->periodLabel($from, $to, $frequency);
 
@@ -509,6 +527,8 @@ final class TeamBillingUsageSummaryService
             'mailer_emails' => $mailer['emails'],
             'mailer_overage' => $mailer['overage'],
             'mailer_billed_cents' => $mailer['billed_cents'],
+            'prospect_credits' => (int) $prospect['credits_used'],
+            'prospect_billed_cents' => (int) $prospect['our_amount_cents'],
             'cost_cents' => $costCents,
             'billed_cents' => $billedCents,
             'markup_cents' => $markupCents,
@@ -521,6 +541,7 @@ final class TeamBillingUsageSummaryService
                 'multiplier' => TeamBillingRate::formatAmount($multiplier),
                 'whatsapp' => $this->formatCount((int) $whatsapp['messages_sent']).' / '.$this->formatCents((int) $whatsapp['our_amount_cents'], $currency),
                 'mailer' => $this->formatCount($mailer['emails']).' / '.$this->formatCents($mailer['billed_cents'], $currency),
+                'prospect' => $this->formatCount((int) $prospect['credits_used']).' / '.$this->formatCents((int) $prospect['our_amount_cents'], $currency),
                 'cost' => $this->formatCents($costCents, $currency),
                 'billed' => $this->formatCents($billedCents, $currency),
                 'markup' => $this->formatCents($markupCents, $currency),
@@ -529,6 +550,7 @@ final class TeamBillingUsageSummaryService
                 'token_markup' => $this->formatCents($tokenMarkupCents, $currency),
                 'whatsapp_billed' => $this->formatCents((int) $whatsapp['our_amount_cents'], $currency),
                 'mailer_billed' => $this->formatCents($mailer['billed_cents'], $currency),
+                'prospect_billed' => $this->formatCents((int) $prospect['our_amount_cents'], $currency),
             ],
         ];
     }
@@ -602,13 +624,14 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
-     * @param  array{tokens_real: int, whatsapp_messages: int, mailer_emails: int, billed_cents: int}  $row
+     * @param  array{tokens_real: int, whatsapp_messages: int, mailer_emails: int, prospect_credits?: int, billed_cents: int}  $row
      */
     private function monthHasConsumption(array $row): bool
     {
         return $row['tokens_real'] > 0
             || $row['whatsapp_messages'] > 0
             || $row['mailer_emails'] > 0
+            || (int) ($row['prospect_credits'] ?? 0) > 0
             || $row['billed_cents'] > 0;
     }
 

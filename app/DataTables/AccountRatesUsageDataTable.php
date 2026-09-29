@@ -27,6 +27,7 @@ class AccountRatesUsageDataTable extends DataTable
             'tokens' => $row['formatted']['tokens'],
             'whatsapp' => $row['formatted']['whatsapp'],
             'mailer' => $row['formatted']['mailer'],
+            'prospect' => $row['formatted']['prospect'],
             'cost' => $row['formatted']['cost'],
             'billed' => $row['formatted']['billed'],
             'markup' => $row['formatted']['markup'],
@@ -80,6 +81,12 @@ class AccountRatesUsageDataTable extends DataTable
                 ->title('Mail')
                 ->name('mailer')
                 ->data('mailer')
+                ->className('text-center')
+                ->addClass('min-tablet'),
+            Column::make('prospect')
+                ->title('Prospección')
+                ->name('prospect')
+                ->data('prospect')
                 ->className('text-center')
                 ->addClass('min-tablet'),
             Column::make('cost')
