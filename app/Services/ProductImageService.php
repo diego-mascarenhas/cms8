@@ -2,13 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\Product;
 use App\Models\Team;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Image\Enums\Fit;
 use Spatie\Image\Image;
+use Throwable;
 
 class ProductImageService
 {
@@ -35,7 +38,8 @@ class ProductImageService
     {
         $slug = $this->slugFromName($name, $file);
         $extension = $this->extension($file);
-        $folder = 'shop/products/'.$team->id.'/'.Str::uuid()->toString();
+        $directory = Str::uuid()->toString();
+        $folder = 'shop/products/'.$team->id.'/'.$directory;
 
         $originalFilename = $slug.'.'.$extension;
         $originalPath = $file->storeAs($folder, $originalFilename, self::DISK);
@@ -74,6 +78,168 @@ class ProductImageService
             ],
             'sizes' => $sizes,
         ];
+    }
+
+    /**
+     * Copy a remote or already-local product photo into shop/products/{team}/{directory}
+     * and attach each file to the media library. Leaves the product unchanged when the
+     * download fails.
+     *
+     * @return array{status: string, image: ?string}
+     */
+    public function importProduct(Product $product): array
+    {
+        $current = trim((string) $product->image);
+        if ($current === '')
+        {
+            return ['status' => 'skipped', 'image' => null];
+        }
+
+        $local = $this->localDirectory($current);
+        if ($local !== null && $local['team_id'] === (int) $product->team_id)
+        {
+            $this->sync($product);
+
+            return ['status' => 'registered', 'image' => $current];
+        }
+
+        if (preg_match('#^https?://#i', $current) !== 1)
+        {
+            return ['status' => 'skipped', 'image' => $current];
+        }
+
+        $team = Team::query()->find($product->team_id);
+        if ($team === null)
+        {
+            return ['status' => 'failed', 'image' => $current];
+        }
+
+        try
+        {
+            $uploaded = $this->download($current, (string) $product->name);
+            $stored = $this->store($team, $uploaded, (string) $product->name);
+        } catch (Throwable)
+        {
+            return ['status' => 'failed', 'image' => $current];
+        }
+
+        $product->forceFill(['image' => $stored['image']])->save();
+
+        return ['status' => 'imported', 'image' => $stored['image']];
+    }
+
+    /**
+     * Attach the files already stored for this product's image URL.
+     * Remote or empty images leave no media rows.
+     */
+    public function sync(Product $product): void
+    {
+        $local = $this->localDirectory($product->image);
+        $ownsLocal = $local !== null && $local['team_id'] === (int) $product->team_id;
+
+        if (! $ownsLocal)
+        {
+            if ($product->media()->where('collection_name', 'image')->exists())
+            {
+                $product->clearMediaCollection('image');
+            }
+
+            return;
+        }
+
+        $current = (string) $product->getFirstMedia('image')?->getCustomProperty('directory');
+        if ($current !== '' && $current !== $local['directory'])
+        {
+            $product->clearMediaCollection('image');
+        }
+
+        $folder = 'shop/products/'.$local['team_id'].'/'.$local['directory'];
+        foreach (Storage::disk(self::DISK)->files($folder) as $relative)
+        {
+            $filename = basename($relative);
+            $already = $product->media()
+                ->where('collection_name', 'image')
+                ->where('file_name', $filename)
+                ->exists();
+            if ($already)
+            {
+                continue;
+            }
+
+            $product->media()->create([
+                'collection_name' => 'image',
+                'name' => pathinfo($filename, PATHINFO_FILENAME),
+                'file_name' => $filename,
+                'mime_type' => Storage::disk(self::DISK)->mimeType($relative) ?: 'application/octet-stream',
+                'disk' => self::DISK,
+                'conversions_disk' => self::DISK,
+                'size' => Storage::disk(self::DISK)->size($relative),
+                'manipulations' => [],
+                'custom_properties' => ['directory' => $local['directory']],
+                'generated_conversions' => [],
+                'responsive_images' => [],
+            ]);
+        }
+    }
+
+    /**
+     * @return array{team_id: int, directory: string}|null
+     */
+    public function localDirectory(?string $image): ?array
+    {
+        $path = parse_url((string) $image, PHP_URL_PATH) ?: (string) $image;
+        $path = ltrim($path, '/');
+        $path = preg_replace('#^storage/#', '', $path) ?? $path;
+
+        if (preg_match('#^shop/products/(\d+)/([^/]+)/[^/]+$#', $path, $matches) !== 1)
+        {
+            return null;
+        }
+
+        return [
+            'team_id' => (int) $matches[1],
+            'directory' => $matches[2],
+        ];
+    }
+
+    private function download(string $url, string $name): UploadedFile
+    {
+        $response = Http::timeout(30)
+            ->withHeaders(['User-Agent' => 'Idoneo CMS'])
+            ->get($url);
+
+        if (! $response->successful() || $response->body() === '')
+        {
+            throw ValidationException::withMessages([
+                'file' => [__('No se pudo descargar la imagen.')],
+            ]);
+        }
+
+        $mime = strtolower(trim(strtok((string) $response->header('Content-Type'), ';')));
+        $extension = match ($mime)
+        {
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            default => 'jpg',
+        };
+        $tmp = tempnam(sys_get_temp_dir(), 'shopimg');
+        $path = $tmp.'.'.$extension;
+        file_put_contents($path, $response->body());
+        @unlink($tmp);
+
+        $info = @getimagesize($path);
+        if (! is_array($info))
+        {
+            @unlink($path);
+
+            throw ValidationException::withMessages([
+                'file' => [__('El archivo descargado no es una imagen.')],
+            ]);
+        }
+
+        $filename = Str::slug($name) ?: 'producto';
+
+        return new UploadedFile($path, $filename.'.'.$extension, $mime !== '' ? $mime : 'image/jpeg', null, true);
     }
 
     /**

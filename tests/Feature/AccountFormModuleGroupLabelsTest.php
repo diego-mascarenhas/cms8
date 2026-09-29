@@ -143,6 +143,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('Tokens IA', false)
             ->assertSee('Envíos WhatsApp', false)
             ->assertSee('Envíos email', false)
+            ->assertSee('Prospección', false)
+            ->assertSee('Almacenamiento', false)
             ->assertSee('id="frequency-change-previews"', false)
             ->assertSee('name="invoice_frequency"', false)
             ->assertSee('Meses anteriores', false)
@@ -150,6 +152,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('name="tokens_multiplier"', false)
             ->assertSee('name="whatsapp_send"', false)
             ->assertSee('name="mailer_send"', false)
+            ->assertSee('name="prospect_credit"', false)
+            ->assertSee('name="storage_gigabyte"', false)
             ->assertSee('value="10"', false)
             ->assertSee('value="0.003"', false)
             ->assertSee('class="text-center">Importe', false)
@@ -297,6 +301,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'tokens_multiplier' => 8,
             'whatsapp_send' => 0.002,
             'mailer_send' => 0.008,
+            'prospect_credit' => 0.2,
+            'storage_gigabyte' => 0.05,
             'invoice_frequency' => TeamBillingFrequency::Weekly->value,
         ])->assertRedirect(route('account.rates.edit', $team->id))
             ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
@@ -307,6 +313,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
         $this->assertSame(0.003, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::WhatsappSend, now()->subMinute()));
         $this->assertSame('0.008', MailerPaygPricing::pricePerEmail($team));
         $this->assertSame('0.002', MailerPaygPricing::pricePerEmail($team, now()->subMinute()));
+        $this->assertSame(0.2, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit));
+        $this->assertSame(0.15, TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::ProspectCredit, now()->subMinute()));
         $this->assertSame(TeamBillingFrequency::Weekly, TeamUsageInvoiceFrequency::for($team));
     }
 
@@ -347,6 +355,8 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'tokens_multiplier' => 10,
             'whatsapp_send' => 0.003,
             'mailer_send' => 0.01,
+            'prospect_credit' => 0.15,
+            'storage_gigabyte' => 0.02,
             'invoice_frequency' => TeamBillingFrequency::Weekly->value,
         ])->assertRedirect(route('account.rates.edit', $team->id))
             ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');

@@ -125,6 +125,32 @@ return [
     ],
 
     /*
+     * | Prospect import billing (EUR per credit consumed when a prospect is imported).
+     * | Every credit used in the usage window is billed from zero, same as email sends.
+     */
+    'prospect_billing' => [
+        'currency' => env('HUMANO_PROSPECT_BILLING_CURRENCY', 'EUR'),
+        'our_amount' => (float) env('HUMANO_PROSPECT_OUR_AMOUNT', 0.15),
+        'our_amount_by_team' => [
+            // 1 => 0.10,
+        ],
+    ],
+
+    /*
+     * | Storage billing (EUR per GiB occupied now).
+     * | Counts media-library files still attached to the team: team files,
+     * | multimedia, and attachments on contacts, tasks, tickets and communications.
+     * | Charged on the open usage cycle and again when that cycle is invoiced.
+     */
+    'storage_billing' => [
+        'currency' => env('HUMANO_STORAGE_BILLING_CURRENCY', 'EUR'),
+        'our_amount' => (float) env('HUMANO_STORAGE_OUR_AMOUNT', 0.02),
+        'our_amount_by_team' => [
+            // 1 => 0.05,
+        ],
+    ],
+
+    /*
      * | Default plan slug when checkout return URL omits &category= (assistant, business, or mentor).
      */
     'post_checkout_plan_slug' => match (strtolower(trim((string) env('HUMANO_PRICING_POST_CHECKOUT_PLAN_SLUG', 'assistant'))))

@@ -96,6 +96,7 @@ class AccountManagementDataTableTest extends TestCase
         $this->assertStringContainsString('title="Acciones"', $html);
         $this->assertStringContainsString('title="Renovación"', $html);
         $this->assertStringContainsString('title="A facturar"', $html);
+        $this->assertStringContainsString('title="Almacenamiento"', $html);
         $this->assertStringNotContainsString('title="Clientes"', $html);
         $this->assertStringNotContainsString('title="Planes"', $html);
     }
@@ -593,6 +594,7 @@ class AccountManagementDataTableTest extends TestCase
             ['data' => 'owner_name', 'name' => 'owner_name', 'searchable' => 'true', 'orderable' => 'true'],
             ['data' => 'renews_at', 'name' => 'renews_at', 'searchable' => 'false', 'orderable' => 'true'],
             ['data' => 'usage_billed', 'name' => 'usage_billed', 'searchable' => 'false', 'orderable' => 'true'],
+            ['data' => 'storage', 'name' => 'storage', 'searchable' => 'false', 'orderable' => 'false'],
             ['data' => 'action', 'name' => 'action', 'searchable' => 'false', 'orderable' => 'false'],
         ];
     }
