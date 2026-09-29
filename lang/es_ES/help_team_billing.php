@@ -6,7 +6,7 @@ return [
     'sidebar_title' => 'Tarifas de consumo',
     'index_card_title' => 'Tarifas de consumo',
     'index_card_body' => 'Preview de factura, tarifas SCD2, frecuencia mensual o semanal, y desglose de tokens por módulo. Solo root.',
-    'intro' => 'El consumo de tokens, WhatsApp, envíos de email y prospección se factura aparte de la cuota del plan. Cada equipo puede tener tarifas propias y frecuencia mensual o semanal. Al cerrar el ciclo se crea un draft en Stripe; no se cobra hasta que se finalice.',
+    'intro' => 'El consumo de tokens, WhatsApp, envíos de email, prospección y almacenamiento se factura aparte de la cuota del plan. Cada equipo puede tener tarifas propias y frecuencia mensual o semanal. Al cerrar el ciclo se crea un draft en Stripe; no se cobra hasta que se finalice.',
 
     'where_heading' => 'Dónde está',
     'where_body' => 'Solo el rol root ve esta pantalla. En Gestión de Cuentas, el icono de euro de cada fila abre las tarifas de ese equipo.',
@@ -15,18 +15,19 @@ return [
 
     'two_invoices_heading' => 'Dos facturas distintas',
     'two_invoices_plan' => 'Cuota del plan: Assistant, Business u otro producto contratado. Sigue saliendo en las facturas de Stripe de suscripción.',
-    'two_invoices_usage' => 'Consumo: tokens IA, envíos WhatsApp, envíos de email y créditos de prospección. Va en una factura de uso por equipo y periodo. Al cierre se crea un draft en Stripe.',
+    'two_invoices_usage' => 'Consumo: tokens IA, envíos WhatsApp, envíos de email, créditos de prospección y almacenamiento. Va en una factura de uso por equipo y periodo. Al cierre se crea un draft en Stripe.',
 
     'rates_heading' => 'Tarifas',
-    'rates_intro' => 'Hay cuatro productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración.',
+    'rates_intro' => 'Hay cinco productos. Si el equipo no tiene tarifa propia, se usa la de plataforma y, si tampoco existe, la de configuración.',
     'rates_tokens' => 'Multiplicador de tokens: el cliente ve N × tokens reales a tarifa OpenRouter, sin recargo extra. Por defecto ×10.',
     'rates_whatsapp' => 'Envío WhatsApp: EUR por mensaje saliente. Por defecto 0,003 EUR.',
     'rates_mailer' => 'Envío mail: EUR por cada email enviado, desde el primero. El plan cubre el uso de la plataforma y el límite de suscriptores, no los envíos. Por defecto 0,002 EUR.',
     'rates_prospect' => 'Prospección: EUR por crédito consumido al importar un prospecto. Por defecto 0,15 EUR.',
+    'rates_storage' => 'Almacenamiento: EUR por GB ocupado ahora (ficheros del equipo, multimedia y adjuntos de contactos, tareas, tickets y comunicaciones). Por defecto 0,02 EUR.',
     'rates_history' => 'Al guardar una tarifa nueva, la anterior se conserva (SCD2) para el consumo ya ocurrido. El historial de la página muestra Desde / Hasta / Actual.',
 
     'frequency_heading' => 'Frecuencia',
-    'frequency_intro' => 'Mensual o semanal, por equipo. Si hay Assistant, tokens, WhatsApp, emails y prospección de todas las apps siguen su ciclo (del 24 al 24 si Assistant renueva el 24). Si no hay Assistant, se usa el plan más antiguo. Un Shop u otro plan posterior no abre otro ciclo. Sin plan, el mes va del 1 al 1 y la semana de lunes a lunes. Al cambiar a semanal, ese día queda como ancla.',
+    'frequency_intro' => 'Mensual o semanal, por equipo. Si hay Assistant, tokens, WhatsApp, emails, prospección y almacenamiento de todas las apps siguen su ciclo (del 24 al 24 si Assistant renueva el 24). Si no hay Assistant, se usa el plan más antiguo. Un Shop u otro plan posterior no abre otro ciclo. Sin plan, el mes va del 1 al 1 y la semana de lunes a lunes. Al cambiar a semanal, ese día queda como ancla.',
     'frequency_weekly' => 'Semanal: ventanas de 7 días desde el día del cambio (miércoles a miércoles si cambias un miércoles).',
     'frequency_monthly' => 'Mensual: del día D al D (del 15 al 15 si cambias un día 15).',
     'frequency_anchor' => 'Si el ancla es 29, 30 o 31 y el mes no tiene ese día, se usa el último día del mes. Al mes siguiente se recupera el ancla (31 ene → 28/29 feb → 31 mar → 30 abr → 31 may).',
@@ -38,12 +39,13 @@ return [
     'change_stripe' => 'Confirmar cierra el ciclo en Humano. El draft de Stripe se crea en el siguiente barrido diario.',
 
     'items_heading' => 'Qué se imprime en la factura',
-    'items_intro' => 'Cada documento (ajuste o ciclo abierto) lleva las mismas cuatro líneas, aunque el importe sea 0,00 EUR:',
+    'items_intro' => 'Cada documento (ajuste o ciclo abierto) lleva estas líneas, aunque el importe sea 0,00 EUR:',
     'items_tokens' => 'Tokens IA · periodo: tokens facturados (reales × multiplicador) e importe.',
     'items_sources' => 'Debajo, el desglose por módulo cuando hay origen: Chat, Projects, Insights u otros. Si todo el consumo va sin módulo, solo se muestra el total.',
     'items_whatsapp' => 'Envíos WhatsApp · periodo: número de envíos e importe.',
     'items_mailer' => 'Envíos email · periodo: todos los emails enviados en el ciclo e importe.',
     'items_prospect' => 'Prospección · periodo: créditos consumidos e importe.',
+    'items_storage' => 'Almacenamiento · periodo: espacio ocupado ahora e importe. En meses ya cerrados de la tabla inferior no se reconstruye: el cargo entra al cerrar el ciclo.',
     'items_total' => 'El preview de la página y el modal de confirmación listan esos ítems. El KPI Tokens muestra el total del preview (ciclo abierto más ajustes pendientes).',
 
     'preview_heading' => 'Preview',
@@ -61,7 +63,7 @@ return [
     'cli_body' => 'Para fijar una tarifa sin pasar por la pantalla (team_id 0 = default de plataforma):',
     'cli_example' => 'php artisan billing:set-team-rate {team_id} {product} {amount}',
     'cli_drafts' => 'php artisan billing:issue-usage-invoice-drafts [--team=] [--dry-run]',
-    'cli_products' => 'product: tokens_multiplier, whatsapp_send, mailer_send o prospect_credit. Opcional: --from= y --currency=.',
+    'cli_products' => 'product: tokens_multiplier, whatsapp_send, mailer_send, prospect_credit o storage_gigabyte. Opcional: --from= y --currency=.',
 
     'related_heading' => 'Relacionado',
     'related_stripe' => 'Webhooks de Stripe (cuota del plan y facturas de suscripción)',

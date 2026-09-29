@@ -64,6 +64,10 @@ class AccountDataTable extends DataTable
             {
                 $this->orderByUsageBilled($query, strtolower($order) === 'desc' ? 'desc' : 'asc');
             })
+            ->addColumn('storage', function ($account)
+            {
+                return $this->usageFor($account)['formatted']['storage_size'];
+            })
             ->addColumn('action', function ($account)
             {
                 $autologinButtons = '';
@@ -178,6 +182,13 @@ class AccountDataTable extends DataTable
                 ->addClass('all')
                 ->width('110px')
                 ->orderable(true)
+                ->searchable(false),
+            Column::computed('storage')
+                ->title(__('Almacenamiento'))
+                ->className('text-end text-nowrap')
+                ->addClass('all')
+                ->width('120px')
+                ->orderable(false)
                 ->searchable(false),
             Column::computed('action')
                 ->title('Acciones')

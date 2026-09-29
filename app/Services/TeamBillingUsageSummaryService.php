@@ -39,6 +39,8 @@ final class TeamBillingUsageSummaryService
      *     mailer_billed_cents: int,
      *     prospect_credits: int,
      *     prospect_billed_cents: int,
+     *     storage_bytes: int,
+     *     storage_billed_cents: int,
      *     cost_cents: int,
      *     billed_cents: int,
      *     markup_cents: int,
@@ -53,7 +55,7 @@ final class TeamBillingUsageSummaryService
         $isCurrent = $from->isSameMonth(now());
         $to = $isCurrent ? now() : $month->copy()->endOfMonth();
 
-        return $this->forPeriod($team, $from, $to, $isCurrent, TeamBillingFrequency::Monthly);
+        return $this->forPeriod($team, $from, $to, $isCurrent, TeamBillingFrequency::Monthly, $isCurrent);
     }
 
     /**
@@ -77,6 +79,8 @@ final class TeamBillingUsageSummaryService
      *     mailer_billed_cents: int,
      *     prospect_credits: int,
      *     prospect_billed_cents: int,
+     *     storage_bytes: int,
+     *     storage_billed_cents: int,
      *     cost_cents: int,
      *     billed_cents: int,
      *     markup_cents: int,
@@ -96,7 +100,7 @@ final class TeamBillingUsageSummaryService
         {
             $to = $from->copy();
         }
-        $usage = $this->forPeriod($team, $from, $to, true, $frequency);
+        $usage = $this->forPeriod($team, $from, $to, true, $frequency, true);
         $adjustments = $this->pendingAdjustments($team);
         $totalBilledCents = $usage['billed_cents'] + (int) $adjustments->sum('billed_cents');
         $totalCostCents = $usage['cost_cents'] + (int) $adjustments->sum('cost_cents');
@@ -181,7 +185,7 @@ final class TeamBillingUsageSummaryService
         {
             $newTo = $newFrom->copy();
         }
-        $newUsage = $this->forPeriod($team, $newFrom, $newTo, true, $next);
+        $newUsage = $this->forPeriod($team, $newFrom, $newTo, true, $next, true);
         $newLabel = $this->periodLabel($newFrom, $newCloses, $next);
         $invoices[] = $this->invoiceDocument(
             $next->label(),
@@ -226,6 +230,8 @@ final class TeamBillingUsageSummaryService
      *     mailer_billed_cents: int,
      *     prospect_credits: int,
      *     prospect_billed_cents: int,
+     *     storage_bytes: int,
+     *     storage_billed_cents: int,
      *     cost_cents: int,
      *     billed_cents: int,
      *     markup_cents: int,
@@ -249,11 +255,11 @@ final class TeamBillingUsageSummaryService
             $to = $from->copy();
         }
 
-        return $this->forPeriod($team, $from, $to, false, $frequency);
+        return $this->forPeriod($team, $from, $to, false, $frequency, true);
     }
 
     /**
-     * Open consumption cycle (tokens, WhatsApp, mail, prospection) without calling Stripe.
+     * Open consumption cycle (tokens, WhatsApp, mail, prospection, storage) without calling Stripe.
      *
      * @return array<string, mixed>
      */
@@ -278,7 +284,7 @@ final class TeamBillingUsageSummaryService
             $to = $from->copy();
         }
 
-        return $this->forPeriod($team, $from, $to, true, $frequency);
+        return $this->forPeriod($team, $from, $to, true, $frequency, true);
     }
 
     /**
@@ -448,6 +454,14 @@ final class TeamBillingUsageSummaryService
             'amount_cents' => (int) ($usage['prospect_billed_cents'] ?? 0),
             'formatted_amount' => $usage['formatted']['prospect_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'EUR')),
         ];
+        $lines[] = [
+            'kind' => 'storage',
+            'description' => 'Almacenamiento · '.$periodLabel,
+            'detail' => (string) ($usage['formatted']['storage_size'] ?? '0 B'),
+            'quantity' => max(1, (int) ($usage['storage_bytes'] ?? 0)),
+            'amount_cents' => (int) ($usage['storage_billed_cents'] ?? 0),
+            'formatted_amount' => $usage['formatted']['storage_billed'] ?? $this->formatCents(0, (string) ($usage['currency'] ?? 'EUR')),
+        ];
 
         return $lines;
     }
@@ -482,6 +496,7 @@ final class TeamBillingUsageSummaryService
         Carbon $to,
         bool $isCurrent,
         TeamBillingFrequency $frequency,
+        bool $billStorage = false,
     ): array {
         $asOf = $isCurrent ? $to->copy() : $from->copy();
 
@@ -497,6 +512,7 @@ final class TeamBillingUsageSummaryService
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
         $mailer = $this->mailerForPeriod($team, $from, $to, $asOf);
         $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
+        $storage = TeamStorageUsageStatsService::forTeam($team, $to, $billStorage);
         $currency = TokenBillingRateService::displayCurrency();
         $multiplier = TokenBillingRateService::clientTokenMultiplier($team, $asOf);
 
@@ -504,7 +520,8 @@ final class TeamBillingUsageSummaryService
         $billedCents = $tokenBilledCents
             + (int) $whatsapp['our_amount_cents']
             + $mailer['billed_cents']
-            + (int) $prospect['our_amount_cents'];
+            + (int) $prospect['our_amount_cents']
+            + (int) $storage['our_amount_cents'];
         $markupCents = $tokenMarkupCents;
         $periodLabel = $this->periodLabel($from, $to, $frequency);
 
@@ -529,6 +546,8 @@ final class TeamBillingUsageSummaryService
             'mailer_billed_cents' => $mailer['billed_cents'],
             'prospect_credits' => (int) $prospect['credits_used'],
             'prospect_billed_cents' => (int) $prospect['our_amount_cents'],
+            'storage_bytes' => (int) $storage['bytes'],
+            'storage_billed_cents' => (int) $storage['our_amount_cents'],
             'cost_cents' => $costCents,
             'billed_cents' => $billedCents,
             'markup_cents' => $markupCents,
@@ -542,6 +561,8 @@ final class TeamBillingUsageSummaryService
                 'whatsapp' => $this->formatCount((int) $whatsapp['messages_sent']).' / '.$this->formatCents((int) $whatsapp['our_amount_cents'], $currency),
                 'mailer' => $this->formatCount($mailer['emails']).' / '.$this->formatCents($mailer['billed_cents'], $currency),
                 'prospect' => $this->formatCount((int) $prospect['credits_used']).' / '.$this->formatCents((int) $prospect['our_amount_cents'], $currency),
+                'storage' => $storage['formatted_size'].' / '.$this->formatCents((int) $storage['our_amount_cents'], $currency),
+                'storage_size' => $storage['formatted_size'],
                 'cost' => $this->formatCents($costCents, $currency),
                 'billed' => $this->formatCents($billedCents, $currency),
                 'markup' => $this->formatCents($markupCents, $currency),
@@ -551,6 +572,7 @@ final class TeamBillingUsageSummaryService
                 'whatsapp_billed' => $this->formatCents((int) $whatsapp['our_amount_cents'], $currency),
                 'mailer_billed' => $this->formatCents($mailer['billed_cents'], $currency),
                 'prospect_billed' => $this->formatCents((int) $prospect['our_amount_cents'], $currency),
+                'storage_billed' => $this->formatCents((int) $storage['our_amount_cents'], $currency),
             ],
         ];
     }
@@ -624,7 +646,7 @@ final class TeamBillingUsageSummaryService
     }
 
     /**
-     * @param  array{tokens_real: int, whatsapp_messages: int, mailer_emails: int, prospect_credits?: int, billed_cents: int}  $row
+     * @param  array{tokens_real: int, whatsapp_messages: int, mailer_emails: int, prospect_credits?: int, storage_bytes?: int, billed_cents: int}  $row
      */
     private function monthHasConsumption(array $row): bool
     {
@@ -632,6 +654,7 @@ final class TeamBillingUsageSummaryService
             || $row['whatsapp_messages'] > 0
             || $row['mailer_emails'] > 0
             || (int) ($row['prospect_credits'] ?? 0) > 0
+            || (int) ($row['storage_bytes'] ?? 0) > 0
             || $row['billed_cents'] > 0;
     }
 

@@ -58,7 +58,7 @@
                         </span>
                     </span>
                 </div>
-                <small class="text-muted">Tokens, WhatsApp, mail y prospección</small>
+                <small class="text-muted">Tokens, WhatsApp, mail, prospección y almacenamiento</small>
             </div>
             <div class="col-sm-6 col-lg-3">
                 <div class="d-flex align-items-start justify-content-between">
@@ -214,6 +214,14 @@
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                     <small class="text-muted">EUR por crédito consumido al importar un prospecto.</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="storage_gigabyte">Almacenamiento (€/GB)</label>
+                    <input type="number" step="any" min="0" class="form-control @error('storage_gigabyte') is-invalid @enderror" id="storage_gigabyte" name="storage_gigabyte" value="{{ old('storage_gigabyte', $billingRates['storage_gigabyte'] ?? '0.02') }}">
+                    @error('storage_gigabyte')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                    @enderror
+                    <small class="text-muted">EUR por GB ocupado (ficheros, multimedia y adjuntos).</small>
                 </div>
             </div>
 

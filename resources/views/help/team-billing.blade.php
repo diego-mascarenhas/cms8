@@ -39,6 +39,7 @@
           <li>{{ __('help_team_billing.rates_whatsapp') }}</li>
           <li>{{ __('help_team_billing.rates_mailer') }}</li>
           <li>{{ __('help_team_billing.rates_prospect') }}</li>
+          <li>{{ __('help_team_billing.rates_storage') }}</li>
         </ul>
         <p class="mb-0">{{ __('help_team_billing.rates_history') }}</p>
 
@@ -66,6 +67,7 @@
           <li>{{ __('help_team_billing.items_whatsapp') }}</li>
           <li>{{ __('help_team_billing.items_mailer') }}</li>
           <li>{{ __('help_team_billing.items_prospect') }}</li>
+          <li>{{ __('help_team_billing.items_storage') }}</li>
         </ul>
         <p class="mb-0">{{ __('help_team_billing.items_total') }}</p>
 

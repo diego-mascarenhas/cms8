@@ -8,6 +8,7 @@ enum TeamBillingProduct: string
     case WhatsappSend = 'whatsapp_send';
     case MailerSend = 'mailer_send';
     case ProspectCredit = 'prospect_credit';
+    case StorageGigabyte = 'storage_gigabyte';
 
     public function label(): string
     {
@@ -17,6 +18,7 @@ enum TeamBillingProduct: string
             self::WhatsappSend => 'Envío WhatsApp',
             self::MailerSend => 'Envío mail',
             self::ProspectCredit => 'Crédito de prospección',
+            self::StorageGigabyte => 'Almacenamiento',
         };
     }
 }
