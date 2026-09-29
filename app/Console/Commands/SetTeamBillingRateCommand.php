@@ -12,7 +12,7 @@ class SetTeamBillingRateCommand extends Command
 {
     protected $signature = 'billing:set-team-rate
                             {team_id : Team id, or 0 for the platform default}
-                            {product : tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, or storage_gigabyte}
+                            {product : tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, or storage_megabyte}
                             {amount : New rate (multiplier or EUR per unit)}
                             {--from= : When the new rate starts (ISO datetime). Default: now}
                             {--currency= : ISO currency for money products}';
@@ -25,7 +25,7 @@ class SetTeamBillingRateCommand extends Command
         $product = TeamBillingProduct::tryFrom((string) $this->argument('product'));
         if ($product === null)
         {
-            $this->error('Unknown product. Use tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, or storage_gigabyte.');
+            $this->error('Unknown product. Use tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, or storage_megabyte.');
 
             return self::FAILURE;
         }

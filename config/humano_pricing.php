@@ -137,7 +137,7 @@ return [
     ],
 
     /*
-     * | Storage billing (EUR per GiB occupied now).
+     * | Storage billing (EUR per MiB occupied now).
      * | Counts media-library files still attached to the team: team files,
      * | multimedia, and attachments on contacts, tasks, tickets and communications.
      * | Charged on the open usage cycle and again when that cycle is invoiced.

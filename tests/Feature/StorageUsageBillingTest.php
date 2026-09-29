@@ -19,7 +19,25 @@ class StorageUsageBillingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_current_storage_is_billed_per_gigabyte_and_shown_per_team(): void
+    public function test_a_few_megabytes_show_on_the_invoice(): void
+    {
+        $user = $this->userWithTeam();
+        $team = $user->currentTeam;
+        $this->assertNotNull($team);
+
+        $file = TeamFile::factory()->create([
+            'team_id' => $team->id,
+            'created_by' => $user->id,
+            'updated_by' => $user->id,
+        ]);
+        $this->attachMedia(TeamFile::class, (int) $file->id, 11 * (1024 ** 2));
+
+        $stats = TeamStorageUsageStatsService::forTeam($team);
+        $this->assertSame(22, $stats['our_amount_cents']);
+        $this->assertSame('11,0 MB', $stats['formatted_size']);
+    }
+
+    public function test_current_storage_is_billed_per_megabyte_and_shown_per_team(): void
     {
         $user = $this->userWithTeam();
         $team = $user->currentTeam;
@@ -50,19 +68,19 @@ class StorageUsageBillingTest extends TestCase
 
         $stats = TeamStorageUsageStatsService::forTeam($team);
         $this->assertSame(1024 ** 3, $stats['bytes']);
-        $this->assertSame(2, $stats['our_amount_cents']);
+        $this->assertSame(2048, $stats['our_amount_cents']);
         $this->assertSame('1,00 GB', $stats['formatted_size']);
 
         $usage = app(TeamBillingUsageSummaryService::class)->currentMonth($team);
         $this->assertSame(1024 ** 3, $usage['storage_bytes']);
-        $this->assertSame(2, $usage['storage_billed_cents']);
-        $this->assertSame(2, $usage['billed_cents']);
-        $this->assertSame('1,00 GB / 0,02 EUR', $usage['formatted']['storage']);
+        $this->assertSame(2048, $usage['storage_billed_cents']);
+        $this->assertSame(2048, $usage['billed_cents']);
+        $this->assertSame('1,00 GB / 20,48 EUR', $usage['formatted']['storage']);
 
         $lines = app(TeamBillingUsageSummaryService::class)->billableLines($usage, $usage['period_label']);
         $storage = collect($lines)->firstWhere('kind', 'storage');
         $this->assertNotNull($storage);
-        $this->assertSame(2, $storage['amount_cents']);
+        $this->assertSame(2048, $storage['amount_cents']);
         $this->assertSame('1,00 GB', $storage['detail']);
 
         $past = app(TeamBillingUsageSummaryService::class)->forMonth($team, now()->subMonth());
@@ -75,11 +93,11 @@ class StorageUsageBillingTest extends TestCase
             now()->addMonth()->startOfMonth(),
             \App\Enums\TeamBillingFrequency::Monthly,
         );
-        $this->assertSame(2, $closed['storage_billed_cents']);
+        $this->assertSame(2048, $closed['storage_billed_cents']);
 
-        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::StorageGigabyte, 0.1);
+        TeamBillingRate::setAmount((int) $team->id, TeamBillingProduct::StorageMegabyte, 0.1);
         $repriced = TeamStorageUsageStatsService::forTeam($team->fresh());
-        $this->assertSame(10, $repriced['our_amount_cents']);
+        $this->assertSame(10240, $repriced['our_amount_cents']);
 
         Role::firstOrCreate(['name' => 'root', 'guard_name' => 'web']);
         $root = User::factory()->create();

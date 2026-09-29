@@ -153,7 +153,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             ->assertSee('name="whatsapp_send"', false)
             ->assertSee('name="mailer_send"', false)
             ->assertSee('name="prospect_credit"', false)
-            ->assertSee('name="storage_gigabyte"', false)
+            ->assertSee('name="storage_megabyte"', false)
             ->assertSee('value="10"', false)
             ->assertSee('value="0.003"', false)
             ->assertSee('class="text-center">Importe', false)
@@ -302,7 +302,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'whatsapp_send' => 0.002,
             'mailer_send' => 0.008,
             'prospect_credit' => 0.2,
-            'storage_gigabyte' => 0.05,
+            'storage_megabyte' => 0.05,
             'invoice_frequency' => TeamBillingFrequency::Weekly->value,
         ])->assertRedirect(route('account.rates.edit', $team->id))
             ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
@@ -356,7 +356,7 @@ class AccountFormModuleGroupLabelsTest extends TestCase
             'whatsapp_send' => 0.003,
             'mailer_send' => 0.01,
             'prospect_credit' => 0.15,
-            'storage_gigabyte' => 0.02,
+            'storage_megabyte' => 0.02,
             'invoice_frequency' => TeamBillingFrequency::Weekly->value,
         ])->assertRedirect(route('account.rates.edit', $team->id))
             ->assertSessionHas('success', 'Frecuencia cambiada a semanal. El ciclo anterior queda como factura de ajuste. Aún no se emite.');
