@@ -23,7 +23,7 @@ class UpdateAccountRatesRequest extends FormRequest
             'whatsapp_send' => ['required', 'numeric', 'min:0', 'max:10'],
             'mailer_send' => ['required', 'numeric', 'min:0', 'max:10'],
             'prospect_credit' => ['required', 'numeric', 'min:0', 'max:100'],
-            'storage_gigabyte' => ['required', 'numeric', 'min:0', 'max:100'],
+            'storage_megabyte' => ['required', 'numeric', 'min:0', 'max:1'],
             'invoice_frequency' => ['required', Rule::enum(TeamBillingFrequency::class)],
         ];
     }
@@ -43,8 +43,8 @@ class UpdateAccountRatesRequest extends FormRequest
             'mailer_send.numeric' => 'El precio de mail debe ser numérico.',
             'prospect_credit.required' => 'El precio de prospección es obligatorio.',
             'prospect_credit.numeric' => 'El precio de prospección debe ser numérico.',
-            'storage_gigabyte.required' => 'El precio de almacenamiento es obligatorio.',
-            'storage_gigabyte.numeric' => 'El precio de almacenamiento debe ser numérico.',
+            'storage_megabyte.required' => 'El precio de almacenamiento es obligatorio.',
+            'storage_megabyte.numeric' => 'El precio de almacenamiento debe ser numérico.',
             'invoice_frequency.required' => 'La frecuencia de facturación es obligatoria.',
             'invoice_frequency.Illuminate\Validation\Rules\Enum' => 'La frecuencia de facturación no es válida.',
         ];

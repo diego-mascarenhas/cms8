@@ -216,12 +216,12 @@
                     <small class="text-muted">EUR por crédito consumido al importar un prospecto.</small>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label" for="storage_gigabyte">Almacenamiento (€/GB)</label>
-                    <input type="number" step="any" min="0" class="form-control @error('storage_gigabyte') is-invalid @enderror" id="storage_gigabyte" name="storage_gigabyte" value="{{ old('storage_gigabyte', $billingRates['storage_gigabyte'] ?? '0.02') }}">
-                    @error('storage_gigabyte')
+                    <label class="form-label" for="storage_megabyte">Almacenamiento (€/MB)</label>
+                    <input type="number" step="any" min="0" class="form-control @error('storage_megabyte') is-invalid @enderror" id="storage_megabyte" name="storage_megabyte" value="{{ old('storage_megabyte', $billingRates['storage_megabyte'] ?? '0.02') }}">
+                    @error('storage_megabyte')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por GB ocupado (ficheros, multimedia, adjuntos y fotos de producto).</small>
+                    <small class="text-muted">EUR por MB ocupado (ficheros, multimedia, adjuntos y fotos de producto).</small>
                 </div>
             </div>
 

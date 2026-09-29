@@ -34,13 +34,13 @@ final class TeamStorageUsageStatsService
     {
         $bytes = $bill ? self::bytesForTeam((int) $team->id) : 0;
         $at = $asOf ?? now();
-        $ourRate = TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::StorageGigabyte, $at);
+        $ourRate = TeamBillingRate::amountOn((int) $team->id, TeamBillingProduct::StorageMegabyte, $at);
         $currency = strtoupper((string) config('humano_pricing.storage_billing.currency', 'EUR'));
-        $gigabytes = $bytes / (1024 ** 3);
+        $megabytes = $bytes / (1024 ** 2);
 
         return [
             'bytes' => $bytes,
-            'our_amount_cents' => (int) round($gigabytes * $ourRate * 100),
+            'our_amount_cents' => (int) round($megabytes * $ourRate * 100),
             'our_rate' => $ourRate,
             'currency' => $currency,
             'formatted_size' => self::formatBytes($bytes),

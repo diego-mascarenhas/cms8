@@ -616,7 +616,7 @@ class AccountController extends Controller
     }
 
     /**
-     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string, prospect_credit: string, storage_gigabyte: string}
+     * @return array{tokens_multiplier: string, whatsapp_send: string, mailer_send: string, prospect_credit: string, storage_megabyte: string}
      */
     private function billingRatesForForm(Team $team): array
     {
@@ -625,7 +625,7 @@ class AccountController extends Controller
             'whatsapp_send' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::WhatsappSend),
             'mailer_send' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::MailerSend),
             'prospect_credit' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::ProspectCredit),
-            'storage_gigabyte' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::StorageGigabyte),
+            'storage_megabyte' => TeamBillingRate::formattedAmountOn((int) $team->id, TeamBillingProduct::StorageMegabyte),
         ];
     }
 
@@ -636,7 +636,7 @@ class AccountController extends Controller
             'whatsapp_send' => TeamBillingProduct::WhatsappSend,
             'mailer_send' => TeamBillingProduct::MailerSend,
             'prospect_credit' => TeamBillingProduct::ProspectCredit,
-            'storage_gigabyte' => TeamBillingProduct::StorageGigabyte,
+            'storage_megabyte' => TeamBillingProduct::StorageMegabyte,
         ];
 
         foreach ($fields as $field => $product)

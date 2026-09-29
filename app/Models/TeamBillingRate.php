@@ -227,7 +227,7 @@ class TeamBillingRate extends Model
             TeamBillingProduct::WhatsappSend => max(0, (float) config('humano_pricing.whatsapp_message_billing.our_amount', 0.003)),
             TeamBillingProduct::MailerSend => max(0, (float) config('emailer.payg.price_per_email', 0.002)),
             TeamBillingProduct::ProspectCredit => max(0, (float) config('humano_pricing.prospect_billing.our_amount', 0.15)),
-            TeamBillingProduct::StorageGigabyte => max(0, (float) config('humano_pricing.storage_billing.our_amount', 0.02)),
+            TeamBillingProduct::StorageMegabyte => max(0, (float) config('humano_pricing.storage_billing.our_amount', 0.02)),
         };
     }
 
@@ -242,7 +242,7 @@ class TeamBillingRate extends Model
             TeamBillingProduct::WhatsappSend => config('humano_pricing.whatsapp_message_billing.our_amount_by_team', []),
             TeamBillingProduct::MailerSend => config('emailer.payg.price_per_email_by_team', []),
             TeamBillingProduct::ProspectCredit => config('humano_pricing.prospect_billing.our_amount_by_team', []),
-            TeamBillingProduct::StorageGigabyte => config('humano_pricing.storage_billing.our_amount_by_team', []),
+            TeamBillingProduct::StorageMegabyte => config('humano_pricing.storage_billing.our_amount_by_team', []),
         };
 
         return is_array($overrides) ? $overrides : [];
@@ -271,7 +271,7 @@ class TeamBillingRate extends Model
             TeamBillingProduct::WhatsappSend => strtoupper((string) config('humano_pricing.whatsapp_message_billing.currency', 'EUR')),
             TeamBillingProduct::MailerSend => strtoupper((string) config('emailer.payg.currency', 'EUR')),
             TeamBillingProduct::ProspectCredit => strtoupper((string) config('humano_pricing.prospect_billing.currency', 'EUR')),
-            TeamBillingProduct::StorageGigabyte => strtoupper((string) config('humano_pricing.storage_billing.currency', 'EUR')),
+            TeamBillingProduct::StorageMegabyte => strtoupper((string) config('humano_pricing.storage_billing.currency', 'EUR')),
         };
     }
 
@@ -280,7 +280,7 @@ class TeamBillingRate extends Model
         return match ($product)
         {
             TeamBillingProduct::TokensMultiplier => max(1, $amount),
-            TeamBillingProduct::WhatsappSend, TeamBillingProduct::MailerSend, TeamBillingProduct::ProspectCredit, TeamBillingProduct::StorageGigabyte => max(0, $amount),
+            TeamBillingProduct::WhatsappSend, TeamBillingProduct::MailerSend, TeamBillingProduct::ProspectCredit, TeamBillingProduct::StorageMegabyte => max(0, $amount),
         };
     }
 

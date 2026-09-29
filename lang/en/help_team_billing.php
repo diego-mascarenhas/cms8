@@ -23,7 +23,7 @@ return [
     'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.',
     'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.',
     'rates_prospect' => 'Prospecting: EUR per credit used when a prospect is imported. Default 0.15 EUR.',
-    'rates_storage' => 'Storage: EUR per GB occupied now (team files, multimedia, attachments, and product photos). Default 0.02 EUR.',
+    'rates_storage' => 'Storage: EUR per MB occupied now (team files, multimedia, attachments, and product photos). Default 0.02 EUR.',
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',
 
     'frequency_heading' => 'Frequency',
@@ -63,7 +63,7 @@ return [
     'cli_body' => 'To set a rate without the screen (team_id 0 = platform default):',
     'cli_example' => 'php artisan billing:set-team-rate {team_id} {product} {amount}',
     'cli_drafts' => 'php artisan billing:issue-usage-invoice-drafts [--team=] [--dry-run]',
-    'cli_products' => 'product: tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, or storage_gigabyte. Optional: --from= and --currency=.',
+    'cli_products' => 'product: tokens_multiplier, whatsapp_send, mailer_send, prospect_credit, or storage_megabyte. Optional: --from= and --currency=.',
 
     'related_heading' => 'Related',
     'related_stripe' => 'Stripe webhooks (plan quota and subscription invoices)',
