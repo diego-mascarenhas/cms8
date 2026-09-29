@@ -98,6 +98,11 @@ class ApiAssistantSubscriptionTest extends TestCase
         $response->assertJsonPath('data.prospect_usage.amount_due_cents', 0);
         $response->assertJsonPath('data.prospect_usage.currency', 'EUR');
         $this->assertSame(0.15, $response->json('data.prospect_usage.our_rate'));
+        $response->assertJsonPath('data.storage_usage.bytes', 0);
+        $response->assertJsonPath('data.storage_usage.formatted_size', '0 B');
+        $response->assertJsonPath('data.storage_usage.amount_due_cents', 0);
+        $response->assertJsonPath('data.storage_usage.currency', 'EUR');
+        $this->assertSame(0.02, $response->json('data.storage_usage.our_rate'));
     }
 
     public function test_estimator_catalog_is_free_and_ready_for_token_billing(): void

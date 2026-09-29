@@ -19,6 +19,7 @@ use App\Services\TeamApiUsageStatsService;
 use App\Services\TeamCheckoutSessionSubscriptionSyncer;
 use App\Services\TeamMailerUsageStatsService;
 use App\Services\TeamProspectUsageStatsService;
+use App\Services\TeamStorageUsageStatsService;
 use App\Services\TeamStripeCustomerService;
 use App\Services\TeamWhatsAppUsageStatsService;
 use App\Services\TokenBillingRateService;
@@ -92,6 +93,7 @@ class AssistantSubscriptionService
                 ? array_merge($this->mailerUsagePayload($team), $this->mailerPeriodUsagePayload($team, $stripe))
                 : $this->mailerPeriodUsagePayload($team, $stripe),
             'prospect_usage' => $this->prospectUsagePayload($team),
+            'storage_usage' => $this->storageUsagePayload($team),
             'estimator_usage' => $catalog === HumanoPricingCatalog::ESTIMATOR
                 ? $this->estimatorUsagePayload($team, $stripe)
                 : null,
@@ -956,6 +958,25 @@ class AssistantSubscriptionService
 
         return [
             'credits_used' => (int) $stats['credits_used'],
+            'amount_due_cents' => (int) $stats['our_amount_cents'],
+            'our_rate' => (float) $stats['our_rate'],
+            'currency' => (string) $stats['currency'],
+            'period_start' => $from->toIso8601String(),
+            'period_end' => $to->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function storageUsagePayload(Team $team): array
+    {
+        [$from, $to] = $this->usagePeriod($team);
+        $stats = TeamStorageUsageStatsService::forTeam($team, $to);
+
+        return [
+            'bytes' => (int) $stats['bytes'],
+            'formatted_size' => (string) $stats['formatted_size'],
             'amount_due_cents' => (int) $stats['our_amount_cents'],
             'our_rate' => (float) $stats['our_rate'],
             'currency' => (string) $stats['currency'],
