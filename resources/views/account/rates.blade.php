@@ -221,7 +221,7 @@
                     @error('storage_gigabyte')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
-                    <small class="text-muted">EUR por GB ocupado (ficheros, multimedia y adjuntos).</small>
+                    <small class="text-muted">EUR por GB ocupado (ficheros, multimedia, adjuntos y fotos de producto).</small>
                 </div>
             </div>
 

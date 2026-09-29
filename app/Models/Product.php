@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProductCatalogStatus;
 use App\Enums\ProductStockStatus;
+use App\Services\ProductImageService;
 use App\Support\ShopCatalogApiCache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,10 +12,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Product extends Model
+class Product extends Model implements HasMedia
 {
     use HasFactory;
+    use InteractsWithMedia;
 
     protected $fillable = [
         'name',
@@ -93,6 +97,18 @@ class Product extends Model
 
         static::saved($bumpCatalog);
         static::deleted($bumpCatalog);
+
+        static::saved(function (Product $product): void
+        {
+            app(ProductImageService::class)->sync($product);
+        });
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this
+            ->addMediaCollection('image')
+            ->useDisk('public');
     }
 
     /**

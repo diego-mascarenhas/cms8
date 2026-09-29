@@ -94,6 +94,7 @@ return [
         \App\Models\Contact::class => \App\Services\CollaboratorMediaPathGenerator::class,
         \App\Models\Task::class => \App\Services\TaskMediaPathGenerator::class,
         \App\Models\Multimedia::class => \App\Services\MultimediaMediaPathGenerator::class,
+        \App\Models\Product::class => \App\Services\ProductImagePathGenerator::class,
     ],
 
     /*

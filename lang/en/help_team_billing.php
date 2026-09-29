@@ -23,7 +23,7 @@ return [
     'rates_whatsapp' => 'WhatsApp send: EUR per outbound message. Default 0.003 EUR.',
     'rates_mailer' => 'Mail send: EUR per overage email (above the plan monthly cap). Default 0.002 EUR.',
     'rates_prospect' => 'Prospecting: EUR per credit used when a prospect is imported. Default 0.15 EUR.',
-    'rates_storage' => 'Storage: EUR per GB occupied now (team files, multimedia, and attachments on contacts, tasks, tickets, and communications). Default 0.02 EUR.',
+    'rates_storage' => 'Storage: EUR per GB occupied now (team files, multimedia, attachments, and product photos). Default 0.02 EUR.',
     'rates_history' => 'Saving a new rate keeps the previous one (SCD2) for usage that already happened. The page history shows From / Until / Current.',
 
     'frequency_heading' => 'Frequency',

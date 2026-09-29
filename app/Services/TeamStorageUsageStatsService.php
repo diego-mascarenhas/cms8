@@ -7,6 +7,7 @@ use App\Helpers\Helpers;
 use App\Models\Communication;
 use App\Models\Contact;
 use App\Models\Multimedia;
+use App\Models\Product;
 use App\Models\Task;
 use App\Models\Team;
 use App\Models\TeamBillingRate;
@@ -105,6 +106,7 @@ final class TeamStorageUsageStatsService
             Ticket::class => ['tickets', false],
             TeamFile::class => ['team_files', true],
             Multimedia::class => ['multimedia', true],
+            Product::class => ['products', false],
         ];
     }
 

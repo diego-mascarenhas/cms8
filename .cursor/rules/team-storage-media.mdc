@@ -1,0 +1,15 @@
+---
+description: Team files go through Spatie media on the owning model so storage can be billed
+globs: app/Models/**/*.php,app/Services/TeamStorageUsageStatsService.php,app/Services/ProductImageService.php
+alwaysApply: false
+---
+
+# Team storage media
+
+Files that belong to a team are registered in the Spatie `media` table on the model that owns them. Storage billing sums `media.size` for that model, filtered by `team_id`.
+
+- The owning model implements `HasMedia` and has `team_id` (contacts, tasks, team files, multimedia, tickets, shop products).
+- Add that model to `TeamStorageUsageStatsService::directSources()`. Ticket responses are the exception: they have no `team_id` and are joined through `tickets`.
+- Do not add a side table whose only job is to own files.
+- Keep the public path the module already uses. The `media` row records size and owner; it does not have to move the file.
+- Shop product photos stay in `shop/products/{team_id}/{directory}/`. `products.image` keeps that URL. The `media` rows belong to `Product`, with the directory in `custom_properties`.

@@ -3,10 +3,13 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Module;
+use App\Models\Product;
 use App\Models\User;
 use App\Services\ProductImageService;
+use App\Services\TeamStorageUsageStatsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
@@ -97,6 +100,16 @@ class ShopProductImageApiTest extends TestCase
         }
 
         Storage::disk('public')->assertExists((string) $response->json('data.original.path'));
+
+        $product = Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Camiseta básica',
+            'image' => $response->json('data.image'),
+        ]);
+
+        $this->assertSame(5, $product->media()->count());
+        $this->assertSame(Product::class, $product->media()->first()->model_type);
+        $this->assertGreaterThan(0, TeamStorageUsageStatsService::bytesForTeam((int) $team->id));
     }
 
     public function test_upload_auto_enables_products_module(): void
@@ -129,5 +142,38 @@ class ShopProductImageApiTest extends TestCase
             'https://cms8.test/storage/shop/products/1/abc/remera-landscape-1200x630.jpg',
             collect($variants)->firstWhere('key', 'landscape')['url'],
         );
+    }
+
+    public function test_import_downloads_a_remote_photo_into_the_team_folder(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->currentTeam;
+        $photo = UploadedFile::fake()->image('foto.jpg', 80, 80);
+        Http::fake([
+            'https://images.example.test/*' => Http::response(
+                (string) file_get_contents($photo->getPathname()),
+                200,
+                ['Content-Type' => 'image/jpeg'],
+            ),
+        ]);
+
+        $product = Product::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Camiseta básica',
+            'image' => 'https://images.example.test/camiseta.jpg',
+        ]);
+
+        $result = app(ProductImageService::class)->importProduct($product->fresh());
+
+        $this->assertSame('imported', $result['status']);
+        $this->assertStringContainsString('shop/products/'.$team->id.'/', (string) $result['image']);
+        $this->assertStringContainsString('-square-1080x1080.', (string) $product->fresh()->image);
+        $this->assertGreaterThan(0, TeamStorageUsageStatsService::bytesForTeam((int) $team->id));
+
+        $again = app(ProductImageService::class)->importProduct($product->fresh());
+        $this->assertSame('registered', $again['status']);
+        $this->assertSame(5, $product->fresh()->media()->count());
     }
 }
