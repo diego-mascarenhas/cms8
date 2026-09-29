@@ -40,7 +40,9 @@ class AssistantWhatsAppUsageByLineService
      *     sources: list<array{module_name: string, count: int, tokens_used: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
      *     by_model: list<array{model: string, replies: int, prompt_tokens: int, completion_tokens: int, total_tokens: int, tokens_saved: int, amount_cents: int, saved_cents: int}>,
      *     lines: list<array<string, mixed>>,
-     *     whatsapp: array{messages_sent: int, our_amount_cents: int, our_rate: float, currency: string}
+     *     whatsapp: array{messages_sent: int, our_amount_cents: int, our_rate: float, currency: string},
+     *     prospect: array{credits_used: int, amount_due_cents: int, our_rate: float, currency: string},
+     *     storage: array{bytes: int, formatted_size: string, amount_due_cents: int, our_rate: float, currency: string}
      * }
      */
     public function forTeam(Team $team, ?Carbon $from = null, ?Carbon $to = null): array
@@ -78,6 +80,8 @@ class AssistantWhatsAppUsageByLineService
         $headline = $this->headlineFromBreakdown($byModel, $sources, (int) $teamUsage['totalTokensUsed'], $from, $defaultModel);
         $allSaved = $this->tokens->scale((int) $teamUsage['totalTokensSaved']);
         $whatsapp = TeamWhatsAppUsageStatsService::forTeam($team, $from, $to);
+        $prospect = TeamProspectUsageStatsService::forTeam($team, $from, $to);
+        $storage = TeamStorageUsageStatsService::forTeam($team, $to);
 
         return [
             'period_days' => max(1, (int) $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay())),
@@ -113,6 +117,19 @@ class AssistantWhatsAppUsageByLineService
                 'our_amount_cents' => (int) $whatsapp['our_amount_cents'],
                 'our_rate' => (float) $whatsapp['our_rate'],
                 'currency' => (string) $whatsapp['currency'],
+            ],
+            'prospect' => [
+                'credits_used' => (int) $prospect['credits_used'],
+                'amount_due_cents' => (int) $prospect['our_amount_cents'],
+                'our_rate' => (float) $prospect['our_rate'],
+                'currency' => (string) $prospect['currency'],
+            ],
+            'storage' => [
+                'bytes' => (int) $storage['bytes'],
+                'formatted_size' => (string) $storage['formatted_size'],
+                'amount_due_cents' => (int) $storage['our_amount_cents'],
+                'our_rate' => (float) $storage['our_rate'],
+                'currency' => (string) $storage['currency'],
             ],
         ];
     }

@@ -57,7 +57,14 @@ class ApiAssistantUsageTest extends TestCase
             ->assertJsonPath('data.lines', [])
             ->assertJsonPath('data.whatsapp.messages_sent', 0)
             ->assertJsonPath('data.whatsapp.our_rate', 0.003)
-            ->assertJsonPath('data.whatsapp.currency', 'EUR');
+            ->assertJsonPath('data.whatsapp.currency', 'EUR')
+            ->assertJsonPath('data.prospect.credits_used', 0)
+            ->assertJsonPath('data.prospect.amount_due_cents', 0)
+            ->assertJsonPath('data.prospect.currency', 'EUR')
+            ->assertJsonPath('data.storage.bytes', 0)
+            ->assertJsonPath('data.storage.formatted_size', '0 B')
+            ->assertJsonPath('data.storage.amount_due_cents', 0)
+            ->assertJsonPath('data.storage.currency', 'EUR');
     }
 
     public function test_usage_groups_tokens_by_whatsapp_line_and_exposes_the_model(): void
