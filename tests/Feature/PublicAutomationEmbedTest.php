@@ -155,4 +155,62 @@ class PublicAutomationEmbedTest extends TestCase
             'message' => 'Hi',
         ])->assertStatus(403);
     }
+
+    public function test_public_chat_continues_from_prior_turns(): void
+    {
+        $team = Team::factory()->create();
+        $automation = Automation::factory()->create([
+            'team_id' => $team->id,
+            'entry_prompt_key' => 'contacts:landing',
+            'channels' => Automation::normalizeChannels(['api' => true]),
+            'settings' => ['welcome_message' => 'Hola. ¿En qué te puedo ayudar?'],
+        ]);
+        $sessionKey = 'sess-continue';
+
+        SiteAssistantMessage::factory()->create([
+            'team_id' => $team->id,
+            'automation_id' => $automation->id,
+            'session_key' => $sessionKey,
+            'role' => SiteAssistantMessage::ROLE_VISITOR,
+            'body' => 'Hola',
+        ]);
+        SiteAssistantMessage::factory()->create([
+            'team_id' => $team->id,
+            'automation_id' => $automation->id,
+            'session_key' => $sessionKey,
+            'role' => SiteAssistantMessage::ROLE_ASSISTANT,
+            'body' => '¿Me decís tu nombre?',
+        ]);
+
+        $this->mock(AssistantChatService::class, function ($mock) use ($team): void
+        {
+            $mock->shouldReceive('run')
+                ->once()
+                ->withArgs(function (string $message, int $teamId, $image, $audio, bool $voice, ?string $promptKey, ?array $history) use ($team): bool
+                {
+                    return $message === 'Diego'
+                        && $teamId === $team->id
+                        && $image === null
+                        && $audio === null
+                        && $voice === false
+                        && $promptKey === 'contacts:landing'
+                        && $history === [
+                            ['direction' => 'outbound', 'body' => 'Hola. ¿En qué te puedo ayudar?'],
+                            ['direction' => 'inbound', 'body' => 'Hola'],
+                            ['direction' => 'outbound', 'body' => '¿Me decís tu nombre?'],
+                        ];
+                })
+                ->andReturn([
+                    'response' => 'Hola Diego, ¿buscás una cita o ver el catálogo?',
+                    'routed_to' => 'contacts:landing',
+                ]);
+        });
+
+        $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
+            'message' => 'Diego',
+            'session_key' => $sessionKey,
+        ])
+            ->assertOk()
+            ->assertJsonPath('reply', 'Hola Diego, ¿buscás una cita o ver el catálogo?');
+    }
 }

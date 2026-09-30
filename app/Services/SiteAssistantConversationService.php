@@ -418,6 +418,74 @@ class SiteAssistantConversationService
             ->all();
     }
 
+    /**
+     * Prior turns for this embed session, oldest first. The widget welcome is the opening assistant line when it is not already stored.
+     *
+     * @return list<array{direction: string, body: string}>
+     */
+    public function promptHistory(Automation $automation, string $sessionKey): array
+    {
+        $sessionKey = trim($sessionKey);
+        if ($sessionKey === '')
+        {
+            return [];
+        }
+
+        $rows = SiteAssistantMessage::withoutGlobalScopes()
+            ->where('automation_id', $automation->id)
+            ->where('session_key', $sessionKey)
+            ->orderByDesc('id')
+            ->limit(12)
+            ->get()
+            ->reverse()
+            ->values();
+
+        $history = [];
+        foreach ($rows as $row)
+        {
+            $body = trim((string) $row->body);
+            if ($body === '')
+            {
+                continue;
+            }
+
+            $history[] = [
+                'direction' => $row->role === SiteAssistantMessage::ROLE_VISITOR ? 'inbound' : 'outbound',
+                'body' => $body,
+            ];
+        }
+
+        $welcome = $this->welcomeBody($automation);
+        $alreadyOpened = false;
+        foreach ($history as $item)
+        {
+            if ($item['direction'] === 'outbound')
+            {
+                $alreadyOpened = $item['body'] === $welcome;
+
+                break;
+            }
+        }
+
+        if ($welcome !== '' && ! $alreadyOpened)
+        {
+            array_unshift($history, [
+                'direction' => 'outbound',
+                'body' => $welcome,
+            ]);
+        }
+
+        return $history;
+    }
+
+    private function welcomeBody(Automation $automation): string
+    {
+        $settings = is_array($automation->settings) ? $automation->settings : [];
+        $welcome = $settings['welcome_message'] ?? null;
+
+        return is_string($welcome) ? trim($welcome) : '';
+    }
+
     public function lastTeamBody(Automation $automation, string $sessionKey): ?string
     {
         $sessionKey = trim($sessionKey);
