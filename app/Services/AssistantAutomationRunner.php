@@ -518,14 +518,30 @@ class AssistantAutomationRunner
             $runMessage = $identityAppendix."\n\n---\n".$runMessage;
         }
 
-        $result = $this->assistantChat->run(
+        $history = null;
+        if ($channel === Automation::CHANNEL_API && is_string($sessionKey) && trim($sessionKey) !== '')
+        {
+            $history = app(SiteAssistantConversationService::class)->promptHistory($automation, $sessionKey);
+            if ($history === [])
+            {
+                $history = null;
+            }
+        }
+
+        $runArgs = [
             $runMessage,
             (int) $automation->team_id,
             $image,
             $audio,
             $respondWithVoice,
             $promptKey,
-        );
+        ];
+        if ($history !== null)
+        {
+            $runArgs[] = $history;
+        }
+
+        $result = $this->assistantChat->run(...$runArgs);
 
         if ($session !== null)
         {

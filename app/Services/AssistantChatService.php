@@ -9,6 +9,8 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Laravel\Ai\Audio;
 use Laravel\Ai\Enums\Lab;
+use Laravel\Ai\Messages\AssistantMessage;
+use Laravel\Ai\Messages\UserMessage;
 use Laravel\Ai\Transcription;
 
 use function Laravel\Ai\agent;
@@ -25,9 +27,13 @@ class AssistantChatService
      * Blank or whitespace-only values use the default router flow (same as null).
      * Optionally accept image and audio uploads, and return TTS audio when requested.
      *
+     * When $history is set, prior turns are the conversation and the current text is only the latest user message.
+     * Null keeps the single-shot path used by the in-app assistant.
+     *
+     * @param  list<array{direction?: string, body?: string}>|null  $history
      * @return array{response: string, routed_to: string|null, audio_base64?: string, audio_mime?: string}
      */
-    public function run(string $userMessage, ?int $teamId = null, ?UploadedFile $image = null, ?UploadedFile $audio = null, bool $respondWithVoice = false, ?string $promptKey = null): array
+    public function run(string $userMessage, ?int $teamId = null, ?UploadedFile $image = null, ?UploadedFile $audio = null, bool $respondWithVoice = false, ?string $promptKey = null, ?array $history = null): array
     {
         $forcedPromptKey = ($promptKey !== null && trim($promptKey) !== '')
             ? trim($promptKey)
@@ -108,14 +114,18 @@ class AssistantChatService
         {
             $instruction .= "\n\n---\n\n".$businessAppendix;
         }
-        $userContent = $instruction."\n\n---\n\nEntrada del usuario:\n\n".$content;
+        $continuing = $history !== null;
+        $userContent = $continuing
+            ? $content
+            : $instruction."\n\n---\n\nEntrada del usuario:\n\n".$content;
         $attachments = $image ? [$image] : [];
+        $historyMessages = $history === null ? [] : $this->historyToMessages($history);
 
         try
         {
             $agent = agent(
                 instructions: $instruction,
-                messages: [],
+                messages: $historyMessages,
                 tools: [],
             );
             $response = $agent->prompt($userContent, $attachments, AiTasks::provider('assistant'), AiTasks::model('assistant'));
@@ -195,6 +205,34 @@ class AssistantChatService
         }
 
         return $result;
+    }
+
+    /**
+     * @param  list<array{direction?: string, body?: string}>  $history
+     * @return list<UserMessage|AssistantMessage>
+     */
+    private function historyToMessages(array $history): array
+    {
+        $messages = [];
+        foreach ($history as $item)
+        {
+            $body = trim((string) ($item['body'] ?? ''));
+            if ($body === '')
+            {
+                continue;
+            }
+
+            $direction = (string) ($item['direction'] ?? '');
+            if ($direction === 'inbound')
+            {
+                $messages[] = new UserMessage($body);
+            } elseif ($direction === 'outbound')
+            {
+                $messages[] = new AssistantMessage($body);
+            }
+        }
+
+        return $messages;
     }
 
     /**
