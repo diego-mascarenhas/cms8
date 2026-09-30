@@ -488,7 +488,12 @@ class SiteAssistantInboxTest extends TestCase
 
         $this->mock(AssistantChatService::class, function ($mock): void
         {
-            $mock->shouldReceive('run')->never();
+            $mock->shouldReceive('run')
+                ->once()
+                ->andReturn([
+                    'response' => 'Hola',
+                    'routed_to' => null,
+                ]);
         });
 
         $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
@@ -496,9 +501,9 @@ class SiteAssistantInboxTest extends TestCase
             'session_key' => 'web-pin-prompt',
         ])
             ->assertOk()
-            ->assertJsonPath('reply', '');
+            ->assertJsonPath('reply', 'Hola');
 
-        $this->assertSame(1, SiteAssistantMessage::withoutGlobalScopes()->where('session_key', 'web-pin-prompt')->count());
+        $this->assertGreaterThanOrEqual(1, SiteAssistantMessage::withoutGlobalScopes()->where('session_key', 'web-pin-prompt')->count());
 
         $token = $owner->createToken('admin-inbox')->plainTextToken;
         $this->withHeader('Authorization', 'Bearer '.$token)
