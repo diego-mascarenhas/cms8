@@ -149,14 +149,19 @@ class PublicSiteAssistantIdentifyTest extends TestCase
             ->assertJsonPath('visitor.first_name', null);
     }
 
-    public function test_force_off_keeps_the_message_and_skips_the_model(): void
+    public function test_force_off_still_replies_on_an_active_embed(): void
     {
         [$team, $automation] = $this->webAssistant();
         $team->setSetting(TeamSiteAssistantPromptService::SETTING_KEY, TeamSiteAssistantPromptService::FORCE_OFF_KEY);
 
         $this->mock(AssistantChatService::class, function ($mock): void
         {
-            $mock->shouldReceive('run')->never();
+            $mock->shouldReceive('run')
+                ->once()
+                ->andReturn([
+                    'response' => 'Te armo el sitio',
+                    'routed_to' => 'contacts:landing',
+                ]);
         });
 
         $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
@@ -165,9 +170,8 @@ class PublicSiteAssistantIdentifyTest extends TestCase
         ])
             ->assertOk()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('reply', '');
+            ->assertJsonPath('reply', 'Te armo el sitio');
 
-        $this->assertSame(1, SiteAssistantMessage::withoutGlobalScopes()->where('session_key', 'paused-web-session')->count());
         $this->assertSame(
             'Quiero una cita',
             SiteAssistantMessage::withoutGlobalScopes()
@@ -177,14 +181,19 @@ class PublicSiteAssistantIdentifyTest extends TestCase
         );
     }
 
-    public function test_silent_default_skips_the_model_for_anonymous_web_visitors(): void
+    public function test_silent_default_still_replies_on_an_active_embed(): void
     {
         [$team, $automation] = $this->webAssistant();
         $team->setSetting(TeamSiteAssistantPromptService::SETTING_KEY, TeamSiteAssistantPromptService::OFF_KEY);
 
         $this->mock(AssistantChatService::class, function ($mock): void
         {
-            $mock->shouldReceive('run')->never();
+            $mock->shouldReceive('run')
+                ->once()
+                ->andReturn([
+                    'response' => 'Hola',
+                    'routed_to' => 'contacts:landing',
+                ]);
         });
 
         $this->postJson(route('api.embed.automation.assistant', $automation->public_token), [
@@ -192,9 +201,8 @@ class PublicSiteAssistantIdentifyTest extends TestCase
             'session_key' => 'silent-web-session',
         ])
             ->assertOk()
-            ->assertJsonPath('reply', '');
+            ->assertJsonPath('reply', 'Hola');
 
-        $this->assertSame(1, SiteAssistantMessage::withoutGlobalScopes()->where('session_key', 'silent-web-session')->count());
         $this->assertSame(
             'Hola',
             SiteAssistantMessage::withoutGlobalScopes()
@@ -202,7 +210,7 @@ class PublicSiteAssistantIdentifyTest extends TestCase
                 ->where('role', 'visitor')
                 ->value('body'),
         );
-        $this->assertNull(
+        $this->assertNotNull(
             SiteAssistantMessage::withoutGlobalScopes()
                 ->where('session_key', 'silent-web-session')
                 ->where('role', 'assistant')

@@ -131,7 +131,10 @@ class PublicAutomationEmbedController extends Controller
             $sessionKey,
             $visitor['contact_id'] ?? null,
         );
-        if ($automation->team && ! $siteAssistant->allowsPublicEmbedReply(
+        // A published embed (active + API channel) answers with its own entry prompt.
+        // The team "sin asistente" switch still silences WhatsApp, not this slug.
+        $publishedEmbed = $automation->is_active && $automation->allowsChannel(Automation::CHANNEL_API);
+        if (! $publishedEmbed && $automation->team && ! $siteAssistant->allowsPublicEmbedReply(
             $automation->team,
             $visitor['contact_id'] ?? null,
             $sessionPromptKey,
