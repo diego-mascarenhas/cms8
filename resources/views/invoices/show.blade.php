@@ -322,6 +322,36 @@
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
       </div>
     @endif
+    @php
+        $supplierDocumentExternalId = trim((string) $invoice->source_reference_id);
+        $canAttachSupplierDocument = auth()->user()->can('update', $invoice)
+            && ! str_starts_with($supplierDocumentExternalId, 'in_')
+            && ! str_starts_with($supplierDocumentExternalId, 'cn_');
+        $savedSupplierDocumentName = $supplierDocumentName ?? '';
+    @endphp
+    @if ($canAttachSupplierDocument)
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6 class="mb-2">{{ __('Supplier document') }}</h6>
+        @if ($savedSupplierDocumentName !== '')
+        <p class="small text-muted mb-2">{{ $savedSupplierDocumentName }}</p>
+        @else
+        <p class="small text-muted mb-2">{{ __('Upload the supplier file so it can be downloaded from the accountant link.') }}</p>
+        @endif
+        <form method="POST" action="{{ route('invoice.document.store', $invoice) }}" enctype="multipart/form-data">
+          @csrf
+          <input type="file" name="document_file" class="form-control mb-2 @error('document_file') is-invalid @enderror" accept=".pdf,.jpg,.jpeg,.png,.webp" required>
+          @error('document_file')
+          <small class="text-danger d-block mb-2">{{ $message }}</small>
+          @enderror
+          <button type="submit" class="btn btn-primary d-grid w-100">
+            <i class="ti ti-upload ti-xs me-2"></i>
+            {{ __('Save document') }}
+          </button>
+        </form>
+      </div>
+    </div>
+    @endif
     <div class="card">
       <div class="card-body">
         <a class="btn btn-primary d-grid w-100 mb-2" href="{{ route('invoice.index', $invoiceListState ?? []) }}">

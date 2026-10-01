@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceSync;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
+use App\Models\Team;
 use App\Models\User;
 use App\Services\Finance\StripeInvoicePdfRefresher;
 use Database\Seeders\CurrencySeeder;
@@ -18,6 +19,7 @@ use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\PaymentTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 use ZipArchive;
 
@@ -314,5 +316,54 @@ class HaciendaPublicTest extends TestCase
         $fresh->assertOk();
         $fresh->assertDownload('REVISION ALPHA S.L. - Invoice-0005-1100 - Cliente SL.pdf');
         $this->assertStringStartsWith('%PDF', $fresh->streamedContent());
+    }
+
+    public function test_public_purchase_download_streams_the_uploaded_supplier_file(): void
+    {
+        Storage::fake('public');
+
+        $this->seed([
+            CurrencySeeder::class,
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+        ]);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $team->forceFill(['name' => 'REVISION ALPHA S.L.'])->save();
+        $hash = $team->haciendaShareHash();
+        $currencyId = Currency::query()->where('code', 'EUR')->value('id');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Network Solutions, LLC',
+            'type_id' => 1,
+            'status_id' => 1,
+            'country' => 'US',
+        ]);
+
+        $purchase = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => '138619415',
+            'date' => '2026-09-28',
+            'gross_amount' => 24.19,
+            'total_amount' => 24.19,
+            'balance' => 24.19,
+            'status' => 2,
+            'currency_id' => $currencyId,
+            'source_provider' => 'manual',
+        ]);
+
+        $teamHash = Team::generateTeamHash((int) $team->id);
+        $invoiceHash = substr(md5('invoice_salt_'.$purchase->id.'_'.config('app.key')), 0, 8);
+        Storage::disk('public')->put("expenses/{$teamHash}/{$invoiceHash}/network-solutions.pdf", '%PDF-supplier');
+
+        $this->get(route('hacienda.public.file', ['hash' => $hash, 'invoice' => $purchase->id]))
+            ->assertOk()
+            ->assertDownload('Network Solutions, LLC - network-solutions.pdf');
     }
 }

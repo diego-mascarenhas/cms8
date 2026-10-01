@@ -9,6 +9,7 @@ use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Finance\ManualInvoiceDocumentService;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -694,6 +695,128 @@ class ExpenseCreateTest extends TestCase
         $payment = Payment::withoutGlobalScopes()->latest()->first();
         $this->assertNotNull($payment);
         $this->assertStringContainsString('/storage/expenses/'.$teamHash.'/', (string) $payment->remarks);
+
+        $invoice = Invoice::withoutGlobalScopes()->find($payment->invoice_id);
+        $this->assertNotNull($invoice);
+        $this->assertSame($storedFiles[0], app(ManualInvoiceDocumentService::class)->storedRelativePath($invoice));
+    }
+
+    public function test_store_keeps_uploaded_document_when_there_is_no_payment(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-09-28',
+                'document_number' => '138619415',
+                'lines' => [
+                    [
+                        'concept' => 'Domain Renewal',
+                        'base_amount' => '24.19',
+                        'vat_percent' => '0',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
+                'submit_action' => 'save',
+                'document_file' => UploadedFile::fake()->create('network-solutions.pdf', 120, 'application/pdf'),
+            ])
+            ->assertRedirect(route('expense.index'));
+
+        $this->assertSame(0, Payment::withoutGlobalScopes()->count());
+
+        $invoice = Invoice::withoutGlobalScopes()->where('number', '138619415')->first();
+        $this->assertNotNull($invoice);
+        $storedPath = app(ManualInvoiceDocumentService::class)->storedRelativePath($invoice);
+        $this->assertNotSame('', (string) $storedPath);
+        Storage::disk('public')->assertExists((string) $storedPath);
+    }
+
+    public function test_store_keeps_the_document_uploaded_at_insertion_when_the_file_input_is_empty(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $token = app(ManualInvoiceDocumentService::class)->storePendingDocument(
+            UploadedFile::fake()->create('network-solutions.pdf', 120, 'application/pdf'),
+            (int) $user->current_team_id,
+        );
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-09-28',
+                'document_number' => '138619416',
+                'pending_document_token' => $token,
+                'lines' => [
+                    [
+                        'concept' => 'Domain Renewal',
+                        'base_amount' => '24.19',
+                        'vat_percent' => '0',
+                        'retention_percent' => '0',
+                        'allocation_percent' => '100',
+                    ],
+                ],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('expense.index'));
+
+        $invoice = Invoice::withoutGlobalScopes()->where('number', '138619416')->first();
+        $this->assertNotNull($invoice);
+        $storedPath = app(ManualInvoiceDocumentService::class)->storedRelativePath($invoice);
+        $this->assertStringEndsWith('network-solutions.pdf', (string) $storedPath);
+        Storage::disk('public')->assertExists((string) $storedPath);
+        $this->assertSame([], Storage::disk('public')->allFiles('expenses-pending'));
+    }
+
+    public function test_existing_purchase_can_store_the_supplier_document(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $user->current_team_id,
+            'enterprise_id' => $supplier->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => '086000957222',
+            'date' => '2026-07-02',
+            'gross_amount' => 24.36,
+            'total_amount' => 24.36,
+            'balance' => 24.36,
+            'status' => 2,
+            'source_provider' => 'manual',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('invoice.show', $invoice))
+            ->assertOk()
+            ->assertSee('Guardar comprobante', false);
+
+        $this->actingAs($user)
+            ->post(route('invoice.document.store', $invoice), [
+                'document_file' => UploadedFile::fake()->create('hetzner.pdf', 80, 'application/pdf'),
+            ])
+            ->assertRedirect(route('invoice.show', $invoice));
+
+        $invoice->refresh();
+        $storedPath = app(ManualInvoiceDocumentService::class)->storedRelativePath($invoice);
+        $this->assertNotSame('', (string) $storedPath);
+        Storage::disk('public')->assertExists((string) $storedPath);
+
+        $this->actingAs($user)
+            ->get(route('invoice.show', $invoice))
+            ->assertOk()
+            ->assertSee('El comprobante quedó guardado.', false)
+            ->assertSee(basename((string) $storedPath), false);
     }
 
     private function makeAdminUser(): User

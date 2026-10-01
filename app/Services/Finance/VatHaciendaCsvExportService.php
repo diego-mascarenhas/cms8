@@ -10,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Client\Response as HttpClientResponse;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -526,7 +527,29 @@ class VatHaciendaCsvExportService
 
     public function downloadPublicDocument(Invoice $invoice): StreamedResponse
     {
-        $url = $this->stripeInvoicePdfRefresher->freshPdfUrl($invoice) ?? $this->storedFileUrl($invoice);
+        $relativePath = $this->localDocumentRelativePath($invoice);
+        $url = null;
+        if ($relativePath === null)
+        {
+            $url = $this->stripeInvoicePdfRefresher->freshPdfUrl($invoice) ?? $this->storedFileUrl($invoice);
+            $relativePath = is_string($url) ? $this->relativePathFromStorageUrl($url) : null;
+        }
+
+        if (is_string($relativePath))
+        {
+            $absolutePath = Storage::disk('public')->path($relativePath);
+            $body = Storage::disk('public')->get($relativePath);
+            if (! is_string($body) || $body === '')
+            {
+                abort(404);
+            }
+
+            $mime = mime_content_type($absolutePath);
+            $contentType = is_string($mime) && $mime !== '' ? $mime : 'application/octet-stream';
+
+            return $this->streamDocumentResponse($invoice, $body, basename($relativePath), $contentType);
+        }
+
         if (! is_string($url) || ! $this->documentUrlIsFetchable($url) || $this->isHostedInvoicePage($url))
         {
             abort(404);
@@ -551,16 +574,23 @@ class VatHaciendaCsvExportService
             abort(404);
         }
 
-        $filename = $this->filenameWithIssuerPrefix(
+        return $this->streamDocumentResponse(
             $invoice,
+            $body,
             $this->upstreamFilename($response, $url, $invoice),
+            'application/pdf',
         );
+    }
+
+    private function streamDocumentResponse(Invoice $invoice, string $body, string $upstreamFilename, string $contentType): StreamedResponse
+    {
+        $filename = $this->filenameWithIssuerPrefix($invoice, $upstreamFilename);
 
         return response()->streamDownload(function () use ($body): void
         {
             echo $body;
         }, $filename, [
-            'Content-Type' => 'application/pdf',
+            'Content-Type' => $contentType,
         ]);
     }
 
@@ -671,9 +701,14 @@ class VatHaciendaCsvExportService
 
     private function resolveLink(Invoice $invoice): string
     {
+        if (! $this->hasDownloadableDocument($invoice))
+        {
+            return '';
+        }
+
         return $this->permanentDocumentUrl($invoice)
             ?? $this->storedFileUrl($invoice)
-            ?? route('invoice.show', $invoice->id);
+            ?? '';
     }
 
     private function hasDownloadableDocument(Invoice $invoice): bool
@@ -684,7 +719,35 @@ class VatHaciendaCsvExportService
             return true;
         }
 
+        if ($this->localDocumentRelativePath($invoice) !== null)
+        {
+            return true;
+        }
+
         return $this->storedFileUrl($invoice) !== null;
+    }
+
+    private function localDocumentRelativePath(Invoice $invoice): ?string
+    {
+        return app(ManualInvoiceDocumentService::class)->storedRelativePath($invoice);
+    }
+
+    private function relativePathFromStorageUrl(string $url): ?string
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! is_string($path) || ! str_contains($path, '/storage/'))
+        {
+            return null;
+        }
+
+        $relative = ltrim((string) strstr($path, '/storage/'), '/');
+        $relative = substr($relative, strlen('storage/'));
+        if ($relative === '' || str_contains($relative, '..') || ! Storage::disk('public')->exists($relative))
+        {
+            return null;
+        }
+
+        return $relative;
     }
 
     private function permanentDocumentUrl(Invoice $invoice): ?string

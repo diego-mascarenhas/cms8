@@ -959,6 +959,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/invoices/{invoice}/credit-notes', [InvoiceController::class, 'storeCreditNote'])->name('invoice.credit-notes.store');
     Route::post('/invoices/{invoice}/fiscal-export', [InvoiceController::class, 'exportFiscal'])->name('invoice.fiscal-export');
     Route::post('/invoices/{invoice}/discard-draft', [InvoiceController::class, 'discardDraft'])->name('invoice.discard-draft');
+    Route::post('/invoices/{invoice}/document', [InvoiceController::class, 'storeDocument'])->name('invoice.document.store');
     Route::get('/invoices/{id}', [InvoiceController::class, 'show'])->name('invoice.show');
     Route::get('/invoices/data', [InvoiceController::class, 'data'])->name('invoice.data');
 

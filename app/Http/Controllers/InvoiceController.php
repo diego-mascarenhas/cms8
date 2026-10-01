@@ -7,6 +7,7 @@ use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\StoreExpenseSupplierRequest;
 use App\Http\Requests\StoreInvoiceCreditNoteRequest;
+use App\Http\Requests\StoreInvoiceDocumentRequest;
 use App\Http\Requests\StoreInvoiceElectronicPaymentRequest;
 use App\Http\Requests\StoreInvoicePaymentRequest;
 use App\Http\Requests\SuggestExpenseCategoriesRequest;
@@ -46,6 +47,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -536,6 +538,8 @@ class InvoiceController extends Controller
         $existingCreditNote = (! $invoice->isCreditNote()) ? $invoice->existingCreditNote() : null;
         $canDiscardDraft = $this->stripeInvoiceDraftDiscardService->canDiscard(auth()->user(), $invoice);
         $invoiceListState = InvoiceListState::fromArray(request()->query());
+        $storedSupplierDocument = app(ManualInvoiceDocumentService::class)->storedRelativePath($invoice);
+        $supplierDocumentName = is_string($storedSupplierDocument) ? basename($storedSupplierDocument) : '';
 
         return view('invoices.show', compact(
             'invoice',
@@ -559,7 +563,28 @@ class InvoiceController extends Controller
             'existingCreditNote',
             'canDiscardDraft',
             'invoiceListState',
+            'supplierDocumentName',
         ));
+    }
+
+    public function storeDocument(
+        StoreInvoiceDocumentRequest $request,
+        Invoice $invoice,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
+    ): RedirectResponse {
+        $this->authorize('update', $invoice);
+
+        $documentFile = $request->file('document_file');
+        if (! $documentFile instanceof UploadedFile)
+        {
+            abort(422);
+        }
+
+        $manualInvoiceDocumentService->attachDocument($invoice, $documentFile);
+
+        return redirect()
+            ->route('invoice.show', $invoice)
+            ->with('success', __('The supplier document was saved.'));
     }
 
     public function discardDraft(Invoice $invoice): RedirectResponse

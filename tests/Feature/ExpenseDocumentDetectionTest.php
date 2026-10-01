@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\ExpenseDocumentDetectionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -22,6 +23,8 @@ class ExpenseDocumentDetectionTest extends TestCase
 
     public function test_detect_document_returns_detected_payload(): void
     {
+        Storage::fake('public');
+
         $user = $this->makeAdminUser();
 
         $this->mock(ExpenseDocumentDetectionService::class, function ($mock): void
@@ -59,6 +62,11 @@ class ExpenseDocumentDetectionTest extends TestCase
             ->assertJsonPath('data.enterprise_id', 88)
             ->assertJsonPath('data.document_number', 'FAC-2026-001')
             ->assertJsonPath('data.lines.0.concept', 'Servicio mensual');
+
+        $token = $response->json('pending_document_token');
+        $this->assertIsString($token);
+        $this->assertSame(40, strlen($token));
+        $this->assertNotEmpty(Storage::disk('public')->allFiles('expenses-pending'));
     }
 
     public function test_detect_document_validates_required_file(): void

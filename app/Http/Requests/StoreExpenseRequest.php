@@ -35,6 +35,7 @@ class StoreExpenseRequest extends FormRequest
                     ->where('team_id', $teamId)),
             ],
             'document_file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'pending_document_token' => ['nullable', 'string', 'size:40', 'alpha_num'],
             'date' => ['required', 'date'],
             'due_date' => ['nullable', 'date'],
             'document_number' => ['nullable', 'string', 'max:120'],
