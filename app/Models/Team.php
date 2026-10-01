@@ -621,6 +621,32 @@ class Team extends JetstreamTeam
         return substr(md5('team_salt_'.$teamId.'_'.config('app.key')), 0, 12);
     }
 
+    public function haciendaShareHash(): string
+    {
+        $existing = $this->getSetting('hacienda_share_hash');
+
+        if (is_string($existing) && $existing !== '')
+        {
+            return $existing;
+        }
+
+        $hash = Str::random(40);
+        $this->setSetting('hacienda_share_hash', $hash, [
+            'group' => 'finance',
+        ]);
+
+        return $hash;
+    }
+
+    public function haciendaShareUrl(int $year, string $period): string
+    {
+        return route('hacienda.public', [
+            'hash' => $this->haciendaShareHash(),
+            'vat_year' => $year,
+            'vat_period' => $period,
+        ]);
+    }
+
     /**
      * Get Twilio configuration for this team.
      */

@@ -130,6 +130,7 @@ class ExpenseController extends Controller
         $vatYear = $vatSelection['year'];
         $vatPeriod = $vatSelection['period'];
         $vatMode = $vatSelection['mode'];
+        $haciendaShareUrl = auth()->user()->currentTeam?->haciendaShareUrl($vatYear, $vatPeriod);
 
         return $dataTable->render('expense.index', compact(
             'accounts',
@@ -149,6 +150,7 @@ class ExpenseController extends Controller
             'vatYear',
             'vatPeriod',
             'vatMode',
+            'haciendaShareUrl',
         ));
     }
 

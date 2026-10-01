@@ -73,8 +73,12 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             ->assertSee('incomeExportDropdown', false)
             ->assertSee('/income/export-hacienda', false)
             ->assertSee('/income/export-credit-notes', false)
-            ->assertSee('/income/export-hacienda-previous-quarter', false)
-            ->assertSee('Generar ZIP Trimestre Anterior', false)
+            ->assertDontSee('/income/export-hacienda-previous-quarter', false)
+            ->assertDontSee('Generar ZIP Trimestre Anterior', false)
+            ->assertSee('/hacienda/', false)
+            ->assertSee('vat_year=2024', false)
+            ->assertSee('vat_period=m%3A5', false)
+            ->assertSee(__('Accountant link'), false)
             ->assertSee('js-filter-select', false)
             ->assertSee(__('Credit notes'), false);
     }
@@ -269,8 +273,12 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             ->assertSee('expenseExportDropdown', false)
             ->assertSee('/expense/export-hacienda', false)
             ->assertSee('/expense/export-credit-notes', false)
-            ->assertSee('/income/export-hacienda-previous-quarter', false)
-            ->assertSee('Generar ZIP Trimestre Anterior', false)
+            ->assertDontSee('/income/export-hacienda-previous-quarter', false)
+            ->assertDontSee('Generar ZIP Trimestre Anterior', false)
+            ->assertSee('/hacienda/', false)
+            ->assertSee('vat_year=2024', false)
+            ->assertSee('vat_period=m%3A5', false)
+            ->assertSee(__('Accountant link'), false)
             ->assertSee('js-filter-select', false)
             ->assertSee(__('Credit notes'), false);
     }

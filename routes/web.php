@@ -33,6 +33,7 @@ use App\Http\Controllers\FinancialDashboardController;
 use App\Http\Controllers\GoogleIntegrationController;
 use App\Http\Controllers\GooglePlacesController;
 use App\Http\Controllers\GoogleSyncedPreviewController;
+use App\Http\Controllers\HaciendaPublicController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Homes\CmsLandingController;
@@ -873,6 +874,20 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'destroy'])->whereNumber('post')->name('cms.posts.destroy');
 
     // Public routes for client responses (no auth required)
+    Route::get('/hacienda/{hash}/invoice/{invoice}/file', [HaciendaPublicController::class, 'file'])
+        ->where('hash', '[A-Za-z0-9]+')
+        ->whereNumber('invoice')
+        ->name('hacienda.public.file')
+        ->withoutMiddleware(['auth']);
+    Route::get('/hacienda/{hash}/export', [HaciendaPublicController::class, 'export'])
+        ->where('hash', '[A-Za-z0-9]+')
+        ->name('hacienda.public.export')
+        ->withoutMiddleware(['auth']);
+    Route::get('/hacienda/{hash}', [HaciendaPublicController::class, 'show'])
+        ->where('hash', '[A-Za-z0-9]+')
+        ->name('hacienda.public')
+        ->withoutMiddleware(['auth']);
+
     Route::get('/task-communication/{token}', [TaskController::class, 'showCommunicationResponse'])
         ->name('task.communication.respond')
         ->withoutMiddleware(['auth']);

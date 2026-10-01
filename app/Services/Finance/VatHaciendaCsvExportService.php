@@ -5,7 +5,11 @@ namespace App\Services\Finance;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\InvoiceSync;
+use App\Models\Team;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Client\Response as HttpClientResponse;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -17,7 +21,11 @@ class VatHaciendaCsvExportService
     public function __construct(
         private readonly VatReportingService $vatReportingService,
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
+        private readonly StripeInvoicePdfRefresher $stripeInvoicePdfRefresher,
     ) {}
+
+    /** @var array<int, string|null> */
+    private array $shareHashes = [];
 
     public function download(
         string $operation,
@@ -61,9 +69,23 @@ class VatHaciendaCsvExportService
     {
         $teamId ??= (int) auth()->user()->currentTeam->id;
         $quarter = $this->vatReportingService->previousQuarterRange();
-        $targetCurrency = strtoupper($this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam());
-        $periodSlug = 'Q'.$quarter['quarter'].'-'.$quarter['year'];
 
+        return $this->downloadPeriodZip(
+            $teamId,
+            $quarter['from'],
+            $quarter['to'],
+            'Q'.$quarter['quarter'].'-'.$quarter['year'],
+            strtoupper($this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam()),
+        );
+    }
+
+    public function downloadPeriodZip(
+        int $teamId,
+        Carbon $from,
+        Carbon $to,
+        string $periodSlug,
+        string $targetCurrency,
+    ): BinaryFileResponse {
         $entries = [
             ['operation' => 'sell', 'documentScope' => 'invoices', 'slug' => 'venta'],
             ['operation' => 'buy', 'documentScope' => 'invoices', 'slug' => 'compra'],
@@ -88,8 +110,8 @@ class VatHaciendaCsvExportService
             $csv = $this->renderCsv(
                 $teamId,
                 $entry['operation'],
-                $quarter['from'],
-                $quarter['to'],
+                $from,
+                $to,
                 $targetCurrency,
                 $entry['documentScope'],
             );
@@ -104,18 +126,11 @@ class VatHaciendaCsvExportService
     }
 
     /**
-     * @param  resource  $handle
+     * @return list<string>
      */
-    private function writeCsv(
-        $handle,
-        int $teamId,
-        string $operation,
-        Carbon $from,
-        Carbon $to,
-        string $targetCurrency,
-        string $documentScope,
-    ): void {
-        fputcsv($handle, [
+    public function csvHeaders(string $targetCurrency): array
+    {
+        return [
             'Comprobante',
             'Fecha',
             'Razón Social',
@@ -129,7 +144,22 @@ class VatHaciendaCsvExportService
             'País',
             'Estado',
             'Link',
-        ]);
+        ];
+    }
+
+    /**
+     * @param  resource  $handle
+     */
+    private function writeCsv(
+        $handle,
+        int $teamId,
+        string $operation,
+        Carbon $from,
+        Carbon $to,
+        string $targetCurrency,
+        string $documentScope,
+    ): void {
+        fputcsv($handle, $this->csvHeaders($targetCurrency));
 
         $totals = [
             'subtotal' => 0.0,
@@ -138,37 +168,10 @@ class VatHaciendaCsvExportService
             'rows' => 0,
         ];
 
-        $query = $this->vatReportingService
-            ->invoicesForPeriod($teamId, $operation, $from, $to)
-            ->with([
-                'items',
-                'currency',
-                'enterprise.enterpriseBillingAddresses',
-                'billingAddress',
-                'stripeInvoiceSync',
-            ]);
-
-        if ($documentScope === 'credit_notes')
-        {
-            $query->where(function ($creditNotes)
-            {
-                $creditNotes->whereIn('status', [4, 6])
-                    ->orWhere('type_id', 2)
-                    ->orWhere('source_reference_id', 'like', 'cn_%');
-            });
-        } else
-        {
-            $query->whereNotIn('status', [4, 6])
-                ->where('type_id', '!=', 2)
-                ->where(function ($regular)
-                {
-                    $regular->whereNull('source_reference_id')
-                        ->orWhere('source_reference_id', 'not like', 'cn_%');
-                });
-        }
+        $query = $this->scopedInvoices($teamId, $operation, $from, $to, $documentScope);
 
         $query
-            ->orderBy('date')
+            ->orderBy('number')
             ->orderBy('id')
             ->chunk(200, function ($invoices) use ($handle, $targetCurrency, $from, &$totals)
             {
@@ -208,6 +211,128 @@ class VatHaciendaCsvExportService
             $totals['rows'].' registros',
             '',
         ]);
+    }
+
+    /**
+     * @return array{
+     *     headers: list<string>,
+     *     books: array<string, array{rows: list<list<string>>, invoice_ids: list<int|null>, totals: list<string>}>
+     * }
+     */
+    public function presentationBooks(int $teamId, Carbon $from, Carbon $to, string $targetCurrency): array
+    {
+        $books = [
+            'sell' => ['operation' => 'sell', 'documentScope' => 'invoices'],
+            'buy' => ['operation' => 'buy', 'documentScope' => 'invoices'],
+            'sell_credit_notes' => ['operation' => 'sell', 'documentScope' => 'credit_notes'],
+            'buy_credit_notes' => ['operation' => 'buy', 'documentScope' => 'credit_notes'],
+        ];
+
+        $presentation = [];
+
+        foreach ($books as $key => $book)
+        {
+            $rows = [];
+            $invoiceIds = [];
+            $totals = ['subtotal' => 0.0, 'tax' => 0.0, 'total' => 0.0, 'rows' => 0];
+
+            $invoices = $this->scopedInvoices($teamId, $book['operation'], $from, $to, $book['documentScope'])
+                ->orderBy('number')
+                ->orderBy('id')
+                ->get();
+
+            foreach ($invoices as $invoice)
+            {
+                [$row, $converted] = $this->rowForInvoice($invoice, $targetCurrency, $from);
+                $rows[] = $row;
+                $invoiceIds[] = $this->hasDownloadableDocument($invoice) ? $invoice->id : null;
+
+                if ($converted['subtotal'] !== null)
+                {
+                    $totals['subtotal'] += $converted['subtotal'];
+                }
+                if ($converted['tax'] !== null)
+                {
+                    $totals['tax'] += $converted['tax'];
+                }
+                if ($converted['total'] !== null)
+                {
+                    $totals['total'] += $converted['total'];
+                }
+                $totals['rows']++;
+            }
+
+            $presentation[$key] = [
+                'rows' => $rows,
+                'invoice_ids' => $invoiceIds,
+                'totals' => [
+                    'TOTALES',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    '',
+                    number_format(round($totals['subtotal'], 2), 2, ',', '.'),
+                    number_format(round($totals['tax'], 2), 2, ',', '.'),
+                    number_format(round($totals['total'], 2), 2, ',', '.'),
+                    '',
+                    $totals['rows'].' registros',
+                    '',
+                ],
+            ];
+        }
+
+        return [
+            'headers' => $this->csvHeaders($targetCurrency),
+            'books' => $presentation,
+        ];
+    }
+
+    /**
+     * @return Builder<Invoice>
+     */
+    private function scopedInvoices(
+        int $teamId,
+        string $operation,
+        Carbon $from,
+        Carbon $to,
+        string $documentScope,
+    ): Builder {
+        $query = $this->vatReportingService
+            ->invoicesForPeriod($teamId, $operation, $from, $to)
+            ->with([
+                'items',
+                'currency',
+                'enterprise.enterpriseBillingAddresses',
+                'billingAddress',
+                'stripeInvoiceSync',
+                'payments' => function ($payments)
+                {
+                    $payments->withoutGlobalScopes()->select(['id', 'invoice_id', 'remarks']);
+                },
+            ]);
+
+        if ($documentScope === 'credit_notes')
+        {
+            $query->where(function ($creditNotes)
+            {
+                $creditNotes->whereIn('status', [4, 6])
+                    ->orWhere('type_id', 2)
+                    ->orWhere('source_reference_id', 'like', 'cn_%');
+            });
+        } else
+        {
+            $query->whereNotIn('status', [4, 6])
+                ->where('type_id', '!=', 2)
+                ->where(function ($regular)
+                {
+                    $regular->whereNull('source_reference_id')
+                        ->orWhere('source_reference_id', 'not like', 'cn_%');
+                });
+        }
+
+        return $query;
     }
 
     private function renderCsv(
@@ -399,12 +524,220 @@ class VatHaciendaCsvExportService
         return strtoupper(trim((string) ($invoice->enterprise?->country ?? '')));
     }
 
+    public function downloadPublicDocument(Invoice $invoice): StreamedResponse
+    {
+        $url = $this->stripeInvoicePdfRefresher->freshPdfUrl($invoice) ?? $this->storedFileUrl($invoice);
+        if (! is_string($url) || ! $this->documentUrlIsFetchable($url) || $this->isHostedInvoicePage($url))
+        {
+            abort(404);
+        }
+
+        $response = Http::timeout(20)
+            ->withOptions([
+                'allow_redirects' => [
+                    'max' => 3,
+                    'protocols' => ['http', 'https'],
+                ],
+            ])
+            ->get($url);
+
+        $body = $response->body();
+        $contentType = strtolower((string) $response->header('Content-Type'));
+        $isPdf = $response->successful()
+            && (str_contains($contentType, 'pdf') || str_starts_with($body, '%PDF'));
+
+        if (! $isPdf)
+        {
+            abort(404);
+        }
+
+        $filename = $this->filenameWithIssuerPrefix(
+            $invoice,
+            $this->upstreamFilename($response, $url, $invoice),
+        );
+
+        return response()->streamDownload(function () use ($body): void
+        {
+            echo $body;
+        }, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    private function documentUrlIsFetchable(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+
+        if ($host === '' || ! in_array($scheme, ['http', 'https'], true))
+        {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP))
+        {
+            return false;
+        }
+
+        $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        if ($scheme === 'http' && $host !== $appHost)
+        {
+            return false;
+        }
+
+        return ! in_array($host, ['localhost', 'metadata.google.internal'], true) || $host === $appHost;
+    }
+
+    private function upstreamFilename(HttpClientResponse $response, string $url, Invoice $invoice): string
+    {
+        $header = (string) $response->header('Content-Disposition');
+        $name = '';
+
+        if (preg_match("/filename\\*=UTF-8''([^;]+)/i", $header, $matches) === 1)
+        {
+            $name = rawurldecode($matches[1]);
+        } elseif (preg_match('/filename="?([^";]+)"?/i', $header, $matches) === 1)
+        {
+            $name = $matches[1];
+        }
+
+        $name = trim(str_replace(['\\', '/'], '', $name));
+        if ($name === '')
+        {
+            $name = basename((string) parse_url($url, PHP_URL_PATH));
+        }
+
+        if ($name === '' || ! str_contains($name, '.') || strtolower($name) === 'pdf')
+        {
+            $number = trim((string) $invoice->number);
+            $name = ($number !== '' ? $number : 'factura').'.pdf';
+        }
+
+        return $name;
+    }
+
+    private function filenameWithIssuerPrefix(Invoice $invoice, string $filename): string
+    {
+        $issuer = $this->sanitizeFilenamePart($this->resolveIssuerName($invoice));
+        $counterparty = $this->sanitizeFilenamePart($this->resolveEnterpriseName($invoice));
+        $filename = trim(str_replace(['\\', '/'], '', $filename));
+        $client = $counterparty !== '' && strcasecmp($counterparty, $issuer) !== 0 ? $counterparty : '';
+
+        if ($client === '')
+        {
+            $name = $issuer !== '' ? $issuer.' - '.$filename : $filename;
+
+            return Str::limit($name, 180, '');
+        }
+
+        $extension = pathinfo($filename, PATHINFO_EXTENSION);
+        $invoiceLabel = $this->sanitizeFilenamePart((string) pathinfo($filename, PATHINFO_FILENAME));
+        if ($invoiceLabel === '')
+        {
+            $invoiceLabel = $this->sanitizeFilenamePart(trim((string) $invoice->number));
+        }
+
+        $parts = array_values(array_filter(
+            [$issuer, $invoiceLabel, $client],
+            fn (string $part): bool => $part !== '',
+        ));
+        $name = implode(' - ', $parts);
+        if ($extension !== '')
+        {
+            $name .= '.'.$extension;
+        }
+
+        return Str::limit($name, 180, '');
+    }
+
+    private function resolveIssuerName(Invoice $invoice): string
+    {
+        if ((string) $invoice->operation === 'buy')
+        {
+            return $this->resolveEnterpriseName($invoice);
+        }
+
+        $invoice->loadMissing('team');
+
+        return trim((string) ($invoice->team?->name ?? ''));
+    }
+
+    private function sanitizeFilenamePart(string $value): string
+    {
+        $value = trim((string) preg_replace('/[\\\\\\/:*?"<>|]+/', ' ', $value));
+
+        return trim((string) preg_replace('/\s+/', ' ', $value));
+    }
+
     private function resolveLink(Invoice $invoice): string
     {
-        return (string) (
-            $invoice->stripeInvoicePdfUrl()
-            ?? $invoice->stripeHostedInvoiceUrl()
-            ?? route('invoice.show', $invoice->id)
-        );
+        return $this->permanentDocumentUrl($invoice)
+            ?? $this->storedFileUrl($invoice)
+            ?? route('invoice.show', $invoice->id);
+    }
+
+    private function hasDownloadableDocument(Invoice $invoice): bool
+    {
+        $externalId = trim((string) $invoice->source_reference_id);
+        if (str_starts_with($externalId, 'in_') || str_starts_with($externalId, 'cn_'))
+        {
+            return true;
+        }
+
+        return $this->storedFileUrl($invoice) !== null;
+    }
+
+    private function permanentDocumentUrl(Invoice $invoice): ?string
+    {
+        if (! $this->hasDownloadableDocument($invoice))
+        {
+            return null;
+        }
+
+        $teamId = (int) $invoice->team_id;
+        if (! array_key_exists($teamId, $this->shareHashes))
+        {
+            $team = Team::query()->find($teamId);
+            $this->shareHashes[$teamId] = $team instanceof Team ? $team->haciendaShareHash() : null;
+        }
+
+        $hash = $this->shareHashes[$teamId];
+        if (! is_string($hash) || $hash === '')
+        {
+            return null;
+        }
+
+        return route('hacienda.public.file', [
+            'hash' => $hash,
+            'invoice' => $invoice->id,
+        ]);
+    }
+
+    private function isHostedInvoicePage(string $url): bool
+    {
+        return strtolower((string) parse_url($url, PHP_URL_HOST)) === 'invoice.stripe.com';
+    }
+
+    private function storedFileUrl(Invoice $invoice): ?string
+    {
+        $pdfUrl = $invoice->stripeInvoicePdfUrl();
+        if (is_string($pdfUrl) && $pdfUrl !== '' && ! $this->isHostedInvoicePage($pdfUrl))
+        {
+            return $pdfUrl;
+        }
+
+        $payments = $invoice->relationLoaded('payments')
+            ? $invoice->payments
+            : $invoice->payments()->withoutGlobalScopes()->get(['id', 'invoice_id', 'remarks']);
+
+        foreach ($payments as $payment)
+        {
+            if (preg_match('/Documento:\s*(\S+)/', (string) $payment->remarks, $matches) === 1)
+            {
+                return $matches[1];
+            }
+        }
+
+        return null;
     }
 }
