@@ -25,6 +25,9 @@
     <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
         @include('partials.vat-period-selector')
         <div class="d-flex flex-wrap gap-2">
+            <a href="{{ route('income.export-hacienda-previous-quarter') }}" class="btn btn-success">
+                <i class="ti ti-file-zip me-1"></i> {{ __('Generar ZIP Trimestre Anterior') }}
+            </a>
             <div class="dropdown">
                 <button class="btn btn-outline-primary dropdown-toggle" type="button" id="expenseExportDropdown"
                     data-bs-toggle="dropdown" aria-expanded="false">

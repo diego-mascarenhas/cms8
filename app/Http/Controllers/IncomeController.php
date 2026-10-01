@@ -10,6 +10,7 @@ use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IncomeController extends Controller
@@ -162,5 +163,12 @@ class IncomeController extends Controller
             periodLabel: $vatSelection['label'],
             documentScope: 'credit_notes',
         );
+    }
+
+    public function exportHaciendaPreviousQuarter(): BinaryFileResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        return $this->vatHaciendaCsvExportService->downloadPreviousQuarterZip();
     }
 }

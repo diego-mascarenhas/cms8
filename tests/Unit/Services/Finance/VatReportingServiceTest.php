@@ -97,6 +97,27 @@ class VatReportingServiceTest extends TestCase
         $this->assertSame(24.0, $total);
     }
 
+    public function test_header_vat_wins_when_line_base_does_not_match_gross(): void
+    {
+        $invoice = $this->createInvoice('sell', now()->toDateString(), 600, 726);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'description' => 'Stored line does not match the header',
+            'quantity' => 1,
+            'unit_price' => 60,
+            'discount' => 0,
+            'tax_percentage' => 21,
+        ]);
+
+        $invoice = $invoice->fresh(['items']);
+        $this->assertSame(126.0, $this->service->vatAmountForInvoice($invoice));
+
+        $invoice->forceFill(['status' => 4])->save();
+
+        $this->assertSame(-126.0, $this->service->vatAmountForInvoice($invoice->fresh(['items'])));
+    }
+
     public function test_expense_fallback_uses_total_minus_gross_when_no_tax_percentage(): void
     {
         $this->createInvoice('buy', now()->toDateString(), 100, 121);

@@ -71,6 +71,8 @@ class FinanceDashboardProjectionTest extends TestCase
             ->get(route('finance-dashboard.projection'))
             ->assertOk()
             ->assertSee(__('Financial projection report'), false)
+            ->assertSee('id="projection-year"', false)
+            ->assertSee('js-filter-select', false)
             ->assertDontSee(__('Financial assistant'), false)
             ->assertDontSee(__('Growth scenario'), false)
             ->assertDontSee(__('Totals converted to :currency using team reporting currency.', ['currency' => 'EUR']), false);

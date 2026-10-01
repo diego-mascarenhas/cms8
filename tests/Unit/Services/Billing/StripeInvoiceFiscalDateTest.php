@@ -111,4 +111,85 @@ class StripeInvoiceFiscalDateTest extends TestCase
         $this->assertInstanceOf(Invoice::class, $invoice);
         $this->assertSame('2026-04-13', Carbon::parse($invoice->date)->toDateString());
     }
+
+    public function test_later_number_keeps_finalization_date_when_the_draft_is_earlier(): void
+    {
+        $team = Team::factory()->create();
+        Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Cliente',
+            'code' => 'cus_0694',
+        ]);
+
+        $earlierNumber = InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_0005_0693',
+            'customer_id' => 'cus_0694',
+            'number' => '0005-0693',
+            'status' => 'paid',
+            'currency' => 'eur',
+            'subtotal' => 100,
+            'total' => 121,
+            'amount_due' => 0,
+            'amount_paid' => 121,
+            'amount_remaining' => 0,
+            'paid' => true,
+            'invoice_created_at' => '2026-04-13 09:00:00',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'id' => 'in_0005_0693',
+                'created' => strtotime('2026-04-13 09:00:00'),
+                'status_transitions' => [
+                    'finalized_at' => strtotime('2026-04-13 09:00:00'),
+                ],
+            ],
+        ]);
+
+        $laterNumberDraftedFirst = InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_0005_0694',
+            'customer_id' => 'cus_0694',
+            'number' => '0005-0694',
+            'status' => 'paid',
+            'currency' => 'eur',
+            'subtotal' => 100,
+            'total' => 121,
+            'amount_due' => 0,
+            'amount_paid' => 121,
+            'amount_remaining' => 0,
+            'paid' => true,
+            'invoice_created_at' => '2026-02-21 16:10:45',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'id' => 'in_0005_0694',
+                'created' => strtotime('2026-02-21 16:10:45'),
+                'status_transitions' => [
+                    'finalized_at' => strtotime('2026-04-14 12:09:15'),
+                ],
+            ],
+        ]);
+
+        $importer = app(StripeInvoiceCoreImportService::class);
+        $importer->importFromSyncRow($earlierNumber);
+        $importer->importFromSyncRow($laterNumberDraftedFirst);
+
+        $ordered = Invoice::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->orderBy('date')
+            ->orderBy('number')
+            ->pluck('number')
+            ->all();
+
+        $this->assertSame(['0005-0693', '0005-0694'], $ordered);
+        $this->assertSame(
+            '2026-04-14',
+            Carbon::parse(
+                Invoice::withoutGlobalScopes()->where('number', '0005-0694')->value('date'),
+            )->toDateString(),
+        );
+    }
 }

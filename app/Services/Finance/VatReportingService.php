@@ -355,6 +355,7 @@ class VatReportingService
             : $invoice->items()->get();
 
         $lineTaxTotal = 0.0;
+        $lineBase = 0.0;
         $hasExplicitTaxRate = false;
 
         foreach ($items as $item)
@@ -366,17 +367,26 @@ class VatReportingService
             }
 
             $lineTaxTotal += (float) $item->tax_amount;
+            $lineBase += ((float) $item->unit_price * (float) $item->quantity) - (float) $item->discount;
         }
 
-        if ($hasExplicitTaxRate)
+        $headerBase = round(abs((float) $invoice->gross_amount), 2);
+        $headerTax = round(max(0, abs((float) $invoice->total_amount) - $headerBase), 2);
+        $lineTax = round(abs($lineTaxTotal), 2);
+        $linesMatchHeaderBase = abs(round(abs($lineBase), 2) - $headerBase) <= 0.05;
+
+        if ($hasExplicitTaxRate && $linesMatchHeaderBase)
         {
-            $tax = round(abs($lineTaxTotal), 2);
+            $tax = $lineTax;
+        } elseif ($headerTax > 0)
+        {
+            // Fiscal base and VAT live on the invoice header. A line whose
+            // base does not match (for example unit price 60 on a 600 invoice)
+            // must not replace that split.
+            $tax = $headerTax;
         } else
         {
-            // Sell and buy: when lines lack tax %, derive IVA from total − base
-            // (Stripe/Cuéntica Spain invoices often store base in gross_amount).
-            $diff = (float) $invoice->total_amount - (float) $invoice->gross_amount;
-            $tax = round(max(0, $diff), 2);
+            $tax = $hasExplicitTaxRate ? $lineTax : $headerTax;
         }
 
         if ($invoice->isCreditNote())

@@ -1,10 +1,13 @@
 <form method="GET" action="{{ url()->current() }}" class="d-flex flex-wrap align-items-center gap-2" id="vat-period-form">
-    <select name="vat_year" id="vat_year" class="form-select w-auto" aria-label="{{ __('Year') }}" onchange="this.form.submit()">
-        @foreach($vatYears as $yearOption)
-            <option value="{{ $yearOption }}" @selected((int) $vatYear === (int) $yearOption)>{{ $yearOption }}</option>
-        @endforeach
-    </select>
-    <select name="vat_period" id="vat_period" class="form-select w-auto" aria-label="{{ __('Period') }}" onchange="this.form.submit()">
+    <div class="position-relative w-px-100">
+        <select name="vat_year" id="vat_year" class="select2 form-select js-filter-select" aria-label="{{ __('Year') }}" onchange="this.form.submit()">
+            @foreach($vatYears as $yearOption)
+                <option value="{{ $yearOption }}" @selected((int) $vatYear === (int) $yearOption)>{{ $yearOption }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="position-relative w-px-200">
+        <select name="vat_period" id="vat_period" class="select2 form-select js-filter-select" aria-label="{{ __('Period') }}" onchange="this.form.submit()">
         <optgroup label="{{ __('Month') }}">
             @for($month = 1; $month <= 12; $month++)
                 <option value="m:{{ $month }}" @selected($vatPeriod === 'm:'.$month)>
@@ -17,5 +20,7 @@
                 <option value="q:{{ $q }}" @selected($vatPeriod === 'q:'.$q)>Q{{ $q }}</option>
             @endfor
         </optgroup>
-    </select>
+        </select>
+    </div>
 </form>
+@include('partials.filter-select2-script')
