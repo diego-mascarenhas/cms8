@@ -6,7 +6,10 @@ use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use ZipArchive;
 
 class VatHaciendaCsvExportService
 {
@@ -43,105 +46,184 @@ class VatHaciendaCsvExportService
         return response()->streamDownload(function () use ($teamId, $operation, $from, $to, $targetCurrency, $documentScope)
         {
             $handle = fopen('php://output', 'w');
-
-            fputcsv($handle, [
-                'Comprobante',
-                'Fecha',
-                'Razón Social',
-                'ID Fiscal',
-                'Importe',
-                'Moneda',
-                'Cambio',
-                'Importe ('.$targetCurrency.')',
-                'Tax ('.$targetCurrency.')',
-                'Total ('.$targetCurrency.')',
-                'País',
-                'Estado',
-                'Link',
-            ]);
-
-            $totals = [
-                'subtotal' => 0.0,
-                'tax' => 0.0,
-                'total' => 0.0,
-                'rows' => 0,
-            ];
-
-            $query = $this->vatReportingService
-                ->invoicesForPeriod($teamId, $operation, $from, $to)
-                ->with([
-                    'items',
-                    'currency',
-                    'enterprise',
-                    'billingAddress',
-                    'stripeInvoiceSync',
-                ]);
-
-            if ($documentScope === 'credit_notes')
-            {
-                $query->where(function ($creditNotes)
-                {
-                    $creditNotes->whereIn('status', [4, 6])
-                        ->orWhere('type_id', 2)
-                        ->orWhere('source_reference_id', 'like', 'cn_%');
-                });
-            } else
-            {
-                $query->whereNotIn('status', [4, 6])
-                    ->where('type_id', '!=', 2)
-                    ->where(function ($regular)
-                    {
-                        $regular->whereNull('source_reference_id')
-                            ->orWhere('source_reference_id', 'not like', 'cn_%');
-                    });
-            }
-
-            $query
-                ->orderBy('date')
-                ->orderBy('id')
-                ->chunk(200, function ($invoices) use ($handle, $targetCurrency, $from, &$totals)
-                {
-                    foreach ($invoices as $invoice)
-                    {
-                        [$row, $converted] = $this->rowForInvoice($invoice, $targetCurrency, $from);
-                        fputcsv($handle, $row);
-
-                        if ($converted['subtotal'] !== null)
-                        {
-                            $totals['subtotal'] += $converted['subtotal'];
-                        }
-                        if ($converted['tax'] !== null)
-                        {
-                            $totals['tax'] += $converted['tax'];
-                        }
-                        if ($converted['total'] !== null)
-                        {
-                            $totals['total'] += $converted['total'];
-                        }
-                        $totals['rows']++;
-                    }
-                });
-
-            fputcsv($handle, [
-                'TOTALES',
-                '',
-                '',
-                '',
-                '',
-                '',
-                '',
-                number_format(round($totals['subtotal'], 2), 2, ',', '.'),
-                number_format(round($totals['tax'], 2), 2, ',', '.'),
-                number_format(round($totals['total'], 2), 2, ',', '.'),
-                '',
-                $totals['rows'].' registros',
-                '',
-            ]);
-
+            $this->writeCsv($handle, $teamId, $operation, $from, $to, $targetCurrency, $documentScope);
             fclose($handle);
         }, $fileName, [
             'Content-Type' => 'text/csv; charset=utf-8',
         ]);
+    }
+
+    /**
+     * Previous-quarter Hacienda books: venta, compra, and credit notes for both.
+     */
+    public function downloadPreviousQuarterZip(?int $teamId = null): BinaryFileResponse
+    {
+        $teamId ??= (int) auth()->user()->currentTeam->id;
+        $quarter = $this->vatReportingService->previousQuarterRange();
+        $targetCurrency = strtoupper($this->paymentReportingCurrencyService->reportingCurrencyForCurrentTeam());
+        $periodSlug = 'Q'.$quarter['quarter'].'-'.$quarter['year'];
+
+        $entries = [
+            ['operation' => 'sell', 'documentScope' => 'invoices', 'slug' => 'venta'],
+            ['operation' => 'buy', 'documentScope' => 'invoices', 'slug' => 'compra'],
+            ['operation' => 'sell', 'documentScope' => 'credit_notes', 'slug' => 'notas-credito-venta'],
+            ['operation' => 'buy', 'documentScope' => 'credit_notes', 'slug' => 'notas-credito-compra'],
+        ];
+
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'hacienda-zip-');
+        if ($temporaryPath === false)
+        {
+            throw new RuntimeException('Unable to create temporary file for Hacienda ZIP.');
+        }
+
+        $zip = new ZipArchive;
+        if ($zip->open($temporaryPath, ZipArchive::OVERWRITE) !== true)
+        {
+            throw new RuntimeException('Unable to create Hacienda ZIP.');
+        }
+
+        foreach ($entries as $entry)
+        {
+            $csv = $this->renderCsv(
+                $teamId,
+                $entry['operation'],
+                $quarter['from'],
+                $quarter['to'],
+                $targetCurrency,
+                $entry['documentScope'],
+            );
+            $zip->addFromString('hacienda-'.$entry['slug'].'-'.$periodSlug.'.csv', $csv);
+        }
+
+        $zip->close();
+
+        return response()->download($temporaryPath, 'hacienda-compra-venta-'.$periodSlug.'.zip', [
+            'Content-Type' => 'application/zip',
+        ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * @param  resource  $handle
+     */
+    private function writeCsv(
+        $handle,
+        int $teamId,
+        string $operation,
+        Carbon $from,
+        Carbon $to,
+        string $targetCurrency,
+        string $documentScope,
+    ): void {
+        fputcsv($handle, [
+            'Comprobante',
+            'Fecha',
+            'Razón Social',
+            'ID Fiscal',
+            'Importe',
+            'Moneda',
+            'Cambio',
+            'Importe ('.$targetCurrency.')',
+            'Tax ('.$targetCurrency.')',
+            'Total ('.$targetCurrency.')',
+            'País',
+            'Estado',
+            'Link',
+        ]);
+
+        $totals = [
+            'subtotal' => 0.0,
+            'tax' => 0.0,
+            'total' => 0.0,
+            'rows' => 0,
+        ];
+
+        $query = $this->vatReportingService
+            ->invoicesForPeriod($teamId, $operation, $from, $to)
+            ->with([
+                'items',
+                'currency',
+                'enterprise',
+                'billingAddress',
+                'stripeInvoiceSync',
+            ]);
+
+        if ($documentScope === 'credit_notes')
+        {
+            $query->where(function ($creditNotes)
+            {
+                $creditNotes->whereIn('status', [4, 6])
+                    ->orWhere('type_id', 2)
+                    ->orWhere('source_reference_id', 'like', 'cn_%');
+            });
+        } else
+        {
+            $query->whereNotIn('status', [4, 6])
+                ->where('type_id', '!=', 2)
+                ->where(function ($regular)
+                {
+                    $regular->whereNull('source_reference_id')
+                        ->orWhere('source_reference_id', 'not like', 'cn_%');
+                });
+        }
+
+        $query
+            ->orderBy('date')
+            ->orderBy('id')
+            ->chunk(200, function ($invoices) use ($handle, $targetCurrency, $from, &$totals)
+            {
+                foreach ($invoices as $invoice)
+                {
+                    [$row, $converted] = $this->rowForInvoice($invoice, $targetCurrency, $from);
+                    fputcsv($handle, $row);
+
+                    if ($converted['subtotal'] !== null)
+                    {
+                        $totals['subtotal'] += $converted['subtotal'];
+                    }
+                    if ($converted['tax'] !== null)
+                    {
+                        $totals['tax'] += $converted['tax'];
+                    }
+                    if ($converted['total'] !== null)
+                    {
+                        $totals['total'] += $converted['total'];
+                    }
+                    $totals['rows']++;
+                }
+            });
+
+        fputcsv($handle, [
+            'TOTALES',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            number_format(round($totals['subtotal'], 2), 2, ',', '.'),
+            number_format(round($totals['tax'], 2), 2, ',', '.'),
+            number_format(round($totals['total'], 2), 2, ',', '.'),
+            '',
+            $totals['rows'].' registros',
+            '',
+        ]);
+    }
+
+    private function renderCsv(
+        int $teamId,
+        string $operation,
+        Carbon $from,
+        Carbon $to,
+        string $targetCurrency,
+        string $documentScope,
+    ): string {
+        $handle = fopen('php://temp', 'r+');
+        $this->writeCsv($handle, $teamId, $operation, $from, $to, $targetCurrency, $documentScope);
+        rewind($handle);
+        $csv = stream_get_contents($handle);
+        fclose($handle);
+
+        return $csv === false ? '' : $csv;
     }
 
     /**

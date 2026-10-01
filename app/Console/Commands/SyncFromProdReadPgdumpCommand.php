@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 class SyncFromProdReadPgdumpCommand extends Command
@@ -109,6 +110,11 @@ class SyncFromProdReadPgdumpCommand extends Command
         if ($restoreResult !== self::SUCCESS)
         {
             return $restoreResult;
+        }
+
+        if (! $dryRun)
+        {
+            $this->recreateSkippedSequencesLocally($localConnection);
         }
 
         if (! $dryRun && ! $this->option('keep-dump') && $existingDump === '')
@@ -230,12 +236,18 @@ class SyncFromProdReadPgdumpCommand extends Command
     {
         $schema = $this->prodSchemaName();
         $excludedTables = PostgresProdReadTableAccess::excludedTablesForDump();
+        $excludedSequences = PostgresProdReadTableAccess::excludedSequencesForDump();
 
         if ($excludedTables !== [])
         {
             $this->warn('Excluding '.count($excludedTables).' prod tables (no SELECT for user read):');
             $this->line('  '.implode(', ', $excludedTables));
-            $this->line('For a full dump, ask DBA: GRANT SELECT ON ALL TABLES IN SCHEMA public TO read;');
+        }
+
+        if ($excludedSequences !== [])
+        {
+            $this->warn('Excluding '.count($excludedSequences).' prod sequences (no SELECT for user read). They are recreated locally after restore.');
+            $this->line('  '.implode(', ', $excludedSequences));
         }
 
         $command = [
@@ -250,9 +262,9 @@ class SyncFromProdReadPgdumpCommand extends Command
             '-f', $dumpPath,
         ];
 
-        foreach ($excludedTables as $table)
+        foreach (PostgresProdReadTableAccess::excludeTableArguments($schema, [...$excludedTables, ...$excludedSequences]) as $argument)
         {
-            $command[] = '--exclude-table='.$schema.'.'.$table;
+            $command[] = $argument;
         }
 
         $this->line('pg_dump → '.$dumpPath);
@@ -326,6 +338,60 @@ class SyncFromProdReadPgdumpCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    private function recreateSkippedSequencesLocally(string $localConnection): void
+    {
+        $deniedTables = array_flip(PostgresProdReadTableAccess::deniedTables('prod_read'));
+        $owners = array_values(array_filter(
+            PostgresProdReadTableAccess::sequencesToRecreateLocally(),
+            fn (array $owner): bool => ! isset($deniedTables[$owner['table']]),
+        ));
+
+        if ($owners === [])
+        {
+            return;
+        }
+
+        $connection = DB::connection($localConnection);
+        $created = 0;
+
+        foreach ($owners as $owner)
+        {
+            $sequence = $this->quotePgIdentifier($owner['sequence']);
+            $table = $this->quotePgIdentifier($owner['table']);
+            $column = $this->quotePgIdentifier($owner['column']);
+            $qualifiedSequence = 'public.'.$owner['sequence'];
+            $regclass = str_replace("'", "''", $qualifiedSequence);
+
+            if (! Schema::connection($localConnection)->hasTable($owner['table']))
+            {
+                continue;
+            }
+
+            if (! Schema::connection($localConnection)->hasColumn($owner['table'], $owner['column']))
+            {
+                continue;
+            }
+
+            $connection->statement("CREATE SEQUENCE IF NOT EXISTS {$sequence}");
+            $connection->statement("ALTER SEQUENCE {$sequence} OWNED BY {$table}.{$column}");
+            $connection->statement("ALTER TABLE {$table} ALTER COLUMN {$column} SET DEFAULT nextval('{$regclass}'::regclass)");
+
+            $maxValue = (int) $connection->table($owner['table'])->max($owner['column']);
+            $connection->statement('SELECT setval(?, ?, true)', [$qualifiedSequence, max($maxValue, 1)]);
+            $created++;
+        }
+
+        if ($created > 0)
+        {
+            $this->info("Recreated {$created} local sequences from imported row ids.");
+        }
+    }
+
+    private function quotePgIdentifier(string $identifier): string
+    {
+        return '"'.str_replace('"', '""', $identifier).'"';
     }
 
     /**

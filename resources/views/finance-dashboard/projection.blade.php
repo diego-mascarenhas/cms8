@@ -63,12 +63,15 @@
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap align-items-center gap-2">
         <form method="GET" action="{{ route('finance-dashboard.projection') }}" class="d-flex align-items-center">
-            <select id="projection-year" name="year" class="form-select w-auto" aria-label="{{ __('Year') }}" onchange="this.form.submit()">
-                @foreach($availableYears as $year)
-                    <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
-                @endforeach
-            </select>
+            <div class="position-relative w-px-100">
+                <select id="projection-year" name="year" class="select2 form-select js-filter-select w-100" aria-label="{{ __('Year') }}" onchange="this.form.submit()">
+                    @foreach($availableYears as $year)
+                        <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
+                    @endforeach
+                </select>
+            </div>
         </form>
+        @include('partials.filter-select2-script')
         <a href="{{ route('finance-dashboard.index', ['year' => $selectedYear]) }}" class="btn btn-outline-secondary">
             <i class="ti ti-arrow-left me-1"></i>{{ __('Accounting Dashboard') }}
         </a>

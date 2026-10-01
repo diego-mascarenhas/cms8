@@ -22,12 +22,15 @@
     <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
         <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-center">
             <label for="financial-dashboard-year" class="form-label mb-0 me-2">{{ __('Year') }}</label>
-            <select id="financial-dashboard-year" name="year" class="form-select" onchange="this.form.submit()">
-                @foreach($availableYears as $year)
-                    <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
-                @endforeach
-            </select>
+            <div class="position-relative w-px-100">
+                <select id="financial-dashboard-year" name="year" class="select2 form-select js-filter-select" onchange="this.form.submit()">
+                    @foreach($availableYears as $year)
+                        <option value="{{ $year }}" @selected($year === $selectedYear)>{{ $year }}</option>
+                    @endforeach
+                </select>
+            </div>
         </form>
+        @include('partials.filter-select2-script')
 
         <a href="{{ route('income.index') }}" class="btn btn-outline-success">
             <i class="ti ti-trending-up me-1"></i> {{ __('Income') }}

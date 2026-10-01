@@ -7,6 +7,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\User;
+use Carbon\Carbon;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
+use ZipArchive;
 
 class VatHaciendaCreditNoteExportTest extends TestCase
 {
@@ -67,6 +69,9 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             ->assertSee('incomeExportDropdown', false)
             ->assertSee('/income/export-hacienda', false)
             ->assertSee('/income/export-credit-notes', false)
+            ->assertSee('/income/export-hacienda-previous-quarter', false)
+            ->assertSee('Generar ZIP Trimestre Anterior', false)
+            ->assertSee('js-filter-select', false)
             ->assertSee(__('Credit notes'), false);
     }
 
@@ -181,6 +186,9 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             ->assertSee('expenseExportDropdown', false)
             ->assertSee('/expense/export-hacienda', false)
             ->assertSee('/expense/export-credit-notes', false)
+            ->assertSee('/income/export-hacienda-previous-quarter', false)
+            ->assertSee('Generar ZIP Trimestre Anterior', false)
+            ->assertSee('js-filter-select', false)
             ->assertSee(__('Credit notes'), false);
     }
 
@@ -243,5 +251,95 @@ class VatHaciendaCreditNoteExportTest extends TestCase
         $this->assertStringContainsString('-50,00', $creditNotesCsv);
         $this->assertStringContainsString('-10,50', $creditNotesCsv);
         $this->assertStringContainsString('-60,50', $creditNotesCsv);
+    }
+
+    public function test_previous_quarter_zip_contains_buy_sell_and_credit_note_csvs(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-01 12:00:00'));
+
+        try
+        {
+            $this->createBookInvoice('sell', 1, 2, '2026-08-10', 'FAC-VENTA', 100);
+            $this->createBookInvoice('buy', 1, 2, '2026-08-12', 'FAC-COMPRA', 50);
+            $this->createBookInvoice('sell', 2, 4, '2026-08-20', 'NC-VENTA', 100, 'cn_venta');
+            $this->createBookInvoice('buy', 2, 4, '2026-08-22', 'NC-COMPRA', 50);
+            $this->createBookInvoice('sell', 1, 2, '2026-10-01', 'FAC-FUERA', 10);
+
+            $response = $this->get(route('income.export-hacienda-previous-quarter'));
+
+            $response->assertOk();
+            $response->assertDownload('hacienda-compra-venta-Q3-2026.zip');
+
+            $path = $response->baseResponse->getFile()->getPathname();
+            $zip = new ZipArchive;
+            $this->assertTrue($zip->open($path) === true);
+
+            $venta = $zip->getFromName('hacienda-venta-Q3-2026.csv');
+            $compra = $zip->getFromName('hacienda-compra-Q3-2026.csv');
+            $creditNotesSell = $zip->getFromName('hacienda-notas-credito-venta-Q3-2026.csv');
+            $creditNotesBuy = $zip->getFromName('hacienda-notas-credito-compra-Q3-2026.csv');
+            $zip->close();
+
+            $this->assertIsString($venta);
+            $this->assertIsString($compra);
+            $this->assertIsString($creditNotesSell);
+            $this->assertIsString($creditNotesBuy);
+
+            $this->assertStringContainsString('FAC-VENTA', $venta);
+            $this->assertStringNotContainsString('FAC-COMPRA', $venta);
+            $this->assertStringNotContainsString('NC-VENTA', $venta);
+            $this->assertStringNotContainsString('FAC-FUERA', $venta);
+
+            $this->assertStringContainsString('FAC-COMPRA', $compra);
+            $this->assertStringNotContainsString('FAC-VENTA', $compra);
+            $this->assertStringNotContainsString('NC-COMPRA', $compra);
+
+            $this->assertStringContainsString('NC-VENTA', $creditNotesSell);
+            $this->assertStringContainsString('-100,00', $creditNotesSell);
+            $this->assertStringNotContainsString('FAC-VENTA', $creditNotesSell);
+            $this->assertStringNotContainsString('NC-COMPRA', $creditNotesSell);
+
+            $this->assertStringContainsString('NC-COMPRA', $creditNotesBuy);
+            $this->assertStringContainsString('-50,00', $creditNotesBuy);
+            $this->assertStringNotContainsString('FAC-COMPRA', $creditNotesBuy);
+        } finally
+        {
+            Carbon::setTestNow();
+        }
+    }
+
+    private function createBookInvoice(
+        string $operation,
+        int $typeId,
+        int $status,
+        string $date,
+        string $number,
+        float $gross,
+        ?string $sourceReferenceId = null,
+    ): void {
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => $typeId,
+            'operation' => $operation,
+            'number' => $number,
+            'date' => $date,
+            'gross_amount' => $gross,
+            'total_amount' => round($gross * 1.21, 2),
+            'balance' => 0,
+            'status' => $status,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'manual',
+            'source_reference_id' => $sourceReferenceId,
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'description' => 'Line',
+            'quantity' => 1,
+            'unit_price' => $gross,
+            'discount' => 0,
+            'tax_percentage' => 21,
+        ]);
     }
 }
