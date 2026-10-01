@@ -13,7 +13,6 @@ class StripeInvoiceCreditNoteService
 {
     public function __construct(
         private readonly StripeInvoiceSyncRefresher $invoiceSyncRefresher,
-        private readonly StripeInvoiceCoreImportService $coreImportService,
         private readonly StripeCreditNoteCoreImportService $creditNoteCoreImportService,
         private readonly StripeCreditNoteCreatePayloadBuilder $payloadBuilder,
     ) {}
@@ -40,7 +39,7 @@ class StripeInvoiceCreditNoteService
         }
 
         $externalId = (string) $invoice->source_reference_id;
-        $client = new StripeClient($secret);
+        $client = $this->makeStripeClient($secret);
 
         try
         {
@@ -72,41 +71,10 @@ class StripeInvoiceCreditNoteService
             ]);
         }
 
-        // Refresh original invoice balance/status only — amounts stay as issued.
-        $originalSnapshot = [
-            'gross_amount' => (float) $invoice->gross_amount,
-            'total_amount' => (float) $invoice->total_amount,
-            'number' => (string) $invoice->number,
-            'date' => (string) $invoice->date,
-        ];
-
-        $sync = $this->invoiceSyncRefresher->refreshFromStripe($client, $team->id, $externalId);
-        if ($sync !== null)
-        {
-            $refreshed = $this->coreImportService->importFromSyncRow(
-                $sync->fresh(),
-                fallbackEmail: true,
-                linkCodeOnEmailMatch: true,
-            );
-
-            // Guard: never let a credit-note refresh rewrite the original fiscal document amounts/number.
-            if ($refreshed instanceof Invoice)
-            {
-                $needsRestore = abs((float) $refreshed->gross_amount - $originalSnapshot['gross_amount']) > 0.009
-                    || abs((float) $refreshed->total_amount - $originalSnapshot['total_amount']) > 0.009
-                    || (string) $refreshed->number !== $originalSnapshot['number'];
-
-                if ($needsRestore)
-                {
-                    $refreshed->forceFill([
-                        'gross_amount' => $originalSnapshot['gross_amount'],
-                        'total_amount' => $originalSnapshot['total_amount'],
-                        'number' => $originalSnapshot['number'],
-                        'date' => $originalSnapshot['date'],
-                    ])->save();
-                }
-            }
-        }
+        // Stripe updates the invoice after a credit note (balance, credited amount).
+        // That copy is stored on invoice_syncs only. Re-importing it would rewrite
+        // the issued document: number, date, base, VAT, and lines stay as issued.
+        $this->invoiceSyncRefresher->refreshFromStripe($client, $team->id, $externalId);
 
         // Separate abono document (negative in Hacienda export).
         $abono = $this->creditNoteCoreImportService->importFromStripePayload(
@@ -123,5 +91,10 @@ class StripeInvoiceCreditNoteService
                 ? round(((int) $creditNote->amount) / 100, 2)
                 : null,
         ];
+    }
+
+    protected function makeStripeClient(string $secret): StripeClient
+    {
+        return new StripeClient($secret);
     }
 }

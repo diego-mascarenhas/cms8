@@ -148,6 +148,85 @@ class VatHaciendaCreditNoteExportTest extends TestCase
         $this->assertStringContainsString('Nota de Crédito', $creditNotesCsv);
     }
 
+    public function test_spain_credit_note_with_mismatched_line_exports_header_base_and_vat(): void
+    {
+        $original = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0720',
+            'date' => '2024-05-08',
+            'gross_amount' => 600,
+            'total_amount' => 726,
+            'balance' => 0,
+            'status' => 2,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_0720',
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $original->id,
+            'description' => 'Line stored below the header base',
+            'quantity' => 1,
+            'unit_price' => 60,
+            'discount' => 0,
+            'tax_percentage' => 21,
+        ]);
+
+        $abono = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => '0005-0720-CN-01',
+            'date' => '2024-05-18',
+            'gross_amount' => 600,
+            'total_amount' => 726,
+            'balance' => 0,
+            'status' => 4,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_0720',
+        ]);
+
+        InvoiceItem::query()->create([
+            'invoice_id' => $abono->id,
+            'description' => 'Line stored below the header base',
+            'quantity' => 1,
+            'unit_price' => 60,
+            'discount' => 0,
+            'tax_percentage' => 21,
+        ]);
+
+        $salesCsv = $this->get(route('income.export-hacienda', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))->streamedContent();
+
+        $this->assertStringContainsString('0005-0720', $salesCsv);
+        $this->assertStringNotContainsString('0005-0720-CN-01', $salesCsv);
+        $this->assertStringContainsString('600,00', $salesCsv);
+        $this->assertStringContainsString('126,00', $salesCsv);
+        $this->assertStringContainsString('726,00', $salesCsv);
+        $this->assertStringNotContainsString('12,60', $salesCsv);
+        $this->assertStringNotContainsString('713,40', $salesCsv);
+
+        $creditNotesCsv = $this->get(route('income.export-credit-notes', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))->streamedContent();
+
+        $this->assertStringContainsString('0005-0720-CN-01', $creditNotesCsv);
+        $this->assertStringNotContainsString('0005-0720,', $creditNotesCsv);
+        $this->assertStringContainsString('-600,00', $creditNotesCsv);
+        $this->assertStringContainsString('-126,00', $creditNotesCsv);
+        $this->assertStringContainsString('-726,00', $creditNotesCsv);
+        $this->assertStringNotContainsString('-12,60', $creditNotesCsv);
+        $this->assertStringNotContainsString('-713,40', $creditNotesCsv);
+    }
+
     public function test_spain_sell_without_line_tax_uses_total_minus_gross_as_vat(): void
     {
         Invoice::withoutGlobalScopes()->create([
