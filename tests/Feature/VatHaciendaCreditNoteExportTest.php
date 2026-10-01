@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\Currency;
 use App\Models\Enterprise;
+use App\Models\EnterpriseBillingAddress;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceSync;
 use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTaxStatusTypeSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,6 +39,7 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             CurrencySeeder::class,
             EnterpriseTypeSeeder::class,
             EnterpriseStatusSeeder::class,
+            EnterpriseTaxStatusTypeSeeder::class,
             InvoiceTypeSeeder::class,
         ]);
 
@@ -385,6 +389,112 @@ class VatHaciendaCreditNoteExportTest extends TestCase
         {
             Carbon::setTestNow();
         }
+    }
+
+    public function test_credit_note_export_uses_the_original_invoice_tax_id(): void
+    {
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0396',
+            'date' => '2024-05-01',
+            'gross_amount' => 100,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 2,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_tax_orig',
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_tax_orig',
+            'number' => '0005-0396',
+            'status' => 'paid',
+            'currency' => 'eur',
+            'customer_tax_id' => '30-7160149-98',
+            'total' => 100,
+            'paid' => true,
+            'last_synced_at' => now(),
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 2,
+            'operation' => 'sell',
+            'number' => 'CN-0005-0001',
+            'date' => '2024-05-12',
+            'gross_amount' => 100,
+            'total_amount' => 100,
+            'balance' => 0,
+            'status' => 4,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'cn_tax_orig',
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'provider' => 'stripe',
+            'external_id' => 'cn_tax_orig',
+            'number' => '0005-0396-CN-01',
+            'status' => 'issued',
+            'currency' => 'eur',
+            'total' => 100,
+            'paid' => true,
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'id' => 'cn_tax_orig',
+                'invoice' => 'in_tax_orig',
+            ],
+        ]);
+
+        $csv = $this->get(route('income.export-credit-notes', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))->streamedContent();
+
+        $this->assertStringContainsString('CN-0005-0001', $csv);
+        $this->assertStringContainsString('30-7160149-98', $csv);
+    }
+
+    public function test_purchase_export_uses_the_supplier_tax_id(): void
+    {
+        EnterpriseBillingAddress::query()->create([
+            'enterprise_id' => $this->enterprise->id,
+            'name' => 'Proveedor SL',
+            'tax_status_type_id' => 1,
+            'identification_number' => 'B83834747',
+            'status' => 1,
+        ]);
+
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $this->user->currentTeam->id,
+            'enterprise_id' => $this->enterprise->id,
+            'type_id' => 1,
+            'operation' => 'buy',
+            'number' => 'ES4353227',
+            'date' => '2024-05-08',
+            'gross_amount' => 50,
+            'total_amount' => 60.5,
+            'balance' => 0,
+            'status' => 2,
+            'currency_id' => $this->eurCurrencyId,
+            'source_provider' => 'manual',
+        ]);
+
+        $csv = $this->get(route('expense.export-hacienda', [
+            'vat_year' => 2024,
+            'vat_period' => 'm:5',
+        ]))->streamedContent();
+
+        $this->assertStringContainsString('ES4353227', $csv);
+        $this->assertStringContainsString('B83834747', $csv);
     }
 
     private function createBookInvoice(

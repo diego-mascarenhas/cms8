@@ -18,6 +18,15 @@
     <div class="d-flex flex-column justify-content-center">
         <h4 class="mb-1 mt-3">{{ __('Accounting Dashboard') }}</h4>
         <p class="text-muted mb-0">{{ __('Financial overview and indicators') }}</p>
+        <p class="mb-0 mt-1">
+            <a href="{{ route('finance-dashboard.exchange-rates') }}">{{ __('Exchange rates') }}</a>
+            @if ($exchangeRates['updated_at'])
+                <span class="text-muted">· {{ __('Updated :datetime', ['datetime' => $exchangeRates['updated_at']->timezone('Europe/Madrid')->format('d/m/Y H:i')]) }}</span>
+                @if ($exchangeRates['quote_date'])
+                    <span class="text-muted">· {{ __('Latest quote :date', ['date' => \Carbon\Carbon::parse($exchangeRates['quote_date'])->format('d/m/Y')]) }}</span>
+                @endif
+            @endif
+        </p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
         <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-center">
