@@ -7,7 +7,9 @@ use App\Models\InvoiceSync;
 use App\Models\Team;
 use App\Services\Billing\StripeCreditNoteCoreImportService;
 use App\Services\Finance\CreditNoteNumberAllocator;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Stripe\StripeClient;
 
@@ -15,6 +17,8 @@ class BackfillCreditNoteNumbersCommand extends Command
 {
     protected $signature = 'invoices:backfill-credit-note-numbers
                             {--team_id= : Limit to one team}
+                            {--from= : Renumber only notes on or after this date (Y-m-d). Sequence restarts at 0001}
+                            {--to= : Renumber only notes on or before this date (Y-m-d)}
                             {--sync-stripe : Pull credit notes from Stripe first}
                             {--dry-run : Preview without writing}';
 
@@ -32,6 +36,15 @@ class BackfillCreditNoteNumbersCommand extends Command
         $dryRun = (bool) $this->option('dry-run');
         $syncStripe = (bool) $this->option('sync-stripe');
         $teamId = $this->option('team_id') !== null ? (int) $this->option('team_id') : null;
+        $from = $this->option('from') !== null ? Carbon::parse((string) $this->option('from'))->startOfDay() : null;
+        $to = $this->option('to') !== null ? Carbon::parse((string) $this->option('to'))->endOfDay() : null;
+
+        if ($from instanceof Carbon && $to instanceof Carbon && $from->greaterThan($to))
+        {
+            $this->error('--from must be on or before --to.');
+
+            return self::FAILURE;
+        }
 
         $teams = Team::query()
             ->when($teamId, fn ($query) => $query->whereKey($teamId))
@@ -48,7 +61,7 @@ class BackfillCreditNoteNumbersCommand extends Command
                 $imported += $this->syncStripeCreditNotes($team, $dryRun);
             }
 
-            $renumbered += $this->renumberTeamCreditNotes((int) $team->id, $dryRun);
+            $renumbered += $this->renumberTeamCreditNotes((int) $team->id, $dryRun, $from, $to);
         }
 
         $this->info(
@@ -140,14 +153,25 @@ class BackfillCreditNoteNumbersCommand extends Command
         return $imported;
     }
 
-    private function renumberTeamCreditNotes(int $teamId, bool $dryRun): int
+    private function renumberTeamCreditNotes(int $teamId, bool $dryRun, ?Carbon $from = null, ?Carbon $to = null): int
     {
-        $creditNotes = Invoice::withoutGlobalScopes()
+        $query = Invoice::withoutGlobalScopes()
             ->where('team_id', $teamId)
             ->where('type_id', 2)
             ->orderBy('date')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        if ($from instanceof Carbon)
+        {
+            $query->whereDate('date', '>=', $from->toDateString());
+        }
+
+        if ($to instanceof Carbon)
+        {
+            $query->whereDate('date', '<=', $to->toDateString());
+        }
+
+        $creditNotes = $query->get();
 
         if ($creditNotes->isEmpty())
         {
@@ -155,7 +179,7 @@ class BackfillCreditNoteNumbersCommand extends Command
         }
 
         $counters = [];
-        $renumbered = 0;
+        $assignments = [];
 
         foreach ($creditNotes as $creditNote)
         {
@@ -164,30 +188,70 @@ class BackfillCreditNoteNumbersCommand extends Command
             );
 
             $counters[$serie] = ($counters[$serie] ?? 0) + 1;
-            $next = sprintf('CN-%s-%04d', $serie, $counters[$serie]);
+            $assignments[] = [
+                'invoice' => $creditNote,
+                'next' => sprintf('CN-%s-%04d', $serie, $counters[$serie]),
+            ];
+        }
 
-            if ((string) $creditNote->number === $next)
+        $renumbered = 0;
+
+        foreach ($assignments as $assignment)
+        {
+            if ((string) $assignment['invoice']->number !== $assignment['next'])
             {
+                $renumbered++;
+                $this->line(
+                    ($dryRun ? '[dry-run] ' : '').
+                    "{$assignment['invoice']->number} → {$assignment['next']}",
+                );
+            }
+        }
+
+        if ($dryRun || $renumbered === 0)
+        {
+            if (! $dryRun)
+            {
+                foreach ($creditNotes as $creditNote)
+                {
+                    $this->preserveProviderNumberOnSync($creditNote);
+                }
+            }
+
+            return $renumbered;
+        }
+
+        DB::transaction(function () use ($assignments): void
+        {
+            foreach ($assignments as $assignment)
+            {
+                /** @var Invoice $creditNote */
+                $creditNote = $assignment['invoice'];
                 $this->preserveProviderNumberOnSync($creditNote);
 
-                continue;
+                if ((string) $creditNote->number === $assignment['next'])
+                {
+                    continue;
+                }
+
+                $creditNote->number = 'CN-RENUM-'.$creditNote->id;
+                $creditNote->save();
             }
 
-            if ($dryRun)
+            foreach ($assignments as $assignment)
             {
-                $this->line("[dry-run] {$creditNote->number} → {$next}");
-                $renumbered++;
+                /** @var Invoice $creditNote */
+                $creditNote = $assignment['invoice'];
 
-                continue;
+                if ((string) $creditNote->number === $assignment['next'])
+                {
+                    continue;
+                }
+
+                $creditNote->number = $assignment['next'];
+                $creditNote->save();
             }
-
-            $this->preserveProviderNumberOnSync($creditNote);
-
-            $creditNote->number = $next;
-            $creditNote->save();
-            $renumbered++;
-            $this->line("Renumbered id={$creditNote->id} → {$next}");
-        }
+        });
 
         return $renumbered;
     }

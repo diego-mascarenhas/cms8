@@ -15,6 +15,7 @@ class StripeInvoiceCreditNoteService
         private readonly StripeInvoiceSyncRefresher $invoiceSyncRefresher,
         private readonly StripeCreditNoteCoreImportService $creditNoteCoreImportService,
         private readonly StripeCreditNoteCreatePayloadBuilder $payloadBuilder,
+        private readonly StripeCreditNoteMetadataWriter $metadataWriter,
     ) {}
 
     /**
@@ -82,6 +83,11 @@ class StripeInvoiceCreditNoteService
             $creditNote->toArray(),
             $invoice->fresh() ?? $invoice,
         );
+
+        if ($abono instanceof Invoice)
+        {
+            $this->metadataWriter->push($client, $abono);
+        }
 
         return [
             'credit_note_id' => (string) $creditNote->id,

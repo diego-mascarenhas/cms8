@@ -9,6 +9,7 @@ use App\Models\InvoiceSync;
 use App\Models\Team;
 use App\Services\Billing\StripeCreditNoteCoreImportService;
 use App\Services\Billing\StripeCreditNoteCreatePayloadBuilder;
+use App\Services\Billing\StripeCreditNoteMetadataWriter;
 use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Billing\StripeInvoiceSyncRefresher;
 use Carbon\Carbon;
@@ -157,15 +158,26 @@ class StripeInvoiceCreditNoteServiceTest extends TestCase
             }
         };
 
-        $creditNotesApi = new class($creditNote)
+        $metadataUpdates = new \ArrayObject;
+        $creditNotesApi = new class($creditNote, $metadataUpdates)
         {
-            public function __construct(private object $creditNote) {}
+            public function __construct(private object $creditNote, private \ArrayObject $updates) {}
 
             /**
              * @param  array<string, mixed>  $params
              */
             public function create(array $params): object
             {
+                return $this->creditNote;
+            }
+
+            /**
+             * @param  array<string, mixed>  $params
+             */
+            public function update(string $id, array $params = []): object
+            {
+                $this->updates->append(['id' => $id, 'params' => $params]);
+
                 return $this->creditNote;
             }
         };
@@ -199,15 +211,16 @@ class StripeInvoiceCreditNoteServiceTest extends TestCase
                 'amount' => 12100,
             ]);
 
-        $service = new class($refresher, app(StripeCreditNoteCoreImportService::class), $payloadBuilder, $client) extends StripeInvoiceCreditNoteService
+        $service = new class($refresher, app(StripeCreditNoteCoreImportService::class), $payloadBuilder, app(StripeCreditNoteMetadataWriter::class), $client) extends StripeInvoiceCreditNoteService
         {
             public function __construct(
                 StripeInvoiceSyncRefresher $refresher,
                 StripeCreditNoteCoreImportService $creditNoteImporter,
                 StripeCreditNoteCreatePayloadBuilder $payloadBuilder,
+                StripeCreditNoteMetadataWriter $metadataWriter,
                 private readonly StripeClient $client,
             ) {
-                parent::__construct($refresher, $creditNoteImporter, $payloadBuilder);
+                parent::__construct($refresher, $creditNoteImporter, $payloadBuilder, $metadataWriter);
             }
 
             protected function makeStripeClient(string $secret): StripeClient
@@ -240,5 +253,9 @@ class StripeInvoiceCreditNoteServiceTest extends TestCase
         $this->assertSame(100.0, (float) $abono->gross_amount);
         $this->assertSame(121.0, (float) $abono->total_amount);
         $this->assertSame('cn_keep_original', $result['credit_note_id']);
+        $this->assertCount(1, $metadataUpdates);
+        $this->assertSame('cn_keep_original', $metadataUpdates[0]['id']);
+        $this->assertSame('CN-0005-0001', $metadataUpdates[0]['params']['metadata']['humano_credit_note_number']);
+        $this->assertSame((string) $abono->id, $metadataUpdates[0]['params']['metadata']['humano_credit_note_id']);
     }
 }
