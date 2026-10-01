@@ -14,6 +14,7 @@ use App\Models\Team;
 use Carbon\Carbon;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 
@@ -28,6 +29,7 @@ class ManualInvoiceDocumentService
         int $teamId,
         ?UploadedFile $documentFile,
         string $operation,
+        ?string $pendingDocumentToken = null,
     ): array {
         if (! in_array($operation, ['buy', 'sell'], true))
         {
@@ -63,6 +65,7 @@ class ManualInvoiceDocumentService
             $paymentEntries,
             $isDraft,
             $operation,
+            $pendingDocumentToken,
         ): void {
             $invoice = Invoice::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
@@ -88,6 +91,19 @@ class ManualInvoiceDocumentService
                 (int) $invoice->id,
                 $operation,
             );
+
+            if (! is_string($storedDocumentPath) || $storedDocumentPath === '')
+            {
+                $storedDocumentPath = $this->adoptPendingDocument(
+                    $teamId,
+                    (int) $invoice->id,
+                    $operation,
+                    $pendingDocumentToken,
+                );
+            } elseif (is_string($pendingDocumentToken) && $pendingDocumentToken !== '')
+            {
+                $this->deletePendingDocument($teamId, $pendingDocumentToken);
+            }
 
             $this->createInvoiceItems($invoice, $lineSummaries, $categoryId);
 
@@ -121,6 +137,57 @@ class ManualInvoiceDocumentService
         });
 
         return ['is_draft' => $isDraft];
+    }
+
+    public function attachDocument(Invoice $invoice, UploadedFile $documentFile): string
+    {
+        $operation = (string) $invoice->operation === 'sell' ? 'sell' : 'buy';
+        $storedPath = $this->storeDocumentFile(
+            $documentFile,
+            (int) $invoice->team_id,
+            (int) $invoice->id,
+            $operation,
+        );
+
+        if (! is_string($storedPath) || $storedPath === '')
+        {
+            throw new InvalidArgumentException('The document could not be stored.');
+        }
+
+        $this->deleteSiblingDocuments($storedPath);
+
+        return $storedPath;
+    }
+
+    public function storedRelativePath(Invoice $invoice): ?string
+    {
+        $teamHash = Team::generateTeamHash((int) $invoice->team_id);
+        $invoiceHash = substr(md5('invoice_salt_'.$invoice->id.'_'.config('app.key')), 0, 8);
+        $root = (string) $invoice->operation === 'sell' ? 'invoices' : 'expenses';
+        $directory = $root.'/'.$teamHash.'/'.$invoiceHash;
+        $files = Storage::disk('public')->exists($directory)
+            ? Storage::disk('public')->files($directory)
+            : [];
+        $file = $files[0] ?? null;
+
+        return is_string($file) && $file !== '' ? $file : null;
+    }
+
+    private function deleteSiblingDocuments(string $storedPath): void
+    {
+        $directory = dirname($storedPath);
+        if ($directory === '' || $directory === '.')
+        {
+            return;
+        }
+
+        foreach (Storage::disk('public')->files($directory) as $file)
+        {
+            if ($file !== $storedPath)
+            {
+                Storage::disk('public')->delete($file);
+            }
+        }
     }
 
     /**
@@ -217,19 +284,76 @@ class ManualInvoiceDocumentService
         }
     }
 
-    private function storeDocumentFile(
-        ?UploadedFile $documentFile,
+    public function storePendingDocument(UploadedFile $documentFile, int $teamId): string
+    {
+        $token = Str::random(40);
+        $teamHash = Team::generateTeamHash($teamId);
+        $fileName = $this->documentFileName($documentFile, false);
+        $documentFile->storeAs(
+            "expenses-pending/{$teamHash}/{$token}",
+            $fileName,
+            'public',
+        );
+
+        return $token;
+    }
+
+    private function adoptPendingDocument(
         int $teamId,
         int $invoiceId,
         string $operation,
+        ?string $token,
     ): ?string {
-        if (! $documentFile instanceof UploadedFile)
+        $directory = $this->pendingDocumentDirectory($teamId, $token);
+
+        if ($directory === null)
+        {
+            return null;
+        }
+
+        $source = collect(Storage::disk('public')->files($directory))
+            ->first(fn (string $path): bool => ! str_contains($path, '..'));
+
+        if (! is_string($source) || $source === '')
         {
             return null;
         }
 
         $teamHash = Team::generateTeamHash($teamId);
         $invoiceHash = substr(md5('invoice_salt_'.$invoiceId.'_'.config('app.key')), 0, 8);
+        $rootDirectory = $operation === 'sell' ? 'invoices' : 'expenses';
+        $target = "{$rootDirectory}/{$teamHash}/{$invoiceHash}/".basename($source);
+
+        Storage::disk('public')->move($source, $target);
+        Storage::disk('public')->deleteDirectory($directory);
+
+        return $target;
+    }
+
+    private function deletePendingDocument(int $teamId, ?string $token): void
+    {
+        $directory = $this->pendingDocumentDirectory($teamId, $token);
+
+        if ($directory === null)
+        {
+            return;
+        }
+
+        Storage::disk('public')->deleteDirectory($directory);
+    }
+
+    private function pendingDocumentDirectory(int $teamId, ?string $token): ?string
+    {
+        if (! is_string($token) || preg_match('/^[A-Za-z0-9]{40}$/', $token) !== 1)
+        {
+            return null;
+        }
+
+        return 'expenses-pending/'.Team::generateTeamHash($teamId).'/'.$token;
+    }
+
+    private function documentFileName(UploadedFile $documentFile, bool $withTimestamp): string
+    {
         $originalName = pathinfo((string) $documentFile->getClientOriginalName(), PATHINFO_FILENAME);
         $extension = strtolower((string) $documentFile->getClientOriginalExtension());
         $normalizedName = Str::slug(Str::ascii($originalName));
@@ -244,7 +368,28 @@ class ManualInvoiceDocumentService
             $extension = 'pdf';
         }
 
-        $fileName = $normalizedName.'-'.now()->format('YmdHis').'.'.$extension;
+        if (! $withTimestamp)
+        {
+            return $normalizedName.'.'.$extension;
+        }
+
+        return $normalizedName.'-'.now()->format('YmdHis').'.'.$extension;
+    }
+
+    private function storeDocumentFile(
+        ?UploadedFile $documentFile,
+        int $teamId,
+        int $invoiceId,
+        string $operation,
+    ): ?string {
+        if (! $documentFile instanceof UploadedFile)
+        {
+            return null;
+        }
+
+        $teamHash = Team::generateTeamHash($teamId);
+        $invoiceHash = substr(md5('invoice_salt_'.$invoiceId.'_'.config('app.key')), 0, 8);
+        $fileName = $this->documentFileName($documentFile, true);
         $rootDirectory = $operation === 'sell' ? 'invoices' : 'expenses';
 
         return $documentFile->storeAs(

@@ -31,6 +31,7 @@ use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -130,6 +131,7 @@ class ExpenseController extends Controller
         $vatYear = $vatSelection['year'];
         $vatPeriod = $vatSelection['period'];
         $vatMode = $vatSelection['mode'];
+        $haciendaShareUrl = auth()->user()->currentTeam?->haciendaShareUrl($vatYear, $vatPeriod);
 
         return $dataTable->render('expense.index', compact(
             'accounts',
@@ -149,6 +151,7 @@ class ExpenseController extends Controller
             'vatYear',
             'vatPeriod',
             'vatMode',
+            'haciendaShareUrl',
         ));
     }
 
@@ -295,18 +298,24 @@ class ExpenseController extends Controller
     public function detectDocument(
         DetectExpenseDocumentRequest $request,
         ExpenseDocumentDetectionService $expenseDocumentDetectionService,
+        ManualInvoiceDocumentService $manualInvoiceDocumentService,
     ): JsonResponse {
         $this->authorize('create', Payment::class);
 
         $teamId = (int) $request->user()->currentTeam->id;
+        $documentFile = $request->file('document_file');
+        $pendingDocumentToken = $documentFile instanceof UploadedFile
+            ? $manualInvoiceDocumentService->storePendingDocument($documentFile, $teamId)
+            : null;
         $detectedData = $expenseDocumentDetectionService->detectFromUploadedFile(
-            $request->file('document_file'),
+            $documentFile,
             $teamId,
         );
 
         return response()->json([
             'success' => true,
             'data' => $detectedData,
+            'pending_document_token' => $pendingDocumentToken,
         ]);
     }
 
@@ -425,11 +434,15 @@ class ExpenseController extends Controller
         $this->authorize('create', Payment::class);
 
         $teamId = (int) $request->user()->currentTeam->id;
+        $validated = $request->validated();
         $result = $manualInvoiceDocumentService->store(
-            $request->validated(),
+            $validated,
             $teamId,
             $request->file('document_file'),
             'buy',
+            isset($validated['pending_document_token'])
+                ? (string) $validated['pending_document_token']
+                : null,
         );
 
         $message = $result['is_draft']

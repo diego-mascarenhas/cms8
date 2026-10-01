@@ -124,6 +124,7 @@
             @if (($documentFlow['mode'] ?? 'buy') === 'buy')
                 <div class="col-lg-7">
                     <input type="file" id="document_file" name="document_file" class="d-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                    <input type="hidden" id="pending_document_token" name="pending_document_token" value="{{ old('pending_document_token') }}">
                     <div
                         id="document-drop-zone"
                         class="border rounded p-4 h-100 position-relative overflow-hidden"
@@ -1584,6 +1585,7 @@
             event.preventDefault();
             event.stopPropagation();
             $documentInput.val('');
+            $('#pending_document_token').val('');
             updateDocumentName();
         });
 
@@ -2022,6 +2024,9 @@
                     }
 
                     applyDetectedDocumentData(response.data || {});
+                    if (response.pending_document_token) {
+                        $('#pending_document_token').val(response.pending_document_token);
+                    }
                     $documentDetectionStatus
                         .removeClass('text-muted text-danger')
                         .addClass('text-success')

@@ -107,6 +107,7 @@ class IncomeController extends Controller
         $vatYear = $vatSelection['year'];
         $vatPeriod = $vatSelection['period'];
         $vatMode = $vatSelection['mode'];
+        $haciendaShareUrl = auth()->user()->currentTeam?->haciendaShareUrl($vatYear, $vatPeriod);
 
         return $dataTable->render('income.index', compact(
             'accounts',
@@ -126,6 +127,7 @@ class IncomeController extends Controller
             'vatYear',
             'vatPeriod',
             'vatMode',
+            'haciendaShareUrl',
         ));
     }
 
