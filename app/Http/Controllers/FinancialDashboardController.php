@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\Finance\InvoiceAnalyticsService;
@@ -79,6 +80,7 @@ class FinancialDashboardController extends Controller
         }
 
         $profitMargin = $ytdIncome > 0 ? ($ytdProfit / $ytdIncome) * 100 : 0;
+        $exchangeRates = $this->exchangeRateSummary();
 
         return view('finance-dashboard.index', compact(
             'accounts',
@@ -93,7 +95,74 @@ class FinancialDashboardController extends Controller
             'monthlyData',
             'profitMargin',
             'reportingCurrency',
+            'exchangeRates',
         ));
+    }
+
+    public function exchangeRates(Request $request)
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $currentYear = Carbon::now()->year;
+        $requestedYear = (int) $request->query('year', $currentYear);
+        $selectedYear = $requestedYear > 0 ? $requestedYear : $currentYear;
+
+        $quotes = ExchangeRate::query()
+            ->where('base_currency', 'USD')
+            ->whereIn('target_currency', ['ARS', 'EUR'])
+            ->whereYear('date', $selectedYear)
+            ->orderByDesc('date')
+            ->get();
+
+        $rows = [];
+        foreach ($quotes as $quote)
+        {
+            $date = Carbon::parse($quote->date)->toDateString();
+            $rows[$date][$quote->target_currency] = (float) $quote->rate;
+            $rows[$date]['fetched_at'] = $quote->fetched_at;
+        }
+
+        foreach ($rows as $date => $row)
+        {
+            $rows[$date]['ars_eur'] = ExchangeRate::rateOnOrBeforeDate('ARS', 'EUR', $date);
+        }
+
+        $years = ExchangeRate::query()
+            ->where('base_currency', 'USD')
+            ->orderByDesc('date')
+            ->pluck('date')
+            ->map(fn ($date): int => Carbon::parse($date)->year)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! in_array($currentYear, $years, true))
+        {
+            array_unshift($years, $currentYear);
+        }
+
+        return view('finance-dashboard.exchange-rates', [
+            'rows' => $rows,
+            'selectedYear' => $selectedYear,
+            'availableYears' => $years,
+            'exchangeRates' => $this->exchangeRateSummary(),
+        ]);
+    }
+
+    /**
+     * @return array{quote_date: ?string, updated_at: ?Carbon}
+     */
+    private function exchangeRateSummary(): array
+    {
+        $quoteDate = ExchangeRate::query()
+            ->where('base_currency', 'USD')
+            ->max('date');
+        $updatedAt = ExchangeRate::query()->max('fetched_at');
+
+        return [
+            'quote_date' => $quoteDate ? Carbon::parse($quoteDate)->toDateString() : null,
+            'updated_at' => $updatedAt ? Carbon::parse($updatedAt) : null,
+        ];
     }
 
     public function projection(Request $request)

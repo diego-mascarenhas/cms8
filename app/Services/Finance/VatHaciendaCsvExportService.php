@@ -4,6 +4,7 @@ namespace App\Services\Finance;
 
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
+use App\Models\InvoiceSync;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -142,7 +143,7 @@ class VatHaciendaCsvExportService
             ->with([
                 'items',
                 'currency',
-                'enterprise',
+                'enterprise.enterpriseBillingAddresses',
                 'billingAddress',
                 'stripeInvoiceSync',
             ]);
@@ -303,15 +304,62 @@ class VatHaciendaCsvExportService
 
     private function resolveTaxId(Invoice $invoice): string
     {
+        $own = $this->taxIdFromInvoice($invoice);
+        if ($own !== '')
+        {
+            return $own;
+        }
+
+        if ($invoice->isCreditNote())
+        {
+            $original = $invoice->originalInvoice();
+            if ($original instanceof Invoice)
+            {
+                $original->loadMissing(['billingAddress', 'stripeInvoiceSync']);
+                $fromOriginal = $this->taxIdFromInvoice($original);
+                if ($fromOriginal !== '')
+                {
+                    return $fromOriginal;
+                }
+            }
+        }
+
+        return $this->taxIdFromEnterprise($invoice);
+    }
+
+    private function taxIdFromInvoice(Invoice $invoice): string
+    {
         $billingTaxId = trim((string) ($invoice->billingAddress?->identification_number ?? ''));
         if ($billingTaxId !== '')
         {
             return $this->cleanTaxId($billingTaxId);
         }
 
-        $syncTaxId = trim((string) ($invoice->stripeInvoiceSync?->customer_tax_id ?? ''));
+        $sync = $invoice->stripeInvoiceSync;
+        $syncTaxId = trim((string) ($sync?->customer_tax_id ?? ''));
+        if ($syncTaxId === '' && $sync instanceof InvoiceSync)
+        {
+            $syncTaxId = trim((string) data_get($sync->raw_payload, 'customer_tax_ids.0.value', ''));
+        }
 
         return $this->cleanTaxId($syncTaxId);
+    }
+
+    private function taxIdFromEnterprise(Invoice $invoice): string
+    {
+        $addresses = $invoice->enterprise?->enterpriseBillingAddresses;
+        if ($addresses === null || $addresses->isEmpty())
+        {
+            return '';
+        }
+
+        $withNumber = $addresses->filter(
+            fn ($address): bool => trim((string) $address->identification_number) !== '',
+        );
+        $active = $withNumber->first(fn ($address): bool => (int) $address->status === 1);
+        $address = $active ?? $withNumber->first();
+
+        return $address ? $this->cleanTaxId((string) $address->identification_number) : '';
     }
 
     private function cleanTaxId(string $taxId): string

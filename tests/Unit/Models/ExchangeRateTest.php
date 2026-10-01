@@ -3,6 +3,7 @@
 namespace Tests\Unit\Models;
 
 use App\Models\ExchangeRate;
+use App\Models\ExchangeRateHistory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -46,6 +47,59 @@ class ExchangeRateTest extends TestCase
         $this->assertNotNull($rate);
         $this->assertEqualsWithDelta(0.0009, $rate, 0.0000001);
         $this->assertEqualsWithDelta(0.90, ExchangeRate::convertOnOrBeforeDate(1000, 'ARS', 'EUR', '2024-05-10'), 0.01);
+    }
+
+    public function test_invoice_date_uses_that_days_quote_instead_of_the_monthly_history(): void
+    {
+        ExchangeRateHistory::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'ARS',
+            'rate_month' => '2026-05-01',
+            'rate' => 1408,
+            'fetched_at' => now(),
+            'provider' => 'bcra',
+        ]);
+        ExchangeRateHistory::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'EUR',
+            'rate_month' => '2026-06-01',
+            'rate' => 0.87712,
+            'fetched_at' => now(),
+            'provider' => 'frankfurter',
+        ]);
+
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'ARS',
+            'rate' => 1500,
+            'date' => '2026-07-24',
+            'fetched_at' => now(),
+        ]);
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'EUR',
+            'rate' => 0.86,
+            'date' => '2026-07-24',
+            'fetched_at' => now(),
+        ]);
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'ARS',
+            'rate' => 1600,
+            'date' => '2026-09-25',
+            'fetched_at' => now(),
+        ]);
+        ExchangeRate::query()->create([
+            'base_currency' => 'USD',
+            'target_currency' => 'EUR',
+            'rate' => 0.88,
+            'date' => '2026-09-25',
+            'fetched_at' => now(),
+        ]);
+
+        $this->assertEqualsWithDelta(0.86 / 1500, ExchangeRate::rateOnOrBeforeDate('ARS', 'EUR', '2026-07-24'), 0.0000001);
+        $this->assertEqualsWithDelta(0.88 / 1600, ExchangeRate::rateOnOrBeforeDate('ARS', 'EUR', '2026-09-25'), 0.0000001);
+        $this->assertEqualsWithDelta(0.86 / 1500, ExchangeRate::rateOnOrBeforeDate('ARS', 'EUR', '2026-07-26'), 0.0000001);
     }
 
     public function test_store_daily_if_changed_creates_new_rate(): void

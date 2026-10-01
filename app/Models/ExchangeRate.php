@@ -208,7 +208,7 @@ class ExchangeRate extends Model
 
     /**
      * Full-precision rate from → to on or before the given date (invoice date for fiscal exports).
-     * Tries monthly history (direct, inverse, USD bridge), then latest daily rates.
+     * Uses the daily quote of that date, then monthly history, then the latest rate.
      *
      * @param  string|\Carbon\Carbon  $date
      */
@@ -225,6 +225,16 @@ class ExchangeRate extends Model
         if ($from === $to)
         {
             return 1.0;
+        }
+
+        $dateString = $date instanceof Carbon
+            ? $date->toDateString()
+            : Carbon::parse($date)->toDateString();
+
+        $daily = static::dailyRateOnOrBefore($from, $to, $dateString);
+        if ($daily !== null)
+        {
+            return $daily;
         }
 
         $history = ExchangeRateHistory::latestRateOnOrBefore($from, $to, $date);
@@ -251,6 +261,53 @@ class ExchangeRate extends Model
         }
 
         return static::getLatestRate($from, $to);
+    }
+
+    /**
+     * Latest stored daily quote for a pair on or before a date.
+     */
+    public static function latestDailyOnOrBefore(string $base, string $target, string $date): ?self
+    {
+        return static::query()
+            ->where('base_currency', strtoupper($base))
+            ->where('target_currency', strtoupper($target))
+            ->whereDate('date', '<=', $date)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Daily rate from → to on or before the date. Each leg of a USD bridge
+     * uses its own last quote on or before that date, so a weekend invoice
+     * keeps the previous business day's rate.
+     */
+    public static function dailyRateOnOrBefore(string $from, string $to, string $date): ?float
+    {
+        $direct = static::latestDailyOnOrBefore($from, $to, $date);
+        if ($direct)
+        {
+            return (float) $direct->rate;
+        }
+
+        $inverse = static::latestDailyOnOrBefore($to, $from, $date);
+        if ($inverse && (float) $inverse->rate > 0)
+        {
+            return 1 / (float) $inverse->rate;
+        }
+
+        if ($from !== 'USD' && $to !== 'USD')
+        {
+            $usdToFrom = static::latestDailyOnOrBefore('USD', $from, $date);
+            $usdToTo = static::latestDailyOnOrBefore('USD', $to, $date);
+
+            if ($usdToFrom && $usdToTo && (float) $usdToFrom->rate > 0)
+            {
+                return (1 / (float) $usdToFrom->rate) * (float) $usdToTo->rate;
+            }
+        }
+
+        return null;
     }
 
     /**
