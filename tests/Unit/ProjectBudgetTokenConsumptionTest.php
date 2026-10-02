@@ -470,6 +470,29 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
     }
 
     #[Test]
+    public function it_keeps_the_saved_hours_tokens_balance_on_the_quote_total(): void
+    {
+        $service = new ProjectBudgetSpecService;
+        $project = new \App\Models\Project([
+            'discount' => 0,
+            'price' => 367,
+            'data' => [
+                'ai_usage_percent' => 0,
+                'token_consumption' => ['savings_percent' => 57],
+                'suggested_tasks' => [
+                    ['title' => 'Design', 'included' => true, 'estimated_hours' => 2, 'unit_price' => 120, 'estimated_tokens' => 40000],
+                    ['title' => 'Layout', 'included' => true, 'estimated_hours' => 4, 'unit_price' => 180, 'estimated_tokens' => 80000],
+                    ['title' => 'Form', 'included' => true, 'estimated_hours' => 1, 'unit_price' => 45, 'estimated_tokens' => 20000],
+                    ['title' => 'Review', 'included' => true, 'estimated_hours' => 0.5, 'unit_price' => 15, 'estimated_tokens' => 10000],
+                ],
+            ],
+        ]);
+
+        $this->assertSame(0.0, $service->resolveProjectAiUsagePercent($project->data));
+        $this->assertSame(368, $service->computeQuoteTotals($project)['payable_total']);
+    }
+
+    #[Test]
     public function it_derives_ai_usage_percent_from_the_token_model(): void
     {
         $service = new ProjectBudgetSpecService;
@@ -478,6 +501,9 @@ class ProjectBudgetTokenConsumptionTest extends TestCase
             $service->aiUsagePercentFromTokenModel(ProjectBudgetSpecService::DEFAULT_TOKEN_MODEL),
             $service->resolveProjectAiUsagePercent([]),
         );
+        $this->assertSame(0.0, $service->resolveProjectAiUsagePercent([
+            'ai_usage_percent' => 0,
+        ]));
         $this->assertSame(0.0, $service->setTokenInclude(false)->resolveProjectAiUsagePercent([]));
         $service->setTokenInclude(true);
 

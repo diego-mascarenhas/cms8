@@ -192,14 +192,11 @@
                         });
                         var html = buildSuggestedTasksTable(res.suggested_tasks);
                         $('#suggested-tasks-container').html(html).removeClass('d-none');
-                        $('#suggested-tasks-toggle').removeClass('d-none');
                         $('#data_suggested_tasks').val(JSON.stringify(res.suggested_tasks));
                         applyTokenConsumption(res.token_consumption, res.suggested_tasks);
                         refreshBudgetPreview();
-                        $('#suggested-tasks-container').addClass('d-none');
                     } else {
                         $('#suggested-tasks-container').addClass('d-none').empty();
-                        $('#suggested-tasks-toggle').addClass('d-none');
                         $('#data_suggested_tasks').val('');
                         applyTokenConsumption(res.token_consumption, []);
                         refreshBudgetPreview();
@@ -662,16 +659,6 @@
         refreshBudgetPreview();
     });
 
-    $('#suggested-tasks-toggle-btn').on('click', function() {
-        var container = $('#suggested-tasks-container');
-        var btn = $(this);
-        var isHidden = container.hasClass('d-none');
-        container.toggleClass('d-none');
-        btn.attr('aria-expanded', isHidden);
-        btn.find('.ti-chevron-down').toggleClass('ti-chevron-down', !isHidden).toggleClass('ti-chevron-up', isHidden);
-        btn.find('.toggle-label').text(isHidden ? '{{ __("Hide breakdown") }}' : '{{ __("Edit breakdown") }}');
-    });
-
     $(function() {
         var existingHtml = ($('#data_budget_preview_html').val() || '').trim();
         if (typeof Quill !== 'undefined' && document.getElementById('budget-preview-editor')) {
@@ -982,14 +969,9 @@
 				<input type="hidden" name="data[token_consumption][currency]" value="{{ $tokenConsumption['currency'] ?? 'EUR' }}">
 			</div>
 
-			<!-- Suggested tasks (filled by AI, persisted in project data). Hidden by default; show via "Edit breakdown" link. -->
+			<!-- Suggested tasks (filled by AI, persisted in project data). -->
 			<input type="hidden" name="data[suggested_tasks]" id="data_suggested_tasks" value="{{ json_encode(old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []))) }}">
-			<div class="col-12 mb-2 {{ empty($savedSuggested) || !is_array($savedSuggested) ? 'd-none' : '' }}" id="suggested-tasks-toggle">
-				<button type="button" class="btn btn-sm btn-label-secondary" id="suggested-tasks-toggle-btn" aria-expanded="false">
-					<i class="ti ti-chevron-down me-1"></i><span class="toggle-label">{{ __('Edit breakdown') }}</span>
-				</button>
-			</div>
-			<div class="col-12 d-none" id="suggested-tasks-container">
+			<div class="col-12 {{ empty($savedSuggested) || !is_array($savedSuggested) ? 'd-none' : '' }}" id="suggested-tasks-container">
 				@if(!empty($savedSuggested) && is_array($savedSuggested))
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
