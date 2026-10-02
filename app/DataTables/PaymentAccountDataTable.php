@@ -77,7 +77,6 @@ class PaymentAccountDataTable extends DataTable
     {
         return $model
             ->newQuery()
-            ->withoutGlobalScope('activeStatus')
             ->with(['currency', 'paymentTypes']);
     }
 
