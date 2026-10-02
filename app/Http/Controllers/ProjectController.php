@@ -136,6 +136,11 @@ class ProjectController extends Controller
             $attributes = $this->keepApprovedBudgetCircuit($existing, $attributes);
         }
 
+        if ($existing && $existing->quoteValueIsLocked())
+        {
+            $attributes = $this->keepLockedQuoteValue($existing, $attributes);
+        }
+
         if ($existing)
         {
             $existing->update($attributes);
@@ -1182,6 +1187,9 @@ class ProjectController extends Controller
             $startDate,
         );
 
+        $project->status_id = ProjectStatus::STATUS_INVOICED;
+        $project->save();
+
         if (! empty($result['scheduled']))
         {
             $message = __('Balance payments scheduled from :date.', ['date' => Carbon::parse($startDate)->format('d/m/Y')]);
@@ -1228,6 +1236,13 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
 
+        if ((int) $project->status_id === ProjectStatus::STATUS_INVOICED)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('An invoiced project cannot change status.'));
+        }
+
         if (! $project->isBudgetContentLocked())
         {
             return redirect()
@@ -1271,6 +1286,11 @@ class ProjectController extends Controller
             $validated = $this->keepApprovedBudgetCircuit($project, $validated);
         }
 
+        if ($project->quoteValueIsLocked())
+        {
+            $validated = $this->keepLockedQuoteValue($project, $validated);
+        }
+
         $project->update($validated);
 
         return redirect()
@@ -1307,6 +1327,49 @@ class ProjectController extends Controller
         }
 
         $attributes['data'] = $incoming;
+
+        return $attributes;
+    }
+
+    /**
+     * From in progress, the saved quote amount stays even if the owner edits the project.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function keepLockedQuoteValue(Project $project, array $attributes): array
+    {
+        $previous = is_array($project->data) ? $project->data : [];
+        $incoming = is_array($attributes['data'] ?? null) ? $attributes['data'] : $previous;
+        $previousTasks = is_array($previous['suggested_tasks'] ?? null) ? array_values($previous['suggested_tasks']) : [];
+        $incomingTasks = is_array($incoming['suggested_tasks'] ?? null) ? array_values($incoming['suggested_tasks']) : $previousTasks;
+
+        foreach ($incomingTasks as $index => $task)
+        {
+            if (! is_array($task))
+            {
+                continue;
+            }
+
+            $previousTask = $previousTasks[$index] ?? null;
+            if (is_array($previousTask) && array_key_exists('unit_price', $previousTask))
+            {
+                $task['unit_price'] = $previousTask['unit_price'];
+            }
+
+            $incomingTasks[$index] = $task;
+        }
+
+        $incoming['suggested_tasks'] = $incomingTasks;
+
+        if (array_key_exists('ai_usage_percent', $previous))
+        {
+            $incoming['ai_usage_percent'] = $previous['ai_usage_percent'];
+        }
+
+        $attributes['data'] = $incoming;
+        $attributes['discount'] = $project->discount;
+        $attributes['price'] = $project->price;
 
         return $attributes;
     }

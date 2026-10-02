@@ -14,8 +14,28 @@ class ProjectPolicy
      * Perform pre-authorization checks.
      * Admins have full access to everything in their team.
      */
-    public function before(User $user, string $ability): ?bool
+    public function before(User $user, string $ability, mixed ...$arguments): ?bool
     {
+        $project = $arguments[0] ?? null;
+
+        if ($project instanceof Project && in_array($ability, ['update', 'delete'], true))
+        {
+            if ($project->isInvoiced())
+            {
+                return false;
+            }
+
+            if ($project->quoteValueIsLocked())
+            {
+                $team = $project->team;
+
+                if (! $team || ! $user->ownsTeam($team))
+                {
+                    return false;
+                }
+            }
+        }
+
         if ($user->hasRole('admin'))
         {
             return true;

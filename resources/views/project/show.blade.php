@@ -58,7 +58,7 @@
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
 					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
 				</a>
-				@if ($project->isBudgetContentLocked())
+				@if ($project->isBudgetContentLocked() && (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED)
 					<button type="button" class="btn btn-outline-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
 						<i class="ti ti-exchange me-1"></i>{{ __('Change status') }}
 					</button>
@@ -140,7 +140,9 @@
 	</div>
 @endif
 
-@if (! empty($depositInvoicePreview) && (($depositInvoicePreview['already_invoiced'] ?? false) || empty($balanceInvoicePreview)))
+@if (! empty($depositInvoicePreview)
+	&& (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED
+	&& (($depositInvoicePreview['already_invoiced'] ?? false) || empty($balanceInvoicePreview)))
 	@php
 		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
 		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
@@ -739,7 +741,7 @@
 								@if($onBoard)
 									<span class="text-muted">{{ $responsibleName ?? '—' }}</span>
 									<span class="badge bg-label-success ms-1">{{ __('On board') }}</span>
-								@else
+								@elseif (auth()->user()->can('update', $project))
 								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
 									@csrf
 									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
@@ -760,6 +762,8 @@
 										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
 									</button>
 								</form>
+								@else
+									<span class="text-muted">{{ $responsibleName ?? '—' }}</span>
 								@endif
 							</td>
 						</tr>
@@ -1034,7 +1038,7 @@
 </div>
 @endif
 
-@if ($project->isBudgetContentLocked())
+@if ($project->isBudgetContentLocked() && (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED)
 @php
 	$lockedStatusOptions = \App\Models\ProjectStatus::query()
 		->whereIn('id', $project->allowedStatusIdsWhenLocked())

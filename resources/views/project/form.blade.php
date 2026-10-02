@@ -60,6 +60,7 @@
     var tokenOutputRate = {{ $tokenPricingService->tokenOutputRate() }};
     var tokenBlendPerMillion = {{ $tokenPricingService->tokenBlendEurPerMillion() }};
     var defaultAiUsagePercent = {{ (int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT }};
+    var quoteValueLocked = @json(isset($data->id) && $data->quoteValueIsLocked());
 
     function autoResizeTextarea(el) {
         if (!el) return;
@@ -192,14 +193,11 @@
                         });
                         var html = buildSuggestedTasksTable(res.suggested_tasks);
                         $('#suggested-tasks-container').html(html).removeClass('d-none');
-                        $('#suggested-tasks-toggle').removeClass('d-none');
                         $('#data_suggested_tasks').val(JSON.stringify(res.suggested_tasks));
                         applyTokenConsumption(res.token_consumption, res.suggested_tasks);
                         refreshBudgetPreview();
-                        $('#suggested-tasks-container').addClass('d-none');
                     } else {
                         $('#suggested-tasks-container').addClass('d-none').empty();
-                        $('#suggested-tasks-toggle').addClass('d-none');
                         $('#data_suggested_tasks').val('');
                         applyTokenConsumption(res.token_consumption, []);
                         refreshBudgetPreview();
@@ -415,7 +413,7 @@
             h += '<tr data-index="' + i + '"><td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + escapeHtml(hoursLabel) + '</td>';
             h += '<td class="text-end"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="' + i + '" value="' + tokens + '" placeholder="0"></td>';
             h += '<td class="text-end"><input type="text" class="form-control form-control-sm text-end suggested-resource-level" data-index="' + i + '" value="' + resLevel + '" placeholder="{{ __("e.g. Senior") }}"></td>';
-            h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"></td></tr>';
+            h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"' + (quoteValueLocked ? ' readonly' : '') + '></td></tr>';
         });
         h += '</tbody></table></div>';
         return h;
@@ -647,6 +645,7 @@
         } catch (e) { return; }
         if (tasks[idx] === undefined) return;
         if ($(this).hasClass('suggested-unit-price')) {
+            if (quoteValueLocked) return;
             var val = $(this).val();
             var num = parseFloat(val);
             tasks[idx].unit_price = (isNaN(num) || val === '') ? '' : num;
@@ -660,16 +659,6 @@
         $('#data_suggested_tasks').val(JSON.stringify(tasks));
         syncTokenConsumptionFromTasks();
         refreshBudgetPreview();
-    });
-
-    $('#suggested-tasks-toggle-btn').on('click', function() {
-        var container = $('#suggested-tasks-container');
-        var btn = $(this);
-        var isHidden = container.hasClass('d-none');
-        container.toggleClass('d-none');
-        btn.attr('aria-expanded', isHidden);
-        btn.find('.ti-chevron-down').toggleClass('ti-chevron-down', !isHidden).toggleClass('ti-chevron-up', isHidden);
-        btn.find('.toggle-label').text(isHidden ? '{{ __("Hide breakdown") }}' : '{{ __("Edit breakdown") }}');
     });
 
     $(function() {
@@ -705,7 +694,8 @@
         var balanceSlider = document.getElementById('ai-usage-balance-slider');
         var balanceInput = document.getElementById('data_ai_usage_percent');
         var balanceLabel = document.getElementById('data_ai_usage_percent_label');
-        if (balanceSlider && typeof noUiSlider !== 'undefined') {
+            if (balanceSlider && typeof noUiSlider !== 'undefined') {
+            if (quoteValueLocked) balanceSlider.setAttribute('disabled', true);
             var startBalance = parseFloat(balanceInput ? balanceInput.value : defaultAiUsagePercent);
             if (isNaN(startBalance) || startBalance < 0) startBalance = defaultAiUsagePercent;
             if (startBalance > 100) startBalance = 100;
@@ -935,7 +925,8 @@
 						<input type="number" class="form-control form-control-sm" id="discount" name="discount"
 							step="1" min="0" max="100"
 							value="{{ old('discount', $data->discount ?? '') }}"
-							placeholder="0">
+							placeholder="0"
+							@if(isset($data->id) && $data->quoteValueIsLocked()) readonly @endif>
 					</div>
 				</div>
 			</div>
@@ -982,14 +973,9 @@
 				<input type="hidden" name="data[token_consumption][currency]" value="{{ $tokenConsumption['currency'] ?? 'EUR' }}">
 			</div>
 
-			<!-- Suggested tasks (filled by AI, persisted in project data). Hidden by default; show via "Edit breakdown" link. -->
+			<!-- Suggested tasks (filled by AI, persisted in project data). -->
 			<input type="hidden" name="data[suggested_tasks]" id="data_suggested_tasks" value="{{ json_encode(old('data.suggested_tasks', data_get($data, 'data.suggested_tasks', []))) }}">
-			<div class="col-12 mb-2 {{ empty($savedSuggested) || !is_array($savedSuggested) ? 'd-none' : '' }}" id="suggested-tasks-toggle">
-				<button type="button" class="btn btn-sm btn-label-secondary" id="suggested-tasks-toggle-btn" aria-expanded="false">
-					<i class="ti ti-chevron-down me-1"></i><span class="toggle-label">{{ __('Edit breakdown') }}</span>
-				</button>
-			</div>
-			<div class="col-12 d-none" id="suggested-tasks-container">
+			<div class="col-12 {{ empty($savedSuggested) || !is_array($savedSuggested) ? 'd-none' : '' }}" id="suggested-tasks-container">
 				@if(!empty($savedSuggested) && is_array($savedSuggested))
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
@@ -1025,7 +1011,7 @@
 									<td class="text-end">{{ $hoursLabel }}</td>
 									<td class="text-end"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="{{ $i }}" value="{{ $estimatedTokens }}" placeholder="0"></td>
 									<td class="text-end"><input type="text" class="form-control form-control-sm text-end suggested-resource-level" data-index="{{ $i }}" value="{{ $t['resource_level'] ?? '' }}" placeholder="{{ __('e.g. Senior') }}"></td>
-									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0"></td>
+									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0" @if(isset($data->id) && $data->quoteValueIsLocked()) readonly @endif></td>
 								</tr>
 								@endforeach
 							</tbody>

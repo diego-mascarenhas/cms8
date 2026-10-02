@@ -1456,13 +1456,18 @@ class ProjectBudgetSpecService
             return 0.0;
         }
 
+        if (array_key_exists('ai_usage_percent', $data) && is_numeric($data['ai_usage_percent']))
+        {
+            return $this->normalizeAiUsagePercent($data['ai_usage_percent']);
+        }
+
         $fromModel = $this->aiUsagePercentFromTokenModel($data['token_model'] ?? $this->tokenModel ?? self::DEFAULT_TOKEN_MODEL);
         if ($fromModel !== null)
         {
             return $fromModel;
         }
 
-        return $this->normalizeAiUsagePercent(data_get($data, 'ai_usage_percent', self::DEFAULT_AI_USAGE_PERCENT));
+        return self::DEFAULT_AI_USAGE_PERCENT;
     }
 
     /**
