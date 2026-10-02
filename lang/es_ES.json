@@ -215,7 +215,7 @@
     "Badges": "Insignias",
     "Bad Request": "Solicitud incorrecta",
     "Balance": "Saldo",
-    "Balances sum all payments per account; only active accounts with movements are listed.": "Los saldos suman todos los pagos por cuenta; solo se listan cuentas activas con movimientos.",
+    "Balances sum all payments per account. Active accounts are listed even without movements.": "Los saldos suman todos los pagos por cuenta. Las cuentas activas se listan aunque no tengan movimientos.",
     "Bandwidth Limit Exceeded": "Límite de ancho de banda excedido",
     "Barcode": "Código de barras",
     "barcode is the EAN/UPC. It must be unique in the team. oem is the original manufacturer part number.": "barcode es el EAN/UPC. Debe ser único en el equipo. oem es el número original del fabricante.",

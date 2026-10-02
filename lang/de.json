@@ -168,7 +168,7 @@
     "Bad Request": "Solicitud incorrecta",
     "Badges": "Abzeichen",
     "Balance": "Saldo",
-    "Balances sum all payments per account; only active accounts with movements are listed.": "Los saldos suman todos los pagos por cuenta; solo se listan cuentas activas con movimientos.",
+    "Balances sum all payments per account. Active accounts are listed even without movements.": "Los saldos suman todos los pagos por cuenta. Las cuentas activas se listan aunque no tengan movimientos.",
     "Bandwidth Limit Exceeded": "Límite de ancho de banda excedido",
     "Based on invoiced line items by category (historical billing data).": "Basado en líneas de factura por categoría (histórico de facturación).",
     "Basic": "Basic",

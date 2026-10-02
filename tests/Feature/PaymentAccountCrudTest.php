@@ -130,36 +130,15 @@ class PaymentAccountCrudTest extends TestCase
         $this->assertSame($account->id, (int) data_get($response->json('data.0'), 'id'));
     }
 
-    public function test_datatable_includes_inactive_payment_accounts(): void
-    {
-        $user = $this->makeAdminUser();
-        PaymentAccount::withoutGlobalScopes()->create([
-            'team_id' => (int) $user->current_team_id,
-            'code' => 'OLD',
-            'name' => 'Cuenta archivada',
-            'currency_id' => 978,
-            'status' => 0,
-        ]);
-
-        $response = $this->actingAs($user)
-            ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
-            ->getJson(route('payment-account.index', $this->dataTablesQueryParams('archivada')));
-
-        $response->assertOk();
-        $this->assertSame(1, (int) $response->json('recordsFiltered'));
-        $this->assertStringContainsString('Cuenta archivada', (string) data_get($response->json('data.0'), 'name'));
-        $this->assertStringContainsString('Inactiva', (string) data_get($response->json('data.0'), 'status'));
-    }
-
-    public function test_datatable_lists_active_accounts_before_inactive(): void
+    public function test_datatable_hides_inactive_payment_accounts(): void
     {
         $user = $this->makeAdminUser();
         $teamId = (int) $user->current_team_id;
 
         PaymentAccount::withoutGlobalScopes()->create([
             'team_id' => $teamId,
-            'code' => 'ZZZ',
-            'name' => 'Zeta inactiva',
+            'code' => 'OLD',
+            'name' => 'Cuenta archivada',
             'currency_id' => 978,
             'status' => 0,
         ]);
@@ -171,20 +150,14 @@ class PaymentAccountCrudTest extends TestCase
             'status' => 1,
         ]);
 
-        $params = $this->dataTablesQueryParams();
-        $params['order'] = [
-            ['column' => 5, 'dir' => 'desc'],
-            ['column' => 1, 'dir' => 'asc'],
-        ];
-
         $response = $this->actingAs($user)
             ->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])
-            ->getJson(route('payment-account.index', $params));
+            ->getJson(route('payment-account.index', $this->dataTablesQueryParams()));
 
         $response->assertOk();
-        $this->assertSame(2, (int) $response->json('recordsFiltered'));
+        $this->assertSame(1, (int) $response->json('recordsFiltered'));
         $this->assertStringContainsString('Alfa activa', (string) data_get($response->json('data.0'), 'name'));
-        $this->assertStringContainsString('Zeta inactiva', (string) data_get($response->json('data.1'), 'name'));
+        $this->assertStringNotContainsString('Cuenta archivada', (string) json_encode($response->json('data')));
     }
 
     public function test_admin_can_view_payment_account_movements(): void
