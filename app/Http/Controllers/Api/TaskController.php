@@ -667,7 +667,7 @@ class TaskController extends Controller
             'description' => $validated['description'] ?? null,
             'responsible_id' => $validated['responsible_id'] ?? $user->id,
             'status_id' => $statusId,
-            'estimated_hours' => $validated['estimated_hours'] ?? null,
+            'estimated_hours' => $validated['estimated_hours'] ?? 1,
             'order' => $nextOrder,
             'start_date' => $validated['start_date'] ?? now()->toDateString(),
             'due_date' => $validated['due_date'] ?? now()->addDays(7)->toDateString(),

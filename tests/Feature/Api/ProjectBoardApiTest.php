@@ -197,6 +197,7 @@ class ProjectBoardApiTest extends TestCase
             'id' => $newTaskId,
             'board_id' => $project->board_id,
         ]);
+        $this->assertEquals(1, (float) Task::withoutGlobalScopes()->findOrFail($newTaskId)->estimated_hours);
 
         $delete = $this->withHeader('Authorization', 'Bearer '.$token)
             ->deleteJson('/api/tasks/'.$task->id);

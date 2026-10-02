@@ -311,7 +311,7 @@ class ProjectController extends Controller
                 $projectTasks = Task::withoutGlobalScope('team')
                     ->where('team_id', $project->team_id)
                     ->where('board_id', $project->board_id)
-                    ->with($clientView ? ['status'] : ['status', 'responsible'])
+                    ->with($clientView ? ['status'] : ['status', 'responsible', 'category'])
                     ->defaultOrder()
                     ->get();
 
@@ -355,11 +355,20 @@ class ProjectController extends Controller
                         'estimated_hours' => $task->estimated_hours,
                         'start_date' => $task->start_date?->format('Y-m-d'),
                         'due_date' => $task->due_date?->format('Y-m-d'),
+                        'status_id' => $task->status_id,
+                        'responsible_id' => $task->responsible_id,
+                        'category_id' => $task->category_id,
+                        'category' => $task->category ? [
+                            'id' => $task->category->id,
+                            'name' => $task->category->name,
+                        ] : null,
                         'status' => $status,
                         'responsible' => [
                             'id' => $task->responsible?->id,
                             'name' => $task->responsible?->name,
+                            'email' => $task->responsible?->email,
                         ],
+                        'attachment' => $task->attachmentUrl(),
                         'time_seconds' => $taskTime,
                         'time_formatted' => gmdate('H:i:s', $taskTime),
                         'running_timers' => $runningTimers,
