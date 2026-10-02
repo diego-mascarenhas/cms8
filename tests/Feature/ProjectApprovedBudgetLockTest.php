@@ -48,6 +48,23 @@ class ProjectApprovedBudgetLockTest extends TestCase
     }
 
     #[Test]
+    public function invoiced_project_rejects_status_changes(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_INVOICED])->save();
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->patch(route('project.update-status', $project->id), [
+                'status_id' => ProjectStatus::STATUS_FINISHED,
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('error');
+
+        $this->assertSame(ProjectStatus::STATUS_INVOICED, (int) $project->fresh()->status_id);
+    }
+
+    #[Test]
     public function approved_budget_can_change_status_via_modal_endpoint(): void
     {
         [$user, $project] = $this->createApprovedProject();

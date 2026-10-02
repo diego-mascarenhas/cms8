@@ -58,7 +58,7 @@
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
 					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
 				</a>
-				@if ($project->isBudgetContentLocked())
+				@if ($project->isBudgetContentLocked() && (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED)
 					<button type="button" class="btn btn-outline-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
 						<i class="ti ti-exchange me-1"></i>{{ __('Change status') }}
 					</button>
@@ -140,7 +140,9 @@
 	</div>
 @endif
 
-@if (! empty($depositInvoicePreview) && (($depositInvoicePreview['already_invoiced'] ?? false) || empty($balanceInvoicePreview)))
+@if (! empty($depositInvoicePreview)
+	&& (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED
+	&& (($depositInvoicePreview['already_invoiced'] ?? false) || empty($balanceInvoicePreview)))
 	@php
 		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
 		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
@@ -1034,7 +1036,7 @@
 </div>
 @endif
 
-@if ($project->isBudgetContentLocked())
+@if ($project->isBudgetContentLocked() && (int) $project->status_id !== \App\Models\ProjectStatus::STATUS_INVOICED)
 @php
 	$lockedStatusOptions = \App\Models\ProjectStatus::query()
 		->whereIn('id', $project->allowedStatusIdsWhenLocked())

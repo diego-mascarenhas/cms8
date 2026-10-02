@@ -1182,6 +1182,9 @@ class ProjectController extends Controller
             $startDate,
         );
 
+        $project->status_id = ProjectStatus::STATUS_INVOICED;
+        $project->save();
+
         if (! empty($result['scheduled']))
         {
             $message = __('Balance payments scheduled from :date.', ['date' => Carbon::parse($startDate)->format('d/m/Y')]);
@@ -1227,6 +1230,13 @@ class ProjectController extends Controller
     {
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
+
+        if ((int) $project->status_id === ProjectStatus::STATUS_INVOICED)
+        {
+            return redirect()
+                ->route('project.show', $project->id)
+                ->with('error', __('An invoiced project cannot change status.'));
+        }
 
         if (! $project->isBudgetContentLocked())
         {
