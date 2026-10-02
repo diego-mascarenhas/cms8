@@ -238,7 +238,7 @@
     <div class="card-header border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div>
             <h5 class="card-title m-0">{{ __('Account Balances') }}</h5>
-            <p class="text-muted small mb-0">{{ __('Balances sum all payments per account; only active accounts with movements are listed.') }}</p>
+            <p class="text-muted small mb-0">{{ __('Balances sum all payments per account. Active accounts are listed even without movements.') }}</p>
         </div>
         @can('viewAny', \App\Models\PaymentAccount::class)
             <div class="d-flex flex-wrap gap-2">

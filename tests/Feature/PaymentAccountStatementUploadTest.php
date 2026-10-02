@@ -250,6 +250,34 @@ class PaymentAccountStatementUploadTest extends TestCase
         ]))->assertOk();
     }
 
+    public function test_active_account_without_payments_is_available_for_a_statement(): void
+    {
+        $user = $this->makeAdminUser();
+        $teamId = (int) $user->current_team_id;
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'CR',
+            'name' => 'Caja Rural',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'OLD',
+            'name' => 'Caja Cerrada',
+            'currency_id' => 32,
+            'status' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('finance-dashboard.index'))
+            ->assertOk()
+            ->assertSee('Caja Rural', false)
+            ->assertSee('0.00', false)
+            ->assertDontSee('Caja Cerrada', false);
+    }
+
     public function test_cannot_download_statement_from_another_account(): void
     {
         $user = $this->makeAdminUser();

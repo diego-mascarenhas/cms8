@@ -188,7 +188,7 @@
   "Bad Request": "Bad Request",
   "Badges": "Badges",
   "Balance": "Balance",
-  "Balances sum all payments per account; only active accounts with movements are listed.": "Balances sum all payments per account; only active accounts with movements are listed.",
+  "Balances sum all payments per account. Active accounts are listed even without movements.": "Balances sum all payments per account. Active accounts are listed even without movements.",
   "Bandwidth Limit Exceeded": "Bandwidth Limit Exceeded",
   "Based on invoiced line items by category (historical billing data).": "Based on invoiced line items by category (historical billing data).",
   "Basic": "Basic",

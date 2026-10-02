@@ -194,13 +194,7 @@ class PaymentReportingCurrencyService
             )
             ->pluck('balance', 'account_id');
 
-        if ($balanceByAccountId->isEmpty())
-        {
-            return collect();
-        }
-
         return \App\Models\PaymentAccount::with('currency')
-            ->whereIn('id', $balanceByAccountId->keys())
             ->orderBy('name')
             ->get()
             ->map(function ($account) use ($balanceByAccountId): array
