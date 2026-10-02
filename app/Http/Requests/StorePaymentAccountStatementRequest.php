@@ -21,9 +21,11 @@ class StorePaymentAccountStatementRequest extends FormRequest
     {
         return [
             'files' => ['required', 'array', 'min:1', 'max:20'],
-            'files.*' => ['required', 'file', 'max:25600', 'mimes:csv,txt,pdf'],
+            'files.*' => ['required', 'file', 'max:25600'],
             'period_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],
             'period_month' => ['nullable', 'integer', 'min:1', 'max:12'],
+            'period' => ['nullable', 'regex:/^(m:([1-9]|1[0-2])|q:[1-4])$/'],
+            'statement_balance' => ['nullable', 'numeric'],
         ];
     }
 
@@ -34,8 +36,8 @@ class StorePaymentAccountStatementRequest extends FormRequest
     {
         return [
             'files.required' => __('Subí al menos un extracto.'),
-            'files.*.mimes' => __('Solo se permiten archivos CSV, TXT o PDF.'),
             'files.*.max' => __('Cada archivo puede pesar hasta 25 MB.'),
+            'period.regex' => __('Elegí un mes o un trimestre.'),
         ];
     }
 
@@ -45,6 +47,17 @@ class StorePaymentAccountStatementRequest extends FormRequest
         {
             $year = $this->input('period_year');
             $month = $this->input('period_month');
+            $period = (string) $this->input('period');
+
+            if ($period !== '')
+            {
+                if (blank($year))
+                {
+                    $validator->errors()->add('period_year', __('Indicá el año del extracto.'));
+                }
+
+                return;
+            }
 
             if ((filled($year) && blank($month)) || (blank($year) && filled($month)))
             {

@@ -241,9 +241,16 @@
             <p class="text-muted small mb-0">{{ __('Balances sum all payments per account; only active accounts with movements are listed.') }}</p>
         </div>
         @can('viewAny', \App\Models\PaymentAccount::class)
-            <a href="{{ route('payment-account.index') }}" class="btn btn-sm btn-outline-primary">
-                <i class="ti ti-wallet me-1"></i> Cuentas de pago
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                @if ($accounts->isNotEmpty())
+                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#uploadStatementModal">
+                        <i class="ti ti-upload me-1"></i>{{ __('Subir extracto') }}
+                    </button>
+                @endif
+                <a href="{{ route('payment-account.index') }}" class="btn btn-sm btn-outline-primary">
+                    <i class="ti ti-wallet me-1"></i> Cuentas de pago
+                </a>
+            </div>
         @endcan
     </div>
     <div class="card-widget-separator-wrapper">
@@ -279,11 +286,103 @@
         </div>
     </div>
 </div>
+
+@can('viewAny', \App\Models\PaymentAccount::class)
+    @if ($accounts->isNotEmpty())
+        <div class="modal fade" id="uploadStatementModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <form class="modal-content" method="POST" action="{{ route('payment-account.statements.store', $accounts->first()['id']) }}" enctype="multipart/form-data" id="dashboard-statement-form">
+                    @csrf
+                    <div class="modal-header">
+                        <h5 class="modal-title">{{ __('Subir extractos bancarios') }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="statement-account" class="form-label">{{ __('Cuenta') }} <span class="text-danger">*</span></label>
+                            <select id="statement-account" class="select2 form-select" required>
+                                @foreach ($accounts as $account)
+                                    <option value="{{ $account['id'] }}">{{ $account['name'] }} ({{ $account['currency_code'] }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dashboard-statement-files" class="form-label">{{ __('Archivos') }} <span class="text-danger">*</span></label>
+                            <input type="file" name="files[]" id="dashboard-statement-files" class="form-control" multiple required>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="dashboard-period-year" class="form-label">{{ __('Año') }}</label>
+                                <input type="number" name="period_year" id="dashboard-period-year" class="form-control" min="2000" max="2100" value="{{ $selectedYear }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="dashboard-period" class="form-label">{{ __('Periodo') }}</label>
+                                <select name="period" id="dashboard-period" class="select2 form-select" required>
+                                    <optgroup label="{{ __('Mes') }}">
+                                        @for ($month = 1; $month <= 12; $month++)
+                                            <option value="m:{{ $month }}" @selected($month === (int) now()->month)>
+                                                {{ \Carbon\Carbon::create(null, $month, 1)->translatedFormat('F') }}
+                                            </option>
+                                        @endfor
+                                    </optgroup>
+                                    <optgroup label="{{ __('Trimestre') }}">
+                                        @for ($quarter = 1; $quarter <= 4; $quarter++)
+                                            <option value="q:{{ $quarter }}">Q{{ $quarter }}</option>
+                                        @endfor
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="dashboard-statement-balance" class="form-label">{{ __('Saldo del extracto') }}</label>
+                                <input type="number" step="0.01" name="statement_balance" id="dashboard-statement-balance" class="form-control" placeholder="0.00">
+                                <div class="form-text">{{ __('Para PDF u otros documentos sin importes legibles. Se compara con los pagos del periodo.') }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="ti ti-upload me-1"></i>{{ __('Subir') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+@endcan
 @endsection
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const statementForm = document.getElementById('dashboard-statement-form');
+    const statementAccount = document.getElementById('statement-account');
+    const statementAction = @json(route('payment-account.statements.store', ['paymentAccount' => '__ACCOUNT__']));
+
+    if (statementForm && statementAccount) {
+        const applyAccount = function () {
+            statementForm.action = statementAction.replace('__ACCOUNT__', statementAccount.value);
+        };
+        statementAccount.addEventListener('change', applyAccount);
+        statementForm.addEventListener('submit', applyAccount);
+        applyAccount();
+    }
+
+    if (window.jQuery && jQuery.fn.select2) {
+        const $statementModal = jQuery('#uploadStatementModal');
+        jQuery('#statement-account, #dashboard-period').each(function () {
+            const $select = jQuery(this);
+            if ($select.data('select2')) {
+                return;
+            }
+            $select.select2({
+                dropdownParent: $statementModal,
+                width: '100%',
+                minimumResultsForSearch: Infinity,
+            });
+        });
+    }
+
     if (typeof ApexCharts === 'undefined') {
         return;
     }

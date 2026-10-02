@@ -152,6 +152,104 @@ class PaymentAccountStatementUploadTest extends TestCase
         $this->assertSame([2026, 11], $service->inferPeriodFromFilename('movimientos_11_2026.csv'));
     }
 
+    public function test_any_document_for_a_quarter_reconciles_and_is_visible_to_the_accountant(): void
+    {
+        $user = $this->makeAdminUser();
+        $team = Team::query()->findOrFail($user->current_team_id);
+        $teamId = (int) $team->id;
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'code' => 'BBVA',
+            'name' => 'BBVA',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => '2026-08-15',
+            'account_id' => $account->id,
+            'type_id' => 12,
+            'amount' => 100,
+            'status' => 2,
+        ]);
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'transaction_type' => TransactionType::EXPENSE,
+            'date' => '2026-09-02',
+            'account_id' => $account->id,
+            'type_id' => 12,
+            'amount' => 40,
+            'status' => 2,
+        ]);
+        Payment::withoutGlobalScopes()->create([
+            'team_id' => $teamId,
+            'transaction_type' => TransactionType::INCOME,
+            'date' => '2026-06-01',
+            'account_id' => $account->id,
+            'type_id' => 12,
+            'amount' => 999,
+            'status' => 2,
+        ]);
+
+        $file = UploadedFile::fake()->create(
+            'extracto-q3.xlsx',
+            20,
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        );
+
+        $this->actingAs($user)
+            ->post(route('payment-account.statements.store', $account), [
+                'files' => [$file],
+                'period_year' => 2026,
+                'period' => 'q:3',
+                'statement_balance' => '60.00',
+            ])
+            ->assertRedirect(route('payment-account.show', $account))
+            ->assertSessionHas('success');
+
+        $statement = BankStatement::query()->where('payment_account_id', $account->id)->first();
+        $this->assertNotNull($statement);
+        $this->assertSame('Q3 2026', $statement->periodLabel());
+        $this->assertSame(60.0, (float) data_get($statement->validation_summary, 'book_total'));
+        $this->assertSame(60.0, (float) data_get($statement->validation_summary, 'statement_total'));
+        $this->assertTrue((bool) data_get($statement->validation_summary, 'balanced'));
+
+        $this->actingAs($user)
+            ->get(route('payment-account.show', $account))
+            ->assertOk()
+            ->assertSee('Q3 2026', false)
+            ->assertSee('Empatado', false);
+
+        $hash = $team->haciendaShareHash();
+
+        $this->get(route('hacienda.public', [
+            'hash' => $hash,
+            'vat_year' => 2026,
+            'vat_period' => 'q:3',
+        ]))
+            ->assertOk()
+            ->assertSee(__('Bank statements'), false)
+            ->assertSee('BBVA', false)
+            ->assertSee('extracto-q3.xlsx', false)
+            ->assertSee(__('Balanced'), false);
+
+        $this->get(route('hacienda.public', [
+            'hash' => $hash,
+            'vat_year' => 2026,
+            'vat_period' => 'm:5',
+        ]))
+            ->assertOk()
+            ->assertDontSee('extracto-q3.xlsx', false);
+
+        $this->get(route('hacienda.public.statement', [
+            'hash' => $hash,
+            'statement' => $statement->id,
+        ]))->assertOk();
+    }
+
     public function test_cannot_download_statement_from_another_account(): void
     {
         $user = $this->makeAdminUser();

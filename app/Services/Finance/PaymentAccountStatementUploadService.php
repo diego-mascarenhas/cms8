@@ -2,6 +2,7 @@
 
 namespace App\Services\Finance;
 
+use App\Enums\TransactionType;
 use App\Models\BankStatement;
 use App\Models\BankStatementLine;
 use App\Models\Payment;
@@ -26,6 +27,8 @@ class PaymentAccountStatementUploadService
         array $files,
         ?int $periodYear = null,
         ?int $periodMonth = null,
+        ?int $periodQuarter = null,
+        ?float $statementBalance = null,
     ): array {
         $results = [];
 
@@ -36,7 +39,14 @@ class PaymentAccountStatementUploadService
                 continue;
             }
 
-            $results[] = $this->uploadOne($account, $file, $periodYear, $periodMonth);
+            $results[] = $this->uploadOne(
+                $account,
+                $file,
+                $periodYear,
+                $periodMonth,
+                $periodQuarter,
+                $statementBalance,
+            );
         }
 
         if ($results === [])
@@ -55,6 +65,8 @@ class PaymentAccountStatementUploadService
         UploadedFile $file,
         ?int $periodYear = null,
         ?int $periodMonth = null,
+        ?int $periodQuarter = null,
+        ?float $statementBalance = null,
     ): array {
         $originalName = (string) $file->getClientOriginalName();
         $extension = strtolower((string) $file->getClientOriginalExtension());
@@ -63,7 +75,7 @@ class PaymentAccountStatementUploadService
         $csvRows = $isCsv ? $this->parseCsvRows((string) $file->get()) : [];
         [$year, $month] = $this->resolvePeriod(
             $periodYear,
-            $periodMonth,
+            $periodQuarter ? (($periodQuarter - 1) * 3) + 1 : $periodMonth,
             $originalName,
             $csvRows,
         );
@@ -71,6 +83,19 @@ class PaymentAccountStatementUploadService
         $account->loadMissing('currency');
 
         $storedPath = $this->storeFile($account, $file, $year, $month);
+        $meta = [
+            'period_kind' => $periodQuarter ? 'quarter' : 'month',
+        ];
+
+        if ($periodQuarter)
+        {
+            $meta['period_quarter'] = $periodQuarter;
+        }
+
+        if ($statementBalance !== null)
+        {
+            $meta['stated_balance'] = round($statementBalance, 2);
+        }
 
         $statement = BankStatement::query()->create([
             'team_id' => (int) $account->team_id,
@@ -84,6 +109,7 @@ class PaymentAccountStatementUploadService
             'disk' => self::DISK,
             'mime_type' => $file->getMimeType() ?: ($isCsv ? 'text/csv' : 'application/octet-stream'),
             'file_size' => $file->getSize() ?: null,
+            'validation_summary' => $meta,
         ]);
 
         if ($csvRows !== [])
@@ -91,7 +117,7 @@ class PaymentAccountStatementUploadService
             $this->persistCsvLines($statement, $csvRows, $account);
         }
 
-        $validation = $this->validateAgainstPayments($statement, $account);
+        $validation = array_merge($meta, $this->validateAgainstPayments($statement, $account));
         $statement->forceFill(['validation_summary' => $validation])->save();
 
         return [
@@ -106,17 +132,22 @@ class PaymentAccountStatementUploadService
      *     statement_only: int,
      *     payment_only: int,
      *     line_count: int,
-     *     payment_count: int
+     *     payment_count: int,
+     *     book_total: float,
+     *     statement_total: float|null,
+     *     difference: float|null,
+     *     balanced: bool
      * }
      */
     public function validateAgainstPayments(BankStatement $statement, PaymentAccount $account): array
     {
         $lines = $statement->lines()->get();
+        [$from, $to] = $statement->bounds();
         $payments = Payment::withoutGlobalScopes()
             ->where('team_id', $account->team_id)
             ->where('account_id', $account->id)
-            ->whereYear('date', $statement->period_year)
-            ->whereMonth('date', $statement->period_month)
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString())
             ->get();
 
         $matchedPaymentIds = [];
@@ -150,12 +181,33 @@ class PaymentAccountStatementUploadService
             ->filter(fn (Payment $payment): bool => ! isset($matchedPaymentIds[$payment->id]))
             ->count();
 
+        $bookTotal = round($payments->sum(function (Payment $payment): float
+        {
+            $sign = $payment->transaction_type === TransactionType::INCOME ? 1 : -1;
+
+            return $sign * (float) $payment->amount;
+        }), 2);
+
+        $summary = $statement->validation_summary ?? [];
+        $stated = array_key_exists('stated_balance', $summary) && $summary['stated_balance'] !== null
+            ? round((float) $summary['stated_balance'], 2)
+            : null;
+        $lineTotal = $lines->isNotEmpty()
+            ? round((float) $lines->sum(fn (BankStatementLine $line): float => (float) $line->amount), 2)
+            : null;
+        $statementTotal = $lineTotal ?? $stated;
+        $difference = $statementTotal === null ? null : round($statementTotal - $bookTotal, 2);
+
         return [
             'matched' => $matched,
             'statement_only' => $statementOnly,
             'payment_only' => $paymentOnly,
             'line_count' => $lines->count(),
             'payment_count' => $payments->count(),
+            'book_total' => $bookTotal,
+            'statement_total' => $statementTotal,
+            'difference' => $difference,
+            'balanced' => $difference !== null && abs($difference) <= 0.05,
         ];
     }
 
