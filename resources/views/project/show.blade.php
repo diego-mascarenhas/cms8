@@ -51,9 +51,9 @@
 	<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
 		<div class="d-flex flex-column justify-content-center">
 			<h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Projects') }}/</span> {{ $project->real_name ?? $project->name }}</h4>
-			<p class="text-muted">{{ __('Created on') }} {{ \Carbon\Carbon::parse($project->created_at)->format('F d, Y') }}</p>
+			<p class="text-muted">{{ __('Created on :date', ['date' => \Carbon\Carbon::parse($project->created_at)->locale(app()->getLocale())->isoFormat('LL')]) }}</p>
 		</div>
-		<div class="d-flex align-content-center flex-wrap gap-3">
+		<div class="d-flex flex-wrap justify-content-end align-content-center gap-3 ms-md-auto">
 			@can('update', $project)
 				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
 					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
@@ -264,11 +264,12 @@
 							<div class="flex-grow-1 min-w-0">
 								<span class="fw-medium d-block">{{ __('Finished project — invoice the balance') }}</span>
 								<span class="small d-block mt-1">
-									{{ __('Balance') }}: {{ $formatBalanceMoney($balanceInvoicePreview['remaining_base']) }}
 									@if (($balanceInvoicePreview['deposit_base'] ?? 0) > 0)
+										{{ __('Balance') }}: {{ $formatBalanceMoney($balanceInvoicePreview['remaining_base']) }}
 										· {{ __('Deposit already invoiced') }}: {{ $formatBalanceMoney($balanceInvoicePreview['deposit_base']) }}
+										·
 									@endif
-									· {{ $balanceInvoicePreview['vat_label'] }}
+									{{ $balanceInvoicePreview['vat_label'] }}
 									@if ($balanceInvoicePreview['vat_applies'])
 										({{ $formatBalanceMoney($balanceInvoicePreview['vat_amount']) }})
 									@endif
@@ -305,21 +306,27 @@
 									</button>
 								</div>
 							</div>
-							<small
-								class="text-muted d-block mt-2 mb-2"
-								id="balance-installment-preview"
+							@php
+								$balanceProjectName = $project->real_name ?: $project->name;
+							@endphp
+							<div
+								id="balance-payment-lines"
+								class="mt-2"
 								data-remaining="{{ (int) $balanceInvoicePreview['remaining_base'] }}"
-								data-single="{{ $balanceInvoicePreview['default_description'] }}"
-								data-installment="{{ __('Installment :current of :total — :project', ['current' => '__C__', 'total' => '__T__', 'project' => $project->real_name ?: $project->name]) }}"
+								data-partial="{{ ($balanceInvoicePreview['deposit_base'] ?? 0) > 0 ? '1' : '0' }}"
+								data-project="{{ $balanceProjectName }}"
+								data-balance="{{ __('Balance — :project', ['project' => $balanceProjectName]) }}"
+								data-installment="{{ __('Installment :current of :total — :project', ['current' => '__C__', 'total' => '__T__', 'project' => $balanceProjectName]) }}"
+								data-balance-installment="{{ __('Balance payment :current of :total — :project', ['current' => '__C__', 'total' => '__T__', 'project' => $balanceProjectName]) }}"
 								data-today="{{ now()->toDateString() }}"
-							></small>
-							<label for="balance-invoice-description" class="form-label mb-1">{{ __('Invoice description') }}</label>
+								data-label-description="{{ __('Invoice description') }}"
+								data-label-date="{{ __('Date') }}"
+								data-label-amount="{{ __('Amount') }}"
+							></div>
 							<textarea
 								id="balance-invoice-description"
 								name="description"
-								class="form-control bg-white @error('description') is-invalid @enderror"
-								rows="2"
-								required
+								class="d-none"
 								maxlength="2000"
 								data-keep="{{ old('description') !== null ? '1' : '0' }}"
 							>{{ old('description', $balanceInvoicePreview['default_description']) }}</textarea>
@@ -334,23 +341,17 @@
 							@enderror
 							<script>
 								(function () {
-									var preview = document.getElementById('balance-installment-preview');
+									var linesRoot = document.getElementById('balance-payment-lines');
 									var count = document.getElementById('balance-installments');
 									var date = document.getElementById('balance-start-date');
 									var description = document.getElementById('balance-invoice-description');
-									if (!preview || !count) {
+									if (!linesRoot || !count || !description) {
 										return;
 									}
-									var keepDescription = description && description.getAttribute('data-keep') === '1';
+									var keepDescription = description.getAttribute('data-keep') === '1';
+									var partial = linesRoot.getAttribute('data-partial') === '1';
 									var money = function (amount) {
 										return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-									};
-									var formatDate = function (iso) {
-										var pieces = (iso || '').split('-');
-										if (pieces.length !== 3) {
-											return '';
-										}
-										return pieces[2] + '/' + pieces[1] + '/' + pieces[0];
 									};
 									var shiftMonth = function (iso, months) {
 										var parts = iso.split('-').map(function (value) { return parseInt(value, 10); });
@@ -364,23 +365,7 @@
 										var day = Math.min(parts[2], lastDay);
 										return year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
 									};
-									var paymentLines = function (parts, remaining, startIso) {
-										var base = Math.floor(remaining / parts);
-										var lines = [];
-										var single = preview.getAttribute('data-single') || '';
-										var installment = preview.getAttribute('data-installment') || '';
-										for (var index = 0; index < parts; index++) {
-											var amount = base + (index === parts - 1 ? remaining - (base * parts) : 0);
-											var when = formatDate(shiftMonth(startIso, index));
-											var label = parts === 1
-												? single
-												: installment.replace('__C__', String(index + 1)).replace('__T__', String(parts));
-											lines.push(label + (when ? ' · ' + when : '') + ' · ' + money(amount));
-										}
-										return lines;
-									};
-									var render = function (writeDescription) {
-										var remaining = parseInt(preview.getAttribute('data-remaining'), 10) || 0;
+									var clampParts = function () {
 										var parts = parseInt(count.value, 10);
 										if (!parts || parts < 1) {
 											parts = 1;
@@ -388,22 +373,63 @@
 										if (parts > 12) {
 											parts = 12;
 										}
-										var startIso = date && date.value ? date.value : (preview.getAttribute('data-today') || '');
+										return parts;
+									};
+									var labelFor = function (index, parts) {
+										if (parts === 1) {
+											return partial
+												? (linesRoot.getAttribute('data-balance') || '')
+												: (linesRoot.getAttribute('data-project') || '');
+										}
+										var template = partial
+											? (linesRoot.getAttribute('data-balance-installment') || '')
+											: (linesRoot.getAttribute('data-installment') || '');
+										return template.replace('__C__', String(index + 1)).replace('__T__', String(parts));
+									};
+									var syncDescription = function () {
+										var values = [];
+										linesRoot.querySelectorAll('.balance-line-description').forEach(function (input) {
+											values.push(input.value.trim());
+										});
+										if (values.length) {
+											description.value = values.join('\n');
+										}
+									};
+									var render = function (writeDescription) {
+										var remaining = parseInt(linesRoot.getAttribute('data-remaining'), 10) || 0;
+										var parts = clampParts();
+										var startIso = date && date.value ? date.value : (linesRoot.getAttribute('data-today') || '');
 										var base = Math.floor(remaining / parts);
-										var last = remaining - (base * (parts - 1));
-										var text = parts + ' × ' + money(base);
-										if (last !== base) {
-											text += ' · {{ __('the last') }} ' + money(last);
+										var kept = keepDescription
+											? description.value.split(/\r\n|\n|\r/).map(function (line) { return line.trim(); }).filter(Boolean)
+											: [];
+										linesRoot.innerHTML = '';
+										for (var index = 0; index < parts; index++) {
+											var amount = base + (index === parts - 1 ? remaining - (base * parts) : 0);
+											var row = document.createElement('div');
+											row.className = 'row g-2 align-items-end mb-2';
+											var label = (!writeDescription && kept.length === parts) ? kept[index] : labelFor(index, parts);
+											row.innerHTML = ''
+												+ '<div class="col-md-6">'
+												+ '<label class="form-label mb-1">' + (linesRoot.getAttribute('data-label-description') || '') + '</label>'
+												+ '<input type="text" class="form-control form-control-sm bg-white balance-line-description" maxlength="500" required>'
+												+ '</div>'
+												+ '<div class="col-md-3">'
+												+ '<label class="form-label mb-1">' + (linesRoot.getAttribute('data-label-date') || '') + '</label>'
+												+ '<input type="date" class="form-control form-control-sm" readonly tabindex="-1">'
+												+ '</div>'
+												+ '<div class="col-md-3">'
+												+ '<label class="form-label mb-1">' + (linesRoot.getAttribute('data-label-amount') || '') + '</label>'
+												+ '<input type="text" class="form-control form-control-sm" readonly tabindex="-1">'
+												+ '</div>';
+											var fields = row.querySelectorAll('input');
+											fields[0].value = label;
+											fields[1].value = shiftMonth(startIso, index);
+											fields[2].value = money(amount);
+											fields[0].addEventListener('input', syncDescription);
+											linesRoot.appendChild(row);
 										}
-										var formattedStart = formatDate(startIso);
-										if (formattedStart) {
-											text += ' · ' + formattedStart;
-										}
-										preview.textContent = text;
-										if (description && writeDescription) {
-											description.value = paymentLines(parts, remaining, startIso).join('\n');
-											description.rows = Math.min(8, Math.max(2, parts));
-										}
+										syncDescription();
 									};
 									count.addEventListener('input', function () {
 										keepDescription = false;
@@ -415,14 +441,15 @@
 											render(true);
 										});
 									}
-									var totalButton = description && description.form
+									var totalButton = description.form
 										? description.form.querySelector('button[name="billing_mode"][value="total"]')
 										: null;
 									if (totalButton) {
 										totalButton.addEventListener('click', function () {
-											var parts = parseInt(count.value, 10);
-											if (parts > 1) {
-												description.value = paymentLines(1, parseInt(preview.getAttribute('data-remaining'), 10) || 0, preview.getAttribute('data-today') || '').join('\n');
+											if (clampParts() > 1) {
+												description.value = labelFor(0, 1);
+											} else {
+												syncDescription();
 											}
 										});
 									}

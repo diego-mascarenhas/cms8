@@ -14,7 +14,6 @@ use App\Models\User;
 use App\Services\Finance\EnterpriseVatRateResolver;
 use App\Services\Finance\ProjectBalanceInvoiceService;
 use App\Services\Finance\ProjectDepositInvoiceService;
-use Carbon\Carbon;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTaxStatusTypeSeeder;
@@ -110,36 +109,41 @@ class ProjectDepositInvoiceTest extends TestCase
             ->assertDontSee(__('Invoice deposit'), false)
             ->assertSee(__('Finished project — invoice the balance'), false)
             ->assertSee('id="balance-installments" name="installments" class="form-control form-control-sm bg-white w-px-100" min="1" max="12" value="1"', false)
-            ->assertSeeInOrder([
-                'id="balance-installments"',
-                'id="balance-installment-preview"',
-                'id="balance-invoice-description"',
-            ], false)
-            ->assertDontSee('parts = 2', false);
+            ->assertSee('id="balance-payment-lines"', false)
+            ->assertSee('data-partial="0"', false)
+            ->assertSee('>'.$project->real_name.'</textarea>', false)
+            ->assertDontSee('id="balance-installment-preview"', false);
     }
 
     #[Test]
     public function balance_description_follows_each_payment(): void
     {
         $service = app(ProjectBalanceInvoiceService::class);
-        $when = Carbon::parse('2026-10-02', 'Europe/Madrid');
-        $submitted = "Pago 1 de 2 — Demo · 02/10/2026 · 185,00 €\nPago 2 de 2 — Demo · 02/11/2026 · 185,00 €";
+        $submitted = "Pago 1 de 2 — Demo\nPago 2 de 2 — Demo";
 
         $this->assertSame(
-            'Pago 1 de 2 — Demo · 02/10/2026 · 185,00 €',
-            $service->installmentLine($submitted, 'Demo', 2, 0, 185, $when),
+            'Pago 1 de 2 — Demo',
+            $service->installmentLine($submitted, 'Demo', 2, 0, false),
         );
         $this->assertSame(
-            'Saldo — Demo · 02/10/2026 · 370,00 €',
-            $service->installmentLine('Saldo — Demo · 02/10/2026 · 370,00 €', 'Demo', 1, 0, 370, $when),
+            'Sitio web',
+            $service->installmentLine('Sitio web', 'Demo', 1, 0, false),
         );
         $this->assertSame(
             __('Installment :current of :total — :project', [
                 'current' => 2,
                 'total' => 2,
                 'project' => 'Demo',
-            ]).' · 02/11/2026 · 185,00 €',
-            $service->installmentLine('Saldo', 'Demo', 2, 1, 185, $when->copy()->addMonthNoOverflow()),
+            ]),
+            $service->installmentLine('Saldo', 'Demo', 2, 1, false),
+        );
+        $this->assertSame(
+            __('Balance payment :current of :total — :project', [
+                'current' => 1,
+                'total' => 2,
+                'project' => 'Demo',
+            ]),
+            $service->installmentLine('otra', 'Demo', 2, 0, true),
         );
     }
 

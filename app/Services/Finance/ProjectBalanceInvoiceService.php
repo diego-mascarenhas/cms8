@@ -73,7 +73,11 @@ class ProjectBalanceInvoiceService
             'vat_label' => (string) $vat['label'],
             'vat_amount' => $vatAmount,
             'total_with_vat' => round($remaining + $vatAmount, 2),
-            'default_description' => __('Balance — :project', ['project' => $projectName]),
+            'partial_invoiced' => $depositInvoiced,
+            'project_name' => $projectName,
+            'default_description' => $depositInvoiced
+                ? __('Balance — :project', ['project' => $projectName])
+                : $projectName,
             'stripe_customer_id' => $project->client?->getStripeCustomerId(),
             'already_invoiced' => $stored !== [],
             'invoices' => $stored,
@@ -165,7 +169,13 @@ class ProjectBalanceInvoiceService
         {
             $when = Carbon::parse($startDate, 'Europe/Madrid')->startOfDay()->addMonthsNoOverflow($index)->setTime(9, 0);
             $immediate = $when->lessThanOrEqualTo(now()->addHour());
-            $line = $this->installmentLine($description, $projectName, $installments, $index, $amount, $when);
+            $line = $this->installmentLine(
+                $description,
+                $projectName,
+                $installments,
+                $index,
+                (int) ($preview['deposit_base'] ?? 0) > 0,
+            );
 
             $created = $this->createInstallment(
                 $client,
@@ -229,7 +239,7 @@ class ProjectBalanceInvoiceService
         return $amounts;
     }
 
-    public function installmentLine(string $description, string $projectName, int $installments, int $index, int $amount, Carbon $when): string
+    public function installmentLine(string $description, string $projectName, int $installments, int $index, bool $partialInvoiced): string
     {
         if ($installments <= 1)
         {
@@ -243,11 +253,15 @@ class ProjectBalanceInvoiceService
             return $lines[$index];
         }
 
-        return __('Installment :current of :total — :project', [
+        $key = $partialInvoiced
+            ? 'Balance payment :current of :total — :project'
+            : 'Installment :current of :total — :project';
+
+        return __($key, [
             'current' => $index + 1,
             'total' => $installments,
             'project' => $projectName,
-        ]).' · '.$when->timezone('Europe/Madrid')->format('d/m/Y').' · '.number_format($amount, 2, ',', '.').' €';
+        ]);
     }
 
     /**
