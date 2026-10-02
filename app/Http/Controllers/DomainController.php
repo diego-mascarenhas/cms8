@@ -9,7 +9,9 @@ use App\Http\Requests\StoreDomainEmailRequest;
 use App\Http\Requests\UpdateDomainEmailPasswordRequest;
 use App\Jobs\RefreshDomainDataJob;
 use App\Models\Domain;
+use App\Models\Enterprise;
 use App\Models\Server;
+use App\Models\ServiceSync;
 use App\Services\ControlPanel\ControlPanelManager;
 use App\Services\Hosting\DomainCpanelPasswordService;
 use App\Services\Hosting\DomainMailboxPasswordService;
@@ -95,6 +97,7 @@ class DomainController extends Controller
             && $domain->server?->hasToken()
             && ! $accountIsSuspended
             && filled($domain->username);
+        $enterprise = $this->enterpriseForDomain($domain);
 
         if ($domain->server && $this->controlPanelManager->supports($domain->server))
         {
@@ -127,7 +130,62 @@ class DomainController extends Controller
             'cpanelNotifiableContacts',
             'cpanelHostingPlanEmail',
             'canResetCpanelPassword',
+            'enterprise',
         ));
+    }
+
+    /**
+     * Company that owns this hosting: the linked service, or a hosting subscription whose domain matches.
+     */
+    private function enterpriseForDomain(Domain $domain): ?Enterprise
+    {
+        $teamId = auth()->user()?->currentTeam?->id;
+        if (! $teamId)
+        {
+            return null;
+        }
+
+        $fromService = $domain->service?->enterprise;
+        if ($fromService && (int) $fromService->team_id === (int) $teamId)
+        {
+            return $fromService;
+        }
+
+        $domainName = strtolower(trim((string) $domain->domain));
+        if ($domainName === '')
+        {
+            return null;
+        }
+
+        $like = '%'.addcslashes($domainName, '%_\\').'%';
+
+        $sync = ServiceSync::query()
+            ->where('team_id', $teamId)
+            ->where(function ($query) use ($domainName, $like): void
+            {
+                $query->whereRaw('LOWER(plan_name) LIKE ?', [$like])
+                    ->orWhere('raw_payload->description', 'like', $like)
+                    ->orWhere('data->domain', $domainName);
+            })
+            ->get()
+            ->filter(function (ServiceSync $sync) use ($domainName): bool
+            {
+                return $sync->isClientHosting()
+                    && $sync->hostingDomainCandidate() === $domainName
+                    && filled($sync->customer_id);
+            })
+            ->sortBy(fn (ServiceSync $sync): int => strtolower((string) $sync->status) === 'active' ? 0 : 1)
+            ->first();
+
+        if (! $sync)
+        {
+            return null;
+        }
+
+        return Enterprise::query()
+            ->where('team_id', $teamId)
+            ->where('code', $sync->customer_id)
+            ->first();
     }
 
     /**

@@ -35,14 +35,16 @@ class ProjectApprovedBudgetLockTest extends TestCase
     }
 
     #[Test]
-    public function approved_budget_cannot_open_edit_form(): void
+    public function approved_budget_edit_form_keeps_status_fixed(): void
     {
         [$user, $project] = $this->createApprovedProject();
 
         $this->actingAs($user)
             ->get(route('project.edit', $project->id))
-            ->assertRedirect(route('project.show', $project->id))
-            ->assertSessionHas('error');
+            ->assertOk()
+            ->assertSee('name="status_id" value="'.$project->status_id.'"', false)
+            ->assertSee(__('Saving keeps the current status. Correct the amount in the breakdown.'), false)
+            ->assertDontSee('name="status_id" class="select2', false);
     }
 
     #[Test]
@@ -147,30 +149,48 @@ class ProjectApprovedBudgetLockTest extends TestCase
             ->assertSee('id="locked-status-id" name="status_id" class="select2 form-select"', false)
             ->assertSee(__('This approved budget is locked. Only the project status can be changed.'), false)
             ->assertDontSee(__('Locked'), false)
-            ->assertDontSee(route('project.edit', $project->id), false);
+            ->assertSee(route('project.edit', $project->id), false)
+            ->assertDontSee(__('No linked services'), false)
+            ->assertDontSee('id="serviceModal"', false);
     }
 
     #[Test]
-    public function approved_budget_cannot_be_saved_via_store_update(): void
+    public function approved_budget_amount_can_be_corrected_without_changing_status(): void
     {
         [$user, $project] = $this->createApprovedProject();
+        $project->forceFill([
+            'data' => array_merge($project->data, [
+                'deposit_invoice' => ['stripe_invoice_id' => 'in_lock_test'],
+            ]),
+        ])->save();
+
+        $tasks = $project->fresh()->data['suggested_tasks'];
+        $tasks[0]['unit_price'] = 150;
 
         $this->actingAs($user)
-            ->from(route('project.show', $project->id))
+            ->from(route('project.edit', $project->id))
             ->post(route('project.store'), [
                 'id' => $project->id,
-                'name' => 'Hacked name',
-                'real_name' => 'Hacked real name',
+                'name' => $project->name,
+                'real_name' => $project->real_name,
                 'status_id' => ProjectStatus::STATUS_IN_PROGRESS,
                 'enterprise_id' => $project->enterprise_id,
                 'responsible_id' => $project->responsible_id,
-                'data' => $project->data,
+                'data' => [
+                    'suggested_tasks' => json_encode($tasks),
+                    'budget_client_response' => ['status' => 'wiped'],
+                    'budget_preview_token' => 'replaced-token',
+                ],
             ])
             ->assertRedirect(route('project.show', $project->id))
-            ->assertSessionHas('error');
+            ->assertSessionHas('success');
 
-        $this->assertSame('Dashboard Innovación — 4 secciones', $project->fresh()->name);
-        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $project->fresh()->status_id);
+        $fresh = $project->fresh();
+        $this->assertSame(ProjectStatus::STATUS_APPROVED, (int) $fresh->status_id);
+        $this->assertSame(150.0, (float) $fresh->data['suggested_tasks'][0]['unit_price']);
+        $this->assertSame('accepted', $fresh->data['budget_client_response']['status']);
+        $this->assertSame('lock-test-token', $fresh->data['budget_preview_token']);
+        $this->assertSame('in_lock_test', $fresh->data['deposit_invoice']['stripe_invoice_id']);
     }
 
     #[Test]

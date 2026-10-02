@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Helpers\Helpers;
+use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\PaymentAccount;
 use App\Services\ExpenseDuplicateDocumentService;
@@ -66,6 +67,7 @@ class StoreExpenseRequest extends FormRequest
             'remarks' => ['nullable', 'string', 'max:1000'],
             'tags' => ['nullable', 'string', 'max:255'],
             'submit_action' => ['nullable', Rule::in(['draft', 'save'])],
+            'charge_automatically' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -197,6 +199,27 @@ class StoreExpenseRequest extends FormRequest
 
                 $hasSpecifiedAmount = true;
                 $specifiedSum += round((float) $payment['amount'], 2);
+            }
+
+            if ($this->boolean('charge_automatically') && $this->routeIs('invoice.store'))
+            {
+                $enterprise = Enterprise::query()->find($this->integer('enterprise_id'));
+                $code = trim((string) ($enterprise?->code ?? ''));
+                if (! str_starts_with($code, 'cus_'))
+                {
+                    $validator->errors()->add(
+                        'charge_automatically',
+                        'Este cliente no tiene una tarjeta de Stripe para cobrar automáticamente.',
+                    );
+                }
+
+                if ($hasSpecifiedAmount)
+                {
+                    $validator->errors()->add(
+                        'charge_automatically',
+                        'Quita los cobros manuales o desmarca el cobro automático.',
+                    );
+                }
             }
 
             if ($hasSpecifiedAmount && $specifiedSum > round($invoiceTotal + 0.001, 2))

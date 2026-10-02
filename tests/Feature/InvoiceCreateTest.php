@@ -3,14 +3,18 @@
 namespace Tests\Feature;
 
 use App\Models\Enterprise;
+use App\Models\EnterpriseBillingAddress;
+use App\Models\EnterpriseTaxStatusType;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\PaymentAccount;
 use App\Models\PaymentType;
 use App\Models\Team;
 use App\Models\User;
+use App\Services\Finance\SellInvoiceCardCharge;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTaxStatusTypeSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -69,9 +73,33 @@ class InvoiceCreateTest extends TestCase
             ->assertDontSee('Ticket/Recibo', false)
             ->assertDontSee('Amortización', false)
             ->assertDontSee('Nómina', false)
-            ->assertSee('Automático', false)
-            ->assertSee('Se asignará al guardar', false)
+            ->assertSee('Borrador', false)
+            ->assertSee('Factura', false)
+            ->assertSee('Volver', false)
+            ->assertDontSee('Se asignará al guardar', false)
             ->assertSee('col-md-4', false);
+    }
+
+    public function test_create_page_preselects_the_client_from_the_query(): void
+    {
+        $user = $this->makeAdminUser();
+        $client = $this->createClientForTeam($user);
+        $this->createAccountForTeam($user);
+        $this->createPaymentType();
+
+        $response = $this->actingAs($user)->get(route('invoice.create', ['enterprise_id' => $client->id]));
+
+        $response->assertOk();
+        $response->assertSee('Empresa', false);
+        $response->assertSee(route('client.show', $client->id), false);
+        $response->assertDontSee('> Volver', false);
+        $response->assertDontSee('id="open-create-supplier-modal"', false);
+        $response->assertSee('name="enterprise_id" value="'.$client->id.'"', false);
+        $response->assertSee('disabled', false);
+        $this->assertMatchesRegularExpression(
+            '/value="'.$client->id.'"[\s\S]{0,800}selected/',
+            $response->getContent(),
+        );
     }
 
     public function test_store_creates_sell_invoice_and_income_payment(): void
@@ -122,6 +150,67 @@ class InvoiceCreateTest extends TestCase
         $teamHash = Team::generateTeamHash((int) $user->current_team_id);
         $this->assertNotEmpty(Storage::disk('public')->allFiles("invoices/{$teamHash}"));
         $this->assertStringContainsString('/storage/invoices/'.$teamHash.'/', (string) $payment->remarks);
+    }
+
+    public function test_create_page_exempts_tax_when_the_client_is_outside_spain_and_offers_automatic_charge(): void
+    {
+        $this->seed(EnterpriseTaxStatusTypeSeeder::class);
+
+        $user = $this->makeAdminUser();
+        $client = $this->createClientForTeam($user);
+        $this->createAccountForTeam($user);
+        $this->createPaymentType();
+        $taxStatus = EnterpriseTaxStatusType::query()->where('name', 'VAT registered')->firstOrFail();
+
+        EnterpriseBillingAddress::query()->create([
+            'enterprise_id' => $client->id,
+            'name' => $client->name,
+            'tax_status_type_id' => $taxStatus->id,
+            'country' => 'AR',
+            'status' => 1,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('invoice.create', ['enterprise_id' => $client->id]))
+            ->assertOk()
+            ->assertSee('Exento de IVA', false)
+            ->assertSee('Cobrar automáticamente', false)
+            ->assertSee('name="lines[0][vat_percent]"', false)
+            ->assertSee('value="0"', false);
+    }
+
+    public function test_store_charges_the_card_when_automatic_collection_is_requested(): void
+    {
+        Storage::fake('public');
+
+        $user = $this->makeAdminUser();
+        $client = $this->createClientForTeam($user);
+        $client->forceFill(['code' => 'cus_test_charge'])->save();
+        $this->createAccountForTeam($user);
+        $this->createPaymentType();
+
+        $this->mock(SellInvoiceCardCharge::class, function ($mock): void
+        {
+            $mock->shouldReceive('charge')->once()->andReturn('paid');
+        });
+
+        $this->actingAs($user)
+            ->post(route('invoice.store'), [
+                'document_type' => 'invoice',
+                'enterprise_id' => $client->id,
+                'date' => '2026-08-03',
+                'charge_automatically' => '1',
+                'lines' => [[
+                    'concept' => 'Consulting services',
+                    'base_amount' => '100.00',
+                    'vat_percent' => '0',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('invoice.index'))
+            ->assertSessionHas('success', 'Factura guardada y cobrada automáticamente.');
     }
 
     public function test_create_client_endpoint_returns_client_enterprise(): void

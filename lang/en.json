@@ -1898,6 +1898,7 @@
   "whatsapp.send.error.not_ready": "WhatsApp is still connecting. Wait a few seconds and try again.",
   "whatsapp.send.error.session_window_closed": "You cannot message this number: more than 24 hours have passed since their last message. Wait until the customer writes again.",
   "This approved budget is locked. Only the project status can be changed.": "This approved budget is locked. Only the project status can be changed.",
+  "Saving keeps the current status. Correct the amount in the breakdown.": "Saving keeps the current status. Correct the amount in the breakdown.",
   "Change status": "Change status",
   "Register time": "Register time",
   "Duration (hours)": "Duration (hours)",

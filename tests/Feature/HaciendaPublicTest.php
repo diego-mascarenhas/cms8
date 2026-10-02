@@ -159,7 +159,8 @@ class HaciendaPublicTest extends TestCase
             ->assertSee('value="q:3"', false)
             ->assertSee('Comprobante', false)
             ->assertSee('text-end', false)
-            ->assertSee('Estado', false)
+            ->assertSee('(Cobrada)', false)
+            ->assertDontSee('>Estado<', false)
             ->assertSee('0005-1100', false)
             ->assertSee('0005-1001', false)
             ->assertSee('ES-7788', false)
@@ -172,6 +173,12 @@ class HaciendaPublicTest extends TestCase
             ->assertDontSee('>https://files.stripe.com/factura-0005-1100.pdf<', false)
             ->assertSee(__('Sales invoices'), false)
             ->assertSee(__('Purchase invoices'), false)
+            ->assertSee(__('Output VAT for tax filing'), false)
+            ->assertSee(__('Input VAT for tax filing'), false)
+            ->assertSee(__('VAT payable'), false)
+            ->assertSee('23,10', false)
+            ->assertSee('10,50', false)
+            ->assertSee('12,60', false)
             ->assertSee('/export?vat_year=2024', false)
             ->assertSee('vat_period=m', false)
             ->assertDontSee('FUERA-PERIODO', false);
@@ -208,14 +215,34 @@ class HaciendaPublicTest extends TestCase
             'vat_period' => 'm:5',
         ]))->getContent();
         $this->assertLessThan(
-            strpos((string) $page, '0005-1100'),
             strpos((string) $page, '0005-1001'),
+            strpos((string) $page, '0005-1100'),
         );
+        $this->assertMatchesRegularExpression(
+            '/0005-1100\s*<div class="small text-muted">10\/05\/2024<\/div>/',
+            (string) $page,
+        );
+        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>Fecha<\/th>/', (string) $page);
+        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>ID Fiscal<\/th>/', (string) $page);
+        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>Moneda<\/th>/', (string) $page);
+        $this->assertMatchesRegularExpression(
+            '/100,00\s*<div class="small text-muted">EUR<\/div>/',
+            (string) $page,
+        );
+        $this->assertStringContainsString(__('Sales invoices'), (string) $page);
+        $this->assertStringContainsString(__('Purchase invoices'), (string) $page);
+        $this->assertStringContainsString(__('Sales credit notes'), (string) $page);
+        $this->assertStringContainsString(__('Purchase credit notes'), (string) $page);
+        $this->assertStringNotContainsString('Importe (EUR)', (string) $page);
+        $this->assertStringNotContainsString('Tax (EUR)', (string) $page);
+        $this->assertStringNotContainsString('Total (EUR)', (string) $page);
 
         $this->assertStringContainsString('0005-1100', $saleCsv);
+        $this->assertStringContainsString('Fecha', $saleCsv);
+        $this->assertStringContainsString('ID Fiscal', $saleCsv);
         $this->assertLessThan(
-            strpos($saleCsv, '0005-1100'),
             strpos($saleCsv, '0005-1001'),
+            strpos($saleCsv, '0005-1100'),
         );
         $this->assertStringContainsString('/invoice/'.$sale->id.'/file', $saleCsv);
         $this->assertStringNotContainsString('invoice.stripe.com', $saleCsv);

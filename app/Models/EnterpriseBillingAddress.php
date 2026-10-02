@@ -36,6 +36,27 @@ class EnterpriseBillingAddress extends Model
         return $this->belongsTo(EnterpriseTaxStatusType::class, 'tax_status_type_id');
     }
 
+    /**
+     * Country name for the billing row. Uses the address country, then a fallback code such as the Stripe customer country.
+     */
+    public function countryLabel(?string $fallbackCode = null): string
+    {
+        $raw = trim((string) $this->country);
+        if ($raw === '')
+        {
+            $raw = trim((string) $fallbackCode);
+        }
+
+        if ($raw === '')
+        {
+            return '';
+        }
+
+        $match = Country::query()->where('code', strtolower($raw))->value('name');
+
+        return is_string($match) && $match !== '' ? $match : $raw;
+    }
+
     // Deprecated: Use taxStatusType() instead
     public function fiscalConditionType()
     {

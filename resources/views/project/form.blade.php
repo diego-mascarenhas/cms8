@@ -780,16 +780,25 @@
 			</div>
 
 			<!-- Project status -->
+			@php
+				$budgetContentLocked = isset($data->id) && $data->isBudgetContentLocked();
+			@endphp
 			<div class="col-md-6">
 				<div class="form-group">
 					<div class="d-flex align-items-center justify-content-between flex-nowrap gap-2 mb-1" style="min-height: 2.25rem;">
 						<label for="status_id" class="form-label mb-0">{{ __('Project Status') }}</label>
 					</div>
-					<select id="status_id" name="status_id" class="select2 form-select @error('status_id') is-invalid @enderror" data-placeholder="{{ __('Choose an option') }}">
+					@if ($budgetContentLocked)
+						<input type="hidden" name="status_id" value="{{ $data->status_id }}">
+					@endif
+					<select id="status_id" @if (! $budgetContentLocked) name="status_id" @endif class="select2 form-select @error('status_id') is-invalid @enderror" data-placeholder="{{ __('Choose an option') }}" @disabled($budgetContentLocked)>
 						@foreach($statuses as $status)
 							<option value="{{ $status['id'] }}" {{ old('status_id', $data->status_id ?? '') == $status['id'] ? 'selected' : '' }}>{{ $status['name'] }}</option>
 						@endforeach
 					</select>
+					@if ($budgetContentLocked)
+						<small class="text-muted d-block mt-1">{{ __('Saving keeps the current status. Correct the amount in the breakdown.') }}</small>
+					@endif
 					@error('status_id')
 						<div class="invalid-feedback">{{ $message }}</div>
 					@enderror

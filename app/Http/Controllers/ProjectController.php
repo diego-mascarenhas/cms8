@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\DataTables\ProjectDataTable;
 use App\Http\Requests\AcceptProjectBudgetPreviewRequest;
 use App\Http\Requests\ReformulateProjectBudgetPreviewRequest;
+use App\Http\Requests\StoreProjectBalanceInvoiceRequest;
 use App\Http\Requests\StoreProjectDepositInvoiceRequest;
 use App\Http\Requests\StoreProjectRequest;
 use App\Models\Category;
@@ -20,6 +21,7 @@ use App\Models\Task;
 use App\Models\TaskBoard;
 use App\Models\TaskStatus;
 use App\Models\Time;
+use App\Services\Finance\ProjectBalanceInvoiceService;
 use App\Services\Finance\ProjectDepositInvoiceService;
 use App\Services\ProjectBudgetQuoteMailService;
 use App\Services\ProjectBudgetSpecService;
@@ -91,13 +93,6 @@ class ProjectController extends Controller
         if ($existing)
         {
             $this->authorize('update', $existing);
-
-            if ($existing->isBudgetContentLocked())
-            {
-                return redirect()
-                    ->route('project.show', $existing->id)
-                    ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-            }
         } else
         {
             $this->authorize('create', Project::class);
@@ -135,6 +130,11 @@ class ProjectController extends Controller
             'date_start' => $data['date_start'] ?? null,
             'date_end' => $data['date_end'] ?? null,
         ];
+
+        if ($existing && $existing->isBudgetContentLocked())
+        {
+            $attributes = $this->keepApprovedBudgetCircuit($existing, $attributes);
+        }
 
         if ($existing)
         {
@@ -870,9 +870,6 @@ class ProjectController extends Controller
             'allCollaborators.languageVariants.sourceLanguage',
             'allCollaborators.languageVariants.targetLanguage',
             'allCollaborators.fares.type',
-            'projectFares.fare.type',
-            'projectFares.sourceLanguage',
-            'projectFares.targetLanguage',
         ])->findOrFail($id);
 
         $this->syncProjectStatusFromBudgetResponse($project);
@@ -951,12 +948,17 @@ class ProjectController extends Controller
             : collect();
 
         $depositInvoicePreview = null;
+        $balanceInvoicePreview = null;
         if (
             $project->isBudgetApproved()
             && auth()->user()->can('access-billing-modules')
         ) {
             $project->loadMissing(['client.enterpriseBillingAddresses.taxStatusType']);
             $depositInvoicePreview = app(ProjectDepositInvoiceService::class)->preview($project);
+            if (app(ProjectBalanceInvoiceService::class)->projectCanInvoiceBalance($project))
+            {
+                $balanceInvoicePreview = app(ProjectBalanceInvoiceService::class)->preview($project);
+            }
         }
 
         return view('project.show', compact(
@@ -969,6 +971,7 @@ class ProjectController extends Controller
             'teamUsers',
             'runningTimer',
             'depositInvoicePreview',
+            'balanceInvoicePreview',
         ));
     }
 
@@ -1155,6 +1158,54 @@ class ProjectController extends Controller
     }
 
     /**
+     * Invoice the remaining budget once the project is finished, in full or in installments.
+     */
+    public function invoiceBalance(StoreProjectBalanceInvoiceRequest $request, string $id, ProjectBalanceInvoiceService $balanceInvoiceService)
+    {
+        $project = Project::findOrFail($id);
+        $this->authorize('update', $project);
+        $this->authorize('access-billing-modules');
+
+        $mode = (string) $request->validated('billing_mode');
+        $installments = $mode === 'installments'
+            ? (int) $request->validated('installments')
+            : 1;
+        $startDate = $mode === 'installments'
+            ? (string) $request->validated('start_date')
+            : now()->toDateString();
+
+        $result = $balanceInvoiceService->issue(
+            $project,
+            (string) $request->validated('description'),
+            auth()->user()->currentTeam,
+            $installments,
+            $startDate,
+        );
+
+        if (! empty($result['scheduled']))
+        {
+            $message = __('Balance payments scheduled from :date.', ['date' => Carbon::parse($startDate)->format('d/m/Y')]);
+        } elseif (! empty($result['charged']))
+        {
+            $message = __('Balance invoice created and charged.');
+        } else
+        {
+            $message = __('Balance invoice created and sent for payment.');
+        }
+
+        $redirect = redirect()
+            ->route('project.show', $project->id)
+            ->with('success', $message);
+
+        if (! empty($result['hosted_invoice_url']) && empty($result['charged']))
+        {
+            $redirect->with('deposit_invoice_url', $result['hosted_invoice_url']);
+        }
+
+        return $redirect;
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit(string $id)
@@ -1162,15 +1213,7 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
 
-        if ($project->isBudgetContentLocked())
-        {
-            return redirect()
-                ->route('project.show', $project->id)
-                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-        }
-
-        $data = Project::with(['projectFares.fare.units', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
-            ->findOrFail($id);
+        $data = Project::findOrFail($id);
         $enterprise_id = $data->enterprise_id;
         $statuses = ProjectStatus::getOptions();
 
@@ -1206,19 +1249,12 @@ class ProjectController extends Controller
     }
 
     /**
-     * Update project (blocked when budget is approved).
+     * Update project. Approved budgets keep their status and quote circuit.
      */
     public function update(StoreProjectRequest $request, string $id)
     {
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
-
-        if ($project->isBudgetContentLocked())
-        {
-            return redirect()
-                ->route('project.show', $project->id)
-                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-        }
 
         $validated = $request->validated();
         $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
@@ -1230,11 +1266,49 @@ class ProjectController extends Controller
             );
         }
 
+        if ($project->isBudgetContentLocked())
+        {
+            $validated = $this->keepApprovedBudgetCircuit($project, $validated);
+        }
+
         $project->update($validated);
 
         return redirect()
             ->route('project.show', $project->id)
             ->with('success', __('Project updated successfully.'));
+    }
+
+    /**
+     * Amount corrections on an approved budget must not move status or drop the quote circuit.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function keepApprovedBudgetCircuit(Project $project, array $attributes): array
+    {
+        $attributes['status_id'] = (int) $project->status_id;
+
+        $previous = is_array($project->data) ? $project->data : [];
+        $incoming = is_array($attributes['data'] ?? null) ? $attributes['data'] : $previous;
+
+        foreach ([
+            'budget_client_response',
+            'budget_preview_token',
+            'budget_email',
+            'deposit_invoice',
+            'quote_finalized',
+            'ai_suggested_tasks',
+        ] as $key)
+        {
+            if (array_key_exists($key, $previous))
+            {
+                $incoming[$key] = $previous[$key];
+            }
+        }
+
+        $attributes['data'] = $incoming;
+
+        return $attributes;
     }
 
     /**
@@ -1294,341 +1368,6 @@ class ProjectController extends Controller
         }
     }
 
-    /**
-     * Get service template for dynamic addition
-     */
-    public function getServiceTemplate(Request $request)
-    {
-        $index = $request->get('index', 0);
-
-        return view('project.partials.service-row', [
-            'index' => $index,
-            'projectFare' => null,
-        ])->render();
-    }
-
-    /**
-     * Get units for a specific fare
-     */
-    public function getFareUnits(Request $request)
-    {
-        try
-        {
-            $fareId = $request->get('fare_id');
-
-            if (! $fareId)
-            {
-                return response()->json([
-                    'units' => [],
-                    'success' => true,
-                ], 200, [
-                    'Content-Type' => 'application/json',
-                ]);
-            }
-
-            // Use withoutGlobalScopes to avoid team_id restriction
-            $fare = Fare::withoutGlobalScopes()->with('units')->find($fareId);
-
-            if (! $fare)
-            {
-                return response()->json([
-                    'units' => [],
-                    'success' => true,
-                ], 200, [
-                    'Content-Type' => 'application/json',
-                ]);
-            }
-
-            $units = $fare->units->map(function ($unit)
-            {
-                return [
-                    'id' => $unit->id,
-                    'type' => $unit->type,
-                    'label' => $unit->type,
-                ];
-            });
-
-            return response()->json([
-                'units' => $units,
-                'success' => true,
-            ], 200, [
-                'Content-Type' => 'application/json',
-                'Cache-Control' => 'no-cache, no-store, must-revalidate',
-            ]);
-        } catch (\Exception $e)
-        {
-            return response()->json([
-                'units' => [],
-                'error' => 'Error loading units: '.$e->getMessage(),
-                'success' => false,
-            ], 200, [
-                'Content-Type' => 'application/json',
-            ]);
-        }
-    }
-
-    /**
-     * Show add services page for a project
-     */
-    public function addServices(string $projectId)
-    {
-        $project = Project::with(['client', 'responsible', 'status', 'category'])
-            ->findOrFail($projectId);
-
-        return view('project.add-services', compact('project'));
-    }
-
-    /**
-     * Store services for a project
-     */
-    public function storeServices(Request $request, string $projectId)
-    {
-        $project = Project::findOrFail($projectId);
-
-        $request->validate([
-            'services' => 'required|array|min:1',
-            'services.*.fare_id' => 'required|exists:fares,id',
-            'services.*.source_language_code' => 'required|exists:language_variants,code',
-            'services.*.target_language_code' => 'required|exists:language_variants,code',
-            'services.*.quantity' => 'required|numeric|min:1',
-            'services.*.unit' => 'required|string',
-        ]);
-
-        try
-        {
-            // Clear existing services
-            $project->projectFares()->delete();
-
-            // Add new services
-            $createdServices = [];
-            foreach ($request->services as $serviceData)
-            {
-                $projectFare = $project->projectFares()->create([
-                    'fare_id' => $serviceData['fare_id'],
-                    'source_language_code' => $serviceData['source_language_code'],
-                    'target_language_code' => $serviceData['target_language_code'],
-                    'quantity' => $serviceData['quantity'],
-                    'unit' => $serviceData['unit'],
-                ]);
-                $createdServices[] = $projectFare->id;
-            }
-
-            return redirect()
-                ->route('project.show', $project->id)
-                ->with('success', 'Servicios agregados exitosamente.');
-        } catch (\Exception $e)
-        {
-            return redirect()
-                ->back()
-                ->with('error', 'Error al guardar los servicios: '.$e->getMessage())
-                ->withInput();
-        }
-    }
-
-    /**
-     * Get services for a project (modal)
-     */
-    public function getServices(string $projectId)
-    {
-        $project = Project::findOrFail($projectId);
-
-        $services = $project->projectFares()->with([
-            'fare',
-            'sourceLanguage',
-            'targetLanguage',
-        ])->get()->map(function ($projectFare)
-        {
-            return [
-                'id' => $projectFare->id,
-                'fare_id' => $projectFare->fare_id,
-                'fare_name' => $projectFare->fare->name,
-                'source_language_code' => $projectFare->source_language_code,
-                'source_language_name' => $projectFare->sourceLanguage->name,
-                'source_country_code' => $projectFare->sourceLanguage->country_code ?? '',
-                'target_language_code' => $projectFare->target_language_code,
-                'target_language_name' => $projectFare->targetLanguage->name,
-                'target_country_code' => $projectFare->targetLanguage->country_code ?? '',
-                'quantity' => $projectFare->quantity,
-                'unit' => $projectFare->unit,
-            ];
-        });
-
-        return response()->json([
-            'success' => true,
-            'services' => $services,
-        ]);
-    }
-
-    /**
-     * Store a single service for a project (modal)
-     */
-    public function storeService(Request $request, string $projectId)
-    {
-        $project = Project::findOrFail($projectId);
-
-        $request->validate([
-            'fare_id' => 'required|exists:fares,id',
-            'source_language_code' => 'required|exists:language_variants,code',
-            'target_language_code' => 'required|exists:language_variants,code',
-            'quantity' => 'required|numeric|min:1',
-            'unit' => 'required|string',
-        ]);
-
-        try
-        {
-            // Check for duplicates
-            $existingService = $project
-                ->projectFares()
-                ->where('fare_id', $request->fare_id)
-                ->where('source_language_code', $request->source_language_code)
-                ->where('target_language_code', $request->target_language_code)
-                ->exists();
-
-            if ($existingService)
-            {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Este servicio ya está agregado con la misma combinación de idiomas.',
-                ], 400);
-            }
-
-            $projectFare = $project->projectFares()->create([
-                'fare_id' => $request->fare_id,
-                'source_language_code' => $request->source_language_code,
-                'target_language_code' => $request->target_language_code,
-                'quantity' => $request->quantity,
-                'unit' => $request->unit,
-            ]);
-
-            // Load relationships for response
-            $projectFare->load(['fare', 'sourceLanguage', 'targetLanguage']);
-
-            return response()->json([
-                'success' => true,
-                'service' => [
-                    'id' => $projectFare->id,
-                    'fare_id' => $projectFare->fare_id,
-                    'fare_name' => $projectFare->fare->name,
-                    'source_language_code' => $projectFare->source_language_code,
-                    'source_language_name' => $projectFare->sourceLanguage->name,
-                    'source_country_code' => $projectFare->sourceLanguage->country_code ?? '',
-                    'target_language_code' => $projectFare->target_language_code,
-                    'target_language_name' => $projectFare->targetLanguage->name,
-                    'target_country_code' => $projectFare->targetLanguage->country_code ?? '',
-                    'quantity' => $projectFare->quantity,
-                    'unit' => $projectFare->unit,
-                ],
-                'message' => 'Servicio agregado exitosamente.',
-            ]);
-        } catch (\Exception $e)
-        {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al guardar el servicio: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Update a single service for a project (modal)
-     */
-    public function updateService(Request $request, string $projectId, string $serviceId)
-    {
-        $project = Project::findOrFail($projectId);
-        $projectFare = $project->projectFares()->findOrFail($serviceId);
-
-        $request->validate([
-            'fare_id' => 'required|exists:fares,id',
-            'source_language_code' => 'required|exists:language_variants,code',
-            'target_language_code' => 'required|exists:language_variants,code',
-            'quantity' => 'required|numeric|min:1',
-            'unit' => 'required|string',
-        ]);
-
-        try
-        {
-            // Check for duplicates (excluding current service)
-            $existingService = $project
-                ->projectFares()
-                ->where('fare_id', $request->fare_id)
-                ->where('source_language_code', $request->source_language_code)
-                ->where('target_language_code', $request->target_language_code)
-                ->where('id', '!=', $serviceId)
-                ->exists();
-
-            if ($existingService)
-            {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Este servicio ya está agregado con la misma combinación de idiomas.',
-                ], 400);
-            }
-
-            $projectFare->update([
-                'fare_id' => $request->fare_id,
-                'source_language_code' => $request->source_language_code,
-                'target_language_code' => $request->target_language_code,
-                'quantity' => $request->quantity,
-                'unit' => $request->unit,
-            ]);
-
-            // Load relationships for response
-            $projectFare->load(['fare', 'sourceLanguage', 'targetLanguage']);
-
-            return response()->json([
-                'success' => true,
-                'service' => [
-                    'id' => $projectFare->id,
-                    'fare_id' => $projectFare->fare_id,
-                    'fare_name' => $projectFare->fare->name,
-                    'source_language_code' => $projectFare->source_language_code,
-                    'source_language_name' => $projectFare->sourceLanguage->name,
-                    'source_country_code' => $projectFare->sourceLanguage->country_code ?? '',
-                    'target_language_code' => $projectFare->target_language_code,
-                    'target_language_name' => $projectFare->targetLanguage->name,
-                    'target_country_code' => $projectFare->targetLanguage->country_code ?? '',
-                    'quantity' => $projectFare->quantity,
-                    'unit' => $projectFare->unit,
-                ],
-                'message' => 'Servicio actualizado exitosamente.',
-            ]);
-        } catch (\Exception $e)
-        {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al actualizar el servicio: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Delete a single service for a project (modal)
-     */
-    public function deleteService(string $projectId, string $serviceId)
-    {
-        $project = Project::findOrFail($projectId);
-        $projectFare = $project->projectFares()->findOrFail($serviceId);
-
-        try
-        {
-            $projectFare->delete();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Servicio eliminado exitosamente.',
-            ]);
-        } catch (\Exception $e)
-        {
-            return response()->json([
-                'success' => false,
-                'message' => 'Error al eliminar el servicio: '.$e->getMessage(),
-            ], 500);
-        }
-    }
-
-    /**
-     * Format date for message templates
-     */
     private function formatDate($date)
     {
         if (! $date)

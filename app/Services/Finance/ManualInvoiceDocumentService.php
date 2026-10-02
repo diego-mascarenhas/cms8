@@ -22,7 +22,7 @@ class ManualInvoiceDocumentService
 {
     /**
      * @param  array<string, mixed>  $validated
-     * @return array{is_draft: bool}
+     * @return array{is_draft: bool, invoice: Invoice}
      */
     public function store(
         array $validated,
@@ -49,6 +49,7 @@ class ManualInvoiceDocumentService
             : null;
         $categoryName = $this->resolveExpenseCategoryName($validated);
         $isDraft = ($validated['submit_action'] ?? 'save') === 'draft';
+        $invoice = null;
 
         DB::transaction(function () use (
             $validated,
@@ -66,6 +67,7 @@ class ManualInvoiceDocumentService
             $isDraft,
             $operation,
             $pendingDocumentToken,
+            &$invoice,
         ): void {
             $invoice = Invoice::withoutGlobalScopes()->create([
                 'team_id' => $teamId,
@@ -136,7 +138,10 @@ class ManualInvoiceDocumentService
             }
         });
 
-        return ['is_draft' => $isDraft];
+        return [
+            'is_draft' => $isDraft,
+            'invoice' => $invoice,
+        ];
     }
 
     public function attachDocument(Invoice $invoice, UploadedFile $documentFile): string

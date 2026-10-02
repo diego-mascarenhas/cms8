@@ -31,7 +31,7 @@ class ClientShowInvoicesOrderTest extends TestCase
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
     }
 
-    public function test_client_show_invoices_are_sorted_by_date_desc(): void
+    public function test_client_show_invoices_follow_list_status_priority_then_number(): void
     {
         $user = User::factory()->withPersonalTeam()->create();
         $user->assignRole('admin');
@@ -45,46 +45,67 @@ class ClientShowInvoicesOrderTest extends TestCase
             'status_id' => 1,
         ]);
 
-        $olderIdNewerDate = Invoice::withoutGlobalScopes()->create([
+        Invoice::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'enterprise_id' => $client->id,
             'type_id' => 1,
             'operation' => 'sell',
-            'number' => 'OLD-ID-NEW-DATE',
+            'number' => '0005-0100',
             'date' => '2026-06-20',
-            'due_date' => '2026-06-30',
+            'due_date' => now()->addDays(10)->toDateString(),
             'gross_amount' => 100,
             'discount' => 0,
             'total_amount' => 100,
             'balance' => 100,
-            'status' => 1,
+            'status' => 2,
         ]);
 
-        $newerIdOlderDate = Invoice::withoutGlobalScopes()->create([
+        Invoice::withoutGlobalScopes()->create([
             'team_id' => $team->id,
             'enterprise_id' => $client->id,
             'type_id' => 1,
             'operation' => 'sell',
-            'number' => 'NEW-ID-OLD-DATE',
+            'number' => '0005-0200',
             'date' => '2026-01-05',
-            'due_date' => '2026-01-15',
+            'due_date' => now()->subDays(5)->toDateString(),
             'gross_amount' => 200,
             'discount' => 0,
             'total_amount' => 200,
             'balance' => 200,
-            'status' => 1,
+            'status' => 2,
         ]);
 
-        $this->assertGreaterThan($olderIdNewerDate->id, $newerIdOlderDate->id);
+        Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => '0005-0300',
+            'date' => '2026-03-01',
+            'due_date' => null,
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 0,
+            'status' => 2,
+        ]);
 
         $response = $this->actingAs($user)->get(route('client.show', $client->id));
 
         $response->assertOk();
-
-        // The table sorts on the date column, which needs the ISO data-order attribute to beat
-        // the d/m/Y text shown to the user.
-        $response->assertSee('order: [[2, \'desc\']]', false);
-        $response->assertSee('data-order="2026-06-20"', false);
-        $response->assertSee('data-order="2026-01-05"', false);
+        $response->assertSee('id="clientInvoicesTableSearch"', false);
+        $response->assertSee('dom: \'rtip\'', false);
+        $response->assertSee(route('invoice.create', ['enterprise_id' => $client->id]), false);
+        $response->assertSee('Ingresar factura', false);
+        $response->assertSee('order: [[6, \'asc\'], [1, \'desc\']]', false);
+        $response->assertSeeInOrder([
+            '0005-0200',
+            '0005-0100',
+            '0005-0300',
+        ]);
+        $this->assertMatchesRegularExpression(
+            '/data-order="2026-03-01">01\/03\/2026<\/td>\s*<td\s*>\s*<\/td>/',
+            $response->getContent(),
+        );
     }
 }

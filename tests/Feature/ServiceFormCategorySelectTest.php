@@ -213,4 +213,48 @@ class ServiceFormCategorySelectTest extends TestCase
             ->assertSee('selected', false)
             ->assertSee('Cloud Starter');
     }
+
+    public function test_service_show_is_a_simple_detail(): void
+    {
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Clean Up',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $service = Service::withoutGlobalScopes()->create([
+            'enterprise_id' => $enterprise->id,
+            'operation' => 'sell',
+            'description' => 'Actualizado 12/2025',
+            'data' => [],
+            'currency_id' => 1,
+            'price' => 21.99,
+            'discount' => 0,
+            'frequency' => 1,
+            'responsible_id' => $user->id,
+            'status' => 4,
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('service.show', $service->id))
+            ->assertOk()
+            ->assertSee('Actualizado 12/2025')
+            ->assertSee('Clean Up')
+            ->assertSee('Mensual')
+            ->assertSee('21.99')
+            ->assertSee('Activo')
+            ->assertSee(route('client.show', $enterprise->id), false)
+            ->assertSee(route('service.edit', $service->id), false)
+            ->assertDontSee('Created on')
+            ->assertDontSee('Last updated')
+            ->assertDontSee('View Responsible')
+            ->assertDontSee('Overview')
+            ->assertDontSee('social-label.png', false);
+    }
 }

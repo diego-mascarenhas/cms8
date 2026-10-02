@@ -20,7 +20,8 @@ class AssistantFabTest extends TestCase
         $response->assertOk();
         $html = $response->getContent() ?? '';
         $response->assertSee('id="assistant-fab"', false);
-        $this->assertStringContainsString('padding-right: 4.5rem', $html);
+        $this->assertStringContainsString('padding-bottom: 4.5rem', $html);
+        $this->assertStringNotContainsString('padding-right: 4.5rem', $html);
         $this->assertStringContainsString('.card:has(table.dataTable)', $html);
         $this->assertStringContainsString('id="assistant-offcanvas"', $html);
         $this->assertStringContainsString('data-bs-toggle="offcanvas"', $html);

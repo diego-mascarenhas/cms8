@@ -172,6 +172,7 @@ class VatHaciendaCsvExportService
         $query = $this->scopedInvoices($teamId, $operation, $from, $to, $documentScope);
 
         $query
+            ->orderBy('date')
             ->orderBy('number')
             ->orderBy('id')
             ->chunk(200, function ($invoices) use ($handle, $targetCurrency, $from, &$totals)
@@ -217,7 +218,7 @@ class VatHaciendaCsvExportService
     /**
      * @return array{
      *     headers: list<string>,
-     *     books: array<string, array{rows: list<list<string>>, invoice_ids: list<int|null>, totals: list<string>}>
+     *     books: array<string, array{rows: list<list<string>>, invoice_ids: list<int|null>, totals: list<string>, summary: array{subtotal: float, tax: float, total: float, rows: int}}>
      * }
      */
     public function presentationBooks(int $teamId, Carbon $from, Carbon $to, string $targetCurrency): array
@@ -238,6 +239,7 @@ class VatHaciendaCsvExportService
             $totals = ['subtotal' => 0.0, 'tax' => 0.0, 'total' => 0.0, 'rows' => 0];
 
             $invoices = $this->scopedInvoices($teamId, $book['operation'], $from, $to, $book['documentScope'])
+                ->orderBy('date')
                 ->orderBy('number')
                 ->orderBy('id')
                 ->get();
@@ -280,6 +282,12 @@ class VatHaciendaCsvExportService
                     '',
                     $totals['rows'].' registros',
                     '',
+                ],
+                'summary' => [
+                    'subtotal' => round($totals['subtotal'], 2),
+                    'tax' => round($totals['tax'], 2),
+                    'total' => round($totals['total'], 2),
+                    'rows' => $totals['rows'],
                 ],
             ];
         }
