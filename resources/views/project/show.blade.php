@@ -741,7 +741,7 @@
 								@if($onBoard)
 									<span class="text-muted">{{ $responsibleName ?? '—' }}</span>
 									<span class="badge bg-label-success ms-1">{{ __('On board') }}</span>
-								@else
+								@elseif (auth()->user()->can('update', $project))
 								<form action="{{ route('project.add-suggested-task', $project->id) }}" method="POST" class="d-flex align-items-center gap-2">
 									@csrf
 									<input type="hidden" name="title" value="{{ $t['title'] ?? '' }}">
@@ -762,6 +762,8 @@
 										<i class="ti ti-layout-kanban me-1"></i>{{ __('Add') }}
 									</button>
 								</form>
+								@else
+									<span class="text-muted">{{ $responsibleName ?? '—' }}</span>
 								@endif
 							</td>
 						</tr>

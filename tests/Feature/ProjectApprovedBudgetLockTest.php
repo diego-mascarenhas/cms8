@@ -211,6 +211,72 @@ class ProjectApprovedBudgetLockTest extends TestCase
     }
 
     #[Test]
+    public function invoiced_project_cannot_be_edited_or_receive_board_tasks(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_INVOICED])->save();
+
+        $this->actingAs($user)
+            ->get(route('project.edit', $project->id))
+            ->assertRedirect('/misc-not-authorized');
+
+        $this->actingAs($user)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertDontSee(route('project.edit', $project->id), false)
+            ->assertDontSee(route('project.add-suggested-task', $project->id), false);
+
+        $this->actingAs($user)
+            ->post(route('project.add-suggested-task', $project->id), [
+                'title' => 'Extra',
+                'responsible_id' => $user->id,
+            ])
+            ->assertRedirect('/misc-not-authorized');
+    }
+
+    #[Test]
+    public function in_progress_quote_stays_fixed_and_only_the_team_owner_can_edit(): void
+    {
+        [$owner, $project] = $this->createApprovedProject();
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_IN_PROGRESS])->save();
+
+        $member = User::factory()->create();
+        $member->assignRole('admin');
+        $project->team->users()->attach($member, ['role' => 'editor']);
+        $member->forceFill(['current_team_id' => $project->team_id])->save();
+
+        $this->actingAs($member)
+            ->get(route('project.edit', $project->id))
+            ->assertRedirect('/misc-not-authorized');
+
+        $tasks = $project->fresh()->data['suggested_tasks'];
+        $tasks[0]['unit_price'] = 999;
+
+        $this->actingAs($owner)
+            ->from(route('project.edit', $project->id))
+            ->post(route('project.store'), [
+                'id' => $project->id,
+                'name' => $project->name,
+                'real_name' => $project->real_name,
+                'status_id' => ProjectStatus::STATUS_FINISHED,
+                'enterprise_id' => $project->enterprise_id,
+                'responsible_id' => $project->responsible_id,
+                'discount' => 25,
+                'data' => [
+                    'suggested_tasks' => json_encode($tasks),
+                    'ai_usage_percent' => 80,
+                ],
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('success');
+
+        $fresh = $project->fresh();
+        $this->assertSame(ProjectStatus::STATUS_IN_PROGRESS, (int) $fresh->status_id);
+        $this->assertSame(120.0, (float) $fresh->data['suggested_tasks'][0]['unit_price']);
+        $this->assertNull($fresh->discount);
+    }
+
+    #[Test]
     public function new_project_can_be_created_with_empty_id_field(): void
     {
         $user = User::factory()->withPersonalTeam()->create();

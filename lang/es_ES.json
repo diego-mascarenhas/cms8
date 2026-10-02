@@ -280,6 +280,7 @@
     "Change Password": "Cambiar contraseña",
     "Change status": "Cambiar estado",
     "An invoiced project cannot change status.": "Un proyecto facturado no puede cambiar de estado.",
+    "An invoiced project cannot receive new tasks.": "Un proyecto facturado no puede recibir tareas nuevas.",
     "Channel, template and audience.": "Canal, plantilla, categoría de contactos y estado del contacto en el CRM (a quién va dirigido).",
     "Charged Back": "Contracargo",
     "ChartJS": "ChartJS",

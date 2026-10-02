@@ -307,6 +307,17 @@ class TaskController extends Controller
             $boardId = $board->id;
         }
 
+        if (! $request->filled('id'))
+        {
+            $boardProject = Project::query()->where('board_id', $boardId)->first();
+            if ($boardProject?->isInvoiced())
+            {
+                return redirect()
+                    ->back()
+                    ->with('error', __('An invoiced project cannot receive new tasks.'));
+            }
+        }
+
         $task = Task::updateOrCreate(
             ['id' => $request->id],
             [

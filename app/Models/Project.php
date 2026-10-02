@@ -434,6 +434,24 @@ class Project extends Model
         return $this->isBudgetApproved();
     }
 
+    public function isInvoiced(): bool
+    {
+        return (int) $this->status_id === ProjectStatus::STATUS_INVOICED;
+    }
+
+    /**
+     * From in progress onward the quote amount stays as saved.
+     */
+    public function quoteValueIsLocked(): bool
+    {
+        return in_array((int) $this->status_id, [
+            ProjectStatus::STATUS_IN_PROGRESS,
+            ProjectStatus::STATUS_FINISHED,
+            ProjectStatus::STATUS_TO_INVOICE,
+            ProjectStatus::STATUS_INVOICED,
+        ], true);
+    }
+
     /**
      * @return list<int>
      */

@@ -1902,6 +1902,7 @@
   "Saving keeps the current status. Correct the amount in the breakdown.": "Saving keeps the current status. Correct the amount in the breakdown.",
   "Change status": "Change status",
   "An invoiced project cannot change status.": "An invoiced project cannot change status.",
+  "An invoiced project cannot receive new tasks.": "An invoiced project cannot receive new tasks.",
   "Register time": "Register time",
   "Duration (hours)": "Duration (hours)",
   "Used when end time is empty.": "Used when end time is empty.",

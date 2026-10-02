@@ -60,6 +60,7 @@
     var tokenOutputRate = {{ $tokenPricingService->tokenOutputRate() }};
     var tokenBlendPerMillion = {{ $tokenPricingService->tokenBlendEurPerMillion() }};
     var defaultAiUsagePercent = {{ (int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT }};
+    var quoteValueLocked = @json(isset($data->id) && $data->quoteValueIsLocked());
 
     function autoResizeTextarea(el) {
         if (!el) return;
@@ -412,7 +413,7 @@
             h += '<tr data-index="' + i + '"><td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + escapeHtml(hoursLabel) + '</td>';
             h += '<td class="text-end"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="' + i + '" value="' + tokens + '" placeholder="0"></td>';
             h += '<td class="text-end"><input type="text" class="form-control form-control-sm text-end suggested-resource-level" data-index="' + i + '" value="' + resLevel + '" placeholder="{{ __("e.g. Senior") }}"></td>';
-            h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"></td></tr>';
+            h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"' + (quoteValueLocked ? ' readonly' : '') + '></td></tr>';
         });
         h += '</tbody></table></div>';
         return h;
@@ -644,6 +645,7 @@
         } catch (e) { return; }
         if (tasks[idx] === undefined) return;
         if ($(this).hasClass('suggested-unit-price')) {
+            if (quoteValueLocked) return;
             var val = $(this).val();
             var num = parseFloat(val);
             tasks[idx].unit_price = (isNaN(num) || val === '') ? '' : num;
@@ -692,7 +694,8 @@
         var balanceSlider = document.getElementById('ai-usage-balance-slider');
         var balanceInput = document.getElementById('data_ai_usage_percent');
         var balanceLabel = document.getElementById('data_ai_usage_percent_label');
-        if (balanceSlider && typeof noUiSlider !== 'undefined') {
+            if (balanceSlider && typeof noUiSlider !== 'undefined') {
+            if (quoteValueLocked) balanceSlider.setAttribute('disabled', true);
             var startBalance = parseFloat(balanceInput ? balanceInput.value : defaultAiUsagePercent);
             if (isNaN(startBalance) || startBalance < 0) startBalance = defaultAiUsagePercent;
             if (startBalance > 100) startBalance = 100;
@@ -922,7 +925,8 @@
 						<input type="number" class="form-control form-control-sm" id="discount" name="discount"
 							step="1" min="0" max="100"
 							value="{{ old('discount', $data->discount ?? '') }}"
-							placeholder="0">
+							placeholder="0"
+							@if(isset($data->id) && $data->quoteValueIsLocked()) readonly @endif>
 					</div>
 				</div>
 			</div>
@@ -1007,7 +1011,7 @@
 									<td class="text-end">{{ $hoursLabel }}</td>
 									<td class="text-end"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="{{ $i }}" value="{{ $estimatedTokens }}" placeholder="0"></td>
 									<td class="text-end"><input type="text" class="form-control form-control-sm text-end suggested-resource-level" data-index="{{ $i }}" value="{{ $t['resource_level'] ?? '' }}" placeholder="{{ __('e.g. Senior') }}"></td>
-									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0"></td>
+									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0" @if(isset($data->id) && $data->quoteValueIsLocked()) readonly @endif></td>
 								</tr>
 								@endforeach
 							</tbody>
