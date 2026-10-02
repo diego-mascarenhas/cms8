@@ -165,13 +165,7 @@ class ProjectBalanceInvoiceService
         {
             $when = Carbon::parse($startDate, 'Europe/Madrid')->startOfDay()->addMonthsNoOverflow($index)->setTime(9, 0);
             $immediate = $when->lessThanOrEqualTo(now()->addHour());
-            $line = $installments === 1
-                ? $description
-                : __('Installment :current of :total — :project', [
-                    'current' => $index + 1,
-                    'total' => $installments,
-                    'project' => $projectName,
-                ]);
+            $line = $this->installmentLine($description, $projectName, $installments, $index, $amount, $when);
 
             $created = $this->createInstallment(
                 $client,
@@ -233,6 +227,27 @@ class ProjectBalanceInvoiceService
         }
 
         return $amounts;
+    }
+
+    public function installmentLine(string $description, string $projectName, int $installments, int $index, int $amount, Carbon $when): string
+    {
+        if ($installments <= 1)
+        {
+            return $description;
+        }
+
+        $lines = preg_split("/\r\n|\n|\r/", $description) ?: [];
+        $lines = array_values(array_filter(array_map(trim(...), $lines), fn (string $line): bool => $line !== ''));
+        if (count($lines) === $installments && isset($lines[$index]))
+        {
+            return $lines[$index];
+        }
+
+        return __('Installment :current of :total — :project', [
+            'current' => $index + 1,
+            'total' => $installments,
+            'project' => $projectName,
+        ]).' · '.$when->timezone('Europe/Madrid')->format('d/m/Y').' · '.number_format($amount, 2, ',', '.').' €';
     }
 
     /**

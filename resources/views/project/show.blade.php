@@ -140,7 +140,7 @@
 	</div>
 @endif
 
-@if (! empty($depositInvoicePreview) && (($depositInvoicePreview['already_invoiced'] ?? false) || ! data_get($balanceInvoicePreview, 'already_invoiced')))
+@if (! empty($depositInvoicePreview) && (($depositInvoicePreview['already_invoiced'] ?? false) || empty($balanceInvoicePreview)))
 	@php
 		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
 		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
@@ -289,23 +289,30 @@
 						</div>
 
 						@can('update', $project)
-							<div class="row g-2 align-items-end mb-2">
-								<div class="col-md-3">
+							<div class="row g-2 align-items-end">
+								<div class="col-auto">
 									<label for="balance-installments" class="form-label mb-1">{{ __('Number of payments') }}</label>
-									<input type="number" id="balance-installments" name="installments" class="form-control bg-white" min="2" max="12" value="{{ old('installments', 2) }}">
+									<input type="number" id="balance-installments" name="installments" class="form-control form-control-sm bg-white w-px-100" min="1" max="12" value="{{ old('installments', 1) }}">
 								</div>
 								<div class="col-md-3">
 									<label for="balance-start-date" class="form-label mb-1">{{ __('Start date') }}</label>
-									<input type="date" id="balance-start-date" name="start_date" class="form-control bg-white" value="{{ old('start_date', now()->toDateString()) }}" min="{{ now()->toDateString() }}">
+									<input type="date" id="balance-start-date" name="start_date" class="form-control form-control-sm bg-white" value="{{ old('start_date', now()->toDateString()) }}" min="{{ now()->toDateString() }}">
 								</div>
-								<div class="col-md-6">
+								<div class="col-auto">
 									<button type="submit" name="billing_mode" value="installments" class="btn btn-outline-info btn-sm waves-effect waves-light"
 										{{ empty($balanceInvoicePreview['stripe_customer_id']) ? 'disabled' : '' }}>
 										<i class="ti ti-calendar ti-sm me-1"></i>{{ __('Schedule payments') }}
 									</button>
-									<small class="text-muted d-block mt-1" id="balance-installment-preview" data-remaining="{{ (int) $balanceInvoicePreview['remaining_base'] }}"></small>
 								</div>
 							</div>
+							<small
+								class="text-muted d-block mt-2 mb-2"
+								id="balance-installment-preview"
+								data-remaining="{{ (int) $balanceInvoicePreview['remaining_base'] }}"
+								data-single="{{ $balanceInvoicePreview['default_description'] }}"
+								data-installment="{{ __('Installment :current of :total — :project', ['current' => '__C__', 'total' => '__T__', 'project' => $project->real_name ?: $project->name]) }}"
+								data-today="{{ now()->toDateString() }}"
+							></small>
 							<label for="balance-invoice-description" class="form-label mb-1">{{ __('Invoice description') }}</label>
 							<textarea
 								id="balance-invoice-description"
@@ -313,7 +320,8 @@
 								class="form-control bg-white @error('description') is-invalid @enderror"
 								rows="2"
 								required
-								maxlength="500"
+								maxlength="2000"
+								data-keep="{{ old('description') !== null ? '1' : '0' }}"
 							>{{ old('description', $balanceInvoicePreview['default_description']) }}</textarea>
 							@error('description')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
@@ -329,37 +337,96 @@
 									var preview = document.getElementById('balance-installment-preview');
 									var count = document.getElementById('balance-installments');
 									var date = document.getElementById('balance-start-date');
+									var description = document.getElementById('balance-invoice-description');
 									if (!preview || !count) {
 										return;
 									}
-									var render = function () {
+									var keepDescription = description && description.getAttribute('data-keep') === '1';
+									var money = function (amount) {
+										return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+									};
+									var formatDate = function (iso) {
+										var pieces = (iso || '').split('-');
+										if (pieces.length !== 3) {
+											return '';
+										}
+										return pieces[2] + '/' + pieces[1] + '/' + pieces[0];
+									};
+									var shiftMonth = function (iso, months) {
+										var parts = iso.split('-').map(function (value) { return parseInt(value, 10); });
+										if (parts.length !== 3 || parts.some(function (value) { return isNaN(value); })) {
+											return iso;
+										}
+										var monthIndex = parts[1] - 1 + months;
+										var year = parts[0] + Math.floor(monthIndex / 12);
+										var month = ((monthIndex % 12) + 12) % 12;
+										var lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+										var day = Math.min(parts[2], lastDay);
+										return year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+									};
+									var paymentLines = function (parts, remaining, startIso) {
+										var base = Math.floor(remaining / parts);
+										var lines = [];
+										var single = preview.getAttribute('data-single') || '';
+										var installment = preview.getAttribute('data-installment') || '';
+										for (var index = 0; index < parts; index++) {
+											var amount = base + (index === parts - 1 ? remaining - (base * parts) : 0);
+											var when = formatDate(shiftMonth(startIso, index));
+											var label = parts === 1
+												? single
+												: installment.replace('__C__', String(index + 1)).replace('__T__', String(parts));
+											lines.push(label + (when ? ' · ' + when : '') + ' · ' + money(amount));
+										}
+										return lines;
+									};
+									var render = function (writeDescription) {
 										var remaining = parseInt(preview.getAttribute('data-remaining'), 10) || 0;
 										var parts = parseInt(count.value, 10);
-										if (!parts || parts < 2) {
-											parts = 2;
+										if (!parts || parts < 1) {
+											parts = 1;
 										}
+										if (parts > 12) {
+											parts = 12;
+										}
+										var startIso = date && date.value ? date.value : (preview.getAttribute('data-today') || '');
 										var base = Math.floor(remaining / parts);
 										var last = remaining - (base * (parts - 1));
-										var money = function (amount) {
-											return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-										};
 										var text = parts + ' × ' + money(base);
 										if (last !== base) {
 											text += ' · {{ __('the last') }} ' + money(last);
 										}
-										if (date && date.value) {
-											var pieces = date.value.split('-');
-											if (pieces.length === 3) {
-												text += ' · ' + pieces[2] + '/' + pieces[1] + '/' + pieces[0];
-											}
+										var formattedStart = formatDate(startIso);
+										if (formattedStart) {
+											text += ' · ' + formattedStart;
 										}
 										preview.textContent = text;
+										if (description && writeDescription) {
+											description.value = paymentLines(parts, remaining, startIso).join('\n');
+											description.rows = Math.min(8, Math.max(2, parts));
+										}
 									};
-									count.addEventListener('input', render);
+									count.addEventListener('input', function () {
+										keepDescription = false;
+										render(true);
+									});
 									if (date) {
-										date.addEventListener('change', render);
+										date.addEventListener('change', function () {
+											keepDescription = false;
+											render(true);
+										});
 									}
-									render();
+									var totalButton = description && description.form
+										? description.form.querySelector('button[name="billing_mode"][value="total"]')
+										: null;
+									if (totalButton) {
+										totalButton.addEventListener('click', function () {
+											var parts = parseInt(count.value, 10);
+											if (parts > 1) {
+												description.value = paymentLines(1, parseInt(preview.getAttribute('data-remaining'), 10) || 0, preview.getAttribute('data-today') || '').join('\n');
+											}
+										});
+									}
+									render(!keepDescription);
 								})();
 							</script>
 						@endcan

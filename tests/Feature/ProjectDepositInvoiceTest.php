@@ -12,7 +12,9 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\User;
 use App\Services\Finance\EnterpriseVatRateResolver;
+use App\Services\Finance\ProjectBalanceInvoiceService;
 use App\Services\Finance\ProjectDepositInvoiceService;
+use Carbon\Carbon;
 use Database\Seeders\CountrySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTaxStatusTypeSeeder;
@@ -89,9 +91,56 @@ class ProjectDepositInvoiceTest extends TestCase
             ->assertSee('Dashboard Innovación — 4 secciones', false)
             ->assertSee(__('Invoice deposit'), false)
             ->assertSee(__('Approved budget — invoice the 30% deposit'), false)
+            ->assertDontSee(__('Finished project — invoice the balance'), false)
             ->assertSee('deposit-invoice-description', false)
             ->assertSee(__('Invoice description'), false)
             ->assertDontSee('projectDepositInvoiceModal', false);
+    }
+
+    #[Test]
+    public function finished_project_hides_deposit_banner_and_previews_one_payment(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill(['status_id' => ProjectStatus::STATUS_FINISHED])->save();
+
+        $this->actingAs($user)
+            ->get(route('project.show', $project->id))
+            ->assertOk()
+            ->assertDontSee(__('Approved budget — invoice the 30% deposit'), false)
+            ->assertDontSee(__('Invoice deposit'), false)
+            ->assertSee(__('Finished project — invoice the balance'), false)
+            ->assertSee('id="balance-installments" name="installments" class="form-control form-control-sm bg-white w-px-100" min="1" max="12" value="1"', false)
+            ->assertSeeInOrder([
+                'id="balance-installments"',
+                'id="balance-installment-preview"',
+                'id="balance-invoice-description"',
+            ], false)
+            ->assertDontSee('parts = 2', false);
+    }
+
+    #[Test]
+    public function balance_description_follows_each_payment(): void
+    {
+        $service = app(ProjectBalanceInvoiceService::class);
+        $when = Carbon::parse('2026-10-02', 'Europe/Madrid');
+        $submitted = "Pago 1 de 2 — Demo · 02/10/2026 · 185,00 €\nPago 2 de 2 — Demo · 02/11/2026 · 185,00 €";
+
+        $this->assertSame(
+            'Pago 1 de 2 — Demo · 02/10/2026 · 185,00 €',
+            $service->installmentLine($submitted, 'Demo', 2, 0, 185, $when),
+        );
+        $this->assertSame(
+            'Saldo — Demo · 02/10/2026 · 370,00 €',
+            $service->installmentLine('Saldo — Demo · 02/10/2026 · 370,00 €', 'Demo', 1, 0, 370, $when),
+        );
+        $this->assertSame(
+            __('Installment :current of :total — :project', [
+                'current' => 2,
+                'total' => 2,
+                'project' => 'Demo',
+            ]).' · 02/11/2026 · 185,00 €',
+            $service->installmentLine('Saldo', 'Demo', 2, 1, 185, $when->copy()->addMonthNoOverflow()),
+        );
     }
 
     #[Test]

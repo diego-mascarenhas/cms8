@@ -18,8 +18,8 @@ class StoreProjectBalanceInvoiceRequest extends FormRequest
     {
         return [
             'billing_mode' => 'required|in:total,installments',
-            'description' => 'required|string|min:3|max:500',
-            'installments' => 'required_if:billing_mode,installments|integer|min:2|max:12',
+            'description' => 'required|string|min:3|max:2000',
+            'installments' => 'required_if:billing_mode,installments|integer|min:1|max:12',
             'start_date' => 'required_if:billing_mode,installments|date|after_or_equal:today',
         ];
     }
