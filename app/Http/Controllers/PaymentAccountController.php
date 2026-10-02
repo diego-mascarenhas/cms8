@@ -63,25 +63,37 @@ class PaymentAccountController extends Controller
         $this->authorize('update', $paymentAccount);
 
         $validated = $request->validated();
+        [$month, $quarter] = $this->statementPeriod($validated);
+        $statementBalance = isset($validated['statement_balance']) && $validated['statement_balance'] !== ''
+            ? (float) $validated['statement_balance']
+            : null;
+
         $results = $this->statementUploadService->uploadMany(
             $paymentAccount,
             $validated['files'],
             isset($validated['period_year']) ? (int) $validated['period_year'] : null,
-            isset($validated['period_month']) ? (int) $validated['period_month'] : null,
+            $month,
+            $quarter,
+            $statementBalance,
         );
 
         $uploaded = count($results);
-        $matched = collect($results)->sum(fn (array $result): int => (int) ($result['validation']['matched'] ?? 0));
-        $statementOnly = collect($results)->sum(fn (array $result): int => (int) ($result['validation']['statement_only'] ?? 0));
-        $paymentOnly = collect($results)->sum(fn (array $result): int => (int) ($result['validation']['payment_only'] ?? 0));
+        $balanced = collect($results)->filter(
+            fn (array $result): bool => ($result['validation']['balanced'] ?? false) === true,
+        )->count();
+        $open = collect($results)->filter(function (array $result): bool
+        {
+            $difference = $result['validation']['difference'] ?? null;
+
+            return $difference !== null && abs((float) $difference) > 0.05;
+        })->count();
 
         return redirect()
             ->route('payment-account.show', $paymentAccount)
-            ->with('success', __(':count extracto(s) subido(s). Coincidencias: :matched. Solo en extracto: :statement_only. Solo en pagos: :payment_only.', [
+            ->with('success', __(':count extracto(s) subido(s). Empatados: :balanced. Con diferencia: :open.', [
                 'count' => $uploaded,
-                'matched' => $matched,
-                'statement_only' => $statementOnly,
-                'payment_only' => $paymentOnly,
+                'balanced' => $balanced,
+                'open' => $open,
             ]));
     }
 
@@ -175,6 +187,30 @@ class PaymentAccountController extends Controller
         return redirect()
             ->route('payment-account.index')
             ->with('success', 'Cuenta de pago actualizada correctamente.');
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{0: ?int, 1: ?int}
+     */
+    private function statementPeriod(array $validated): array
+    {
+        $period = (string) ($validated['period'] ?? '');
+
+        if (preg_match('/^m:(\d{1,2})$/', $period, $matches) === 1)
+        {
+            return [(int) $matches[1], null];
+        }
+
+        if (preg_match('/^q:([1-4])$/', $period, $matches) === 1)
+        {
+            return [null, (int) $matches[1]];
+        }
+
+        return [
+            isset($validated['period_month']) ? (int) $validated['period_month'] : null,
+            null,
+        ];
     }
 
     /**

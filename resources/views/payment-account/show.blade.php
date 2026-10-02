@@ -104,10 +104,13 @@
                     <tr>
                         <th>{{ __('Periodo') }}</th>
                         <th>{{ __('Archivo') }}</th>
-                        <th class="text-center">{{ __('Líneas') }}</th>
-                        <th class="text-center">{{ __('Coinciden') }}</th>
-                        <th class="text-center">{{ __('Solo extracto') }}</th>
-                        <th class="text-center">{{ __('Solo pagos') }}</th>
+                        <th class="text-center" title="{{ __('Líneas del extracto') }}">{{ __('Líneas') }}</th>
+                        <th class="text-center" title="{{ __('Coinciden con un pago') }}">{{ __('Pares') }}</th>
+                        <th class="text-center" title="{{ __('Están en el extracto y no en los pagos') }}">{{ __('Banco') }}</th>
+                        <th class="text-center" title="{{ __('Están en los pagos y no en el extracto') }}">{{ __('Pagos') }}</th>
+                        <th class="text-end" title="{{ __('Suma de los pagos del período') }}">{{ __('Libro') }}</th>
+                        <th class="text-end" title="{{ __('Importe del extracto') }}">{{ __('Saldo') }}</th>
+                        <th class="text-end">{{ __('Diferencia') }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -128,6 +131,17 @@
                             <td class="text-center text-success">{{ $summary['matched'] ?? '—' }}</td>
                             <td class="text-center text-warning">{{ $summary['statement_only'] ?? '—' }}</td>
                             <td class="text-center text-danger">{{ $summary['payment_only'] ?? '—' }}</td>
+                            <td class="text-end">{{ isset($summary['book_total']) ? number_format((float) $summary['book_total'], 2, ',', '.') : '—' }}</td>
+                            <td class="text-end">{{ isset($summary['statement_total']) && $summary['statement_total'] !== null ? number_format((float) $summary['statement_total'], 2, ',', '.') : '—' }}</td>
+                            <td class="text-end {{ ($summary['balanced'] ?? false) ? 'text-success' : 'text-danger' }}">
+                                @if (! array_key_exists('difference', $summary) || $summary['difference'] === null)
+                                    —
+                                @elseif ($summary['balanced'] ?? false)
+                                    {{ __('Empatado') }}
+                                @else
+                                    {{ number_format((float) $summary['difference'], 2, ',', '.') }}
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -157,27 +171,38 @@
             </div>
             <div class="modal-body">
                 <p class="text-muted small">
-                    {{ __('Podés subir varios CSV o PDF. El mes se detecta del nombre o del contenido; también podés forzar el periodo.') }}
+                    {{ __('Subí PDF, CSV u otro documento del mes o trimestre. Si el archivo no trae importes, indicá el saldo del extracto para conciliarlo.') }}
                 </p>
                 <div class="mb-3">
                     <label for="statement-files" class="form-label">{{ __('Archivos') }} <span class="text-danger">*</span></label>
-                    <input type="file" name="files[]" id="statement-files" class="form-control" accept=".csv,.txt,.pdf" multiple required>
+                    <input type="file" name="files[]" id="statement-files" class="form-control" multiple required>
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label for="period_year" class="form-label">{{ __('Año') }}</label>
-                        <input type="number" name="period_year" id="period_year" class="form-control" min="2000" max="2100" value="{{ old('period_year') }}" placeholder="{{ now()->year }}">
+                        <input type="number" name="period_year" id="period_year" class="form-control" min="2000" max="2100" value="{{ old('period_year', now()->year) }}">
                     </div>
                     <div class="col-md-6">
-                        <label for="period_month" class="form-label">{{ __('Mes') }}</label>
-                        <select name="period_month" id="period_month" class="form-select">
+                        <label for="period" class="form-label">{{ __('Periodo') }}</label>
+                        <select name="period" id="period" class="form-select">
                             <option value="">{{ __('Automático') }}</option>
-                            @for ($month = 1; $month <= 12; $month++)
-                                <option value="{{ $month }}" @selected((string) old('period_month') === (string) $month)>
-                                    {{ sprintf('%02d', $month) }}
-                                </option>
-                            @endfor
+                            <optgroup label="{{ __('Mes') }}">
+                                @for ($month = 1; $month <= 12; $month++)
+                                    <option value="m:{{ $month }}" @selected(old('period') === 'm:'.$month)>
+                                        {{ \Carbon\Carbon::create(null, $month, 1)->translatedFormat('F') }}
+                                    </option>
+                                @endfor
+                            </optgroup>
+                            <optgroup label="{{ __('Trimestre') }}">
+                                @for ($quarter = 1; $quarter <= 4; $quarter++)
+                                    <option value="q:{{ $quarter }}" @selected(old('period') === 'q:'.$quarter)>Q{{ $quarter }}</option>
+                                @endfor
+                            </optgroup>
                         </select>
+                    </div>
+                    <div class="col-12">
+                        <label for="statement_balance" class="form-label">{{ __('Saldo del extracto') }}</label>
+                        <input type="number" step="0.01" name="statement_balance" id="statement_balance" class="form-control" value="{{ old('statement_balance') }}" placeholder="0.00">
                     </div>
                 </div>
             </div>

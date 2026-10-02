@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -60,7 +61,44 @@ class BankStatement extends Model
 
     public function periodLabel(): string
     {
+        $summary = $this->validation_summary ?? [];
+
+        if (($summary['period_kind'] ?? '') === 'quarter')
+        {
+            return 'Q'.(int) ($summary['period_quarter'] ?? 1).' '.$this->period_year;
+        }
+
         return sprintf('%04d-%02d', $this->period_year, $this->period_month);
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function bounds(): array
+    {
+        $summary = $this->validation_summary ?? [];
+        $year = (int) $this->period_year;
+
+        if (($summary['period_kind'] ?? '') === 'quarter')
+        {
+            $quarter = (int) ($summary['period_quarter'] ?? (int) ceil(((int) $this->period_month) / 3));
+            $quarter = max(1, min(4, $quarter));
+            $start = Carbon::create($year, (($quarter - 1) * 3) + 1, 1)->startOfDay();
+
+            return [$start, $start->copy()->addMonths(2)->endOfMonth()];
+        }
+
+        $month = max(1, min(12, (int) $this->period_month));
+        $start = Carbon::create($year, $month, 1)->startOfDay();
+
+        return [$start, $start->copy()->endOfMonth()];
+    }
+
+    public function overlaps(Carbon $from, Carbon $to): bool
+    {
+        [$start, $end] = $this->bounds();
+
+        return $start->lte($to) && $end->gte($from);
     }
 
     public function fileIcon(): string

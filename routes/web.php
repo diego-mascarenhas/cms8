@@ -864,6 +864,11 @@ Route::middleware(['auth'])->group(function ()
     Route::delete('/cms/posts/{post}', [App\Http\Controllers\Cms\PostController::class, 'destroy'])->whereNumber('post')->name('cms.posts.destroy');
 
     // Public routes for client responses (no auth required)
+    Route::get('/hacienda/{hash}/statement/{statement}/file', [HaciendaPublicController::class, 'statement'])
+        ->where('hash', '[A-Za-z0-9]+')
+        ->whereNumber('statement')
+        ->name('hacienda.public.statement')
+        ->withoutMiddleware(['auth']);
     Route::get('/hacienda/{hash}/invoice/{invoice}/file', [HaciendaPublicController::class, 'file'])
         ->where('hash', '[A-Za-z0-9]+')
         ->whereNumber('invoice')

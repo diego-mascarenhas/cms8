@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BankStatement;
 use App\Models\Invoice;
 use App\Models\Team;
 use App\Models\TeamSetting;
+use App\Services\Finance\PaymentAccountStatementUploadService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
@@ -20,6 +22,7 @@ class HaciendaPublicController extends Controller
         private readonly VatReportingService $vatReportingService,
         private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
         private readonly PaymentReportingCurrencyService $paymentReportingCurrencyService,
+        private readonly PaymentAccountStatementUploadService $statementUploadService,
     ) {}
 
     public function show(Request $request, string $hash): View
@@ -51,7 +54,27 @@ class HaciendaPublicController extends Controller
             'outputVat' => $outputVat,
             'inputVat' => $inputVat,
             'vatBalance' => round($outputVat - $inputVat, 2),
+            'statements' => $this->statementsForPeriod($team, $vatSelection['range']['from'], $vatSelection['range']['to'], $hash),
         ]);
+    }
+
+    public function statement(string $hash, int $statement): StreamedResponse
+    {
+        $team = $this->teamFromHash($hash);
+        $model = BankStatement::query()
+            ->where('team_id', $team->id)
+            ->whereKey($statement)
+            ->first();
+
+        abort_unless($model instanceof BankStatement && $model->isDownloadable(), 404);
+
+        try
+        {
+            return $this->statementUploadService->downloadStream($model);
+        } catch (\RuntimeException)
+        {
+            abort(404);
+        }
     }
 
     public function export(Request $request, string $hash): BinaryFileResponse
@@ -89,6 +112,43 @@ class HaciendaPublicController extends Controller
         abort_unless($model instanceof Invoice, 404);
 
         return $this->vatHaciendaCsvExportService->downloadPublicDocument($model);
+    }
+
+    /**
+     * @return list<array{account: string, period: string, filename: string, book: float, statement: float|null, difference: float|null, balanced: bool, url: string}>
+     */
+    private function statementsForPeriod(Team $team, \Carbon\Carbon $from, \Carbon\Carbon $to, string $hash): array
+    {
+        return BankStatement::query()
+            ->with('paymentAccount')
+            ->where('team_id', $team->id)
+            ->whereNotNull('storage_path')
+            ->orderBy('period_year')
+            ->orderBy('period_month')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (BankStatement $statement): bool => $statement->overlaps($from, $to))
+            ->map(function (BankStatement $statement) use ($hash): array
+            {
+                $summary = $statement->validation_summary ?? [];
+
+                return [
+                    'account' => (string) ($statement->paymentAccount?->name ?? ''),
+                    'period' => $statement->periodLabel(),
+                    'filename' => (string) ($statement->original_filename ?? ''),
+                    'book' => round((float) ($summary['book_total'] ?? 0), 2),
+                    'statement' => array_key_exists('statement_total', $summary) && $summary['statement_total'] !== null
+                        ? round((float) $summary['statement_total'], 2)
+                        : null,
+                    'difference' => array_key_exists('difference', $summary) && $summary['difference'] !== null
+                        ? round((float) $summary['difference'], 2)
+                        : null,
+                    'balanced' => ($summary['balanced'] ?? false) === true,
+                    'url' => route('hacienda.public.statement', ['hash' => $hash, 'statement' => $statement->id]),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function teamFromHash(string $hash): Team

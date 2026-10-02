@@ -389,6 +389,7 @@
   "Create product": "Create product",
   "Create your account to join :team.": "Create your account to join :team.",
   "Created": "Created",
+  "Created on :date": "Created on :date",
   "Created.": "Created.",
   "Creates the default assistant flow prompts for this team (citas, contactos, catálogo, campañas News, tareas) if they are missing. Your existing custom prompt text in Prompts is not overwritten.": "Creates the default assistant flow prompts for this team (citas, contactos, catálogo, campañas News, tareas) if they are missing. Your existing custom prompt text in Prompts is not overwritten.",
   "Creating...": "Creating...",

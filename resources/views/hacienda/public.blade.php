@@ -104,6 +104,58 @@
         </div>
     </div>
 
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">{{ __('Bank statements') }}</h5>
+            <p class="text-muted small mb-0">{{ $periodLabel }}</p>
+        </div>
+        <div class="card-body">
+            @if ($statements === [])
+                <p class="text-muted mb-0">{{ __('No bank statements for this period.') }}</p>
+            @else
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>{{ __('Account') }}</th>
+                                <th>{{ __('Period') }}</th>
+                                <th>{{ __('File') }}</th>
+                                <th class="text-end">{{ __('Book amount') }}</th>
+                                <th class="text-end">{{ __('Statement amount') }}</th>
+                                <th class="text-end">{{ __('Difference') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($statements as $statement)
+                                <tr>
+                                    <td>{{ $statement['account'] }}</td>
+                                    <td>{{ $statement['period'] }}</td>
+                                    <td>
+                                        <a href="{{ $statement['url'] }}" class="text-body d-inline-flex align-items-center gap-1">
+                                            <i class="ti ti-download"></i>
+                                            <span>{{ $statement['filename'] }}</span>
+                                        </a>
+                                    </td>
+                                    <td class="text-end">{{ $formatAmount($statement['book']) }}</td>
+                                    <td class="text-end">{{ $statement['statement'] === null ? '—' : $formatAmount($statement['statement']) }}</td>
+                                    <td class="text-end {{ $statement['balanced'] ? 'text-success' : 'text-danger' }}">
+                                        @if ($statement['difference'] === null)
+                                            —
+                                        @elseif ($statement['balanced'])
+                                            {{ __('Balanced') }}
+                                        @else
+                                            {{ $formatAmount($statement['difference']) }}
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    </div>
+
     <div class="d-flex flex-wrap align-items-center gap-2 mb-3" id="hacienda-book-switcher">
         @foreach ($tabs as $key => $label)
             <button type="button" class="btn btn-sm {{ $loop->first ? 'btn-primary' : 'btn-outline-primary' }}" data-hacienda-book="{{ $key }}">
