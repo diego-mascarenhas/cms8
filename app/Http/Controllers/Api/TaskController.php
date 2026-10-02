@@ -548,6 +548,9 @@ class TaskController extends Controller
                     'email' => $task->responsible?->email,
                 ],
                 'time_seconds' => $this->loggedSeconds($taskTimes),
+                'running_timers' => $taskTimes
+                    ->filter(fn (Time $time) => $time->end_time === null && $time->start_time)
+                    ->count(),
                 'active_time' => $activeTime ? [
                     'id' => $activeTime->id,
                     'started_at' => $activeTime->start_time->toIso8601String(),
