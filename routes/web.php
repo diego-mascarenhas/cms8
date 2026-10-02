@@ -124,8 +124,6 @@ Route::middleware([
 Route::get('lang/{locale}', [LanguageController::class, 'swap']);
 
 // Public API routes (must be before auth group)
-Route::get('/project/fare-units', [ProjectController::class, 'getFareUnits'])
-    ->name('project.get-fare-units');
 Route::get('/team-file/share/{hash}', [TeamFileController::class, 'shared'])->name('team-file.shared');
 Route::get('/password/share/{token}', [TeamPasswordController::class, 'showPasswordShare'])->name('passwords.share.consume');
 Route::post('/password/share/{token}', [TeamPasswordController::class, 'revealPasswordShare'])->name('passwords.share.reveal');
@@ -701,6 +699,7 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project/{id}/add-suggested-task', [ProjectController::class, 'addSuggestedTask'])->name('project.add-suggested-task');
     Route::post('/project/{id}/time', [ProjectController::class, 'storeTimeEntry'])->name('project.time.store');
     Route::post('/project/{id}/invoice-deposit', [ProjectController::class, 'invoiceDeposit'])->name('project.invoice-deposit');
+    Route::post('/project/{id}/invoice-balance', [ProjectController::class, 'invoiceBalance'])->name('project.invoice-balance');
     Route::get('/project/{id}/edit', [ProjectController::class, 'edit'])->name('project.edit');
     Route::put('/project/{id}', [ProjectController::class, 'update'])->name('project.update');
     Route::patch('/project/{id}/status', [ProjectController::class, 'updateStatus'])->name('project.update-status');
@@ -738,15 +737,6 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/project/{id}/filter-collaborators', [ProjectController::class, 'filterCollaborators'])->name('project.filter-collaborators');
     Route::post('/project/{id}/send-notifications', [ProjectController::class, 'sendCollaboratorNotifications'])->name('project.send-notifications');
     Route::delete('/project/{project}/remove-collaborator/{collaborator}', [ProjectController::class, 'removeCollaborator'])->name('project.remove-collaborator');
-    Route::get('/project/{project}/add-services', [ProjectController::class, 'addServices'])->name('project.add-services');
-    Route::post('/project/{project}/store-services', [ProjectController::class, 'storeServices'])->name('project.store-services');
-
-    // Project services modal routes
-    Route::get('/project/{project}/services', [ProjectController::class, 'getServices'])->name('project.get-services');
-    Route::post('/project/{project}/service', [ProjectController::class, 'storeService'])->name('project.store-service');
-    Route::put('/project/{project}/service/{serviceId}', [ProjectController::class, 'updateService'])->name('project.update-service');
-    Route::delete('/project/{project}/service/{serviceId}', [ProjectController::class, 'deleteService'])->name('project.delete-service');
-
     // Time Tracking Routes
     Route::get('/time/list', [TimeController::class, 'index'])->name('time.index');
     Route::get('/time/timer', [TimeController::class, 'timer'])->name('time.timer');

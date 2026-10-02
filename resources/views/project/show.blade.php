@@ -140,7 +140,7 @@
 	</div>
 @endif
 
-@if (! empty($depositInvoicePreview))
+@if (! empty($depositInvoicePreview) && (($depositInvoicePreview['already_invoiced'] ?? false) || ! data_get($balanceInvoicePreview, 'already_invoiced')))
 	@php
 		$formatDepositMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
 		$depositAlreadyInvoiced = (bool) ($depositInvoicePreview['already_invoiced'] ?? false);
@@ -217,6 +217,151 @@
 							@error('description')
 								<div class="invalid-feedback d-block">{{ $message }}</div>
 							@enderror
+						@endcan
+					</form>
+				</div>
+			@endif
+		</div>
+	</div>
+@endif
+
+@if (! empty($balanceInvoicePreview))
+	@php
+		$formatBalanceMoney = fn ($amount) => number_format((float) $amount, 2, ',', '.').' €';
+		$balanceAlreadyInvoiced = (bool) ($balanceInvoicePreview['already_invoiced'] ?? false);
+	@endphp
+	<div class="row mb-4">
+		<div class="col-12">
+			@if ($balanceAlreadyInvoiced)
+				<div class="alert alert-success mb-0" role="alert">
+					<div class="d-flex align-items-start flex-wrap gap-2">
+						<i class="ti ti-file-check ti-lg me-2 flex-shrink-0"></i>
+						<div class="flex-grow-1 min-w-0">
+							<span class="fw-medium d-block">{{ __('Balance already invoiced') }}</span>
+							<ul class="list-unstyled small text-muted mb-0 mt-1">
+								@foreach ($balanceInvoicePreview['invoices'] as $balanceInvoice)
+									<li>
+										{{ __('Payment :current of :total', ['current' => $balanceInvoice['installment'] ?? 1, 'total' => $balanceInvoice['installments'] ?? 1]) }}
+										· {{ $formatBalanceMoney($balanceInvoice['amount'] ?? 0) }}
+										@if (! empty($balanceInvoice['due_date']))
+											· {{ \Carbon\Carbon::parse($balanceInvoice['due_date'])->format('d/m/Y') }}
+										@endif
+										@if (! empty($balanceInvoice['invoice_id']))
+											· <a href="{{ route('invoice.show', $balanceInvoice['invoice_id']) }}">{{ __('View invoice') }}</a>
+										@endif
+									</li>
+								@endforeach
+							</ul>
+						</div>
+					</div>
+				</div>
+			@else
+				<div class="alert alert-info mb-0" role="alert" id="project-balance-invoice">
+					<form method="POST" action="{{ route('project.invoice-balance', $project->id) }}">
+						@csrf
+						<div class="d-flex align-items-start flex-wrap gap-2 mb-2">
+							<i class="ti ti-receipt ti-lg me-2 flex-shrink-0 mt-1"></i>
+							<div class="flex-grow-1 min-w-0">
+								<span class="fw-medium d-block">{{ __('Finished project — invoice the balance') }}</span>
+								<span class="small d-block mt-1">
+									{{ __('Balance') }}: {{ $formatBalanceMoney($balanceInvoicePreview['remaining_base']) }}
+									@if (($balanceInvoicePreview['deposit_base'] ?? 0) > 0)
+										· {{ __('Deposit already invoiced') }}: {{ $formatBalanceMoney($balanceInvoicePreview['deposit_base']) }}
+									@endif
+									· {{ $balanceInvoicePreview['vat_label'] }}
+									@if ($balanceInvoicePreview['vat_applies'])
+										({{ $formatBalanceMoney($balanceInvoicePreview['vat_amount']) }})
+									@endif
+									· {{ __('Total') }}: {{ $formatBalanceMoney($balanceInvoicePreview['total_with_vat']) }}
+								</span>
+								@if (empty($balanceInvoicePreview['stripe_customer_id']))
+									<span class="small text-danger d-block mt-1">
+										{{ __('Link a Stripe customer on the client before invoicing the deposit.') }}
+									</span>
+								@endif
+							</div>
+							@can('update', $project)
+								<button type="submit" name="billing_mode" value="total" class="btn btn-info btn-sm waves-effect waves-light flex-shrink-0"
+									{{ empty($balanceInvoicePreview['stripe_customer_id']) ? 'disabled' : '' }}>
+									<i class="ti ti-file-invoice ti-sm me-1"></i>{{ __('Invoice the total') }}
+								</button>
+							@endcan
+						</div>
+
+						@can('update', $project)
+							<div class="row g-2 align-items-end mb-2">
+								<div class="col-md-3">
+									<label for="balance-installments" class="form-label mb-1">{{ __('Number of payments') }}</label>
+									<input type="number" id="balance-installments" name="installments" class="form-control bg-white" min="2" max="12" value="{{ old('installments', 2) }}">
+								</div>
+								<div class="col-md-3">
+									<label for="balance-start-date" class="form-label mb-1">{{ __('Start date') }}</label>
+									<input type="date" id="balance-start-date" name="start_date" class="form-control bg-white" value="{{ old('start_date', now()->toDateString()) }}" min="{{ now()->toDateString() }}">
+								</div>
+								<div class="col-md-6">
+									<button type="submit" name="billing_mode" value="installments" class="btn btn-outline-info btn-sm waves-effect waves-light"
+										{{ empty($balanceInvoicePreview['stripe_customer_id']) ? 'disabled' : '' }}>
+										<i class="ti ti-calendar ti-sm me-1"></i>{{ __('Schedule payments') }}
+									</button>
+									<small class="text-muted d-block mt-1" id="balance-installment-preview" data-remaining="{{ (int) $balanceInvoicePreview['remaining_base'] }}"></small>
+								</div>
+							</div>
+							<label for="balance-invoice-description" class="form-label mb-1">{{ __('Invoice description') }}</label>
+							<textarea
+								id="balance-invoice-description"
+								name="description"
+								class="form-control bg-white @error('description') is-invalid @enderror"
+								rows="2"
+								required
+								maxlength="500"
+							>{{ old('description', $balanceInvoicePreview['default_description']) }}</textarea>
+							@error('description')
+								<div class="invalid-feedback d-block">{{ $message }}</div>
+							@enderror
+							@error('installments')
+								<div class="invalid-feedback d-block">{{ $message }}</div>
+							@enderror
+							@error('start_date')
+								<div class="invalid-feedback d-block">{{ $message }}</div>
+							@enderror
+							<script>
+								(function () {
+									var preview = document.getElementById('balance-installment-preview');
+									var count = document.getElementById('balance-installments');
+									var date = document.getElementById('balance-start-date');
+									if (!preview || !count) {
+										return;
+									}
+									var render = function () {
+										var remaining = parseInt(preview.getAttribute('data-remaining'), 10) || 0;
+										var parts = parseInt(count.value, 10);
+										if (!parts || parts < 2) {
+											parts = 2;
+										}
+										var base = Math.floor(remaining / parts);
+										var last = remaining - (base * (parts - 1));
+										var money = function (amount) {
+											return amount.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+										};
+										var text = parts + ' × ' + money(base);
+										if (last !== base) {
+											text += ' · {{ __('the last') }} ' + money(last);
+										}
+										if (date && date.value) {
+											var pieces = date.value.split('-');
+											if (pieces.length === 3) {
+												text += ' · ' + pieces[2] + '/' + pieces[1] + '/' + pieces[0];
+											}
+										}
+										preview.textContent = text;
+									};
+									count.addEventListener('input', render);
+									if (date) {
+										date.addEventListener('change', render);
+									}
+									render();
+								})();
+							</script>
 						@endcan
 					</form>
 				</div>
@@ -795,142 +940,6 @@
 </div>
 @endif
 
-<!-- Linked Services Section - Full Width, same style as details -->
-@if($project->projectFares && $project->projectFares->count() > 0)
-<div class="card mb-4">
-   <div class="card-header d-flex justify-content-between align-items-center">
-       <h5 class="mb-0">{{ __('Linked services') }}</h5>
-       @can('update', $project)
-       @if (! $project->isBudgetContentLocked())
-       <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
-           <i class="ti ti-plus ti-xs me-1"></i>{{ __('Vincular servicio') }}
-       </button>
-       @endif
-       @endcan
-   </div>
-   <div class="card-body">
-       <div class="table-responsive">
-           <table class="table table-hover">
-					<thead>
-						<tr>
-							<th class="col-1"></th>
-							<th class="col-3">{{ __('Service') }}</th>
-							<th class="col-3 text-center">{{ __('Languages') }}</th>
-							<th class="col-1 text-center">{{ __('Quantity') }}</th>
-							<th class="col-1">{{ __('Unit') }}</th>
-							<th class="col-2 text-center">{{ __('Collaborators') }}</th>
-							<th class="col-1 text-center">{{ __('Actions') }}</th>
-						</tr>
-					</thead>
-					<tbody>
-						@foreach($project->projectFares as $projectFare)
-						@php
-							// Check if there are collaborators that match this service requirements
-							$hasMatchingCollaborator = false;
-
-							if ($project->allCollaborators && $project->allCollaborators->count() > 0) {
-								foreach ($project->allCollaborators as $collaborator) {
-									// Check if collaborator has the required language combination
-									$hasLanguageCombination = $collaborator->languageVariants->contains(function($variant) use ($projectFare) {
-										return $variant->source_language_code === $projectFare->source_language_code
-											&& $variant->target_language_code === $projectFare->target_language_code;
-									});
-
-									// Check if collaborator has the required fare/service
-									$hasFare = $collaborator->fares->contains('id', $projectFare->fare_id);
-
-									// If collaborator has both requirements, mark as matching
-									if ($hasLanguageCombination && $hasFare) {
-										$hasMatchingCollaborator = true;
-										break;
-									}
-								}
-							}
-						@endphp
-						<tr class="{{ $loop->last ? 'border-bottom-0' : '' }}">
-							<td class="col-1 text-center">
-								@if($hasMatchingCollaborator)
-									<i class="ti ti-check text-success ti-lg"
-									   data-bs-toggle="tooltip"
-									   data-bs-placement="top"
-									   title="Hay colaboradores asignados que cumplen con los requisitos"></i>
-								@else
-									<i class="ti ti-alert-triangle text-warning ti-lg"
-									   data-bs-toggle="tooltip"
-									   data-bs-placement="top"
-									   title="No hay colaboradores asignados que cumplan con esta combinación de idioma y servicio"></i>
-								@endif
-							</td>
-							<td class="col-3">
-								<div class="mb-1">
-									<strong>{{ $projectFare->fare->name ?? 'N/A' }}</strong>
-									@if($projectFare->fare && $projectFare->fare->type)
-										<br><small class="text-muted">{{ $projectFare->fare->type->name }}</small>
-									@endif
-								</div>
-							</td>
-							<td class="col-3 text-center">
-								<x-language-combination-badge
-									:sourceLanguage="$projectFare->sourceLanguage"
-									:targetLanguage="$projectFare->targetLanguage"
-									:sourceLanguageCode="$projectFare->source_language_code"
-									:targetLanguageCode="$projectFare->target_language_code"
-								/>
-							</td>
-							<td class="col-1 text-center">
-								<span class="badge bg-light text-dark">{{ $projectFare->quantity }}</span>
-							</td>
-							<td class="col-1">
-								{{ $projectFare->unit }}
-							</td>
-							<td class="col-2 text-center">
-								<a href="{{ route('project.select-collaborators', $project->id) }}?source_language={{ $projectFare->source_language_code }}&target_language={{ $projectFare->target_language_code }}&service={{ $projectFare->fare_id }}"
-								   class="btn btn-sm btn-outline-success">
-									<i class="ti ti-users ti-xs me-1"></i>Asociar
-								</a>
-							</td>
-							<td class="col-1 text-center">
-                                <div class="d-flex justify-content-center align-items-center">
-                                    @can('update', $project)
-                                    @if (! $project->isBudgetContentLocked())
-                                    <a href="javascript:;" class="text-body me-2" data-bs-toggle="modal" data-bs-target="#serviceModal" data-action="edit" data-service-id="{{ $projectFare->id }}">
-                                        <i class="ti ti-edit ti-sm"></i>
-                                    </a>
-                                    @endif
-                                    @endcan
-                                    @can('delete', $project)
-                                    @if (! $project->isBudgetContentLocked())
-                                    <a href="javascript:;" class="text-danger" onclick="deleteProjectService({{ $projectFare->id }})">
-                                        <i class="ti ti-trash ti-sm"></i>
-                                    </a>
-                                    @endif
-                                    @endcan
-                                </div>
-							</td>
-						</tr>
-						@endforeach
-					</tbody>
-				</table>
-			</div>
-		</div>
-	</div>
-	@else
-	<div class="card mb-4">
-		<div class="card-body text-center py-4">
-			<i class="ti ti-settings ti-xl text-muted mb-3"></i>
-			<h6 class="mb-2">{{ __('No linked services') }}</h6>
-			<p class="text-muted mb-3">{{ __('This project has no linked services yet') }}</p>
-       @can('update', $project)
-       @if (! $project->isBudgetContentLocked())
-		<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#serviceModal">
-			<i class="ti ti-plus me-1"></i>{{ __('Vincular servicio') }}
-		</button>
-       @endif
-		@endcan
-		</div>
-	</div>
-	@endif
-
 @if ($project->isBudgetContentLocked())
 @php
 	$lockedStatusOptions = \App\Models\ProjectStatus::query()
@@ -975,98 +984,6 @@
 	</div>
 </div>
 @endif
-
-<!-- Modal para agregar/editar servicio -->
-<div class="modal fade" id="serviceModal" tabindex="-1" aria-hidden="true">
-	<div class="modal-dialog modal-lg">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title" id="serviceModalTitle">Agregar servicio</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<form id="serviceForm">
-				<div class="modal-body">
-					<input type="hidden" id="service-id" name="service_id">
-					<input type="hidden" id="project-id" name="project_id" value="{{ $project->id }}">
-
-					<div class="row g-3">
-						<div class="col-md-6">
-							<x-variant-language-select
-								name="source_language_code"
-								id="source_language"
-								label="Idioma origen (*)"
-								:required="true"
-								placeholder="Seleccionar idioma origen"
-							/>
-						</div>
-						<div class="col-md-6">
-							<x-variant-language-select
-								name="target_language_code"
-								id="target_language"
-								label="Idioma destino (*)"
-								:required="true"
-								placeholder="Seleccionar idioma destino"
-							/>
-						</div>
-						<div class="col-md-8">
-							<label class="form-label">Tipo de servicio (*)</label>
-							<select name="fare_id" id="fare_select" class="form-select" required>
-								<option value="">Seleccionar servicio</option>
-								@php
-									$faresByType = \App\Models\Fare::with('type')
-										->where(function($query) {
-											$query->whereNull('team_id');
-											if (auth()->check() && auth()->user()->currentTeam) {
-												$query->orWhere('team_id', auth()->user()->currentTeam->id);
-											}
-										})
-										->orderBy('name')
-										->get()
-										->groupBy(function($fare) {
-											return $fare->type ? $fare->type->name : 'Sin categoría';
-										});
-								@endphp
-
-								@foreach($faresByType as $typeName => $fareList)
-									<optgroup label="{{ $typeName }}">
-										@foreach($fareList as $fare)
-											<option value="{{ $fare->id }}">{{ $fare->name }}</option>
-										@endforeach
-									</optgroup>
-								@endforeach
-							</select>
-						</div>
-						<div class="col-md-4">
-							<label class="form-label">Cantidad (*)</label>
-							<input type="number" name="quantity" id="quantity" class="form-control"
-								   value="1" min="1" step="1" required>
-						</div>
-						<div class="col-md-6">
-							<label class="form-label">Unidad (*)</label>
-							<select name="unit" id="unit_select" class="form-select" required>
-								<option value="">Primero selecciona un servicio</option>
-							</select>
-						</div>
-					</div>
-
-					<div class="mt-3">
-						<div class="alert alert-warning d-none" id="duplicate-warning">
-							<i class="ti ti-alert-triangle me-2"></i>
-							Este servicio ya está agregado con la misma combinación de idiomas.
-						</div>
-					</div>
-				</div>
-				<div class="modal-footer">
-					<button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">Cancelar</button>
-					<button type="submit" class="btn btn-primary" id="saveServiceBtn">
-						<i class="ti ti-check me-1"></i>
-						<span id="saveServiceText">Agregar servicio</span>
-					</button>
-				</div>
-			</form>
-		</div>
-	</div>
-</div>
 
 @endsection
 
@@ -1160,8 +1077,6 @@
 			});
 		});
 
-		// Service modal functionality
-		initializeServiceModal();
 	});
 
 	// Function to remove collaborator from project
@@ -1209,265 +1124,5 @@
 		});
 	}
 
-	// Function to delete project service
-	function deleteProjectService(serviceId) {
-		if (!confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
-			return;
-		}
-
-		const projectId = document.getElementById('project-id').value;
-
-		fetch(`/project/${projectId}/service/${serviceId}`, {
-			method: 'DELETE',
-			headers: {
-				'Accept': 'application/json',
-				'X-Requested-With': 'XMLHttpRequest',
-				'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-			}
-		})
-		.then(response => response.json())
-		.then(data => {
-			if (data.success) {
-				location.reload();
-			} else {
-				alert(data.message || 'Error al eliminar servicio');
-			}
-		})
-		.catch(error => {
-			console.error('Error deleting service:', error);
-			alert('Error al eliminar servicio');
-		});
-	}
-
-	// Service modal initialization
-	function initializeServiceModal() {
-		const serviceModal = document.getElementById('serviceModal');
-		const serviceForm = document.getElementById('serviceForm');
-		const duplicateWarning = document.getElementById('duplicate-warning');
-
-		let editingServiceId = null;
-
-		// Handle fare selection change for units
-		document.getElementById('fare_select').addEventListener('change', function() {
-			const fareId = this.value;
-			const unitSelect = document.getElementById('unit_select');
-
-			if (!fareId) {
-				unitSelect.innerHTML = '<option value="">Primero selecciona un servicio</option>';
-				return;
-			}
-
-			// Show loading state
-			unitSelect.innerHTML = '<option value="">Cargando unidades...</option>';
-			unitSelect.disabled = true;
-
-			// Fetch units for the selected fare
-			fetch(`/project/fare-units?fare_id=${fareId}`, {
-				method: 'GET',
-				headers: {
-					'Accept': 'application/json',
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest'
-				}
-			})
-			.then(response => response.json())
-			.then(data => {
-				unitSelect.innerHTML = '<option value="">Seleccionar unidad</option>';
-
-				if (data.units && data.units.length > 0) {
-					data.units.forEach(unit => {
-						const option = document.createElement('option');
-						option.value = unit.type;
-						option.textContent = unit.label;
-						unitSelect.appendChild(option);
-					});
-				} else {
-					unitSelect.innerHTML = '<option value="">No hay unidades disponibles</option>';
-				}
-			})
-			.catch(error => {
-				console.error('Error loading units:', error);
-				unitSelect.innerHTML = '<option value="">Error al cargar unidades</option>';
-			})
-			.finally(() => {
-				unitSelect.disabled = false;
-			});
-		});
-
-		// Handle form submission
-		serviceForm.addEventListener('submit', function(e) {
-			e.preventDefault();
-
-			const formData = new FormData(serviceForm);
-			const serviceData = {
-				service_id: formData.get('service_id'),
-				project_id: formData.get('project_id'),
-				fare_id: formData.get('fare_id'),
-				source_language_code: formData.get('source_language_code'),
-				target_language_code: formData.get('target_language_code'),
-				quantity: formData.get('quantity'),
-				unit: formData.get('unit')
-			};
-
-			duplicateWarning.classList.add('d-none');
-
-			// Determine if we're editing or adding
-			if (editingServiceId) {
-				updateService(serviceData);
-			} else {
-				addService(serviceData);
-			}
-		});
-
-		// Handle modal show event
-		serviceModal.addEventListener('show.bs.modal', function(event) {
-			const button = event.relatedTarget;
-			const action = button?.getAttribute('data-action');
-
-			if (action === 'edit') {
-				const serviceId = button.getAttribute('data-service-id');
-				editService(serviceId);
-			} else {
-				// Reset form for new service
-				resetForm();
-			}
-		});
-
-		// Handle modal hide event
-		serviceModal.addEventListener('hide.bs.modal', function() {
-			resetForm();
-		});
-
-		function addService(serviceData) {
-			const button = document.getElementById('saveServiceBtn');
-			const originalText = button.innerHTML;
-
-			button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Guardando...';
-			button.disabled = true;
-
-			fetch(`/project/${serviceData.project_id}/service`, {
-				method: 'POST',
-				headers: {
-					'Accept': 'application/json',
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest',
-					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-				},
-				body: JSON.stringify(serviceData)
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					// Close modal and reload page
-					const modal = bootstrap.Modal.getInstance(serviceModal);
-					modal.hide();
-					location.reload();
-				} else {
-					alert(data.message || 'Error al agregar servicio');
-				}
-			})
-			.catch(error => {
-				console.error('Error adding service:', error);
-				alert('Error al agregar servicio');
-			})
-			.finally(() => {
-				button.innerHTML = originalText;
-				button.disabled = false;
-			});
-		}
-
-		function updateService(serviceData) {
-			const button = document.getElementById('saveServiceBtn');
-			const originalText = button.innerHTML;
-
-			button.innerHTML = '<i class="ti ti-loader ti-spin me-1"></i>Actualizando...';
-			button.disabled = true;
-
-			fetch(`/project/${serviceData.project_id}/service/${serviceData.service_id}`, {
-				method: 'PUT',
-				headers: {
-					'Accept': 'application/json',
-					'Content-Type': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest',
-					'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-				},
-				body: JSON.stringify(serviceData)
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					// Close modal and reload page
-					const modal = bootstrap.Modal.getInstance(serviceModal);
-					modal.hide();
-					location.reload();
-				} else {
-					alert(data.message || 'Error al actualizar servicio');
-				}
-			})
-			.catch(error => {
-				console.error('Error updating service:', error);
-				alert('Error al actualizar servicio');
-			})
-			.finally(() => {
-				button.innerHTML = originalText;
-				button.disabled = false;
-			});
-		}
-
-		function editService(serviceId) {
-			const projectId = document.getElementById('project-id').value;
-
-			// Get service details from server
-			fetch(`/project/${projectId}/services`, {
-				method: 'GET',
-				headers: {
-					'Accept': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest'
-				}
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (data.success) {
-					const service = data.services.find(s => s.id == serviceId);
-					if (service) {
-						editingServiceId = serviceId;
-
-						// Update modal title
-						document.getElementById('serviceModalTitle').textContent = 'Editar servicio';
-						document.getElementById('saveServiceText').textContent = 'Actualizar servicio';
-
-						// Fill form with service data
-						document.getElementById('service-id').value = service.id;
-						document.getElementById('source_language').value = service.source_language_code;
-						document.getElementById('target_language').value = service.target_language_code;
-						document.getElementById('fare_select').value = service.fare_id;
-						document.getElementById('quantity').value = service.quantity;
-
-						// Load units for the selected fare
-						const fareSelect = document.getElementById('fare_select');
-						fareSelect.dispatchEvent(new Event('change'));
-
-						// Set unit after units are loaded
-						setTimeout(() => {
-							document.getElementById('unit_select').value = service.unit;
-						}, 500);
-					}
-				}
-			})
-			.catch(error => {
-				console.error('Error loading service:', error);
-			});
-		}
-
-		function resetForm() {
-			serviceForm.reset();
-			editingServiceId = null;
-			document.getElementById('service-id').value = '';
-			document.getElementById('serviceModalTitle').textContent = 'Agregar servicio';
-			document.getElementById('saveServiceText').textContent = 'Agregar servicio';
-			document.getElementById('unit_select').innerHTML = '<option value="">Primero selecciona un servicio</option>';
-			duplicateWarning.classList.add('d-none');
-		}
-	}
 </script>
 @endpush
