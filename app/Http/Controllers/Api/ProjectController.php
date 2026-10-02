@@ -315,7 +315,13 @@ class ProjectController extends Controller
                     ->defaultOrder()
                     ->get();
 
-                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView)
+                $timesByTask = Time::withoutGlobalScope('team')
+                    ->where('team_id', $project->team_id)
+                    ->whereIn('task_id', $projectTasks->pluck('id'))
+                    ->get()
+                    ->groupBy('task_id');
+
+                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView, $timesByTask)
                 {
                     $status = [
                         'id' => $task->status?->id,
@@ -335,13 +341,9 @@ class ProjectController extends Controller
                         ];
                     }
 
-                    $taskTime = Time::where('task_id', $task->id)
-                        ->whereNotNull('end_time')
-                        ->get()
-                        ->sum(function ($time)
-                        {
-                            return $time->start_time->diffInSeconds($time->end_time);
-                        });
+                    $taskTimes = $timesByTask->get($task->id, collect());
+                    $taskTime = $this->loggedTaskSeconds($taskTimes);
+                    $runningTimers = $taskTimes->filter(fn (Time $time) => $time->end_time === null && $time->start_time)->count();
 
                     $totalSeconds += $taskTime;
 
@@ -360,6 +362,7 @@ class ProjectController extends Controller
                         ],
                         'time_seconds' => $taskTime,
                         'time_formatted' => gmdate('H:i:s', $taskTime),
+                        'running_timers' => $runningTimers,
                     ];
                 });
             }
@@ -940,6 +943,28 @@ class ProjectController extends Controller
             'data' => $this->mapBoardTask($task),
             'message' => 'Task reordered successfully',
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Time>  $times
+     */
+    private function loggedTaskSeconds(\Illuminate\Support\Collection $times): int
+    {
+        $now = now()->getTimestamp();
+        $total = 0;
+
+        foreach ($times as $time)
+        {
+            if (! $time->start_time)
+            {
+                continue;
+            }
+
+            $end = $time->end_time ? $time->end_time->getTimestamp() : $now;
+            $total += max(0, $end - $time->start_time->getTimestamp());
+        }
+
+        return $total;
     }
 
     private function visibleProjectsQuery(User $user): \Illuminate\Database\Eloquent\Builder
