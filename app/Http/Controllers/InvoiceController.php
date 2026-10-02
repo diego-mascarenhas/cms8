@@ -27,6 +27,7 @@ use App\Services\Billing\StripeInvoiceCreditNoteService;
 use App\Services\Billing\StripeInvoiceDraftDiscardService;
 use App\Services\ExpenseDuplicateDocumentService;
 use App\Services\ExpenseSupplierService;
+use App\Services\Finance\EnterpriseVatRateResolver;
 use App\Services\Finance\InvoiceCreditNoteService;
 use App\Services\Finance\InvoiceDisplayLineItemService;
 use App\Services\Finance\InvoiceElectronicPaymentLinkService;
@@ -36,6 +37,7 @@ use App\Services\Finance\InvoiceSummaryService;
 use App\Services\Finance\ManualInvoiceDocumentService;
 use App\Services\Finance\PaymentAccountCompatibilityService;
 use App\Services\Finance\PaymentStatusUpdateService;
+use App\Services\Finance\SellInvoiceCardCharge;
 use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Fiscal\Exceptions\FiscalExportException;
 use App\Services\Fiscal\FiscalExportRouter;
@@ -52,6 +54,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class InvoiceController extends Controller
 {
@@ -114,8 +117,10 @@ class InvoiceController extends Controller
         $teamId = (int) auth()->user()->currentTeam->id;
         $enterprises = Enterprise::query()
             ->where('type_id', 1)
+            ->with(['enterpriseBillingAddresses.taxStatusType'])
             ->orderBy('name')
-            ->get(['id', 'name', 'type_id']);
+            ->get(['id', 'name', 'type_id', 'country']);
+        $clientTaxProfiles = $this->clientTaxProfiles($enterprises);
 
         $paymentAccounts = PaymentAccount::withoutGlobalScopes()
             ->with(['currency', 'paymentTypes'])
@@ -187,6 +192,7 @@ class InvoiceController extends Controller
         ];
 
         return view('expense.create', compact(
+            'clientTaxProfiles',
             'enterprises',
             'paymentAccounts',
             'paymentAccountOptions',
@@ -201,6 +207,29 @@ class InvoiceController extends Controller
             'expenseCategoryOptions',
             'documentFlow',
         ));
+    }
+
+    /**
+     * @param  iterable<int, Enterprise>  $enterprises
+     * @return array<int, array{vat_percent: float, retention_percent: float, label: string, exempt: bool}>
+     */
+    private function clientTaxProfiles(iterable $enterprises): array
+    {
+        $resolver = app(EnterpriseVatRateResolver::class);
+        $profiles = [];
+
+        foreach ($enterprises as $enterprise)
+        {
+            $resolved = $resolver->resolve($enterprise);
+            $profiles[$enterprise->id] = [
+                'vat_percent' => $resolved['applies'] ? (float) $resolved['percent'] : 0.0,
+                'retention_percent' => 0.0,
+                'label' => $resolved['applies'] ? $resolved['label'] : 'Exento de IVA',
+                'exempt' => ! $resolved['applies'],
+            ];
+        }
+
+        return $profiles;
     }
 
     public function store(
@@ -219,6 +248,22 @@ class InvoiceController extends Controller
         $message = $result['is_draft']
             ? 'Borrador de factura guardado correctamente.'
             : 'Factura guardada correctamente.';
+
+        if (! $result['is_draft'] && $request->boolean('charge_automatically') && $result['invoice'] instanceof Invoice)
+        {
+            try
+            {
+                $status = app(SellInvoiceCardCharge::class)->charge($result['invoice']);
+                $message = $status === 'paid'
+                    ? 'Factura guardada y cobrada automáticamente.'
+                    : 'Factura guardada. Stripe no llegó a cobrar la tarjeta.';
+            } catch (InvalidArgumentException $exception)
+            {
+                return redirect()
+                    ->route('invoice.show', $result['invoice']->id)
+                    ->with('error', 'La factura se guardó, pero no se pudo cobrar la tarjeta. '.$exception->getMessage());
+            }
+        }
 
         return redirect()->route('invoice.index')->with('success', $message);
     }

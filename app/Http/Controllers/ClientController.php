@@ -4,13 +4,21 @@ namespace App\Http\Controllers;
 
 use App\DataTables\ClientDataTable;
 use App\Models\Contact;
+use App\Models\Domain;
 use App\Models\Enterprise;
 use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseType;
+use App\Models\Invoice;
+use App\Models\Service;
+use App\Models\ServiceSync;
 use App\Models\StripeSubscription;
 use App\Policies\ContactPolicy;
+use App\Services\Stripe\CustomerPaymentMethodReader;
+use App\Services\Stripe\SubscriptionScheduleReader;
+use App\Support\ClientHeadlineMetrics;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -286,31 +294,115 @@ class ClientController extends Controller
             return in_array($project->status_id, $pastProjectStatuses);
         })->sortByDesc('id')->values();
 
-        // Get services (relation; keep ordering stable for tables)
-        $services = $client->services->sortBy('id')->values();
+        // Subscription projections stay in the subscriptions block. The services
+        // table keeps only records that were not imported from a Stripe subscription.
+        $services = $client->services
+            ->filter(fn (Service $service): bool => $service->subscription_id === null)
+            ->sortBy('id')
+            ->values();
+
+        $subscriptions = filled($client->code)
+            ? $client->serviceSyncs()->get()
+            : collect();
+
+        $subscriptions = $subscriptions
+            ->concat(app(SubscriptionScheduleReader::class)->upcomingForCustomer($client->team, (string) $client->code))
+            ->unique('stripe_id')
+            ->sortBy(function (ServiceSync $sync): array
+            {
+                $rank = [
+                    'past_due' => 1,
+                    'unpaid' => 2,
+                    'incomplete' => 3,
+                    'incomplete_expired' => 4,
+                    'trialing' => 5,
+                    'active' => 6,
+                    'not_started' => 7,
+                    'paused' => 8,
+                    'canceled' => 9,
+                ];
+
+                return [
+                    $rank[strtolower(trim((string) $sync->status))] ?? 99,
+                    $sync->clientFacingName(),
+                ];
+            })->values();
+
+        $servicesBySubscription = Service::withoutGlobalScopes()
+            ->whereIn('subscription_id', $subscriptions->pluck('id'))
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->get()
+            ->keyBy('subscription_id');
+
+        $hostingsBySubscription = $this->hostingsForSubscriptions($subscriptions);
+
+        $consumptions = filled($client->code)
+            ? $client->usageInvoiceSyncs()
+                ->orderByDesc('invoice_created_at')
+                ->orderByDesc('id')
+                ->get()
+            : collect();
+
+        $consumptionInvoices = Invoice::withoutGlobalScopes()
+            ->where('team_id', $client->team_id)
+            ->whereIn('source_reference_id', $consumptions->pluck('external_id')->filter()->all())
+            ->get()
+            ->keyBy('source_reference_id');
 
         $billingAddresses = $client->enterpriseBillingAddresses->sortByDesc('status')->values();
+        $billingCountryFallback = trim((string) $client->country);
+        if ($billingCountryFallback === '')
+        {
+            $billingCountryFallback = $subscriptions
+                ->map(fn (ServiceSync $sync): string => trim((string) $sync->customer_country))
+                ->first(fn (string $code): bool => $code !== '') ?? '';
+        }
 
         $linkedContacts = $client->contacts->sortBy('name')->values();
         $enterpriseDepartments = EnterpriseDepartment::query()
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        // Matches the table's default sort so the rows do not jump when DataTables initialises.
-        $invoices = $client->invoices->sortByDesc('date')->values();
+        // Same priority as the invoice list status column, then number descending.
+        $invoices = $client->invoices->sort(function (Invoice $left, Invoice $right): int
+        {
+            $byPriority = $left->listStatusSortPriority() <=> $right->listStatusSortPriority();
+            if ($byPriority !== 0)
+            {
+                return $byPriority;
+            }
+
+            $byNumber = strcmp((string) ($right->number ?? ''), (string) ($left->number ?? ''));
+            if ($byNumber !== 0)
+            {
+                return $byNumber;
+            }
+
+            return $right->id <=> $left->id;
+        })->values();
 
         $invoiceBalanceTotal = $client->invoices->sum('balance');
+        $paymentCard = app(CustomerPaymentMethodReader::class)->forCustomer($client->team, (string) $client->code);
+        $headlineCards = ClientHeadlineMetrics::cards($invoices, $subscriptions, $paymentCard);
 
         return view('client.show', compact(
             'client',
             'activeProjects',
             'pastProjects',
             'services',
+            'subscriptions',
+            'servicesBySubscription',
+            'hostingsBySubscription',
+            'consumptions',
+            'consumptionInvoices',
             'billingAddresses',
+            'billingCountryFallback',
             'linkedContacts',
             'enterpriseDepartments',
             'invoices',
             'invoiceBalanceTotal',
+            'headlineCards',
         ));
     }
 
@@ -488,6 +580,53 @@ class ClientController extends Controller
 
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Match hosting subscriptions to accounts on the current team.
+     *
+     * @param  Collection<int, ServiceSync>  $subscriptions
+     * @return Collection<int, Domain>
+     */
+    private function hostingsForSubscriptions(Collection $subscriptions): Collection
+    {
+        $namesBySubscription = [];
+
+        foreach ($subscriptions as $subscription)
+        {
+            if (! $subscription->isClientHosting())
+            {
+                continue;
+            }
+
+            $domainName = $subscription->hostingDomainCandidate();
+            if ($domainName === null)
+            {
+                continue;
+            }
+
+            $namesBySubscription[$subscription->id] = $domainName;
+        }
+
+        if ($namesBySubscription === [])
+        {
+            return collect();
+        }
+
+        $domains = Domain::query()
+            ->where(function ($query) use ($namesBySubscription): void
+            {
+                foreach (array_unique($namesBySubscription) as $domainName)
+                {
+                    $query->orWhereRaw('LOWER(domain) = ?', [$domainName]);
+                }
+            })
+            ->get()
+            ->keyBy(fn (Domain $domain): string => strtolower((string) $domain->domain));
+
+        return collect($namesBySubscription)
+            ->map(fn (string $domainName): ?Domain => $domains->get($domainName))
+            ->filter();
     }
 
     private function detectFields($values)

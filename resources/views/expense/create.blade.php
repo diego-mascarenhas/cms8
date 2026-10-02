@@ -50,15 +50,26 @@
 
 @section('content')
 @php
+    $clientTaxProfiles = $clientTaxProfiles ?? [];
+    $selectedEnterpriseId = (string) old('enterprise_id', request('enterprise_id'));
+    $selectedTaxProfile = $clientTaxProfiles[$selectedEnterpriseId] ?? $clientTaxProfiles[(int) $selectedEnterpriseId] ?? null;
+    $defaultVatPercent = $selectedTaxProfile['vat_percent'] ?? '0';
     $oldLines = old('lines', [
         [
             'concept' => '',
             'base_amount' => '0.00',
-            'vat_percent' => '0',
+            'vat_percent' => $defaultVatPercent,
             'retention_percent' => '0',
             'allocation_percent' => '100',
         ],
     ]);
+@endphp
+
+@php
+    $isSellDocumentFlow = ($documentFlow['mode'] ?? 'buy') === 'sell';
+    $lockedClientId = $isSellDocumentFlow && request()->filled('enterprise_id')
+        ? (string) request('enterprise_id')
+        : '';
 @endphp
 
 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
@@ -67,9 +78,15 @@
         <p class="text-muted">{{ $documentFlow['subtitle'] }}</p>
     </div>
     <div class="mt-3 mt-md-0">
-        <a href="{{ $documentFlow['back_route'] }}" class="btn btn-label-secondary waves-effect">
-            <i class="ti ti-arrow-left me-1"></i> Volver
-        </a>
+        @if ($lockedClientId !== '')
+            <a href="{{ route('client.show', $lockedClientId) }}" class="btn btn-label-secondary waves-effect">
+                <i class="ti ti-building me-1"></i> Empresa
+            </a>
+        @else
+            <a href="{{ $documentFlow['back_route'] }}" class="btn btn-label-secondary waves-effect">
+                <i class="ti ti-arrow-left me-1"></i> Volver
+            </a>
+        @endif
     </div>
 </div>
 
@@ -163,21 +180,23 @@
                 </div>
             @endif
 
-            @php
-                $isSellDocumentFlow = ($documentFlow['mode'] ?? 'buy') === 'sell';
-            @endphp
             <div class="{{ $isSellDocumentFlow ? 'col-12' : 'col-lg-5' }}">
                 <div class="row g-3">
                     <div class="{{ $isSellDocumentFlow ? 'col-md-8' : 'col-12' }}">
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <label for="enterprise_id" class="form-label mb-0">{{ $documentFlow['party_label'] }}</label>
-                            @can('create', \App\Models\Enterprise::class)
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="open-create-supplier-modal">
-                                    <i class="ti ti-building-store me-1"></i> {{ $documentFlow['create_party_label'] }}
-                                </button>
-                            @endcan
+                            @if ($lockedClientId === '')
+                                @can('create', \App\Models\Enterprise::class)
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="open-create-supplier-modal">
+                                        <i class="ti ti-building-store me-1"></i> {{ $documentFlow['create_party_label'] }}
+                                    </button>
+                                @endcan
+                            @endif
                         </div>
-                        <select id="enterprise_id" name="enterprise_id" class="form-select select2-enterprise @error('enterprise_id') is-invalid @enderror">
+                        @if ($lockedClientId !== '')
+                            <input type="hidden" name="enterprise_id" value="{{ $lockedClientId }}">
+                        @endif
+                        <select id="enterprise_id" @if ($lockedClientId === '') name="enterprise_id" @endif class="form-select select2-enterprise @error('enterprise_id') is-invalid @enderror" @disabled($lockedClientId !== '')>
                             <option value="">{{ $documentFlow['party_placeholder'] }}</option>
                             @foreach ($enterprises as $enterprise)
                                 @php
@@ -218,7 +237,7 @@
                                     data-type="{{ $enterpriseTypeName ?? '' }}"
                                     data-responsible="{{ $enterpriseResponsible }}"
                                     data-contacts='@json($enterpriseContacts)'
-                                    {{ old('enterprise_id') == $enterprise->id ? 'selected' : '' }}
+                                    {{ (string) old('enterprise_id', request('enterprise_id')) === (string) $enterprise->id ? 'selected' : '' }}
                                 >
                                     {{ $enterprise->name }}
                                 </option>
@@ -232,18 +251,11 @@
 
                     @if ($isSellDocumentFlow)
                         <div class="col-md-4">
-                            <label for="document_number" class="form-label">Número de comprobante</label>
-                            <input
-                                type="text"
-                                id="document_number"
-                                class="form-control"
-                                value=""
-                                placeholder="Automático"
-                                readonly
-                                tabindex="-1"
-                                aria-readonly="true"
-                            >
-                            <small class="text-muted d-block mt-1">Se asignará al guardar</small>
+                            <label for="submit_action" class="form-label">Documento</label>
+                            <select id="submit_action" name="submit_action" class="form-select select2-document">
+                                <option value="draft" @selected(old('submit_action', 'draft') === 'draft')>Borrador</option>
+                                <option value="save" @selected(old('submit_action') === 'save')>Factura</option>
+                            </select>
                         </div>
                     @endif
 
@@ -409,6 +421,10 @@
                     <small class="text-danger d-block mt-1">{{ $message }}</small>
                 @enderror
 
+                @if ($isSellDocumentFlow)
+                    <small id="client-tax-note" class="text-muted d-block mt-2">{{ $selectedTaxProfile['label'] ?? '' }}</small>
+                @endif
+
                 <button type="button" id="add-expense-line" class="btn btn-sm btn-outline-primary mt-2">
                     <i class="ti ti-plus me-1"></i> Añadir ítem
                 </button>
@@ -466,9 +482,28 @@
             </div>
         @endif
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h5 class="mb-0">{{ $documentFlow['payments_section_title'] }}</h5>
-            <button type="button" id="add-expense-payment" class="btn btn-sm btn-outline-primary">
+        <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+            <div>
+                <h5 class="mb-0">{{ $documentFlow['payments_section_title'] }}</h5>
+                @if ($isSellDocumentFlow)
+                    <div class="form-check mt-2 mb-0">
+                        <input
+                            class="form-check-input"
+                            type="checkbox"
+                            name="charge_automatically"
+                            id="charge_automatically"
+                            value="1"
+                            @checked(old('charge_automatically'))
+                        >
+                        <label class="form-check-label" for="charge_automatically">Cobrar automáticamente</label>
+                        <small class="text-muted d-block">Usa la tarjeta que el cliente tiene en Stripe.</small>
+                    </div>
+                    @error('charge_automatically')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
+                @endif
+            </div>
+            <button type="button" id="add-expense-payment" class="btn btn-sm btn-outline-primary flex-shrink-0">
                 <i class="ti ti-plus me-1"></i>{{ $documentFlow['add_payment_label'] }}
             </button>
         </div>
@@ -605,8 +640,12 @@
         <div class="d-flex justify-content-between align-items-center mt-4">
             <a href="{{ $documentFlow['back_route'] }}" class="btn btn-label-secondary">Cancelar</a>
             <div class="d-flex gap-2">
-                <button type="submit" name="submit_action" value="draft" class="btn btn-label-primary expense-submit-btn">Guardar borrador</button>
-                <button type="submit" name="submit_action" value="save" class="btn btn-primary expense-submit-btn">{{ $documentFlow['submit_label'] }}</button>
+                @if ($isSellDocumentFlow)
+                    <button type="submit" class="btn btn-primary expense-submit-btn">Guardar</button>
+                @else
+                    <button type="submit" name="submit_action" value="draft" class="btn btn-label-primary expense-submit-btn">Guardar borrador</button>
+                    <button type="submit" name="submit_action" value="save" class="btn btn-primary expense-submit-btn">{{ $documentFlow['submit_label'] }}</button>
+                @endif
             </div>
         </div>
     </form>
@@ -714,11 +753,13 @@
 <script>
     $(function () {
         var documentFlow = @json($documentFlow);
+        var clientTaxProfiles = @json($clientTaxProfiles ?? []);
+        var preserveOldTaxLines = @json(old('lines') !== null);
         var partyNoun = documentFlow.mode === 'sell' ? 'cliente' : 'proveedor';
         var $createSupplierModal = $('#createSupplierModal');
         var expenseCategoryOptions = @json($expenseCategoryOptionsJs);
 
-        $('.select2').not('.select2-supplier-country').not('.select2-enterprise').not('.payment-type-select').not('.payment-account-select').not('.payment-status-select').each(function () {
+        $('select.select2').not('.select2-supplier-country').not('.select2-enterprise').not('.payment-type-select').not('.payment-account-select').not('.payment-status-select').each(function () {
             var $this = $(this);
             $this.wrap('<div class="position-relative"></div>');
             $this.select2({
@@ -727,6 +768,17 @@
                 allowClear: false
             });
         });
+
+        var $documentKind = $('#submit_action');
+        if ($documentKind.length && ! $documentKind.hasClass('select2-hidden-accessible')) {
+            $documentKind.wrap('<div class="position-relative"></div>');
+            $documentKind.select2({
+                dropdownParent: $documentKind.parent(),
+                width: '100%',
+                minimumResultsForSearch: Infinity,
+                allowClear: false
+            });
+        }
 
         var lastEnterpriseSearchTerm = '';
         var canCreateSupplier = $('#open-create-supplier-modal').length > 0;
@@ -2124,9 +2176,35 @@
             });
         }
 
+        function currentClientTaxProfile() {
+            if (documentFlow.mode !== 'sell') {
+                return null;
+            }
+
+            var enterpriseId = String($('#enterprise_id').val() || '');
+            return clientTaxProfiles[enterpriseId] || null;
+        }
+
+        function applyClientTaxProfile($scope) {
+            var profile = currentClientTaxProfile();
+            var $note = $('#client-tax-note');
+            if (! profile) {
+                $note.text('');
+                return;
+            }
+
+            ($scope || $linesBody).find('.line-vat').val(Number(profile.vat_percent).toFixed(2));
+            ($scope || $linesBody).find('.line-retention').val(Number(profile.retention_percent).toFixed(2));
+            $note.text(profile.exempt
+                ? 'Exento de IVA. La retención no aplica y la línea se imputa al 100 %.'
+                : profile.label);
+            refreshSummary();
+        }
+
         $('#add-expense-line').on('click', function () {
             var $row = $(createLineRow(nextLineIndex));
             $linesBody.append($row);
+            applyClientTaxProfile($row);
             initAmountInputs($row);
 
             var suggestion = suggestionForLineIndex(nextLineIndex);
@@ -2214,7 +2292,12 @@
 
         $enterpriseSelect.on('change.suggestedCategories', function () {
             loadSuggestedCategoriesForEnterprise($(this).val(), { applyToEmptyLines: true });
+            applyClientTaxProfile($linesBody);
         });
+
+        if (! preserveOldTaxLines) {
+            applyClientTaxProfile($linesBody);
+        }
 
         $(document).on('click', '.remove-line-btn', function () {
             if ($linesBody.find('.expense-line').length <= 1) {

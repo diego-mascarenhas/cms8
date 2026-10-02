@@ -34,6 +34,10 @@ class HaciendaPublicController extends Controller
             $reportingCurrency,
         );
 
+        $books = $presentation['books'];
+        $outputVat = round($books['sell']['summary']['tax'] + $books['sell_credit_notes']['summary']['tax'], 2);
+        $inputVat = round($books['buy']['summary']['tax'] + $books['buy_credit_notes']['summary']['tax'], 2);
+
         return view('hacienda.public', [
             'hash' => $hash,
             'teamName' => (string) $team->name,
@@ -42,7 +46,11 @@ class HaciendaPublicController extends Controller
             'vatYear' => $vatSelection['year'],
             'vatPeriod' => $vatSelection['period'],
             'headers' => $presentation['headers'],
-            'books' => $presentation['books'],
+            'books' => $books,
+            'reportingCurrency' => $reportingCurrency,
+            'outputVat' => $outputVat,
+            'inputVat' => $inputVat,
+            'vatBalance' => round($outputVat - $inputVat, 2),
         ]);
     }
 

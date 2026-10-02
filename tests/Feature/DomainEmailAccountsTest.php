@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Domain;
+use App\Models\Enterprise;
 use App\Models\Server;
+use App\Models\ServiceSync;
 use App\Models\User;
+use Database\Seeders\EnterpriseStatusSeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Spatie\Permission\Models\Role;
@@ -184,6 +188,8 @@ class DomainEmailAccountsTest extends TestCase
         $response->assertSee('Servidor');
         $response->assertSee('Sitio');
         $response->assertSee('Plan de hosting');
+        $response->assertSee('class="form-select select2"', false);
+        $response->assertSee('id="plan"', false);
         $response->assertSee('Dominio:');
         $response->assertSee('Usuario cPanel:');
         $response->assertSee('Tipo de sitio:');
@@ -226,6 +232,51 @@ class DomainEmailAccountsTest extends TestCase
         $response->assertDontSee('Servidores DNS requeridos');
         $response->assertDontSee('SPF recomendado');
         $response->assertDontSee('Configura estos NS en el registrador del dominio');
+    }
+
+    public function test_domain_show_links_to_the_enterprise_that_owns_the_hosting(): void
+    {
+        Http::fake();
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+        ]);
+
+        [$user, $domain] = $this->createDomainWithServer([
+            'domain' => 'cleanupbuenosaires.com',
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $user->currentTeam->id,
+            'name' => 'Clean Up',
+            'code' => 'cus_cleanup',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        ServiceSync::query()->create([
+            'team_id' => $user->currentTeam->id,
+            'provider' => 'stripe',
+            'stripe_id' => 'sub_cleanup_hosting',
+            'customer_id' => $enterprise->code,
+            'status' => 'active',
+            'plan_name' => 'Actualizado 12/2025',
+            'plan_interval' => 'month',
+            'price_currency' => 'eur',
+            'amount_total' => 21.99,
+            'raw_payload' => [
+                'description' => 'Hosting CLEANUPBUENOSAIRES.COM',
+            ],
+        ]);
+
+        $response = $this->actingAs($user)->get(route('domain.show', $domain->id));
+
+        $response->assertOk();
+        $response->assertSee(
+            '<a href="'.route('client.show', $enterprise->id).'" class="btn btn-outline-primary waves-effect waves-light">',
+            false,
+        );
+        $response->assertSee('Empresa');
     }
 
     /**

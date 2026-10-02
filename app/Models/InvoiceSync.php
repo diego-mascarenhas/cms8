@@ -118,4 +118,57 @@ class InvoiceSync extends Model
 
         return $mercadoPagoId === '';
     }
+
+    public function consumptionSummary(): string
+    {
+        $lines = data_get($this->raw_payload, 'lines.data', []);
+        $parts = [];
+
+        if (is_array($lines))
+        {
+            foreach ($lines as $line)
+            {
+                if (! is_array($line))
+                {
+                    continue;
+                }
+
+                $description = trim((string) ($line['description'] ?? ''));
+                if ($description !== '')
+                {
+                    $parts[] = $description;
+                }
+            }
+        }
+
+        if ($parts !== [])
+        {
+            return implode(' · ', $parts);
+        }
+
+        $number = trim((string) $this->number);
+
+        return $number !== '' ? $number : 'Consumo';
+    }
+
+    public function getStatusBadgeAttribute(): string
+    {
+        $status = strtolower(trim((string) $this->status));
+        [$label, $color] = match ($status)
+        {
+            'paid' => ['Pagada', 'success'],
+            'open' => ['Abierta', 'warning'],
+            'draft' => ['Borrador', 'secondary'],
+            'void' => ['Anulada', 'danger'],
+            'uncollectible' => ['Incobrable', 'warning'],
+            default => [$status !== '' ? ucfirst($status) : '', 'secondary'],
+        };
+
+        if ($label === '')
+        {
+            return '';
+        }
+
+        return '<span class="badge rounded-pill bg-label-'.$color.'">'.e($label).'</span>';
+    }
 }

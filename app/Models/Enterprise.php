@@ -6,6 +6,7 @@ use App\Services\Finance\InvoiceSummaryService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Enterprise extends Model
@@ -227,6 +228,25 @@ class Enterprise extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class, 'enterprise_id');
+    }
+
+    /**
+     * Stripe subscriptions staged in service_syncs for this client's customer id.
+     */
+    public function serviceSyncs(): HasMany
+    {
+        return $this->hasMany(ServiceSync::class, 'customer_id', 'code')
+            ->where('service_syncs.team_id', $this->team_id);
+    }
+
+    /**
+     * Usage invoices (tokens, WhatsApp, email, storage) billed apart from the plan.
+     */
+    public function usageInvoiceSyncs(): HasMany
+    {
+        return $this->hasMany(InvoiceSync::class, 'customer_id', 'code')
+            ->where('invoice_syncs.team_id', $this->team_id)
+            ->where('billing_reason', 'manual');
     }
 
     public function contacts()

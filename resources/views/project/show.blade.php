@@ -55,14 +55,13 @@
 		</div>
 		<div class="d-flex align-content-center flex-wrap gap-3">
 			@can('update', $project)
+				<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
+					<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
+				</a>
 				@if ($project->isBudgetContentLocked())
-					<button type="button" class="btn btn-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
+					<button type="button" class="btn btn-outline-primary waves-effect waves-light" data-bs-toggle="modal" data-bs-target="#projectStatusModal">
 						<i class="ti ti-exchange me-1"></i>{{ __('Change status') }}
 					</button>
-				@else
-					<a href="{{ route('project.edit', $project->id) }}" class="btn btn-primary waves-effect waves-light">
-						<i class="ti ti-edit me-1"></i>{{ __('Edit') }}
-					</a>
 				@endif
 			@endcan
 			@if ($project->enterprise_id)
@@ -375,21 +374,6 @@
            </div>
        </div>
        @endif
-       <div class="row mt-2">
-           <div class="col-12">
-               <dl class="row mb-0">
-                   <dt class="col-auto">{{ __('Project key (API / MCP)') }}:</dt>
-                   <dd class="col mb-0">
-                       @auth
-                       <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env: list tasks and auto-assign when you pick one via MCP') }}">HUMANO_PROJECT_KEY={{ $project->contextKeyForUser(auth()->user()) }}</code>
-                       @else
-                       <code class="user-select-all text-break d-inline-block" style="word-break: break-all;" title="{{ __('Copy for .env') }}">HUMANO_PROJECT_KEY={{ $project->project_key }}</code>
-                       <p class="text-muted small mb-0 mt-1">{{ __('Log in to get the key that includes your user (list and assign tasks via MCP).') }}</p>
-                       @endauth
-                   </dd>
-               </dl>
-           </div>
-       </div>
 </div>
 </div>
 

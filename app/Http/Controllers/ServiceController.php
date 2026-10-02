@@ -215,30 +215,16 @@ class ServiceController extends Controller
      */
     public function show(string $id)
     {
-        $service = Service::with(['category', 'client'])->findOrFail($id);
+        $service = Service::with(['category', 'client', 'currency'])->findOrFail($id);
         $this->authorize('view', $service);
 
-        // Collaborators can only view their assigned services
         $currentUser = auth()->user();
         if ($currentUser && $currentUser->hasRole('collaborator') && $service->responsible_id !== $currentUser->id)
         {
             abort(403);
         }
 
-        // Get service data
-        $serviceData = $service->data ? (array) $service->data : [];
-
-        // Status information
-        $statusLabels = [
-            1 => ['label' => 'Suspended', 'class' => 'bg-label-danger'],
-            2 => ['label' => 'To suspend', 'class' => 'bg-label-warning'],
-            3 => ['label' => 'To activate', 'class' => 'bg-label-success'],
-            4 => ['label' => 'Active', 'class' => 'bg-label-info'],
-        ];
-
-        $status = $statusLabels[$service->status] ?? ['label' => 'Unknown', 'class' => 'bg-label-secondary'];
-
-        return view('service.show', compact('service', 'serviceData', 'status'));
+        return view('service.show', compact('service'));
     }
 
     /**

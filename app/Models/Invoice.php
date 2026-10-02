@@ -365,6 +365,54 @@ class Invoice extends Model
         return Carbon::parse($this->due_date)->startOfDay()->lt(Carbon::now()->startOfDay());
     }
 
+    /**
+     * Same priority as the invoice list status column:
+     * overdue, pending, issuing, draft, collected, then the closed statuses.
+     */
+    public function listStatusSortPriority(): int
+    {
+        $status = (int) $this->status;
+        $balance = (float) $this->balance;
+        $closedStatuses = [3, 4, 5, 6, 7, 9];
+        $dueBeforeToday = $this->due_date !== null
+            && Carbon::parse($this->due_date)->startOfDay()->lt(Carbon::now()->startOfDay());
+
+        if (! in_array($status, $closedStatuses, true) && $balance > 0 && $dueBeforeToday)
+        {
+            return 1;
+        }
+
+        if (! in_array($status, [3, 4, 5, 6, 7, 8, 9], true) && $balance > 0)
+        {
+            return 2;
+        }
+
+        if ($status === 8)
+        {
+            return 3;
+        }
+
+        if ($status === 9)
+        {
+            return 4;
+        }
+
+        if (! in_array($status, $closedStatuses, true) && $balance <= 0)
+        {
+            return 5;
+        }
+
+        return match ($status)
+        {
+            5 => 6,
+            4 => 7,
+            6 => 8,
+            7 => 9,
+            3 => 10,
+            default => 99,
+        };
+    }
+
     public function getStatusBadgeAttribute(): string
     {
         $label = $this->status_label;

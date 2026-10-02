@@ -91,13 +91,6 @@ class ProjectController extends Controller
         if ($existing)
         {
             $this->authorize('update', $existing);
-
-            if ($existing->isBudgetContentLocked())
-            {
-                return redirect()
-                    ->route('project.show', $existing->id)
-                    ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-            }
         } else
         {
             $this->authorize('create', Project::class);
@@ -135,6 +128,11 @@ class ProjectController extends Controller
             'date_start' => $data['date_start'] ?? null,
             'date_end' => $data['date_end'] ?? null,
         ];
+
+        if ($existing && $existing->isBudgetContentLocked())
+        {
+            $attributes = $this->keepApprovedBudgetCircuit($existing, $attributes);
+        }
 
         if ($existing)
         {
@@ -1162,13 +1160,6 @@ class ProjectController extends Controller
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
 
-        if ($project->isBudgetContentLocked())
-        {
-            return redirect()
-                ->route('project.show', $project->id)
-                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-        }
-
         $data = Project::with(['projectFares.fare.units', 'projectFares.sourceLanguage', 'projectFares.targetLanguage'])
             ->findOrFail($id);
         $enterprise_id = $data->enterprise_id;
@@ -1206,19 +1197,12 @@ class ProjectController extends Controller
     }
 
     /**
-     * Update project (blocked when budget is approved).
+     * Update project. Approved budgets keep their status and quote circuit.
      */
     public function update(StoreProjectRequest $request, string $id)
     {
         $project = Project::findOrFail($id);
         $this->authorize('update', $project);
-
-        if ($project->isBudgetContentLocked())
-        {
-            return redirect()
-                ->route('project.show', $project->id)
-                ->with('error', __('This approved budget can no longer be edited. You can only change its status.'));
-        }
 
         $validated = $request->validated();
         $budgetService = app(\App\Services\ProjectBudgetSpecService::class);
@@ -1230,11 +1214,49 @@ class ProjectController extends Controller
             );
         }
 
+        if ($project->isBudgetContentLocked())
+        {
+            $validated = $this->keepApprovedBudgetCircuit($project, $validated);
+        }
+
         $project->update($validated);
 
         return redirect()
             ->route('project.show', $project->id)
             ->with('success', __('Project updated successfully.'));
+    }
+
+    /**
+     * Amount corrections on an approved budget must not move status or drop the quote circuit.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function keepApprovedBudgetCircuit(Project $project, array $attributes): array
+    {
+        $attributes['status_id'] = (int) $project->status_id;
+
+        $previous = is_array($project->data) ? $project->data : [];
+        $incoming = is_array($attributes['data'] ?? null) ? $attributes['data'] : $previous;
+
+        foreach ([
+            'budget_client_response',
+            'budget_preview_token',
+            'budget_email',
+            'deposit_invoice',
+            'quote_finalized',
+            'ai_suggested_tasks',
+        ] as $key)
+        {
+            if (array_key_exists($key, $previous))
+            {
+                $incoming[$key] = $previous[$key];
+            }
+        }
+
+        $attributes['data'] = $incoming;
+
+        return $attributes;
     }
 
     /**

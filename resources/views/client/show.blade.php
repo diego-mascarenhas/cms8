@@ -15,18 +15,39 @@
 @endsection
 
 @section('content')
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-        <div class="d-flex flex-column justify-content-center">
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <div class="d-flex flex-column justify-content-center min-w-0">
             <h4 class="mb-1 mt-3"><span class="text-muted fw-light">{{ __('Clients') }}/</span> {{ $client->name }}</h4>
-            <p class="text-muted">{{ __('Detailed client information') }}</p>
+            <p class="text-muted mb-0">{{ __('Detailed client information') }}</p>
         </div>
-        <div class="d-flex align-content-center flex-wrap gap-3">
+        <div class="d-flex align-items-center flex-shrink-0 gap-3">
             @can('edit', $client)
                 <a href="{{ route('client.edit', $client->id) }}" class="btn btn-primary waves-effect waves-light">
                     <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
                 </a>
             @endcan
         </div>
+    </div>
+
+    <div class="row row-cols-4 g-3 mb-4">
+        @foreach($headlineCards as $card)
+            <div class="col">
+                <div class="card h-100 mb-0">
+                    <div class="card-body p-3">
+                        <div class="d-flex align-items-center mb-1">
+                            <div class="avatar avatar-xs flex-shrink-0 me-2">
+                                <span class="avatar-initial rounded bg-label-{{ $card['tone'] }}">
+                                    <i class="ti {{ $card['icon'] }} ti-xs"></i>
+                                </span>
+                            </div>
+                            <span class="small text-truncate">{{ $card['kicker'] }}</span>
+                        </div>
+                        <div class="fw-semibold text-nowrap">{{ $card['value'] }}</div>
+                        <small class="text-muted text-truncate d-block">{{ $card['hint'] }}</small>
+                    </div>
+                </div>
+            </div>
+        @endforeach
     </div>
 
     <div class="col-12">
@@ -79,8 +100,8 @@
                                     <tr>
                                         <td>{{ $billing->name }}</td>
                                         <td>{{ $billing->identification_number ?: '—' }}</td>
-                                        <td>{{ $billing->taxStatusType->name ?? '—' }}</td>
-                                        <td class="text-muted">{{ $billing->country ? strtoupper((string) $billing->country) : '—' }}</td>
+                                        <td>{{ $billing->taxStatusType?->label() ?: '—' }}</td>
+                                        <td>{{ $billing->countryLabel($billingCountryFallback) }}</td>
                                         <td class="text-center">
                                             @if((int) $billing->status === 1)
                                                 <span class="badge bg-label-success rounded-pill">Activo</span>
@@ -232,7 +253,179 @@
 
         @php
             $hasServices = $services->count() > 0;
+            $hasSubscriptions = $subscriptions->count() > 0;
+            $hasConsumptions = $consumptions->count() > 0;
+            $stripeCustomerId = trim((string) $client->code);
+            $stripeCustomerUrl = null;
+            if (str_starts_with($stripeCustomerId, 'cus_'))
+            {
+                $stripeLivemode = $subscriptions
+                    ->concat($consumptions)
+                    ->map(fn ($row) => data_get($row->raw_payload, 'livemode'))
+                    ->filter(fn ($mode) => is_bool($mode));
+                $stripeBase = ($stripeLivemode->isNotEmpty() && $stripeLivemode->every(fn (bool $mode): bool => $mode === false))
+                    ? 'https://dashboard.stripe.com/test/customers/'
+                    : 'https://dashboard.stripe.com/customers/';
+                $stripeCustomerUrl = $stripeBase.$stripeCustomerId;
+            }
         @endphp
+
+        {{-- Suscripciones (Stripe). Los consumos van en una tarjeta aparte. --}}
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientSubscriptionsBlock" aria-expanded="{{ $hasSubscriptions ? 'true' : 'false' }}" aria-controls="clientSubscriptionsBlock" style="cursor: pointer;">
+                    <i class="ti {{ $hasSubscriptions ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
+                    <span>Suscripciones</span>
+                </span>
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
+                    <span class="badge bg-label-primary">{{ $subscriptions->count() }} {{ $subscriptions->count() === 1 ? 'suscripción' : 'suscripciones' }}</span>
+                    @if($stripeCustomerUrl)
+                        <a href="{{ $stripeCustomerUrl }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary text-nowrap">
+                            <i class="ti ti-brand-stripe me-1"></i>Stripe
+                        </a>
+                    @endif
+                </div>
+            </div>
+            <div class="collapse {{ $hasSubscriptions ? 'show' : '' }}" id="clientSubscriptionsBlock">
+                <div class="card-body border-top">
+                    @php
+                        $subscriptionDiscountLabels = $subscriptions->map(
+                            fn ($subscription) => $subscription->clientDiscountLabel($servicesBySubscription->get($subscription->id))
+                        );
+                        $hasSubscriptionDiscount = $subscriptionDiscountLabels->contains(fn (string $label): bool => $label !== '');
+                    @endphp
+                    @if($hasSubscriptions)
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover mb-0" id="clientSubscriptionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Plan</th>
+                                        <th class="text-end">Importe</th>
+                                        @if($hasSubscriptionDiscount)
+                                            <th class="text-end">Descuento</th>
+                                        @endif
+                                        <th class="text-center">Frecuencia</th>
+                                        <th class="text-end">Próxima</th>
+                                        <th>Medio de pago</th>
+                                        <th class="text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($subscriptions as $subscription)
+                                        @php
+                                            $linkedService = $servicesBySubscription->get($subscription->id);
+                                            $hosting = $hostingsBySubscription->get($subscription->id);
+                                            $discountLabel = $subscriptionDiscountLabels[$loop->index] ?? '';
+                                            $subscriptionHref = null;
+                                            if ($hosting && auth()->user()?->can('access-infrastructure-modules'))
+                                            {
+                                                $subscriptionHref = route('domain.show', $hosting->id);
+                                            }
+                                            elseif ($linkedService)
+                                            {
+                                                $subscriptionHref = route('service.show', $linkedService->id);
+                                            }
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                @if($subscriptionHref)
+                                                    <a href="{{ $subscriptionHref }}" class="text-decoration-none">{{ $subscription->clientFacingName() }}</a>
+                                                @else
+                                                    {{ $subscription->clientFacingName() }}
+                                                @endif
+                                            </td>
+                                            <td class="text-end text-nowrap">
+                                                @if($subscription->amount_total !== null)
+                                                    {{ number_format((float) $subscription->amount_total, 2) }} {{ strtoupper((string) $subscription->price_currency) }}
+                                                @endif
+                                            </td>
+                                            @if($hasSubscriptionDiscount)
+                                                <td class="text-end text-nowrap">{{ $discountLabel }}</td>
+                                            @endif
+                                            <td class="text-center">{{ $subscription->clientFrequencyLabel() }}</td>
+                                            <td class="text-end text-nowrap">
+                                                @if($subscription->current_period_end)
+                                                    {{ strtolower((string) $subscription->status) === 'not_started'
+                                                        ? $subscription->current_period_end->copy()->timezone('Europe/Madrid')->format('d/m/Y')
+                                                        : $subscription->current_period_end->format('d/m/Y') }}
+                                                @endif
+                                            </td>
+                                            <td>{{ $subscription->clientPaymentMethodLabel() }}</td>
+                                            <td class="text-center">{!! $subscription->status_badge !!}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <p class="text-muted mb-0">Sin suscripciones.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex flex-nowrap justify-content-between align-items-center gap-2 py-3">
+                <span class="d-inline-flex align-items-center gap-2 text-body fw-semibold user-select-none flex-shrink-0" role="button" tabindex="0" data-bs-toggle="collapse" data-bs-target="#clientConsumptionsBlock" aria-expanded="{{ $hasConsumptions ? 'true' : 'false' }}" aria-controls="clientConsumptionsBlock" style="cursor: pointer;">
+                    <i class="ti {{ $hasConsumptions ? 'ti-chevron-up' : 'ti-chevron-down' }} collapse-chevron"></i>
+                    <span>Consumos</span>
+                </span>
+                <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0">
+                    <span class="badge bg-label-secondary">{{ $consumptions->count() }} {{ $consumptions->count() === 1 ? 'consumo' : 'consumos' }}</span>
+                </div>
+            </div>
+            <div class="collapse {{ $hasConsumptions ? 'show' : '' }}" id="clientConsumptionsBlock">
+                <div class="card-body border-top">
+                    @if($hasConsumptions)
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0" id="clientConsumptionsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Concepto</th>
+                                        <th class="text-end">Importe</th>
+                                        <th class="text-center">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($consumptions as $consumption)
+                                        @php
+                                            $localInvoice = $consumptionInvoices->get($consumption->external_id);
+                                            $consumptionDate = $consumption->invoice_created_at;
+                                        @endphp
+                                        <tr>
+                                            <td data-order="{{ $consumptionDate ? $consumptionDate->format('Y-m-d') : '' }}">{{ $consumptionDate ? $consumptionDate->format('d/m/Y') : '' }}</td>
+                                            <td>
+                                                @if($localInvoice)
+                                                    @can('view', $localInvoice)
+                                                        <a href="{{ route('invoice.show', $localInvoice->id) }}" class="text-decoration-none">{{ \Illuminate\Support\Str::limit($consumption->consumptionSummary(), 96) }}</a>
+                                                    @else
+                                                        {{ \Illuminate\Support\Str::limit($consumption->consumptionSummary(), 96) }}
+                                                    @endcan
+                                                @else
+                                                    {{ \Illuminate\Support\Str::limit($consumption->consumptionSummary(), 96) }}
+                                                @endif
+                                            </td>
+                                            <td class="text-end text-nowrap">
+                                                @if($consumption->total !== null)
+                                                    {{ number_format((float) $consumption->total, 2) }} {{ strtoupper((string) $consumption->currency) }}
+                                                @endif
+                                            </td>
+                                            <td class="text-center">{!! $consumption->status_badge !!}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-center py-3 mb-4">
+                            <i class="ti ti-receipt-off display-6 text-muted mb-2 d-block"></i>
+                            <p class="text-muted mb-0">Sin consumos.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
 
         {{-- Servicios --}}
         <div class="card mb-4">
@@ -336,10 +529,16 @@
                 <div class="d-flex flex-nowrap align-items-center gap-2 ms-auto min-w-0" style="overflow-x: auto;">
                     <span class="badge bg-label-secondary">Saldo pendiente: {{ number_format((float) $invoiceBalanceTotal, 2) }}</span>
                     <span class="badge bg-label-primary">{{ $invoices->count() }} {{ $invoices->count() === 1 ? 'registro' : 'registros' }}</span>
+                    @if($invoices->count() > 0)
+                        <div class="input-group input-group-merge flex-shrink-1 min-w-0" style="max-width: 220px;">
+                            <span class="input-group-text"><i class="ti ti-search"></i></span>
+                            <input type="search" class="form-control form-control-sm" id="clientInvoicesTableSearch" placeholder="{{ __('Search') }}" autocomplete="off" aria-label="{{ __('Search') }}">
+                        </div>
+                    @endif
                     <div class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0">
-                        @can('invoice.create')
-                            <a href="{{ route('invoice.create') }}" class="btn btn-sm btn-primary text-nowrap">
-                                <i class="ti ti-file-plus me-1"></i>Ingresar factura
+                        @can('create', \App\Models\Invoice::class)
+                            <a href="{{ route('invoice.create', ['enterprise_id' => $client->id]) }}" class="btn btn-sm btn-primary text-nowrap">
+                                <i class="ti ti-plus me-1"></i>Ingresar factura
                             </a>
                         @endcan
                         @can('invoice.index')
@@ -370,7 +569,7 @@
                                     @foreach($invoices as $invoice)
                                         <tr>
                                             <td class="d-none">{{ $invoice->id }}</td>
-                                            <td>
+                                            <td data-order="{{ $invoice->number ?? '' }}">
                                                 @can('view', $invoice)
                                                     <a href="{{ route('invoice.show', $invoice->id) }}" class="text-decoration-none">{{ $invoice->number ?: '—' }}</a>
                                                 @else
@@ -378,10 +577,10 @@
                                                 @endcan
                                             </td>
                                             <td data-order="{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('Y-m-d') : '' }}">{{ $invoice->date ? \Carbon\Carbon::parse($invoice->date)->format('d/m/Y') : '—' }}</td>
-                                            <td>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '—' }}</td>
+                                            <td @if($invoice->due_date) data-order="{{ \Carbon\Carbon::parse($invoice->due_date)->format('Y-m-d') }}" @endif>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '' }}</td>
                                             <td class="text-end text-nowrap">{{ number_format((float) ($invoice->total_amount ?? 0), 2) }} <span class="text-muted">{{ $invoice->currency_code }}</span></td>
                                             <td class="text-end text-nowrap">{{ number_format((float) ($invoice->balance ?? 0), 2) }} <span class="text-muted">{{ $invoice->currency_code }}</span></td>
-                                            <td class="text-center">{!! $invoice->status_badge !!}</td>
+                                            <td class="text-center" data-order="{{ $invoice->listStatusSortPriority() }}">{!! $invoice->status_badge !!}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -692,19 +891,57 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    if (document.getElementById('clientInvoicesTable')) {
-        $('#clientInvoicesTable').DataTable({
+    if (document.getElementById('clientSubscriptionsTable')) {
+        $('#clientSubscriptionsTable').DataTable({
             language: dtLang,
             pageLength: 5,
             lengthChange: false,
+            dom: 'rtip',
             ordering: true,
-            order: [[2, 'desc']],
+            order: [],
+            responsive: true,
+            columnDefs: [
+                { targets: 'text-end', className: 'text-end' },
+                { targets: 'text-center', className: 'text-center' },
+            ],
+        });
+    }
+
+    if (document.getElementById('clientConsumptionsTable')) {
+        $('#clientConsumptionsTable').DataTable({
+            language: dtLang,
+            pageLength: 5,
+            lengthChange: false,
+            dom: 'rtip',
+            ordering: true,
+            order: [[0, 'desc']],
+            responsive: true,
+            columnDefs: [
+                { targets: -1, className: 'text-center' },
+            ],
+        });
+    }
+
+    if (document.getElementById('clientInvoicesTable')) {
+        var clientInvoicesDt = $('#clientInvoicesTable').DataTable({
+            language: dtLang,
+            pageLength: 5,
+            lengthChange: false,
+            dom: 'rtip',
+            ordering: true,
+            order: [[6, 'asc'], [1, 'desc']],
             responsive: true,
             columnDefs: [
                 { targets: 0, visible: false, searchable: false },
                 { targets: -1, className: 'text-center' },
             ],
         });
+        var invoicesSearchInput = document.getElementById('clientInvoicesTableSearch');
+        if (invoicesSearchInput) {
+            invoicesSearchInput.addEventListener('input', function () {
+                clientInvoicesDt.search(this.value).draw();
+            });
+        }
     }
 
     var projectsSearchInput = document.getElementById('clientProjectsTableSearch');

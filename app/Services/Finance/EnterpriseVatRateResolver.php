@@ -19,7 +19,7 @@ class EnterpriseVatRateResolver
     {
         $defaultPercent = (float) config('fiscal.platforms.cuentica.default_tax_percent', 21);
 
-        $address = $enterprise?->enterpriseBillingAddress();
+        $address = $this->billingAddress($enterprise);
         if (! $address instanceof EnterpriseBillingAddress)
         {
             return [
@@ -51,10 +51,11 @@ class EnterpriseVatRateResolver
             ];
         }
 
-        $country = strtoupper(trim((string) ($address->country ?? 'ES')));
+        $country = strtoupper(trim((string) ($address->country ?? '')));
         if ($country === '')
         {
-            $country = 'ES';
+            $enterpriseCountry = strtoupper(trim((string) ($enterprise->country ?? '')));
+            $country = strlen($enterpriseCountry) === 2 ? $enterpriseCountry : 'ES';
         }
 
         $normalizedId = $this->taxIdentifiers->normalize((string) ($address->identification_number ?? ''));
@@ -89,6 +90,28 @@ class EnterpriseVatRateResolver
             'label' => __('IVA :percent%', ['percent' => rtrim(rtrim(number_format($defaultPercent, 2, ',', ''), '0'), ',')]),
             'reason' => 'domestic_or_es_vat',
         ];
+    }
+
+    private function billingAddress(?Enterprise $enterprise): ?EnterpriseBillingAddress
+    {
+        if (! $enterprise)
+        {
+            return null;
+        }
+
+        if ($enterprise->relationLoaded('enterpriseBillingAddresses'))
+        {
+            $address = $enterprise->enterpriseBillingAddresses
+                ->where('status', 1)
+                ->sortByDesc('id')
+                ->first();
+
+            return $address instanceof EnterpriseBillingAddress ? $address : null;
+        }
+
+        $address = $enterprise->enterpriseBillingAddress();
+
+        return $address instanceof EnterpriseBillingAddress ? $address : null;
     }
 
     private function statusLooksExempt(string $statusName): bool

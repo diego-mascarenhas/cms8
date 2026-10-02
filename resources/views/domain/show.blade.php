@@ -27,6 +27,11 @@
         <a href="{{ route('domain.edit', $domain->id) }}" class="btn btn-primary waves-effect waves-light">
             <i class="ti ti-edit me-1"></i> Editar
         </a>
+        @if($enterprise)
+            <a href="{{ route('client.show', $enterprise->id) }}" class="btn btn-outline-primary waves-effect waves-light">
+                <i class="ti ti-building me-1"></i> Empresa
+            </a>
+        @endif
         <a href="{{ route('hosting.index') }}" class="btn btn-label-secondary waves-effect waves-light">
             <i class="ti ti-arrow-left me-1"></i> Volver
         </a>
@@ -405,7 +410,7 @@
                     @csrf
                     <div class="mb-3">
                         <label for="plan" class="form-label">Cambiar plan</label>
-                        <select name="plan" id="plan" class="form-select" required>
+                        <select name="plan" id="plan" class="form-select select2" data-placeholder="Seleccionar plan" required>
                             <option value="">Seleccionar plan</option>
                             @foreach($availablePlans as $planName)
                                 <option value="{{ $planName }}" @selected($domain->plan === $planName)>{{ $planName }}</option>
@@ -917,6 +922,17 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const planSelect = document.getElementById('plan');
+
+    if (planSelect && window.jQuery && jQuery.fn.select2 && ! jQuery(planSelect).hasClass('select2-hidden-accessible')) {
+        const $plan = jQuery(planSelect);
+        $plan.wrap('<div class="position-relative"></div>').select2({
+            placeholder: $plan.data('placeholder') || 'Seleccionar plan',
+            width: '100%',
+            dropdownParent: $plan.parent(),
+        });
+    }
+
     document.querySelectorAll('.copy-access-message').forEach(function (button) {
         button.addEventListener('click', async function () {
             const targetId = button.dataset.target;

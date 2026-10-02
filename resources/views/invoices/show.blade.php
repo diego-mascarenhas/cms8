@@ -53,7 +53,7 @@
     $clientTaxId = trim((string) ($billingAddress?->identification_number
         ?? $invoice->stripeInvoiceSync?->customer_tax_id
         ?? ''));
-    $clientFiscalCondition = $billingAddress?->taxStatusType?->name;
+    $clientFiscalCondition = $billingAddress?->taxStatusType?->label();
     $displayDueDate = $invoice->due_date
         ?? optional($invoice->stripeInvoiceSync?->invoice_due_date)->toDateString()
         ?? (round((float) $invoice->balance, 2) <= 0 ? $invoice->date : null);
