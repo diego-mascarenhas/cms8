@@ -417,7 +417,7 @@ class ProjectBoardApiTest extends TestCase
         $start = $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/tasks/'.$task->id.'/start');
 
-        $start->assertOk()
+        $start->assertCreated()
             ->assertJsonPath('data.status.name', 'IN_PROGRESS')
             ->assertJsonPath('data.task_id', $task->id);
 
@@ -444,6 +444,9 @@ class ProjectBoardApiTest extends TestCase
         $this->assertNotNull($boardTask);
         $this->assertSame('IN_PROGRESS', $boardTask['status']['name']);
         $this->assertSame($start->json('data.time_id'), $boardTask['active_time']['id']);
+        $this->assertSame(1, $boardTask['running_timers']);
+        $this->assertTrue($boardTask['workers'][0]['working']);
+        $this->assertSame($user->name, $boardTask['workers'][0]['name']);
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->postJson('/api/tasks/'.$task->id.'/stop')
@@ -458,6 +461,8 @@ class ProjectBoardApiTest extends TestCase
             ->firstWhere('id', $task->id);
 
         $this->assertNull($stoppedTask['active_time']);
+        $this->assertSame(0, $stoppedTask['running_timers']);
+        $this->assertFalse($stoppedTask['workers'][0]['working']);
         $this->assertSame($user->id, $task->fresh()->responsible_id);
     }
 }

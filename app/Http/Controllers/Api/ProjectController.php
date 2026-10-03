@@ -104,12 +104,26 @@ class ProjectController extends Controller
 
             $projects = $query->paginate($request->get('per_page', 20));
 
-            $projects->getCollection()->each(function (Project $project) use ($user)
+            $boardIds = $projects->getCollection()->pluck('board_id')->filter()->unique()->values();
+            $activeBoardIds = $boardIds->isEmpty()
+                ? collect()
+                : Task::query()
+                    ->whereIn('board_id', $boardIds)
+                    ->whereHas('times', function ($times)
+                    {
+                        $times->whereNull('end_time')->whereNotNull('start_time');
+                    })
+                    ->pluck('board_id');
+
+            $projects->getCollection()->each(function (Project $project) use ($user, $activeBoardIds)
             {
                 if ($project->viewedAsClient($user))
                 {
                     $project->unsetRelation('responsible');
                     $project->makeHidden(['responsible_id']);
+                } else
+                {
+                    $project->setAttribute('has_active_task', $activeBoardIds->contains($project->board_id));
                 }
             });
 
@@ -841,9 +855,9 @@ class ProjectController extends Controller
                 'responsible',
                 'category',
                 'media',
-                'times' => function ($query) use ($user)
+                'times' => function ($query)
                 {
-                    $query->where('user_id', $user->id)->whereNull('end_time');
+                    $query->with('user');
                 },
             ])
             ->orderBy('order')
@@ -945,7 +959,7 @@ class ProjectController extends Controller
             'order' => $order,
         ]);
 
-        $task->load(['status', 'responsible']);
+        $task->load(['status', 'responsible', 'category', 'times.user']);
 
         return response()->json([
             'success' => true,
@@ -1032,6 +1046,12 @@ class ProjectController extends Controller
             ] : null,
             'attachment' => $task->attachmentUrl(),
             'active_time' => $this->activeTimePayload($task),
+            'workers' => $task->relationLoaded('times')
+                ? \App\Support\TaskTimeBudget::workers($task->times)
+                : [],
+            'running_timers' => $task->relationLoaded('times')
+                ? $task->times->filter(fn (Time $time) => $time->end_time === null && $time->start_time)->count()
+                : 0,
         ];
     }
 

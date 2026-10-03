@@ -66,7 +66,9 @@ class TaskTimerApiTest extends TestCase
             ->getJson('/api/tasks?pending_only=1')
             ->assertOk()
             ->assertJsonPath('data.0.responsible.name', $admin->name)
-            ->assertJsonPath('data.0.time_seconds', 2400);
+            ->assertJsonPath('data.0.time_seconds', 2400)
+            ->assertJsonPath('data.0.workers.0.name', $admin->name)
+            ->assertJsonPath('data.0.workers.0.working', false);
     }
 
     public function test_admin_starts_timer_for_collaborator_and_it_stops_at_the_estimate(): void
@@ -138,6 +140,29 @@ class TaskTimerApiTest extends TestCase
                 'user_id' => $admin->id,
             ])
             ->assertForbidden();
+    }
+
+    public function test_project_list_marks_a_project_with_a_running_task(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [, , $token, $task] = $this->taskForAdmin();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks/'.$task->id.'/start')
+            ->assertCreated();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects')
+            ->assertOk();
+
+        $project = collect($response->json('data.data'))->firstWhere('name', 'Timer Project');
+
+        $this->assertNotNull($project);
+        $this->assertTrue($project['has_active_task']);
     }
 
     /**

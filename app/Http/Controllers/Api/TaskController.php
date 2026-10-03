@@ -470,7 +470,9 @@ class TaskController extends Controller
         // Query base: tareas asignadas al usuario (admins can filter by board/project without own-only)
         $query = Task::with(['status', 'category', 'project', 'responsible']);
 
-        if (! $user->hasRole('admin') || (! $request->filled('board_id') && ! $request->filled('project_id')))
+        $seeEveryTask = $request->boolean('all') && $user->hasAnyRole(['admin', 'root']);
+
+        if (! $seeEveryTask && (! $user->hasRole('admin') || (! $request->filled('board_id') && ! $request->filled('project_id'))))
         {
             $query->where('responsible_id', $user->id);
         }
@@ -509,6 +511,7 @@ class TaskController extends Controller
         // Ordenamiento
         $tasks = $query->defaultOrder()->get();
         $timesByTask = Time::query()
+            ->with('user')
             ->whereIn('task_id', $tasks->pluck('id'))
             ->get()
             ->groupBy('task_id');
@@ -551,6 +554,7 @@ class TaskController extends Controller
                 'running_timers' => $taskTimes
                     ->filter(fn (Time $time) => $time->end_time === null && $time->start_time)
                     ->count(),
+                'workers' => \App\Support\TaskTimeBudget::workers($taskTimes),
                 'active_time' => $activeTime ? [
                     'id' => $activeTime->id,
                     'started_at' => $activeTime->start_time->toIso8601String(),
