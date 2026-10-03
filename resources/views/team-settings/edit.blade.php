@@ -204,7 +204,7 @@
                                         </label>
 
                                         @if($setting['type'] === 'select' && isset($setting['options']))
-                                            <select class="form-select @error("{$groupKey}.{$key}") is-invalid @enderror"
+                                            <select class="form-select select2 @error("{$groupKey}.{$key}") is-invalid @enderror"
                                                 id="{{ $key }}"
                                                 name="{{ $groupKey }}[{{ $key }}]">
                                                 @foreach($setting['options'] as $optionValue => $optionLabel)
@@ -310,6 +310,22 @@
 
 @section('page-script')
     <script>
+        $(function () {
+            $('#formTeamSettings select.select2, #site_assistant_prompt_key').each(function () {
+                var $el = $(this);
+
+                if ($el.hasClass('select2-hidden-accessible')) {
+                    return;
+                }
+
+                $el.wrap('<div class="position-relative"></div>').select2({
+                    width: '100%',
+                    dropdownParent: $el.parent(),
+                    minimumResultsForSearch: 10,
+                });
+            });
+        });
+
         document.addEventListener('DOMContentLoaded', function() {
             // Toggle password visibility
             document.querySelectorAll('.toggle-password').forEach(toggle => {
