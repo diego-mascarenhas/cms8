@@ -1162,6 +1162,7 @@ class ContactController extends Controller
             ],
             'members' => [],
             'enterprises' => [],
+            'billingAddresses' => [],
             'services' => [],
             'projects' => [],
             'collaborators' => [],
@@ -1283,7 +1284,7 @@ class ContactController extends Controller
                 ->map(function ($project)
                 {
                     $clientName = $project->client ? $project->client->name : 'Sin cliente';
-                    $statusName = $project->status ? $project->status->name : 'Sin estado';
+                    $statusName = $project->status ? $project->status->translated_name : 'Sin estado';
 
                     return [
                         'name' => $project->real_name ?: $project->name,
@@ -1388,26 +1389,25 @@ class ContactController extends Controller
                 SearchNormalizer::applyColumnsNavbarConditions($billingAddressesQuery, ['name', 'identification_number'], $query, null);
             }
 
-            $billingAddresses = $billingAddressesQuery
-                ->limit(20)  // Optimized limit for on-demand search
+            $data['billingAddresses'] = $billingAddressesQuery
+                ->limit(20)
                 ->get()
                 ->map(function ($address)
                 {
                     $enterpriseName = $address->enterprise ? $address->enterprise->name : 'Sin empresa';
-                    $responsibleId = $address->enterprise?->responsible_id;
+                    $enterpriseUrl = $address->enterprise
+                        ? route('empresas.show', $address->enterprise_id)
+                        : '#';
 
                     return [
                         'name' => $address->name,
                         'subtitle' => "Empresa: {$enterpriseName} - ID: {$address->identification_number}",
                         'src' => 'img/icons/brands/enterprise.png',
-                        'url' => $responsibleId ? route('contact.show', $responsibleId) : '#',
+                        'url' => $enterpriseUrl,
                     ];
                 })
                 ->values()
                 ->all();
-
-            // Merge billing addresses into enterprises array
-            $data['enterprises'] = array_merge($data['enterprises'], $billingAddresses);
         }
 
         // Add client-related pages only if clients module is active

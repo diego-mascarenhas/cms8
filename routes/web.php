@@ -26,6 +26,7 @@ use App\Http\Controllers\EmailPlanController;
 use App\Http\Controllers\EmailPlansManagementController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\EnterpriseDepartmentController;
+use App\Http\Controllers\EnterpriseMergeController;
 use App\Http\Controllers\EnterpriseOrganizationController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\FareController;
@@ -606,12 +607,16 @@ Route::middleware(['auth'])->group(function ()
     Route::get('/client/{id}', [ClientController::class, 'show'])->name('client.show');
     Route::get('/empresas/{id}', [ClientController::class, 'show'])->name('empresas.show');
     Route::get('/client/{id}/linkable-contacts', [ClientController::class, 'linkableContacts'])->name('client.linkable-contacts');
+    Route::get('/client/{id}/merge-candidates', [EnterpriseMergeController::class, 'candidates'])->name('client.merge-candidates');
+    Route::get('/client/{id}/merge-preview', [EnterpriseMergeController::class, 'preview'])->name('client.merge-preview');
+    Route::post('/client/{id}/merge', [EnterpriseMergeController::class, 'store'])->name('client.merge');
     Route::post('/client/{id}/attach-contact', [ClientController::class, 'attachContact'])->name('client.attach-contact');
     Route::post('/client/{id}/detach-contact', [ClientController::class, 'detachContact'])->name('client.detach-contact');
     Route::get('/client/{id}/edit', [ClientController::class, 'edit'])->name('client.edit');
     Route::post('/client', [ClientController::class, 'store'])->name('client.store');
     Route::put('/client/{id}', [ClientController::class, 'update'])->name('client.update');
     Route::delete('/client/{id}', [ClientController::class, 'destroy'])->name('client.destroy');
+    Route::post('/client/{id}/restore', [ClientController::class, 'restore'])->name('client.restore');
 
     // Enterprises
     Route::get('/enterprise/list', [\App\Http\Controllers\EnterpriseController::class, 'index'])->name('enterprise.index');

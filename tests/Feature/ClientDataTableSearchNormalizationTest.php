@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Enterprise;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -79,6 +80,69 @@ class ClientDataTableSearchNormalizationTest extends TestCase
         $response->assertOk();
         $this->assertSame(1, (int) $response->json('recordsFiltered'));
         $this->assertSame((string) $matchingId, (string) $response->json('data.0.DT_RowId'));
+        $this->assertStringNotContainsString('cms7/empresa', (string) $response->json('data.0.action'));
+        $this->assertStringNotContainsString('ti-database', (string) $response->json('data.0.action'));
+    }
+
+    public function test_client_list_can_filter_archived_enterprises(): void
+    {
+        $team = $this->user->currentTeam;
+
+        $keeper = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 2,
+            'name' => 'DOA',
+            'code' => 'cus_keep',
+        ]);
+        $archived = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 2,
+            'name' => 'Estudio Doa',
+            'data' => ['merged_into_enterprise_id' => $keeper->id],
+        ]);
+        $archived->delete();
+
+        $this->actingAs($this->user)
+            ->get(route('client-list'))
+            ->assertOk()
+            ->assertSee('Archivadas');
+
+        $active = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get($this->clientDataTableUrl(''));
+
+        $active->assertOk();
+        $activeNames = collect($active->json('data'))->pluck('name')->implode(' ');
+        $this->assertStringContainsString('DOA', $activeNames);
+        $this->assertStringNotContainsString('Estudio Doa', $activeNames);
+
+        $query = $this->clientDataTableBaseQuery();
+        $query['archived'] = 1;
+        $archivedResponse = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('client-list').'?'.http_build_query($query));
+
+        $archivedResponse->assertOk();
+        $this->assertSame(1, (int) $archivedResponse->json('recordsFiltered'));
+        $archivedName = (string) $archivedResponse->json('data.0.name');
+        $this->assertStringContainsString('Estudio Doa', $archivedName);
+        $this->assertStringContainsString('Fusionada en DOA', $archivedName);
+
+        $this->actingAs($this->user)
+            ->get(route('empresas.show', $archived->id))
+            ->assertOk()
+            ->assertSee('Esta empresa está archivada.')
+            ->assertSee('DOA');
+
+        $this->actingAs($this->user)
+            ->post(route('client.restore', $archived->id))
+            ->assertRedirect(route('empresas.show', $archived->id));
+
+        $this->assertNull($archived->fresh()->deleted_at);
     }
 
     private function clientDataTableUrl(string $searchValue): string

@@ -35,6 +35,19 @@
         opacity: 0;
         transition: opacity 0.5s ease-out;
     }
+
+    #client-table_filter {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        float: none;
+        width: 100%;
+    }
+
+    #client-table_filter label {
+        margin-bottom: 0;
+    }
 </style>
 
 @section('content')
@@ -70,6 +83,11 @@
         @endcan
     </div>
 
+    <div id="client-archive-filter" class="btn-group btn-group-sm d-none" role="group" aria-label="Filtro de clientes">
+        <button type="button" class="btn btn-primary client-archive-filter" data-archived="0">Activas</button>
+        <button type="button" class="btn btn-outline-primary client-archive-filter" data-archived="1">Archivadas</button>
+    </div>
+
     <div class="card">
         <div class="card-body">
             {{ $dataTable->table(['class' => 'table table-hover dt-responsive nowrap w-100']) }}
@@ -78,6 +96,24 @@
 @endsection
 
 @push('scripts')
+    <script>
+        window.clientListArchived = '0';
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('.client-archive-filter');
+            if (!button) {
+                return;
+            }
+            window.clientListArchived = button.getAttribute('data-archived') || '0';
+            document.querySelectorAll('.client-archive-filter').forEach(function (item) {
+                var active = item === button;
+                item.classList.toggle('btn-primary', active);
+                item.classList.toggle('btn-outline-primary', !active);
+            });
+            if (window.LaravelDataTables && window.LaravelDataTables['client-table']) {
+                window.LaravelDataTables['client-table'].draw();
+            }
+        });
+    </script>
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 @endpush
 
