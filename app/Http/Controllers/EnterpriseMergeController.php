@@ -62,6 +62,15 @@ class EnterpriseMergeController extends Controller
         $current = $this->enterpriseForUpdate($id);
         $other = $this->otherEnterprise($current, (int) $request->validated('enterprise_id'));
 
+        $preview = $merge->preview($current, $other);
+        if ($preview['blocked'])
+        {
+            return response()->json([
+                'success' => false,
+                'message' => $preview['message'],
+            ], 422);
+        }
+
         try
         {
             $survivor = $merge->merge($current, $other);
@@ -75,7 +84,8 @@ class EnterpriseMergeController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Empresas fusionadas. Se conservó '.$survivor->name.'.',
+            'message' => $preview['message'],
+            'lines' => $preview['lines'],
             'redirect' => route('empresas.show', $survivor->id),
         ]);
     }

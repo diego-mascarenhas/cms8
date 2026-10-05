@@ -842,7 +842,7 @@ class DashboardController extends Controller
         }
 
         return Cache::remember(
-            "dashboard.analytics.v3.{$activeTeam->id}",
+            "dashboard.analytics.v4.{$activeTeam->id}",
             self::ANALYTICS_CACHE_SECONDS,
             function () use ($propertyId, $credentialsJson)
             {
@@ -860,7 +860,11 @@ class DashboardController extends Controller
                 try
                 {
                     $period = Period::days(30);
-                    $collection = Analytics::fetchTotalVisitorsAndPageViews($period, 30);
+                    $collection = Analytics::fetchTotalVisitorsAndPageViews($period, 30)
+                        ->sortBy(fn ($row) => ($row['date'] ?? null) instanceof Carbon
+                            ? $row['date']->timestamp
+                            : strtotime((string) ($row['date'] ?? '')))
+                        ->values();
 
                     $dates = $collection->pluck('date')->map(fn ($d) => $d instanceof Carbon ? $d->format('Y-m-d') : $d)->values()->all();
                     $visitors = $collection->pluck('activeUsers')->map(fn ($v) => (int) $v)->values()->all();

@@ -146,7 +146,9 @@ class EnterpriseMergeTest extends TestCase
         $this->actingAs($user)
             ->get(route('empresas.show', $duplicate->id))
             ->assertOk()
-            ->assertSee('Fusionar');
+            ->assertSee('Fusionar')
+            ->assertSee('Confirmá la fusión', false)
+            ->assertSee('Valores fusionados', false);
 
         $this->actingAs($user)
             ->getJson(route('client.merge-candidates', $duplicate->id).'?q=DOA')

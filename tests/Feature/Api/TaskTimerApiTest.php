@@ -36,6 +36,7 @@ class TaskTimerApiTest extends TestCase
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
     }
 
     protected function tearDown(): void
@@ -117,6 +118,28 @@ class TaskTimerApiTest extends TestCase
 
         $this->assertNotNull($entry?->end_time);
         $this->assertEqualsWithDelta(1200, (int) $entry->duration_seconds, 2);
+    }
+
+    public function test_admin_starts_timer_for_employee(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [, $team, $token, $task] = $this->taskForAdmin();
+
+        $employee = User::factory()->create(['name' => 'Luis Empleado']);
+        $employee->assignRole('employee');
+        $team->users()->attach($employee, ['role' => 'employee']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks/'.$task->id.'/start', [
+                'user_id' => $employee->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.user_id', $employee->id)
+            ->assertJsonPath('data.user_name', 'Luis Empleado');
     }
 
     public function test_collaborator_cannot_start_timer_for_someone_else(): void

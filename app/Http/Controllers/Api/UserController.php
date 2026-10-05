@@ -23,7 +23,7 @@ class UserController extends Controller
      *
      * Query params:
      * - assignable=1: only staff via team membership pivot (admin, collaborator, editor, etc.). Excludes clients.
-     * - assignees=1: team owner plus members whose team role is admin or collaborator.
+     * - assignees=1: team owner plus members whose team role is admin, collaborator, or employee.
      * - admins=1: team owner plus members whose team role is admin.
      * - assistant=1 / basic=1: same staff set as assignable (membership pivot, excludes clients).
      */
@@ -297,7 +297,7 @@ class UserController extends Controller
     }
 
     /**
-     * Team owner plus members whose team role is admin or collaborator.
+     * Team owner plus members whose team role is admin, collaborator, or employee.
      *
      * @return Collection<int, User>
      */
@@ -316,7 +316,7 @@ class UserController extends Controller
 
                 $role = $teamUser->membership->role ?? null;
 
-                return in_array($role, ['admin', 'collaborator'], true);
+                return in_array($role, ['admin', 'collaborator', 'employee'], true);
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
             ->values();

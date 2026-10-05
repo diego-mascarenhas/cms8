@@ -947,7 +947,7 @@ class TaskController extends Controller
 
         $role = $member->membership->role ?? null;
 
-        return in_array($role, ['admin', 'collaborator'], true);
+        return in_array($role, ['admin', 'collaborator', 'employee'], true);
     }
 
     private function openTimer(Task $task, int $userId): ?Time

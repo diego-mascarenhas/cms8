@@ -19,6 +19,7 @@ use App\Http\Controllers\ClientController;
 use App\Http\Controllers\CollaboratorController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\ContactInteractionController;
+use App\Http\Controllers\ContactMergeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DomainController;
 use App\Http\Controllers\EmailController;
@@ -534,6 +535,10 @@ Route::middleware(['auth'])->group(function ()
     Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
     Route::put('/contact/{id}', [ContactController::class, 'update'])->name('contact.update');
     Route::delete('/contact/{id}', [contactController::class, 'destroy'])->name('contact.destroy');
+    Route::post('/contact/{id}/restore', [ContactController::class, 'restore'])->name('contact.restore');
+    Route::get('/contact/{id}/merge-candidates', [ContactMergeController::class, 'candidates'])->name('contact.merge-candidates');
+    Route::get('/contact/{id}/merge-preview', [ContactMergeController::class, 'preview'])->name('contact.merge-preview');
+    Route::post('/contact/{id}/merge', [ContactMergeController::class, 'store'])->name('contact.merge');
     Route::post('/contact/{id}/update-sentiment', [contactController::class, 'updateSentiment'])->name('contact.update-sentiment');
     Route::post('/contact/{id}/update-astral-data', [contactController::class, 'updateAstralData'])->name('contact.update-astral-data');
     Route::patch('/contact/{id}/notes', [ContactController::class, 'updateNotes'])->name('contact.update-notes');
@@ -1463,13 +1468,6 @@ Route::middleware(['auth'])->prefix('language/variants')->name('language-variant
     Route::delete('/{languageVariant}', [App\Http\Controllers\LanguageVariantController::class, 'destroy'])->name('destroy');
     Route::get('/by-language/{baseLanguage}', [App\Http\Controllers\LanguageVariantController::class, 'getVariants'])->name('get-variants');
 });
-
-/*
- * CMS7 Routes - Legacy database
- */
-Route::get('/cms7/empresa/{id}', [App\Http\Controllers\Cms7Controller::class, 'enterpriseDetails'])
-    ->name('cms7.empresa')
-    ->middleware(['auth', 'verified']);
 
 // User linking routes - unified page
 Route::get('/user-link/{type}/{id}', [ContactController::class, 'showUserLinkPage'])->name('user-link.show');

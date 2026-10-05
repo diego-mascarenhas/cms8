@@ -50,7 +50,7 @@ class EnterpriseMergeService
             ];
         }
 
-        $lines = $this->summaryLines($source, $survivor);
+        $lines = array_merge($this->summaryLines($source, $survivor), $this->fieldLines($source, $survivor));
         $code = $survivor->getStripeCustomerId();
         $kept = $code
             ? $survivor->name.' ('.$code.')'
@@ -159,6 +159,78 @@ class EnterpriseMergeService
         }
 
         return $lines;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function fieldLines(Enterprise $source, Enterprise $survivor): array
+    {
+        $lines = [];
+        if (! $this->isBlank($survivor->name) && ! $this->isBlank($source->name) && trim((string) $survivor->name) !== trim((string) $source->name))
+        {
+            $lines[] = 'Nombre: se conserva '.$this->displayValue($survivor->name).'. La otra tiene '.$this->displayValue($source->name).'.';
+        }
+
+        foreach ([
+            'phone' => 'Teléfono',
+            'whatsapp' => 'WhatsApp',
+            'email' => 'Email',
+            'website' => 'Sitio web',
+            'referred_by' => 'Referido por',
+            'address' => 'Dirección',
+            'postal_code' => 'Código postal',
+            'locality' => 'Localidad',
+            'province' => 'Provincia',
+            'country' => 'País',
+        ] as $field => $label)
+        {
+            $line = $this->valueLine($label, $survivor->{$field}, $source->{$field});
+            if ($line !== null)
+            {
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
+    private function valueLine(string $label, mixed $kept, mixed $incoming): ?string
+    {
+        if ($this->isBlank($incoming))
+        {
+            return null;
+        }
+
+        $incomingText = $this->displayValue($incoming);
+        if ($this->isBlank($kept))
+        {
+            return $label.': se completa con '.$incomingText.'.';
+        }
+
+        $keptText = $this->displayValue($kept);
+        if ($keptText === $incomingText)
+        {
+            return null;
+        }
+
+        return $label.': se conserva '.$keptText.'. La otra tiene '.$incomingText.'.';
+    }
+
+    private function displayValue(mixed $value): string
+    {
+        if ($value instanceof \DateTimeInterface)
+        {
+            return $value->format('d/m/Y');
+        }
+
+        $text = trim((string) $value);
+        if (mb_strlen($text) > 120)
+        {
+            return mb_substr($text, 0, 117).'...';
+        }
+
+        return $text;
     }
 
     private function moveRecords(Enterprise $source, Enterprise $survivor): void

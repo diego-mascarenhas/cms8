@@ -19,7 +19,7 @@ class UserApiTest extends TestCase
     {
         parent::setUp();
 
-        foreach (['admin', 'collaborator', 'editor', 'client', 'developer', 'technical'] as $role)
+        foreach (['admin', 'collaborator', 'editor', 'client', 'developer', 'technical', 'employee'] as $role)
         {
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
         }
@@ -142,13 +142,17 @@ class UserApiTest extends TestCase
         $this->assertFalse($ids->contains($editor->id));
     }
 
-    public function test_assignees_filter_keeps_admins_and_collaborators(): void
+    public function test_assignees_filter_keeps_admins_collaborators_and_employees(): void
     {
         [$admin, $team, $token] = $this->adminWithToken();
 
         $collaborator = User::factory()->create(['name' => 'Colaborador Visible']);
         $team->users()->attach($collaborator, ['role' => 'collaborator']);
         $collaborator->assignRole('collaborator');
+
+        $employee = User::factory()->create(['name' => 'Empleado Visible']);
+        $team->users()->attach($employee, ['role' => 'employee']);
+        $employee->assignRole('employee');
 
         $editor = User::factory()->create(['name' => 'Editor Oculto']);
         $team->users()->attach($editor, ['role' => 'editor']);
@@ -166,6 +170,7 @@ class UserApiTest extends TestCase
         $ids = collect($response->json('users'))->pluck('id');
         $this->assertTrue($ids->contains($admin->id));
         $this->assertTrue($ids->contains($collaborator->id));
+        $this->assertTrue($ids->contains($employee->id));
         $this->assertFalse($ids->contains($editor->id));
         $this->assertFalse($ids->contains($client->id));
     }

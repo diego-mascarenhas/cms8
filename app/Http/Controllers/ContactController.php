@@ -184,7 +184,7 @@ class ContactController extends Controller
      */
     public function show(string $id)
     {
-        $data = Contact::with([
+        $data = Contact::withTrashed()->with([
             'currentSentiment.sentiment',
             'creator',
             'responsible',
@@ -204,27 +204,26 @@ class ContactController extends Controller
 
         $this->authorize('view', $data);
 
-        // Verify current_enterprise_id belongs to this contact's enterprises
-        if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
+        if (! $data->trashed())
         {
-            $hasCurrentEnterprise = $data->enterprises->contains('id', $data->current_enterprise_id);
-
-            if (! $hasCurrentEnterprise)
+            if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
             {
-                // Current enterprise doesn't belong to this contact, set to first associated enterprise
+                $hasCurrentEnterprise = $data->enterprises->contains('id', $data->current_enterprise_id);
+
+                if (! $hasCurrentEnterprise)
+                {
+                    $data->current_enterprise_id = $data->enterprises->first()->id;
+                    $data->save();
+                    $data->load('currentEnterprise');
+                }
+            }
+
+            if ($data->enterprises->isNotEmpty() && ! $data->current_enterprise_id)
+            {
                 $data->current_enterprise_id = $data->enterprises->first()->id;
                 $data->save();
                 $data->load('currentEnterprise');
             }
-        }
-
-        // If contact has enterprises but no current_enterprise_id set, set it to the first one
-        if ($data->enterprises->isNotEmpty() && ! $data->current_enterprise_id)
-        {
-            $data->current_enterprise_id = $data->enterprises->first()->id;
-            $data->save();
-            // Reload the relationship
-            $data->load('currentEnterprise');
         }
 
         $team = auth()->user()->currentTeam->load('settings');
@@ -561,14 +560,24 @@ class ContactController extends Controller
 
         $contactTickets = $this->contactTickets($data);
 
-        if (! app()->runningUnitTests())
+        if (! $data->trashed() && ! app()->runningUnitTests())
         {
             $data->refreshWhatsAppAvatar();
         }
 
+        $mergedInto = null;
+        if ($data->trashed())
+        {
+            $mergedId = (int) data_get($data->data, 'merged_into_contact_id');
+            if ($mergedId > 0)
+            {
+                $mergedInto = Contact::query()->find($mergedId);
+            }
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets', 'mergedInto'),
         );
     }
 
@@ -773,6 +782,20 @@ class ContactController extends Controller
         return redirect()
             ->route('contact-list')
             ->with('success', $message);
+    }
+
+    public function restore(string $id): \Illuminate\Http\RedirectResponse
+    {
+        $contact = Contact::onlyTrashed()
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->findOrFail($id);
+
+        $this->authorize('update', $contact);
+        $contact->restore();
+
+        return redirect()
+            ->route('contact.show', $contact->id)
+            ->with('success', 'Contacto restaurado.');
     }
 
     public function updateSentiment(Request $request, string $id)

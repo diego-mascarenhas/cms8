@@ -1,4 +1,17 @@
 <div class="d-flex justify-content-center align-items-center">
+    @if ($contact->trashed())
+        @can('view', $contact)
+            <a href="{{ route('contact.show', $contact->id) }}" class="text-body"><i class="ti ti-eye ti-sm me-2"></i></a>
+        @endcan
+        @can('update', $contact)
+            <form method="POST" action="{{ route('contact.restore', $contact->id) }}" class="d-inline" onsubmit="return confirm('El contacto vuelve al listado.');">
+                @csrf
+                <button type="submit" class="btn btn-link text-body p-0" title="Restaurar">
+                    <i class="ti ti-arrow-back-up ti-sm"></i>
+                </button>
+            </form>
+        @endcan
+    @else
     @can('view', $contact)
         <a href="{{ route('contact.show', $contact->id) }}" class="text-body"><i class="ti ti-eye ti-sm me-2"></i></a>
     @endcan
@@ -15,4 +28,5 @@
             @endif
         @endif
     @endcan
+    @endif
 </div>
