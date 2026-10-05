@@ -7,6 +7,7 @@ use App\Http\Requests\Api\StoreTeamUserRequest;
 use App\Http\Requests\Api\UpdateTeamUserPasswordRequest;
 use App\Http\Requests\Api\UpdateTeamUserRequest;
 use App\Models\Team;
+use App\Models\Time;
 use App\Models\User;
 use App\Support\AssignableTeamUsers;
 use Illuminate\Http\JsonResponse;
@@ -37,10 +38,19 @@ class UserController extends Controller
 
         /** @var Collection<int, User> $teamUsers */
         $teamUsers = $this->teamUsers($team, $request);
+        $workingIds = $request->boolean('assignees')
+            ? $this->workingUserIds($team, $teamUsers)
+            : [];
 
         return response()->json([
             'success' => true,
-            'users' => $teamUsers->map(fn (User $teamUser) => $this->presentUser($teamUser, $team))->values(),
+            'users' => $teamUsers
+                ->map(fn (User $teamUser) => $this->presentUser(
+                    $teamUser,
+                    $team,
+                    $request->boolean('assignees') ? in_array((int) $teamUser->id, $workingIds, true) : null,
+                ))
+                ->values(),
         ]);
     }
 
@@ -323,13 +333,38 @@ class UserController extends Controller
     }
 
     /**
-     * @return array{id: int, name: string, email: string, role: ?string, roles: list<string>, is_owner: bool}
+     * @param  Collection<int, User>  $users
+     * @return list<int>
      */
-    private function presentUser(User $user, Team $team): array
+    private function workingUserIds(Team $team, Collection $users): array
+    {
+        $ids = $users->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        if ($ids === [])
+        {
+            return [];
+        }
+
+        return Time::withoutGlobalScope('team')
+            ->where('team_id', $team->id)
+            ->whereIn('user_id', $ids)
+            ->whereNull('end_time')
+            ->whereNotNull('start_time')
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array{id: int, name: string, email: string, role: ?string, roles: list<string>, is_owner: bool, working?: bool}
+     */
+    private function presentUser(User $user, Team $team, ?bool $working = null): array
     {
         $roleNames = $user->roles->pluck('name')->values()->all();
 
-        return [
+        $payload = [
             'id' => $user->id,
             'name' => $user->name,
             'email' => $user->email,
@@ -337,5 +372,12 @@ class UserController extends Controller
             'roles' => $roleNames !== [] ? $roleNames : ['admin'],
             'is_owner' => (int) $team->user_id === (int) $user->id,
         ];
+
+        if ($working !== null)
+        {
+            $payload['working'] = $working;
+        }
+
+        return $payload;
     }
 }

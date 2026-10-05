@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Time;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -173,6 +174,37 @@ class UserApiTest extends TestCase
         $this->assertTrue($ids->contains($employee->id));
         $this->assertFalse($ids->contains($editor->id));
         $this->assertFalse($ids->contains($client->id));
+    }
+
+    public function test_assignees_mark_who_has_a_running_timer(): void
+    {
+        [$admin, $team, $token] = $this->adminWithToken();
+
+        $collaborator = User::factory()->create(['name' => 'Colaborador Trabajando']);
+        $team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->assignRole('collaborator');
+
+        Time::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $collaborator->id,
+            'start_time' => now()->subMinutes(10),
+            'end_time' => null,
+        ]);
+
+        Time::withoutGlobalScope('team')->create([
+            'team_id' => $team->id,
+            'user_id' => $admin->id,
+            'start_time' => now()->subHour(),
+            'end_time' => now()->subMinutes(30),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/users?assignees=1');
+
+        $response->assertOk();
+        $users = collect($response->json('users'));
+        $this->assertTrue($users->firstWhere('id', $collaborator->id)['working']);
+        $this->assertFalse($users->firstWhere('id', $admin->id)['working']);
     }
 
     public function test_assistant_filter_includes_collaborators_and_excludes_clients(): void
