@@ -10,13 +10,20 @@ use App\Http\Requests\Api\UpdateMailerAudienceContactRequest;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
+use App\Models\List60;
 use App\Models\Message;
+use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryLink;
 use App\Models\Module;
 use App\Services\MailerCategoryService;
+use App\Support\AssignableTeamUsers;
+use App\Support\List60NextContactDate;
+use App\Support\List60StatusAdvancer;
 use App\Support\SearchNormalizer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -116,6 +123,7 @@ class MailerAudienceController extends Controller
             'name' => trim((string) $validated['name']),
             'surname' => trim((string) ($validated['surname'] ?? '')) ?: null,
             'email' => Str::lower(trim((string) $validated['email'])),
+            'phone' => $this->nullablePhone($validated['phone'] ?? null),
             'language' => $this->defaultLanguageCode(),
             'country' => $this->defaultCountryId(),
             'creator_id' => $ownerId,
@@ -163,6 +171,11 @@ class MailerAudienceController extends Controller
             'email' => Str::lower(trim((string) $validated['email'])),
         ]);
 
+        if (array_key_exists('phone', $validated))
+        {
+            $contact->phone = $this->nullablePhone($validated['phone']);
+        }
+
         if (array_key_exists('status_id', $validated) && $validated['status_id'] !== null)
         {
             $contact->status_id = (int) $validated['status_id'];
@@ -176,6 +189,198 @@ class MailerAudienceController extends Controller
             'success' => true,
             'data' => $this->formatContact($contact),
         ]);
+    }
+
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $contact = $this->contactForTeam((int) $team->id, $id);
+        if ($contact instanceof JsonResponse)
+        {
+            return $contact;
+        }
+
+        $contact->load(['status', 'categories', 'user']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatContact($contact),
+            'lists' => $this->listsForTeam((int) $team->id),
+        ]);
+    }
+
+    public function indexList60(Request $request): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        if (! $team->hasModule('list60'))
+        {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'meta' => [
+                    'enabled' => false,
+                    'count' => 0,
+                    'limit' => 60,
+                ],
+            ]);
+        }
+
+        $user = $request->user();
+        $query = List60::query()
+            ->with([
+                'contact' => function ($builder): void
+                {
+                    $builder->withoutGlobalScopes()->with(['status', 'categories', 'user']);
+                },
+                'status:id,name',
+                'responsible:id,name',
+            ])
+            ->whereHas('contact', function (Builder $builder) use ($team): void
+            {
+                $builder->withoutGlobalScopes()->where('team_id', $team->id);
+            });
+
+        if ($user && ! $user->hasRole('admin'))
+        {
+            $query->where('responsible_id', $user->id);
+        }
+
+        $rows = $query
+            ->orderBy('date_next')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (List60 $entry): bool => $entry->contact !== null)
+            ->map(fn (List60 $entry): array => $this->formatList60Entry($entry))
+            ->values();
+
+        return response()->json([
+            'success' => true,
+            'data' => $rows,
+            'meta' => [
+                'enabled' => true,
+                'count' => $rows->count(),
+                'limit' => 60,
+            ],
+        ]);
+    }
+
+    public function storeList60(Request $request, int $id): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        if (! $team->hasModule('list60'))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'Este equipo no tiene la Lista 60.',
+            ], 403);
+        }
+
+        $contact = $this->contactForTeam((int) $team->id, $id);
+        if ($contact instanceof JsonResponse)
+        {
+            return $contact;
+        }
+
+        $note = $this->newsFollowUpNote($team->id, $contact, $request->input('delivery_id'));
+
+        $existing = List60::query()->where('contact_id', $contact->id)->first();
+        if ($existing)
+        {
+            if ($note !== null)
+            {
+                $this->appendList60Note($contact, $existing, $note);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'contact_id' => (int) $contact->id,
+                    'in_list60' => true,
+                    'already' => true,
+                ],
+            ]);
+        }
+
+        $user = $request->user();
+        $responsible = AssignableTeamUsers::forTeam($team)->firstWhere('id', (int) $user->id);
+        if (! $responsible)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'No hay un responsable válido para la Lista 60.',
+            ], 422);
+        }
+
+        $totalContacts = List60::query()
+            ->join('contacts', 'list60.contact_id', '=', 'contacts.id')
+            ->where('contacts.team_id', $team->id)
+            ->where('list60.responsible_id', $responsible->id)
+            ->count();
+        if ($totalContacts >= 60)
+        {
+            return response()->json([
+                'success' => false,
+                'message' => 'La lista ya tiene 60 contactos.',
+            ], 422);
+        }
+
+        $record = new List60;
+        $record->contact_id = $contact->id;
+        $record->date_next = List60NextContactDate::afterOutreach();
+        $record->responsible_id = $responsible->id;
+        $record->status_id = List60StatusAdvancer::initialStatusId();
+        $record->notes = $note;
+        $record->save();
+
+        if ($note !== null)
+        {
+            $this->appendContactNote($contact, $note);
+        }
+
+        $followingStatus = ContactStatus::query()->where('name', 'En seguimiento')->first();
+        if ($followingStatus)
+        {
+            $contact->update(['status_id' => $followingStatus->id]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'contact_id' => (int) $contact->id,
+                'in_list60' => true,
+                'already' => false,
+            ],
+        ], 201);
     }
 
     public function storeList(StoreMailerAudienceListRequest $request): JsonResponse
@@ -208,6 +413,116 @@ class MailerAudienceController extends Controller
             'success' => true,
             'data' => $this->formatList($category),
         ], $category->wasRecentlyCreated ? 201 : 200);
+    }
+
+    private function newsFollowUpNote(int $teamId, Contact $contact, mixed $deliveryId): ?string
+    {
+        $deliveryId = (int) $deliveryId;
+        if ($deliveryId <= 0)
+        {
+            return null;
+        }
+
+        $delivery = MessageDelivery::query()
+            ->with('message')
+            ->where('id', $deliveryId)
+            ->where('contact_id', $contact->id)
+            ->whereHas('message', function (Builder $query) use ($teamId): void
+            {
+                $query->where('team_id', $teamId);
+            })
+            ->first();
+
+        if (! $delivery)
+        {
+            return null;
+        }
+
+        $name = trim((string) ($delivery->message?->name ?? ''));
+        $title = $name !== '' ? '«'.$name.'»' : 'sin título';
+        $sent = $delivery->sent_at
+            ? 'Se envió el '.$this->followUpMoment($delivery->sent_at).'.'
+            : 'Se envió.';
+        $opened = $delivery->opened_at
+            ? 'Lo abrió el '.$this->followUpMoment($delivery->opened_at).'.'
+            : 'No lo abrió.';
+        $clicked = 'No hizo clic.';
+        if ($delivery->clicked_at)
+        {
+            $clicked = 'Hizo clic el '.$this->followUpMoment($delivery->clicked_at);
+            $links = $this->clickedLinks($delivery);
+            $clicked .= $links === [] ? '.' : ' en '.$this->joinClickedLinks($links).'.';
+        }
+
+        return "News {$title}. {$sent} {$opened} {$clicked}";
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function clickedLinks(MessageDelivery $delivery): array
+    {
+        return MessageDeliveryLink::query()
+            ->where('message_delivery_id', $delivery->id)
+            ->where('click_count', '>', 0)
+            ->orderBy('id')
+            ->pluck('link')
+            ->map(fn (mixed $link): string => trim((string) $link))
+            ->filter(fn (string $link): bool => $link !== '')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  list<string>  $links
+     */
+    private function joinClickedLinks(array $links): string
+    {
+        if (count($links) < 2)
+        {
+            return $links[0] ?? '';
+        }
+
+        $last = array_pop($links);
+
+        return implode(', ', $links).' y '.$last;
+    }
+
+    private function followUpMoment(\DateTimeInterface $moment): string
+    {
+        return Carbon::parse($moment)
+            ->timezone((string) config('app.timezone'))
+            ->format('d/m/Y H:i');
+    }
+
+    private function appendList60Note(Contact $contact, List60 $record, string $note): void
+    {
+        $record->notes = $this->joinFollowUpNotes(trim((string) $record->notes), $note);
+        $record->save();
+        $this->appendContactNote($contact, $note);
+    }
+
+    private function appendContactNote(Contact $contact, string $note): void
+    {
+        $data = (array) ($contact->data ?? []);
+        $data['notes'] = $this->joinFollowUpNotes(trim((string) ($data['notes'] ?? '')), $note);
+        $contact->update(['data' => $data]);
+    }
+
+    private function joinFollowUpNotes(string $current, string $note): string
+    {
+        if ($current === '')
+        {
+            return $note;
+        }
+
+        if (str_contains($current, $note))
+        {
+            return $current;
+        }
+
+        return $current."\n".$note;
     }
 
     private function audienceQuery(int $teamId): Builder
@@ -368,6 +683,23 @@ class MailerAudienceController extends Controller
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function formatList60Entry(List60 $entry): array
+    {
+        $notes = trim((string) ($entry->notes ?? ''));
+
+        return [
+            'id' => (int) $entry->id,
+            'contact' => $this->formatContact($entry->contact),
+            'status' => $entry->status?->name,
+            'date_next' => $entry->date_next?->toDateString(),
+            'notes' => $notes !== '' ? $notes : null,
+            'responsible' => $entry->responsible?->name,
+        ];
+    }
+
+    /**
      * @return array{id: int, name: string, color: string|null, subscribers: int}
      */
     private function formatList(Category $category): array
@@ -397,6 +729,7 @@ class MailerAudienceController extends Controller
             'surname' => $contact->surname,
             'display_name' => $display !== '' ? $display : $email,
             'email' => $email,
+            'phone' => $contact->phone ? (string) $contact->phone : null,
             'status' => $contact->status
                 ? [
                     'id' => (int) $contact->status->id,
@@ -419,27 +752,14 @@ class MailerAudienceController extends Controller
 
     private function photoUrl(Contact $contact): ?string
     {
-        $userPhoto = $contact->user?->profile_photo_url;
-        if (is_string($userPhoto) && $userPhoto !== '')
-        {
-            return $userPhoto;
-        }
+        return $contact->storedPhotoUrl();
+    }
 
-        if (! class_exists(\App\Services\WhatsApp\WhatsAppProfilePhotoStore::class))
-        {
-            return null;
-        }
+    private function nullablePhone(mixed $phone): ?string
+    {
+        $value = trim((string) ($phone ?? ''));
 
-        $phone = preg_replace('/[^0-9]/', '', (string) ($contact->phone ?? '')) ?? '';
-        if ($phone === '' || (int) $contact->team_id < 1)
-        {
-            return null;
-        }
-
-        $whatsapp = app(\App\Services\WhatsApp\WhatsAppProfilePhotoStore::class)
-            ->publicUrl((int) $contact->team_id, $phone);
-
-        return is_string($whatsapp) && $whatsapp !== '' ? $whatsapp : null;
+        return $value !== '' ? $value : null;
     }
 
     private function canSendToEmail(string $email): bool

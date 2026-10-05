@@ -36,7 +36,7 @@ class CampaignMessageApiService
         $perPage = min(max($perPage, 1), 50);
 
         $query = MessageDelivery::query()
-            ->with('contact')
+            ->with(['contact.user', 'contact.list60'])
             ->where('message_id', $message->id);
 
         if ($search !== '')
@@ -69,6 +69,7 @@ class CampaignMessageApiService
             'contact_id' => $delivery->contact?->id,
             'contact_name' => $delivery->contact?->name ?: '—',
             'contact_email' => $delivery->contact?->email ?: '—',
+            'contact_photo_url' => $delivery->contact?->storedPhotoUrl(),
             'sent_at' => $delivery->sent_at?->toIso8601String(),
             'delivered_at' => $delivery->delivered_at?->toIso8601String(),
             'opened_at' => $delivery->opened_at?->toIso8601String(),
@@ -77,6 +78,7 @@ class CampaignMessageApiService
             'status_text' => $this->deliveryStatusText($delivery),
             'has_opened' => $delivery->opened_at !== null,
             'has_clicked' => $delivery->clicked_at !== null,
+            'in_list60' => $delivery->contact?->list60 !== null,
         ];
     }
 
@@ -186,6 +188,7 @@ class CampaignMessageApiService
             'show_unsubscribe' => (bool) $message->show_unsubscribe,
             'enable_open_tracking' => (bool) $message->enable_open_tracking,
             'enable_click_tracking' => (bool) $message->enable_click_tracking,
+            'list60_enabled' => $team->hasModule('list60'),
             'min_hours_between_emails' => (int) ($message->min_hours_between_emails ?? 0),
             'send_allowed_weekdays' => $message->send_allowed_weekdays,
             'send_window_start' => $message->send_window_start,

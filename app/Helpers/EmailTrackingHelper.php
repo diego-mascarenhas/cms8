@@ -44,8 +44,7 @@ class EmailTrackingHelper
             // Save the original link to database
             self::saveTrackedLink($delivery, $originalUrl);
 
-            // Create tracking URL
-            $trackingUrl = self::createTrackingUrl($delivery->getTrackingToken(), $originalUrl);
+            $trackingUrl = self::clickTrackingUrl($delivery->getTrackingToken(), $originalUrl);
 
             return $beforeUrl.$trackingUrl.$afterUrl;
         }, $html);
@@ -121,15 +120,25 @@ class EmailTrackingHelper
     }
 
     /**
-     * Create a tracking URL for the given original URL
+     * Public host that records campaign clicks. Defaults to admin.idoneo.dev.
      */
-    private static function createTrackingUrl(string $token, string $originalUrl): string
+    public static function trackingBaseUrl(): string
     {
-        // Make sure the original URL is properly encoded
-        $encodedUrl = urlencode($originalUrl);
+        $base = trim((string) config('mailer.tracking.base_url', ''));
+        if ($base === '')
+        {
+            $base = (string) config('app.url');
+        }
 
-        // Create the tracking URL using the correct route
-        return url("/message/track/click/{$token}?url={$encodedUrl}");
+        return rtrim($base, '/');
+    }
+
+    /**
+     * Absolute click-tracking URL on the public admin host.
+     */
+    public static function clickTrackingUrl(string $token, string $originalUrl): string
+    {
+        return self::trackingBaseUrl().'/message/track/click/'.$token.'?url='.urlencode($originalUrl);
     }
 
     /**

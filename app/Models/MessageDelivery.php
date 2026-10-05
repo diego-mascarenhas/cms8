@@ -102,7 +102,7 @@ class MessageDelivery extends Model
      */
     public function getTrackedUrl($originalUrl)
     {
-        return route('message.track.click', ['token' => $this->getTrackingToken()]).'?url='.urlencode($originalUrl);
+        return \App\Helpers\EmailTrackingHelper::clickTrackingUrl($this->getTrackingToken(), $originalUrl);
     }
 
     /**
