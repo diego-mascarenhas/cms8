@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\Enterprise;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -105,8 +106,35 @@ class TeamContactController extends Controller
             $contact->categories()->sync(array_unique($categoryIds));
         }
 
+        $enterpriseName = trim((string) $request->input('enterprise', ''));
+        $enterpriseLinked = false;
+
+        if ($enterpriseName !== '')
+        {
+            try
+            {
+                $this->linkEnterprise($contact, $team, $enterpriseName);
+                $enterpriseLinked = true;
+            }
+            catch (\Throwable $e)
+            {
+                Log::error('TeamContactController: could not link enterprise', [
+                    'contact_id' => $contact->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $excluded = self::STIPULATED_FIELDS;
+        $excluded[] = 'team_id';
+
+        if ($enterpriseLinked)
+        {
+            $excluded[] = 'enterprise';
+        }
+
         // Store extra request fields in contact.data (JSON)
-        $extra = $request->except(self::STIPULATED_FIELDS);
+        $extra = $request->except($excluded);
         if (! empty($extra))
         {
             $data = (array) ($contact->data ?? (object) []);
@@ -203,5 +231,26 @@ class TeamContactController extends Controller
             'success' => true,
             'message' => 'Contact deleted successfully',
         ]);
+    }
+
+    private function linkEnterprise(Contact $contact, $team, string $name): void
+    {
+        $enterprise = Enterprise::query()
+            ->where('team_id', $team->id)
+            ->whereRaw('LOWER(name) = ?', [mb_strtolower($name)])
+            ->first();
+
+        if (! $enterprise)
+        {
+            $enterprise = Enterprise::create([
+                'team_id' => $team->id,
+                'name' => $name,
+                'creator_id' => $team->user_id,
+            ]);
+        }
+
+        $contact->enterprises()->syncWithoutDetaching([$enterprise->id]);
+        $contact->current_enterprise_id = $enterprise->id;
+        $contact->save();
     }
 }
