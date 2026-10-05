@@ -65,6 +65,42 @@ class ProjectApprovedBudgetLockTest extends TestCase
     }
 
     #[Test]
+    public function project_form_lists_complimentary_status(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+        $project->forceFill([
+            'status_id' => ProjectStatus::STATUS_BUDGET,
+            'data' => [],
+        ])->save();
+
+        $this->actingAs($user)
+            ->get(route('project.edit', $project->id))
+            ->assertOk()
+            ->assertSee(__('project_status.BONIFIED'), false);
+
+        $this->assertDatabaseHas('project_statuses', [
+            'id' => ProjectStatus::STATUS_BONIFIED,
+            'name' => 'BONIFIED',
+        ]);
+    }
+
+    #[Test]
+    public function approved_budget_can_be_marked_complimentary(): void
+    {
+        [$user, $project] = $this->createApprovedProject();
+
+        $this->actingAs($user)
+            ->from(route('project.show', $project->id))
+            ->patch(route('project.update-status', $project->id), [
+                'status_id' => ProjectStatus::STATUS_BONIFIED,
+            ])
+            ->assertRedirect(route('project.show', $project->id))
+            ->assertSessionHas('success');
+
+        $this->assertSame(ProjectStatus::STATUS_BONIFIED, (int) $project->fresh()->status_id);
+    }
+
+    #[Test]
     public function approved_budget_can_change_status_via_modal_endpoint(): void
     {
         [$user, $project] = $this->createApprovedProject();

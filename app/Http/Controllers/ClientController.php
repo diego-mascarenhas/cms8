@@ -10,6 +10,7 @@ use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseType;
 use App\Models\Invoice;
+use App\Models\ProjectStatus;
 use App\Models\Service;
 use App\Models\ServiceSync;
 use App\Models\StripeSubscription;
@@ -290,9 +291,7 @@ class ClientController extends Controller
             }
         }
 
-        // Separate active and past projects
-        // Past projects: FINISHED (10), INVOICED (12), NOT_APPROVED (13)
-        $pastProjectStatuses = [10, 12, 13];
+        $pastProjectStatuses = ProjectStatus::closedStatusIds();
 
         $activeProjects = $client->projects->filter(function ($project) use ($pastProjectStatuses)
         {

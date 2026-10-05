@@ -32,6 +32,8 @@ class ProjectStatus extends Model
 
     public const STATUS_NOT_APPROVED = 13;
 
+    public const STATUS_BONIFIED = 14;
+
     /**
      * Statuses allowed after a budget is approved (status-only changes).
      *
@@ -47,6 +49,7 @@ class ProjectStatus extends Model
             self::STATUS_TO_INVOICE,
             self::STATUS_INVOICED,
             self::STATUS_NOT_APPROVED,
+            self::STATUS_BONIFIED,
         ];
     }
 
@@ -92,6 +95,21 @@ class ProjectStatus extends Model
     }
 
     /**
+     * Finished work that no longer belongs in the active project list.
+     *
+     * @return list<int>
+     */
+    public static function closedStatusIds(): array
+    {
+        return [
+            self::STATUS_FINISHED,
+            self::STATUS_INVOICED,
+            self::STATUS_NOT_APPROVED,
+            self::STATUS_BONIFIED,
+        ];
+    }
+
+    /**
      * Statuses listed under dashboard "Ongoing Projects" (quote pipeline + active work).
      *
      * @return list<int>
@@ -119,7 +137,7 @@ class ProjectStatus extends Model
     {
         $query = self::query();
 
-        return $query->get()->map(function ($status)
+        return $query->orderBy('id')->get()->map(function ($status)
         {
             return [
                 'id' => $status->id,

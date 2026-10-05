@@ -13,4 +13,5 @@ return [
     'TO_INVOICE' => 'To invoice',
     'INVOICED' => 'Invoiced',
     'NOT_APPROVED' => 'Not approved',
+    'BONIFIED' => 'Complimentary',
 ];

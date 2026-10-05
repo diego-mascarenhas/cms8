@@ -75,6 +75,11 @@ class ProjectStatusSeeder extends Seeder
                 'name' => 'NOT_APPROVED',
                 'label_class' => 'bg-label-danger',
             ],
+            [
+                'id' => 14,
+                'name' => 'BONIFIED',
+                'label_class' => 'bg-label-info',
+            ],
         ];
 
         foreach ($statuses as $status)

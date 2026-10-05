@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class CreateProjectStatusesTable extends Migration
@@ -19,6 +20,17 @@ class CreateProjectStatusesTable extends Migration
             $table->string('name');
             $table->string('label_class');
         });
+
+        DB::table('project_statuses')->insert([
+            'id' => 14,
+            'name' => 'BONIFIED',
+            'label_class' => 'bg-label-info',
+        ]);
+
+        if (DB::getDriverName() === 'pgsql')
+        {
+            DB::statement("SELECT setval(pg_get_serial_sequence('project_statuses', 'id'), (SELECT MAX(id) FROM project_statuses))");
+        }
     }
 
     /**
