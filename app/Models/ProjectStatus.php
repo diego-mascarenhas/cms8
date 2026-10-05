@@ -70,15 +70,16 @@ class ProjectStatus extends Model
 
     /**
      * CASE branches for sort=relevance. Lower rank is shown first:
-     * active work, then billing, then quotes.
+     * active work, Presupuesto, Esperando respuesta, Presupuestado, then billing.
      */
     public static function relevanceOrderSql(): string
     {
         $groups = [
-            0 => self::inProgressStatusIds(),
-            1 => [self::STATUS_FINISHED, self::STATUS_TO_INVOICE],
-            2 => [self::STATUS_BUDGETED],
-            3 => [self::STATUS_BUDGET],
+            0 => array_values(array_diff(self::inProgressStatusIds(), [self::STATUS_WAITING_FOR_RESPONSE])),
+            1 => [self::STATUS_BUDGET],
+            2 => [self::STATUS_WAITING_FOR_RESPONSE],
+            3 => [self::STATUS_BUDGETED],
+            4 => [self::STATUS_FINISHED, self::STATUS_TO_INVOICE],
         ];
 
         $clauses = [];
@@ -92,6 +93,21 @@ class ProjectStatus extends Model
         }
 
         return implode(' ', $clauses);
+    }
+
+    /**
+     * Closed outcomes omitted from the default project list.
+     * They stay available from the status filter.
+     *
+     * @return list<int>
+     */
+    public static function hiddenFromDefaultListStatusIds(): array
+    {
+        return [
+            self::STATUS_INVOICED,
+            self::STATUS_NOT_APPROVED,
+            self::STATUS_BONIFIED,
+        ];
     }
 
     /**
