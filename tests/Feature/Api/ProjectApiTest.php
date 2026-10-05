@@ -652,6 +652,22 @@ class ProjectApiTest extends TestCase
             'status_id' => 9,
         ]);
 
+        $waiting = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Waiting Reply',
+            'responsible_id' => $user->id,
+            'status_id' => 8,
+        ]);
+
+        $toInvoice = Project::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $client->id,
+            'name' => 'Ready To Invoice',
+            'responsible_id' => $user->id,
+            'status_id' => 11,
+        ]);
+
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/projects?sort=relevance');
 
@@ -660,6 +676,8 @@ class ProjectApiTest extends TestCase
         $ids = collect($response->json('data.data'))->pluck('id')->all();
 
         $this->assertTrue(array_search($inProgress->id, $ids, true) < array_search($budget->id, $ids, true));
+        $this->assertTrue(array_search($budget->id, $ids, true) < array_search($waiting->id, $ids, true));
+        $this->assertTrue(array_search($waiting->id, $ids, true) < array_search($toInvoice->id, $ids, true));
     }
 
     public function test_project_stats_cards_match_backend_groups(): void
@@ -709,6 +727,7 @@ class ProjectApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true)
             ->assertJsonPath('data.total_projects', 5)
+            ->assertJsonPath('data.list_total', 4)
             ->assertJsonPath('data.panel_total', 4)
             ->assertJsonPath('data.cards.0.key', 'budget')
             ->assertJsonPath('data.cards.0.count', 1)

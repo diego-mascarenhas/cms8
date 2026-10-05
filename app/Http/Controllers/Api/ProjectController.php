@@ -96,7 +96,7 @@ class ProjectController extends Controller
             if ($request->get('sort') === 'relevance')
             {
                 $query->orderByRaw(
-                    'CASE status_id '.ProjectStatus::relevanceOrderSql().' ELSE 4 END',
+                    'CASE status_id '.ProjectStatus::relevanceOrderSql().' ELSE 5 END',
                 );
             }
 
@@ -726,6 +726,12 @@ class ProjectController extends Controller
             ->pluck('count', 'status_id');
 
         $totalProjects = (int) $statusCounts->sum();
+        $listTotal = $totalProjects;
+
+        foreach (ProjectStatus::hiddenFromDefaultListStatusIds() as $hiddenStatusId)
+        {
+            $listTotal -= (int) ($statusCounts[$hiddenStatusId] ?? 0);
+        }
 
         $cards = [
             [
@@ -792,6 +798,7 @@ class ProjectController extends Controller
             'success' => true,
             'data' => [
                 'total_projects' => $totalProjects,
+                'list_total' => $listTotal,
                 'panel_total' => $panelTotal,
                 'cards' => $cards,
             ],
