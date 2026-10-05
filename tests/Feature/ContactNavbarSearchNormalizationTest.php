@@ -13,6 +13,7 @@ use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTaxStatusTypeSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
@@ -146,5 +147,136 @@ class ContactNavbarSearchNormalizationTest extends TestCase
         $response->assertOk();
         $names = collect($response->json('enterprises'))->pluck('name')->all();
         $this->assertContains('Nombre Comercial Corto', $names);
+    }
+
+    public function test_navbar_billing_address_search_is_not_listed_as_an_enterprise(): void
+    {
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            EnterpriseTaxStatusTypeSeeder::class,
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'enterprises'],
+            [
+                'name' => 'Enterprises',
+                'icon' => 'building',
+                'description' => 'Clients',
+                'status' => 1,
+            ],
+        );
+        $this->user->currentTeam->enableModule('enterprises');
+
+        $team = $this->user->currentTeam;
+        $enterpriseId = DB::table('enterprises')->insertGetId([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Clean Up',
+            'code' => 'cus_TTFOX7NVHkJwYC',
+            'creator_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        EnterpriseBillingAddress::query()->create([
+            'enterprise_id' => $enterpriseId,
+            'name' => 'CLEAN UP BUENOS AIRES SRL',
+            'identification_number' => '30717198561',
+            'tax_status_type_id' => EnterpriseTaxStatusType::query()->firstOrFail()->id,
+            'status' => 1,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson(route('contact.search', ['q' => 'CLEAN UP BUENOS AIRES']));
+
+        $response->assertOk();
+        $enterpriseNames = collect($response->json('enterprises'))->pluck('name')->all();
+        $billing = collect($response->json('billingAddresses'));
+
+        $this->assertNotContains('CLEAN UP BUENOS AIRES SRL', $enterpriseNames);
+        $this->assertContains('Clean Up', $enterpriseNames);
+        $this->assertTrue($billing->pluck('name')->contains('CLEAN UP BUENOS AIRES SRL'));
+        $this->assertSame(
+            route('empresas.show', $enterpriseId),
+            $billing->firstWhere('name', 'CLEAN UP BUENOS AIRES SRL')['url'],
+        );
+    }
+
+    public function test_navbar_project_search_translates_status_to_spanish(): void
+    {
+        app()->setLocale('es');
+
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            ProjectStatusSeeder::class,
+        ]);
+
+        Module::query()->firstOrCreate(
+            ['key' => 'projects'],
+            [
+                'name' => 'Projects',
+                'icon' => 'folder',
+                'description' => 'Projects',
+                'status' => 1,
+            ],
+        );
+        $this->user->currentTeam->enableModule('projects');
+
+        $team = $this->user->currentTeam;
+        $cleanUpId = DB::table('enterprises')->insertGetId([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Clean Up',
+            'creator_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $cbdId = DB::table('enterprises')->insertGetId([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'CBD Norte',
+            'creator_id' => $this->user->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('projects')->insert([
+            [
+                'team_id' => $team->id,
+                'enterprise_id' => $cleanUpId,
+                'responsible_id' => $this->user->id,
+                'name' => 'Sitio Clean Up',
+                'status_id' => 12,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'team_id' => $team->id,
+                'enterprise_id' => $cbdId,
+                'responsible_id' => $this->user->id,
+                'name' => 'Local CBD Norte',
+                'status_id' => 13,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $invoiced = $this->actingAs($this->user)->getJson(route('contact.search', ['q' => 'Sitio Clean']));
+        $invoiced->assertOk();
+        $this->assertSame(
+            'Cliente: Clean Up - Estado: Facturado',
+            collect($invoiced->json('projects'))->firstWhere('name', 'Sitio Clean Up')['subtitle'] ?? '',
+        );
+
+        $rejected = $this->actingAs($this->user)->getJson(route('contact.search', ['q' => 'Local CBD']));
+        $rejected->assertOk();
+        $this->assertSame(
+            'Cliente: CBD Norte - Estado: No aprobado',
+            collect($rejected->json('projects'))->firstWhere('name', 'Local CBD Norte')['subtitle'] ?? '',
+        );
     }
 }

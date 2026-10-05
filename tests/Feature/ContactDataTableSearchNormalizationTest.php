@@ -213,6 +213,77 @@ class ContactDataTableSearchNormalizationTest extends TestCase
         $this->assertSame((string) $matching->id, (string) $response->json('data.0.DT_RowId'));
     }
 
+    public function test_contact_list_can_filter_archived_contacts(): void
+    {
+        $team = $this->user->currentTeam;
+
+        $active = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Ignacio',
+            'surname' => 'Activo',
+            'email' => 'ignacio.activo@example.test',
+            'birthday' => null,
+            'profile' => '',
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+        $archived = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Ignacio',
+            'surname' => 'Archivado',
+            'email' => 'ignacio.archivado@example.test',
+            'birthday' => null,
+            'profile' => '',
+            'responsible_id' => $this->user->id,
+            'creator_id' => $this->user->id,
+        ]);
+        $archived->delete();
+
+        $this->actingAs($this->user)
+            ->get(route('contact-list'))
+            ->assertOk()
+            ->assertSee('Archivados');
+
+        $activeResponse = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('contact-list').'?'.http_build_query($this->contactDataTableBaseQuery()));
+
+        $activeResponse->assertOk();
+        $activeNames = collect($activeResponse->json('data'))->pluck('name')->implode(' ');
+        $this->assertStringContainsString('Ignacio Activo', $activeNames);
+        $this->assertStringNotContainsString('Ignacio Archivado', $activeNames);
+
+        $query = $this->contactDataTableBaseQuery();
+        $query['archived'] = 1;
+        $archivedResponse = $this->actingAs($this->user)->withHeaders([
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'application/json',
+        ])->get(route('contact-list').'?'.http_build_query($query));
+
+        $archivedResponse->assertOk();
+        $this->assertSame(1, (int) $archivedResponse->json('recordsFiltered'));
+        $archivedName = (string) $archivedResponse->json('data.0.name');
+        $this->assertStringContainsString('Ignacio Archivado', $archivedName);
+        $this->assertStringContainsString('Archivado', $archivedName);
+        $this->assertStringContainsString(route('contact.restore', $archived->id), (string) $archivedResponse->json('data.0.action'));
+
+        $this->actingAs($this->user)
+            ->get(route('contact.show', $archived->id))
+            ->assertOk()
+            ->assertSee('Este contacto está archivado.')
+            ->assertDontSee('Editar contacto')
+            ->assertDontSee('cms7/empresa', false)
+            ->assertDontSee('ti-database', false);
+
+        $this->actingAs($this->user)
+            ->post(route('contact.restore', $archived->id))
+            ->assertRedirect(route('contact.show', $archived->id));
+
+        $this->assertNull($archived->fresh()->deleted_at);
+        $this->assertNotNull($active->fresh());
+    }
+
     private function contactDataTableUrl(string $searchValue): string
     {
         $query = $this->contactDataTableBaseQuery();

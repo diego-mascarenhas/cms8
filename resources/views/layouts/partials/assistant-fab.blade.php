@@ -22,10 +22,6 @@
     body:has(.assistant-fab-host) .card > .card-datatable {
         overflow-x: auto;
     }
-    /* Debugbar is position:fixed bottom:0 with z-index ~1e10 — FAB would sit underneath and disappear */
-    body:has(div.phpdebugbar) .assistant-fab-host {
-        bottom: 5.5rem;
-    }
     #assistant-offcanvas.offcanvas.show ~ .assistant-fab-host .assistant-fab-btn {
         visibility: hidden;
     }

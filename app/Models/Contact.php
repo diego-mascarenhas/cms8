@@ -735,7 +735,7 @@ class Contact extends Model implements HasMedia
     {
         return $this
             ->belongsToMany(Enterprise::class, 'contact_enterprise')
-            ->withPivot('position')
+            ->withPivot('position', 'department_id', 'superior_id')
             ->withTimestamps();
     }
 

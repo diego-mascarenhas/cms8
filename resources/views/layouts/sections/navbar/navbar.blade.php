@@ -125,6 +125,28 @@
                                     </div>
                                 </template>
 
+                                <!-- Billing names (Razones sociales) -->
+                                <template x-if="results.billingAddresses && results.billingAddresses.length > 0">
+                                    <div>
+                                        <h6 class="suggestions-header text-primary mb-0 mx-3 mt-3 pb-2">Razones sociales</h6>
+                                        <template x-for="(item, index) in results.billingAddresses" :key="index">
+                                            <a :href="item.url || '#'"
+                                               class="suggestion d-flex justify-content-between px-3 py-2 w-100"
+                                               :class="{ 'active': selectedItem && selectedItem.category === 'billingAddresses' && selectedItem.index === index }"
+                                               @mouseenter="selectedItem = { category: 'billingAddresses', index: index }"
+                                               @click.prevent="navigateTo(item.url)">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="ti ti-receipt me-2"></i>
+                                                    <div class="user-info">
+                                                        <h6 class="mb-0" x-text="item.name"></h6>
+                                                        <small class="text-muted" x-text="item.subtitle"></small>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
                                 <!-- Services (Servicios) -->
                                 <template x-if="results.services && results.services.length > 0">
                                     <div>
@@ -1037,6 +1059,7 @@ function globalSearch() {
         get hasResults() {
             return (this.results.members && this.results.members.length > 0) ||
                    (this.results.enterprises && this.results.enterprises.length > 0) ||
+                   (this.results.billingAddresses && this.results.billingAddresses.length > 0) ||
                    (this.results.services && this.results.services.length > 0) ||
                    (this.results.projects && this.results.projects.length > 0) ||
                    (this.results.invoices && this.results.invoices.length > 0);
@@ -1203,6 +1226,11 @@ function globalSearch() {
             if (this.results.enterprises) {
                 this.results.enterprises.forEach((item, i) => {
                     items.push({ ...item, category: 'enterprises', index: i });
+                });
+            }
+            if (this.results.billingAddresses) {
+                this.results.billingAddresses.forEach((item, i) => {
+                    items.push({ ...item, category: 'billingAddresses', index: i });
                 });
             }
             if (this.results.services) {

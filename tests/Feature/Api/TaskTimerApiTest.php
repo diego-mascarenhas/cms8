@@ -36,6 +36,7 @@ class TaskTimerApiTest extends TestCase
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
         Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+        Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
     }
 
     protected function tearDown(): void
@@ -66,7 +67,9 @@ class TaskTimerApiTest extends TestCase
             ->getJson('/api/tasks?pending_only=1')
             ->assertOk()
             ->assertJsonPath('data.0.responsible.name', $admin->name)
-            ->assertJsonPath('data.0.time_seconds', 2400);
+            ->assertJsonPath('data.0.time_seconds', 2400)
+            ->assertJsonPath('data.0.workers.0.name', $admin->name)
+            ->assertJsonPath('data.0.workers.0.working', false);
     }
 
     public function test_admin_starts_timer_for_collaborator_and_it_stops_at_the_estimate(): void
@@ -117,6 +120,28 @@ class TaskTimerApiTest extends TestCase
         $this->assertEqualsWithDelta(1200, (int) $entry->duration_seconds, 2);
     }
 
+    public function test_admin_starts_timer_for_employee(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [, $team, $token, $task] = $this->taskForAdmin();
+
+        $employee = User::factory()->create(['name' => 'Luis Empleado']);
+        $employee->assignRole('employee');
+        $team->users()->attach($employee, ['role' => 'employee']);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks/'.$task->id.'/start', [
+                'user_id' => $employee->id,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.user_id', $employee->id)
+            ->assertJsonPath('data.user_name', 'Luis Empleado');
+    }
+
     public function test_collaborator_cannot_start_timer_for_someone_else(): void
     {
         if (! Features::hasTeamFeatures())
@@ -138,6 +163,29 @@ class TaskTimerApiTest extends TestCase
                 'user_id' => $admin->id,
             ])
             ->assertForbidden();
+    }
+
+    public function test_project_list_marks_a_project_with_a_running_task(): void
+    {
+        if (! Features::hasTeamFeatures())
+        {
+            $this->markTestSkipped('Jetstream team features disabled.');
+        }
+
+        [, , $token, $task] = $this->taskForAdmin();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/tasks/'.$task->id.'/start')
+            ->assertCreated();
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/projects')
+            ->assertOk();
+
+        $project = collect($response->json('data.data'))->firstWhere('name', 'Timer Project');
+
+        $this->assertNotNull($project);
+        $this->assertTrue($project['has_active_task']);
     }
 
     /**

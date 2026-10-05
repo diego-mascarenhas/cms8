@@ -467,7 +467,18 @@ class DashboardAnalyticsTest extends TestCase
         $team->setSetting('analytics_property_id', '123456789', ['group' => 'analytics', 'is_encrypted' => false]);
         $team->setSetting('analytics_credentials_json', json_encode(['type' => 'service_account']), ['group' => 'analytics', 'is_encrypted' => true]);
 
+        $older = Carbon::today()->subDays(2)->format('Y-m-d');
+        $newer = Carbon::today()->subDays(1)->format('Y-m-d');
         $fakeData = collect([
+            [
+                'date' => Carbon::today()->subDay(),
+                'activeUsers' => 15,
+                'screenPageViews' => 30,
+                'pageTitle' => 'Pricing',
+                'fullPageUrl' => 'example.com/pricing',
+                'country' => 'Argentina',
+                'newVsReturning' => 'returning',
+            ],
             [
                 'date' => Carbon::today()->subDays(2),
                 'activeUsers' => 10,
@@ -477,15 +488,6 @@ class DashboardAnalyticsTest extends TestCase
                 'country' => 'Spain',
                 'newVsReturning' => 'new',
             ],
-            [
-                'date' => Carbon::today()->subDays(1),
-                'activeUsers' => 15,
-                'screenPageViews' => 30,
-                'pageTitle' => 'Pricing',
-                'fullPageUrl' => 'example.com/pricing',
-                'country' => 'Argentina',
-                'newVsReturning' => 'returning',
-            ],
         ]);
         Analytics::fake($fakeData);
 
@@ -494,6 +496,9 @@ class DashboardAnalyticsTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('analyticsChart', false);
+        $chart = $response->getContent();
+        $this->assertNotFalse(strpos($chart, $older));
+        $this->assertLessThan(strpos($chart, $newer), strpos($chart, $older));
         $response->assertSee(__('Visitantes'), false);
         $response->assertSee(__('Páginas vistas'), false);
         $response->assertSee(__('Páginas top'), false);

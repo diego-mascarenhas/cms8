@@ -13,6 +13,7 @@ use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Database\Seeders\TaskStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Laravel\Jetstream\Features;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -124,5 +125,26 @@ class TaskSummaryApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('total', 1)
             ->assertJsonPath('data.0.title', 'Mine pending');
+
+        $all = $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/tasks?pending_only=1&all=1')
+            ->assertOk()
+            ->assertJsonPath('total', 2);
+
+        $this->assertEqualsCanonicalizing(
+            ['Mine pending', 'Other pending'],
+            collect($all->json('data'))->pluck('title')->all(),
+        );
+
+        $other->forceFill(['current_team_id' => $team->id])->save();
+        $otherToken = $other->createToken('summary-other')->plainTextToken;
+        Auth::forgetGuards();
+        $this->flushHeaders();
+
+        $this->withHeader('Authorization', 'Bearer '.$otherToken)
+            ->getJson('/api/tasks?pending_only=1&all=1')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.title', 'Other pending');
     }
 }

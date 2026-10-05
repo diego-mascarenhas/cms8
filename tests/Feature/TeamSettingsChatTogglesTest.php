@@ -29,6 +29,14 @@ class TeamSettingsChatTogglesTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('name="chat[whatsapp_driver]"', $html);
+        $this->assertMatchesRegularExpression(
+            '/<select[^>]*class="[^"]*\bselect2\b[^"]*"[^>]*id="whatsapp_driver"/',
+            $html,
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="site_assistant_prompt_key"[^>]*class="[^"]*\bselect2\b/',
+            $html,
+        );
         $this->assertStringContainsString(__('Meta Cloud API'), $html);
         $this->assertStringContainsString(__('360dialog'), $html);
         $this->assertStringContainsString(__('MessageBird'), $html);

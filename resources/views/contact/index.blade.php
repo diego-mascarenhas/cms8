@@ -53,6 +53,19 @@
     .contact-list-toolbar .select2-container {
         width: 100% !important;
     }
+
+    #contact-table_filter {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        float: none;
+        width: 100%;
+    }
+
+    #contact-table_filter label {
+        margin-bottom: 0;
+    }
 </style>
 
 @section('content')
@@ -163,6 +176,11 @@
         </div>
     </div>
 
+    <div id="contact-archive-filter" class="btn-group btn-group-sm d-none" role="group" aria-label="Filtro de contactos">
+        <button type="button" class="btn btn-primary contact-archive-filter" data-archived="0">Activos</button>
+        <button type="button" class="btn btn-outline-primary contact-archive-filter" data-archived="1">Archivados</button>
+    </div>
+
     <div class="card">
         <div class="card-header border-bottom">
             <div class="contact-list-toolbar">
@@ -212,6 +230,24 @@
 @endsection
 
 @push('scripts')
+    <script>
+        window.contactListArchived = '0';
+        document.addEventListener('click', function (event) {
+            var button = event.target.closest('.contact-archive-filter');
+            if (!button) {
+                return;
+            }
+            window.contactListArchived = button.getAttribute('data-archived') || '0';
+            document.querySelectorAll('.contact-archive-filter').forEach(function (item) {
+                var active = item === button;
+                item.classList.toggle('btn-primary', active);
+                item.classList.toggle('btn-outline-primary', !active);
+            });
+            if (window.LaravelDataTables && window.LaravelDataTables['contact-table']) {
+                window.LaravelDataTables['contact-table'].draw();
+            }
+        });
+    </script>
     {{ $dataTable->scripts(attributes: ['type' => 'module']) }}
 
     <script>

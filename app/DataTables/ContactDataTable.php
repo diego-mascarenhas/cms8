@@ -134,7 +134,11 @@ class ContactDataTable extends DataTable
 
     public function query(Contact $model): QueryBuilder
     {
-        $query = $model->newQuery()
+        $query = request()->boolean('archived')
+            ? $model->newQuery()->onlyTrashed()
+            : $model->newQuery();
+
+        $query = $query
             ->where('team_id', Auth::user()->currentTeam->id)
             ->with([
                 'list60:id,contact_id',
@@ -157,7 +161,7 @@ class ContactDataTable extends DataTable
         return $this->builder()
             ->setTableId('contact-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax('', "data.archived = window.contactListArchived || '0';")
             ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
@@ -165,6 +169,12 @@ class ContactDataTable extends DataTable
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters([
                 'initComplete' => "function() {
+					var filter = document.getElementById('contact-table_filter');
+					var archiveFilter = document.getElementById('contact-archive-filter');
+					if (filter && archiveFilter) {
+						filter.prepend(archiveFilter);
+						archiveFilter.classList.remove('d-none');
+					}
 					var api = this.api();
 
 					function syncContactListToolbarSelect2() {
@@ -322,12 +332,40 @@ class ContactDataTable extends DataTable
         return 'Contact_'.date('YmdHis');
     }
 
+    /**
+     * @var array<int, ?string>
+     */
+    private array $mergedIntoNames = [];
+
+    private function archivedSubtitle(Contact $row): string
+    {
+        $mergedId = (int) data_get($row->data, 'merged_into_contact_id');
+        if ($mergedId < 1)
+        {
+            return 'Archivado';
+        }
+
+        if (! array_key_exists($mergedId, $this->mergedIntoNames))
+        {
+            $merged = Contact::query()->find($mergedId);
+            $this->mergedIntoNames[$mergedId] = $merged
+                ? trim($merged->name.' '.($merged->surname ?? ''))
+                : null;
+        }
+
+        $name = $this->mergedIntoNames[$mergedId];
+
+        return $name !== null && $name !== '' ? 'Fusionado en '.$name : 'Archivado';
+    }
+
     private function contactNameCell(Contact $row): string
     {
         $fullName = trim((string) $row->name.' '.((string) ($row->surname ?? '')));
-        $companyName = $row->enterprises->first()?->name;
+        $subtitle = $row->trashed()
+            ? $this->archivedSubtitle($row)
+            : ($row->enterprises->first()?->name ?: null);
         $nameHtml = DataTableFormatter::showLink($row, 'contact.show', $fullName, 'view', [$row->id]);
-        $text = DataTableFormatter::nameColumn($nameHtml, $companyName ?: null);
+        $text = DataTableFormatter::nameColumn($nameHtml, $subtitle);
 
         $sentiment = $row->currentSentiment?->sentiment;
         $badge = '';

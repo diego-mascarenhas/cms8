@@ -184,7 +184,7 @@ class ContactController extends Controller
      */
     public function show(string $id)
     {
-        $data = Contact::with([
+        $data = Contact::withTrashed()->with([
             'currentSentiment.sentiment',
             'creator',
             'responsible',
@@ -204,27 +204,26 @@ class ContactController extends Controller
 
         $this->authorize('view', $data);
 
-        // Verify current_enterprise_id belongs to this contact's enterprises
-        if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
+        if (! $data->trashed())
         {
-            $hasCurrentEnterprise = $data->enterprises->contains('id', $data->current_enterprise_id);
-
-            if (! $hasCurrentEnterprise)
+            if ($data->current_enterprise_id && $data->enterprises->isNotEmpty())
             {
-                // Current enterprise doesn't belong to this contact, set to first associated enterprise
+                $hasCurrentEnterprise = $data->enterprises->contains('id', $data->current_enterprise_id);
+
+                if (! $hasCurrentEnterprise)
+                {
+                    $data->current_enterprise_id = $data->enterprises->first()->id;
+                    $data->save();
+                    $data->load('currentEnterprise');
+                }
+            }
+
+            if ($data->enterprises->isNotEmpty() && ! $data->current_enterprise_id)
+            {
                 $data->current_enterprise_id = $data->enterprises->first()->id;
                 $data->save();
                 $data->load('currentEnterprise');
             }
-        }
-
-        // If contact has enterprises but no current_enterprise_id set, set it to the first one
-        if ($data->enterprises->isNotEmpty() && ! $data->current_enterprise_id)
-        {
-            $data->current_enterprise_id = $data->enterprises->first()->id;
-            $data->save();
-            // Reload the relationship
-            $data->load('currentEnterprise');
         }
 
         $team = auth()->user()->currentTeam->load('settings');
@@ -561,14 +560,24 @@ class ContactController extends Controller
 
         $contactTickets = $this->contactTickets($data);
 
-        if (! app()->runningUnitTests())
+        if (! $data->trashed() && ! app()->runningUnitTests())
         {
             $data->refreshWhatsAppAvatar();
         }
 
+        $mergedInto = null;
+        if ($data->trashed())
+        {
+            $mergedId = (int) data_get($data->data, 'merged_into_contact_id');
+            if ($mergedId > 0)
+            {
+                $mergedInto = Contact::query()->find($mergedId);
+            }
+        }
+
         return view(
             'contact.show',
-            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets'),
+            compact('data', 'trackingId', 'totalSeconds', 'sentiments', 'enterpriseStatuses', 'countries', 'stripeData', 'astralProfile', 'contactOpportunities', 'contactTickets', 'mergedInto'),
         );
     }
 
@@ -773,6 +782,20 @@ class ContactController extends Controller
         return redirect()
             ->route('contact-list')
             ->with('success', $message);
+    }
+
+    public function restore(string $id): \Illuminate\Http\RedirectResponse
+    {
+        $contact = Contact::onlyTrashed()
+            ->where('team_id', auth()->user()->currentTeam->id)
+            ->findOrFail($id);
+
+        $this->authorize('update', $contact);
+        $contact->restore();
+
+        return redirect()
+            ->route('contact.show', $contact->id)
+            ->with('success', 'Contacto restaurado.');
     }
 
     public function updateSentiment(Request $request, string $id)
@@ -1162,6 +1185,7 @@ class ContactController extends Controller
             ],
             'members' => [],
             'enterprises' => [],
+            'billingAddresses' => [],
             'services' => [],
             'projects' => [],
             'collaborators' => [],
@@ -1283,7 +1307,7 @@ class ContactController extends Controller
                 ->map(function ($project)
                 {
                     $clientName = $project->client ? $project->client->name : 'Sin cliente';
-                    $statusName = $project->status ? $project->status->name : 'Sin estado';
+                    $statusName = $project->status ? $project->status->translated_name : 'Sin estado';
 
                     return [
                         'name' => $project->real_name ?: $project->name,
@@ -1388,26 +1412,25 @@ class ContactController extends Controller
                 SearchNormalizer::applyColumnsNavbarConditions($billingAddressesQuery, ['name', 'identification_number'], $query, null);
             }
 
-            $billingAddresses = $billingAddressesQuery
-                ->limit(20)  // Optimized limit for on-demand search
+            $data['billingAddresses'] = $billingAddressesQuery
+                ->limit(20)
                 ->get()
                 ->map(function ($address)
                 {
                     $enterpriseName = $address->enterprise ? $address->enterprise->name : 'Sin empresa';
-                    $responsibleId = $address->enterprise?->responsible_id;
+                    $enterpriseUrl = $address->enterprise
+                        ? route('empresas.show', $address->enterprise_id)
+                        : '#';
 
                     return [
                         'name' => $address->name,
                         'subtitle' => "Empresa: {$enterpriseName} - ID: {$address->identification_number}",
                         'src' => 'img/icons/brands/enterprise.png',
-                        'url' => $responsibleId ? route('contact.show', $responsibleId) : '#',
+                        'url' => $enterpriseUrl,
                     ];
                 })
                 ->values()
                 ->all();
-
-            // Merge billing addresses into enterprises array
-            $data['enterprises'] = array_merge($data['enterprises'], $billingAddresses);
         }
 
         // Add client-related pages only if clients module is active

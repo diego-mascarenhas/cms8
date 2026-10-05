@@ -795,6 +795,13 @@ class ProjectApiTest extends TestCase
             'end_time' => now(),
         ]);
 
+        Time::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'user_id' => $owner->id,
+            'task_id' => $task->id,
+            'start_time' => now()->subMinutes(30),
+        ]);
+
         $token = $clientUser->createToken('client-test')->plainTextToken;
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
@@ -826,7 +833,8 @@ class ProjectApiTest extends TestCase
             ->assertJsonPath('data.responsible.id', $owner->id)
             ->assertJsonPath('data.tasks.0.responsible.id', $owner->id);
         $this->assertNotNull($staff->json('data.tasks.0.estimated_hours'));
-        $this->assertArrayHasKey('time_seconds', $staff->json('data.tasks.0'));
+        $this->assertEqualsWithDelta(5400, $staff->json('data.tasks.0.time_seconds'), 3);
+        $this->assertSame(1, $staff->json('data.tasks.0.running_timers'));
     }
 
     public function test_personal_workspace_owner_sees_linked_provider_projects(): void

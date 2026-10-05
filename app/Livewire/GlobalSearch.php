@@ -177,7 +177,7 @@ class GlobalSearch extends Component
                 ->map(function ($project)
                 {
                     $clientName = $project->client ? $project->client->name : 'Sin cliente';
-                    $statusName = $project->status ? $project->status->name : 'Sin estado';
+                    $statusName = $project->status ? $project->status->translated_name : 'Sin estado';
 
                     return [
                         'id' => $project->id,

@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Models\Time;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class TaskTimeBudget
 {
@@ -136,6 +137,51 @@ class TaskTimeBudget
         }
 
         return $stopped;
+    }
+
+    /**
+     * People who logged time. Anyone with an open timer is listed first.
+     *
+     * @param  Collection<int, Time>  $times
+     * @return list<array{id: int, name: string, working: bool}>
+     */
+    public static function workers(Collection $times): array
+    {
+        $people = [];
+
+        foreach ($times->groupBy('user_id') as $entries)
+        {
+            $user = $entries->first()?->user;
+            $name = $user?->name;
+
+            if (! $user || ! is_string($name) || $name === '')
+            {
+                continue;
+            }
+
+            $working = $entries->contains(function (Time $time): bool
+            {
+                return $time->end_time === null && (bool) $time->start_time;
+            });
+
+            $people[] = [
+                'id' => (int) $user->id,
+                'name' => $name,
+                'working' => $working,
+            ];
+        }
+
+        usort($people, function (array $left, array $right): int
+        {
+            if ($left['working'] !== $right['working'])
+            {
+                return $left['working'] ? -1 : 1;
+            }
+
+            return strcasecmp($left['name'], $right['name']);
+        });
+
+        return $people;
     }
 
     /**

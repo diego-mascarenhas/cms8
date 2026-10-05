@@ -10,6 +10,7 @@ use App\Models\EnterpriseDepartment;
 use App\Models\EnterpriseStatus;
 use App\Models\EnterpriseType;
 use App\Models\Invoice;
+use App\Models\ProjectStatus;
 use App\Models\Service;
 use App\Models\ServiceSync;
 use App\Models\StripeSubscription;
@@ -259,7 +260,7 @@ class ClientController extends Controller
      */
     public function show(string $id)
     {
-        $client = Enterprise::with([
+        $client = Enterprise::withTrashed()->with([
             'responsible',
             'status',
             'enterpriseBillingAddresses.taxStatusType',
@@ -280,9 +281,17 @@ class ClientController extends Controller
 
         $this->authorize('view', $client);
 
-        // Separate active and past projects
-        // Past projects: FINISHED (10), INVOICED (12), NOT_APPROVED (13)
-        $pastProjectStatuses = [10, 12, 13];
+        $mergedInto = null;
+        if ($client->trashed())
+        {
+            $mergedId = (int) data_get($client->data, 'merged_into_enterprise_id');
+            if ($mergedId > 0)
+            {
+                $mergedInto = Enterprise::query()->find($mergedId);
+            }
+        }
+
+        $pastProjectStatuses = ProjectStatus::closedStatusIds();
 
         $activeProjects = $client->projects->filter(function ($project) use ($pastProjectStatuses)
         {
@@ -403,6 +412,7 @@ class ClientController extends Controller
             'invoices',
             'invoiceBalanceTotal',
             'headlineCards',
+            'mergedInto',
         ));
     }
 
@@ -466,6 +476,20 @@ class ClientController extends Controller
         $model->delete();
 
         return response()->json(['success' => 'The record has been deleted.'], 200);
+    }
+
+    public function restore(string $id): \Illuminate\Http\RedirectResponse
+    {
+        $enterprise = Enterprise::onlyTrashed()
+            ->where('team_id', auth()->user()->current_team_id)
+            ->findOrFail($id);
+
+        $this->authorize('update', $enterprise);
+        $enterprise->restore();
+
+        return redirect()
+            ->route('empresas.show', $enterprise->id)
+            ->with('success', 'Empresa restaurada.');
     }
 
     public function importExcel(Request $request)

@@ -26,8 +26,11 @@ class ClientDataTable extends DataTable
             ->editColumn('name', function ($row)
             {
                 $nameHtml = DataTableFormatter::showLink($row, 'client.show', $row->name, 'view', [$row->id]);
+                $subtitle = $row->trashed()
+                    ? $this->archivedSubtitle($row)
+                    : ($row->responsible->name ?? 'Sin asignar');
 
-                return DataTableFormatter::nameColumn($nameHtml, $row->responsible->name ?? 'Sin asignar');
+                return DataTableFormatter::nameColumn($nameHtml, $subtitle);
             })
             ->addColumn('sources', function ($row)
             {
@@ -76,14 +79,19 @@ class ClientDataTable extends DataTable
 
     public function query(Enterprise $model): QueryBuilder
     {
-        return $model->newQuery()
-            ->activeClients()
+        $query = request()->boolean('archived')
+            ? $model->newQuery()->onlyTrashed()
+            : $model->newQuery()->activeClients();
+
+        return $query
             ->select([
                 'enterprises.id',
                 'enterprises.name',
                 'enterprises.responsible_id',
                 'enterprises.status_id',
                 'enterprises.team_id',
+                'enterprises.data',
+                'enterprises.deleted_at',
             ])
             ->with([
                 'responsible:id,name',
@@ -96,7 +104,7 @@ class ClientDataTable extends DataTable
         return $this->builder()
             ->setTableId('client-table')
             ->columns($this->getColumns())
-            ->minifiedAjax()
+            ->minifiedAjax('', "data.archived = window.clientListArchived || '0';")
             ->dom('frtip')
             ->orderBy(1, 'asc')
             ->responsive(true)
@@ -106,6 +114,12 @@ class ClientDataTable extends DataTable
             ->language(['url' => '/js/datatables/'.strtolower(substr((string) session()->get('locale', app()->getLocale()), 0, 2)).'.json'])
             ->parameters([
                 'initComplete' => "function() {
+					var filter = document.getElementById('client-table_filter');
+					var archiveFilter = document.getElementById('client-archive-filter');
+					if (filter && archiveFilter) {
+						filter.prepend(archiveFilter);
+						archiveFilter.classList.remove('d-none');
+					}
 					var api = this.api();
 					api.columns('.select-filter').every(function() {
 						var column = this;
@@ -167,6 +181,29 @@ class ClientDataTable extends DataTable
     protected function filename(): string
     {
         return 'Client_'.date('YmdHis');
+    }
+
+    /**
+     * @var array<int, ?string>
+     */
+    private array $mergedIntoNames = [];
+
+    private function archivedSubtitle(Enterprise $row): string
+    {
+        $mergedId = (int) data_get($row->data, 'merged_into_enterprise_id');
+        if ($mergedId < 1)
+        {
+            return 'Archivada';
+        }
+
+        if (! array_key_exists($mergedId, $this->mergedIntoNames))
+        {
+            $this->mergedIntoNames[$mergedId] = Enterprise::query()->whereKey($mergedId)->value('name');
+        }
+
+        $name = $this->mergedIntoNames[$mergedId];
+
+        return $name ? 'Fusionada en '.$name : 'Archivada';
     }
 
     private function ensureProtocol($url)

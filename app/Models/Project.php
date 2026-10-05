@@ -449,6 +449,7 @@ class Project extends Model
             ProjectStatus::STATUS_FINISHED,
             ProjectStatus::STATUS_TO_INVOICE,
             ProjectStatus::STATUS_INVOICED,
+            ProjectStatus::STATUS_BONIFIED,
         ], true);
     }
 

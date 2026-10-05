@@ -104,12 +104,26 @@ class ProjectController extends Controller
 
             $projects = $query->paginate($request->get('per_page', 20));
 
-            $projects->getCollection()->each(function (Project $project) use ($user)
+            $boardIds = $projects->getCollection()->pluck('board_id')->filter()->unique()->values();
+            $activeBoardIds = $boardIds->isEmpty()
+                ? collect()
+                : Task::query()
+                    ->whereIn('board_id', $boardIds)
+                    ->whereHas('times', function ($times)
+                    {
+                        $times->whereNull('end_time')->whereNotNull('start_time');
+                    })
+                    ->pluck('board_id');
+
+            $projects->getCollection()->each(function (Project $project) use ($user, $activeBoardIds)
             {
                 if ($project->viewedAsClient($user))
                 {
                     $project->unsetRelation('responsible');
                     $project->makeHidden(['responsible_id']);
+                } else
+                {
+                    $project->setAttribute('has_active_task', $activeBoardIds->contains($project->board_id));
                 }
             });
 
@@ -311,11 +325,17 @@ class ProjectController extends Controller
                 $projectTasks = Task::withoutGlobalScope('team')
                     ->where('team_id', $project->team_id)
                     ->where('board_id', $project->board_id)
-                    ->with($clientView ? ['status'] : ['status', 'responsible'])
+                    ->with($clientView ? ['status'] : ['status', 'responsible', 'category'])
                     ->defaultOrder()
                     ->get();
 
-                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView)
+                $timesByTask = Time::withoutGlobalScope('team')
+                    ->where('team_id', $project->team_id)
+                    ->whereIn('task_id', $projectTasks->pluck('id'))
+                    ->get()
+                    ->groupBy('task_id');
+
+                $tasks = $projectTasks->map(function ($task) use (&$totalSeconds, $clientView, $timesByTask)
                 {
                     $status = [
                         'id' => $task->status?->id,
@@ -335,13 +355,9 @@ class ProjectController extends Controller
                         ];
                     }
 
-                    $taskTime = Time::where('task_id', $task->id)
-                        ->whereNotNull('end_time')
-                        ->get()
-                        ->sum(function ($time)
-                        {
-                            return $time->start_time->diffInSeconds($time->end_time);
-                        });
+                    $taskTimes = $timesByTask->get($task->id, collect());
+                    $taskTime = $this->loggedTaskSeconds($taskTimes);
+                    $runningTimers = $taskTimes->filter(fn (Time $time) => $time->end_time === null && $time->start_time)->count();
 
                     $totalSeconds += $taskTime;
 
@@ -353,13 +369,23 @@ class ProjectController extends Controller
                         'estimated_hours' => $task->estimated_hours,
                         'start_date' => $task->start_date?->format('Y-m-d'),
                         'due_date' => $task->due_date?->format('Y-m-d'),
+                        'status_id' => $task->status_id,
+                        'responsible_id' => $task->responsible_id,
+                        'category_id' => $task->category_id,
+                        'category' => $task->category ? [
+                            'id' => $task->category->id,
+                            'name' => $task->category->name,
+                        ] : null,
                         'status' => $status,
                         'responsible' => [
                             'id' => $task->responsible?->id,
                             'name' => $task->responsible?->name,
+                            'email' => $task->responsible?->email,
                         ],
+                        'attachment' => $task->attachmentUrl(),
                         'time_seconds' => $taskTime,
                         'time_formatted' => gmdate('H:i:s', $taskTime),
+                        'running_timers' => $runningTimers,
                     ];
                 });
             }
@@ -829,9 +855,9 @@ class ProjectController extends Controller
                 'responsible',
                 'category',
                 'media',
-                'times' => function ($query) use ($user)
+                'times' => function ($query)
                 {
-                    $query->where('user_id', $user->id)->whereNull('end_time');
+                    $query->with('user');
                 },
             ])
             ->orderBy('order')
@@ -933,13 +959,35 @@ class ProjectController extends Controller
             'order' => $order,
         ]);
 
-        $task->load(['status', 'responsible']);
+        $task->load(['status', 'responsible', 'category', 'times.user']);
 
         return response()->json([
             'success' => true,
             'data' => $this->mapBoardTask($task),
             'message' => 'Task reordered successfully',
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, Time>  $times
+     */
+    private function loggedTaskSeconds(\Illuminate\Support\Collection $times): int
+    {
+        $now = now()->getTimestamp();
+        $total = 0;
+
+        foreach ($times as $time)
+        {
+            if (! $time->start_time)
+            {
+                continue;
+            }
+
+            $end = $time->end_time ? $time->end_time->getTimestamp() : $now;
+            $total += max(0, $end - $time->start_time->getTimestamp());
+        }
+
+        return $total;
     }
 
     private function visibleProjectsQuery(User $user): \Illuminate\Database\Eloquent\Builder
@@ -998,6 +1046,12 @@ class ProjectController extends Controller
             ] : null,
             'attachment' => $task->attachmentUrl(),
             'active_time' => $this->activeTimePayload($task),
+            'workers' => $task->relationLoaded('times')
+                ? \App\Support\TaskTimeBudget::workers($task->times)
+                : [],
+            'running_timers' => $task->relationLoaded('times')
+                ? $task->times->filter(fn (Time $time) => $time->end_time === null && $time->start_time)->count()
+                : 0,
         ];
     }
 

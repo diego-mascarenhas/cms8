@@ -1424,6 +1424,7 @@
     "Project updated successfully.": "Proyecto actualizado correctamente.",
     "project_status.APPROVED": "Aprobado",
     "project_status.AUTHORIZED": "Autorizado",
+    "project_status.BONIFIED": "Bonificado",
     "project_status.BUDGET": "Presupuesto",
     "project_status.BUDGETED": "Presupuestado",
     "project_status.FINISHED": "Finalizado",

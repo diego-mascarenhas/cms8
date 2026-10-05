@@ -21,13 +21,38 @@
             <p class="text-muted mb-0">{{ __('Detailed client information') }}</p>
         </div>
         <div class="d-flex align-items-center flex-shrink-0 gap-3">
-            @can('edit', $client)
-                <a href="{{ route('client.edit', $client->id) }}" class="btn btn-primary waves-effect waves-light">
-                    <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
-                </a>
-            @endcan
+            @if ($client->trashed())
+                @can('update', $client)
+                    <form method="POST" action="{{ route('client.restore', $client->id) }}" onsubmit="return confirm('La empresa vuelve al listado. Los proyectos y las facturas siguen en la empresa con la que se fusionó.');">
+                        @csrf
+                        <button type="submit" class="btn btn-primary waves-effect waves-light">
+                            <i class="ti ti-arrow-back-up me-1"></i>Restaurar
+                        </button>
+                    </form>
+                @endcan
+            @else
+                @can('update', $client)
+                    <button type="button" class="btn btn-label-secondary waves-effect" data-bs-toggle="modal" data-bs-target="#modalMergeEnterprise">
+                        <i class="ti ti-git-merge me-1"></i>Fusionar
+                    </button>
+                @endcan
+                @can('edit', $client)
+                    <a href="{{ route('client.edit', $client->id) }}" class="btn btn-primary waves-effect waves-light">
+                        <i class="ti ti-edit me-1"></i>{{ __('Edit') }}
+                    </a>
+                @endcan
+            @endif
         </div>
     </div>
+
+    @if ($client->trashed())
+        <div class="alert alert-warning" role="alert">
+            Esta empresa está archivada.
+            @if ($mergedInto)
+                Se fusionó en <a href="{{ route('empresas.show', $mergedInto->id) }}">{{ $mergedInto->name }}</a>.
+            @endif
+        </div>
+    @endif
 
     <div class="row row-cols-4 g-3 mb-4">
         @foreach($headlineCards as $card)
@@ -245,6 +270,36 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
                             <button type="button" class="btn btn-primary" id="linkContactSubmitBtn" disabled>Vincular</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal fade" id="modalMergeEnterprise" tabindex="-1" aria-labelledby="modalMergeEnterpriseLabel" aria-hidden="true"
+                data-candidates-url="{{ route('client.merge-candidates', $client->id) }}"
+                data-preview-url="{{ route('client.merge-preview', $client->id) }}"
+                data-merge-url="{{ route('client.merge', $client->id) }}"
+                data-current-stripe="{{ $client->getStripeCustomerId() ? '1' : '0' }}">
+                <div class="modal-dialog modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalMergeEnterpriseLabel">Fusionar empresa</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">La que tiene código <span class="font-monospace">cus_</span> se conserva. La otra se archiva y sus proyectos, facturas y contactos pasan a esa.</p>
+                            <label for="mergeEnterpriseSearchInput" class="form-label">Buscar la empresa duplicada</label>
+                            <input type="search" class="form-control" id="mergeEnterpriseSearchInput" placeholder="Nombre, código o email…" autocomplete="off">
+                            <div id="mergeEnterpriseFeedback" class="alert d-none mt-3 mb-0" role="alert"></div>
+                            <div id="mergeEnterpriseList" class="list-group list-group-flush mt-3 border rounded d-none"></div>
+                            <div id="mergeEnterprisePreview" class="d-none mt-3">
+                                <p id="mergeEnterprisePreviewMessage" class="mb-2"></p>
+                                <ul id="mergeEnterprisePreviewLines" class="mb-0"></ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                            <button type="button" class="btn btn-primary" id="mergeEnterpriseSubmitBtn" disabled>Fusionar</button>
                         </div>
                     </div>
                 </div>
@@ -1155,6 +1210,235 @@ document.addEventListener('DOMContentLoaded', function () {
                     submitBtn.disabled = false;
                     showFeedback('Error de red al vincular.');
                 });
+        });
+    }
+
+    var modalMerge = document.getElementById('modalMergeEnterprise');
+    if (modalMerge) {
+        var mergeCurrentHasStripe = modalMerge.getAttribute('data-current-stripe') === '1';
+        var mergeCandidatesUrl = modalMerge.getAttribute('data-candidates-url');
+        var mergePreviewUrl = modalMerge.getAttribute('data-preview-url');
+        var mergeUrl = modalMerge.getAttribute('data-merge-url');
+        var mergeSearch = document.getElementById('mergeEnterpriseSearchInput');
+        var mergeList = document.getElementById('mergeEnterpriseList');
+        var mergePreview = document.getElementById('mergeEnterprisePreview');
+        var mergePreviewMessage = document.getElementById('mergeEnterprisePreviewMessage');
+        var mergePreviewLines = document.getElementById('mergeEnterprisePreviewLines');
+        var mergeFeedback = document.getElementById('mergeEnterpriseFeedback');
+        var mergeSubmit = document.getElementById('mergeEnterpriseSubmitBtn');
+        var mergeSelectedId = null;
+        var mergeLines = [];
+        var mergeTimer = null;
+
+        function mergeEsc(value) {
+            var holder = document.createElement('div');
+            holder.textContent = value === null || value === undefined ? '' : String(value);
+            return holder.innerHTML;
+        }
+
+        function mergeFeedbackHide() {
+            mergeFeedback.classList.add('d-none');
+            mergeFeedback.textContent = '';
+        }
+
+        function mergeFeedbackShow(message, tone) {
+            mergeFeedback.className = 'alert alert-' + tone + ' mt-3 mb-0';
+            mergeFeedback.textContent = message;
+        }
+
+        function mergeResetPreview() {
+            mergeSelectedId = null;
+            mergeSubmit.disabled = true;
+            mergePreview.classList.add('d-none');
+            mergePreviewMessage.textContent = '';
+            mergePreviewLines.innerHTML = '';
+            mergeLines = [];
+        }
+
+        function mergeDialogHtml(message, lines) {
+            var html = '<p class="mb-2">' + mergeEsc(message) + '</p>';
+            if (!lines.length) {
+                return html;
+            }
+            html += '<ul class="text-start mb-0">';
+            lines.forEach(function (line) {
+                html += '<li>' + mergeEsc(line) + '</li>';
+            });
+            html += '</ul>';
+            return html;
+        }
+
+        function mergeDialog(options) {
+            var modal = window.bootstrap && bootstrap.Modal.getInstance(modalMerge);
+            if (modal && modal._focustrap) {
+                modal._focustrap.deactivate();
+            }
+            return Swal.fire({
+                icon: options.icon,
+                title: options.title,
+                html: mergeDialogHtml(options.message, options.lines || []),
+                showCancelButton: !!options.showCancel,
+                confirmButtonText: options.confirmText,
+                cancelButtonText: 'Cancelar',
+                buttonsStyling: false,
+                focusCancel: true,
+                customClass: {
+                    confirmButton: 'btn btn-primary me-2',
+                    cancelButton: 'btn btn-label-secondary',
+                },
+                didOpen: function () {
+                    var container = Swal.getContainer();
+                    if (container) {
+                        container.style.zIndex = '20000';
+                    }
+                },
+            }).then(function (result) {
+                if (modal && modal._focustrap) {
+                    modal._focustrap.activate();
+                }
+                return result;
+            });
+        }
+
+        function loadMergePreview(enterpriseId) {
+            mergeResetPreview();
+            mergeFeedbackHide();
+            fetch(mergePreviewUrl + '?enterprise_id=' + encodeURIComponent(enterpriseId), {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            })
+                .then(function (response) { return response.json(); })
+                .then(function (body) {
+                    mergePreview.classList.remove('d-none');
+                    mergePreviewMessage.textContent = body.message || '';
+                    mergeLines = body.lines || [];
+                    mergeLines.forEach(function (line) {
+                        var item = document.createElement('li');
+                        item.textContent = line;
+                        mergePreviewLines.appendChild(item);
+                    });
+                    if (body.blocked) {
+                        mergeFeedbackShow(body.message || 'No se puede fusionar.', 'warning');
+                        return;
+                    }
+                    mergeSelectedId = enterpriseId;
+                    mergeSubmit.disabled = false;
+                })
+                .catch(function () {
+                    mergeFeedbackShow('No se pudo preparar la fusión.', 'danger');
+                });
+        }
+
+        function renderMergeCandidates(rows) {
+            mergeList.innerHTML = '';
+            if (!rows.length) {
+                mergeList.classList.add('d-none');
+                return;
+            }
+            mergeList.classList.remove('d-none');
+            rows.forEach(function (row) {
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'list-group-item list-group-item-action';
+                button.innerHTML = '<span class="fw-medium">' + mergeEsc(row.name) + '</span>'
+                    + (row.stripe && !mergeCurrentHasStripe ? ' <span class="badge bg-label-success">Se conserva</span>' : '')
+                    + '<br><small class="text-muted">' + mergeEsc(row.subtitle) + '</small>';
+                button.addEventListener('click', function () {
+                    mergeList.querySelectorAll('.active').forEach(function (item) {
+                        item.classList.remove('active');
+                    });
+                    button.classList.add('active');
+                    loadMergePreview(row.id);
+                });
+                mergeList.appendChild(button);
+            });
+        }
+
+        mergeSearch.addEventListener('input', function () {
+            var term = mergeSearch.value.trim();
+            mergeResetPreview();
+            mergeFeedbackHide();
+            clearTimeout(mergeTimer);
+            if (term.length < 2) {
+                mergeList.classList.add('d-none');
+                mergeList.innerHTML = '';
+                return;
+            }
+            mergeTimer = setTimeout(function () {
+                fetch(mergeCandidatesUrl + '?q=' + encodeURIComponent(term), {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (body) { renderMergeCandidates(body.enterprises || []); })
+                    .catch(function () { mergeFeedbackShow('No se pudo buscar.', 'danger'); });
+            }, 300);
+        });
+
+        function mergePost() {
+            mergeSubmit.disabled = true;
+            var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            fetch(mergeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': tokenMeta ? tokenMeta.getAttribute('content') : '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                body: JSON.stringify({ enterprise_id: mergeSelectedId }),
+            })
+                .then(function (response) {
+                    return response.json().then(function (body) {
+                        return { ok: response.ok, body: body };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.body.success) {
+                        mergeSubmit.disabled = false;
+                        mergeFeedbackShow((result.body && result.body.message) ? result.body.message : 'No se pudo fusionar.', 'danger');
+                        return;
+                    }
+                    var doneLines = (result.body && result.body.lines) ? result.body.lines : mergeLines;
+                    mergeDialog({
+                        icon: 'success',
+                        title: 'Valores fusionados',
+                        message: (result.body && result.body.message) ? result.body.message : 'Empresas fusionadas.',
+                        lines: doneLines,
+                        confirmText: 'Ver empresa',
+                    }).then(function () {
+                        window.location.href = result.body.redirect;
+                    });
+                })
+                .catch(function () {
+                    mergeSubmit.disabled = false;
+                    mergeFeedbackShow('Error de red al fusionar.', 'danger');
+                });
+        }
+
+        mergeSubmit.addEventListener('click', function () {
+            if (!mergeSelectedId) {
+                return;
+            }
+            mergeDialog({
+                icon: 'warning',
+                title: 'Confirmá la fusión',
+                message: mergePreviewMessage.textContent || 'Se archiva la empresa duplicada.',
+                lines: mergeLines,
+                showCancel: true,
+                confirmText: 'Fusionar',
+            }).then(function (result) {
+                if (!result.isConfirmed) {
+                    return;
+                }
+                mergePost();
+            });
+        });
+
+        modalMerge.addEventListener('hidden.bs.modal', function () {
+            mergeSearch.value = '';
+            mergeList.innerHTML = '';
+            mergeList.classList.add('d-none');
+            mergeResetPreview();
+            mergeFeedbackHide();
         });
     }
 

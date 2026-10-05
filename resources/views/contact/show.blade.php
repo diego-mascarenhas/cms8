@@ -57,12 +57,24 @@
                 Creado el {{ Carbon\Carbon::parse($data->created_at)->isoFormat('D [de] MMMM [de] YYYY, HH:mm [hs]') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-3">
-            <!-- <a href="{{ route('contact.create') }}" type="submit" class="btn btn-primary waves-effect waves-light"><i
-                            class="ti ti-plus me-1"></i>Añadir informe</a> -->
+            @if ($data->trashed())
+                @can('update', $data)
+                    <form method="POST" action="{{ route('contact.restore', $data->id) }}" onsubmit="return confirm('El contacto vuelve al listado.');">
+                        @csrf
+                        <button type="submit" class="btn btn-primary waves-effect waves-light">
+                            <i class="ti ti-arrow-back-up me-1"></i>Restaurar
+                        </button>
+                    </form>
+                @endcan
+            @else
             @can('update', $data)
+            <button type="button" class="btn btn-label-secondary waves-effect" data-bs-toggle="modal" data-bs-target="#modalMergeContact">
+                <i class="ti ti-git-merge me-1"></i>Fusionar
+            </button>
             <a href="{{ route('contact.edit', $data->id) }}" class="btn btn-primary waves-effect waves-light"><i
                     class="ti ti-edit me-1"></i>Editar contacto</a>
             @endcan
+            @endif
             @if ($data->chatIndexUrl() && (auth()->user()->can('chat.list') || auth()->user()->hasAnyRole(['admin', 'collaborator', 'developer', 'technical', 'marketing'])))
                 <a href="{{ $data->chatIndexUrl() }}"
                     class="btn btn-info waves-effect waves-light"><i class="ti ti-message-chatbot me-1"></i>Chat</a>
@@ -73,13 +85,50 @@
                         class="btn btn-label-primary waves-effect waves-light"><i class="ti ti-mail me-1"></i>{{ __('Mail') }}</a>
                 @endif
             @endcan
-            @if (auth()->user()->currentTeam->id == env('CMS_TEAM_ID') && $data->enterprises->first() && auth()->user()->hasRole('admin'))
-                <a href="{{ route('cms7.empresa', $data->enterprises->first()->id) }}" class="btn btn-secondary waves-effect waves-light" target="_blank">
-                    <i class="ti ti-database me-1"></i>
-                </a>
-            @endif
         </div>
     </div>
+
+    @if ($data->trashed())
+        <div class="alert alert-warning" role="alert">
+            Este contacto está archivado.
+            @if ($mergedInto)
+                Se fusionó en <a href="{{ route('contact.show', $mergedInto->id) }}">{{ trim($mergedInto->name.' '.($mergedInto->surname ?? '')) }}</a>.
+            @endif
+        </div>
+    @endif
+
+    @can('update', $data)
+        @if (! $data->trashed())
+            <div class="modal fade" id="modalMergeContact" tabindex="-1" aria-labelledby="modalMergeContactLabel" aria-hidden="true"
+                data-candidates-url="{{ route('contact.merge-candidates', $data->id) }}"
+                data-preview-url="{{ route('contact.merge-preview', $data->id) }}"
+                data-merge-url="{{ route('contact.merge', $data->id) }}">
+                <div class="modal-dialog modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="modalMergeContactLabel">Fusionar contacto</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-muted small">Se conserva este contacto. El otro se archiva. Si está en otras empresas, esos vínculos pasan con el rol de cada una.</p>
+                            <label for="mergeContactSearchInput" class="form-label">Buscar el contacto duplicado</label>
+                            <input type="search" class="form-control" id="mergeContactSearchInput" placeholder="Nombre, email o teléfono…" autocomplete="off">
+                            <div id="mergeContactFeedback" class="alert d-none mt-3 mb-0" role="alert"></div>
+                            <div id="mergeContactList" class="list-group list-group-flush mt-3 border rounded d-none"></div>
+                            <div id="mergeContactPreview" class="d-none mt-3">
+                                <p id="mergeContactPreviewMessage" class="mb-2"></p>
+                                <ul id="mergeContactPreviewLines" class="mb-0"></ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-label-secondary" data-bs-dismiss="modal">{{ __('Cancel') }}</button>
+                            <button type="button" class="btn btn-primary" id="mergeContactSubmitBtn" disabled>Fusionar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
+    @endcan
 
     <div class="row">
         <!-- User Sidebar -->
@@ -163,19 +212,19 @@
                                             @php $linkedEnterprise = $data->enterprises->first(); @endphp
                                             @if (auth()->user()->seesFullContactProfile())
                                                 <a href="{{ route('empresas.show', $linkedEnterprise->id) }}" class="text-decoration-none" title="{{ __('View company') }}">
-                                                    <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}</span>
+                                                    <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}{{ $linkedEnterprise->pivot->position ? ' · '.$linkedEnterprise->pivot->position : '' }}</span>
                                                 </a>
                                             @else
                                                 <span class="badge bg-label-primary">{{ $linkedEnterprise->name }}</span>
                                             @endif
                                         @else
                                             <span class="d-inline-flex align-items-center gap-2">
-                                                <select id="current-enterprise-selector" class="form-select form-select-sm d-inline-block" style="width: auto; min-width: 200px;">
+                                                <select id="current-enterprise-selector" class="form-select form-select-sm">
                                                     <option value="">Seleccionar empresa</option>
                                                     @foreach ($data->enterprises as $enterprise)
                                                         <option value="{{ $enterprise->id }}"
                                                             {{ $data->current_enterprise_id == $enterprise->id ? 'selected' : '' }}>
-                                                            {{ $enterprise->name }}
+                                                            {{ $enterprise->name }}{{ $enterprise->pivot->position ? ' · '.$enterprise->pivot->position : '' }}
                                                         </option>
                                                     @endforeach
                                                 </select>
@@ -598,8 +647,26 @@
             document.getElementById('totalTime').textContent = formattedTime;
         }, 1000);
 
-        // Handle enterprise selector change
-        $('#current-enterprise-selector').on('change', function() {
+        var $currentEnterprise = $('#current-enterprise-selector');
+        if ($currentEnterprise.length && $.fn.select2) {
+            $currentEnterprise.wrap('<div class="position-relative d-inline-block"></div>');
+            $currentEnterprise.select2({
+                width: '18rem',
+                minimumResultsForSearch: Infinity,
+                dropdownAutoWidth: true,
+            });
+            $currentEnterprise.on('select2:open', function () {
+                var dropdown = document.querySelector('.select2-container--open .select2-dropdown');
+                if (!dropdown) {
+                    return;
+                }
+                dropdown.style.width = 'max-content';
+                dropdown.style.minWidth = '18rem';
+                dropdown.style.maxWidth = '28rem';
+            });
+        }
+
+        $currentEnterprise.on('change', function() {
             const enterpriseId = $(this).val();
             const contactId = {{ $data->id }};
             const goLink = document.getElementById('go-current-enterprise');
@@ -637,5 +704,223 @@
             });
         });
 
+    </script>
+    <script>
+        var modalMergeContact = document.getElementById('modalMergeContact');
+        if (modalMergeContact) {
+            var mergeContactCandidatesUrl = modalMergeContact.getAttribute('data-candidates-url');
+            var mergeContactPreviewUrl = modalMergeContact.getAttribute('data-preview-url');
+            var mergeContactUrl = modalMergeContact.getAttribute('data-merge-url');
+            var mergeContactSearch = document.getElementById('mergeContactSearchInput');
+            var mergeContactList = document.getElementById('mergeContactList');
+            var mergeContactPreview = document.getElementById('mergeContactPreview');
+            var mergeContactPreviewMessage = document.getElementById('mergeContactPreviewMessage');
+            var mergeContactPreviewLines = document.getElementById('mergeContactPreviewLines');
+            var mergeContactFeedback = document.getElementById('mergeContactFeedback');
+            var mergeContactSubmit = document.getElementById('mergeContactSubmitBtn');
+            var mergeContactSelectedId = null;
+            var mergeContactLines = [];
+            var mergeContactTimer = null;
+
+            function mergeContactEsc(value) {
+                var holder = document.createElement('div');
+                holder.textContent = value === null || value === undefined ? '' : String(value);
+                return holder.innerHTML;
+            }
+
+            function mergeContactFeedbackHide() {
+                mergeContactFeedback.classList.add('d-none');
+                mergeContactFeedback.textContent = '';
+            }
+
+            function mergeContactFeedbackShow(message, tone) {
+                mergeContactFeedback.className = 'alert alert-' + tone + ' mt-3 mb-0';
+                mergeContactFeedback.textContent = message;
+            }
+
+            function mergeContactResetPreview() {
+                mergeContactSelectedId = null;
+                mergeContactSubmit.disabled = true;
+                mergeContactPreview.classList.add('d-none');
+                mergeContactPreviewMessage.textContent = '';
+                mergeContactPreviewLines.innerHTML = '';
+                mergeContactLines = [];
+            }
+
+            function mergeContactDialogHtml(message, lines) {
+                var html = '<p class="mb-2">' + mergeContactEsc(message) + '</p>';
+                if (!lines.length) {
+                    return html;
+                }
+                html += '<ul class="text-start mb-0">';
+                lines.forEach(function (line) {
+                    html += '<li>' + mergeContactEsc(line) + '</li>';
+                });
+                html += '</ul>';
+                return html;
+            }
+
+            function mergeContactDialog(options) {
+                var modal = window.bootstrap && bootstrap.Modal.getInstance(modalMergeContact);
+                if (modal && modal._focustrap) {
+                    modal._focustrap.deactivate();
+                }
+                return Swal.fire({
+                    icon: options.icon,
+                    title: options.title,
+                    html: mergeContactDialogHtml(options.message, options.lines || []),
+                    showCancelButton: !!options.showCancel,
+                    confirmButtonText: options.confirmText,
+                    cancelButtonText: 'Cancelar',
+                    buttonsStyling: false,
+                    focusCancel: true,
+                    customClass: {
+                        confirmButton: 'btn btn-primary me-2',
+                        cancelButton: 'btn btn-label-secondary',
+                    },
+                    didOpen: function () {
+                        var container = Swal.getContainer();
+                        if (container) {
+                            container.style.zIndex = '20000';
+                        }
+                    },
+                }).then(function (result) {
+                    if (modal && modal._focustrap) {
+                        modal._focustrap.activate();
+                    }
+                    return result;
+                });
+            }
+
+            function loadContactMergePreview(contactId) {
+                mergeContactResetPreview();
+                mergeContactFeedbackHide();
+                fetch(mergeContactPreviewUrl + '?contact_id=' + encodeURIComponent(contactId), {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                    .then(function (response) { return response.json(); })
+                    .then(function (body) {
+                        mergeContactPreview.classList.remove('d-none');
+                        mergeContactPreviewMessage.textContent = body.message || '';
+                        mergeContactLines = body.lines || [];
+                        mergeContactLines.forEach(function (line) {
+                            var item = document.createElement('li');
+                            item.textContent = line;
+                            mergeContactPreviewLines.appendChild(item);
+                        });
+                        if (body.blocked) {
+                            mergeContactFeedbackShow(body.message || 'No se puede fusionar.', 'warning');
+                            return;
+                        }
+                        mergeContactSelectedId = contactId;
+                        mergeContactSubmit.disabled = false;
+                    })
+                    .catch(function () {
+                        mergeContactFeedbackShow('No se pudo preparar la fusión.', 'danger');
+                    });
+            }
+
+            mergeContactSearch.addEventListener('input', function () {
+                var term = mergeContactSearch.value.trim();
+                mergeContactResetPreview();
+                mergeContactFeedbackHide();
+                clearTimeout(mergeContactTimer);
+                if (term.length < 2) {
+                    mergeContactList.classList.add('d-none');
+                    mergeContactList.innerHTML = '';
+                    return;
+                }
+                mergeContactTimer = setTimeout(function () {
+                    fetch(mergeContactCandidatesUrl + '?q=' + encodeURIComponent(term), {
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    })
+                        .then(function (response) { return response.json(); })
+                        .then(function (body) {
+                            mergeContactList.innerHTML = '';
+                            var rows = body.contacts || [];
+                            if (!rows.length) {
+                                mergeContactList.classList.add('d-none');
+                                return;
+                            }
+                            mergeContactList.classList.remove('d-none');
+                            rows.forEach(function (row) {
+                                var button = document.createElement('button');
+                                button.type = 'button';
+                                button.className = 'list-group-item list-group-item-action';
+                                button.innerHTML = '<span class="fw-medium">' + mergeContactEsc(row.name) + '</span><br><small class="text-muted">' + mergeContactEsc(row.subtitle) + '</small>';
+                                button.addEventListener('click', function () {
+                                    mergeContactList.querySelectorAll('.active').forEach(function (item) {
+                                        item.classList.remove('active');
+                                    });
+                                    button.classList.add('active');
+                                    loadContactMergePreview(row.id);
+                                });
+                                mergeContactList.appendChild(button);
+                            });
+                        })
+                        .catch(function () { mergeContactFeedbackShow('No se pudo buscar.', 'danger'); });
+                }, 300);
+            });
+
+            function mergeContactPost() {
+                mergeContactSubmit.disabled = true;
+                var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+                fetch(mergeContactUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': tokenMeta ? tokenMeta.getAttribute('content') : '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ contact_id: mergeContactSelectedId }),
+                })
+                    .then(function (response) {
+                        return response.json().then(function (body) {
+                            return { ok: response.ok, body: body };
+                        });
+                    })
+                    .then(function (result) {
+                        if (!result.ok || !result.body.success) {
+                            mergeContactSubmit.disabled = false;
+                            mergeContactFeedbackShow((result.body && result.body.message) ? result.body.message : 'No se pudo fusionar.', 'danger');
+                            return;
+                        }
+                        var doneLines = (result.body && result.body.lines) ? result.body.lines : mergeContactLines;
+                        mergeContactDialog({
+                            icon: 'success',
+                            title: 'Valores fusionados',
+                            message: (result.body && result.body.message) ? result.body.message : 'Contactos fusionados.',
+                            lines: doneLines,
+                            confirmText: 'Ver contacto',
+                        }).then(function () {
+                            window.location.href = result.body.redirect;
+                        });
+                    })
+                    .catch(function () {
+                        mergeContactSubmit.disabled = false;
+                        mergeContactFeedbackShow('Error de red al fusionar.', 'danger');
+                    });
+            }
+
+            mergeContactSubmit.addEventListener('click', function () {
+                if (!mergeContactSelectedId) {
+                    return;
+                }
+                mergeContactDialog({
+                    icon: 'warning',
+                    title: 'Confirmá la fusión',
+                    message: mergeContactPreviewMessage.textContent || 'Se archiva el contacto duplicado.',
+                    lines: mergeContactLines,
+                    showCancel: true,
+                    confirmText: 'Fusionar',
+                }).then(function (result) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                    mergeContactPost();
+                });
+            });
+        }
     </script>
 @endpush
