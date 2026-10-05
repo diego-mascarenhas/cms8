@@ -8,6 +8,7 @@ use App\Http\Requests\Api\ImportMailerAudienceCsvRequest;
 use App\Services\MailerAudienceCsvImportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class MailerAudienceImportController extends Controller
 {
@@ -39,6 +40,7 @@ class MailerAudienceImportController extends Controller
                 'sample_csv' => $importer->templateContents(),
                 'contacts_count' => $importer->audienceCount((int) $team->id),
                 'subscribers_limit' => $team->getContactLimit(),
+                ...$importer->importOptions((int) $team->id),
             ],
         ]);
     }
@@ -61,11 +63,40 @@ class MailerAudienceImportController extends Controller
             return $denied;
         }
 
+        $path = $request->file('file')->getRealPath();
+        $choices = $this->duplicateChoices($request);
+        $countryId = (int) $request->input('country_id', MailerAudienceCsvImportService::DEFAULT_COUNTRY_ID);
+        $categoryIds = $this->categoryIds($request);
+
+        if ($request->boolean('preview'))
+        {
+            $result = $importer->preview($path, $team, $choices, $countryId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        }
+
         $result = $importer->import(
-            $request->file('file')->getRealPath(),
+            $path,
             $team,
             (int) $request->user()->id,
+            $choices,
+            $countryId,
+            $categoryIds,
         );
+
+        if ($result['duplicates'] !== [])
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('Elegí qué teléfono conservar en los emails repetidos.'),
+                'data' => array_merge($result, [
+                    'contacts_count' => $importer->audienceCount((int) $team->id),
+                ]),
+            ], 422);
+        }
 
         $imported = $result['created'] + $result['updated'];
 
@@ -82,5 +113,56 @@ class MailerAudienceImportController extends Controller
                 'contacts_count' => $importer->audienceCount((int) $team->id),
             ]),
         ], $imported > 0 ? 200 : 422);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function duplicateChoices(Request $request): array
+    {
+        $raw = $request->input('choices');
+        if (! is_string($raw) || trim($raw) === '')
+        {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded))
+        {
+            return [];
+        }
+
+        $choices = [];
+        foreach ($decoded as $email => $phone)
+        {
+            if (! is_string($email) || ! is_string($phone))
+            {
+                continue;
+            }
+
+            $choices[Str::lower(trim($email))] = trim($phone);
+        }
+
+        return $choices;
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function categoryIds(Request $request): array
+    {
+        $raw = $request->input('category_ids');
+        if (! is_string($raw) || trim($raw) === '')
+        {
+            return [];
+        }
+
+        $decoded = json_decode($raw, true);
+        if (! is_array($decoded))
+        {
+            return [];
+        }
+
+        return array_values(array_filter(array_map('intval', $decoded)));
     }
 }

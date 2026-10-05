@@ -18,6 +18,10 @@ class ImportMailerAudienceCsvRequest extends FormRequest
     {
         return [
             'file' => ['required', 'file', 'mimetypes:text/csv,text/plain,application/csv,application/vnd.ms-excel', 'max:5120'],
+            'preview' => ['sometimes', 'boolean'],
+            'choices' => ['sometimes', 'nullable', 'string'],
+            'country_id' => ['sometimes', 'integer'],
+            'category_ids' => ['sometimes', 'nullable', 'string'],
         ];
     }
 
