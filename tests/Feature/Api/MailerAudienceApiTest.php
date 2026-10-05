@@ -587,6 +587,35 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('data.0.responsible', $user->name);
     }
 
+    public function test_records_a_contact_interaction_from_the_mailer_list(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/interactions', [
+                'type' => 'call',
+                'subject' => 'Seguimiento',
+                'body' => 'Pidió la propuesta por correo.',
+                'occurred_at' => '2026-10-05 19:10',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'call')
+            ->assertJsonPath('data.subject', 'Seguimiento')
+            ->assertJsonPath('data.occurred_at', '2026-10-05 19:10');
+
+        $this->assertDatabaseHas('contact_interactions', [
+            'contact_id' => $contact->id,
+            'type' => 'call',
+            'subject' => 'Seguimiento',
+            'body' => 'Pidió la propuesta por correo.',
+        ]);
+    }
+
     public function test_guest_cannot_list_audience(): void
     {
         $this->getJson('/api/mailer/audience')->assertUnauthorized();
