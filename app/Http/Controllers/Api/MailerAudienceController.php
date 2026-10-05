@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ContactInteractionType;
 use App\Http\Controllers\Api\Concerns\ChecksTeamModule;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\StoreMailerAudienceContactRequest;
 use App\Http\Requests\Api\StoreMailerAudienceListRequest;
 use App\Http\Requests\Api\UpdateMailerAudienceContactRequest;
+use App\Http\Requests\StoreContactInteractionRequest;
 use App\Models\Category;
 use App\Models\Contact;
+use App\Models\ContactInteraction;
 use App\Models\ContactStatus;
 use App\Models\List60;
 use App\Models\Message;
@@ -217,6 +220,60 @@ class MailerAudienceController extends Controller
             'data' => $this->formatContact($contact),
             'lists' => $this->listsForTeam((int) $team->id),
         ]);
+    }
+
+    public function storeInteraction(StoreContactInteractionRequest $request, int $id): JsonResponse
+    {
+        $team = $this->teamOrError($request);
+        if ($team instanceof JsonResponse)
+        {
+            return $team;
+        }
+
+        if ($denied = $this->ensureTeamModule($team, 'mailer'))
+        {
+            return $denied;
+        }
+
+        $contact = $this->contactForTeam((int) $team->id, $id);
+        if ($contact instanceof JsonResponse)
+        {
+            return $contact;
+        }
+
+        $user = $request->user();
+        if (! $user || ! $user->can('logInteraction', $contact))
+        {
+            return response()->json([
+                'success' => false,
+                'message' => __('No podés registrar interacciones en este contacto.'),
+            ], 403);
+        }
+
+        $validated = $request->validated();
+        unset($validated['opportunity_id']);
+
+        $interaction = new ContactInteraction($validated);
+        $interaction->contact_id = $contact->id;
+        $interaction->user_id = $user->id;
+        $interaction->save();
+
+        $type = $interaction->type instanceof ContactInteractionType
+            ? $interaction->type
+            : ContactInteractionType::from((string) $interaction->type);
+
+        return response()->json([
+            'success' => true,
+            'message' => __('Interaction recorded.'),
+            'data' => [
+                'id' => (int) $interaction->id,
+                'type' => $type->value,
+                'type_label' => $type->label(),
+                'subject' => $interaction->subject,
+                'body' => $interaction->body,
+                'occurred_at' => $interaction->occurred_at?->format('Y-m-d H:i'),
+            ],
+        ], 201);
     }
 
     public function indexList60(Request $request): JsonResponse
