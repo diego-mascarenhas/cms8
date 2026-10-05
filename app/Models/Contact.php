@@ -160,6 +160,36 @@ class Contact extends Model implements HasMedia
     }
 
     /**
+     * Stored profile photo: the linked user, or a WhatsApp photo for this phone.
+     */
+    public function storedPhotoUrl(): ?string
+    {
+        $userPhoto = $this->user?->profile_photo_url;
+        if (is_string($userPhoto) && $userPhoto !== '')
+        {
+            return $userPhoto;
+        }
+
+        $teamId = (int) ($this->team_id ?? 0);
+        if ($teamId < 1)
+        {
+            return null;
+        }
+
+        $store = app(WhatsAppProfilePhotoStore::class);
+        foreach ($this->whatsAppDigitCandidates() as $phone)
+        {
+            $url = $store->publicUrl($teamId, $phone);
+            if (is_string($url) && $url !== '')
+            {
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Digits used to match a stored WhatsApp profile photo.
      */
     public function whatsAppDigits(): string

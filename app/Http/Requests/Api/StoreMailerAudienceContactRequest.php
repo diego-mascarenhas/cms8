@@ -32,6 +32,7 @@ class StoreMailerAudienceContactRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'surname' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:40'],
             'email' => [
                 'required',
                 'email:rfc',

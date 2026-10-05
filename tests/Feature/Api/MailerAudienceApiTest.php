@@ -5,10 +5,15 @@ namespace Tests\Feature\Api;
 use App\Models\Category;
 use App\Models\Contact;
 use App\Models\ContactStatus;
+use App\Models\List60;
+use App\Models\Message;
+use App\Models\MessageDelivery;
+use App\Models\MessageDeliveryLink;
 use App\Models\Module;
 use App\Models\User;
 use Database\Seeders\ContactStatusSeeder;
 use Database\Seeders\CountrySeeder;
+use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\LanguageSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Jetstream\Features;
@@ -40,6 +45,7 @@ class MailerAudienceApiTest extends TestCase
             CountrySeeder::class,
             LanguageSeeder::class,
             ContactStatusSeeder::class,
+            EnterpriseTypeSeeder::class,
         ]);
 
         $user = User::factory()->withPersonalTeam()->create();
@@ -154,10 +160,12 @@ class MailerAudienceApiTest extends TestCase
                 'name' => 'Martín',
                 'surname' => 'Pérez',
                 'email' => 'martin.perez@cliente.com',
+                'phone' => '+34600111222',
                 'category_ids' => [$category->id],
             ])
             ->assertCreated()
             ->assertJsonPath('data.email', 'martin.perez@cliente.com')
+            ->assertJsonPath('data.phone', '34600111222')
             ->assertJsonPath('data.can_send', true)
             ->assertJsonPath('data.categories.0.name', 'Newsletter');
 
@@ -165,6 +173,7 @@ class MailerAudienceApiTest extends TestCase
             'team_id' => $team->id,
             'email' => 'martin.perez@cliente.com',
             'name' => 'Martín',
+            'phone' => '34600111222',
         ]);
     }
 
@@ -189,11 +198,13 @@ class MailerAudienceApiTest extends TestCase
                 'name' => 'Lucía',
                 'surname' => 'García López',
                 'email' => 'lucia.garcia@cliente.com',
+                'phone' => '+5491112345678',
                 'category_ids' => [$category->id, $vip->id],
             ]);
 
         $response->assertOk()
             ->assertJsonPath('data.surname', 'García López')
+            ->assertJsonPath('data.phone', '5491112345678')
             ->assertJsonCount(2, 'data.categories');
 
         $this->assertEqualsCanonicalizing(
@@ -204,6 +215,7 @@ class MailerAudienceApiTest extends TestCase
         $this->assertDatabaseHas('contacts', [
             'id' => $contact->id,
             'surname' => 'García López',
+            'phone' => '5491112345678',
             'creator_id' => $user->id,
         ]);
 
@@ -340,6 +352,239 @@ class MailerAudienceApiTest extends TestCase
             ->assertJsonPath('pagination.current_page', 2);
 
         $this->assertCount(7, $second->json('data'));
+    }
+
+    public function test_adds_an_audience_contact_to_list60(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Module::query()->firstOrCreate(
+            ['key' => 'list60'],
+            [
+                'name' => 'Lista 60',
+                'icon' => 'list',
+                'description' => 'Lista 60',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/list60')
+            ->assertForbidden();
+
+        $team->enableModule('list60');
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/list60')
+            ->assertCreated()
+            ->assertJsonPath('data.in_list60', true)
+            ->assertJsonPath('data.already', false);
+
+        $this->assertDatabaseHas('list60', [
+            'contact_id' => $contact->id,
+            'responsible_id' => $user->id,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/list60')
+            ->assertOk()
+            ->assertJsonPath('data.already', true);
+
+        $this->assertSame(1, List60::query()->where('contact_id', $contact->id)->count());
+    }
+
+    public function test_list60_note_describes_the_news_open_and_click(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Module::query()->firstOrCreate(
+            ['key' => 'list60'],
+            [
+                'name' => 'Lista 60',
+                'icon' => 'list',
+                'description' => 'Lista 60',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('list60');
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Hemos vuelto',
+            'text' => 'Asunto',
+            'type_id' => 1,
+            'status_id' => 0,
+        ]);
+
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'sent_at' => '2026-10-01 10:00:00',
+            'opened_at' => '2026-10-02 11:30:00',
+            'clicked_at' => null,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/list60', [
+                'delivery_id' => $delivery->id,
+            ])
+            ->assertCreated();
+
+        $note = (string) List60::query()->where('contact_id', $contact->id)->value('notes');
+        $this->assertStringContainsString('News «Hemos vuelto».', $note);
+        $this->assertStringContainsString('Se envió el ', $note);
+        $this->assertStringContainsString('Lo abrió el ', $note);
+        $this->assertStringContainsString('No hizo clic.', $note);
+        $this->assertStringNotContainsString('Hizo clic el ', $note);
+
+        $contact->refresh();
+        $this->assertStringContainsString('News «Hemos vuelto».', (string) ($contact->data->notes ?? ''));
+        $this->assertSame($user->id, (int) List60::query()->where('contact_id', $contact->id)->value('responsible_id'));
+    }
+
+    public function test_list60_note_names_the_clicked_links(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+        Module::query()->firstOrCreate(
+            ['key' => 'list60'],
+            [
+                'name' => 'Lista 60',
+                'icon' => 'list',
+                'description' => 'Lista 60',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+        $team->enableModule('list60');
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $message = Message::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Hemos vuelto',
+            'text' => 'Asunto',
+            'type_id' => 1,
+            'status_id' => 0,
+        ]);
+
+        $delivery = MessageDelivery::query()->create([
+            'team_id' => $team->id,
+            'message_id' => $message->id,
+            'contact_id' => $contact->id,
+            'status_id' => 1,
+            'sent_at' => '2026-10-01 10:00:00',
+            'opened_at' => '2026-10-02 11:30:00',
+            'clicked_at' => '2026-10-02 11:45:00',
+        ]);
+
+        MessageDeliveryLink::query()->create([
+            'message_delivery_id' => $delivery->id,
+            'link' => 'https://www.pedimosfacil.com',
+            'click_count' => 1,
+        ]);
+        MessageDeliveryLink::query()->create([
+            'message_delivery_id' => $delivery->id,
+            'link' => 'https://idoneo.dev',
+            'click_count' => 2,
+        ]);
+        MessageDeliveryLink::query()->create([
+            'message_delivery_id' => $delivery->id,
+            'link' => 'https://no-se-abrio.example',
+            'click_count' => 0,
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/list60', [
+                'delivery_id' => $delivery->id,
+            ])
+            ->assertCreated();
+
+        $note = (string) List60::query()->where('contact_id', $contact->id)->value('notes');
+        $this->assertStringContainsString(
+            'Hizo clic el ',
+            $note,
+        );
+        $this->assertStringContainsString('en https://www.pedimosfacil.com y https://idoneo.dev.', $note);
+        $this->assertStringNotContainsString('no-se-abrio.example', $note);
+    }
+
+    public function test_shows_an_audience_contact_for_editing(): void
+    {
+        [, $team, $token] = $this->adminWithToken();
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/audience/'.$contact->id)
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Lucía')
+            ->assertJsonPath('data.email', 'lucia.garcia@cliente.com')
+            ->assertJsonPath('data.phone', null)
+            ->assertJsonStructure(['lists']);
+    }
+
+    public function test_lists_list60_contacts_for_the_mailer(): void
+    {
+        [$user, $team, $token] = $this->adminWithToken();
+        Module::query()->firstOrCreate(
+            ['key' => 'list60'],
+            [
+                'name' => 'Lista 60',
+                'icon' => 'list',
+                'description' => 'Lista 60',
+                'is_core' => false,
+                'status' => 1,
+            ],
+        );
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/list60')
+            ->assertOk()
+            ->assertJsonPath('meta.enabled', false)
+            ->assertJsonPath('data', []);
+
+        $team->enableModule('list60');
+
+        $contact = Contact::withoutGlobalScopes()
+            ->where('team_id', $team->id)
+            ->where('email', 'lucia.garcia@cliente.com')
+            ->firstOrFail();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/mailer/audience/'.$contact->id.'/list60')
+            ->assertCreated();
+
+        List60::query()->where('contact_id', $contact->id)->update([
+            'notes' => 'News «Volvimos». No lo abrió. No hizo clic.',
+        ]);
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/mailer/list60')
+            ->assertOk()
+            ->assertJsonPath('meta.enabled', true)
+            ->assertJsonPath('meta.count', 1)
+            ->assertJsonPath('data.0.contact.email', 'lucia.garcia@cliente.com')
+            ->assertJsonPath('data.0.contact.display_name', 'Lucía García')
+            ->assertJsonPath('data.0.notes', 'News «Volvimos». No lo abrió. No hizo clic.')
+            ->assertJsonPath('data.0.responsible', $user->name);
     }
 
     public function test_guest_cannot_list_audience(): void

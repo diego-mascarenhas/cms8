@@ -20,6 +20,18 @@ class EmailTrackingHelperListUnsubscribeTest extends TestCase
         $this->assertStringContainsString(rawurlencode('qa@example.test'), $headers['List-Unsubscribe']);
     }
 
+    public function test_click_tracking_url_uses_the_public_admin_host(): void
+    {
+        config(['mailer.tracking.base_url' => 'https://admin.idoneo.dev']);
+
+        $url = EmailTrackingHelper::clickTrackingUrl('abc123', 'https://www.pedimosfacil.com');
+
+        $this->assertSame(
+            'https://admin.idoneo.dev/message/track/click/abc123?url='.urlencode('https://www.pedimosfacil.com'),
+            $url,
+        );
+    }
+
     public function test_list_unsubscribe_headers_are_empty_when_disabled_or_missing_email(): void
     {
         $this->assertSame([], EmailTrackingHelper::listUnsubscribeHeaders('qa@example.test', false));

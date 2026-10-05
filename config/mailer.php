@@ -16,7 +16,7 @@ return [
         ],
         'api' => [
             'name' => 'Email API',
-            'enabled' => !empty(env('MAIL_API_KEY')),
+            'enabled' => ! empty(env('MAIL_API_KEY')),
             'key' => env('MAIL_API_KEY'),
             'domain' => env('MAIL_API_DOMAIN'),
         ],
@@ -95,6 +95,8 @@ return [
         'open_tracking' => true,
         'click_tracking' => true,
         'unsubscribe_tracking' => true,
+        // Public host that receives click redirects. APP_URL stays the local app.
+        'base_url' => env('MAIL_TRACKING_URL', 'https://admin.idoneo.dev'),
     ],
 
     /*
