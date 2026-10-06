@@ -22,13 +22,8 @@
         <h4 class="mb-1 mt-3">{{ __('Income') }}</h4>
         <p class="text-muted">{{ __('Manage your income and revenue') }}</p>
     </div>
-    <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
+    <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center justify-content-sm-end gap-2 ms-md-auto">
         @include('partials.vat-period-selector')
-        @if ($haciendaShareUrl)
-            <a href="{{ $haciendaShareUrl }}" target="_blank" rel="noopener" class="btn btn-success">
-                <i class="ti ti-link me-1"></i> {{ __('Accountant link') }}
-            </a>
-        @endif
         <div class="dropdown">
             <button class="btn btn-outline-primary dropdown-toggle" type="button" id="incomeExportDropdown"
                 data-bs-toggle="dropdown" aria-expanded="false">
@@ -47,8 +42,11 @@
                 </li>
             </ul>
         </div>
+        <a href="{{ route('finance-dashboard.index', ['year' => $vatYear]) }}" class="btn btn-outline-secondary">
+            <i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}
+        </a>
         <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
-            <i class="ti ti-list me-1"></i> {{ __('All Payments') }}
+            <i class="ti ti-list me-1"></i> {{ __('All') }}
         </a>
     </div>
 </div>

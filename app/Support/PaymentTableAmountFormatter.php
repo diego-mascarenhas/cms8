@@ -148,12 +148,16 @@ class PaymentTableAmountFormatter
 
         if (preg_match('/^(.+?)\s*\(([^)]+)\)$/', $taxId, $matches) === 1)
         {
-            return trim($matches[1]);
+            $taxId = trim($matches[1]);
+        } elseif (preg_match('/^([\d\-]+)([a-z_]+)$/i', $taxId, $matches) === 1)
+        {
+            $taxId = trim($matches[1]);
         }
 
-        if (preg_match('/^([\d\-]+)([a-z_]+)$/i', $taxId, $matches) === 1)
+        $digits = str_replace('-', '', $taxId);
+        if (preg_match('/^[\d\-]+$/', $taxId) === 1 && preg_match('/^\d{11}$/', $digits) === 1)
         {
-            return trim($matches[1]);
+            return substr($digits, 0, 2).'-'.substr($digits, 2, 8).'-'.substr($digits, 10, 1);
         }
 
         return $taxId;

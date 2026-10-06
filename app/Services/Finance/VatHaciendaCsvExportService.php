@@ -411,6 +411,7 @@ class VatHaciendaCsvExportService
             ->where('team_id', $teamId)
             ->where('provider', 'stripe')
             ->where('external_id', 'like', $documentScope === 'credit_notes' ? 'cn_%' : 'in_%')
+            ->where('status', '!=', 'draft')
             ->whereNotExists(function ($sub): void
             {
                 $sub->from('invoices')
@@ -470,7 +471,7 @@ class VatHaciendaCsvExportService
             (string) ($sync->number ?? ''),
             $invoiceDate->format('d/m/Y'),
             trim((string) $sync->customer_name),
-            trim((string) $sync->customer_tax_id),
+            $this->cleanTaxId((string) $sync->customer_tax_id),
             number_format($subtotal, 2, ',', '.'),
             $currency,
             $exchangeRateDisplay,
@@ -709,12 +710,22 @@ class VatHaciendaCsvExportService
 
         if (preg_match('/^(.+?)\s*\(([^)]+)\)$/', $taxId, $matches) === 1)
         {
-            return trim($matches[1]);
+            $taxId = trim($matches[1]);
+        } elseif (preg_match('/^([\d\-]+)([a-z_]+)$/i', $taxId, $matches) === 1)
+        {
+            $taxId = trim($matches[1]);
         }
 
-        if (preg_match('/^([\d\-]+)([a-z_]+)$/i', $taxId, $matches) === 1)
+        return $this->formatArgentineTaxId($taxId);
+    }
+
+    private function formatArgentineTaxId(string $taxId): string
+    {
+        $digits = str_replace('-', '', $taxId);
+
+        if (preg_match('/^[\d\-]+$/', $taxId) === 1 && preg_match('/^\d{11}$/', $digits) === 1)
         {
-            return trim($matches[1]);
+            return substr($digits, 0, 2).'-'.substr($digits, 2, 8).'-'.substr($digits, 10, 1);
         }
 
         return $taxId;

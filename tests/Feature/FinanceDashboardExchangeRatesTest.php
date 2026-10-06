@@ -35,10 +35,18 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             'fetched_at' => '2026-10-01 02:00:00',
         ]);
 
-        $this->get(route('finance-dashboard.index'))
+        $dashboard = $this->get(route('finance-dashboard.index'))
             ->assertOk()
             ->assertSee(route('finance-dashboard.exchange-rates'), false)
-            ->assertSee('01/10/2026 04:00', false);
+            ->assertSee('01/10/2026 04:00', false)
+            ->assertSee(__('Accountant link'), false);
+
+        $html = $dashboard->getContent();
+        $accountantLink = strpos($html, __('Accountant link'));
+        $report = strpos($html, __('Report'));
+        $this->assertNotFalse($accountantLink);
+        $this->assertNotFalse($report);
+        $this->assertLessThan($report, $accountantLink);
 
         $this->get(route('finance-dashboard.exchange-rates', ['year' => 2026]))
             ->assertOk()

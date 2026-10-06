@@ -1,4 +1,4 @@
-<form method="GET" action="{{ url()->current() }}" class="d-flex flex-wrap align-items-center gap-2" id="vat-period-form">
+<form method="GET" action="{{ url()->current() }}" class="d-flex flex-nowrap align-items-center gap-2 flex-shrink-0" id="vat-period-form">
     <div class="position-relative w-px-100">
         <select name="vat_year" id="vat_year" class="select2 form-select js-filter-select" aria-label="{{ __('Year') }}" onchange="this.form.submit()">
             @foreach($vatYears as $yearOption)

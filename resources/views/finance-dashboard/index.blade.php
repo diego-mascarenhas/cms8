@@ -28,7 +28,7 @@
             @endif
         </p>
     </div>
-    <div class="mt-3 mt-md-0 d-flex flex-wrap gap-2">
+    <div class="mt-3 mt-md-0 d-flex flex-wrap justify-content-end gap-2 ms-md-auto">
         <form method="GET" action="{{ route('finance-dashboard.index') }}" class="d-flex align-items-center">
             <label for="financial-dashboard-year" class="form-label mb-0 me-2">{{ __('Year') }}</label>
             <div class="position-relative w-px-100">
@@ -47,6 +47,11 @@
         <a href="{{ route('expense.index') }}" class="btn btn-outline-danger">
             <i class="ti ti-trending-down me-1"></i> {{ __('Expenses') }}
         </a>
+        @if ($haciendaShareUrl)
+        <a href="{{ $haciendaShareUrl }}" target="_blank" rel="noopener" class="btn btn-success waves-effect waves-light">
+            <i class="ti ti-link me-1"></i> {{ __('Accountant link') }}
+        </a>
+        @endif
         @can('viewAny', App\Models\Invoice::class)
         <a href="{{ route('finance-dashboard.projection', ['year' => $selectedYear]) }}" class="btn btn-primary">
             <i class="ti ti-report-analytics me-1"></i> {{ __('Report') }}
