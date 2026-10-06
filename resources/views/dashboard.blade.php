@@ -669,11 +669,11 @@
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
-                                <div class="mt-auto pt-2">
+                                <div class="dashboard-insight-actions mt-auto pt-2">
                                     <a href="{{ route('weekly-plan.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
                                         <i class="ti ti-report me-1"></i>{{ __('app.weekly_plan_report') }}
                                     </a>
-                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">
+                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
                                         <i class="ti ti-sitemap me-1"></i>{{ __('Organización') }}
                                     </a>
                                 </div>
@@ -739,9 +739,9 @@
         </div>
     @endif
 
-    <div class="row align-items-lg-stretch dashboard-paired-row">
+    <div class="row align-items-md-stretch dashboard-paired-row">
         <!-- Emotional Balance (right column) -->
-        <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0 d-flex flex-column">
+        <div class="col-md-4 order-md-2 mb-4 mb-md-0 d-flex flex-column">
             <!-- Emotional Balance -->
             <div class="card mb-4 dashboard-sentiment-card flex-grow-1 d-flex flex-column w-100">
                 <div class="card-header pb-0 d-flex justify-content-between">
@@ -803,7 +803,7 @@
         </div>
 
         <!-- Main Content Column -->
-        <div class="col-lg-8 order-lg-1 d-flex flex-column">
+        <div class="col-md-8 order-md-1 d-flex flex-column">
             <!-- Today's contacts / calendar — paired with emotional balance -->
             <div class="card mb-4 dashboard-calendar-card w-100 d-flex flex-column">
                 <div class="card-header d-flex justify-content-between align-items-start flex-wrap gap-2">
@@ -1275,6 +1275,21 @@
 
     .dashboard-insight-card {
         overflow: visible;
+        container-type: inline-size;
+    }
+
+    .dashboard-insight-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    @container (max-width: 26rem) {
+        .dashboard-insight-actions {
+            flex-direction: column;
+            align-items: flex-start;
+        }
     }
 
     .dashboard-top-row > .col-md-4:has(.dashboard-insight-card) {
@@ -1326,18 +1341,26 @@
         color: #cfd3ec !important;
     }
 
-    @media (min-width: 992px) {
-        .dashboard-paired-row > [class*='col-lg-'] > .card {
+    @media (max-width: 767.98px) {
+        .dashboard-paired-row > .col-md-4 {
+            flex: 0 0 auto;
+            width: min(100%, 22.5rem);
+            max-width: 22.5rem;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .dashboard-paired-row > [class*='col-md-'] > .card {
             min-height: 330px;
         }
 
-        .dashboard-paired-row > [class*='col-lg-'] > .dashboard-calendar-card {
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-calendar-card {
             flex-grow: 0;
             height: auto;
             min-height: 0;
         }
 
-        .dashboard-paired-row > [class*='col-lg-'] > .dashboard-sentiment-card {
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-sentiment-card {
             height: 100%;
             min-height: 0;
         }
@@ -1500,12 +1523,12 @@
             width: 100%;
         }
 
-        .dashboard-paired-row > [class*='col-lg-'] > .card {
+        .dashboard-paired-row > [class*='col-md-'] > .card {
             min-height: 280px;
         }
 
-        .dashboard-paired-row > [class*='col-lg-'] > .dashboard-calendar-card,
-        .dashboard-paired-row > [class*='col-lg-'] > .dashboard-sentiment-card {
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-calendar-card,
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-sentiment-card {
             min-height: 0;
         }
     }

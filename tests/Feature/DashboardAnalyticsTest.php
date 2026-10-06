@@ -127,6 +127,10 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertStatus(200);
         $response->assertDontSee('analyticsChart', false);
         $response->assertSee(__('app.dashboard_panel_contacts_trend_title'), false);
+        $response->assertSee('dashboard-insight-actions', false);
+        $response->assertSee('@container (max-width: 26rem)', false);
+        $response->assertSee('col-md-4 order-md-2', false);
+        $response->assertDontSee('col-lg-4 order-lg-2', false);
     }
 
     public function test_dashboard_shows_contact_summary_metrics_and_trend_chart(): void
