@@ -54,13 +54,41 @@
 <script>
     @php
         $tokenPricingTeam = ($data->team ?? null) ?: auth()->user()?->currentTeam;
-        $tokenPricingService = app(\App\Services\ProjectBudgetSpecService::class)->applyTeamTokenPricing($tokenPricingTeam);
+        $tokenPricingService = app(\App\Services\ProjectBudgetSpecService::class);
+        if (isset($data->id)) {
+            $tokenPricingService->applyProjectTokenPresentation($data);
+        } else {
+            $tokenPricingService->applyTeamTokenPricing($tokenPricingTeam);
+        }
+        $tokenIncludeDefault = $tokenPricingService->includesTokenCharges();
+        $tokenDiscriminateDefault = $tokenPricingService->discriminatesTokenLines();
+        $tokenModelDefault = $tokenPricingService->resolvedTokenModel();
+        if (old('data.token_include') !== null) {
+            $tokenIncludeDefault = filter_var(old('data.token_include'), FILTER_VALIDATE_BOOLEAN);
+        }
+        if (old('data.token_discriminate') !== null) {
+            $tokenDiscriminateDefault = filter_var(old('data.token_discriminate'), FILTER_VALIDATE_BOOLEAN);
+        }
+        $oldTokenModel = $tokenPricingService->normalizeTokenModel(old('data.token_model'));
+        if ($oldTokenModel) {
+            $tokenModelDefault = $oldTokenModel;
+            $tokenPricingService->applyNormalizedTokenModel($oldTokenModel);
+        }
+        if (! $tokenIncludeDefault) {
+            $tokenDiscriminateDefault = false;
+        }
     @endphp
     var tokenInputRate = {{ $tokenPricingService->tokenInputRate() }};
     var tokenOutputRate = {{ $tokenPricingService->tokenOutputRate() }};
     var tokenBlendPerMillion = {{ $tokenPricingService->tokenBlendEurPerMillion() }};
     var defaultAiUsagePercent = {{ (int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT }};
+    var modelAiReferenceBlend = {{ \App\Services\ProjectBudgetSpecService::MODEL_AI_REFERENCE_BLEND }};
+    var modelAiLogScale = {{ \App\Services\ProjectBudgetSpecService::MODEL_AI_LOG_SCALE }};
     var quoteValueLocked = @json(isset($data->id) && $data->quoteValueIsLocked());
+    var tokenInclude = @json($tokenIncludeDefault);
+    var tokenDiscriminate = @json($tokenDiscriminateDefault);
+    var resourceLevels = ['Junior', 'Mid', 'Senior', 'Consultor'];
+    var levelRateWeights = { junior: 0.6, mid: 0.8, senior: 1, consultor: 1.2 };
 
     function autoResizeTextarea(el) {
         if (!el) return;
@@ -75,7 +103,7 @@
     $(function() {
         // ClientSelect owns #enterprise_id (contact/responsible templates).
         if ($.fn.select2) {
-            $('#category_id, #status_id').select2({
+            $('#category_id, #status_id, #token_model_select').select2({
                 placeholder: "{{ __('Choose an option') }}",
                 allowClear: true
             });
@@ -399,20 +427,125 @@
         } catch (e) { return; }
         applyTokenConsumption({ notes: buildTokenConsumptionText(tasks) }, tasks);
     }
+    function roundBudgetMoney(amount) {
+        var n = parseFloat(amount);
+        if (isNaN(n)) return 0;
+        return Math.round(n * 100) / 100;
+    }
+    function parseBudgetNumber(value) {
+        if (value === null || value === undefined || value === '') return 0;
+        var n = parseFloat(value);
+        return isNaN(n) ? 0 : n;
+    }
+    function resolveHourlyRate(task, siblings) {
+        var stored = parseFloat(task.hourly_rate);
+        if (!isNaN(stored) && stored >= 0) return stored;
+        var hours = parseFloat(task.estimated_hours);
+        var price = parseFloat(task.unit_price);
+        if (!isNaN(hours) && hours > 0 && !isNaN(price) && price >= 0) return price / hours;
+        if ((isNaN(hours) || hours <= 0) && !isNaN(price) && price > 0) return price;
+        var rates = [];
+        (siblings || []).forEach(function(line) {
+            if (line === task) return;
+            var rate = resolveHourlyRate(line, []);
+            if (rate !== null && rate > 0) rates.push(rate);
+        });
+        if (!rates.length) return null;
+        rates.sort(function(a, b) { return a - b; });
+        return rates[Math.floor(rates.length / 2)];
+    }
+    function levelWeight(level) {
+        var key = String(level || '').trim().toLowerCase();
+        return Object.prototype.hasOwnProperty.call(levelRateWeights, key) ? levelRateWeights[key] : 1;
+    }
+    function aiUsagePercentFromRates(prompt, completion) {
+        if (!tokenInclude) return 0;
+        if (prompt === null && completion === null) return defaultAiUsagePercent;
+        var blend = Math.round((Math.max(0, prompt || 0) * 0.7 + Math.max(0, completion || 0) * 0.3) * 10000) / 10000;
+        if (blend <= 0) return 0;
+        var raw = defaultAiUsagePercent + modelAiLogScale * Math.log10(blend / modelAiReferenceBlend);
+        return Math.max(0, Math.min(100, Math.round(raw)));
+    }
+    function setAiUsagePercent(percent) {
+        var pct = Math.max(0, Math.min(100, Math.round(percent)));
+        $('#data_ai_usage_percent').val(pct);
+        $('#data_ai_usage_percent_label').text(pct + '%');
+        var slider = document.getElementById('ai-usage-balance-slider');
+        if (slider && slider.noUiSlider) slider.noUiSlider.set(pct);
+        var helper = document.getElementById('token-model-helper');
+        if (helper) {
+            helper.textContent = 'Aplica ' + pct + '% IA: un modelo más caro baja horas y pasa peso a tokens.';
+        }
+    }
+    function applyRatesFromModel(prompt, completion) {
+        if (prompt !== null && completion !== null) {
+            tokenInputRate = Math.max(0, prompt);
+            tokenOutputRate = Math.max(0, completion);
+            tokenBlendPerMillion = Math.round((tokenInputRate * 0.7 + tokenOutputRate * 0.3) * 10000) / 10000;
+        }
+        setAiUsagePercent(aiUsagePercentFromRates(prompt, completion));
+    }
+    function writeTokenModelFields(model) {
+        $('#data_token_model_id').val(model.id || '');
+        $('#data_token_model_name').val(model.name || '');
+        $('#data_token_model_prompt').val(model.prompt_per_million === null || model.prompt_per_million === undefined ? '' : model.prompt_per_million);
+        $('#data_token_model_completion').val(model.completion_per_million === null || model.completion_per_million === undefined ? '' : model.completion_per_million);
+    }
+    function syncTokenFlags() {
+        tokenInclude = $('#token_include_toggle').prop('checked');
+        tokenDiscriminate = tokenInclude && $('#token_discriminate_toggle').prop('checked');
+        $('#data_token_include').val(tokenInclude ? '1' : '0');
+        $('#data_token_discriminate').val(tokenDiscriminate ? '1' : '0');
+        $('#token_discriminate_toggle').prop('disabled', !tokenInclude || quoteValueLocked);
+        if (!tokenInclude) $('#token_discriminate_toggle').prop('checked', false);
+        syncTokenColumnVisibility();
+    }
+    function syncTokenColumnVisibility() {
+        $('.suggested-token-col').toggleClass('d-none', !tokenInclude || !tokenDiscriminate);
+    }
+    function hoursInputHtml(index, hours) {
+        var value = (hours != null && hours !== '') ? escapeHtml(String(hours)) : '';
+        return '<input type="number" step="0.5" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="' + index + '" value="' + value + '"' + (quoteValueLocked ? ' readonly' : '') + '>';
+    }
+    function levelSelectHtml(index, current) {
+        var currentText = String(current || '').trim();
+        var options = resourceLevels.slice();
+        if (currentText && !options.some(function(level) { return level.toLowerCase() === currentText.toLowerCase(); })) {
+            options.push(currentText);
+        }
+        var h = '<select class="form-select form-select-sm suggested-resource-level" data-index="' + index + '"' + (quoteValueLocked ? ' disabled' : '') + '>';
+        if (!currentText) h += '<option value=""></option>';
+        options.forEach(function(level) {
+            var selected = currentText.toLowerCase() === level.toLowerCase() ? ' selected' : '';
+            h += '<option value="' + escapeHtml(level) + '"' + selected + '>' + escapeHtml(level) + '</option>';
+        });
+        h += '</select>';
+        return h;
+    }
+    function setRowPrice(index, price) {
+        $('.suggested-unit-price[data-index="' + index + '"]').val(price === '' || price === null ? '' : price);
+    }
+    function readSuggestedTasks() {
+        var raw = $('#data_suggested_tasks').val();
+        try {
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) {
+            return null;
+        }
+    }
     function buildSuggestedTasksTable(tasks) {
-        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th class="text-center" style="width: 2.5rem;"></th><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-end">{{ __("Tokens") }}</th><th class="text-end">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
+        var tokenCol = (!tokenInclude || !tokenDiscriminate) ? ' d-none' : '';
+        var h = '<p class="text-muted small mb-2">' + (tasks.length === 1 ? '{{ __("1 task suggested") }}' : '{{ __(":count tasks suggested") }}'.replace(':count', tasks.length)) + '</p><div class="table-responsive"><table class="table table-sm table-bordered" id="suggested-tasks-table"><thead><tr><th>{{ __("En el presupuesto") }}</th><th>{{ __("Task") }}</th><th class="text-center">{{ __("Category") }}</th><th class="text-end">{{ __("Hours") }}</th><th class="text-end suggested-token-col' + tokenCol + '">{{ __("Tokens") }}</th><th class="text-end">{{ __("Level") }}</th><th class="text-end">{{ __("Value") }}</th></tr></thead><tbody>';
         tasks.forEach(function(t, i) {
             var included = t.included !== false;
             if (typeof t.included === 'undefined') t.included = true;
             var title = escapeHtml(t.title || '—');
             var cat = escapeHtml(t.category_name || '—');
-            var hoursLabel = (t.estimated_hours != null && t.estimated_hours !== '') ? formatHoursHuman(t.estimated_hours) : '—';
             var tokens = (t.estimated_tokens != null && t.estimated_tokens !== '') ? Number(t.estimated_tokens) : '';
-            var resLevel = (t.resource_level != null && t.resource_level !== '') ? escapeHtml(String(t.resource_level)) : '';
             var unitPrice = (t.unit_price != null && t.unit_price !== '') ? escapeHtml(String(t.unit_price)) : '';
-            h += '<tr data-index="' + i + '"><td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + escapeHtml(hoursLabel) + '</td>';
-            h += '<td class="text-end"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="' + i + '" value="' + tokens + '" placeholder="0"></td>';
-            h += '<td class="text-end"><input type="text" class="form-control form-control-sm text-end suggested-resource-level" data-index="' + i + '" value="' + resLevel + '" placeholder="{{ __("e.g. Senior") }}"></td>';
+            h += '<tr data-index="' + i + '"><td class="align-middle"><label class="form-check mb-0"><input type="checkbox" class="form-check-input suggested-task-included" data-index="' + i + '" ' + (included ? 'checked' : '') + '><span class="form-check-label small">En el presupuesto</span></label></td><td>' + title + '</td><td class="text-center">' + cat + '</td><td class="text-end">' + hoursInputHtml(i, t.estimated_hours) + '</td>';
+            h += '<td class="text-end suggested-token-col' + tokenCol + '"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="' + i + '" value="' + tokens + '" placeholder="0"></td>';
+            h += '<td class="text-end">' + levelSelectHtml(i, t.resource_level) + '</td>';
             h += '<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="' + i + '" value="' + unitPrice + '" placeholder="0"' + (quoteValueLocked ? ' readonly' : '') + '></td></tr>';
         });
         h += '</tbody></table></div>';
@@ -515,7 +648,7 @@
         var estimatedTimes = ($('#data_estimated_times').val() || '').trim();
         var resources = ($('#data_resources').val() || '').trim();
         var savings = parseFloat($('#data_token_consumption_savings').val()) || 57;
-        var aiUsage = resolveAiUsagePercent();
+        var aiUsage = tokenInclude ? resolveAiUsagePercent() : 0;
 
         var hasContent = tasks.length > 0 || dimension || estimatedTimes || resources;
         if (!hasContent) {
@@ -551,14 +684,18 @@
             var rounded = roundLaborToHalfHourSteps(balanced.labor, balanced.hours);
             var laborCharged = rounded.labor;
             var hoursCharged = rounded.hours;
-            var tokenBillable = balanced.tokenBillable;
-            var displayTokens = balanced.displayTokens;
+            var tokenBillable = tokenInclude ? balanced.tokenBillable : 0;
+            var displayTokens = tokenInclude ? balanced.displayTokens : 0;
+            var shownLabor = laborCharged;
+            if (tokenInclude && !tokenDiscriminate && !isNaN(laborCharged)) {
+                shownLabor = roundBudgetMoney(laborCharged + tokenBillable);
+            }
             var details = [
                 formatHoursHuman(hoursCharged),
                 level,
-                !isNaN(laborCharged) ? formatEuros(laborCharged) : '—'
+                !isNaN(shownLabor) ? formatEuros(shownLabor) : '—'
             ];
-            if (balanced.tokens > 0 || tokenBillable > 0) {
+            if (tokenInclude && tokenDiscriminate && (balanced.tokens > 0 || tokenBillable > 0)) {
                 details.push(
                     '{{ __("Tokens") }} ' + formatTokenCount(displayTokens)
                     + ' · ' + formatEuros(tokenBillable)
@@ -596,8 +733,10 @@
             var discountLabel = String(discount).replace('.', ',');
 
             html += '<p><br></p><p><strong>{{ __("Budget") }}</strong></p>';
-            html += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
-            html += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
+            if (tokenInclude && tokenDiscriminate) {
+                html += '<p>{{ __("Labor") }}: ' + formatEuros(totalLabor) + '</p>';
+                html += '<p>{{ __("Tokens") }}: ' + formatEuros(totalTokenBillable) + '</p>';
+            }
             html += '<p>{{ __("Subtotal") }}: ' + formatEuros(grandTotal) + '</p>';
             if (discount > 0) {
                 html += '<p>{{ __("Discount on labor") }} (−' + discountLabel + '%): −'
@@ -606,6 +745,9 @@
             html += '<p><strong>{{ __("Total") }}: '
                 + formatEuros(payableTotal)
                 + ' + {{ __("I.V.A.") }}</strong></p>';
+            if (!quoteValueLocked) {
+                $('#project_price').val(payableTotal);
+            }
 
             var weeks = totalHours > 0 ? Math.ceil(totalHours / 40) : 0;
             html += '<p>' + escapeHtml('{{ __("Estimated development time, :weeks weeks after the budget has been confirmed.") }}'.replace(':weeks', weeks)) + '</p>';
@@ -636,27 +778,82 @@
         refreshBudgetPreview();
     });
 
-    $(document).on('change input', '.suggested-resource-level, .suggested-unit-price, .suggested-estimated-tokens', function() {
+    $(document).on('change input', '.suggested-resource-level, .suggested-unit-price, .suggested-estimated-tokens, .suggested-estimated-hours', function() {
+        if (quoteValueLocked && !$(this).hasClass('suggested-estimated-tokens')) return;
         var idx = parseInt($(this).data('index'), 10);
-        var raw = $('#data_suggested_tasks').val();
-        var tasks = [];
-        try {
-            if (raw) tasks = JSON.parse(raw);
-        } catch (e) { return; }
-        if (tasks[idx] === undefined) return;
-        if ($(this).hasClass('suggested-unit-price')) {
-            if (quoteValueLocked) return;
+        var tasks = readSuggestedTasks();
+        if (!tasks || tasks[idx] === undefined) return;
+        var task = tasks[idx];
+        if ($(this).hasClass('suggested-estimated-hours')) {
+            var hourVal = $(this).val();
+            var hours = parseBudgetNumber(hourVal);
+            var rate = resolveHourlyRate(task, tasks);
+            task.estimated_hours = hourVal === '' ? '' : hours;
+            if (rate !== null) {
+                task.hourly_rate = rate;
+                task.unit_price = roundBudgetMoney(Math.max(0, hours) * rate);
+                setRowPrice(idx, task.unit_price);
+            }
+        } else if ($(this).hasClass('suggested-unit-price')) {
             var val = $(this).val();
             var num = parseFloat(val);
-            tasks[idx].unit_price = (isNaN(num) || val === '') ? '' : num;
+            task.unit_price = (isNaN(num) || val === '') ? '' : num;
+            var pricedHours = parseFloat(task.estimated_hours);
+            if (!isNaN(num) && !isNaN(pricedHours) && pricedHours > 0) {
+                task.hourly_rate = num / pricedHours;
+            } else if (!isNaN(num) && num > 0) {
+                task.hourly_rate = num;
+            }
         } else if ($(this).hasClass('suggested-estimated-tokens')) {
             var tokenVal = $(this).val();
             var tokenNum = parseInt(tokenVal, 10);
-            tasks[idx].estimated_tokens = (isNaN(tokenNum) || tokenVal === '') ? 0 : tokenNum;
+            task.estimated_tokens = (isNaN(tokenNum) || tokenVal === '') ? 0 : tokenNum;
         } else {
-            tasks[idx].resource_level = $(this).val();
+            var nextLevel = $(this).val();
+            var previousLevel = task.resource_level || '';
+            var previousWeight = levelWeight(previousLevel);
+            var nextWeight = levelWeight(nextLevel);
+            var currentRate = resolveHourlyRate(task, tasks);
+            task.resource_level = nextLevel;
+            if (currentRate !== null && previousWeight > 0) {
+                var nextRate = currentRate * (nextWeight / previousWeight);
+                var levelHours = parseFloat(task.estimated_hours);
+                task.hourly_rate = nextRate;
+                if (!isNaN(levelHours) && levelHours > 0) {
+                    task.unit_price = roundBudgetMoney(Math.max(0, levelHours) * nextRate);
+                } else {
+                    task.unit_price = roundBudgetMoney(Math.max(0, nextRate));
+                }
+                setRowPrice(idx, task.unit_price);
+            }
         }
         $('#data_suggested_tasks').val(JSON.stringify(tasks));
+        syncTokenConsumptionFromTasks();
+        refreshBudgetPreview();
+    });
+
+    $(document).on('change', '#token_include_toggle, #token_discriminate_toggle', function() {
+        syncTokenFlags();
+        var prompt = parseFloat($('#data_token_model_prompt').val());
+        var completion = parseFloat($('#data_token_model_completion').val());
+        applyRatesFromModel(isNaN(prompt) ? null : prompt, isNaN(completion) ? null : completion);
+        syncTokenConsumptionFromTasks();
+        refreshBudgetPreview();
+    });
+
+    $(document).on('change', '#token_model_select', function() {
+        var option = $(this).find('option:selected');
+        var prompt = option.data('prompt');
+        var completion = option.data('completion');
+        prompt = prompt === undefined || prompt === '' ? null : parseFloat(prompt);
+        completion = completion === undefined || completion === '' ? null : parseFloat(completion);
+        writeTokenModelFields({
+            id: option.val(),
+            name: option.data('name') || option.text(),
+            prompt_per_million: prompt,
+            completion_per_million: completion
+        });
+        applyRatesFromModel(prompt, completion);
         syncTokenConsumptionFromTasks();
         refreshBudgetPreview();
     });
@@ -719,9 +916,62 @@
             });
         }
 
+        syncTokenFlags();
+        loadTokenModelCatalog();
         // Rebuild preview so metrics stay under each title (Quill-safe) and AI % applies.
         refreshBudgetPreview();
     });
+
+    function catalogPriceLabel(value) {
+        if (value === null || value === undefined || value === '') return '—';
+        var n = parseFloat(value);
+        if (isNaN(n)) return '—';
+        if (n === 0) return 'Gratis';
+        var decimals = n < 0.01 ? 4 : 2;
+        return '$' + n.toFixed(decimals).replace('.', ',');
+    }
+    function appendTokenModelOption(model, selectedId) {
+        var select = document.getElementById('token_model_select');
+        if (!select || !model || !model.id) return;
+        if (select.querySelector('option[value="' + CSS.escape(model.id) + '"]')) return;
+        var option = document.createElement('option');
+        option.value = model.id;
+        option.dataset.name = model.name || model.id;
+        option.dataset.prompt = model.prompt_per_million == null ? '' : model.prompt_per_million;
+        option.dataset.completion = model.completion_per_million == null ? '' : model.completion_per_million;
+        option.textContent = (model.name || model.id) + ' · ' + catalogPriceLabel(model.prompt_per_million) + ' / ' + catalogPriceLabel(model.completion_per_million);
+        if (model.id === selectedId) option.selected = true;
+        select.appendChild(option);
+    }
+    function loadTokenModelCatalog() {
+        var select = document.getElementById('token_model_select');
+        if (!select) return;
+        var selectedId = select.value;
+        fetch('https://mcp.idoneo.dev/models.json')
+            .then(function(response) { return response.ok ? response.json() : null; })
+            .then(function(payload) {
+                var models = payload && payload.models ? payload.models : payload;
+                if (!Array.isArray(models)) return;
+                models.forEach(function(item) {
+                    if (!item || typeof item.id !== 'string' || !item.id.trim()) return;
+                    if (item.modality && item.modality !== 'text') return;
+                    appendTokenModelOption({
+                        id: item.id.trim(),
+                        name: item.name || item.id,
+                        prompt_per_million: item.prompt_per_million,
+                        completion_per_million: item.completion_per_million
+                    }, selectedId);
+                });
+                if ($.fn.select2 && $('#token_model_select').data('select2')) {
+                    $('#token_model_select').select2('destroy').select2({
+                        placeholder: "{{ __('Choose an option') }}",
+                        allowClear: false,
+                        width: '100%'
+                    });
+                }
+            })
+            .catch(function() {});
+    }
 </script>
 @endsection
 
@@ -910,6 +1160,45 @@
 						data_get($data, 'data.ai_usage_percent', \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT)
 					);
 				@endphp
+				<div class="row g-3 mb-3">
+					<div class="col-md-6">
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="token_include_toggle" @checked($tokenIncludeDefault) @disabled(isset($data->id) && $data->quoteValueIsLocked())>
+							<label class="form-check-label" for="token_include_toggle">Sumar tokens a las labores</label>
+						</div>
+						<p class="text-muted small mb-0">Parte del default de Configuración. Si lo apagás, este presupuesto cobra solo las horas.</p>
+					</div>
+					<div class="col-md-6">
+						<div class="form-check form-switch">
+							<input class="form-check-input" type="checkbox" id="token_discriminate_toggle" @checked($tokenDiscriminateDefault) @disabled((isset($data->id) && $data->quoteValueIsLocked()) || ! $tokenIncludeDefault)>
+							<label class="form-check-label" for="token_discriminate_toggle">Discriminar tokens en el presupuesto</label>
+						</div>
+						<p class="text-muted small mb-0">Muestra columnas de tokens y su importe. Si lo desactivás, horas e IA van en un solo precio.</p>
+					</div>
+					<div class="col-12">
+						<label class="form-label mb-1" for="token_model_select">Modelo de IA</label>
+						<select id="token_model_select" class="form-select" @disabled(isset($data->id) && $data->quoteValueIsLocked())>
+							<option
+								value="{{ $tokenModelDefault['id'] }}"
+								data-name="{{ $tokenModelDefault['name'] }}"
+								data-prompt="{{ $tokenModelDefault['prompt_per_million'] }}"
+								data-completion="{{ $tokenModelDefault['completion_per_million'] }}"
+								selected
+							>{{ $tokenModelDefault['name'] }} · ${{ number_format((float) $tokenModelDefault['prompt_per_million'], 2, ',', '') }} / ${{ number_format((float) $tokenModelDefault['completion_per_million'], 2, ',', '') }}</option>
+						</select>
+						<input type="hidden" name="data[token_include]" id="data_token_include" value="{{ $tokenIncludeDefault ? '1' : '0' }}">
+						<input type="hidden" name="data[token_discriminate]" id="data_token_discriminate" value="{{ $tokenDiscriminateDefault ? '1' : '0' }}">
+						<input type="hidden" name="data[token_model][id]" id="data_token_model_id" value="{{ $tokenModelDefault['id'] }}">
+						<input type="hidden" name="data[token_model][name]" id="data_token_model_name" value="{{ $tokenModelDefault['name'] }}">
+						<input type="hidden" name="data[token_model][prompt_per_million]" id="data_token_model_prompt" value="{{ $tokenModelDefault['prompt_per_million'] }}">
+						<input type="hidden" name="data[token_model][completion_per_million]" id="data_token_model_completion" value="{{ $tokenModelDefault['completion_per_million'] }}">
+						<p class="text-muted small mb-0 mt-1">
+							<span id="token-model-helper">Aplica {{ (int) $aiUsagePercentDefault }}% IA: un modelo más caro baja horas y pasa peso a tokens.</span>
+							<a href="https://mcp.idoneo.dev/models" target="_blank" rel="noopener">Ver catálogo</a>
+						</p>
+					</div>
+				</div>
+				<input type="hidden" name="price" id="project_price" value="{{ old('price', $data->price ?? '') }}">
 				<div class="row g-3 align-items-start">
 					<div class="col-md-8 col-12">
 						<label class="form-label d-flex justify-content-between align-items-center mb-1" for="data_ai_usage_percent">
@@ -980,7 +1269,7 @@
 					<p class="text-muted small mb-2">{{ count($savedSuggested) === 1 ? __('1 task suggested') : __(':count tasks suggested', ['count' => count($savedSuggested)]) }}</p>
 					<div class="table-responsive">
 						<table class="table table-sm table-bordered" id="suggested-tasks-table">
-							<thead><tr><th class="text-center" style="width: 2.5rem;"></th><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-end">{{ __('Tokens') }}</th><th class="text-end">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
+							<thead><tr><th>En el presupuesto</th><th>{{ __('Task') }}</th><th class="text-center">{{ __('Category') }}</th><th class="text-end">{{ __('Hours') }}</th><th class="text-end suggested-token-col {{ ($tokenIncludeDefault && $tokenDiscriminateDefault) ? '' : 'd-none' }}">{{ __('Tokens') }}</th><th class="text-end">{{ __('Level') }}</th><th class="text-end">{{ __('Value') }}</th></tr></thead>
 							<tbody>
 								@foreach($savedSuggested as $i => $t)
 								@php
@@ -990,28 +1279,35 @@
 									if ($estimatedTokens === null || $estimatedTokens === '') {
 										$estimatedTokens = $hoursValue && $hoursValue > 0 ? (int) round($hoursValue * 20000) : '';
 									}
-									$hoursLabel = '—';
-									if ($hoursValue !== null && $hoursValue > 0) {
-										$totalMinutes = (int) round($hoursValue * 60);
-										$wholeHours = intdiv($totalMinutes, 60);
-										$minutes = $totalMinutes % 60;
-										if ($wholeHours > 0 && $minutes > 0) {
-											$hoursLabel = $wholeHours.' h '.$minutes.' min';
-										} elseif ($wholeHours > 0) {
-											$hoursLabel = $wholeHours.' h';
-										} else {
-											$hoursLabel = $minutes.' min';
-										}
+									$levelOptions = ['Junior', 'Mid', 'Senior', 'Consultor'];
+									$currentLevel = trim((string) ($t['resource_level'] ?? ''));
+									if ($currentLevel !== '' && ! in_array($currentLevel, $levelOptions, true)) {
+										$levelOptions[] = $currentLevel;
 									}
+									$quoteLocked = isset($data->id) && $data->quoteValueIsLocked();
 								@endphp
 								<tr data-index="{{ $i }}">
-									<td class="text-center align-middle"><input type="checkbox" class="form-check-input suggested-task-included" data-index="{{ $i }}" {{ $included ? 'checked' : '' }}></td>
+									<td class="align-middle">
+										<label class="form-check mb-0">
+											<input type="checkbox" class="form-check-input suggested-task-included" data-index="{{ $i }}" {{ $included ? 'checked' : '' }}>
+											<span class="form-check-label small">En el presupuesto</span>
+										</label>
+									</td>
 									<td>{{ $t['title'] ?? '—' }}</td>
 									<td class="text-center">{{ $t['category_name'] ?? '—' }}</td>
-									<td class="text-end">{{ $hoursLabel }}</td>
-									<td class="text-end"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="{{ $i }}" value="{{ $estimatedTokens }}" placeholder="0"></td>
-									<td class="text-end"><input type="text" class="form-control form-control-sm text-end suggested-resource-level" data-index="{{ $i }}" value="{{ $t['resource_level'] ?? '' }}" placeholder="{{ __('e.g. Senior') }}"></td>
-									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0" @if(isset($data->id) && $data->quoteValueIsLocked()) readonly @endif></td>
+									<td class="text-end"><input type="number" step="0.5" min="0" class="form-control form-control-sm text-end suggested-estimated-hours" data-index="{{ $i }}" value="{{ $hoursValue ?? '' }}" @if($quoteLocked) readonly @endif></td>
+									<td class="text-end suggested-token-col {{ ($tokenIncludeDefault && $tokenDiscriminateDefault) ? '' : 'd-none' }}"><input type="number" step="1" min="0" class="form-control form-control-sm text-end suggested-estimated-tokens" data-index="{{ $i }}" value="{{ $estimatedTokens }}" placeholder="0"></td>
+									<td class="text-end">
+										<select class="form-select form-select-sm suggested-resource-level" data-index="{{ $i }}" @disabled($quoteLocked)>
+											@if($currentLevel === '')
+												<option value=""></option>
+											@endif
+											@foreach($levelOptions as $level)
+												<option value="{{ $level }}" @selected(strcasecmp($currentLevel, $level) === 0)>{{ $level }}</option>
+											@endforeach
+										</select>
+									</td>
+									<td class="text-end"><input type="number" step="0.01" min="0" class="form-control form-control-sm text-end suggested-unit-price" data-index="{{ $i }}" value="{{ isset($t['unit_price']) && $t['unit_price'] !== '' ? (float) $t['unit_price'] : '' }}" placeholder="0" @if($quoteLocked) readonly @endif></td>
 								</tr>
 								@endforeach
 							</tbody>
