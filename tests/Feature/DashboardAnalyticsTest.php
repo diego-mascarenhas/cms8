@@ -7,6 +7,8 @@ use App\Models\CalendarEvent;
 use App\Models\Contact;
 use App\Models\ContactInteraction;
 use App\Models\Enterprise;
+use App\Models\List60;
+use App\Models\List60Status;
 use App\Models\Module;
 use App\Models\Project;
 use App\Models\User;
@@ -18,6 +20,7 @@ use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
 use Database\Seeders\InvoiceTypeSeeder;
 use Database\Seeders\LanguageSeeder;
+use Database\Seeders\List60StatusesSeeder;
 use Database\Seeders\ProjectStatusSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Analytics\Facades\Analytics;
@@ -124,6 +127,10 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertStatus(200);
         $response->assertDontSee('analyticsChart', false);
         $response->assertSee(__('app.dashboard_panel_contacts_trend_title'), false);
+        $response->assertSee('dashboard-insight-actions', false);
+        $response->assertSee('@container (max-width: 26rem)', false);
+        $response->assertSee('col-md-4 order-md-2', false);
+        $response->assertDontSee('col-lg-4 order-lg-2', false);
     }
 
     public function test_dashboard_shows_contact_summary_metrics_and_trend_chart(): void
@@ -188,10 +195,11 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertSee('data-dashboard-panel="contacts-trend"', false);
         $response->assertSee('data-dashboard-panel="status-breakdown"', false);
         $response->assertSee('data-dashboard-panel="latest-contacts"', false);
-        $response->assertSee('data-dashboard-panel="interactions-breakdown"', false);
+        $response->assertSee('data-dashboard-panel="interactions-breakdown" aria-pressed="true"', false);
         $response->assertSee('dashboardContactInteractionsTrendChart', false);
+        $response->assertSee("showPanel('interactions-breakdown')", false);
         $response->assertSee('data-panel="latest-contacts"', false);
-        $response->assertSee(__('app.dashboard_contacts_chart_subtitle_30'), false);
+        $response->assertSee(__('app.dashboard_interactions_chart_subtitle'), false);
 
         preg_match('/const interactionsTrendData = (\{.*?\});/s', $response->getContent(), $interactionsMatch);
         $this->assertNotEmpty($interactionsMatch[1] ?? null);
@@ -316,6 +324,178 @@ class DashboardAnalyticsTest extends TestCase
         $response->assertDontSee('dashboard-cal-pane-calendar', false);
 
         Carbon::setTestNow();
+    }
+
+    public function test_dashboard_keeps_overdue_list60_calls_on_today_and_future_calls_upcoming(): void
+    {
+        Carbon::setTestNow('2026-05-19 12:00:00');
+
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+            EnterpriseTypeSeeder::class,
+            List60StatusesSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        foreach (['calendar', 'list60'] as $moduleKey)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $moduleKey],
+                [
+                    'name' => $moduleKey,
+                    'icon' => 'calendar-event',
+                    'description' => $moduleKey,
+                    'status' => 1,
+                ],
+            );
+            $team->enableModule($moduleKey);
+        }
+
+        $overdue = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Ana',
+            'surname' => 'Pendiente',
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+        ]);
+        $future = Contact::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Bruno',
+            'surname' => 'Manana',
+            'responsible_id' => $user->id,
+            'creator_id' => $user->id,
+        ]);
+
+        $statusId = List60Status::query()->value('id');
+
+        List60::query()->create([
+            'contact_id' => $overdue->id,
+            'type_id' => 1,
+            'date_next' => '2026-05-16 09:00:00',
+            'status_id' => $statusId,
+            'responsible_id' => $user->id,
+        ]);
+        List60::query()->create([
+            'contact_id' => $future->id,
+            'type_id' => 1,
+            'date_next' => '2026-05-22 09:00:00',
+            'status_id' => $statusId,
+            'responsible_id' => $user->id,
+        ]);
+
+        CalendarEvent::query()->create([
+            'team_id' => $team->id,
+            'title' => 'Reunion de ayer',
+            'start' => Carbon::parse('2026-05-18 10:00:00'),
+            'end' => Carbon::parse('2026-05-18 11:00:00'),
+            'all_day' => false,
+            'label' => 'Business',
+        ]);
+
+        $this->actingAs($user);
+        $content = $this->get(route('dashboard'))->assertOk()->getContent();
+
+        $todayPane = $this->dashboardCalendarPane($content, 'dashboard-cal-pane-today', 'dashboard-cal-pane-upcoming');
+        $upcomingPane = $this->dashboardCalendarPane($content, 'dashboard-cal-pane-upcoming', null);
+
+        $this->assertStringContainsString('Ana Pendiente', $todayPane);
+        $this->assertStringContainsString(__('app.dashboard_calendar_follow_up'), $todayPane);
+        $this->assertStringNotContainsString('Bruno Manana', $todayPane);
+        $this->assertStringNotContainsString('Reunion de ayer', $todayPane);
+
+        $this->assertStringContainsString('Bruno Manana', $upcomingPane);
+        $this->assertStringNotContainsString('Ana Pendiente', $upcomingPane);
+        $this->assertStringNotContainsString('<th', $todayPane);
+
+        Carbon::setTestNow();
+    }
+
+    public function test_dashboard_today_calls_show_only_the_first_four(): void
+    {
+        Carbon::setTestNow('2026-05-19 12:00:00');
+
+        $this->seed([
+            CountrySeeder::class,
+            LanguageSeeder::class,
+            ContactStatusSeeder::class,
+            EnterpriseTypeSeeder::class,
+            List60StatusesSeeder::class,
+        ]);
+
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $user->assignRole('admin');
+
+        foreach (['calendar', 'list60'] as $moduleKey)
+        {
+            Module::query()->firstOrCreate(
+                ['key' => $moduleKey],
+                [
+                    'name' => $moduleKey,
+                    'icon' => 'calendar-event',
+                    'description' => $moduleKey,
+                    'status' => 1,
+                ],
+            );
+            $team->enableModule($moduleKey);
+        }
+
+        $statusId = List60Status::query()->value('id');
+
+        foreach (range(1, 5) as $index)
+        {
+            $contact = Contact::factory()->create([
+                'team_id' => $team->id,
+                'name' => 'Cola',
+                'surname' => 'Numero'.$index,
+                'responsible_id' => $user->id,
+                'creator_id' => $user->id,
+            ]);
+
+            List60::query()->create([
+                'contact_id' => $contact->id,
+                'type_id' => 1,
+                'date_next' => Carbon::parse('2026-05-19')->subDays(6 - $index)->toDateTimeString(),
+                'status_id' => $statusId,
+                'responsible_id' => $user->id,
+            ]);
+        }
+
+        $this->actingAs($user);
+        $content = $this->get(route('dashboard'))->assertOk()->getContent();
+        $todayPane = $this->dashboardCalendarPane($content, 'dashboard-cal-pane-today', 'dashboard-cal-pane-upcoming');
+
+        foreach (range(1, 4) as $index)
+        {
+            $this->assertStringContainsString('Cola Numero'.$index, $todayPane);
+        }
+
+        $this->assertStringNotContainsString('Cola Numero5', $todayPane);
+        $this->assertStringNotContainsString(__('app.dashboard_calendar_col_event'), $todayPane);
+
+        Carbon::setTestNow();
+    }
+
+    private function dashboardCalendarPane(string $html, string $startId, ?string $endId): string
+    {
+        $start = strpos($html, 'id="'.$startId.'"');
+        $this->assertNotFalse($start);
+
+        $end = $endId === null ? strlen($html) : strpos($html, 'id="'.$endId.'"', $start);
+        $this->assertNotFalse($end);
+
+        return substr($html, $start, $end - $start);
     }
 
     public function test_dashboard_panel_triggers_work_without_contact_list_permission(): void

@@ -23,6 +23,7 @@ use App\Services\ContactInteractionChartDataService;
 use App\Services\DailyTeamDigestMetricsCollector;
 use App\Services\UserDailyPerformanceInsightService;
 use App\Services\WeeklyWorkPlanService;
+use App\Support\ApplicationDateTime;
 use App\Support\DemoTeam;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -83,7 +84,8 @@ class DashboardController extends Controller
                 {
                     $query->where('team_id', $activeTeam->id);
                 })
-                ->whereDate('date_next', Carbon::today())
+                ->whereDate('date_next', '<=', Carbon::today())
+                ->orderBy('date_next')
                 ->get();
             $clientsToContactToday = $todayContacts->count();
         }
@@ -999,9 +1001,104 @@ class DashboardController extends Controller
             ->limit(30)
             ->get();
 
+        $followUps = $this->dashboardList60FollowUps($activeTeam, $today);
+
+        $upcoming = array_merge(
+            $upcomingEvents->map(fn (CalendarEvent $event) => $this->formatDashboardCalendarEvent($event))->all(),
+            $followUps['upcoming'],
+        );
+        usort($upcoming, function (array $left, array $right): int
+        {
+            return strcmp((string) ($left['date_key'] ?? ''), (string) ($right['date_key'] ?? ''));
+        });
+
         return [
-            'today' => $todayEvents->map(fn (CalendarEvent $event) => $this->formatDashboardCalendarEvent($event))->values()->all(),
-            'upcoming' => $upcomingEvents->map(fn (CalendarEvent $event) => $this->formatDashboardCalendarEvent($event))->values()->all(),
+            'today' => array_merge(
+                $followUps['today'],
+                $todayEvents->map(fn (CalendarEvent $event) => $this->formatDashboardCalendarEvent($event))->all(),
+            ),
+            'upcoming' => $upcoming,
+        ];
+    }
+
+    /**
+     * Calls still due stay on Hoy after the day passes. A later date_next goes to Próximamente.
+     *
+     * @return array{today: list<array<string, mixed>>, upcoming: list<array<string, mixed>>}
+     */
+    private function dashboardList60FollowUps($activeTeam, Carbon $today): array
+    {
+        $empty = ['today' => [], 'upcoming' => []];
+
+        if (! $activeTeam->hasModule('list60'))
+        {
+            return $empty;
+        }
+
+        $entries = List60::query()
+            ->with(['contact.enterprises', 'status'])
+            ->whereHas('contact', function ($query) use ($activeTeam)
+            {
+                $query->where('team_id', $activeTeam->id);
+            })
+            ->orderBy('date_next')
+            ->get();
+
+        $todayItems = [];
+        $upcomingItems = [];
+
+        foreach ($entries as $entry)
+        {
+            if ($entry->contact === null)
+            {
+                continue;
+            }
+
+            $item = $this->formatDashboardList60FollowUp($entry, $today);
+            $due = $entry->date_next?->copy()->startOfDay();
+
+            if ($due === null || $due->lte($today))
+            {
+                $todayItems[] = $item;
+
+                continue;
+            }
+
+            $upcomingItems[] = $item;
+        }
+
+        return [
+            'today' => $todayItems,
+            'upcoming' => $upcomingItems,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatDashboardList60FollowUp(List60 $entry, Carbon $today): array
+    {
+        $contact = $entry->contact;
+        $due = $entry->date_next?->copy()->startOfDay();
+        $isOverdue = $due instanceof Carbon && $due->lt($today);
+        $enterprise = $contact->enterprises->first();
+        $when = $entry->date_next
+            ? ApplicationDateTime::formatUpcomingContactDate($entry->date_next)
+            : __('app.list60_date_today');
+
+        return [
+            'id' => 'list60-'.$entry->id,
+            'title' => trim($contact->name.' '.$contact->surname),
+            'url' => route('contact.show', $contact->id),
+            'location' => null,
+            'label' => __('app.dashboard_calendar_follow_up'),
+            'label_class' => $isOverdue ? 'warning' : 'success',
+            'all_day' => true,
+            'date_key' => $due?->toDateString() ?? $today->toDateString(),
+            'date_display' => $when,
+            'time_display' => $when,
+            'calendar_url' => route('list60-list'),
+            'guests' => $enterprise ? [trim((string) $enterprise->name)] : [],
         ];
     }
 

@@ -19,6 +19,7 @@ class InvoiceAnalyticsService
 
     public function __construct(
         private readonly PaymentReportingCurrencyService $reportingCurrencyService,
+        private readonly VatHaciendaCsvExportService $vatHaciendaCsvExportService,
     ) {}
 
     /**
@@ -236,60 +237,26 @@ class InvoiceAnalyticsService
      */
     private function aggregateMonthlyTotals(int $teamId, Carbon $from, Carbon $to, string $reportingCurrency): array
     {
-        $monthly = [];
-        $missingPairs = [];
-        $nativeTotals = ['income' => [], 'expense' => []];
+        $books = $this->vatHaciendaCsvExportService->monthlyBookTotals(
+            $teamId,
+            $from,
+            $to,
+            $reportingCurrency,
+        );
 
-        for ($month = 1; $month <= 12; $month++)
-        {
-            $monthly[$month] = ['income' => 0.0, 'expense' => 0.0];
-        }
-
-        foreach ($this->loadItemsInRange($teamId, $from, $to) as $item)
-        {
-            $invoice = $item->invoice;
-
-            if (! $invoice || blank($invoice->date))
-            {
-                continue;
-            }
-
-            $month = (int) Carbon::parse($invoice->date)->format('n');
-
-            if ($month < 1 || $month > 12)
-            {
-                continue;
-            }
-
-            $converted = $this->convertedLineAmount($item, $reportingCurrency, $missingPairs, $nativeTotals);
-
-            if ($converted === null)
-            {
-                continue;
-            }
-
-            if ($invoice->operation === 'sell')
-            {
-                $monthly[$month]['income'] += $converted;
-            } elseif ($invoice->operation === 'buy')
-            {
-                $monthly[$month]['expense'] += $converted;
-            }
-        }
-
-        $rows = collect($monthly)->map(function (array $totals, int $month): object
+        $rows = collect($books['months'])->map(function (array $totals, int $month): object
         {
             return (object) [
                 'month_num' => $month,
-                'income' => round($totals['income'], 2),
-                'expense' => round($totals['expense'], 2),
+                'income' => (float) $totals['income'],
+                'expense' => (float) $totals['expense'],
             ];
         });
 
         return [
             'rows' => $rows,
-            'missing_pairs' => array_values(array_unique($missingPairs)),
-            'native_totals' => $nativeTotals,
+            'missing_pairs' => $books['missing_pairs'],
+            'native_totals' => $books['native_totals'],
         ];
     }
 

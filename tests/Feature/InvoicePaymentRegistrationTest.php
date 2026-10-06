@@ -92,7 +92,7 @@ class InvoicePaymentRegistrationTest extends TestCase
         ]);
     }
 
-    public function test_non_owner_cannot_register_payment_from_invoice_show(): void
+    public function test_team_admin_can_register_payment_from_invoice_show(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $owner->assignRole('admin');
@@ -137,26 +137,86 @@ class InvoicePaymentRegistrationTest extends TestCase
             'status' => 2,
         ]);
 
-        $response = $this->actingAs($member)
+        $this->actingAs($member)
+            ->post(route('invoice.payments.store', $invoice), [
+                'amount' => 50,
+                'date' => now()->toDateString(),
+                'account_id' => $account->id,
+                'type_id' => 1,
+            ])
+            ->assertRedirect(route('invoice.show', $invoice->id))
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('payments', [
+            'invoice_id' => $invoice->id,
+            'amount' => 50,
+        ]);
+    }
+
+    public function test_collaborator_cannot_register_payment_from_invoice_show(): void
+    {
+        Role::firstOrCreate(['name' => 'collaborator', 'guard_name' => 'web']);
+
+        $owner = User::factory()->withPersonalTeam()->create();
+        $owner->assignRole('admin');
+        $team = $owner->ownedTeams()->first();
+
+        $member = User::factory()->create();
+        $member->assignRole('collaborator');
+        $team->users()->attach($member, ['role' => 'collaborator']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->seed([\Database\Seeders\PaymentTypeSeeder::class]);
+
+        $account = PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-ars',
+            'name' => 'Efectivo',
+            'symbol' => '$',
+            'currency_id' => 32,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-002-C',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 50,
+            'status' => 2,
+        ]);
+
+        $this->actingAs($member)
             ->from(route('invoice.show', $invoice->id))
             ->post(route('invoice.payments.store', $invoice), [
                 'amount' => 50,
                 'date' => now()->toDateString(),
                 'account_id' => $account->id,
                 'type_id' => 1,
-            ]);
+            ])
+            ->assertRedirect('/misc-not-authorized');
 
-        $this->assertTrue(
-            in_array($response->status(), [403, 302], true),
-            'Expected forbidden or redirect without creating payment, got '.$response->status(),
-        );
         $this->assertDatabaseMissing('payments', [
             'invoice_id' => $invoice->id,
             'amount' => 50,
         ]);
     }
 
-    public function test_invoice_show_displays_payment_forms_only_for_team_owner(): void
+    public function test_invoice_show_displays_payment_forms_for_team_owner_and_admin(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $owner->assignRole('admin');
@@ -212,8 +272,8 @@ class InvoicePaymentRegistrationTest extends TestCase
         $this->actingAs($member)
             ->get(route('invoice.show', $invoice->id))
             ->assertOk()
-            ->assertDontSee(__('invoice_payment.register_title'), false)
-            ->assertDontSee('id="account_id"', false);
+            ->assertSee(__('invoice_payment.register_title'), false)
+            ->assertSee('id="account_id"', false);
     }
 
     public function test_invoice_show_hides_electronic_payment_form_when_balance_is_zero(): void

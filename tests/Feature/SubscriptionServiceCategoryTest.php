@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Category;
 use App\Models\Enterprise;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
+use App\Models\InvoiceSync;
 use App\Models\Module;
 use App\Models\Service;
 use App\Models\StripeSubscription;
@@ -11,6 +14,7 @@ use App\Models\User;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
 use Database\Seeders\EnterpriseTypeSeeder;
+use Database\Seeders\InvoiceTypeSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -77,6 +81,64 @@ class SubscriptionServiceCategoryTest extends TestCase
         $this->assertDatabaseHas('services', [
             'id' => $service->id,
             'category_id' => null,
+        ]);
+    }
+
+    public function test_updating_service_category_copies_it_onto_invoice_items(): void
+    {
+        $this->seed(InvoiceTypeSeeder::class);
+        [$user, $team, $sync, $service, $category] = $this->createSubscriptionWithService();
+
+        $otherCategory = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $category->module_id,
+            'name' => 'VPS',
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $service->enterprise_id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'STR-1',
+            'date' => now()->toDateString(),
+            'gross_amount' => 19.99,
+            'total_amount' => 19.99,
+            'balance' => 0,
+            'status' => 2,
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_sub_1',
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_sub_1',
+            'stripe_subscription_id' => $sync->stripe_id,
+            'status' => 'paid',
+            'currency' => 'eur',
+            'total' => 19.99,
+            'paid' => true,
+        ]);
+
+        $item = InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'category_id' => null,
+            'description' => 'Hosting',
+            'quantity' => 1,
+            'unit_price' => 19.99,
+            'discount' => 0,
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('subscription.stripe-service-category.update', $sync), [
+                'category_id' => $otherCategory->id,
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('invoice_items', [
+            'id' => $item->id,
+            'category_id' => $otherCategory->id,
         ]);
     }
 

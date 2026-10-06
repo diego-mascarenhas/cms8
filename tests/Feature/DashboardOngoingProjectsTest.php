@@ -100,7 +100,7 @@ class DashboardOngoingProjectsTest extends TestCase
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
 
-        $user = User::factory()->withPersonalTeam()->create(['name' => 'Ana Responsable']);
+        $user = User::factory()->withPersonalTeam()->create(['name' => 'Ana Garcia']);
         $team = $user->ownedTeams()->first();
         $user->forceFill(['current_team_id' => $team->id])->save();
         $user->assignRole('admin');
@@ -181,11 +181,10 @@ class DashboardOngoingProjectsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Proyecto Con Métricas', false);
-        $response->assertSee('Ana Responsable', false);
         $response->assertSee('Cliente Métricas', false);
         $response->assertSee($dueDate->format('d/m/Y'), false);
         $response->assertSee('/ 2', false);
-        $response->assertSee(__('Responsible'), false);
+        $response->assertDontSee(__('Responsible'), false);
         $response->assertSee(__('Completion'), false);
     }
 }

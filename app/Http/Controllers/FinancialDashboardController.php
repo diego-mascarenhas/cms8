@@ -5,13 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\ExchangeRate;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\Finance\InvoicedLineItemsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Services\Finance\ServiceCategoryOptionsService;
+use App\Services\Finance\VatHaciendaCsvExportService;
 use App\Services\Finance\VatReportingService;
 use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class FinancialDashboardController extends Controller
@@ -22,6 +25,8 @@ class FinancialDashboardController extends Controller
         protected PaymentReportingCurrencyService $paymentReportingCurrencyService,
         protected ServiceCategoryOptionsService $serviceCategoryOptionsService,
         protected VatReportingService $vatReportingService,
+        protected VatHaciendaCsvExportService $vatHaciendaCsvExportService,
+        protected FinanceCfoBriefService $financeCfoBriefService,
     ) {}
 
     public function index(Request $request)
@@ -56,7 +61,14 @@ class FinancialDashboardController extends Controller
         $availableYears = range($maxYear, $minYear);
 
         $accounts = $this->paymentReportingCurrencyService->accountBalancesForDisplay();
-        $monthlyTotals = $this->paymentReportingCurrencyService->monthlyTotalsConverted($selectedYear, $reportingCurrency);
+        $bookYearFrom = Carbon::create($selectedYear, 1, 1)->startOfDay();
+        $bookYearTo = Carbon::create($selectedYear, 12, 31)->endOfDay();
+        $monthlyTotals = $this->vatHaciendaCsvExportService->monthlyBookTotals(
+            (int) auth()->user()->currentTeam->id,
+            $bookYearFrom,
+            $bookYearTo,
+            $reportingCurrency,
+        )['months'];
         $selectedMonth = Carbon::now()->month;
 
         $currentMonthIncome = (float) ($monthlyTotals[$selectedMonth]['income'] ?? 0);
@@ -108,6 +120,18 @@ class FinancialDashboardController extends Controller
             'exchangeRates',
             'haciendaShareUrl',
         ));
+    }
+
+    public function cfoBrief(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $team = auth()->user()->currentTeam;
+        $year = (int) $request->input('year', Carbon::now()->year);
+
+        return response()->json([
+            'brief' => $this->financeCfoBriefService->suggest($team, $year > 0 ? $year : (int) Carbon::now()->year),
+        ]);
     }
 
     public function exchangeRates(Request $request)

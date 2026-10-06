@@ -9,6 +9,7 @@ class ExpenseDocumentTypes
      */
     public const LABELS = [
         'invoice' => 'Factura',
+        'credit_note' => 'Nota de crédito',
         'receipt' => 'Ticket/Recibo',
         'tax' => 'Impuesto',
         'depreciation' => 'Amortización',

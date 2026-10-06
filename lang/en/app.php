@@ -36,6 +36,7 @@ return [
     'dashboard_calendar_col_time' => 'Time',
     'dashboard_calendar_col_type' => 'Type',
     'dashboard_calendar_all_day' => 'All day',
+    'dashboard_calendar_follow_up' => 'Call',
     'dashboard_calendar_open_full' => 'Open calendar',
     'dashboard_calendar_events_on' => 'Events on :date',
     'dashboard_calendar_empty_today' => 'No events today',

@@ -1,7 +1,11 @@
 <tr>
     <td>
         <div class="d-flex flex-column">
-            <span class="fw-medium">{{ $event['title'] }}</span>
+            @if (! empty($event['url']))
+                <a href="{{ $event['url'] }}" class="fw-medium text-body">{{ $event['title'] }}</a>
+            @else
+                <span class="fw-medium">{{ $event['title'] }}</span>
+            @endif
             @if (! empty($event['guests']))
                 <small class="text-muted">{{ implode(', ', $event['guests']) }}</small>
             @endif

@@ -530,7 +530,7 @@
                 });
             }
 
-            showPanel('contacts-trend');
+            showPanel('interactions-breakdown');
         });
     </script>
 @endsection
@@ -550,7 +550,18 @@
                     <div class="dashboard-metrics-primary flex-shrink-0">
                         <div class="row g-3 g-lg-4">
                             <div class="col-12 col-sm-6 col-xl-3">
-                                <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item dashboard-metric-item--active border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="contacts-trend" aria-pressed="true">
+                                <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item dashboard-metric-item--active border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="interactions-breakdown" aria-pressed="true">
+                                    <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
+                                        <i class="ti ti-history ti-xl"></i>
+                                    </span>
+                                    <div class="content-right min-w-0">
+                                        <p class="mb-0">{{ __('app.dashboard_metric_logged_interactions') }}</p>
+                                        <h4 class="text-warning mb-0">{{ $teamInteractionsLast30DaysCount ?? 0 }}</h4>
+                                    </div>
+                                </button>
+                            </div>
+                            <div class="col-12 col-sm-6 col-xl-3">
+                                <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="contacts-trend" aria-pressed="false">
                                     <span class="bg-label-success p-2 rounded d-inline-flex align-items-center justify-content-center">
                                         <i class="ti ti-target ti-xl"></i>
                                     </span>
@@ -568,17 +579,6 @@
                                     <div class="content-right min-w-0">
                                         <p class="mb-0">{{ __('app.dashboard_metric_recent_activity') }}</p>
                                         <h4 class="text-info mb-0">{{ $latestContactsThisMonthCount ?? 0 }}</h4>
-                                    </div>
-                                </button>
-                            </div>
-                            <div class="col-12 col-sm-6 col-xl-3">
-                                <button type="button" class="d-flex align-items-center gap-3 dashboard-metric-item border-0 bg-transparent text-body w-100 text-start p-0" data-dashboard-panel="interactions-breakdown" aria-pressed="false">
-                                    <span class="bg-label-warning p-2 rounded d-inline-flex align-items-center justify-content-center">
-                                        <i class="ti ti-history ti-xl"></i>
-                                    </span>
-                                    <div class="content-right min-w-0">
-                                        <p class="mb-0">{{ __('app.dashboard_metric_logged_interactions') }}</p>
-                                        <h4 class="text-warning mb-0">{{ $teamInteractionsLast30DaysCount ?? 0 }}</h4>
                                     </div>
                                 </button>
                             </div>
@@ -669,11 +669,11 @@
                                 <p class="text-muted mb-2">
                                     Mes pasado: {{ number_format($lastMonthRevenue, 2, ',', '.') }}€
                                 </p> --}}
-                                <div class="mt-auto pt-2">
+                                <div class="dashboard-insight-actions mt-auto pt-2">
                                     <a href="{{ route('weekly-plan.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
                                         <i class="ti ti-report me-1"></i>{{ __('app.weekly_plan_report') }}
                                     </a>
-                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light ms-2">
+                                    <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
                                         <i class="ti ti-sitemap me-1"></i>{{ __('Organización') }}
                                     </a>
                                 </div>
@@ -739,12 +739,12 @@
         </div>
     @endif
 
-    <div class="row align-items-lg-stretch dashboard-paired-row">
+    <div class="row align-items-md-stretch dashboard-paired-row">
         <!-- Emotional Balance (right column) -->
-        <div class="col-lg-4 order-lg-2 mb-4 mb-lg-0 d-flex flex-column">
+        <div class="col-md-4 order-md-2 mb-4 mb-md-0 d-flex flex-column">
             <!-- Emotional Balance -->
-            <div class="card mb-4 flex-grow-1 d-flex flex-column w-100">
-                <div class="card-header pb-0 d-flex justify-content-between mb-lg-n4">
+            <div class="card mb-4 dashboard-sentiment-card flex-grow-1 d-flex flex-column w-100">
+                <div class="card-header pb-0 d-flex justify-content-between">
                     <div class="card-title mb-0">
                         <h5 class="mb-0">Balance emocional</h5>
                         <small class="text-muted">¡Bravo! Estás en el buen camino</small>
@@ -756,7 +756,7 @@
                             <div class="sentiment-chart flex-grow-1 d-flex flex-column justify-content-end">
                                 @php
                                     $sentimentMaxCount = max(1, (int) max(array_column($sentimentData, 'count')));
-                                    $sentimentBarMaxHeight = 120;
+                                    $sentimentBarMaxHeight = 88;
                                 @endphp
                                 <div class="d-flex align-items-end justify-content-between sentiment-bars-row">
                                     @foreach ($sentimentData as $index => $sentiment)
@@ -803,10 +803,10 @@
         </div>
 
         <!-- Main Content Column -->
-        <div class="col-lg-8 order-lg-1 d-flex flex-column">
+        <div class="col-md-8 order-md-1 d-flex flex-column">
             <!-- Today's contacts / calendar — paired with emotional balance -->
-            <div class="card mb-4 dashboard-calendar-card w-100 flex-grow-1 d-flex flex-column">
-                <div class="card-header pb-1 d-flex justify-content-between align-items-start flex-wrap gap-2">
+            <div class="card mb-4 dashboard-calendar-card w-100 d-flex flex-column">
+                <div class="card-header d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div class="card-title mb-0">
                         <h5 class="mb-1">{{ __('app.dashboard_calendar_card_title') }}</h5>
                         <small class="text-muted d-block">{{ __('app.dashboard_calendar_card_subtitle') }}</small>
@@ -820,7 +820,7 @@
                         </div>
                     @endif
                 </div>
-                <div class="card-body dashboard-calendar-card-body flex-grow-1 d-flex flex-column min-h-0">
+                <div class="card-body dashboard-calendar-card-body d-flex flex-column">
                     @if ($dashboardCalendarData ?? null)
                         @include('partials.dashboard-calendar-tab-panes', $dashboardCalendarData)
                     @elseif(isset($todayContacts) && $todayContacts->count() > 0 && $todayContacts->first()->contact)
@@ -898,7 +898,6 @@
                             <thead>
                                 <tr>
                                     <th>{{ __('Project') }}</th>
-                                    <th>{{ __('Responsible') }}</th>
                                     <th class="text-center">{{ __('Status') }}</th>
                                     <th style="min-width: 140px;">{{ __('Hours') }}</th>
                                     <th class="text-center">{{ __('Tasks') }}</th>
@@ -942,13 +941,6 @@
                                                     @endif
                                                 </small>
                                             </div>
-                                        </td>
-                                        <td>
-                                            @if ($project->responsible)
-                                                <span class="text-body">{{ $project->responsible->name }}</span>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
                                         </td>
                                         <td class="text-center">
                                             {!! $project->status_label !!}
@@ -1283,6 +1275,21 @@
 
     .dashboard-insight-card {
         overflow: visible;
+        container-type: inline-size;
+    }
+
+    .dashboard-insight-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    @container (max-width: 26rem) {
+        .dashboard-insight-actions {
+            flex-direction: column;
+            align-items: flex-start;
+        }
     }
 
     .dashboard-top-row > .col-md-4:has(.dashboard-insight-card) {
@@ -1334,14 +1341,33 @@
         color: #cfd3ec !important;
     }
 
-    @media (min-width: 992px) {
-        .dashboard-paired-row > [class*='col-lg-'] > .card {
+    @media (max-width: 767.98px) {
+        .dashboard-paired-row > .col-md-4 {
+            flex: 0 0 auto;
+            width: min(100%, 22.5rem);
+            max-width: 22.5rem;
+        }
+    }
+
+    @media (min-width: 768px) {
+        .dashboard-paired-row > [class*='col-md-'] > .card {
             min-height: 330px;
+        }
+
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-calendar-card {
+            flex-grow: 0;
+            height: auto;
+            min-height: 0;
+        }
+
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-sentiment-card {
+            height: 100%;
+            min-height: 0;
         }
     }
 
     .dashboard-calendar-card .card-header {
-        padding-bottom: 0.75rem;
+        padding-bottom: 1.5rem;
     }
 
     .dashboard-calendar-card .dashboard-calendar-header-actions {
@@ -1382,13 +1408,6 @@
 
     .dashboard-calendar-card .dashboard-calendar-events-table {
         margin-bottom: 0;
-    }
-
-    .dashboard-calendar-card .dashboard-calendar-events-table thead th {
-        padding-top: 0.375rem;
-        padding-bottom: 0.25rem;
-        font-size: 0.75rem;
-        border-bottom: 0;
     }
 
     .dashboard-calendar-card .dashboard-calendar-events-table tbody td {
@@ -1504,8 +1523,13 @@
             width: 100%;
         }
 
-        .dashboard-paired-row > [class*='col-lg-'] > .card {
+        .dashboard-paired-row > [class*='col-md-'] > .card {
             min-height: 280px;
+        }
+
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-calendar-card,
+        .dashboard-paired-row > [class*='col-md-'] > .dashboard-sentiment-card {
+            min-height: 0;
         }
     }
 

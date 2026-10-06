@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ExchangeRate;
 use App\Models\User;
+use App\Services\Finance\FinanceCfoBriefService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -39,7 +40,9 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             ->assertOk()
             ->assertSee(route('finance-dashboard.exchange-rates'), false)
             ->assertSee('01/10/2026 04:00', false)
-            ->assertSee(__('Accountant link'), false);
+            ->assertSee(__('Accountant link'), false)
+            ->assertSee(__('Ask the CFO'), false)
+            ->assertSee('cfoBriefModal', false);
 
         $html = $dashboard->getContent();
         $accountantLink = strpos($html, __('Accountant link'));
@@ -54,5 +57,23 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             ->assertSee('1.500,0000', false)
             ->assertSee('0,860000', false)
             ->assertSee('1.744,1860', false);
+    }
+
+    public function test_cfo_brief_returns_the_suggestion(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $user->forceFill(['current_team_id' => $user->ownedTeams()->first()->id])->save();
+        $this->actingAs($user);
+
+        $this->mock(FinanceCfoBriefService::class, function ($mock): void
+        {
+            $mock->shouldReceive('suggest')->once()->andReturn('Revisar los sueldos de este mes.');
+        });
+
+        $this->postJson(route('finance-dashboard.cfo-brief'), ['year' => 2026])
+            ->assertOk()
+            ->assertJson(['brief' => 'Revisar los sueldos de este mes.']);
     }
 }

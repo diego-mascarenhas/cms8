@@ -322,7 +322,7 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
         $this->assertSame(60.0, (float) $invoice->balance);
     }
 
-    public function test_non_owner_cannot_register_payment(): void
+    public function test_team_admin_can_register_payment(): void
     {
         $owner = User::factory()->withPersonalTeam()->create();
         $team = $owner->ownedTeams()->first();
@@ -332,6 +332,15 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
         $member->forceFill(['current_team_id' => $team->id])->save();
 
         $this->actingAs($member);
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-eur',
+            'name' => 'Efectivo',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
 
         $enterprise = Enterprise::withoutGlobalScopes()->create([
             'team_id' => $team->id,
@@ -347,6 +356,52 @@ class InvoicePaymentRegistrationServiceTest extends TestCase
             'type_id' => 1,
             'operation' => 'sell',
             'number' => 'F-002',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 50,
+            'discount' => 0,
+            'total_amount' => 50,
+            'balance' => 50,
+            'status' => 2,
+        ]);
+
+        $this->assertTrue($this->service->canRegisterPayment($member, $invoice));
+    }
+
+    public function test_collaborator_cannot_register_payment(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $team = $owner->ownedTeams()->first();
+
+        $member = User::factory()->create();
+        $team->users()->attach($member, ['role' => 'collaborator']);
+        $member->forceFill(['current_team_id' => $team->id])->save();
+
+        $this->actingAs($member);
+
+        PaymentAccount::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'code' => 'cash-eur',
+            'name' => 'Efectivo',
+            'symbol' => '€',
+            'currency_id' => 978,
+            'status' => 1,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 978,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-002-C',
             'date' => now()->toDateString(),
             'due_date' => now()->addDays(10)->toDateString(),
             'gross_amount' => 50,
