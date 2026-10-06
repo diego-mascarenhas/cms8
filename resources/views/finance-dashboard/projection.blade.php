@@ -56,10 +56,10 @@
                 style="font-size: 1rem; cursor: help; vertical-align: middle;"
                 data-bs-toggle="tooltip"
                 data-bs-placement="top"
-                title="{{ __('Totals use invoice line amounts grouped by category. Voided, draft, and credit-note invoices are excluded.') }}"
+                title="{{ __('Headline totals follow the accountant books for the selected year: invoice totals in the reporting currency, including credit notes. Drafts are excluded.') }}"
             ></i>
         </h4>
-        <p class="text-muted mb-0">{{ __('Based on invoiced line items by category (historical billing data).') }}</p>
+        <p class="text-muted mb-0">{{ __('Same totals as the accountant books for the selected year.') }}</p>
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-wrap align-items-center gap-2">
         <form method="GET" action="{{ route('finance-dashboard.projection') }}" class="d-flex align-items-center">

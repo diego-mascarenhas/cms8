@@ -52,6 +52,7 @@ class ExpenseCreateTest extends TestCase
             ->assertSee($account->name, false)
             ->assertSee('Transferencia bancaria', false)
             ->assertSee('Crear proveedor', false)
+            ->assertSee('Nota de crédito', false)
             ->assertSee('createSupplierModal', false)
             ->assertSee('open-create-supplier-modal', false)
             ->assertSee('Dirección fiscal', false)
@@ -156,6 +157,47 @@ class ExpenseCreateTest extends TestCase
 
         $this->assertNotNull($payment);
         $this->assertSame('1493.82', number_format((float) $payment->amount, 2, '.', ''));
+    }
+
+    public function test_store_saves_a_supplier_credit_note(): void
+    {
+        $user = $this->makeAdminUser();
+        $supplier = $this->createSupplierForTeam($user);
+        $account = $this->createAccountForTeam($user);
+        $paymentType = $this->createPaymentType();
+
+        $this->actingAs($user)
+            ->post(route('expense.store'), [
+                'document_type' => 'credit_note',
+                'enterprise_id' => $supplier->id,
+                'date' => '2026-09-12',
+                'document_number' => 'NC-PROV-001',
+                'lines' => [[
+                    'concept' => 'Abono hosting',
+                    'base_amount' => '100.00',
+                    'vat_percent' => '21',
+                    'retention_percent' => '0',
+                    'allocation_percent' => '100',
+                ]],
+                'payments' => [[
+                    'payment_date' => '2026-09-12',
+                    'amount' => '121.00',
+                    'type_id' => $paymentType->id,
+                    'account_id' => $account->id,
+                    'status' => 2,
+                ]],
+                'submit_action' => 'save',
+            ])
+            ->assertRedirect(route('expense.index'))
+            ->assertSessionHas('success', 'Nota de crédito guardada correctamente.');
+
+        $invoice = Invoice::withoutGlobalScopes()->where('number', 'NC-PROV-001')->first();
+
+        $this->assertNotNull($invoice);
+        $this->assertSame('buy', $invoice->operation);
+        $this->assertSame(2, (int) $invoice->type_id);
+        $this->assertSame(4, (int) $invoice->status);
+        $this->assertTrue($invoice->isCreditNote());
     }
 
     public function test_store_persists_line_category_on_invoice_item(): void

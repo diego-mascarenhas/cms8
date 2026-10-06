@@ -43,7 +43,8 @@ class ManualInvoiceDocumentService
         $invoiceBalance = round(max($invoiceTotal - $paymentsTotal, 0), 2);
         $currencyCode = $this->resolveCurrencyCode($validated);
         $currencyId = $this->resolveCurrencyId($validated);
-        $invoiceTypeId = $this->resolveInvoiceTypeId();
+        $isCreditNote = ($validated['document_type'] ?? '') === 'credit_note';
+        $invoiceTypeId = $isCreditNote ? 2 : $this->resolveInvoiceTypeId();
         $categoryId = isset($validated['expense_category_id'])
             ? (int) $validated['expense_category_id']
             : null;
@@ -65,6 +66,7 @@ class ManualInvoiceDocumentService
             $documentFile,
             $paymentEntries,
             $isDraft,
+            $isCreditNote,
             $operation,
             $pendingDocumentToken,
             &$invoice,
@@ -73,7 +75,7 @@ class ManualInvoiceDocumentService
                 'team_id' => $teamId,
                 'enterprise_id' => (int) $validated['enterprise_id'],
                 'billing_id' => null,
-                'type_id' => $invoiceTypeId,
+                'type_id' => $isCreditNote ? 2 : $invoiceTypeId,
                 'operation' => $operation,
                 'number' => $this->composeInvoiceNumber($validated, $operation),
                 'date' => $validated['date'],
@@ -83,7 +85,7 @@ class ManualInvoiceDocumentService
                 'total_amount' => $invoiceTotal,
                 'balance' => $invoiceBalance,
                 'currency_id' => $currencyId,
-                'status' => 2,
+                'status' => $isCreditNote ? 4 : 2,
                 'source_provider' => 'manual',
             ]);
 

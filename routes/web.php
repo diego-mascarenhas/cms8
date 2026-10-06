@@ -1032,6 +1032,7 @@ Route::middleware(['auth'])->group(function ()
 
     // Financial Dashboard (Accounting)
     Route::get('/finance-dashboard', [FinancialDashboardController::class, 'index'])->name('finance-dashboard.index');
+    Route::post('/finance-dashboard/cfo-brief', [FinancialDashboardController::class, 'cfoBrief'])->name('finance-dashboard.cfo-brief');
     Route::get('/finance-dashboard/exchange-rates', [FinancialDashboardController::class, 'exchangeRates'])->name('finance-dashboard.exchange-rates');
     Route::get('/finance-dashboard/projection', [FinancialDashboardController::class, 'projection'])->name('finance-dashboard.projection');
     Route::get('/finance-dashboard/invoiced-lines', [FinancialDashboardController::class, 'invoicedLines'])->name('finance-dashboard.invoiced-lines');

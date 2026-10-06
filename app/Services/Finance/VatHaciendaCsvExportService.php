@@ -284,6 +284,148 @@ class VatHaciendaCsvExportService
     }
 
     /**
+     * Accountant-book totals for a period. Income and expense already include signed credit notes.
+     *
+     * @return array{
+     *     sales: float,
+     *     purchases: float,
+     *     sales_credit_notes: float,
+     *     purchase_credit_notes: float,
+     *     income: float,
+     *     expense: float,
+     *     output_vat: float,
+     *     input_vat: float,
+     * }
+     */
+    public function bookSummary(int $teamId, Carbon $from, Carbon $to, string $targetCurrency): array
+    {
+        $books = $this->presentationBooks($teamId, $from, $to, $targetCurrency)['books'];
+        $sales = (float) ($books['sell']['summary']['total'] ?? 0);
+        $purchases = (float) ($books['buy']['summary']['total'] ?? 0);
+        $salesCreditNotes = (float) ($books['sell_credit_notes']['summary']['total'] ?? 0);
+        $purchaseCreditNotes = (float) ($books['buy_credit_notes']['summary']['total'] ?? 0);
+        $outputVat = (float) ($books['sell']['summary']['tax'] ?? 0)
+            + (float) ($books['sell_credit_notes']['summary']['tax'] ?? 0);
+        $inputVat = (float) ($books['buy']['summary']['tax'] ?? 0)
+            + (float) ($books['buy_credit_notes']['summary']['tax'] ?? 0);
+
+        return [
+            'sales' => round($sales, 2),
+            'purchases' => round($purchases, 2),
+            'sales_credit_notes' => round($salesCreditNotes, 2),
+            'purchase_credit_notes' => round($purchaseCreditNotes, 2),
+            'income' => round($sales + $salesCreditNotes, 2),
+            'expense' => round($purchases + $purchaseCreditNotes, 2),
+            'output_vat' => round($outputVat, 2),
+            'input_vat' => round($inputVat, 2),
+        ];
+    }
+
+    /**
+     * Monthly income and expense using the same converted invoice totals as the accountant books.
+     *
+     * @return array{
+     *     months: array<int, array{income: float, expense: float}>,
+     *     missing_pairs: list<string>,
+     *     native_totals: array{income: array<string, float>, expense: array<string, float>},
+     * }
+     */
+    public function monthlyBookTotals(int $teamId, Carbon $from, Carbon $to, string $targetCurrency): array
+    {
+        $books = $this->presentationBooks($teamId, $from, $to, $targetCurrency)['books'];
+        $months = [];
+
+        for ($month = 1; $month <= 12; $month++)
+        {
+            $months[$month] = ['income' => 0.0, 'expense' => 0.0];
+        }
+
+        $missingPairs = [];
+        $nativeTotals = ['income' => [], 'expense' => []];
+        $sides = [
+            'sell' => 'income',
+            'sell_credit_notes' => 'income',
+            'buy' => 'expense',
+            'buy_credit_notes' => 'expense',
+        ];
+
+        foreach ($sides as $book => $side)
+        {
+            foreach ($books[$book]['rows'] as $row)
+            {
+                $dateText = (string) ($row[1] ?? '');
+
+                if (! Carbon::hasFormat($dateText, 'd/m/Y'))
+                {
+                    continue;
+                }
+
+                $date = Carbon::createFromFormat('!d/m/Y', $dateText)->startOfDay();
+
+                if ($date->lt($from->copy()->startOfDay()) || $date->gt($to->copy()->endOfDay()))
+                {
+                    continue;
+                }
+
+                $month = (int) $date->month;
+                $converted = $this->parseSpanishAmount((string) ($row[9] ?? ''));
+
+                if ($converted !== null)
+                {
+                    $months[$month][$side] += $converted;
+
+                    continue;
+                }
+
+                $currency = strtoupper(trim((string) ($row[5] ?? '')));
+                $native = $this->parseSpanishAmount((string) ($row[4] ?? ''));
+
+                if ($currency === '' || $native === null)
+                {
+                    continue;
+                }
+
+                $missingPairs[] = $currency.'->'.$targetCurrency;
+                $nativeTotals[$side][$currency] = round(($nativeTotals[$side][$currency] ?? 0) + $native, 2);
+            }
+        }
+
+        foreach ($months as $month => $totals)
+        {
+            $months[$month] = [
+                'income' => round($totals['income'], 2),
+                'expense' => round($totals['expense'], 2),
+            ];
+        }
+
+        return [
+            'months' => $months,
+            'missing_pairs' => array_values(array_unique($missingPairs)),
+            'native_totals' => $nativeTotals,
+        ];
+    }
+
+    private function parseSpanishAmount(string $value): ?float
+    {
+        $value = trim($value);
+
+        if ($value === '')
+        {
+            return null;
+        }
+
+        $normalized = str_replace('.', '', $value);
+        $normalized = str_replace(',', '.', $normalized);
+
+        if (! is_numeric($normalized))
+        {
+            return null;
+        }
+
+        return (float) $normalized;
+    }
+
+    /**
      * @return Builder<Invoice>
      */
     private function scopedInvoices(

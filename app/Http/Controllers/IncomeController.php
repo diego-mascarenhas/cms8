@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\IncomeDataTable;
-use App\Enums\TransactionType;
 use App\Models\Payment;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Services\Finance\VatHaciendaCsvExportService;
@@ -36,21 +35,22 @@ class IncomeController extends Controller
         $periodRange = $vatSelection['range'];
         $previousPeriodRange = $this->vatReportingService->previousComparableRange($vatSelection);
 
-        $periodIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::INCOME,
+        $teamId = (int) auth()->user()->currentTeam->id;
+        $periodBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $periodRange['from'],
+            $periodRange['to'],
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $periodRange['from']->toDateString())
-                ->whereDate('payments.date', '<=', $periodRange['to']->toDateString()),
         );
+        $periodIncome = $periodBooks['sales'];
 
-        $previousPeriodIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::INCOME,
+        $previousPeriodBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $previousPeriodRange['from'],
+            $previousPeriodRange['to'],
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $previousPeriodRange['from']->toDateString())
-                ->whereDate('payments.date', '<=', $previousPeriodRange['to']->toDateString()),
         );
+        $previousPeriodIncome = $previousPeriodBooks['sales'];
 
         $percentageChange = $previousPeriodIncome > 0
             ? (($periodIncome - $previousPeriodIncome) / $previousPeriodIncome) * 100
@@ -61,42 +61,39 @@ class IncomeController extends Controller
             ? now()->endOfDay()
             : Carbon::create($vatSelection['year'], 12, 31)->endOfDay();
 
-        $yearIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::INCOME,
+        $yearBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $yearFrom,
+            $yearTo,
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $yearFrom->toDateString())
-                ->whereDate('payments.date', '<=', $yearTo->toDateString()),
         );
+        $yearIncome = $yearBooks['sales'];
 
         $previousYearFrom = $yearFrom->copy()->subYear();
         $previousYearTo = $yearTo->copy()->subYear();
 
-        $previousYearIncome = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::INCOME,
+        $previousYearBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $previousYearFrom,
+            $previousYearTo,
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $previousYearFrom->toDateString())
-                ->whereDate('payments.date', '<=', $previousYearTo->toDateString()),
         );
+        $previousYearIncome = $previousYearBooks['sales'];
 
         $yearPercentageChange = $previousYearIncome > 0
             ? (($yearIncome - $previousYearIncome) / $previousYearIncome) * 100
             : 0;
 
-        $selectedVat = $this->vatReportingService->sumIncomeVat(
-            $periodRange['from'],
-            $periodRange['to'],
-            $reportingCurrency,
-        );
+        $selectedVat = $periodBooks['output_vat'];
 
         $previousYearPeriodFrom = $periodRange['from']->copy()->subYear();
         $previousYearPeriodTo = $periodRange['to']->copy()->subYear();
-        $previousYearVat = $this->vatReportingService->sumIncomeVat(
+        $previousYearVat = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
             $previousYearPeriodFrom,
             $previousYearPeriodTo,
             $reportingCurrency,
-        );
+        )['output_vat'];
         $vatPercentageChange = $previousYearVat > 0
             ? (($selectedVat - $previousYearVat) / $previousYearVat) * 100
             : 0;

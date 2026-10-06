@@ -6,7 +6,10 @@ use App\Models\Category;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoiceSync;
 use App\Models\Module;
+use App\Models\Service;
+use App\Models\StripeSubscription;
 use App\Models\User;
 use Carbon\Carbon;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -154,6 +157,74 @@ class InvoiceItemCategoryUpdateTest extends TestCase
             ->assertSee('line-category-badge', false)
             ->assertSee('lineCategoryModal', false)
             ->assertSee('Sin categoría');
+    }
+
+    public function test_invoice_item_uses_the_category_already_on_the_service(): void
+    {
+        [$user, $team, $item, $category] = $this->createTeamWithUncategorizedItem();
+
+        $otherCategory = Category::factory()->create([
+            'team_id' => $team->id,
+            'module_id' => $category->module_id,
+            'name' => 'Consulting',
+        ]);
+
+        $invoice = $item->invoice()->withoutGlobalScopes()->first();
+        $invoice->forceFill([
+            'operation' => 'sell',
+            'source_provider' => 'stripe',
+            'source_reference_id' => 'in_svc_1',
+        ])->save();
+
+        $sync = StripeSubscription::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'stripe_id' => 'sub_svc_1',
+            'customer_id' => 'cus_svc_1',
+            'status' => 'active',
+            'plan_name' => 'Hosting',
+        ]);
+
+        Service::withoutGlobalScopes()->create([
+            'enterprise_id' => $invoice->enterprise_id,
+            'subscription_id' => $sync->id,
+            'category_id' => $category->id,
+            'operation' => 'sell',
+            'description' => 'Hosting',
+            'data' => [],
+            'currency_id' => 1,
+            'price' => 10,
+            'discount' => 0,
+            'frequency' => 1,
+            'status' => 4,
+        ]);
+
+        InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_svc_1',
+            'stripe_subscription_id' => 'sub_svc_1',
+            'status' => 'paid',
+            'currency' => 'eur',
+            'total' => 250,
+            'paid' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->patchJson(route('invoice-items.category.update', $item), [
+                'category_id' => $otherCategory->id,
+            ])
+            ->assertOk()
+            ->assertJson([
+                'success' => true,
+                'category_id' => $category->id,
+                'category_name' => 'Hosting',
+            ]);
+
+        $this->assertDatabaseHas('invoice_items', [
+            'id' => $item->id,
+            'category_id' => $category->id,
+        ]);
     }
 
     public function test_admin_can_assign_projects_module_category_to_invoice_item(): void

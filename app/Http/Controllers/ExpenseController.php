@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\DataTables\ExpenseDataTable;
-use App\Enums\TransactionType;
 use App\Http\Requests\CheckExpenseDocumentDuplicateRequest;
 use App\Http\Requests\DetectExpenseDocumentRequest;
 use App\Http\Requests\StoreExpenseRequest;
@@ -60,21 +59,22 @@ class ExpenseController extends Controller
         $periodRange = $vatSelection['range'];
         $previousPeriodRange = $this->vatReportingService->previousComparableRange($vatSelection);
 
-        $periodExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::EXPENSE,
+        $teamId = (int) auth()->user()->currentTeam->id;
+        $periodBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $periodRange['from'],
+            $periodRange['to'],
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $periodRange['from']->toDateString())
-                ->whereDate('payments.date', '<=', $periodRange['to']->toDateString()),
         );
+        $periodExpense = $periodBooks['purchases'];
 
-        $previousPeriodExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::EXPENSE,
+        $previousPeriodBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $previousPeriodRange['from'],
+            $previousPeriodRange['to'],
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $previousPeriodRange['from']->toDateString())
-                ->whereDate('payments.date', '<=', $previousPeriodRange['to']->toDateString()),
         );
+        $previousPeriodExpense = $previousPeriodBooks['purchases'];
 
         $percentageChange = $previousPeriodExpense > 0
             ? (($periodExpense - $previousPeriodExpense) / $previousPeriodExpense) * 100
@@ -85,42 +85,39 @@ class ExpenseController extends Controller
             ? now()->endOfDay()
             : Carbon::create($vatSelection['year'], 12, 31)->endOfDay();
 
-        $yearExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::EXPENSE,
+        $yearBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $yearFrom,
+            $yearTo,
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $yearFrom->toDateString())
-                ->whereDate('payments.date', '<=', $yearTo->toDateString()),
         );
+        $yearExpense = $yearBooks['purchases'];
 
         $previousYearFrom = $yearFrom->copy()->subYear();
         $previousYearTo = $yearTo->copy()->subYear();
 
-        $previousYearExpense = $this->paymentReportingCurrencyService->sumApprovedPaymentsConverted(
-            TransactionType::EXPENSE,
+        $previousYearBooks = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
+            $previousYearFrom,
+            $previousYearTo,
             $reportingCurrency,
-            fn ($query) => $query
-                ->whereDate('payments.date', '>=', $previousYearFrom->toDateString())
-                ->whereDate('payments.date', '<=', $previousYearTo->toDateString()),
         );
+        $previousYearExpense = $previousYearBooks['purchases'];
 
         $yearPercentageChange = $previousYearExpense > 0
             ? (($yearExpense - $previousYearExpense) / $previousYearExpense) * 100
             : 0;
 
-        $selectedVat = $this->vatReportingService->sumExpenseVat(
-            $periodRange['from'],
-            $periodRange['to'],
-            $reportingCurrency,
-        );
+        $selectedVat = $periodBooks['input_vat'];
 
         $previousYearPeriodFrom = $periodRange['from']->copy()->subYear();
         $previousYearPeriodTo = $periodRange['to']->copy()->subYear();
-        $previousYearVat = $this->vatReportingService->sumExpenseVat(
+        $previousYearVat = $this->vatHaciendaCsvExportService->bookSummary(
+            $teamId,
             $previousYearPeriodFrom,
             $previousYearPeriodTo,
             $reportingCurrency,
-        );
+        )['input_vat'];
         $vatPercentageChange = $previousYearVat > 0
             ? (($selectedVat - $previousYearVat) / $previousYearVat) * 100
             : 0;
@@ -445,7 +442,9 @@ class ExpenseController extends Controller
 
         $message = $result['is_draft']
             ? 'Borrador de gasto guardado correctamente.'
-            : 'Gasto guardado correctamente.';
+            : (($validated['document_type'] ?? '') === 'credit_note'
+                ? 'Nota de crédito guardada correctamente.'
+                : 'Gasto guardado correctamente.');
 
         return redirect()->route('expense.index')->with('success', $message);
     }

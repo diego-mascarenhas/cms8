@@ -133,14 +133,16 @@ class InvoiceAnalyticsServiceTest extends TestCase
         $report = $this->service->buildYearReport($team->id, $year);
 
         $this->assertSame($year, $report['year']);
-        $this->assertEqualsWithDelta(1000.0, $report['summary']['income'], 0.01);
+        $this->assertEqualsWithDelta(10999.0, $report['summary']['income'], 0.01);
         $this->assertEqualsWithDelta(350.0, $report['summary']['expense'], 0.01);
-        $this->assertEqualsWithDelta(650.0, $report['summary']['profit'], 0.01);
+        $this->assertEqualsWithDelta(10649.0, $report['summary']['profit'], 0.01);
         $this->assertSame('Hosting sales', $report['income_categories'][0]['name']);
         $this->assertSame('Infrastructure', $report['expense_categories'][0]['name']);
         $this->assertEqualsWithDelta(100.0, $report['income_categories'][0]['share_percent'], 0.01);
+        $this->assertEqualsWithDelta(1000.0, $report['income_categories'][0]['total'], 0.01);
         $this->assertEqualsWithDelta(1000.0, $report['monthly_trend'][2]['income'], 0.01);
         $this->assertEqualsWithDelta(350.0, $report['monthly_trend'][2]['expense'], 0.01);
+        $this->assertEqualsWithDelta(9999.0, $report['monthly_trend'][3]['income'], 0.01);
     }
 
     public function test_build_year_report_converts_invoice_lines_to_team_reporting_currency(): void

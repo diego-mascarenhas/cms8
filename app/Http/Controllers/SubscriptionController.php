@@ -11,6 +11,7 @@ use App\Models\Enterprise;
 use App\Models\Service;
 use App\Models\StripeSubscription;
 use App\Models\SubscriptionProduct;
+use App\Services\Billing\ServiceCategoryAssignmentService;
 use App\Services\Billing\ServiceSyncImporter;
 use App\Services\Finance\ServiceCategoryOptionsService;
 use App\Services\Stripe\StripeCheckoutSessionLogFormatter;
@@ -114,6 +115,7 @@ class SubscriptionController extends Controller
         try
         {
             $service = $importer->updateServiceCategory($stripeSubscription, $categoryId);
+            app(ServiceCategoryAssignmentService::class)->publish($service);
         } catch (RuntimeException $e)
         {
             return response()->json([
@@ -159,6 +161,7 @@ class SubscriptionController extends Controller
         }
 
         $service->load('category');
+        app(ServiceCategoryAssignmentService::class)->publish($service);
 
         return response()->json([
             'success' => true,
