@@ -6,6 +6,7 @@ use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\PaymentSync;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\Finance\InvoiceElectronicPaymentLinkService;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -303,6 +304,51 @@ class InvoiceElectronicPaymentLinkServiceTest extends TestCase
             ->all();
 
         $this->assertSame(['mp-open'], $ids);
+    }
+
+    public function test_team_admin_can_link_and_collaborator_cannot(): void
+    {
+        $owner = User::factory()->withPersonalTeam()->create();
+        $team = $owner->ownedTeams()->first();
+
+        $admin = User::factory()->create();
+        $team->users()->attach($admin, ['role' => 'admin']);
+        $admin->forceFill(['current_team_id' => $team->id])->save();
+
+        $collaborator = User::factory()->create();
+        $team->users()->attach($collaborator, ['role' => 'collaborator']);
+        $collaborator->forceFill(['current_team_id' => $team->id])->save();
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'name' => 'Acme SL',
+            'type_id' => 1,
+            'status_id' => 1,
+        ]);
+
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'currency_id' => 32,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'number' => 'F-ADMIN',
+            'date' => now()->toDateString(),
+            'due_date' => now()->addDays(10)->toDateString(),
+            'gross_amount' => 100,
+            'discount' => 0,
+            'total_amount' => 100,
+            'balance' => 100,
+            'status' => 1,
+        ]);
+
+        $service = app(InvoiceElectronicPaymentLinkService::class);
+
+        $this->actingAs($admin);
+        $this->assertTrue($service->canLink($admin, $invoice));
+
+        $this->actingAs($collaborator);
+        $this->assertFalse($service->canLink($collaborator, $invoice));
     }
 
     /**

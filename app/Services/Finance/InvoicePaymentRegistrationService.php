@@ -32,7 +32,7 @@ class InvoicePaymentRegistrationService
             return false;
         }
 
-        if (! $user->ownsTeam($user->currentTeam))
+        if (! $user->canManageTeam($user->currentTeam))
         {
             return false;
         }
