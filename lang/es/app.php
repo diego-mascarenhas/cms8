@@ -36,6 +36,7 @@ return [
     'dashboard_calendar_col_time' => 'Hora',
     'dashboard_calendar_col_type' => 'Tipo',
     'dashboard_calendar_all_day' => 'Todo el día',
+    'dashboard_calendar_follow_up' => 'Llamar',
     'dashboard_calendar_open_full' => 'Ver calendario',
     'dashboard_calendar_events_on' => 'Eventos del :date',
     'dashboard_calendar_empty_today' => 'Sin eventos hoy',

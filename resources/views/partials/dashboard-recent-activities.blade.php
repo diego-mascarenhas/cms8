@@ -1,16 +1,16 @@
 @php
     $fillHeight = $fillHeight ?? false;
-    $defaultPanel = 'contacts-trend';
+    $defaultPanel = 'interactions-breakdown';
 @endphp
 <div class="card {{ $fillHeight ? 'h-100 mb-0 d-flex flex-column' : '' }}" id="dashboardContactPanelCard">
     <div class="card-header d-flex align-items-center justify-content-between py-3 flex-wrap gap-2 flex-shrink-0">
         <div class="card-title mb-0">
             <h5 class="mb-0" id="dashboardContactPanelTitle">
-                <i class="ti ti-target ti-xs me-1" id="dashboardContactPanelIcon"></i>
-                <span id="dashboardContactPanelTitleText">{{ __('app.dashboard_panel_contacts_trend_title') }}</span>
+                <i class="ti ti-history ti-xs me-1" id="dashboardContactPanelIcon"></i>
+                <span id="dashboardContactPanelTitleText">{{ __('app.dashboard_panel_interactions_title') }}</span>
             </h5>
             <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
-                <small class="text-muted" id="dashboardContactPanelSubtitle">{{ __('app.dashboard_contacts_chart_subtitle_30') }}</small>
+                <small class="text-muted" id="dashboardContactPanelSubtitle">{{ __('app.dashboard_interactions_chart_subtitle') }}</small>
                 <small id="dashboardContactPanelMonthChange" class="d-none" aria-live="polite"></small>
             </div>
         </div>
