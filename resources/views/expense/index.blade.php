@@ -24,12 +24,7 @@
     </div>
     <div class="mt-3 mt-md-0 d-flex flex-column flex-sm-row align-items-stretch align-items-sm-center gap-2">
         @include('partials.vat-period-selector')
-        <div class="d-flex flex-wrap gap-2">
-            @if ($haciendaShareUrl)
-                <a href="{{ $haciendaShareUrl }}" target="_blank" rel="noopener" class="btn btn-success">
-                    <i class="ti ti-link me-1"></i> {{ __('Accountant link') }}
-                </a>
-            @endif
+        <div class="d-flex flex-wrap justify-content-end gap-2 ms-sm-auto">
             <div class="dropdown">
                 <button class="btn btn-outline-primary dropdown-toggle" type="button" id="expenseExportDropdown"
                     data-bs-toggle="dropdown" aria-expanded="false">
@@ -48,8 +43,11 @@
                     </li>
                 </ul>
             </div>
+            <a href="{{ route('finance-dashboard.index', ['year' => $vatYear]) }}" class="btn btn-outline-secondary">
+                <i class="ti ti-arrow-left me-1"></i>{{ __('Back') }}
+            </a>
             <a href="{{ route('payments.index') }}" class="btn btn-outline-secondary">
-                <i class="ti ti-list me-1"></i> Todos los pagos
+                <i class="ti ti-list me-1"></i> {{ __('All') }}
             </a>
             <a href="{{ route('expense.create') }}" class="btn btn-primary waves-effect waves-light">
                 <i class="ti ti-plus me-1"></i> Añadir gasto

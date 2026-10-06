@@ -9,6 +9,7 @@ use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\Finance\InvoicedLineItemsService;
 use App\Services\Finance\PaymentReportingCurrencyService;
 use App\Services\Finance\ServiceCategoryOptionsService;
+use App\Services\Finance\VatReportingService;
 use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class FinancialDashboardController extends Controller
         protected InvoicedLineItemsService $invoicedLineItemsService,
         protected PaymentReportingCurrencyService $paymentReportingCurrencyService,
         protected ServiceCategoryOptionsService $serviceCategoryOptionsService,
+        protected VatReportingService $vatReportingService,
     ) {}
 
     public function index(Request $request)
@@ -81,6 +83,14 @@ class FinancialDashboardController extends Controller
 
         $profitMargin = $ytdIncome > 0 ? ($ytdProfit / $ytdIncome) * 100 : 0;
         $exchangeRates = $this->exchangeRateSummary();
+        $vatSelection = $this->vatReportingService->resolveSelectedPeriod(
+            year: $selectedYear,
+            teamId: auth()->user()?->currentTeam?->id,
+        );
+        $haciendaShareUrl = auth()->user()?->currentTeam?->haciendaShareUrl(
+            $vatSelection['year'],
+            $vatSelection['period'],
+        );
 
         return view('finance-dashboard.index', compact(
             'accounts',
@@ -96,6 +106,7 @@ class FinancialDashboardController extends Controller
             'profitMargin',
             'reportingCurrency',
             'exchangeRates',
+            'haciendaShareUrl',
         ));
     }
 

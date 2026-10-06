@@ -75,10 +75,14 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             ->assertSee('/income/export-credit-notes', false)
             ->assertDontSee('/income/export-hacienda-previous-quarter', false)
             ->assertDontSee('Generar ZIP Trimestre Anterior', false)
-            ->assertSee('/hacienda/', false)
+            ->assertDontSee('/hacienda/', false)
             ->assertSee('vat_year=2024', false)
             ->assertSee('vat_period=m%3A5', false)
-            ->assertSee(__('Accountant link'), false)
+            ->assertDontSee(__('Accountant link'), false)
+            ->assertSee(route('finance-dashboard.index', ['year' => 2024]), false)
+            ->assertSee(__('Back'), false)
+            ->assertSee(__('All'), false)
+            ->assertDontSee(__('All Payments'), false)
             ->assertSee('js-filter-select', false)
             ->assertSee(__('Credit notes'), false);
     }
@@ -275,10 +279,17 @@ class VatHaciendaCreditNoteExportTest extends TestCase
             ->assertSee('/expense/export-credit-notes', false)
             ->assertDontSee('/income/export-hacienda-previous-quarter', false)
             ->assertDontSee('Generar ZIP Trimestre Anterior', false)
-            ->assertSee('/hacienda/', false)
+            ->assertDontSee('/hacienda/', false)
             ->assertSee('vat_year=2024', false)
             ->assertSee('vat_period=m%3A5', false)
-            ->assertSee(__('Accountant link'), false)
+            ->assertDontSee(__('Accountant link'), false)
+            ->assertSee(route('finance-dashboard.index', ['year' => 2024]), false)
+            ->assertSee(__('Back'), false)
+            ->assertSee(__('All'), false)
+            ->assertDontSee('Todos los pagos', false)
+            ->assertSee('justify-content-end', false)
+            ->assertSee('id="vat-period-form"', false)
+            ->assertSee('flex-nowrap', false)
             ->assertSee('js-filter-select', false)
             ->assertSee(__('Credit notes'), false);
     }
@@ -468,7 +479,8 @@ class VatHaciendaCreditNoteExportTest extends TestCase
         ]))->streamedContent();
 
         $this->assertStringContainsString('CN-0005-0001', $csv);
-        $this->assertStringContainsString('30-7160149-98', $csv);
+        $this->assertStringContainsString('30-71601499-8', $csv);
+        $this->assertStringNotContainsString('30-7160149-98', $csv);
     }
 
     public function test_purchase_export_uses_the_supplier_tax_id(): void

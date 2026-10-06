@@ -273,7 +273,7 @@ class VatHaciendaCsvExportTest extends TestCase
             'external_id' => 'in_draft_without_enterprise',
             'customer_name' => 'Sin empresa',
             'number' => '0005-NOENT',
-            'status' => 'draft',
+            'status' => 'void',
             'currency' => 'eur',
             'subtotal' => 12,
             'tax' => 0,
@@ -292,9 +292,7 @@ class VatHaciendaCsvExportTest extends TestCase
 
         $rows = $this->csvRowsByNumber($csv);
 
-        $this->assertSame('Alianza inactiva', $rows['0005-DRAFT'][2]);
-        $this->assertSame('40,00', $rows['0005-DRAFT'][4]);
-        $this->assertSame('Borrador', $rows['0005-DRAFT'][11]);
+        $this->assertArrayNotHasKey('0005-DRAFT', $rows);
         $this->assertSame('15,00', $rows['0005-VOID'][4]);
         $this->assertSame('Anulada', $rows['0005-VOID'][11]);
         $this->assertSame('Sin empresa', $rows['0005-NOENT'][2]);

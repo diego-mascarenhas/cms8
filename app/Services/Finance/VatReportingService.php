@@ -349,6 +349,7 @@ class VatReportingService
             ->where('team_id', $teamId)
             ->whereNull('deleted_at')
             ->where('operation', $operation)
+            ->where('status', '!=', 9)
             ->whereDate('date', '>=', $from->toDateString())
             ->whereDate('date', '<=', $to->toDateString());
     }
