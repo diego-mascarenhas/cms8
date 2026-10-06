@@ -946,6 +946,11 @@ class ProjectBudgetSpecService
         return $this->tokenInclude;
     }
 
+    public function discriminatesTokenLines(): bool
+    {
+        return $this->tokenDiscriminate;
+    }
+
     private function chargedTokenAmount(float $billable): float
     {
         return $this->tokenInclude ? $billable : 0.0;

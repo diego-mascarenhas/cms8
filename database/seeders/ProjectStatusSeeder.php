@@ -53,7 +53,7 @@ class ProjectStatusSeeder extends Seeder
             [
                 'id' => 9,
                 'name' => 'IN_PROGRESS',
-                'label_class' => 'bg-label-primary',
+                'label_class' => 'bg-label-success',
             ],
             [
                 'id' => 10,

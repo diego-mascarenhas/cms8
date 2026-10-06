@@ -177,7 +177,11 @@ class CollaboratorProjectAccessTest extends TestCase
             ->assertSee(__('Budget received'), false)
             ->assertSee('generate-budget-spec', false)
             ->assertSee('id="data_ai_usage_percent"', false)
-            ->assertSee('value="'.(int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT.'"', false);
+            ->assertSee('value="'.(int) \App\Services\ProjectBudgetSpecService::DEFAULT_AI_USAGE_PERCENT.'"', false)
+            ->assertSee('Sumar tokens a las labores', false)
+            ->assertSee('Discriminar tokens en el presupuesto', false)
+            ->assertSee('id="token_model_select"', false)
+            ->assertSee('suggested-estimated-hours', false);
 
         $this->actingAs($advisor)
             ->get(route('project.edit', $project->id))
@@ -219,6 +223,69 @@ class CollaboratorProjectAccessTest extends TestCase
         $this->assertEquals(10, (float) $project->discount);
         $this->assertSame('Sitio web corporativo', data_get($project->data, 'budget_given'));
         $this->assertSame(800, (int) data_get($project->data, 'suggested_tasks.0.unit_price'));
+    }
+
+    public function test_project_form_saves_token_settings_and_line_price(): void
+    {
+        [$admin, $team, $client] = $this->adminTeamAndClient();
+        $project = $this->createProject($team->id, $client->id, $admin->id, 'Token Form');
+        $project->forceFill([
+            'real_name' => 'Token Form',
+            'data' => [
+                'suggested_tasks' => [[
+                    'title' => 'Labor',
+                    'estimated_hours' => 3,
+                    'unit_price' => 375,
+                    'resource_level' => 'Senior',
+                    'included' => true,
+                ]],
+            ],
+        ])->save();
+
+        $this->actingAs($admin)
+            ->get(route('project.edit', $project->id))
+            ->assertOk()
+            ->assertSee('suggested-estimated-hours', false)
+            ->assertSee('value="3"', false)
+            ->assertSee('value="375"', false);
+
+        $this->actingAs($admin)
+            ->post(route('project.store'), [
+                'id' => $project->id,
+                'name' => 'Token Form',
+                'real_name' => 'Token Form',
+                'status_id' => 1,
+                'enterprise_id' => $client->id,
+                'responsible_id' => $admin->id,
+                'price' => 250,
+                'data' => [
+                    'token_include' => '0',
+                    'token_discriminate' => '0',
+                    'ai_usage_percent' => 0,
+                    'token_model' => [
+                        'id' => 'openai/gpt-4.1',
+                        'name' => 'OpenAI: GPT-4.1',
+                        'prompt_per_million' => 2,
+                        'completion_per_million' => 8,
+                    ],
+                    'suggested_tasks' => json_encode([[
+                        'title' => 'Labor',
+                        'estimated_hours' => 2,
+                        'unit_price' => 250,
+                        'hourly_rate' => 125,
+                        'resource_level' => 'Senior',
+                        'included' => true,
+                    ]]),
+                ],
+            ])
+            ->assertRedirect(route('project.show', $project->id));
+
+        $project->refresh();
+        $this->assertFalse(filter_var(data_get($project->data, 'token_include'), FILTER_VALIDATE_BOOLEAN));
+        $this->assertSame('openai/gpt-4.1', data_get($project->data, 'token_model.id'));
+        $this->assertEquals(2, (float) data_get($project->data, 'suggested_tasks.0.estimated_hours'));
+        $this->assertEquals(250, (float) data_get($project->data, 'suggested_tasks.0.unit_price'));
+        $this->assertEquals(250, (float) $project->price);
     }
 
     public function test_unrelated_collaborator_cannot_update_project_price(): void
