@@ -73,6 +73,48 @@ class StripeInvoiceFiscalDateTest extends TestCase
         $this->assertSame('2026-06-04', Carbon::parse($invoice->date)->toDateString());
     }
 
+    public function test_import_keeps_the_invoice_total_when_the_customer_is_not_a_client(): void
+    {
+        $team = Team::factory()->create();
+        $alliance = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 3,
+            'status_id' => 1,
+            'name' => 'Abaco Turismo',
+            'code' => 'cus_alliance',
+        ]);
+
+        $row = InvoiceSync::query()->create([
+            'team_id' => $team->id,
+            'provider' => 'stripe',
+            'external_id' => 'in_alliance_paid',
+            'customer_id' => 'cus_alliance',
+            'number' => '0005-0906',
+            'status' => 'paid',
+            'currency' => 'ars',
+            'subtotal' => 20909.09,
+            'total' => 20909.09,
+            'amount_due' => 20909.09,
+            'amount_paid' => 20909.09,
+            'amount_remaining' => 0,
+            'paid' => true,
+            'invoice_created_at' => '2026-07-01 01:00:31',
+            'last_synced_at' => now(),
+            'raw_payload' => [
+                'status_transitions' => [
+                    'finalized_at' => strtotime('2026-07-01 01:00:31 UTC'),
+                ],
+            ],
+        ]);
+
+        $invoice = app(StripeInvoiceCoreImportService::class)->importFromSyncRow($row);
+
+        $this->assertInstanceOf(Invoice::class, $invoice);
+        $this->assertSame($alliance->id, $invoice->enterprise_id);
+        $this->assertSame(20909.09, (float) $invoice->total_amount);
+        $this->assertSame(0.0, (float) $invoice->balance);
+    }
+
     public function test_import_falls_back_to_created_when_finalized_at_missing(): void
     {
         $team = Team::factory()->create();

@@ -344,7 +344,13 @@ class VatReportingService
         Carbon $from,
         Carbon $to,
     ): Builder {
-        return $this->invoicesQuery($teamId, $operation, $from, $to);
+        return Invoice::query()
+            ->withoutGlobalScopes()
+            ->where('team_id', $teamId)
+            ->whereNull('deleted_at')
+            ->where('operation', $operation)
+            ->whereDate('date', '>=', $from->toDateString())
+            ->whereDate('date', '<=', $to->toDateString());
     }
 
     public function vatAmountForInvoice(Invoice $invoice): float

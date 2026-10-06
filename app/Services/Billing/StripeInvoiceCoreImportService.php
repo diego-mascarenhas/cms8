@@ -225,8 +225,9 @@ class StripeInvoiceCoreImportService
     ): array {
         $enterprise = Enterprise::query()
             ->where('team_id', $row->team_id)
-            ->where('type_id', 1)
             ->where('code', $row->customer_id)
+            ->orderByRaw('CASE WHEN type_id = 1 THEN 0 ELSE 1 END')
+            ->orderBy('id')
             ->first();
 
         if ($enterprise)
@@ -247,7 +248,6 @@ class StripeInvoiceCoreImportService
 
         $emailMatches = Enterprise::query()
             ->where('team_id', $row->team_id)
-            ->where('type_id', 1)
             ->whereRaw('LOWER(email) = ?', [$email])
             ->get();
 

@@ -169,34 +169,25 @@ class VatHaciendaCsvExportService
             'rows' => 0,
         ];
 
-        $query = $this->scopedInvoices($teamId, $operation, $from, $to, $documentScope);
+        foreach ($this->collectBookRows($teamId, $operation, $from, $to, $targetCurrency, $documentScope) as $entry)
+        {
+            fputcsv($handle, $entry['row']);
+            $converted = $entry['converted'];
 
-        $query
-            ->orderBy('date')
-            ->orderBy('number')
-            ->orderBy('id')
-            ->chunk(200, function ($invoices) use ($handle, $targetCurrency, $from, &$totals)
+            if ($converted['subtotal'] !== null)
             {
-                foreach ($invoices as $invoice)
-                {
-                    [$row, $converted] = $this->rowForInvoice($invoice, $targetCurrency, $from);
-                    fputcsv($handle, $row);
-
-                    if ($converted['subtotal'] !== null)
-                    {
-                        $totals['subtotal'] += $converted['subtotal'];
-                    }
-                    if ($converted['tax'] !== null)
-                    {
-                        $totals['tax'] += $converted['tax'];
-                    }
-                    if ($converted['total'] !== null)
-                    {
-                        $totals['total'] += $converted['total'];
-                    }
-                    $totals['rows']++;
-                }
-            });
+                $totals['subtotal'] += $converted['subtotal'];
+            }
+            if ($converted['tax'] !== null)
+            {
+                $totals['tax'] += $converted['tax'];
+            }
+            if ($converted['total'] !== null)
+            {
+                $totals['total'] += $converted['total'];
+            }
+            $totals['rows']++;
+        }
 
         fputcsv($handle, [
             'TOTALES',
@@ -238,17 +229,11 @@ class VatHaciendaCsvExportService
             $invoiceIds = [];
             $totals = ['subtotal' => 0.0, 'tax' => 0.0, 'total' => 0.0, 'rows' => 0];
 
-            $invoices = $this->scopedInvoices($teamId, $book['operation'], $from, $to, $book['documentScope'])
-                ->orderBy('date')
-                ->orderBy('number')
-                ->orderBy('id')
-                ->get();
-
-            foreach ($invoices as $invoice)
+            foreach ($this->collectBookRows($teamId, $book['operation'], $from, $to, $targetCurrency, $book['documentScope']) as $entry)
             {
-                [$row, $converted] = $this->rowForInvoice($invoice, $targetCurrency, $from);
-                $rows[] = $row;
-                $invoiceIds[] = $this->hasDownloadableDocument($invoice) ? $invoice->id : null;
+                $rows[] = $entry['row'];
+                $invoiceIds[] = $entry['invoice_id'];
+                $converted = $entry['converted'];
 
                 if ($converted['subtotal'] !== null)
                 {
@@ -313,6 +298,10 @@ class VatHaciendaCsvExportService
             ->with([
                 'items',
                 'currency',
+                'enterprise' => function ($enterprise): void
+                {
+                    $enterprise->withoutGlobalScopes()->withTrashed();
+                },
                 'enterprise.enterpriseBillingAddresses',
                 'billingAddress',
                 'stripeInvoiceSync',
@@ -362,6 +351,235 @@ class VatHaciendaCsvExportService
     }
 
     /**
+     * @return list<array{sort: string, row: list<string>, invoice_id: int|null, converted: array{subtotal: ?float, tax: ?float, total: ?float}}>
+     */
+    private function collectBookRows(
+        int $teamId,
+        string $operation,
+        Carbon $from,
+        Carbon $to,
+        string $targetCurrency,
+        string $documentScope,
+    ): array {
+        $entries = [];
+
+        $invoices = $this->scopedInvoices($teamId, $operation, $from, $to, $documentScope)
+            ->orderBy('date')
+            ->orderBy('number')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($invoices as $invoice)
+        {
+            [$row, $converted] = $this->rowForInvoice($invoice, $targetCurrency, $from);
+            $entries[] = [
+                'sort' => ($invoice->date ? Carbon::parse($invoice->date)->format('Y-m-d') : '').'|'.$invoice->number.'|'.$invoice->id,
+                'row' => $row,
+                'invoice_id' => $this->hasDownloadableDocument($invoice) ? $invoice->id : null,
+                'converted' => $converted,
+            ];
+        }
+
+        if ($operation === 'sell')
+        {
+            foreach ($this->unlinkedStripeSyncs($teamId, $from, $to, $documentScope) as $sync)
+            {
+                [$row, $converted, $sort] = $this->rowForStripeSync($sync, $targetCurrency);
+                $entries[] = [
+                    'sort' => $sort,
+                    'row' => $row,
+                    'invoice_id' => null,
+                    'converted' => $converted,
+                ];
+            }
+        }
+
+        usort($entries, fn (array $left, array $right): int => $left['sort'] <=> $right['sort']);
+
+        return $entries;
+    }
+
+    /**
+     * Stripe documents that never became a core invoice still belong in the book.
+     * Enterprise type and status are ignored. The amount is the invoice total.
+     *
+     * @return list<InvoiceSync>
+     */
+    private function unlinkedStripeSyncs(int $teamId, Carbon $from, Carbon $to, string $documentScope): array
+    {
+        $syncs = InvoiceSync::query()
+            ->where('team_id', $teamId)
+            ->where('provider', 'stripe')
+            ->where('external_id', 'like', $documentScope === 'credit_notes' ? 'cn_%' : 'in_%')
+            ->whereNotExists(function ($sub): void
+            {
+                $sub->from('invoices')
+                    ->whereColumn('invoices.source_reference_id', 'invoice_syncs.external_id')
+                    ->whereColumn('invoices.team_id', 'invoice_syncs.team_id')
+                    ->where('invoices.source_provider', 'stripe')
+                    ->whereNull('invoices.deleted_at');
+            })
+            ->orderBy('id')
+            ->get();
+
+        $matched = [];
+
+        foreach ($syncs as $sync)
+        {
+            if (! $sync instanceof InvoiceSync)
+            {
+                continue;
+            }
+
+            $date = $this->fiscalDateForSync($sync);
+            if ($date->toDateString() < $from->toDateString() || $date->toDateString() > $to->toDateString())
+            {
+                continue;
+            }
+
+            $matched[] = $sync;
+        }
+
+        return $matched;
+    }
+
+    /**
+     * @return array{0: list<string>, 1: array{subtotal: ?float, tax: ?float, total: ?float}, 2: string}
+     */
+    private function rowForStripeSync(InvoiceSync $sync, string $targetCurrency): array
+    {
+        $invoiceDate = $this->fiscalDateForSync($sync);
+        $currency = strtoupper((string) $sync->currency);
+        $creditNote = str_starts_with((string) $sync->external_id, 'cn_');
+        $sign = $creditNote ? -1.0 : 1.0;
+        $total = $sign * round(abs((float) $sync->total), 2);
+        $tax = $sign * round(abs((float) $sync->tax), 2);
+        $subtotal = round($total - $tax, 2);
+        [$exchangeRateDisplay, $subtotalTarget, $taxTarget, $totalTarget] = $this->convertBookAmounts(
+            $currency,
+            $invoiceDate,
+            $subtotal,
+            $tax,
+            $total,
+            $targetCurrency,
+        );
+
+        $status = $this->stripeSyncStatusLabel($sync, $creditNote);
+
+        $row = [
+            (string) ($sync->number ?? ''),
+            $invoiceDate->format('d/m/Y'),
+            trim((string) $sync->customer_name),
+            trim((string) $sync->customer_tax_id),
+            number_format($subtotal, 2, ',', '.'),
+            $currency,
+            $exchangeRateDisplay,
+            $subtotalTarget !== null ? number_format($subtotalTarget, 2, ',', '.') : '',
+            $taxTarget !== null ? number_format($taxTarget, 2, ',', '.') : '',
+            $totalTarget !== null ? number_format($totalTarget, 2, ',', '.') : '',
+            strtoupper(trim((string) $sync->customer_address_country)),
+            $status,
+            '',
+        ];
+
+        return [$row, [
+            'subtotal' => $subtotalTarget,
+            'tax' => $taxTarget,
+            'total' => $totalTarget,
+        ], $invoiceDate->format('Y-m-d').'|'.$sync->number.'|sync-'.$sync->id];
+    }
+
+    private function stripeSyncStatusLabel(InvoiceSync $sync, bool $creditNote): string
+    {
+        if ($creditNote)
+        {
+            return 'Nota de Crédito';
+        }
+
+        return match (strtolower(trim((string) $sync->status)))
+        {
+            'draft' => 'Borrador',
+            'void' => 'Anulada',
+            'uncollectible' => 'Incobrable',
+            'paid' => 'Cobrada',
+            'open' => (float) $sync->amount_remaining <= 0.0 ? 'Cobrada' : 'Pendiente',
+            default => 'Pendiente',
+        };
+    }
+
+    private function fiscalDateForSync(InvoiceSync $sync): Carbon
+    {
+        $payload = is_array($sync->raw_payload) ? $sync->raw_payload : [];
+        $finalizedAt = data_get($payload, 'status_transitions.finalized_at');
+
+        if (is_numeric($finalizedAt))
+        {
+            return Carbon::createFromTimestampUTC((int) $finalizedAt)
+                ->setTimezone(config('app.timezone'));
+        }
+
+        if ($sync->invoice_created_at)
+        {
+            return Carbon::parse($sync->invoice_created_at);
+        }
+
+        return now();
+    }
+
+    /**
+     * Paid Stripe invoices keep a zero balance. The book must use the invoice total.
+     */
+    private function declaredInvoiceAmount(Invoice $invoice): float
+    {
+        $localTotal = abs((float) $invoice->total_amount);
+
+        if ($this->usesStripeInvoiceAmount($invoice))
+        {
+            return round(abs((float) $invoice->stripeInvoiceSync?->total), 2);
+        }
+
+        return round($localTotal, 2);
+    }
+
+    private function usesStripeInvoiceAmount(Invoice $invoice): bool
+    {
+        $syncTotal = abs((float) ($invoice->stripeInvoiceSync?->total ?? 0));
+
+        return $syncTotal > 0.009 && abs((float) $invoice->total_amount) <= 0.009;
+    }
+
+    /**
+     * @return array{0: string, 1: ?float, 2: ?float, 3: ?float}
+     */
+    private function convertBookAmounts(
+        string $currency,
+        Carbon $invoiceDate,
+        float $subtotal,
+        float $tax,
+        float $total,
+        string $targetCurrency,
+    ): array {
+        if ($currency === $targetCurrency)
+        {
+            return ['', $subtotal, $tax, $total];
+        }
+
+        $rateToTarget = ExchangeRate::rateOnOrBeforeDate($currency, $targetCurrency, $invoiceDate);
+
+        if ($rateToTarget !== null && $rateToTarget > 0)
+        {
+            return [
+                number_format(1 / $rateToTarget, 4, ',', '.'),
+                round($subtotal * $rateToTarget, 2),
+                round($tax * $rateToTarget, 2),
+                round($total * $rateToTarget, 2),
+            ];
+        }
+
+        return ['N/A', null, null, null];
+    }
+
+    /**
      * @return array{0: list<string>, 1: array{subtotal: ?float, tax: ?float, total: ?float}}
      */
     private function rowForInvoice(Invoice $invoice, string $targetCurrency, Carbon $fallbackDate): array
@@ -370,37 +588,23 @@ class VatHaciendaCsvExportService
         // Fiscal conversion uses the invoice issue date (same as Stripe Hacienda CSV).
         $invoiceDate = $invoice->date ? Carbon::parse($invoice->date) : $fallbackDate;
         $sign = $invoice->isCreditNote() ? -1.0 : 1.0;
-        $total = $sign * abs((float) $invoice->total_amount);
+        $total = $sign * $this->declaredInvoiceAmount($invoice);
         $tax = $this->vatReportingService->vatAmountForInvoice($invoice);
-        $subtotal = round($total - $tax, 2);
-
-        $exchangeRateDisplay = '';
-        $subtotalTarget = null;
-        $taxTarget = null;
-        $totalTarget = null;
-
-        if ($currency === $targetCurrency)
+        if ($this->usesStripeInvoiceAmount($invoice))
         {
-            $subtotalTarget = $subtotal;
-            $taxTarget = $tax;
-            $totalTarget = $total;
-        } else
-        {
-            // Rate is foreign → reporting currency on the invoice date.
-            $rateToTarget = ExchangeRate::rateOnOrBeforeDate($currency, $targetCurrency, $invoiceDate);
-
-            if ($rateToTarget !== null && $rateToTarget > 0)
-            {
-                // Display like Stripe: reporting → foreign (inverted).
-                $exchangeRateDisplay = number_format(1 / $rateToTarget, 4, ',', '.');
-                $subtotalTarget = round($subtotal * $rateToTarget, 2);
-                $taxTarget = round($tax * $rateToTarget, 2);
-                $totalTarget = round($total * $rateToTarget, 2);
-            } else
-            {
-                $exchangeRateDisplay = 'N/A';
-            }
+            $syncTax = abs((float) ($invoice->stripeInvoiceSync?->tax ?? 0));
+            $tax = $sign * $syncTax;
         }
+        $subtotal = round($total - $tax, 2);
+        // Rate is foreign → reporting currency on the invoice date. Display is reporting → foreign.
+        [$exchangeRateDisplay, $subtotalTarget, $taxTarget, $totalTarget] = $this->convertBookAmounts(
+            $currency,
+            $invoiceDate,
+            $subtotal,
+            $tax,
+            $total,
+            $targetCurrency,
+        );
 
         $row = [
             (string) ($invoice->number ?? ''),
