@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SuggestStrategyFieldRequest;
 use App\Models\Payment;
 use App\Services\Finance\FinanceCfoBriefService;
+use App\Services\Marketing\CmoBriefService;
 use App\Services\StrategyFieldSuggestionService;
 use App\Services\StrategyLevelReviewService;
 use App\Services\SubsistenceAlertService;
@@ -93,6 +94,7 @@ class StrategyController extends Controller
 
         return view('strategy.analysis', [
             'cfoAnalysis' => $briefs->storedAnalysis($team, $year),
+            'cmoAnalysis' => app(CmoBriefService::class)->storedAnalysis($team, $year),
             'projection' => $briefs->withSalaryForecast($briefs->storedProjection($team, $year), $team),
             'canAskCfo' => $user->can('viewAny', Payment::class),
             'subsistence' => $subsistence->forTeam($team),
@@ -113,6 +115,23 @@ class StrategyController extends Controller
         return redirect()
             ->route('strategy.analysis')
             ->with('success', __('app.cfo_analysis_refresh_started'));
+    }
+
+    public function cmoBrief(Request $request, CmoBriefService $briefs): RedirectResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        $year = (int) $request->input('year', now()->year);
+        $briefs->remember($team, $year > 0 ? $year : (int) now()->year, $request->boolean('refresh'));
+
+        return redirect()
+            ->route('strategy.analysis')
+            ->with('success', __('app.cmo_analysis_ready'));
     }
 
     public function suggest(SuggestStrategyFieldRequest $request, StrategyFieldSuggestionService $suggestions): JsonResponse

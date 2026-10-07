@@ -40,6 +40,14 @@
                     <li>{{ __('help_cfo.reads_renewals') }}</li>
                 </ul>
 
+                <h5 class="mt-4" id="cmo">{{ __('help_cfo.cmo_title') }}</h5>
+                <p>{{ __('help_cfo.cmo_body') }} <a href="https://adquiria.net/" target="_blank" rel="noopener">adquiria.net</a>.</p>
+                <ul class="mb-0">
+                    <li>{{ __('help_cfo.cmo_reads') }}</li>
+                    <li>{{ __('help_cfo.cmo_missing') }}</li>
+                    <li>{{ __('help_cfo.cmo_limits') }}</li>
+                </ul>
+
                 <h5 class="mt-4" id="projection">{{ __('help_cfo.projection_title') }}</h5>
                 <p>{{ __('help_cfo.projection_body') }}</p>
                 <ul class="mb-0">

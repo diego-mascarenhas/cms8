@@ -45,6 +45,14 @@
                         <i class="ti ti-sparkles me-1"></i>{{ __('Ask the CFO') }}
                     </button>
                 </form>
+                <form method="POST" action="{{ route('strategy.analysis.cmo-brief') }}" id="cmo-brief-form">
+                    @csrf
+                    <input type="hidden" name="refresh" value="1">
+                    <input type="hidden" name="year" value="{{ now()->year }}">
+                    <button type="submit" class="btn btn-label-primary" id="cmo-brief-button">
+                        <i class="ti ti-speakerphone me-1"></i>{{ __('Ask the CMO') }}
+                    </button>
+                </form>
             @endif
         </div>
     </div>
@@ -140,6 +148,8 @@
         </div>
     </div>
 
+    @include('strategy.partials.cmo', ['cmoAnalysis' => $cmoAnalysis ?? null])
+
     <div class="card mb-4" id="cfo-projection">
         <div class="card-header">
             <h5 class="card-title m-0">
@@ -225,6 +235,26 @@
                 window.setTimeout(function () {
                     button.disabled = true;
                     button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + @json(__('Asking the CFO...'));
+                }, 0);
+            });
+
+            document.getElementById('cmo-brief-form')?.addEventListener('submit', function (event) {
+                const button = document.getElementById('cmo-brief-button');
+
+                if (!button) {
+                    return;
+                }
+
+                if (button.dataset.loading === '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                button.dataset.loading = '1';
+                button.setAttribute('aria-busy', 'true');
+                window.setTimeout(function () {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + @json(__('Asking the CMO...'));
                 }, 0);
             });
         </script>
