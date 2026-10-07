@@ -95,6 +95,8 @@ class HelpDocumentationCompletenessTest extends TestCase
             ->assertSee(__('help_cfo.projection_salary'), false)
             ->assertSee(__('help_cfo.projection_schedule'), false)
             ->assertSee(__('help_cfo.subsistence_calls'), false)
+            ->assertSee(__('help_cfo.subsistence_cushion'), false)
+            ->assertSee(__('help_cfo.subsistence_capital'), false)
             ->assertSee('id="subsistence"', false)
             ->assertSee('id="projection"', false);
 

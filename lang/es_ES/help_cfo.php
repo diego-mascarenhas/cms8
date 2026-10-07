@@ -34,6 +34,8 @@ return [
     'subsistence_calls' => 'El mínimo de llamados es los que caben en la hora ya reservada: 10 minutos por llamado con su nota, de lunes a jueves, de 19:00 a 20:00. Esa hora no se come emails, marketing ni facturas. El color compara los llamados registrados hoy y esta semana con ese mínimo.',
     'subsistence_marketing' => 'El plan de marketing, la publicidad y las publicaciones son lo que trae a quien después se llama. Si no hay una publicación en la agenda de los próximos 7 días, el aviso no está en verde.',
     'subsistence_conversion' => 'La conversión mira leads abiertos, los que entraron en 7 días y los clientes nuevos de 30 días. Un lead sin el mínimo de llamados no se convierte.',
-    'subsistence_salary' => 'El sueldo sugerido es la tarifa del cargo por las horas asignadas. Dirección (CEO o CTO) y asistencia usan tarifas distintas. Se desglosan las horas de llamados, marketing y conversión. No es la nómina.',
+    'subsistence_salary' => 'Hasta cubrir el colchón de 6 meses, el sueldo sugerido cuenta solo las horas de llamados, marketing y conversión. El sueldo de cargo completo (todas las horas, a la tarifa de dirección o de asistencia) espera a ese hito. No entra en el gráfico.',
+    'subsistence_cushion' => 'El colchón de 6 meses es un hito obligado. Un mes es el gasto medio de los meses cerrados más los sueldos contenidos. El aviso compara ese objetivo con el saldo de las cuentas.',
+    'subsistence_capital' => 'El capital social está en el mínimo legal, 3.000 €. Aumentarlo es un hito obligado: con el mínimo no se constituye una fianza para quien quiere contratar a la empresa.',
     'projection_empty' => 'Si no hay facturas, proyectos con fecha de fin ni renovaciones en estos 12 meses, el gráfico queda vacío.',
 ];

@@ -23,6 +23,8 @@
                     <li>{{ __('help_cfo.subsistence_marketing') }}</li>
                     <li>{{ __('help_cfo.subsistence_conversion') }}</li>
                     <li>{{ __('help_cfo.subsistence_salary') }}</li>
+                    <li>{{ __('help_cfo.subsistence_cushion') }}</li>
+                    <li>{{ __('help_cfo.subsistence_capital') }}</li>
                 </ul>
 
                 <h5 class="mt-4" id="lectura">{{ __('help_cfo.reading_title') }}</h5>

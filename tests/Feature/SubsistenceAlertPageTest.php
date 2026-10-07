@@ -44,6 +44,9 @@ class SubsistenceAlertPageTest extends TestCase
             ->assertSee('19:00', false)
             ->assertSee('Leticia', false)
             ->assertSee('alert-warning', false)
-            ->assertDontSee('alert-danger', false);
+            ->assertSee(__('app.subsistence_cushion_title_danger', ['months' => 6]), false)
+            ->assertSee(__('app.subsistence_capital_title_danger'), false)
+            ->assertSee('3.000,00', false)
+            ->assertSee('alert-danger', false);
     }
 }

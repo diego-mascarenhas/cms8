@@ -35,5 +35,7 @@ return [
     'subsistence_calls' => 'The call minimum is what fits in the hour already reserved: 10 minutes per call with its note, Monday to Thursday, 19:00 to 20:00. That hour does not take email, marketing, or invoices. The color compares calls logged today and this week with that minimum.',
     'subsistence_marketing' => 'The marketing plan, the ads, and the publications bring the person who is then called. If there is no publication on the agenda for the next 7 days, the alert is not green.',
     'subsistence_conversion' => 'Conversion looks at open leads, those who came in over 7 days, and new clients in 30 days. A lead without the call minimum does not convert.',
-    'subsistence_salary' => 'The suggested salary is the role rate times the assigned hours. Direction (CEO or CTO) and assistance use different rates. Call, marketing, and conversion hours are listed apart. It is not payroll.',
+    'subsistence_salary' => 'Until the 6-month cushion is funded, the suggested salary counts only call, marketing, and conversion hours. The full role salary (every hour, at the direction or assistance rate) waits for that milestone. It does not enter the chart.',
+    'subsistence_cushion' => 'The 6-month cushion is a required milestone. One month is the average expense of closed months plus the restrained salaries. The alert compares that target with the balance of the accounts.',
+    'subsistence_capital' => 'Share capital is at the legal minimum, €3,000. Raising it is a required milestone: the minimum cannot back a bond for someone who wants to hire the company.',
 ];
