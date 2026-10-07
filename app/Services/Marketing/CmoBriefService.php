@@ -236,13 +236,7 @@ TXT;
                 messages: [],
                 tools: [],
             );
-            $response = $agent->prompt(
-                $userMessage,
-                [],
-                AiTasks::provider('assistant'),
-                AiTasks::model('assistant'),
-                60,
-            );
+            $response = AiTasks::prompt($agent, $userMessage, 60, 'assistant');
             $text = trim((string) ($response->text ?? ''));
         } catch (Throwable $exception)
         {

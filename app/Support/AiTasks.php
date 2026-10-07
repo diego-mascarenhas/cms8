@@ -3,6 +3,9 @@
 namespace App\Support;
 
 use Laravel\Ai\AiManager;
+use Laravel\Ai\Exceptions\FailoverableException;
+use RuntimeException;
+use Throwable;
 
 /**
  * Resolves the AI provider (and failover chain) for a given task from config,
@@ -47,6 +50,58 @@ class AiTasks
             ?? config('ai.default_task_model', 'cheapest');
 
         return self::resolveModel($provider, $configured);
+    }
+
+    /**
+     * Ask the task's provider, then the configured backups.
+     * An invalid API key is treated like an overload: the next provider is tried.
+     */
+    public static function prompt(object $agent, string $prompt, int $timeout, string $task = 'assistant'): mixed
+    {
+        $providers = self::provider($task);
+        $providers = is_array($providers) ? array_values($providers) : [$providers];
+        $model = self::model($task);
+        $last = null;
+
+        foreach ($providers as $index => $provider)
+        {
+            try
+            {
+                return $agent->prompt(
+                    $prompt,
+                    [],
+                    $provider,
+                    $index === 0 ? $model : null,
+                    $timeout,
+                );
+            } catch (Throwable $exception)
+            {
+                $last = $exception;
+                $hasBackup = $index < count($providers) - 1;
+
+                if (! $hasBackup || ! self::canFailOver($exception))
+                {
+                    throw $exception;
+                }
+            }
+        }
+
+        throw $last ?? new RuntimeException('AI request failed.');
+    }
+
+    public static function canFailOver(Throwable $exception): bool
+    {
+        if ($exception instanceof FailoverableException)
+        {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'authentication_error')
+            || str_contains($message, 'invalid api key')
+            || str_contains($message, 'invalid x-api-key')
+            || str_contains($message, '[401]');
     }
 
     /**

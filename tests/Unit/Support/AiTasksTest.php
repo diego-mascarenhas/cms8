@@ -75,4 +75,30 @@ class AiTasksTest extends TestCase
             config('ai.providers.anthropic.models.text.default'),
         );
     }
+
+    public function test_prompt_uses_the_backup_when_the_primary_key_is_rejected(): void
+    {
+        $agent = new class
+        {
+            /** @var list<string> */
+            public array $calls = [];
+
+            public function prompt(string $prompt, array $attachments, string $provider, ?string $model, int $timeout): object
+            {
+                $this->calls[] = $provider;
+
+                if ($provider === 'anthropic')
+                {
+                    throw new \RuntimeException('Anthropic Error [401]: authentication_error - API key is invalid.');
+                }
+
+                return (object) ['text' => 'lectura'];
+            }
+        };
+
+        $response = AiTasks::prompt($agent, 'contexto', 60, 'assistant');
+
+        $this->assertSame('lectura', $response->text);
+        $this->assertSame(['anthropic', 'openai'], $agent->calls);
+    }
 }
