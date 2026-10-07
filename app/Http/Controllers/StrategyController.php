@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SuggestStrategyFieldRequest;
 use App\Models\Payment;
 use App\Services\Finance\FinanceCfoBriefService;
+use App\Services\StrategyFieldSuggestionService;
 use App\Services\StrategyLevelReviewService;
 use App\Services\WeeklyWorkPlanService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -90,6 +93,34 @@ class StrategyController extends Controller
             'cfoAnalysis' => $briefs->storedAnalysis($team, $year),
             'projection' => $briefs->projection($team, $year),
             'canAskCfo' => $user->can('viewAny', Payment::class),
+        ]);
+    }
+
+    public function suggest(SuggestStrategyFieldRequest $request, StrategyFieldSuggestionService $suggestions): JsonResponse
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+        $this->authorize('update', $team);
+
+        $suggestion = $suggestions->suggest(
+            $team,
+            (string) $request->validated('field'),
+            (string) ($request->validated('draft') ?? ''),
+            $request->validated('siblings') ?? [],
+        );
+
+        if ($suggestion === null)
+        {
+            return response()->json([
+                'message' => __('app.strategy_field_suggestion_failed'),
+            ], 422);
+        }
+
+        return response()->json([
+            'field' => $request->validated('field'),
+            'suggestion' => $suggestion,
         ]);
     }
 

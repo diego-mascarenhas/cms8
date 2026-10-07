@@ -1339,6 +1339,7 @@ Route::get('/strategy/analysis', [StrategyController::class, 'analysis'])->name(
 Route::get('/strategy/review', [StrategyController::class, 'review'])->name('strategy.review')->middleware('auth');
 Route::post('/strategy/evaluate', [StrategyController::class, 'evaluate'])->name('strategy.evaluate')->middleware('auth');
 Route::get('/strategy/level/{level?}', [StrategyController::class, 'level'])->whereNumber('level')->name('strategy.level')->middleware('auth');
+Route::post('/strategy/suggest', [StrategyController::class, 'suggest'])->name('strategy.suggest')->middleware('auth');
 Route::post('/strategy', [StrategyController::class, 'update'])->name('strategy.update')->middleware('auth');
 Route::post('/strategy/advance', [StrategyController::class, 'advance'])->name('strategy.advance')->middleware('auth');
 Route::middleware('auth')->group(function ()

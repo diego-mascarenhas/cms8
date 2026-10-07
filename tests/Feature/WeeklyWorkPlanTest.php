@@ -18,6 +18,7 @@ use App\Models\ProjectStatus;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\Finance\InvoiceSummaryService;
+use App\Services\StrategyFieldSuggestionService;
 use App\Services\WeeklyWorkPlanService;
 use Carbon\Carbon;
 use Database\Seeders\ContactStatusSeeder;
@@ -525,7 +526,12 @@ class WeeklyWorkPlanTest extends TestCase
             ->assertSee('tu fachada digital.', false)
             ->assertSee('Web', false)
             ->assertSee('name="level"', false)
-            ->assertSee('value="2"', false);
+            ->assertSee('value="2"', false)
+            ->assertSee('data-field="content_strategy"', false)
+            ->assertSee('strategy-editor', false)
+            ->assertSee('strategy-suggestion-mark', false)
+            ->assertSee(__('app.strategy_field_suggest'), false)
+            ->assertDontSee(__('app.strategy_field_suggestion_use'), false);
 
         $this->post(route('strategy.update'), [
             'level' => 2,
@@ -602,6 +608,83 @@ class WeeklyWorkPlanTest extends TestCase
             ->assertSessionHas('error', __('app.strategy_review_failed'));
 
         $this->assertSame(5, app(WeeklyWorkPlanService::class)->strategyLevel($team->fresh()));
+    }
+
+    public function test_strategy_field_suggestion_uses_the_draft_for_that_field(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $service = \Mockery::mock(StrategyFieldSuggestionService::class, [
+            $this->app->make(WeeklyWorkPlanService::class),
+        ])->makePartial();
+        $service->shouldReceive('suggest')
+            ->once()
+            ->withArgs(function ($givenTeam, string $field, string $draft, array $siblings) use ($team): bool
+            {
+                return $givenTeam->is($team)
+                    && $field === 'content_strategy'
+                    && $draft === 'Publicar un caso por semana'
+                    && ($siblings['web'] ?? null) === 'https://idoneo.dev';
+            })
+            ->andReturn('Un caso semanal para el cliente ideal, publicado en la web y en redes.');
+        $this->app->instance(StrategyFieldSuggestionService::class, $service);
+
+        $this->postJson(route('strategy.suggest'), [
+            'field' => 'content_strategy',
+            'draft' => 'Publicar un caso por semana',
+            'siblings' => [
+                'web' => 'https://idoneo.dev',
+            ],
+        ])->assertOk()
+            ->assertJsonPath('field', 'content_strategy')
+            ->assertJsonPath('suggestion', 'Un caso semanal para el cliente ideal, publicado en la web y en redes.');
+    }
+
+    public function test_strategy_field_suggestion_rejects_an_unknown_field(): void
+    {
+        [$user] = $this->planner();
+        $this->actingAs($user);
+
+        $this->postJson(route('strategy.suggest'), [
+            'field' => 'not_a_field',
+        ])->assertStatus(422);
+    }
+
+    public function test_strategy_suggestion_context_starts_with_the_same_level(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $team->setSetting('business_config', [
+            'strategy' => [
+                'ideal_client' => 'PYMEs de servicios',
+                'offer' => 'Auditoría de 90 días',
+                'web' => 'https://idoneo.dev',
+                'content_strategy' => 'Nota vieja que no debe entrar',
+                'money' => 'Margen del 40%',
+            ],
+        ], ['type' => 'json', 'group' => 'business-config']);
+
+        $context = app(StrategyFieldSuggestionService::class)->context(
+            $team->fresh(),
+            'content_strategy',
+            'Publicar un caso por semana',
+        );
+
+        $this->assertSame(2, $context['level']);
+        $this->assertSame('Estrategia contenido', $context['label']);
+        $this->assertSame('Publicar un caso por semana', $context['draft']);
+        $this->assertSame(['Web', 'Cliente', 'Oferta', 'Dinero'], array_column($context['notes'], 'label'));
+
+        $withSibling = app(StrategyFieldSuggestionService::class)->context(
+            $team->fresh(),
+            'content_strategy',
+            'Publicar un caso por semana',
+            ['web' => 'https://nuevo.test'],
+        );
+
+        $this->assertSame('https://nuevo.test', $withSibling['notes'][0]['text']);
     }
 
     public function test_social_advisor_prefers_linkedin_for_b2b_challenge(): void
