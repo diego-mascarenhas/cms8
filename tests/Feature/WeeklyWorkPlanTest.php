@@ -512,6 +512,8 @@ class WeeklyWorkPlanTest extends TestCase
             ->assertOk()
             ->assertSee('Historia guardada en JSON', false)
             ->assertSee('Storytelling', false)
+            ->assertSee('ti-target', false)
+            ->assertDontSee('ti-arrow-left', false)
             ->assertSee('col-12', false)
             ->assertDontSee('col-md-6', false);
     }

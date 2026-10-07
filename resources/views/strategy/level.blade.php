@@ -12,7 +12,7 @@
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
             <a href="{{ route('strategy.index') }}" class="btn btn-label-secondary">
-                <i class="ti ti-arrow-left me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
+                <i class="ti ti-target me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
             </a>
             @if (!empty($canAdvance))
                 <form method="POST" action="{{ route('strategy.advance') }}">
