@@ -146,6 +146,9 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             ->assertSee('Subir conversion de 2,6% a 5%.', false)
             ->assertSee('Llamar a los 621 leads abiertos.', false)
             ->assertSee(__('Ask the CFO'), false)
+            ->assertSee('id="cfo-brief-button"', false)
+            ->assertSee(__('Asking the CFO...'), false)
+            ->assertSee('spinner-border', false)
             ->assertSee(route('weekly-plan.index'), false);
 
         $this->get(route('weekly-plan.index'))
@@ -157,5 +160,49 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             'year' => 2026,
             'refresh' => 1,
         ])->assertRedirect(route('strategy.analysis'));
+    }
+
+    public function test_cfo_brief_accepts_nested_lists_from_the_model(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->actingAs($user);
+
+        $analysis = json_encode([
+            'dafo' => [
+                'fortalezas' => ['Margen alto', 'Ingresos recurrentes'],
+                'debilidades' => ['Gastos sin clasificar'],
+                'oportunidades' => '654 leads',
+                'amenazas' => ['Conversion baja'],
+            ],
+            'fifo' => ['Cobrar lo vencido', 'antes que lo nuevo'],
+            'dagmar' => ['meta' => 'Subir conversion al 5%'],
+            'actions' => [
+                ['verbo' => 'Llamar', 'objeto' => 'a los 621 leads'],
+                'Clasificar 11295 EUR.',
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+
+        $service = \Mockery::mock(FinanceCfoBriefService::class, [
+            $this->app->make(InvoiceAnalyticsService::class),
+        ])->makePartial();
+        $service->shouldReceive('suggest')->once()->andReturn($analysis);
+        $this->app->instance(FinanceCfoBriefService::class, $service);
+
+        $this->postJson(route('finance-dashboard.cfo-brief'), ['year' => 2026])
+            ->assertOk();
+
+        $stored = $team->fresh()->getSetting('finance_cfo_brief_2026');
+        $this->assertIsArray($stored);
+        $this->assertSame('Margen alto Ingresos recurrentes', $stored['dafo']['fortalezas']);
+        $this->assertSame('Cobrar lo vencido antes que lo nuevo', $stored['fifo']);
+        $this->assertSame('Subir conversion al 5%', $stored['dagmar']);
+        $this->assertSame([
+            'Llamar a los 621 leads',
+            'Clasificar 11295 EUR.',
+        ], $stored['actions']);
     }
 }

@@ -13,11 +13,11 @@
                 <i class="ti ti-target me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
             </a>
             @if ($canAskCfo ?? false)
-                <form method="POST" action="{{ route('finance-dashboard.cfo-brief') }}">
+                <form method="POST" action="{{ route('finance-dashboard.cfo-brief') }}" id="cfo-brief-form">
                     @csrf
                     <input type="hidden" name="refresh" value="1">
                     <input type="hidden" name="year" value="{{ now()->year }}">
-                    <button type="submit" class="btn btn-label-primary">
+                    <button type="submit" class="btn btn-label-primary" id="cfo-brief-button">
                         <i class="ti ti-sparkles me-1"></i>{{ __('Ask the CFO') }}
                     </button>
                 </form>
@@ -89,4 +89,28 @@
             @endif
         </div>
     </div>
+
+    @if ($canAskCfo ?? false)
+        <script>
+            document.getElementById('cfo-brief-form')?.addEventListener('submit', function (event) {
+                const button = document.getElementById('cfo-brief-button');
+
+                if (!button) {
+                    return;
+                }
+
+                if (button.dataset.loading === '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                button.dataset.loading = '1';
+                button.setAttribute('aria-busy', 'true');
+                window.setTimeout(function () {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + @json(__('Asking the CFO...'));
+                }, 0);
+            });
+        </script>
+    @endif
 @endsection
