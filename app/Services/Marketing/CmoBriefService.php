@@ -27,6 +27,11 @@ class CmoBriefService
     ) {}
 
     /**
+     * @var array{team: int, year: int, context: array<string, mixed>}|null
+     */
+    private ?array $contextMemo = null;
+
+    /**
      * @return list<array{key: string, title: string, hint: string, fields?: array<string, string>}>
      */
     public static function blocks(): array
@@ -59,8 +64,25 @@ class CmoBriefService
                 'pains' => 'cmo_empathy_pains',
                 'gains' => 'cmo_empathy_gains',
             ]],
-            ['key' => 'value_proposition', 'title' => 'cmo_value', 'hint' => 'cmo_value_hint'],
-            ['key' => 'business_model', 'title' => 'cmo_bmc', 'hint' => 'cmo_bmc_hint'],
+            ['key' => 'value_proposition', 'title' => 'cmo_value', 'hint' => 'cmo_value_hint', 'fields' => [
+                'products' => 'cmo_vpc_products',
+                'gain_creators' => 'cmo_vpc_gain_creators',
+                'pain_relievers' => 'cmo_vpc_pain_relievers',
+                'gains' => 'cmo_vpc_gains',
+                'pains' => 'cmo_vpc_pains',
+                'jobs' => 'cmo_vpc_jobs',
+            ]],
+            ['key' => 'business_model', 'title' => 'cmo_bmc', 'hint' => 'cmo_bmc_hint', 'fields' => [
+                'segments' => 'cmo_bmc_segments',
+                'value' => 'cmo_bmc_value',
+                'channels' => 'cmo_bmc_channels',
+                'relationships' => 'cmo_bmc_relationships',
+                'revenue' => 'cmo_bmc_revenue',
+                'resources' => 'cmo_bmc_resources',
+                'activities' => 'cmo_bmc_activities',
+                'partners' => 'cmo_bmc_partners',
+                'costs' => 'cmo_bmc_costs',
+            ]],
             ['key' => 'lean_canvas', 'title' => 'cmo_lean', 'hint' => 'cmo_lean_hint'],
             ['key' => 'interviews', 'title' => 'cmo_interviews', 'hint' => 'cmo_interviews_hint'],
             ['key' => 'interview_summary', 'title' => 'cmo_interview_summary', 'hint' => 'cmo_interview_summary_hint'],
@@ -214,6 +236,7 @@ Usa únicamente los números y los nombres del contexto. No inventes importes, c
 No hables de correo, WhatsApp, tickets ni de la lista de 60.
 El capital social y el colchón de meses son hitos: no propongas gasto nuevo de publicidad como si el colchón ya existiera.
 Si not_loaded.customer_interviews es 0, entrevistas, resumen y mapa de empatía dicen que no hay entrevistas cargadas. No describas lo que un cliente piensa, oye, ve o siente.
+empathy es el mapa: thinks, hears, sees, says, pains, gains. Si no hay entrevistas, los seis dicen que no hay entrevistas cargadas.
 Si not_loaded.macro_environment es false, PEST dice que el entorno macro no está cargado. No cites tipos de interés, leyes ni desempleo de memoria.
 Si not_loaded.product_margin es false, no des un margen por producto. El margen del contexto es el de la empresa.
 Si not_loaded.client_employee_count y client_company_revenue son false, el perfil de cliente ideal no inventa empleados ni facturación del cliente. Usa país, localidad, repetición de compra e importe facturado.
@@ -225,6 +248,8 @@ came: corregir debilidades, afrontar amenazas, mantener fortalezas, explotar opo
 eisenhower: c1 urgente e importante, c2 importante y no urgente, c3 urgente y no importante, c4 ni urgente ni importante. Solo tareas que salen del contexto (llamados, publicaciones, conversión, productos).
 lookalike agrupa la audiencia ya cliente por país y por compra repetida. No inventes un cluster.
 ansoff: penetración, desarrollo de producto, desarrollo de mercado, diversificación. Si no hay un segundo mercado o producto en el contexto, la diversificación dice que no hay evidencia.
+business_model son los nueve bloques del lienzo: segments, value, channels, relationships, revenue, resources, activities, partners, costs. Cada bloque nombra la cifra del contexto que lo sostiene. El contexto no trae socios: partners dice que no hay socios cargados.
+value_proposition es el lienzo de propuesta de valor: products, gain_creators, pain_relievers, gains, pains, jobs. products usa el mix y el margen de la empresa. Si no hay entrevistas, gains, pains, jobs, gain_creators y pain_relievers dicen que no hay entrevistas cargadas. No inventes dolores ni ganancias.
 TXT;
 
         $userMessage = "CONTEXTO COMERCIAL\n\n".json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -334,6 +359,11 @@ TXT;
      */
     public function context(Team $team, int $year): array
     {
+        if ($this->contextMemo !== null && $this->contextMemo['team'] === (int) $team->id && $this->contextMemo['year'] === $year)
+        {
+            return $this->contextMemo['context'];
+        }
+
         $report = $this->invoiceAnalyticsService->buildYearReport($team->id, $year);
         $currency = (string) $report['reporting_currency'];
         $purchase = $this->purchasePattern($team, $year, $currency);
@@ -342,7 +372,7 @@ TXT;
             ->where('team_id', $team->id)
             ->whereYear('created_at', $year);
 
-        return [
+        $context = [
             'year' => $report['year'],
             'currency' => $currency,
             'method' => 'Adquiria',
@@ -391,6 +421,250 @@ TXT;
                 'product_margin' => false,
                 'marketing_budget' => false,
             ],
+        ];
+
+        $this->contextMemo = [
+            'team' => (int) $team->id,
+            'year' => $year,
+            'context' => $context,
+        ];
+
+        return $context;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function businessCanvas(Team $team, int $year): array
+    {
+        $context = $this->context($team, $year);
+        $currency = (string) $context['currency'];
+        $company = is_array($context['company'] ?? null) ? $context['company'] : [];
+        $products = is_array($context['products'] ?? null) ? $context['products'] : [];
+        $purchase = is_array($context['purchase'] ?? null) ? $context['purchase'] : [];
+        $work = is_array($context['commercial_work'] ?? null) ? $context['commercial_work'] : null;
+        $publications = is_array($context['publications'] ?? null) ? $context['publications'] : [];
+        $analytics = is_array($context['google_analytics'] ?? null) ? $context['google_analytics'] : null;
+
+        $productLines = [];
+
+        foreach (array_slice($products, 0, 8) as $product)
+        {
+            if (! is_array($product))
+            {
+                continue;
+            }
+
+            $productLines[] = (string) $product['name'].' · '.\App\Helpers\Helpers::formatDecimal((float) ($product['amount'] ?? 0)).' '.$currency.' · '.number_format((float) ($product['share_percent'] ?? 0), 1, ',', '.').' %';
+        }
+
+        $countries = [];
+
+        foreach (array_slice(is_array($context['clients_by_country'] ?? null) ? $context['clients_by_country'] : [], 0, 6) as $row)
+        {
+            if (! is_array($row))
+            {
+                continue;
+            }
+
+            $name = trim((string) ($row['country'] ?? ''));
+            $countries[] = ($name !== '' ? $name : __('app.cmo_bmc_unknown_country')).' · '.(int) ($row['enterprises'] ?? 0);
+        }
+
+        $people = [];
+
+        foreach ($work['tasks'] ?? [] as $task)
+        {
+            if (! is_array($task))
+            {
+                continue;
+            }
+
+            $person = trim((string) ($task['person'] ?? ''));
+
+            if ($person === '')
+            {
+                continue;
+            }
+
+            $people[$person] = ($people[$person] ?? 0) + (float) ($task['hours'] ?? 0);
+        }
+
+        $activities = [];
+
+        foreach ($work['tasks'] ?? [] as $task)
+        {
+            if (! is_array($task) || trim((string) ($task['name'] ?? '')) === '')
+            {
+                continue;
+            }
+
+            $activities[] = (string) $task['name'].' · '.(string) ($task['person'] ?? '').' · '.number_format((float) ($task['hours'] ?? 0), 1, ',', '.').' h';
+        }
+
+        if (is_array($work) && (int) ($work['day_call_minimum'] ?? 0) > 0)
+        {
+            $activities[] = __('app.cmo_bmc_call_window', [
+                'day' => (int) $work['day_call_minimum'],
+                'window' => (string) ($work['call_window'] ?? ''),
+                'owner' => (string) ($work['call_owner'] ?? ''),
+            ]);
+        }
+
+        $channels = [
+            __('app.cmo_bmc_posts', [
+                'last' => (int) ($publications['posts_last_90_days'] ?? 0),
+                'next' => (int) ($publications['posts_next_90_days'] ?? 0),
+            ]),
+        ];
+
+        if ($analytics !== null)
+        {
+            $channels[] = __('app.cmo_bmc_visits', [
+                'visitors' => (int) ($analytics['visitors'] ?? 0),
+                'views' => (int) ($analytics['page_views'] ?? 0),
+            ]);
+
+            foreach (array_slice(is_array($analytics['top_pages'] ?? null) ? $analytics['top_pages'] : [], 0, 3) as $page)
+            {
+                if (! is_array($page) || trim((string) ($page['title'] ?? '')) === '')
+                {
+                    continue;
+                }
+
+                $channels[] = (string) $page['title'].' · '.(int) ($page['views'] ?? 0);
+            }
+        }
+
+        $resources = [];
+
+        foreach ($people as $person => $hours)
+        {
+            $resources[] = $person.' · '.number_format($hours, 1, ',', '.').' h';
+        }
+
+        return [
+            'segments' => array_values(array_filter([
+                __('app.cmo_bmc_clients', ['count' => (int) ($context['clients'] ?? 0)]),
+                ...$countries,
+            ])),
+            'value' => array_values(array_filter([
+                ...$productLines,
+                __('app.cmo_bmc_margin', ['margin' => number_format((float) ($company['margin_percent'] ?? 0), 1, ',', '.')]),
+            ])),
+            'channels' => $channels,
+            'relationships' => array_values(array_filter([
+                __('app.cmo_bmc_repeat', ['count' => (int) ($purchase['repeat_clients'] ?? 0)]),
+                __('app.cmo_bmc_single', ['count' => (int) ($purchase['single_clients'] ?? 0)]),
+                (int) ($context['customer_interviews'] ?? 0) === 0 ? __('app.cmo_bmc_no_interviews') : '',
+            ])),
+            'revenue' => array_values(array_filter([
+                \App\Helpers\Helpers::formatDecimal((float) ($company['income'] ?? 0)).' '.$currency,
+                __('app.cmo_bmc_invoices', ['count' => (int) ($purchase['invoices'] ?? 0)]),
+                ...$productLines,
+            ])),
+            'resources' => $resources !== [] ? $resources : [__('app.cmo_bmc_no_resources')],
+            'activities' => $activities !== [] ? $activities : [__('app.cmo_bmc_no_resources')],
+            'partners' => [__('app.cmo_bmc_no_partners')],
+            'costs' => [
+                __('app.cmo_bmc_expense', [
+                    'amount' => \App\Helpers\Helpers::formatDecimal((float) ($company['expense'] ?? 0)),
+                    'currency' => $currency,
+                ]),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function valueCanvas(Team $team, int $year): array
+    {
+        $context = $this->context($team, $year);
+        $currency = (string) $context['currency'];
+        $company = is_array($context['company'] ?? null) ? $context['company'] : [];
+        $products = [];
+
+        foreach (array_slice(is_array($context['products'] ?? null) ? $context['products'] : [], 0, 8) as $product)
+        {
+            if (! is_array($product))
+            {
+                continue;
+            }
+
+            $products[] = (string) $product['name'].' · '.\App\Helpers\Helpers::formatDecimal((float) ($product['amount'] ?? 0)).' '.$currency.' · '.number_format((float) ($product['share_percent'] ?? 0), 1, ',', '.').' %';
+        }
+
+        $products[] = __('app.cmo_bmc_margin', [
+            'margin' => number_format((float) ($company['margin_percent'] ?? 0), 1, ',', '.'),
+        ]);
+        $missing = __('app.cmo_vpc_no_interviews');
+
+        return [
+            'products' => $products,
+            'gain_creators' => [$missing],
+            'pain_relievers' => [$missing],
+            'gains' => [$missing],
+            'pains' => [$missing],
+            'jobs' => [$missing],
+        ];
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function empathyCanvas(Team $team, int $year): array
+    {
+        $context = $this->context($team, $year);
+        $missing = (int) ($context['customer_interviews'] ?? 0) === 0
+            ? __('app.cmo_vpc_no_interviews')
+            : '';
+        $line = $missing === '' ? [] : [$missing];
+
+        return [
+            'thinks' => $line,
+            'hears' => $line,
+            'sees' => $line,
+            'says' => $line,
+            'pains' => $line,
+            'gains' => $line,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     year: int,
+     *     currency: string,
+     *     income: float,
+     *     profit: float,
+     *     margin_percent: float,
+     *     products: list<array{name: string, amount: float, share_percent: float}>,
+     *     invoices: int,
+     *     repeat_clients: int,
+     *     single_clients: int
+     * }
+     */
+    public function mixChart(Team $team, int $year): array
+    {
+        $report = $this->invoiceAnalyticsService->buildYearReport($team->id, $year);
+        $currency = (string) $report['reporting_currency'];
+        $purchase = $this->purchasePattern($team, $year, $currency);
+        $totals = $purchase['totals'];
+
+        return [
+            'year' => (int) $report['year'],
+            'currency' => $currency,
+            'income' => round((float) $report['summary']['income'], 2),
+            'profit' => round((float) $report['summary']['profit'], 2),
+            'margin_percent' => round((float) $report['summary']['margin_percent'], 1),
+            'products' => array_map(fn (array $category): array => [
+                'name' => (string) $category['name'],
+                'amount' => round((float) $category['total'], 2),
+                'share_percent' => round((float) $category['share_percent'], 1),
+            ], array_slice($report['income_categories'], 0, 8)),
+            'invoices' => (int) $totals['invoices'],
+            'repeat_clients' => (int) $totals['repeat_clients'],
+            'single_clients' => (int) $totals['single_clients'],
         ];
     }
 

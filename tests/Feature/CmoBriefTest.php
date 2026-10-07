@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Enterprise;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\User;
 use App\Services\CmoBriefLauncher;
 use App\Services\Marketing\CmoBriefService;
@@ -183,5 +185,134 @@ class CmoBriefTest extends TestCase
         ]);
 
         $this->assertSame('idle', app(CmoBriefService::class)->runStatus($team->fresh(), (int) now()->year)['state']);
+    }
+
+    public function test_the_analysis_page_draws_the_mix_and_the_ansoff_matrix(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->actingAs($user);
+        $this->seed([
+            EnterpriseTypeSeeder::class,
+            EnterpriseStatusSeeder::class,
+            InvoiceTypeSeeder::class,
+            CurrencySeeder::class,
+        ]);
+
+        $enterprise = Enterprise::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'type_id' => 1,
+            'status_id' => 1,
+            'name' => 'Acme B2B',
+            'country' => 'España',
+        ]);
+        $category = Category::factory()->create([
+            'team_id' => $team->id,
+            'name' => 'Servicios',
+        ]);
+        $year = (int) now()->year;
+        $invoice = Invoice::withoutGlobalScopes()->create([
+            'team_id' => $team->id,
+            'enterprise_id' => $enterprise->id,
+            'type_id' => 1,
+            'operation' => 'sell',
+            'status' => 1,
+            'date' => $year.'-03-01',
+            'due_date' => $year.'-04-01',
+            'gross_amount' => 200,
+            'discount' => 0,
+            'total_amount' => 200,
+            'balance' => 200,
+            'currency_id' => 978,
+            'number' => 'CMO-MIX',
+        ]);
+        InvoiceItem::query()->create([
+            'invoice_id' => $invoice->id,
+            'category_id' => $category->id,
+            'description' => 'Plan',
+            'quantity' => 1,
+            'unit_price' => 200,
+            'discount' => 0,
+        ]);
+
+        $chart = app(CmoBriefService::class)->mixChart($team, $year);
+        $this->assertSame('Servicios', $chart['products'][0]['name']);
+        $this->assertEqualsWithDelta(200.0, $chart['products'][0]['amount'], 0.01);
+        $this->assertSame(1, $chart['invoices']);
+
+        $team->setSetting('marketing_cmo_brief_'.$year, [
+            'business_model' => 'Parrafo que no debe verse como texto.',
+            'eisenhower' => [
+                'c1' => 'Priorizar la prospección.',
+                'c2' => 'Sostener el plan de marketing.',
+                'c3' => 'Aprobar publicaciones si hay piezas.',
+                'c4' => 'No iniciar líneas nuevas.',
+            ],
+            'ansoff' => [
+                'penetration' => 'Priorizar la base actual.',
+                'product' => 'Ordenar la oferta.',
+                'market' => 'Reforzar Argentina.',
+                'diversification' => 'No hay evidencia para diversificar.',
+            ],
+            'generated_at' => now()->toIso8601String(),
+        ], [
+            'type' => 'json',
+            'group' => 'marketing',
+        ]);
+
+        $parsed = app(CmoBriefService::class)->present(json_encode([
+            'business_model' => [
+                'segments' => 'Empresas en España.',
+                'partners' => 'No hay socios cargados.',
+            ],
+        ], JSON_UNESCAPED_UNICODE));
+        $this->assertSame('Empresas en España.', $parsed['business_model']['segments']);
+        $this->assertSame('', $parsed['business_model']['costs']);
+
+        $this->get(route('strategy.analysis'))
+            ->assertOk()
+            ->assertSee('id="cmo-canvas"', false)
+            ->assertDontSee('id="cmoMixChart"', false)
+            ->assertSee('Servicios', false)
+            ->assertSee('España', false)
+            ->assertSee(__('app.cmo_bmc_segments'), false)
+            ->assertSee(__('app.cmo_bmc_value'), false)
+            ->assertSee(__('app.cmo_bmc_partners'), false)
+            ->assertSee(__('app.cmo_bmc_no_partners'), false)
+            ->assertSee('id="cmo-empathy-map"', false)
+            ->assertSee(__('app.cmo_empathy_thinks'), false)
+            ->assertSee(__('app.cmo_empathy_hears'), false)
+            ->assertSee(__('app.cmo_empathy_sees'), false)
+            ->assertSee(__('app.cmo_empathy_says'), false)
+            ->assertSee(__('app.cmo_empathy_pains'), false)
+            ->assertSee(__('app.cmo_empathy_gains'), false)
+            ->assertSee('id="cmo-value-canvas"', false)
+            ->assertSee(__('app.cmo_vpc_products'), false)
+            ->assertSee(__('app.cmo_vpc_gain_creators'), false)
+            ->assertSee(__('app.cmo_vpc_pain_relievers'), false)
+            ->assertSee(__('app.cmo_vpc_gains'), false)
+            ->assertSee(__('app.cmo_vpc_pains'), false)
+            ->assertSee(__('app.cmo_vpc_jobs'), false)
+            ->assertSee(__('app.cmo_vpc_no_interviews'), false)
+            ->assertSee('id="cmo-eisenhower"', false)
+            ->assertSee(__('app.cmo_eisenhower_do'), false)
+            ->assertSee(__('app.cmo_eisenhower_schedule'), false)
+            ->assertSee(__('app.cmo_eisenhower_delegate'), false)
+            ->assertSee(__('app.cmo_eisenhower_drop'), false)
+            ->assertSee(__('app.cmo_eisenhower_urgent'), false)
+            ->assertSee(__('app.cmo_eisenhower_not_urgent'), false)
+            ->assertSee(__('app.cmo_eisenhower_important'), false)
+            ->assertSee(__('app.cmo_eisenhower_not_important'), false)
+            ->assertSee('Priorizar la prospección.', false)
+            ->assertSee(__('app.cmo_ansoff_current_products'), false)
+            ->assertSee(__('app.cmo_ansoff_current_markets'), false)
+            ->assertSee(__('app.cmo_ansoff_new_products'), false)
+            ->assertSee(__('app.cmo_ansoff_new_markets'), false)
+            ->assertSee('Priorizar la base actual.', false)
+            ->assertSee('No hay evidencia para diversificar.', false)
+            ->assertDontSee('Parrafo que no debe verse como texto.', false);
     }
 }

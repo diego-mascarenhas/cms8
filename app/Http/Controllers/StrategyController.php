@@ -93,12 +93,23 @@ class StrategyController extends Controller
         abort_if($user === null || $team === null, 404);
 
         $year = (int) now()->year;
+        $cmo = app(CmoBriefService::class);
+        $cmoAnalysis = $cmo->storedAnalysis($team, $year);
 
         return view('strategy.analysis', [
             'cfoAnalysis' => $briefs->storedAnalysis($team, $year),
             'cfoRun' => $briefs->runStatus($team, $year),
-            'cmoAnalysis' => app(CmoBriefService::class)->storedAnalysis($team, $year),
-            'cmoRun' => app(CmoBriefService::class)->runStatus($team, $year),
+            'cmoAnalysis' => $cmoAnalysis,
+            'cmoCanvas' => is_array($cmoAnalysis) && \App\Services\Marketing\CmoBriefService::hasStoredSections($cmoAnalysis)
+                ? $cmo->businessCanvas($team, $year)
+                : null,
+            'cmoValue' => is_array($cmoAnalysis) && \App\Services\Marketing\CmoBriefService::hasStoredSections($cmoAnalysis)
+                ? $cmo->valueCanvas($team, $year)
+                : null,
+            'cmoEmpathy' => is_array($cmoAnalysis) && \App\Services\Marketing\CmoBriefService::hasStoredSections($cmoAnalysis)
+                ? $cmo->empathyCanvas($team, $year)
+                : null,
+            'cmoRun' => $cmo->runStatus($team, $year),
             'projection' => $briefs->withSalaryForecast($briefs->storedProjection($team, $year), $team),
             'canAskCfo' => $user->can('viewAny', Payment::class),
             'subsistence' => $subsistence->forTeam($team),
