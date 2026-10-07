@@ -18,6 +18,7 @@ use App\Support\RevisionAlphaOrganization;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Spatie\Analytics\Facades\Analytics;
 use Spatie\Analytics\Period;
 use Throwable;
@@ -111,14 +112,124 @@ class FinanceCfoBriefService
         return $analysis['brief'];
     }
 
+    /**
+     * @return array{state: string, phase: string, message: string, started_at: string}
+     */
+    public function runStatus(Team $team, int $year): array
+    {
+        $stored = $team->getSetting($this->runKey($year));
+        $stored = is_array($stored) ? $stored : [];
+        $state = (string) ($stored['state'] ?? 'idle');
+        $phase = (string) ($stored['phase'] ?? '');
+        $startedAt = (string) ($stored['started_at'] ?? '');
+
+        if ($state === 'running' && $startedAt !== '')
+        {
+            try
+            {
+                if (Carbon::parse($startedAt)->lt(now()->subSeconds(900)))
+                {
+                    $state = 'idle';
+                    $phase = '';
+                }
+            } catch (Throwable)
+            {
+                $state = 'idle';
+            }
+        }
+
+        return [
+            'state' => $state,
+            'phase' => $phase,
+            'message' => $phase !== '' ? (string) __('app.cfo_phase_'.$phase) : '',
+            'started_at' => $startedAt,
+        ];
+    }
+
+    public function begin(Team $team, int $year): bool
+    {
+        if ($this->runStatus($team, $year)['state'] === 'running')
+        {
+            return false;
+        }
+
+        $this->mark($team, $year, 'running', 'queued', true);
+
+        return true;
+    }
+
+    public function generate(Team $team, int $year): void
+    {
+        $merged = [];
+
+        try
+        {
+            $this->mark($team, $year, 'running', 'context');
+            $context = $this->context($team, $year);
+
+            foreach ($this->generationGroups() as $phase => $keys)
+            {
+                $this->mark($team, $year, 'running', $phase);
+                $parsed = $this->parse($this->ask($context, $keys));
+
+                if ($parsed === null)
+                {
+                    throw new RuntimeException('CFO reply was not JSON.');
+                }
+
+                foreach ($keys as $key)
+                {
+                    if (array_key_exists($key, $parsed))
+                    {
+                        $merged[$key] = $parsed[$key];
+                    }
+                }
+
+                $this->storeAnalysis($team, $year, $merged);
+            }
+
+            $this->mark($team, $year, 'done', 'done');
+        } catch (Throwable $exception)
+        {
+            Log::error('FinanceCfoBriefService::generate failed', [
+                'team_id' => $team->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            if ($merged !== [])
+            {
+                $this->storeAnalysis($team, $year, $merged);
+            }
+
+            $this->mark($team, $year, 'failed', 'failed');
+        }
+    }
+
     public function suggest(Team $team, int $year): string
     {
-        $context = $this->context($team, $year);
-        $instructions = <<<'TXT'
+        try
+        {
+            return $this->ask($this->context($team, $year), ['dafo', 'fifo', 'dagmar', 'actions', 'capacity']);
+        } catch (Throwable $exception)
+        {
+            Log::error('FinanceCfoBriefService::suggest failed', ['error' => $exception->getMessage()]);
+
+            return __('The CFO suggestion could not be generated.');
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @param  list<string>  $keys
+     */
+    private function ask(array $context, array $keys): string
+    {
+        $schema = $this->schemaFor($keys);
+        $instructions = <<<TXT
 Eres el CFO de la empresa. Responde solo con JSON válido, en español, sin markdown.
 Usa únicamente los números del contexto. No inventes importes, clientes ni porcentajes. Si un dato no está, dilo en esa frase.
-El JSON tiene esta forma:
-{"dafo":{"fortalezas":"","debilidades":"","oportunidades":"","amenazas":""},"fifo":"","dagmar":"","actions":[],"capacity":{"resources":"","hours":"","minimum_salary":"","now":"","missing_departments":""}}
+Rellena solo estas claves:
+{$schema}
 dafo es la lectura del negocio: fortalezas, debilidades, oportunidades y amenazas. Cada una es un texto, una frase con su cifra.
 fifo es un texto: qué atender primero porque entró antes (cobros vencidos, leads sin convertir, gastos sin clasificar).
 dagmar es un texto: un objetivo medible de captación o conversión, con la cifra actual y la meta. Si hay google_analytics, usa visitantes o páginas vistas.
@@ -151,19 +262,103 @@ TXT;
                 60,
             );
             $text = trim((string) ($response->text ?? ''));
-        } catch (Throwable $e)
+        } catch (Throwable $exception)
         {
-            Log::error('FinanceCfoBriefService::suggest failed', ['error' => $e->getMessage()]);
+            Log::error('FinanceCfoBriefService::ask failed', ['error' => $exception->getMessage()]);
 
-            return __('The CFO suggestion could not be generated.');
+            throw new RuntimeException('CFO request failed.', 0, $exception);
         }
 
         if ($text === '')
         {
-            return __('The CFO suggestion could not be generated.');
+            throw new RuntimeException('CFO reply was empty.');
         }
 
         return $text;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function generationGroups(): array
+    {
+        return [
+            'diagnosis' => ['dafo'],
+            'priorities' => ['fifo', 'dagmar', 'actions'],
+            'capacity' => ['capacity'],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $keys
+     */
+    private function schemaFor(array $keys): string
+    {
+        $shape = [
+            'dafo' => [
+                'fortalezas' => '',
+                'debilidades' => '',
+                'oportunidades' => '',
+                'amenazas' => '',
+            ],
+            'fifo' => '',
+            'dagmar' => '',
+            'actions' => [],
+            'capacity' => [
+                'resources' => '',
+                'hours' => '',
+                'minimum_salary' => '',
+                'now' => '',
+                'missing_departments' => '',
+            ],
+        ];
+        $selected = [];
+
+        foreach ($keys as $key)
+        {
+            if (array_key_exists($key, $shape))
+            {
+                $selected[$key] = $shape[$key];
+            }
+        }
+
+        return (string) json_encode($selected, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function storeAnalysis(Team $team, int $year, array $payload): void
+    {
+        $analysis = $this->normalize($payload);
+        $analysis['brief'] = $this->readable($analysis);
+        $analysis['generated_at'] = now()->toIso8601String();
+        $team->setSetting($this->settingKey($year), $analysis, [
+            'type' => 'json',
+            'group' => 'finance',
+        ]);
+    }
+
+    private function mark(Team $team, int $year, string $state, string $phase, bool $freshStart = false): void
+    {
+        $current = $freshStart ? [] : $team->getSetting($this->runKey($year));
+        $current = is_array($current) ? $current : [];
+        $startedAt = (string) ($current['started_at'] ?? '');
+
+        $team->setSetting($this->runKey($year), [
+            'state' => $state,
+            'phase' => $phase,
+            'started_at' => $startedAt !== '' ? $startedAt : now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ], [
+            'type' => 'json',
+            'group' => 'finance',
+        ]);
+    }
+
+    private function runKey(int $year): string
+    {
+        return 'finance_cfo_run_'.$year;
     }
 
     private function settingKey(int $year): string

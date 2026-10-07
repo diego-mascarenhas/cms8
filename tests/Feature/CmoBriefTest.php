@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Enterprise;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Services\CmoBriefLauncher;
 use App\Services\Marketing\CmoBriefService;
 use Database\Seeders\CurrencySeeder;
 use Database\Seeders\EnterpriseStatusSeeder;
@@ -150,14 +151,36 @@ class CmoBriefTest extends TestCase
             ->assertSee(__('app.cmo_situation'), false)
             ->assertSee(__('app.cmo_pest'), false);
 
-        $this->mock(CmoBriefService::class, function ($mock): void
-        {
-            $mock->shouldReceive('remember')->once()->andReturn('Lectura guardada.');
-        });
+        $launcher = $this->createMock(CmoBriefLauncher::class);
+        $launcher->expects($this->once())->method('start')->with($team->id, (int) now()->year);
+        $this->app->instance(CmoBriefLauncher::class, $launcher);
 
         $this->post(route('strategy.analysis.cmo-brief'), [
             'year' => now()->year,
             'refresh' => 1,
         ])->assertRedirect(route('strategy.analysis'));
+
+        $this->get(route('strategy.analysis'))
+            ->assertOk()
+            ->assertSee('id="cmo-run"', false)
+            ->assertSee(__('app.cmo_phase_queued'), false)
+            ->assertSee(__('app.cmo_running_title'), false)
+            ->assertSee(route('strategy.analysis.cmo-status', ['year' => now()->year]), false);
+
+        $this->getJson(route('strategy.analysis.cmo-status', ['year' => now()->year]))
+            ->assertOk()
+            ->assertJsonPath('state', 'running')
+            ->assertJsonPath('phase', 'queued');
+
+        $team->setSetting('marketing_cmo_run_'.now()->year, [
+            'state' => 'running',
+            'phase' => 'context',
+            'started_at' => now()->subMinutes(20)->toIso8601String(),
+        ], [
+            'type' => 'json',
+            'group' => 'marketing',
+        ]);
+
+        $this->assertSame('idle', app(CmoBriefService::class)->runStatus($team->fresh(), (int) now()->year)['state']);
     }
 }

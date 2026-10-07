@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SuggestStrategyFieldRequest;
 use App\Models\Payment;
+use App\Services\CfoBriefLauncher;
+use App\Services\CmoBriefLauncher;
 use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\Marketing\CmoBriefService;
 use App\Services\StrategyFieldSuggestionService;
@@ -94,7 +96,9 @@ class StrategyController extends Controller
 
         return view('strategy.analysis', [
             'cfoAnalysis' => $briefs->storedAnalysis($team, $year),
+            'cfoRun' => $briefs->runStatus($team, $year),
             'cmoAnalysis' => app(CmoBriefService::class)->storedAnalysis($team, $year),
+            'cmoRun' => app(CmoBriefService::class)->runStatus($team, $year),
             'projection' => $briefs->withSalaryForecast($briefs->storedProjection($team, $year), $team),
             'canAskCfo' => $user->can('viewAny', Payment::class),
             'subsistence' => $subsistence->forTeam($team),
@@ -117,7 +121,7 @@ class StrategyController extends Controller
             ->with('success', __('app.cfo_analysis_refresh_started'));
     }
 
-    public function cmoBrief(Request $request, CmoBriefService $briefs): RedirectResponse
+    public function cfoBrief(Request $request, FinanceCfoBriefService $briefs, CfoBriefLauncher $launcher): RedirectResponse
     {
         $this->authorize('viewAny', Payment::class);
 
@@ -127,11 +131,62 @@ class StrategyController extends Controller
         abort_if($user === null || $team === null, 404);
 
         $year = (int) $request->input('year', now()->year);
-        $briefs->remember($team, $year > 0 ? $year : (int) now()->year, $request->boolean('refresh'));
+        $year = $year > 0 ? $year : (int) now()->year;
 
-        return redirect()
-            ->route('strategy.analysis')
-            ->with('success', __('app.cmo_analysis_ready'));
+        if ($briefs->begin($team, $year))
+        {
+            $launcher->start($team->id, $year);
+        }
+
+        return redirect()->route('strategy.analysis');
+    }
+
+    public function cfoStatus(Request $request, FinanceCfoBriefService $briefs): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        $year = (int) $request->query('year', now()->year);
+
+        return response()->json($briefs->runStatus($team, $year > 0 ? $year : (int) now()->year));
+    }
+
+    public function cmoBrief(Request $request, CmoBriefService $briefs, CmoBriefLauncher $launcher): RedirectResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        $year = (int) $request->input('year', now()->year);
+        $year = $year > 0 ? $year : (int) now()->year;
+
+        if ($briefs->begin($team, $year))
+        {
+            $launcher->start($team->id, $year);
+        }
+
+        return redirect()->route('strategy.analysis');
+    }
+
+    public function cmoStatus(Request $request, CmoBriefService $briefs): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        $year = (int) $request->query('year', now()->year);
+
+        return response()->json($briefs->runStatus($team, $year > 0 ? $year : (int) now()->year));
     }
 
     public function suggest(SuggestStrategyFieldRequest $request, StrategyFieldSuggestionService $suggestions): JsonResponse

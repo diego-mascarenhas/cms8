@@ -12,8 +12,10 @@ use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\Finance\InvoiceAnalyticsService;
 use App\Support\AiTasks;
 use App\Support\RevisionAlphaOrganization;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use RuntimeException;
 use Throwable;
 
 use function Laravel\Ai\agent;
@@ -97,37 +99,97 @@ class CmoBriefService
         return $analysis;
     }
 
-    public function remember(Team $team, int $year, bool $refresh = false): string
+    /**
+     * @return array{state: string, phase: string, message: string, started_at: string}
+     */
+    public function runStatus(Team $team, int $year): array
     {
-        if (! $refresh)
-        {
-            $stored = $this->storedAnalysis($team, $year);
+        $stored = $team->getSetting($this->runKey($year));
+        $stored = is_array($stored) ? $stored : [];
+        $state = (string) ($stored['state'] ?? 'idle');
+        $phase = (string) ($stored['phase'] ?? '');
+        $startedAt = (string) ($stored['started_at'] ?? '');
 
-            if ($stored !== null)
+        if ($state === 'running' && $startedAt !== '')
+        {
+            try
             {
-                return $stored['brief'];
+                if (Carbon::parse($startedAt)->lt(now()->subSeconds(900)))
+                {
+                    $state = 'idle';
+                    $phase = '';
+                }
+            } catch (Throwable)
+            {
+                $state = 'idle';
             }
         }
 
-        $text = $this->suggest($team, $year);
-        $failed = __('The CMO suggestion could not be generated.');
+        return [
+            'state' => $state,
+            'phase' => $phase,
+            'message' => $phase !== '' ? (string) __('app.cmo_phase_'.$phase) : '',
+            'started_at' => $startedAt,
+        ];
+    }
 
-        if ($text === $failed)
+    public function begin(Team $team, int $year): bool
+    {
+        if ($this->runStatus($team, $year)['state'] === 'running')
         {
-            return $this->storedAnalysis($team, $year)['brief'] ?? $text;
+            return false;
         }
 
-        $parsed = $this->parse($text);
-        $analysis = $parsed ?? $this->normalize(['brief' => $text]);
-        $analysis['brief'] = $parsed !== null ? $this->readable($analysis) : $text;
-        $analysis['generated_at'] = now()->toIso8601String();
+        $this->mark($team, $year, 'running', 'queued', true);
 
-        $team->setSetting($this->settingKey($year), $analysis, [
-            'type' => 'json',
-            'group' => 'marketing',
-        ]);
+        return true;
+    }
 
-        return $analysis['brief'];
+    public function generate(Team $team, int $year): void
+    {
+        $merged = [];
+
+        try
+        {
+            $this->mark($team, $year, 'running', 'context');
+            $context = $this->context($team, $year);
+
+            foreach ($this->generationGroups() as $phase => $keys)
+            {
+                $this->mark($team, $year, 'running', $phase);
+                $parsed = $this->parse($this->ask($context, $keys));
+
+                if ($parsed === null)
+                {
+                    throw new RuntimeException('CMO reply was not JSON.');
+                }
+
+                foreach ($keys as $key)
+                {
+                    if (array_key_exists($key, $parsed))
+                    {
+                        $merged[$key] = $parsed[$key];
+                    }
+                }
+
+                $this->storeAnalysis($team, $year, $merged);
+            }
+
+            $this->mark($team, $year, 'done', 'done');
+        } catch (Throwable $exception)
+        {
+            Log::error('CmoBriefService::generate failed', [
+                'team_id' => $team->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            if ($merged !== [])
+            {
+                $this->storeAnalysis($team, $year, $merged);
+            }
+
+            $this->mark($team, $year, 'failed', 'failed');
+        }
     }
 
     /**
@@ -138,12 +200,16 @@ class CmoBriefService
         return $this->parse($text);
     }
 
-    public function suggest(Team $team, int $year): string
+    /**
+     * @param  array<string, mixed>  $context
+     * @param  list<string>  $keys
+     */
+    private function ask(array $context, array $keys): string
     {
-        $context = $this->context($team, $year);
-        $instructions = <<<'TXT'
+        $schema = $this->schemaFor($keys);
+        $instructions = <<<TXT
 Eres el CMO de la empresa. Responde solo con JSON válido, en español, sin markdown.
-El método es el de marketing comercial digital B2B de Adquiria (https://adquiria.net/): situación inicial, DAFO, CAME, Eisenhower, mapa de empatía, propuesta de valor, Business Model Canvas, Lean Canvas, entrevistas cliente-problema-solución, resumen de entrevistas, perfil de cliente ideal, buyer persona, audiencias similares, Ansoff y PEST.
+El método es el de marketing comercial digital B2B de Adquiria (https://adquiria.net/).
 Usa únicamente los números y los nombres del contexto. No inventes importes, clientes, cargos, países, porcentajes, entrevistas, sentimientos ni un presupuesto de marketing. Si un dato no está, dilo en esa frase.
 No hables de correo, WhatsApp, tickets ni de la lista de 60.
 El capital social y el colchón de meses son hitos: no propongas gasto nuevo de publicidad como si el colchón ya existiera.
@@ -152,8 +218,8 @@ Si not_loaded.macro_environment es false, PEST dice que el entorno macro no est�
 Si not_loaded.product_margin es false, no des un margen por producto. El margen del contexto es el de la empresa.
 Si not_loaded.client_employee_count y client_company_revenue son false, el perfil de cliente ideal no inventa empleados ni facturación del cliente. Usa país, localidad, repetición de compra e importe facturado.
 google_analytics null: no hables de visitas. publications con posts_last_90_days 0: di que no hay publicaciones en la agenda.
-El JSON tiene esta forma, y cada valor es un texto:
-{"situation":"","pest":"","dafo":{"fortalezas":"","debilidades":"","oportunidades":"","amenazas":""},"came":{"corregir":"","afrontar":"","mantener":"","explotar":""},"eisenhower":{"c1":"","c2":"","c3":"","c4":""},"empathy":{"thinks":"","hears":"","sees":"","says":"","pains":"","gains":""},"value_proposition":"","business_model":"","lean_canvas":"","interviews":"","interview_summary":"","icp":"","buyer_persona":"","lookalike":"","ansoff":{"penetration":"","product":"","market":"","diversification":""}}
+Rellena solo estas claves. Cada valor es un texto:
+{$schema}
 situation resume productos por peso, margen de la empresa y cada cuánto compra el cliente.
 came: corregir debilidades, afrontar amenazas, mantener fortalezas, explotar oportunidades. Cada frase nombra la cifra que la justifica.
 eisenhower: c1 urgente e importante, c2 importante y no urgente, c3 urgente y no importante, c4 ni urgente ni importante. Solo tareas que salen del contexto (llamados, publicaciones, conversión, productos).
@@ -175,22 +241,98 @@ TXT;
                 [],
                 AiTasks::provider('assistant'),
                 AiTasks::model('assistant'),
-                90,
+                60,
             );
             $text = trim((string) ($response->text ?? ''));
-        } catch (Throwable $e)
+        } catch (Throwable $exception)
         {
-            Log::error('CmoBriefService::suggest failed', ['error' => $e->getMessage()]);
+            Log::error('CmoBriefService::ask failed', ['error' => $exception->getMessage()]);
 
-            return __('The CMO suggestion could not be generated.');
+            throw new RuntimeException('CMO request failed.', 0, $exception);
         }
 
         if ($text === '')
         {
-            return __('The CMO suggestion could not be generated.');
+            throw new RuntimeException('CMO reply was empty.');
         }
 
         return $text;
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    private function generationGroups(): array
+    {
+        return [
+            'diagnosis' => ['situation', 'dafo', 'came', 'pest'],
+            'people' => ['eisenhower', 'empathy', 'interviews', 'interview_summary'],
+            'audience' => ['icp', 'buyer_persona', 'lookalike', 'value_proposition'],
+            'growth' => ['business_model', 'lean_canvas', 'ansoff'],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $keys
+     */
+    private function schemaFor(array $keys): string
+    {
+        $shape = [];
+
+        foreach (self::blocks() as $block)
+        {
+            if (! in_array($block['key'], $keys, true))
+            {
+                continue;
+            }
+
+            if (! isset($block['fields']))
+            {
+                $shape[$block['key']] = '';
+
+                continue;
+            }
+
+            $shape[$block['key']] = array_fill_keys(array_keys($block['fields']), '');
+        }
+
+        return (string) json_encode($shape, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function storeAnalysis(Team $team, int $year, array $payload): void
+    {
+        $analysis = $this->normalize($payload);
+        $analysis['brief'] = $this->readable($analysis);
+        $analysis['generated_at'] = now()->toIso8601String();
+        $team->setSetting($this->settingKey($year), $analysis, [
+            'type' => 'json',
+            'group' => 'marketing',
+        ]);
+    }
+
+    private function mark(Team $team, int $year, string $state, string $phase, bool $freshStart = false): void
+    {
+        $current = $freshStart ? [] : $team->getSetting($this->runKey($year));
+        $current = is_array($current) ? $current : [];
+        $startedAt = (string) ($current['started_at'] ?? '');
+
+        $team->setSetting($this->runKey($year), [
+            'state' => $state,
+            'phase' => $phase,
+            'started_at' => $startedAt !== '' ? $startedAt : now()->toIso8601String(),
+            'updated_at' => now()->toIso8601String(),
+        ], [
+            'type' => 'json',
+            'group' => 'marketing',
+        ]);
+    }
+
+    private function runKey(int $year): string
+    {
+        return 'marketing_cmo_run_'.$year;
     }
 
     /**

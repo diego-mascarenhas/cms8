@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\Models\ProjectStatus;
 use App\Models\StripeSubscription;
 use App\Models\User;
+use App\Services\CfoBriefLauncher;
 use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\Finance\InvoiceAnalyticsService;
 use App\Services\WeeklyAnalysisLauncher;
@@ -236,6 +237,48 @@ class FinanceDashboardExchangeRatesTest extends TestCase
         ], $stored['actions']);
         $this->assertSame('40 horas asignadas 12 sin cubrir', $stored['capacity']['hours']);
         $this->assertSame('1800 EUR', $stored['capacity']['minimum_salary']);
+    }
+
+    public function test_cfo_brief_starts_in_the_background(): void
+    {
+        Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+        $user = User::factory()->withPersonalTeam()->create();
+        $user->assignRole('admin');
+        $team = $user->ownedTeams()->first();
+        $user->forceFill(['current_team_id' => $team->id])->save();
+        $this->actingAs($user);
+
+        $launcher = $this->createMock(CfoBriefLauncher::class);
+        $launcher->expects($this->once())->method('start')->with($team->id, (int) now()->year);
+        $this->app->instance(CfoBriefLauncher::class, $launcher);
+
+        $this->post(route('strategy.analysis.cfo-brief'), [
+            'year' => now()->year,
+            'refresh' => 1,
+        ])->assertRedirect(route('strategy.analysis'));
+
+        $this->get(route('strategy.analysis'))
+            ->assertOk()
+            ->assertSee('id="cfo-run"', false)
+            ->assertSee(__('app.cfo_phase_queued'), false)
+            ->assertSee(__('app.cfo_running_title'), false)
+            ->assertSee(route('strategy.analysis.cfo-status', ['year' => now()->year]), false);
+
+        $this->getJson(route('strategy.analysis.cfo-status', ['year' => now()->year]))
+            ->assertOk()
+            ->assertJsonPath('state', 'running')
+            ->assertJsonPath('phase', 'queued');
+
+        $team->setSetting('finance_cfo_run_'.now()->year, [
+            'state' => 'running',
+            'phase' => 'context',
+            'started_at' => now()->subMinutes(20)->toIso8601String(),
+        ], [
+            'type' => 'json',
+            'group' => 'finance',
+        ]);
+
+        $this->assertSame('idle', app(FinanceCfoBriefService::class)->runStatus($team->fresh(), (int) now()->year)['state']);
     }
 
     public function test_cfo_projection_keeps_invoices_and_does_not_repeat_the_average(): void
