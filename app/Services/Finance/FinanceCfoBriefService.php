@@ -103,10 +103,10 @@ Eres el CFO de la empresa. Responde solo con JSON válido, en español, sin mark
 Usa únicamente los números del contexto. No inventes importes, clientes ni porcentajes. Si un dato no está, dilo en esa frase.
 El JSON tiene esta forma:
 {"dafo":{"fortalezas":"","debilidades":"","oportunidades":"","amenazas":""},"fifo":"","dagmar":"","actions":[]}
-dafo es la lectura del negocio: fortalezas, debilidades, oportunidades y amenazas, cada una en una frase con su cifra.
-fifo dice qué atender primero porque entró antes (cobros vencidos, leads sin convertir, gastos sin clasificar).
-dagmar fija un objetivo medible de captación o conversión: la cifra actual y la meta.
-actions son como máximo 4 órdenes de esta semana. Cada una empieza por un verbo, nombra el objeto y lleva la cifra que la justifica.
+dafo es la lectura del negocio: fortalezas, debilidades, oportunidades y amenazas. Cada una es un texto, una frase con su cifra.
+fifo es un texto: qué atender primero porque entró antes (cobros vencidos, leads sin convertir, gastos sin clasificar).
+dagmar es un texto: un objetivo medible de captación o conversión, con la cifra actual y la meta.
+actions es una lista de como máximo 4 textos. Cada texto empieza por un verbo, nombra el objeto y lleva la cifra que lo justifica. No uses objetos ni listas dentro de actions.
 TXT;
 
         $userMessage = "CONTEXTO FINANCIERO\n\n".json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -189,11 +189,23 @@ TXT;
     private function normalize(array $payload): array
     {
         $dafo = is_array($payload['dafo'] ?? null) ? $payload['dafo'] : [];
+        $rawActions = $payload['actions'] ?? [];
+
+        if (is_string($rawActions) || is_numeric($rawActions))
+        {
+            $rawActions = [$rawActions];
+        }
+
+        if (! is_array($rawActions))
+        {
+            $rawActions = [];
+        }
+
         $actions = [];
 
-        foreach (is_array($payload['actions'] ?? null) ? $payload['actions'] : [] as $action)
+        foreach ($rawActions as $action)
         {
-            $action = trim((string) $action);
+            $action = $this->plainText($action);
 
             if ($action !== '')
             {
@@ -203,17 +215,49 @@ TXT;
 
         return [
             'dafo' => [
-                'fortalezas' => trim((string) ($dafo['fortalezas'] ?? '')),
-                'debilidades' => trim((string) ($dafo['debilidades'] ?? '')),
-                'oportunidades' => trim((string) ($dafo['oportunidades'] ?? '')),
-                'amenazas' => trim((string) ($dafo['amenazas'] ?? '')),
+                'fortalezas' => $this->plainText($dafo['fortalezas'] ?? ''),
+                'debilidades' => $this->plainText($dafo['debilidades'] ?? ''),
+                'oportunidades' => $this->plainText($dafo['oportunidades'] ?? ''),
+                'amenazas' => $this->plainText($dafo['amenazas'] ?? ''),
             ],
-            'fifo' => trim((string) ($payload['fifo'] ?? '')),
-            'dagmar' => trim((string) ($payload['dagmar'] ?? '')),
+            'fifo' => $this->plainText($payload['fifo'] ?? ''),
+            'dagmar' => $this->plainText($payload['dagmar'] ?? ''),
             'actions' => array_slice($actions, 0, 4),
-            'brief' => trim((string) ($payload['brief'] ?? '')),
-            'generated_at' => trim((string) ($payload['generated_at'] ?? '')),
+            'brief' => $this->plainText($payload['brief'] ?? ''),
+            'generated_at' => $this->plainText($payload['generated_at'] ?? ''),
         ];
+    }
+
+    private function plainText(mixed $value): string
+    {
+        if (is_bool($value) || $value === null)
+        {
+            return '';
+        }
+
+        if (is_string($value) || is_numeric($value))
+        {
+            return trim((string) $value);
+        }
+
+        if (! is_array($value))
+        {
+            return '';
+        }
+
+        $parts = [];
+
+        foreach ($value as $item)
+        {
+            $text = $this->plainText($item);
+
+            if ($text !== '')
+            {
+                $parts[] = $text;
+            }
+        }
+
+        return trim(implode(' ', $parts));
     }
 
     /**
