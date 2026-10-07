@@ -89,6 +89,17 @@
                                 <div class="col-md-6 mb-4">
                                     <div class="card h-100 border-primary">
                                         <div class="card-body text-center">
+                                            <i class="ti ti-chart-bar display-4 text-primary mb-3"></i>
+                                            <h5 class="card-title">{{ __('help_cfo.title') }}</h5>
+                                            <p class="card-text">{{ __('help_cfo.intro') }}</p>
+                                            <a href="{{ route('help.cfo-analysis') }}" class="btn btn-primary">{{ __('View documentation') }}</a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6 mb-4">
+                                    <div class="card h-100 border-primary">
+                                        <div class="card-body text-center">
                                             <i class="ti ti-users display-4 text-primary mb-3"></i>
                                             <h5 class="card-title">{{ __('Contact Management') }}</h5>
                                             <p class="card-text">{{ __('Learn how to manage your contacts, import data, and organize your customer relationships.') }}</p>

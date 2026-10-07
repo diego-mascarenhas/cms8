@@ -1336,9 +1336,11 @@ Route::get('/notification/{notification}/stats', [NotificationTrackingController
 
 Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index')->middleware('auth');
 Route::get('/strategy/analysis', [StrategyController::class, 'analysis'])->name('strategy.analysis')->middleware('auth');
+Route::post('/strategy/analysis/refresh', [StrategyController::class, 'refreshAnalysis'])->name('strategy.analysis.refresh')->middleware('auth');
 Route::get('/strategy/review', [StrategyController::class, 'review'])->name('strategy.review')->middleware('auth');
 Route::post('/strategy/evaluate', [StrategyController::class, 'evaluate'])->name('strategy.evaluate')->middleware('auth');
 Route::get('/strategy/level/{level?}', [StrategyController::class, 'level'])->whereNumber('level')->name('strategy.level')->middleware('auth');
+Route::post('/strategy/suggest', [StrategyController::class, 'suggest'])->name('strategy.suggest')->middleware('auth');
 Route::post('/strategy', [StrategyController::class, 'update'])->name('strategy.update')->middleware('auth');
 Route::post('/strategy/advance', [StrategyController::class, 'advance'])->name('strategy.advance')->middleware('auth');
 Route::middleware('auth')->group(function ()
@@ -1604,6 +1606,7 @@ Route::prefix('help')->name('help.')->group(function ()
     Route::get('/email-spf-dns', [HelpController::class, 'emailSpfDns'])->name('email-spf-dns');
     Route::get('/stripe-webhook', [HelpController::class, 'stripeWebhook'])->name('stripe-webhook');
     Route::get('/team-billing', [HelpController::class, 'teamBilling'])->name('team-billing');
+    Route::get('/cfo-analysis', [HelpController::class, 'cfoAnalysis'])->name('cfo-analysis');
 });
 
 // Fallback route for 404 errors - must be at the end

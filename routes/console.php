@@ -261,3 +261,10 @@ Schedule::command('sentiment:compute-daily')
     ->description('Analyze full inbound chat and email context from the last 24 hours per active contact')
     ->withoutOverlapping(120)
     ->runInBackground();
+
+Schedule::command('strategy:weekly-analysis')
+    ->weeklyOn(1, '06:30')
+    ->name('strategy-weekly-analysis')
+    ->description('Store the CFO projection and refresh the weekly analysis')
+    ->withoutOverlapping(180)
+    ->runInBackground();

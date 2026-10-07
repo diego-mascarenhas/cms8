@@ -18,7 +18,12 @@
 @section('content')
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">{{ __('app.cfo_analysis_title') }}</h4>
+            <h4 class="mb-1 mt-3">
+                {{ __('app.cfo_analysis_title') }}
+                <a href="{{ route('help.cfo-analysis') }}" target="_blank" rel="noopener" class="text-muted ms-1" title="{{ __('help_cfo.icon_title') }}">
+                    <i class="ti ti-info-circle"></i>
+                </a>
+            </h4>
             <p class="text-muted mb-0">{{ __('These suggestions stay with the team.') }}</p>
         </div>
         <div class="d-flex align-content-center flex-wrap gap-2 mt-3 mt-md-0">
@@ -26,6 +31,12 @@
                 <i class="ti ti-target me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
             </a>
             @if ($canAskCfo ?? false)
+                <form method="POST" action="{{ route('strategy.analysis.refresh') }}" id="cfo-refresh-form">
+                    @csrf
+                    <button type="submit" class="btn btn-label-secondary" id="cfo-refresh-button">
+                        <i class="ti ti-refresh me-1"></i>{{ __('app.cfo_analysis_refresh') }}
+                    </button>
+                </form>
                 <form method="POST" action="{{ route('finance-dashboard.cfo-brief') }}" id="cfo-brief-form">
                     @csrf
                     <input type="hidden" name="refresh" value="1">
@@ -44,6 +55,8 @@
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     @endif
+
+    @include('strategy.partials.subsistence', ['subsistence' => $subsistence ?? null])
 
     <div class="card mb-4" id="cfo-analysis">
         <div class="card-body">
@@ -129,21 +142,49 @@
 
     <div class="card mb-4" id="cfo-projection">
         <div class="card-header">
-            <h5 class="card-title m-0">{{ __('app.cfo_analysis_projection') }}</h5>
+            <h5 class="card-title m-0">
+                {{ __('app.cfo_analysis_projection') }}
+                <a href="{{ route('help.cfo-analysis') }}#projection" target="_blank" rel="noopener" class="text-muted ms-1" title="{{ __('help_cfo.projection_title') }}">
+                    <i class="ti ti-info-circle"></i>
+                </a>
+            </h5>
             <p class="text-muted small mb-0">{{ __('app.cfo_analysis_projection_hint') }}</p>
         </div>
         <div class="card-body">
-            @if (($projection['months_with_data'] ?? 0) > 0)
+            @php
+                $hasProjection = ($projection['months_with_data'] ?? 0) > 0
+                    || ($projection['contracted_income'] ?? 0) > 0
+                    || ($projection['contracted_expense'] ?? 0) > 0
+                    || ($projection['chart_income'] ?? 0) > 0
+                    || ($projection['chart_expense'] ?? 0) > 0;
+            @endphp
+            @if ($hasProjection)
                 <p class="mb-3">
                     {{ __('app.cfo_analysis_run_rate', [
-                        'income' => number_format((float) ($projection['avg_monthly_income'] ?? 0), 2, ',', '.'),
-                        'expense' => number_format((float) ($projection['avg_monthly_expense'] ?? 0), 2, ',', '.'),
+                        'income' => number_format((float) ($projection['chart_income'] ?? 0), 2, ',', '.'),
+                        'expense' => number_format((float) ($projection['chart_expense'] ?? 0), 2, ',', '.'),
                         'profit' => number_format((float) ($projection['year_profit'] ?? 0), 2, ',', '.'),
                         'currency' => $projection['currency'] ?? '',
                     ]) }}
                 </p>
+                @if (($projection['contracted_income'] ?? 0) > 0)
+                    <p class="mb-3">
+                        {{ __('app.cfo_analysis_contracted', [
+                            'amount' => number_format((float) $projection['contracted_income'], 2, ',', '.'),
+                            'currency' => $projection['currency'] ?? '',
+                        ]) }}
+                    </p>
+                @endif
+                @include('strategy.partials.salary-forecast', ['projection' => $projection])
                 <div id="cfo-projection-chart"></div>
+                @if (! empty($projection['generated_at']))
+                    <p class="text-muted small mt-3 mb-0">{{ __('app.cfo_analysis_projection_updated', ['date' => \Carbon\Carbon::parse($projection['generated_at'])->timezone(config('app.timezone'))->format('d/m/Y H:i')]) }}</p>
+                @endif
+            @elseif (empty($projection['generated_at']))
+                @include('strategy.partials.salary-forecast', ['projection' => $projection])
+                <p class="text-muted mb-0">{{ __('app.cfo_analysis_projection_pending') }}</p>
             @else
+                @include('strategy.partials.salary-forecast', ['projection' => $projection])
                 <p class="text-muted mb-0">{{ __('app.cfo_analysis_projection_empty') }}</p>
             @endif
         </div>
@@ -151,6 +192,22 @@
 
     @if ($canAskCfo ?? false)
         <script>
+            document.getElementById('cfo-refresh-form')?.addEventListener('submit', function (event) {
+                const button = document.getElementById('cfo-refresh-button');
+
+                if (!button || button.dataset.loading === '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                button.dataset.loading = '1';
+                button.setAttribute('aria-busy', 'true');
+                window.setTimeout(function () {
+                    button.disabled = true;
+                    button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' + @json(__('app.cfo_analysis_refreshing'));
+                }, 0);
+            });
+
             document.getElementById('cfo-brief-form')?.addEventListener('submit', function (event) {
                 const button = document.getElementById('cfo-brief-button');
 
@@ -196,8 +253,8 @@
                 series: [
                     { name: @json(__('Income')), data: points.map(function (point) { return point.projected ? null : point.income; }) },
                     { name: @json(__('app.cfo_projected_income')), data: points.map(function (point) { return point.projected ? point.income : null; }) },
-                    { name: @json(__('Expenses')), data: points.map(function (point) { return point.projected ? null : point.expense; }) },
-                    { name: @json(__('app.cfo_projected_expense')), data: points.map(function (point) { return point.projected ? point.expense : null; }) },
+                    { name: @json(__('Expenses')), data: points.map(function (point) { return point.expense_projected ? null : point.expense; }) },
+                    { name: @json(__('app.cfo_projected_expense')), data: points.map(function (point) { return point.expense_projected ? point.expense : null; }) },
                 ],
                 colors: ['#28c76f', '#b2edc4', '#ea5455', '#fad8d9'],
                 plotOptions: { bar: { columnWidth: '55%', borderRadius: 4 } },

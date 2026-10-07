@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SuggestStrategyFieldRequest;
 use App\Models\Payment;
 use App\Services\Finance\FinanceCfoBriefService;
+use App\Services\StrategyFieldSuggestionService;
 use App\Services\StrategyLevelReviewService;
+use App\Services\SubsistenceAlertService;
+use App\Services\WeeklyAnalysisLauncher;
 use App\Services\WeeklyWorkPlanService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -77,7 +82,7 @@ class StrategyController extends Controller
             ->with('success', __('app.strategy_review_ready', ['level' => $review['level']]));
     }
 
-    public function analysis(Request $request, FinanceCfoBriefService $briefs): View
+    public function analysis(Request $request, FinanceCfoBriefService $briefs, SubsistenceAlertService $subsistence): View
     {
         $user = $request->user();
         $team = $user?->currentTeam ?? $user?->teams->first();
@@ -88,8 +93,53 @@ class StrategyController extends Controller
 
         return view('strategy.analysis', [
             'cfoAnalysis' => $briefs->storedAnalysis($team, $year),
-            'projection' => $briefs->projection($team, $year),
+            'projection' => $briefs->withSalaryForecast($briefs->storedProjection($team, $year), $team),
             'canAskCfo' => $user->can('viewAny', Payment::class),
+            'subsistence' => $subsistence->forTeam($team),
+        ]);
+    }
+
+    public function refreshAnalysis(Request $request, WeeklyAnalysisLauncher $launcher): RedirectResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        $launcher->start($team->id);
+
+        return redirect()
+            ->route('strategy.analysis')
+            ->with('success', __('app.cfo_analysis_refresh_started'));
+    }
+
+    public function suggest(SuggestStrategyFieldRequest $request, StrategyFieldSuggestionService $suggestions): JsonResponse
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+        $this->authorize('update', $team);
+
+        $suggestion = $suggestions->suggest(
+            $team,
+            (string) $request->validated('field'),
+            (string) ($request->validated('draft') ?? ''),
+            $request->validated('siblings') ?? [],
+        );
+
+        if ($suggestion === null)
+        {
+            return response()->json([
+                'message' => __('app.strategy_field_suggestion_failed'),
+            ], 422);
+        }
+
+        return response()->json([
+            'field' => $request->validated('field'),
+            'suggestion' => $suggestion,
         ]);
     }
 

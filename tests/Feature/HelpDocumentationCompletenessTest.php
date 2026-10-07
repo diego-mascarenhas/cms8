@@ -41,6 +41,7 @@ class HelpDocumentationCompletenessTest extends TestCase
             'help.email-spf-dns',
             'help.stripe-webhook',
             'help.team-billing',
+            'help.cfo-analysis',
         ];
     }
 
@@ -80,6 +81,26 @@ class HelpDocumentationCompletenessTest extends TestCase
             ->assertSee(route('help.email-spf-dns', [], false), false)
             ->assertSee(route('help.paid-ads-setup', [], false), false)
             ->assertDontSee('Claves API y webhook para pagos con Stripe.', false);
+    }
+
+    public function test_cfo_help_explains_the_reading_and_the_projection(): void
+    {
+        $this->get(route('help.cfo-analysis'))
+            ->assertOk()
+            ->assertSee(__('help_cfo.reading_title'), false)
+            ->assertSee(__('help_cfo.reads_analytics'), false)
+            ->assertSee(__('help_cfo.reads_publications'), false)
+            ->assertSee(__('help_cfo.reads_renewals'), false)
+            ->assertSee(__('help_cfo.projection_expense'), false)
+            ->assertSee(__('help_cfo.projection_salary'), false)
+            ->assertSee(__('help_cfo.projection_schedule'), false)
+            ->assertSee(__('help_cfo.subsistence_calls'), false)
+            ->assertSee('id="subsistence"', false)
+            ->assertSee('id="projection"', false);
+
+        $this->get(route('help.index'))
+            ->assertOk()
+            ->assertSee(route('help.cfo-analysis', [], false), false);
     }
 
     public function test_usage_points_to_manual(): void
