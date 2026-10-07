@@ -2,6 +2,19 @@
 
 @section('title', __('app.cfo_analysis_title'))
 
+@section('vendor-style')
+    <link rel="stylesheet" href="{{ asset('assets/vendor/libs/apex-charts/apex-charts.css') }}">
+@endsection
+
+@section('vendor-script')
+    <script src="{{ asset('assets/vendor/libs/apex-charts/apexcharts.js') }}"></script>
+@endsection
+
+@php
+    $projection = is_array($projection ?? null) ? $projection : [];
+    $projectionPoints = $projection['points'] ?? [];
+@endphp
+
 @section('content')
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
@@ -38,7 +51,9 @@
                 $analysis = is_array($cfoAnalysis ?? null) ? $cfoAnalysis : [];
                 $dafo = is_array($analysis['dafo'] ?? null) ? $analysis['dafo'] : [];
                 $hasDafo = implode('', $dafo) !== '';
-                $hasPerspective = $hasDafo || filled($analysis['fifo'] ?? null) || filled($analysis['dagmar'] ?? null);
+                $capacity = is_array($analysis['capacity'] ?? null) ? $analysis['capacity'] : [];
+                $hasCapacity = implode('', $capacity) !== '';
+                $hasPerspective = $hasDafo || filled($analysis['fifo'] ?? null) || filled($analysis['dagmar'] ?? null) || $hasCapacity;
             @endphp
 
             @if ($hasDafo)
@@ -74,6 +89,28 @@
                 <p>{{ $analysis['dagmar'] }}</p>
             @endif
 
+            @if ($hasCapacity)
+                <h6 class="mb-3">{{ __('app.cfo_analysis_capacity') }}</h6>
+                <div class="row g-3 mb-4">
+                    @foreach ([
+                        'resources' => 'cfo_analysis_resources',
+                        'hours' => 'cfo_analysis_hours',
+                        'minimum_salary' => 'cfo_analysis_minimum_salary',
+                        'now' => 'cfo_analysis_now',
+                        'missing_departments' => 'cfo_analysis_missing_departments',
+                    ] as $key => $label)
+                        @if (filled($capacity[$key] ?? null))
+                            <div class="col-md-6">
+                                <div class="border rounded p-3 h-100">
+                                    <div class="text-muted small mb-1">{{ __('app.'.$label) }}</div>
+                                    <div>{{ $capacity[$key] }}</div>
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
+
             @if (! empty($analysis['actions'] ?? []))
                 <h6 class="mb-2">{{ __('app.cfo_analysis_actions') }}</h6>
                 <ol class="mb-3">
@@ -84,8 +121,30 @@
                 <a href="{{ route('weekly-plan.index') }}">{{ __('app.weekly_plan_report') }}</a>
             @elseif (! $hasPerspective && filled($analysis['brief'] ?? null))
                 <div style="white-space: pre-wrap;">{{ $analysis['brief'] }}</div>
-            @else
+            @elseif (! $hasPerspective)
                 <p class="text-muted mb-0">{{ __('app.cfo_analysis_empty') }}</p>
+            @endif
+        </div>
+    </div>
+
+    <div class="card mb-4" id="cfo-projection">
+        <div class="card-header">
+            <h5 class="card-title m-0">{{ __('app.cfo_analysis_projection') }}</h5>
+            <p class="text-muted small mb-0">{{ __('app.cfo_analysis_projection_hint') }}</p>
+        </div>
+        <div class="card-body">
+            @if (($projection['months_with_data'] ?? 0) > 0)
+                <p class="mb-3">
+                    {{ __('app.cfo_analysis_run_rate', [
+                        'income' => number_format((float) ($projection['avg_monthly_income'] ?? 0), 2, ',', '.'),
+                        'expense' => number_format((float) ($projection['avg_monthly_expense'] ?? 0), 2, ',', '.'),
+                        'profit' => number_format((float) ($projection['year_profit'] ?? 0), 2, ',', '.'),
+                        'currency' => $projection['currency'] ?? '',
+                    ]) }}
+                </p>
+                <div id="cfo-projection-chart"></div>
+            @else
+                <p class="text-muted mb-0">{{ __('app.cfo_analysis_projection_empty') }}</p>
             @endif
         </div>
     </div>
@@ -113,4 +172,41 @@
             });
         </script>
     @endif
+@endsection
+
+@section('page-script')
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const chartEl = document.querySelector('#cfo-projection-chart');
+            const points = @json($projectionPoints);
+
+            if (!chartEl || !points.length || typeof ApexCharts === 'undefined') {
+                return;
+            }
+
+            const formatMoney = function (val) {
+                return new Intl.NumberFormat(document.documentElement.lang || 'es', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                }).format(val);
+            };
+
+            new ApexCharts(chartEl, {
+                chart: { type: 'bar', height: 340, toolbar: { show: false }, stacked: false },
+                series: [
+                    { name: @json(__('Income')), data: points.map(function (point) { return point.projected ? null : point.income; }) },
+                    { name: @json(__('app.cfo_projected_income')), data: points.map(function (point) { return point.projected ? point.income : null; }) },
+                    { name: @json(__('Expenses')), data: points.map(function (point) { return point.projected ? null : point.expense; }) },
+                    { name: @json(__('app.cfo_projected_expense')), data: points.map(function (point) { return point.projected ? point.expense : null; }) },
+                ],
+                colors: ['#28c76f', '#b2edc4', '#ea5455', '#fad8d9'],
+                plotOptions: { bar: { columnWidth: '55%', borderRadius: 4 } },
+                dataLabels: { enabled: false },
+                stroke: { show: true, width: 2, colors: ['transparent'] },
+                xaxis: { categories: points.map(function (point) { return point.label; }) },
+                yaxis: { labels: { formatter: function (val) { return formatMoney(val); } } },
+                tooltip: { y: { formatter: function (val) { return val === null ? '' : formatMoney(val); } } },
+            }).render();
+        });
+    </script>
 @endsection
