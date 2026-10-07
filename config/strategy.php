@@ -19,6 +19,7 @@ return [
     'steps' => [
         [
             'number' => 1,
+            'icon' => 'ti-briefcase',
             'title' => 'tu dossier comercial.',
             'points' => ['Cliente', 'Destino', 'Oferta', 'Storytelling'],
             'fields' => [
@@ -32,6 +33,7 @@ return [
         ],
         [
             'number' => 2,
+            'icon' => 'ti-world',
             'title' => 'tu fachada digital.',
             'points' => ['Web', 'RRSS', 'SEO/SEM', 'Estrategia contenido'],
             'fields' => [
@@ -45,6 +47,7 @@ return [
         ],
         [
             'number' => 3,
+            'icon' => 'ti-device-gamepad-2',
             'title' => 'entender tu juego.',
             'points' => ['Audiencia', 'Dinero', 'Contactos'],
             'fields' => [
@@ -57,6 +60,7 @@ return [
         ],
         [
             'number' => 4,
+            'icon' => 'ti-refresh',
             'title' => 'tu embudo en automático.',
             'points' => ['Doblar lo que funciona'],
             'fields' => [
@@ -67,6 +71,7 @@ return [
         ],
         [
             'number' => 5,
+            'icon' => 'ti-filter',
             'title' => 'tu embudo de operaciones.',
             'points' => ['Talento', 'Herramientas', 'IA'],
             'fields' => [
@@ -79,6 +84,7 @@ return [
         ],
         [
             'number' => 6,
+            'icon' => 'ti-book',
             'title' => 'tu business playbook.',
             'points' => ['Manual de procesos', 'Wiki Notion'],
             'fields' => [
@@ -90,6 +96,7 @@ return [
         ],
         [
             'number' => 7,
+            'icon' => 'ti-chart-line',
             'title' => 'scale framework.',
             'points' => ['Up / Down / Cross', 'Creación de audiencia', 'Embudo stories', 'Warm up leads'],
             'fields' => [
@@ -103,6 +110,7 @@ return [
         ],
         [
             'number' => 8,
+            'icon' => 'ti-arrows-minimize',
             'title' => 'simplificar tu negocio.',
             'points' => ['80/20', '5\' business pitch'],
             'fields' => [
@@ -114,6 +122,7 @@ return [
         ],
         [
             'number' => 9,
+            'icon' => 'ti-user-off',
             'title' => 'quitar al fundador.',
             'points' => ['Auditar Calendar', 'Buyback your time'],
             'fields' => [
@@ -125,6 +134,7 @@ return [
         ],
         [
             'number' => 10,
+            'icon' => 'ti-users',
             'title' => 'crear tus managers.',
             'points' => ['Liderazgo', 'Operativa diaria'],
             'fields' => [
@@ -136,6 +146,7 @@ return [
         ],
         [
             'number' => 11,
+            'icon' => 'ti-palette',
             'title' => 'generar tu cultura.',
             'points' => ['Visionboard empresa', 'Visionboard empleados', 'Retiros de equipo'],
             'fields' => [
@@ -148,6 +159,7 @@ return [
         ],
         [
             'number' => 12,
+            'icon' => 'ti-door',
             'title' => 'business exit.',
             'points' => ['Auditar valor empresa', 'Plan de salida'],
             'fields' => [

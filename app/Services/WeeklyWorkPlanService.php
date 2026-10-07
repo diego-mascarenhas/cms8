@@ -19,6 +19,7 @@ use App\Models\Service;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\WeeklyWorkPlan;
+use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\Finance\InvoiceSummaryService;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -56,6 +57,7 @@ class WeeklyWorkPlanService
 
     public function __construct(
         private WeeklyPlanSocialChannelAdvisor $socialAdvisor,
+        private FinanceCfoBriefService $cfoBriefs,
     ) {}
 
     /**
@@ -105,20 +107,20 @@ class WeeklyWorkPlanService
         $showReview = $today->isFriday() || ($today->isWeekend() && $plan->reviewed_at !== null);
         if ($showReview && is_array($plan->review))
         {
-            return [
+            return $this->withCfoActions([
                 'mode' => 'review',
                 'title' => (string) __('app.weekly_plan_review_title'),
                 'challenge' => $plan->challenge,
                 'items' => $plan->review,
-            ];
+            ], $team);
         }
 
-        return [
+        return $this->withCfoActions([
             'mode' => 'plan',
             'title' => (string) __('app.weekly_plan_title'),
             'challenge' => $plan->challenge,
             'items' => $plan->items ?? [],
-        ];
+        ], $team);
     }
 
     /**
@@ -1063,6 +1065,37 @@ class WeeklyWorkPlanService
         }
 
         return $challenge;
+    }
+
+    /**
+     * @param  array{mode: string, title: string, challenge: ?string, items: list<array<string, mixed>>}  $presented
+     * @return array{mode: string, title: string, challenge: ?string, items: list<array<string, mixed>>}
+     */
+    private function withCfoActions(array $presented, Team $team): array
+    {
+        $actions = $this->cfoBriefs->actions($team, (int) now()->year);
+
+        if ($actions === [])
+        {
+            return $presented;
+        }
+
+        $items = [];
+
+        foreach ($actions as $action)
+        {
+            $items[] = $this->scoped([
+                'key' => 'cfo_action',
+                'count' => 1,
+                'label' => $action,
+                'href' => route('strategy.analysis'),
+                'details' => [],
+            ]);
+        }
+
+        $presented['items'] = array_merge($items, $presented['items'] ?? []);
+
+        return $presented;
     }
 
     /**

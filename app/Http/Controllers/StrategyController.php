@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Payment;
+use App\Services\Finance\FinanceCfoBriefService;
 use App\Services\WeeklyWorkPlanService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,16 +19,42 @@ class StrategyController extends Controller
         abort_if($user === null || $team === null, 404);
 
         $currentLevel = $plans->strategyLevel($team);
-        $currentStep = $plans->strategyStep($team);
 
         return view('strategy.index', [
             'steps' => config('strategy.steps', []),
             'currentLevel' => $currentLevel,
-            'currentStep' => $currentStep,
-            'strategyValues' => $plans->strategyFieldValues($team),
-            'stepsProgress' => $plans->strategyStepsProgress($team),
             'canAdvance' => $currentLevel < 12,
             'canEdit' => $user->can('update', $team),
+        ]);
+    }
+
+    public function level(Request $request, WeeklyWorkPlanService $plans): View
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+        $this->authorize('update', $team);
+
+        $currentLevel = $plans->strategyLevel($team);
+
+        return view('strategy.level', [
+            'currentLevel' => $currentLevel,
+            'currentStep' => $plans->strategyStep($team),
+            'canAdvance' => $currentLevel < 12,
+        ]);
+    }
+
+    public function analysis(Request $request, FinanceCfoBriefService $briefs): View
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        return view('strategy.analysis', [
+            'cfoAnalysis' => $briefs->storedAnalysis($team, (int) now()->year),
+            'canAskCfo' => $user->can('viewAny', Payment::class),
         ]);
     }
 
@@ -49,7 +77,7 @@ class StrategyController extends Controller
         $plans->saveStrategyFields($team, $validated['strategy'] ?? []);
 
         return redirect()
-            ->route('strategy.index')
+            ->route('strategy.level')
             ->with('success', __('app.weekly_plan_strategy_saved'));
     }
 
@@ -64,7 +92,7 @@ class StrategyController extends Controller
         $level = $plans->advanceStrategyLevel($team);
 
         return redirect()
-            ->route('strategy.index')
+            ->route('strategy.level')
             ->with('success', __('app.weekly_plan_strategy_advanced', ['level' => $level]));
     }
 }

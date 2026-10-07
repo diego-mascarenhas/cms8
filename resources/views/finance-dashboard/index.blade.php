@@ -56,9 +56,6 @@
         <a href="{{ route('finance-dashboard.projection', ['year' => $selectedYear]) }}" class="btn btn-primary">
             <i class="ti ti-report-analytics me-1"></i> {{ __('Report') }}
         </a>
-        <button type="button" class="btn btn-label-primary" data-bs-toggle="modal" data-bs-target="#cfoBriefModal" id="cfo-brief-open">
-            <i class="ti ti-sparkles me-1"></i> {{ __('Ask the CFO') }}
-        </button>
         @endcan
     </div>
 </div>
@@ -358,22 +355,6 @@
         </div>
     @endif
 @endcan
-
-<div class="modal fade" id="cfoBriefModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{{ __('Ask the CFO') }}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ __('Close') }}"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted">{{ __('Actions based on contracted services, income categories, leads and salaries.') }}</p>
-                <div id="cfo-brief-status" class="text-muted">{{ __('Preparing the suggestion…') }}</div>
-                <div id="cfo-brief-text" class="mt-3" style="white-space: pre-wrap;"></div>
-            </div>
-        </div>
-    </div>
-</div>
 @endsection
 
 @push('scripts')
@@ -587,34 +568,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     window.addEventListener('load', function () {
         scheduleFinanceCharts();
-    });
-});
-</script>
-<script>
-document.getElementById('cfoBriefModal')?.addEventListener('show.bs.modal', function () {
-    const status = document.getElementById('cfo-brief-status');
-    const text = document.getElementById('cfo-brief-text');
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-    status.textContent = @json(__('Preparing the suggestion…'));
-    text.textContent = '';
-
-    fetch(@json(route('finance-dashboard.cfo-brief')), {
-        method: 'POST',
-        headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': token || '',
-        },
-        body: JSON.stringify({ year: {{ (int) $selectedYear }} }),
-    }).then(function (response) {
-        return response.json();
-    }).then(function (payload) {
-        status.textContent = '';
-        text.textContent = payload.brief || @json(__('The CFO suggestion could not be generated.'));
-    }).catch(function () {
-        status.textContent = '';
-        text.textContent = @json(__('The CFO suggestion could not be generated.'));
     });
 });
 </script>

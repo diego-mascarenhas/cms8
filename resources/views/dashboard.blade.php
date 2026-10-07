@@ -676,6 +676,9 @@
                                     <a href="{{ route('organization.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
                                         <i class="ti ti-sitemap me-1"></i>{{ __('Organización') }}
                                     </a>
+                                    <a href="{{ route('strategy.index') }}" class="btn btn-sm btn-primary waves-effect waves-light">
+                                        <i class="ti ti-target me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
+                                    </a>
                                 </div>
                     </div>
                     <div class="dashboard-insight-illustration" aria-hidden="true">

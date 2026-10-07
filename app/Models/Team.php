@@ -221,8 +221,14 @@ class Team extends JetstreamTeam
         ]);
 
         $setting->value = $value;
+        $saved = $setting->save();
 
-        return $setting->save();
+        if ($this->relationLoaded('settings'))
+        {
+            $this->unsetRelation('settings');
+        }
+
+        return $saved;
     }
 
     public function removeSetting(string $key): void

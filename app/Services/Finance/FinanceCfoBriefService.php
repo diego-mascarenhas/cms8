@@ -16,14 +16,97 @@ class FinanceCfoBriefService
         private readonly InvoiceAnalyticsService $invoiceAnalyticsService,
     ) {}
 
+    /**
+     * @return array{
+     *     dafo: array{fortalezas: string, debilidades: string, oportunidades: string, amenazas: string},
+     *     fifo: string,
+     *     dagmar: string,
+     *     actions: list<string>,
+     *     brief: string,
+     *     generated_at: string
+     * }|null
+     */
+    public function storedAnalysis(Team $team, int $year): ?array
+    {
+        $stored = $team->getSetting($this->settingKey($year));
+
+        if (! is_array($stored))
+        {
+            return null;
+        }
+
+        $analysis = $this->normalize($stored);
+        $hasPerspective = $analysis['fifo'] !== ''
+            || $analysis['dagmar'] !== ''
+            || $analysis['actions'] !== []
+            || implode('', $analysis['dafo']) !== '';
+
+        if (! $hasPerspective && $analysis['brief'] === '')
+        {
+            return null;
+        }
+
+        return $analysis;
+    }
+
+    public function storedBrief(Team $team, int $year): ?string
+    {
+        return $this->storedAnalysis($team, $year)['brief'] ?? null;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function actions(Team $team, int $year): array
+    {
+        return $this->storedAnalysis($team, $year)['actions'] ?? [];
+    }
+
+    public function remember(Team $team, int $year, bool $refresh = false): string
+    {
+        if (! $refresh)
+        {
+            $stored = $this->storedBrief($team, $year);
+
+            if ($stored !== null)
+            {
+                return $stored;
+            }
+        }
+
+        $text = $this->suggest($team, $year);
+        $failed = __('The CFO suggestion could not be generated.');
+
+        if ($text === $failed)
+        {
+            return $this->storedBrief($team, $year) ?? $text;
+        }
+
+        $parsed = $this->parse($text);
+        $analysis = $parsed ?? $this->normalize(['brief' => $text]);
+        $analysis['brief'] = $parsed !== null ? $this->readable($analysis) : $text;
+        $analysis['generated_at'] = now()->toIso8601String();
+
+        $team->setSetting($this->settingKey($year), $analysis, [
+            'type' => 'json',
+            'group' => 'finance',
+        ]);
+
+        return $analysis['brief'];
+    }
+
     public function suggest(Team $team, int $year): string
     {
         $context = $this->context($team, $year);
         $instructions = <<<'TXT'
-Eres el CFO de la empresa. Responde en español, en 4 o 5 acciones concretas para este mes.
-Usa solo los números del contexto: servicios contratados (categorías de ingreso), leads ingresados y convertidos, y sueldos.
-Cada acción tiene que decir en qué trabajar y por qué, con la cifra que la sostiene.
-No inventes importes, clientes ni porcentajes que no estén en el contexto. Si un dato no está, dilo y sigue con lo que sí hay.
+Eres el CFO de la empresa. Responde solo con JSON válido, en español, sin markdown.
+Usa únicamente los números del contexto. No inventes importes, clientes ni porcentajes. Si un dato no está, dilo en esa frase.
+El JSON tiene esta forma:
+{"dafo":{"fortalezas":"","debilidades":"","oportunidades":"","amenazas":""},"fifo":"","dagmar":"","actions":[]}
+dafo es la lectura del negocio: fortalezas, debilidades, oportunidades y amenazas, cada una en una frase con su cifra.
+fifo dice qué atender primero porque entró antes (cobros vencidos, leads sin convertir, gastos sin clasificar).
+dagmar fija un objetivo medible de captación o conversión: la cifra actual y la meta.
+actions son como máximo 4 órdenes de esta semana. Cada una empieza por un verbo, nombra el objeto y lleva la cifra que la justifica.
 TXT;
 
         $userMessage = "CONTEXTO FINANCIERO\n\n".json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -56,6 +139,126 @@ TXT;
         }
 
         return $text;
+    }
+
+    private function settingKey(int $year): string
+    {
+        return 'finance_cfo_brief_'.$year;
+    }
+
+    /**
+     * @return array{
+     *     dafo: array{fortalezas: string, debilidades: string, oportunidades: string, amenazas: string},
+     *     fifo: string,
+     *     dagmar: string,
+     *     actions: list<string>,
+     *     brief: string,
+     *     generated_at: string
+     * }|null
+     */
+    private function parse(string $text): ?array
+    {
+        $clean = trim($text);
+        $clean = preg_replace('/^```(?:json)?\s*|\s*```$/i', '', $clean) ?? $clean;
+        $decoded = json_decode($clean, true);
+
+        if (! is_array($decoded) && preg_match('/\{.*\}/s', $clean, $match) === 1)
+        {
+            $decoded = json_decode($match[0], true);
+        }
+
+        if (! is_array($decoded))
+        {
+            return null;
+        }
+
+        return $this->normalize($decoded);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{
+     *     dafo: array{fortalezas: string, debilidades: string, oportunidades: string, amenazas: string},
+     *     fifo: string,
+     *     dagmar: string,
+     *     actions: list<string>,
+     *     brief: string,
+     *     generated_at: string
+     * }
+     */
+    private function normalize(array $payload): array
+    {
+        $dafo = is_array($payload['dafo'] ?? null) ? $payload['dafo'] : [];
+        $actions = [];
+
+        foreach (is_array($payload['actions'] ?? null) ? $payload['actions'] : [] as $action)
+        {
+            $action = trim((string) $action);
+
+            if ($action !== '')
+            {
+                $actions[] = $action;
+            }
+        }
+
+        return [
+            'dafo' => [
+                'fortalezas' => trim((string) ($dafo['fortalezas'] ?? '')),
+                'debilidades' => trim((string) ($dafo['debilidades'] ?? '')),
+                'oportunidades' => trim((string) ($dafo['oportunidades'] ?? '')),
+                'amenazas' => trim((string) ($dafo['amenazas'] ?? '')),
+            ],
+            'fifo' => trim((string) ($payload['fifo'] ?? '')),
+            'dagmar' => trim((string) ($payload['dagmar'] ?? '')),
+            'actions' => array_slice($actions, 0, 4),
+            'brief' => trim((string) ($payload['brief'] ?? '')),
+            'generated_at' => trim((string) ($payload['generated_at'] ?? '')),
+        ];
+    }
+
+    /**
+     * @param  array{
+     *     dafo: array{fortalezas: string, debilidades: string, oportunidades: string, amenazas: string},
+     *     fifo: string,
+     *     dagmar: string,
+     *     actions: list<string>,
+     *     brief: string,
+     *     generated_at: string
+     * }  $analysis
+     */
+    private function readable(array $analysis): string
+    {
+        $lines = [];
+
+        foreach ([
+            'fortalezas' => 'Fortalezas',
+            'debilidades' => 'Debilidades',
+            'oportunidades' => 'Oportunidades',
+            'amenazas' => 'Amenazas',
+        ] as $key => $label)
+        {
+            if ($analysis['dafo'][$key] !== '')
+            {
+                $lines[] = $label.': '.$analysis['dafo'][$key];
+            }
+        }
+
+        if ($analysis['fifo'] !== '')
+        {
+            $lines[] = 'FIFO: '.$analysis['fifo'];
+        }
+
+        if ($analysis['dagmar'] !== '')
+        {
+            $lines[] = 'DAGMAR: '.$analysis['dagmar'];
+        }
+
+        foreach ($analysis['actions'] as $action)
+        {
+            $lines[] = $action;
+        }
+
+        return implode("\n", $lines);
     }
 
     /**
