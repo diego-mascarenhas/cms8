@@ -138,7 +138,7 @@ class StrategyController extends Controller
             $launcher->start($team->id, $year);
         }
 
-        return redirect()->route('strategy.analysis');
+        return redirect()->to(route('strategy.analysis').'#cfo-analysis');
     }
 
     public function cfoStatus(Request $request, FinanceCfoBriefService $briefs): JsonResponse
@@ -172,7 +172,7 @@ class StrategyController extends Controller
             $launcher->start($team->id, $year);
         }
 
-        return redirect()->route('strategy.analysis');
+        return redirect()->to(route('strategy.analysis').'#cmo-analysis');
     }
 
     public function cmoStatus(Request $request, CmoBriefService $briefs): JsonResponse

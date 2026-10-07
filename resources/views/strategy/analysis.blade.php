@@ -66,7 +66,7 @@
 
     @include('strategy.partials.subsistence', ['subsistence' => $subsistence ?? null])
 
-    <div class="card mb-4" id="cfo-analysis">
+    <div class="card mb-4" id="cfo-analysis" style="scroll-margin-top: 6rem;">
         <div class="card-body">
             @if (($cfoRun['state'] ?? '') === 'running')
                 <style>

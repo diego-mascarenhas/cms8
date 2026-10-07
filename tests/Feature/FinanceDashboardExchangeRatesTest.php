@@ -255,7 +255,7 @@ class FinanceDashboardExchangeRatesTest extends TestCase
         $this->post(route('strategy.analysis.cfo-brief'), [
             'year' => now()->year,
             'refresh' => 1,
-        ])->assertRedirect(route('strategy.analysis'));
+        ])->assertRedirect(route('strategy.analysis').'#cfo-analysis');
 
         $this->get(route('strategy.analysis'))
             ->assertOk()

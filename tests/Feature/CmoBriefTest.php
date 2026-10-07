@@ -158,7 +158,7 @@ class CmoBriefTest extends TestCase
         $this->post(route('strategy.analysis.cmo-brief'), [
             'year' => now()->year,
             'refresh' => 1,
-        ])->assertRedirect(route('strategy.analysis'));
+        ])->assertRedirect(route('strategy.analysis').'#cmo-analysis');
 
         $this->get(route('strategy.analysis'))
             ->assertOk()

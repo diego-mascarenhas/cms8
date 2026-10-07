@@ -2,7 +2,7 @@
     $analysis = is_array($cmoAnalysis ?? null) ? $cmoAnalysis : null;
 @endphp
 
-<div class="card mb-4" id="cmo-analysis">
+<div class="card mb-4" id="cmo-analysis" style="scroll-margin-top: 6rem;">
     <div class="card-header">
         <h5 class="card-title m-0">
             {{ __('app.cmo_analysis_title') }}
