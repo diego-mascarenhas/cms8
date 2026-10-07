@@ -102,6 +102,13 @@ class FinanceDashboardExchangeRatesTest extends TestCase
                 'Llamar a los 621 leads abiertos.',
                 'Clasificar 11295 EUR.',
             ],
+            'capacity' => [
+                'resources' => 'Falta una persona de soporte.',
+                'hours' => 'Hay 40 horas semanales y 12 sin cubrir.',
+                'minimum_salary' => 'El salario mínimo que aguanta el margen es 1800 EUR.',
+                'now' => 'Con Administración y Técnica se puede sostener el soporte actual.',
+                'missing_departments' => 'No hace falta abrir otro departamento.',
+            ],
         ], JSON_UNESCAPED_UNICODE);
 
         $service = \Mockery::mock(FinanceCfoBriefService::class, [
@@ -127,6 +134,7 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             'Llamar a los 621 leads abiertos.',
             'Clasificar 11295 EUR.',
         ], $stored['actions']);
+        $this->assertSame('Hay 40 horas semanales y 12 sin cubrir.', $stored['capacity']['hours']);
 
         $this->get(route('finance-dashboard.index', ['year' => 2026]))
             ->assertOk()
@@ -145,6 +153,10 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             ->assertSee('Cobrar primero lo vencido.', false)
             ->assertSee('Subir conversion de 2,6% a 5%.', false)
             ->assertSee('Llamar a los 621 leads abiertos.', false)
+            ->assertSee('Hay 40 horas semanales y 12 sin cubrir.', false)
+            ->assertSee('El salario mínimo que aguanta el margen es 1800 EUR.', false)
+            ->assertSee('No hace falta abrir otro departamento.', false)
+            ->assertSee(__('app.cfo_analysis_projection'), false)
             ->assertSee(__('Ask the CFO'), false)
             ->assertSee('id="cfo-brief-button"', false)
             ->assertSee(__('Asking the CFO...'), false)
@@ -184,6 +196,10 @@ class FinanceDashboardExchangeRatesTest extends TestCase
                 ['verbo' => 'Llamar', 'objeto' => 'a los 621 leads'],
                 'Clasificar 11295 EUR.',
             ],
+            'capacity' => [
+                'hours' => ['40 horas asignadas', '12 sin cubrir'],
+                'minimum_salary' => ['importe' => '1800 EUR'],
+            ],
         ], JSON_UNESCAPED_UNICODE);
 
         $service = \Mockery::mock(FinanceCfoBriefService::class, [
@@ -204,5 +220,74 @@ class FinanceDashboardExchangeRatesTest extends TestCase
             'Llamar a los 621 leads',
             'Clasificar 11295 EUR.',
         ], $stored['actions']);
+        $this->assertSame('40 horas asignadas 12 sin cubrir', $stored['capacity']['hours']);
+        $this->assertSame('1800 EUR', $stored['capacity']['minimum_salary']);
+    }
+
+    public function test_cfo_projection_repeats_the_average_of_invoiced_months(): void
+    {
+        Carbon::setTestNow('2026-10-06 12:00:00');
+        $user = User::factory()->withPersonalTeam()->create();
+        $team = $user->ownedTeams()->first();
+        $trend = [];
+
+        foreach (range(1, 12) as $month)
+        {
+            $income = $month <= 2 ? 1000.0 : 0.0;
+            $expense = $month <= 2 ? 400.0 : 0.0;
+            $trend[] = [
+                'label' => 'M',
+                'month' => $month,
+                'income' => $income,
+                'expense' => $expense,
+                'profit' => $income - $expense,
+            ];
+        }
+
+        $analytics = $this->createMock(InvoiceAnalyticsService::class);
+        $analytics->method('buildYearReport')->willReturn([
+            'year' => 2026,
+            'reporting_currency' => 'EUR',
+            'monthly_trend' => $trend,
+            'scenario' => [
+                'avg_monthly_income' => 0,
+                'avg_monthly_expense' => 0,
+                'avg_monthly_profit' => 0,
+            ],
+        ]);
+
+        $projection = (new FinanceCfoBriefService($analytics))->projection($team, 2026);
+
+        $this->assertSame(2, $projection['months_with_data']);
+        $this->assertEqualsWithDelta(1000.0, $projection['avg_monthly_income'], 0.01);
+        $this->assertEqualsWithDelta(400.0, $projection['avg_monthly_expense'], 0.01);
+        $this->assertEqualsWithDelta(7200.0, $projection['year_profit'], 0.01);
+        $this->assertCount(12, $projection['points']);
+        $this->assertTrue($projection['points'][0]['projected']);
+        $this->assertEqualsWithDelta(1000.0, $projection['points'][0]['income'], 0.01);
+        $this->assertTrue($projection['points'][11]['projected']);
+
+        $trend[9]['income'] = 100.0;
+        $trend[9]['expense'] = 40.0;
+        $trend[9]['profit'] = 60.0;
+        $analytics = $this->createMock(InvoiceAnalyticsService::class);
+        $analytics->method('buildYearReport')->willReturn([
+            'year' => 2026,
+            'reporting_currency' => 'EUR',
+            'monthly_trend' => $trend,
+            'scenario' => [
+                'avg_monthly_income' => 0,
+                'avg_monthly_expense' => 0,
+                'avg_monthly_profit' => 0,
+            ],
+        ]);
+
+        $withOpenMonth = (new FinanceCfoBriefService($analytics))->projection($team, 2026);
+
+        $this->assertSame(2, $withOpenMonth['months_with_data']);
+        $this->assertEqualsWithDelta(1000.0, $withOpenMonth['avg_monthly_income'], 0.01);
+        $this->assertFalse($withOpenMonth['points'][0]['projected']);
+        $this->assertEqualsWithDelta(100.0, $withOpenMonth['points'][0]['income'], 0.01);
+        $this->assertEqualsWithDelta(1000.0, $withOpenMonth['points'][1]['income'], 0.01);
     }
 }

@@ -84,8 +84,11 @@ class StrategyController extends Controller
 
         abort_if($user === null || $team === null, 404);
 
+        $year = (int) now()->year;
+
         return view('strategy.analysis', [
-            'cfoAnalysis' => $briefs->storedAnalysis($team, (int) now()->year),
+            'cfoAnalysis' => $briefs->storedAnalysis($team, $year),
+            'projection' => $briefs->projection($team, $year),
             'canAskCfo' => $user->can('viewAny', Payment::class),
         ]);
     }
