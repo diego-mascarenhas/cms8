@@ -7,6 +7,8 @@
     $steps = $steps ?? config('strategy.steps', []);
     $currentLevel = (int) ($currentLevel ?? 1);
     $canEdit = (bool) ($canEdit ?? false);
+    $strategyValues = $strategyValues ?? [];
+    $reviewApproved = $reviewApproved ?? [];
     $groupBorder = [
         'foundation' => 'border-success',
         'systems' => 'border-warning',
@@ -23,11 +25,7 @@
             <a href="{{ route('strategy.analysis') }}" class="btn btn-label-primary">
                 <i class="ti ti-chart-dots me-1"></i>{{ __('app.cfo_analysis_title') }}
             </a>
-            @if(!empty($canAdvance) && $canEdit)
-                <a href="{{ route('strategy.level') }}" class="btn btn-primary waves-effect waves-light">
-                    <i class="ti ti-arrow-up me-1"></i>{{ __('app.weekly_plan_strategy_advance') }}
-                </a>
-            @endif
+            @include('strategy.partials.evaluate-button')
         </div>
     </div>
 
@@ -40,18 +38,40 @@
 
     <div class="row">
         @foreach ($steps as $step)
+            @php
+                $cardClass = 'card text-center border '.($groupBorder[$step['group'] ?? ''] ?? 'border-secondary').' mb-3 text-body';
+            @endphp
             <div class="col-md-4 mb-4">
-                <div class="card text-center border {{ $groupBorder[$step['group'] ?? ''] ?? 'border-secondary' }} mb-3" style="height: 100%;">
+                @if ($canEdit)
+                    <a href="{{ route('strategy.level', ['level' => $step['number']]) }}" class="{{ $cardClass }} text-decoration-none d-block" style="height: 100%;">
+                @else
+                    <div class="{{ $cardClass }}" style="height: 100%;">
+                @endif
                     <div class="card-body">
                         <i class="ti {{ $step['icon'] ?? 'ti-circle' }} fs-2 mb-3"></i>
                         <h5 class="card-title">{{ $step['number'] }}. {{ $step['title'] }}</h5>
                         <ul class="list-unstyled mb-0">
-                            @foreach ($step['points'] ?? [] as $point)
-                                <li>{{ $point }}</li>
+                            @foreach ($step['fields'] ?? [] as $field)
+                                @php
+                                    $key = (string) ($field['key'] ?? '');
+                                    $value = trim((string) ($strategyValues[$key] ?? ''));
+                                    $approved = trim((string) ($reviewApproved[$key] ?? ''));
+                                    $checked = $key !== '' && $value !== '' && $value === $approved;
+                                @endphp
+                                <li>
+                                    {{ $field['label'] ?? '' }}
+                                    @if ($checked)
+                                        <i class="ti ti-circle-check text-success ms-1"></i>
+                                    @endif
+                                </li>
                             @endforeach
                         </ul>
                     </div>
-                </div>
+                @if ($canEdit)
+                    </a>
+                @else
+                    </div>
+                @endif
             </div>
         @endforeach
     </div>

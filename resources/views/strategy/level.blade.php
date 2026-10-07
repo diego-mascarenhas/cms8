@@ -1,11 +1,11 @@
 @extends('layouts/layoutMaster')
 
-@section('title', __('app.weekly_plan_strategy_edit_title', ['level' => $currentLevel, 'title' => $currentStep['title'] ?? '']))
+@section('title', __('app.weekly_plan_strategy_edit_title', ['level' => $currentStep['number'] ?? 1, 'title' => $currentStep['title'] ?? '']))
 
 @section('content')
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
         <div class="d-flex flex-column justify-content-center">
-            <h4 class="mb-1 mt-3">{{ __('app.weekly_plan_strategy_edit_title', ['level' => $currentLevel, 'title' => $currentStep['title'] ?? '']) }}</h4>
+            <h4 class="mb-1 mt-3">{{ __('app.weekly_plan_strategy_edit_title', ['level' => $currentStep['number'] ?? 1, 'title' => $currentStep['title'] ?? '']) }}</h4>
             @if (!empty($currentStep['tip']))
                 <p class="text-muted mb-0">{{ $currentStep['tip'] }}</p>
             @endif
@@ -14,14 +14,6 @@
             <a href="{{ route('strategy.index') }}" class="btn btn-label-secondary">
                 <i class="ti ti-target me-1"></i>{{ __('app.weekly_plan_strategy_link') }}
             </a>
-            @if (!empty($canAdvance))
-                <form method="POST" action="{{ route('strategy.advance') }}">
-                    @csrf
-                    <button type="submit" class="btn btn-primary waves-effect waves-light">
-                        <i class="ti ti-arrow-up me-1"></i>{{ __('app.weekly_plan_strategy_advance') }}
-                    </button>
-                </form>
-            @endif
         </div>
     </div>
 
@@ -37,6 +29,7 @@
             <div class="card-body">
                 <form method="POST" action="{{ route('strategy.update') }}">
                     @csrf
+                    <input type="hidden" name="level" value="{{ $currentStep['number'] ?? 1 }}">
                     <div class="row g-3">
                         @foreach ($currentStep['fields'] as $field)
                             <div class="col-12">

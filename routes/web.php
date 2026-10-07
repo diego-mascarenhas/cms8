@@ -1336,7 +1336,9 @@ Route::get('/notification/{notification}/stats', [NotificationTrackingController
 
 Route::get('/strategy', [StrategyController::class, 'index'])->name('strategy.index')->middleware('auth');
 Route::get('/strategy/analysis', [StrategyController::class, 'analysis'])->name('strategy.analysis')->middleware('auth');
-Route::get('/strategy/level', [StrategyController::class, 'level'])->name('strategy.level')->middleware('auth');
+Route::get('/strategy/review', [StrategyController::class, 'review'])->name('strategy.review')->middleware('auth');
+Route::post('/strategy/evaluate', [StrategyController::class, 'evaluate'])->name('strategy.evaluate')->middleware('auth');
+Route::get('/strategy/level/{level?}', [StrategyController::class, 'level'])->whereNumber('level')->name('strategy.level')->middleware('auth');
 Route::post('/strategy', [StrategyController::class, 'update'])->name('strategy.update')->middleware('auth');
 Route::post('/strategy/advance', [StrategyController::class, 'advance'])->name('strategy.advance')->middleware('auth');
 Route::middleware('auth')->group(function ()
