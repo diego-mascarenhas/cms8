@@ -447,7 +447,7 @@ class WeeklyWorkPlanTest extends TestCase
         $this->assertSame(1, app(WeeklyWorkPlanService::class)->strategyLevel($team));
 
         $this->post(route('strategy.advance'))
-            ->assertRedirect(route('strategy.index'));
+            ->assertRedirect(route('strategy.level'));
 
         $this->assertSame(2, app(WeeklyWorkPlanService::class)->strategyLevel($team->fresh()));
     }
@@ -464,7 +464,7 @@ class WeeklyWorkPlanTest extends TestCase
                 'offer' => 'Auditoría + plan 90 días',
                 'storytelling' => 'De caos operativo a sistema que vende solo',
             ],
-        ])->assertRedirect(route('strategy.index'));
+        ])->assertRedirect(route('strategy.level'));
 
         $config = $team->fresh()->getSetting('business_config', []);
         if (is_string($config))
@@ -499,8 +499,21 @@ class WeeklyWorkPlanTest extends TestCase
 
         $this->get(route('strategy.index'))
             ->assertOk()
+            ->assertDontSee('id="strategy-storytelling"', false)
+            ->assertDontSee(__('app.weekly_plan_strategy_here'), false)
+            ->assertDontSee('4/4', false)
+            ->assertSee('ti-briefcase', false)
+            ->assertSee('ti-world', false)
+            ->assertSee('ti-device-gamepad-2', false)
+            ->assertDontSee('ti-circle-check', false)
+            ->assertSee(route('strategy.level'), false);
+
+        $this->get(route('strategy.level'))
+            ->assertOk()
             ->assertSee('Historia guardada en JSON', false)
-            ->assertSee('Storytelling', false);
+            ->assertSee('Storytelling', false)
+            ->assertSee('col-12', false)
+            ->assertDontSee('col-md-6', false);
     }
 
     public function test_social_advisor_prefers_linkedin_for_b2b_challenge(): void

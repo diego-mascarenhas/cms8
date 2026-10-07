@@ -15,6 +15,7 @@ use App\Services\Finance\VatReportingService;
 use App\Support\SqlDateExpressions;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class FinancialDashboardController extends Controller
@@ -99,7 +100,8 @@ class FinancialDashboardController extends Controller
             year: $selectedYear,
             teamId: auth()->user()?->currentTeam?->id,
         );
-        $haciendaShareUrl = auth()->user()?->currentTeam?->haciendaShareUrl(
+        $team = auth()->user()?->currentTeam;
+        $haciendaShareUrl = $team?->haciendaShareUrl(
             $vatSelection['year'],
             $vatSelection['period'],
         );
@@ -122,16 +124,28 @@ class FinancialDashboardController extends Controller
         ));
     }
 
-    public function cfoBrief(Request $request): JsonResponse
+    public function cfoBrief(Request $request): JsonResponse|RedirectResponse
     {
         $this->authorize('viewAny', Payment::class);
 
         $team = auth()->user()->currentTeam;
         $year = (int) $request->input('year', Carbon::now()->year);
+        $brief = $this->financeCfoBriefService->remember(
+            $team,
+            $year > 0 ? $year : (int) Carbon::now()->year,
+            $request->boolean('refresh'),
+        );
 
-        return response()->json([
-            'brief' => $this->financeCfoBriefService->suggest($team, $year > 0 ? $year : (int) Carbon::now()->year),
-        ]);
+        if ($request->expectsJson())
+        {
+            return response()->json([
+                'brief' => $brief,
+            ]);
+        }
+
+        return redirect()
+            ->route('strategy.analysis')
+            ->with('success', __('app.cfo_analysis_ready'));
     }
 
     public function exchangeRates(Request $request)
