@@ -87,6 +87,13 @@ class RevisionAlphaOrganizationTest extends TestCase
         $this->assertFalse($processes['personal-mastermind']['counts_as_work']);
         $this->assertSame(0.0, $processes['personal-english']['hours_per_month']);
         $this->assertSame(0.0, $processes['personal-mastermind']['hours_per_month']);
+
+        $data = RevisionAlphaOrganization::viewData();
+        $administration = collect($data['processes_by_department']['administration'])->keyBy('key');
+
+        $this->assertEqualsWithDelta(4.0, $administration['admin-invoices-review']['hours_per_month'], 0.01);
+        $this->assertEqualsWithDelta(4.0, $administration['admin-budgets']['hours_per_month'], 0.01);
+        $this->assertSame(0.0, $administration['personal-english']['hours_per_month']);
     }
 
     public function test_coverage_grid_is_twenty_four_by_seven_and_marks_gaps(): void
@@ -116,6 +123,32 @@ class RevisionAlphaOrganizationTest extends TestCase
         $this->assertTrue(RevisionAlphaOrganization::hourOverlapsBlock('18:00', '18:30', '19:30'));
         $this->assertFalse(RevisionAlphaOrganization::hourOverlapsBlock('17:00', '18:30', '19:30'));
         $this->assertTrue(RevisionAlphaOrganization::hourOverlapsBlock('09:00', '09:30', '11:00'));
+    }
+
+    public function test_subsistence_call_minimum_fits_the_reserved_hour(): void
+    {
+        $data = RevisionAlphaOrganization::viewData();
+        $catalog = RevisionAlphaOrganization::subsistenceCatalog();
+        $leticia = collect($catalog['people'])->firstWhere('key', 'leticia');
+        $magoo = collect($catalog['people'])->firstWhere('key', 'magoo');
+        $leticiaCost = collect($data['cost_rows'])->first(fn (array $row): bool => $row['person']['key'] === 'leticia');
+
+        $this->assertSame('Leticia', $catalog['call_owner']);
+        $this->assertSame('19:00', $catalog['call_start']);
+        $this->assertSame('20:00', $catalog['call_end']);
+        $this->assertSame(6, $catalog['windows'][1]['minimum']);
+        $this->assertSame(6, $catalog['windows'][4]['minimum']);
+        $this->assertSame(0, $catalog['windows'][5]['minimum']);
+        $this->assertSame(24, $catalog['week_minimum']);
+        $this->assertEqualsWithDelta(17.2, $leticia['calls_hours'], 0.05);
+        $this->assertEqualsWithDelta(21.5, $leticia['conversion_hours'], 0.05);
+        $this->assertGreaterThan($leticia['other_hours'], $leticia['calls_hours'] + $leticia['marketing_hours'] + $leticia['conversion_hours']);
+        $this->assertEqualsWithDelta($leticiaCost['assigned_hours'], $leticia['assigned_hours'], 0.05);
+        $this->assertSame('assistant', $leticia['role']);
+        $this->assertSame('director', $magoo['role']);
+        $this->assertSame(0.0, $magoo['calls_hours']);
+        $this->assertGreaterThan(0, $magoo['marketing_hours']);
+        $this->assertSame('Emails y tickets', $catalog['other_by_weekday'][1][0]['name']);
     }
 
     public function test_retired_administration_processes_are_not_in_the_catalog(): void

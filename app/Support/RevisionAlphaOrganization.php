@@ -12,6 +12,36 @@ class RevisionAlphaOrganization
 
     public const ADVISOR_PERCENT = 10;
 
+    /**
+     * Outbound calls that keep the business alive. Support calls are not this lane.
+     *
+     * @var list<string>
+     */
+    public const SUBSISTENCE_CALLS = ['com-calls'];
+
+    /**
+     * Finding and registering leads.
+     *
+     * @var list<string>
+     */
+    public const SUBSISTENCE_CONVERSION = ['com-prospecting'];
+
+    /**
+     * Marketing, ads, and the publication plan.
+     *
+     * @var list<string>
+     */
+    public const SUBSISTENCE_MARKETING = [
+        'ads-campaigns',
+        'ads-plan',
+        'ads-product',
+        'media-plan',
+        'media-mailer',
+        'media-cms',
+        'media-comms',
+        'admin-approve-posts',
+    ];
+
     public static function teamId(): int
     {
         return (int) config('organization.revision_alpha_team_id', self::TEAM_ID);
@@ -274,10 +304,7 @@ class RevisionAlphaOrganization
             $departmentKey = $process['department'];
             $process['responsible'] = $peopleByKey[$process['responsible_key']] ?? null;
             $process['company'] = $companies[$process['company_key']] ?? null;
-            $process['hours_per_month'] = $process['hours_per_month'] ?? self::hoursPerMonthFromSchedules(
-                $process['schedules'],
-                (bool) ($process['counts_as_work'] ?? true),
-            );
+            $process['hours_per_month'] = self::resolveMonthlyHours($process);
             $processesByDepartment[$departmentKey][] = $process;
         }
 
@@ -295,10 +322,7 @@ class RevisionAlphaOrganization
             {
                 $assignedProcess['responsible'] = $person;
                 $assignedProcess['company'] = $companies[$assignedProcess['company_key']] ?? null;
-                $assignedProcess['hours_per_month'] = $assignedProcess['hours_per_month'] ?? self::hoursPerMonthFromSchedules(
-                    $assignedProcess['schedules'],
-                    (bool) ($assignedProcess['counts_as_work'] ?? true),
-                );
+                $assignedProcess['hours_per_month'] = self::resolveMonthlyHours($assignedProcess);
             }
             unset($assignedProcess);
 
@@ -360,6 +384,37 @@ class RevisionAlphaOrganization
     /**
      * @param  list<array{weekday: int, starts_at: string, ends_at: string}>  $schedules
      */
+    public static function resolveMonthlyHours(array $process): float
+    {
+        if (array_key_exists('hours_per_month', $process) && $process['hours_per_month'] !== null)
+        {
+            $hours = (float) $process['hours_per_month'];
+        } else
+        {
+            $hours = self::hoursPerMonthFromSchedules(
+                $process['schedules'] ?? [],
+                (bool) ($process['counts_as_work'] ?? true),
+            );
+        }
+
+        if ($hours <= 0 && ($process['counts_as_work'] ?? true))
+        {
+            $hours = self::hoursFromAllocation((string) ($process['time_allocation'] ?? ''));
+        }
+
+        return round($hours, 1);
+    }
+
+    public static function hoursFromAllocation(string $allocation): float
+    {
+        if (preg_match('/(\d+(?:[.,]\d+)?)\s*(?:h|hs|horas)(?:\s+(?:mensuales|al mes))?/iu', $allocation, $match) !== 1)
+        {
+            return 0.0;
+        }
+
+        return round((float) str_replace(',', '.', $match[1]), 1);
+    }
+
     public static function hoursPerMonthFromSchedules(array $schedules, bool $countsAsWork = true): float
     {
         if (! $countsAsWork)
@@ -848,6 +903,274 @@ class RevisionAlphaOrganization
                 'El detalle operativo vive en /billing; aquí solo se decide si el producto está claro.',
             ]),
         ];
+    }
+
+    /**
+     * Hours and the daily call window for marketing, calls, and lead conversion.
+     *
+     * @return array<string, mixed>
+     */
+    public static function subsistenceCatalog(): array
+    {
+        $minutesPerCall = max(1, (int) config('organization.subsistence.minutes_per_call', 10));
+        $peopleByKey = [];
+
+        foreach (self::people() as $person)
+        {
+            $peopleByKey[$person['key']] = $person;
+        }
+
+        $processes = [];
+
+        foreach (self::processes() as $process)
+        {
+            $process['hours_per_month'] = self::resolveMonthlyHours($process);
+            $processes[] = $process;
+        }
+
+        $windows = [];
+
+        for ($day = 1; $day <= 7; $day++)
+        {
+            $windows[$day] = [
+                'starts_at' => null,
+                'ends_at' => null,
+                'minutes' => 0,
+                'minimum' => 0,
+            ];
+        }
+
+        $callOwnerKeys = [];
+
+        foreach ($processes as $process)
+        {
+            if (! in_array($process['key'], self::SUBSISTENCE_CALLS, true))
+            {
+                continue;
+            }
+
+            $callOwnerKeys[$process['responsible_key']] = true;
+
+            foreach ($process['schedules'] as $schedule)
+            {
+                $day = (int) $schedule['weekday'];
+                $minutes = (int) round(self::hoursBetween($schedule['starts_at'], $schedule['ends_at']) * 60);
+                $windows[$day]['minutes'] += $minutes;
+                $windows[$day]['starts_at'] = $windows[$day]['starts_at'] === null
+                    ? $schedule['starts_at']
+                    : min($windows[$day]['starts_at'], $schedule['starts_at']);
+                $windows[$day]['ends_at'] = $windows[$day]['ends_at'] === null
+                    ? $schedule['ends_at']
+                    : max($windows[$day]['ends_at'], $schedule['ends_at']);
+            }
+        }
+
+        foreach ($windows as $day => $window)
+        {
+            $windows[$day]['minimum'] = intdiv((int) $window['minutes'], $minutesPerCall);
+        }
+
+        $callStart = null;
+        $callEnd = null;
+
+        foreach ($windows as $window)
+        {
+            if ($window['starts_at'] === null)
+            {
+                continue;
+            }
+
+            $callStart = $window['starts_at'];
+            $callEnd = $window['ends_at'];
+            break;
+        }
+
+        $hoursByPerson = [];
+        $tasks = [
+            'calls' => [],
+            'marketing' => [],
+            'conversion' => [],
+        ];
+
+        foreach ($processes as $process)
+        {
+            $owner = $peopleByKey[$process['responsible_key']] ?? null;
+
+            if ($owner === null || ($owner['kind'] ?? null) !== 'internal' || empty($process['counts_as_work']))
+            {
+                continue;
+            }
+
+            $hours = (float) $process['hours_per_month'];
+            $lane = self::subsistenceLane($process['key']);
+            $personKey = $owner['key'];
+
+            if (! isset($hoursByPerson[$personKey]))
+            {
+                $hoursByPerson[$personKey] = [
+                    'calls' => 0.0,
+                    'marketing' => 0.0,
+                    'conversion' => 0.0,
+                    'assigned' => 0.0,
+                ];
+            }
+
+            if ($lane !== 'other')
+            {
+                $hoursByPerson[$personKey][$lane] += $hours;
+            }
+
+            $hoursByPerson[$personKey]['assigned'] += $hours;
+
+            if ($lane !== 'calls' && $lane !== 'marketing' && $lane !== 'conversion')
+            {
+                continue;
+            }
+
+            if ($hours <= 0)
+            {
+                continue;
+            }
+
+            $tasks[$lane][] = [
+                'name' => $process['name'],
+                'person' => $owner['name'],
+                'allocation' => (string) $process['time_allocation'],
+                'hours' => round($hours, 1),
+            ];
+        }
+
+        $otherByWeekday = [];
+
+        for ($day = 1; $day <= 7; $day++)
+        {
+            $otherByWeekday[$day] = [];
+        }
+
+        foreach ($processes as $process)
+        {
+            if (! isset($callOwnerKeys[$process['responsible_key']]) || empty($process['counts_as_work']))
+            {
+                continue;
+            }
+
+            if (in_array($process['key'], self::SUBSISTENCE_CALLS, true))
+            {
+                continue;
+            }
+
+            $owner = $peopleByKey[$process['responsible_key']] ?? null;
+
+            foreach ($process['schedules'] as $schedule)
+            {
+                $otherByWeekday[(int) $schedule['weekday']][] = [
+                    'name' => $process['name'],
+                    'person' => (string) ($owner['name'] ?? ''),
+                    'starts_at' => $schedule['starts_at'],
+                    'ends_at' => $schedule['ends_at'],
+                ];
+            }
+        }
+
+        $rows = [];
+
+        foreach (self::people() as $person)
+        {
+            if (($person['kind'] ?? null) !== 'internal')
+            {
+                continue;
+            }
+
+            $bucket = $hoursByPerson[$person['key']] ?? null;
+
+            if ($bucket === null || $bucket['assigned'] <= 0)
+            {
+                continue;
+            }
+
+            $assigned = round($bucket['assigned'], 1);
+            $calls = round($bucket['calls'], 1);
+            $marketing = round($bucket['marketing'], 1);
+            $conversion = round($bucket['conversion'], 1);
+
+            $rows[] = [
+                'key' => $person['key'],
+                'name' => $person['name'],
+                'titles' => implode(' · ', $person['titles']),
+                'role' => self::subsistenceRole($person),
+                'assigned_hours' => $assigned,
+                'capacity_hours' => $person['weekly_hours'] ? round(((float) $person['weekly_hours']) * 4.3, 1) : null,
+                'calls_hours' => $calls,
+                'marketing_hours' => $marketing,
+                'conversion_hours' => $conversion,
+                'other_hours' => round(max(0, $assigned - $calls - $marketing - $conversion), 1),
+            ];
+        }
+
+        $ownerNames = [];
+
+        foreach (array_keys($callOwnerKeys) as $key)
+        {
+            if (isset($peopleByKey[$key]['name']))
+            {
+                $ownerNames[] = $peopleByKey[$key]['name'];
+            }
+        }
+
+        $dayMinimum = 0;
+
+        foreach ($windows as $window)
+        {
+            $dayMinimum = max($dayMinimum, (int) $window['minimum']);
+        }
+
+        return [
+            'minutes_per_call' => $minutesPerCall,
+            'windows' => $windows,
+            'week_minimum' => array_sum(array_column($windows, 'minimum')),
+            'day_minimum' => $dayMinimum,
+            'call_start' => $callStart,
+            'call_end' => $callEnd,
+            'call_owner' => implode(', ', $ownerNames),
+            'people' => $rows,
+            'tasks' => $tasks,
+            'other_by_weekday' => $otherByWeekday,
+        ];
+    }
+
+    private static function subsistenceLane(string $key): string
+    {
+        if (in_array($key, self::SUBSISTENCE_CALLS, true))
+        {
+            return 'calls';
+        }
+
+        if (in_array($key, self::SUBSISTENCE_CONVERSION, true))
+        {
+            return 'conversion';
+        }
+
+        if (in_array($key, self::SUBSISTENCE_MARKETING, true))
+        {
+            return 'marketing';
+        }
+
+        return 'other';
+    }
+
+    /**
+     * @param  array<string, mixed>  $person
+     */
+    private static function subsistenceRole(array $person): string
+    {
+        $titles = implode(' ', $person['titles'] ?? []);
+
+        if (preg_match('/\b(CEO|CTO|director)\b/iu', $titles) === 1)
+        {
+            return 'director';
+        }
+
+        return 'assistant';
     }
 
     /**

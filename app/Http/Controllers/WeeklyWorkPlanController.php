@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\SubsistenceAlertService;
 use App\Services\WeeklyWorkPlanService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -9,7 +10,7 @@ use Illuminate\View\View;
 
 class WeeklyWorkPlanController extends Controller
 {
-    public function index(Request $request, WeeklyWorkPlanService $plans): View
+    public function index(Request $request, WeeklyWorkPlanService $plans, SubsistenceAlertService $subsistence): View
     {
         $user = $request->user();
         $team = $user?->currentTeam ?? $user?->teams->first();
@@ -21,6 +22,7 @@ class WeeklyWorkPlanController extends Controller
         return view('weekly-plan.index', [
             'report' => $report,
             'canRegenerate' => app()->environment('local'),
+            'subsistence' => $subsistence->forTeam($team),
         ]);
     }
 

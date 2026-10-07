@@ -39,6 +39,8 @@
         </div>
     @endif
 
+    @include('strategy.partials.subsistence', ['subsistence' => $subsistence ?? null])
+
     <div class="card">
         <div class="card-body">
             @if(filled($report['challenge']))

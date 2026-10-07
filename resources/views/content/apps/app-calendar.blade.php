@@ -121,9 +121,13 @@
             <input class="form-check-input input-filter" type="checkbox" id="select-holiday" data-value="holiday" checked>
             <label class="form-check-label" for="select-holiday">{{ __('Holiday') }}</label>
           </div>
-          <div class="form-check form-check-info">
+          <div class="form-check form-check-info mb-2">
             <input class="form-check-input input-filter" type="checkbox" id="select-etc" data-value="etc" checked>
             <label class="form-check-label" for="select-etc">{{ __('ETC') }}</label>
+          </div>
+          <div class="form-check form-check-primary">
+            <input class="form-check-input input-filter" type="checkbox" id="select-publication" data-value="publicación" checked>
+            <label class="form-check-label" for="select-publication">{{ __('Publicación') }}</label>
           </div>
         </div>
         </div>
@@ -155,6 +159,7 @@
             <div class="mb-3">
               <label class="form-label" for="eventLabel">{{ __('Label') }}</label>
               <select class="select2 select-event-label form-select" id="eventLabel" name="eventLabel">
+                <option data-label="primary" value="Publicación">{{ __('Publicación') }}</option>
                 <option data-label="primary" value="Ads">{{ __('Ads') }}</option>
                 <option data-label="primary" value="Business" selected>{{ __('Business') }}</option>
                 <option data-label="danger" value="Personal">{{ __('Personal') }}</option>

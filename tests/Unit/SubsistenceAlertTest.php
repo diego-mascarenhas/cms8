@@ -1,0 +1,74 @@
+<?php
+
+namespace Tests\Unit;
+
+use App\Services\SubsistenceAlertService;
+use App\Support\RevisionAlphaOrganization;
+use Carbon\Carbon;
+use Tests\TestCase;
+
+class SubsistenceAlertTest extends TestCase
+{
+    public function test_missed_call_days_turn_marketing_and_conversion_red(): void
+    {
+        $catalog = RevisionAlphaOrganization::subsistenceCatalog();
+        $leticia = collect($catalog['people'])->firstWhere('key', 'leticia');
+        $friday = Carbon::parse('2026-10-09 10:00:00', 'Europe/Madrid');
+
+        $banners = collect((new SubsistenceAlertService)->assess($catalog, [
+            'calls_by_date' => [],
+            'open_leads' => 4,
+            'leads_entered_7d' => 1,
+            'clients_created_30d' => 0,
+            'publications_next_7d' => 0,
+        ], $friday, 28, 12, 'EUR')['banners'])->keyBy('key');
+
+        $this->assertSame('danger', $banners['calls']['level']);
+        $this->assertSame('danger', $banners['marketing']['level']);
+        $this->assertSame('danger', $banners['conversion']['level']);
+        $this->assertSame('danger', $banners['salary-leticia']['level']);
+        $this->assertStringContainsString('Hoy no hay franja de llamados.', $banners['calls']['body']);
+        $this->assertStringContainsString(
+            number_format(round(12 * $leticia['assigned_hours'], 2), 2, ',', '.'),
+            $banners['salary-leticia']['title'],
+        );
+    }
+
+    public function test_a_covered_call_hour_with_a_publication_and_a_new_client_is_green(): void
+    {
+        $catalog = RevisionAlphaOrganization::subsistenceCatalog();
+        $mondayNight = Carbon::parse('2026-10-05 21:00:00', 'Europe/Madrid');
+
+        $banners = collect((new SubsistenceAlertService)->assess($catalog, [
+            'calls_by_date' => ['2026-10-05' => 6],
+            'open_leads' => 2,
+            'leads_entered_7d' => 2,
+            'clients_created_30d' => 1,
+            'publications_next_7d' => 1,
+        ], $mondayNight, 28, 12, 'EUR')['banners'])->keyBy('key');
+
+        $this->assertSame('success', $banners['calls']['level']);
+        $this->assertSame('success', $banners['marketing']['level']);
+        $this->assertSame('success', $banners['conversion']['level']);
+        $this->assertSame('success', $banners['salary-leticia']['level']);
+        $this->assertStringContainsString('Hoy van 6 de 6.', $banners['calls']['body']);
+    }
+
+    public function test_zero_calls_inside_the_window_is_red(): void
+    {
+        $catalog = RevisionAlphaOrganization::subsistenceCatalog();
+        $during = Carbon::parse('2026-10-05 19:20:00', 'Europe/Madrid');
+
+        $banners = collect((new SubsistenceAlertService)->assess($catalog, [
+            'calls_by_date' => [],
+            'open_leads' => 3,
+            'leads_entered_7d' => 0,
+            'clients_created_30d' => 0,
+            'publications_next_7d' => 0,
+        ], $during, 28, 12, 'EUR')['banners'])->keyBy('key');
+
+        $this->assertSame('danger', $banners['calls']['level']);
+        $this->assertStringContainsString('Emails y tickets 18:30–19:00', $banners['calls']['body']);
+        $this->assertStringContainsString('Plan de marketing 20:00–23:00', $banners['calls']['body']);
+    }
+}

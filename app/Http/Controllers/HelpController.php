@@ -304,6 +304,14 @@ class HelpController extends Controller
     }
 
     /**
+     * What the CFO reads and how the 12-month projection is dated.
+     */
+    public function cfoAnalysis()
+    {
+        return view('help.cfo-analysis');
+    }
+
+    /**
      * WordPress MCP Adapter + Cursor mcp.json setup.
      */
     public function wordpressMcpCursor()

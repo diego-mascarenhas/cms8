@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
       appOverlay = document.querySelector('.app-overlay'),
       calendarsColor = {
         Ads: 'primary',
+        'Publicación': 'primary',
         Business: 'primary',
         Holiday: 'success',
         Personal: 'danger',
