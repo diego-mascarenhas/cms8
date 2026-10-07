@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Services\Finance\FinanceCfoBriefService;
+use App\Services\StrategyLevelReviewService;
 use App\Services\WeeklyWorkPlanService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -11,24 +12,50 @@ use Illuminate\View\View;
 
 class StrategyController extends Controller
 {
-    public function index(Request $request, WeeklyWorkPlanService $plans): View
+    public function index(Request $request, WeeklyWorkPlanService $plans, StrategyLevelReviewService $reviews): View
     {
         $user = $request->user();
         $team = $user?->currentTeam ?? $user?->teams->first();
 
         abort_if($user === null || $team === null, 404);
 
-        $currentLevel = $plans->strategyLevel($team);
-
         return view('strategy.index', [
             'steps' => config('strategy.steps', []),
-            'currentLevel' => $currentLevel,
-            'canAdvance' => $currentLevel < 12,
+            'currentLevel' => $plans->strategyLevel($team),
+            'strategyValues' => $plans->strategyFieldValues($team),
+            'reviewApproved' => $reviews->approvedTexts($team),
             'canEdit' => $user->can('update', $team),
         ]);
     }
 
-    public function level(Request $request, WeeklyWorkPlanService $plans): View
+    public function level(Request $request, WeeklyWorkPlanService $plans, ?int $level = null): View
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+        $this->authorize('update', $team);
+        abort_if($level !== null && ($level < 1 || $level > 12), 404);
+
+        return view('strategy.level', [
+            'currentStep' => $plans->strategyStep($team, $level),
+        ]);
+    }
+
+    public function review(Request $request, StrategyLevelReviewService $reviews): View
+    {
+        $user = $request->user();
+        $team = $user?->currentTeam ?? $user?->teams->first();
+
+        abort_if($user === null || $team === null, 404);
+
+        return view('strategy.review', [
+            'review' => $reviews->stored($team),
+            'canEdit' => $user->can('update', $team),
+        ]);
+    }
+
+    public function evaluate(Request $request, StrategyLevelReviewService $reviews): RedirectResponse
     {
         $user = $request->user();
         $team = $user?->currentTeam ?? $user?->teams->first();
@@ -36,13 +63,18 @@ class StrategyController extends Controller
         abort_if($user === null || $team === null, 404);
         $this->authorize('update', $team);
 
-        $currentLevel = $plans->strategyLevel($team);
+        $review = $reviews->evaluate($team);
 
-        return view('strategy.level', [
-            'currentLevel' => $currentLevel,
-            'currentStep' => $plans->strategyStep($team),
-            'canAdvance' => $currentLevel < 12,
-        ]);
+        if ($review === null)
+        {
+            return redirect()
+                ->route('strategy.review')
+                ->with('error', __('app.strategy_review_failed'));
+        }
+
+        return redirect()
+            ->route('strategy.review')
+            ->with('success', __('app.strategy_review_ready', ['level' => $review['level']]));
     }
 
     public function analysis(Request $request, FinanceCfoBriefService $briefs): View
@@ -76,9 +108,12 @@ class StrategyController extends Controller
         $validated = $request->validate($rules);
         $plans->saveStrategyFields($team, $validated['strategy'] ?? []);
 
-        return redirect()
-            ->route('strategy.level')
-            ->with('success', __('app.weekly_plan_strategy_saved'));
+        $level = (int) $request->input('level');
+        $redirect = ($level >= 1 && $level <= 12)
+            ? redirect()->route('strategy.level', ['level' => $level])
+            : redirect()->route('strategy.level');
+
+        return $redirect->with('success', __('app.weekly_plan_strategy_saved'));
     }
 
     public function advance(Request $request, WeeklyWorkPlanService $plans): RedirectResponse

@@ -506,7 +506,9 @@ class WeeklyWorkPlanTest extends TestCase
             ->assertSee('ti-world', false)
             ->assertSee('ti-device-gamepad-2', false)
             ->assertDontSee('ti-circle-check', false)
-            ->assertSee(route('strategy.level'), false);
+            ->assertSee(route('strategy.level', ['level' => 2]), false)
+            ->assertSee(__('app.weekly_plan_strategy_evaluate'), false)
+            ->assertDontSee(__('app.weekly_plan_strategy_advance'), false);
 
         $this->get(route('strategy.level'))
             ->assertOk()
@@ -514,8 +516,92 @@ class WeeklyWorkPlanTest extends TestCase
             ->assertSee('Storytelling', false)
             ->assertSee('ti-target', false)
             ->assertDontSee('ti-arrow-left', false)
+            ->assertDontSee(__('app.weekly_plan_strategy_advance'), false)
             ->assertSee('col-12', false)
             ->assertDontSee('col-md-6', false);
+
+        $this->get(route('strategy.level', ['level' => 2]))
+            ->assertOk()
+            ->assertSee('tu fachada digital.', false)
+            ->assertSee('Web', false)
+            ->assertSee('name="level"', false)
+            ->assertSee('value="2"', false);
+
+        $this->post(route('strategy.update'), [
+            'level' => 2,
+            'strategy' => [
+                'web' => 'https://idoneo.dev',
+            ],
+        ])->assertRedirect(route('strategy.level', ['level' => 2]));
+    }
+
+    public function test_strategy_evaluation_sets_the_level_and_checks_validated_notes(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $team->setSetting('business_config', [
+            'strategy_level' => 5,
+            'strategy' => [
+                'ideal_client' => 'PYMEs de servicios en España',
+                'destination' => 'Cerrar 10 clientes al mes',
+                'offer' => 'Auditoría y plan de 90 días',
+                'storytelling' => 'De caos operativo a un sistema que vende',
+            ],
+        ], ['type' => 'json', 'group' => 'business-config']);
+
+        $payload = json_encode([
+            'validated' => ['ideal_client', 'destination', 'offer', 'storytelling', 'web'],
+            'notes' => [
+                'web' => 'Falta la URL y a quién convierte.',
+            ],
+            'summary' => 'El dossier comercial está concreto. La fachada digital sigue vacía.',
+        ], JSON_UNESCAPED_UNICODE);
+
+        $service = \Mockery::mock(\App\Services\StrategyLevelReviewService::class)->makePartial();
+        $service->shouldReceive('suggest')->once()->andReturn($payload);
+        $this->app->instance(\App\Services\StrategyLevelReviewService::class, $service);
+
+        $this->post(route('strategy.evaluate'))
+            ->assertRedirect(route('strategy.review'));
+
+        $fresh = $team->fresh();
+        $this->assertSame(2, app(WeeklyWorkPlanService::class)->strategyLevel($fresh));
+
+        $board = $this->get(route('strategy.index'))
+            ->assertOk()
+            ->assertSee('ti-circle-check', false);
+        $this->assertSame(4, substr_count($board->getContent(), 'ti-circle-check'));
+
+        $this->get(route('strategy.review'))
+            ->assertOk()
+            ->assertSee('El dossier comercial está concreto. La fachada digital sigue vacía.', false)
+            ->assertSee(__('app.weekly_plan_strategy_current', ['level' => 2]), false)
+            ->assertSee('Falta la URL y a quién convierte.', false)
+            ->assertSee(__('app.strategy_review_missing'), false);
+    }
+
+    public function test_strategy_evaluation_keeps_the_level_when_the_model_fails(): void
+    {
+        [$user, $team] = $this->planner();
+        $this->actingAs($user);
+
+        $team->setSetting('business_config', [
+            'strategy_level' => 5,
+            'strategy' => [
+                'ideal_client' => 'PYMEs de servicios',
+            ],
+        ], ['type' => 'json', 'group' => 'business-config']);
+
+        $service = \Mockery::mock(\App\Services\StrategyLevelReviewService::class)->makePartial();
+        $service->shouldReceive('suggest')->once()->andReturn(__('app.strategy_review_failed'));
+        $this->app->instance(\App\Services\StrategyLevelReviewService::class, $service);
+
+        $this->post(route('strategy.evaluate'))
+            ->assertRedirect(route('strategy.review'))
+            ->assertSessionHas('error', __('app.strategy_review_failed'));
+
+        $this->assertSame(5, app(WeeklyWorkPlanService::class)->strategyLevel($team->fresh()));
     }
 
     public function test_social_advisor_prefers_linkedin_for_b2b_challenge(): void

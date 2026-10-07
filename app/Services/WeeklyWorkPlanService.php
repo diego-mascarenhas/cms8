@@ -1141,9 +1141,10 @@ class WeeklyWorkPlanService
     /**
      * @return array{number: int, title: string, tip: string, points: list<string>, fields: list<array{key: string, label: string, value: string}>, filled: int, total: int}
      */
-    public function strategyStep(Team $team): array
+    public function strategyStep(Team $team, ?int $level = null): array
     {
-        $level = $this->strategyLevel($team);
+        $level = $level ?? $this->strategyLevel($team);
+        $level = max(1, min(self::STRATEGY_MAX, $level));
         $steps = config('strategy.steps', []);
         $step = collect($steps)->firstWhere('number', $level) ?? ($steps[0] ?? []);
         $values = $this->strategyFieldValues($team);
