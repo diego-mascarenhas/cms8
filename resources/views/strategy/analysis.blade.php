@@ -250,6 +250,37 @@
         </div>
     </div>
 
+    <script>
+        (function () {
+            const alignAnalysis = function () {
+                const id = (window.location.hash || '').replace('#', '');
+
+                if (id !== 'cfo-analysis' && id !== 'cmo-analysis') {
+                    return;
+                }
+
+                const section = document.getElementById(id);
+
+                if (!section) {
+                    return;
+                }
+
+                const navbar = document.getElementById('layout-navbar');
+                const offset = (navbar ? navbar.offsetHeight : 0) + 16;
+                const top = section.getBoundingClientRect().top + window.scrollY - offset;
+
+                window.scrollTo(0, Math.max(0, top));
+            };
+
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
+
+            window.addEventListener('load', function () {
+                window.setTimeout(alignAnalysis, 50);
+            });
+        })();
+    </script>
     @if ($canAskCfo ?? false)
         <script>
             document.getElementById('cfo-refresh-form')?.addEventListener('submit', function (event) {

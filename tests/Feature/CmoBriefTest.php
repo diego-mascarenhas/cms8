@@ -141,6 +141,7 @@ class CmoBriefTest extends TestCase
             ->assertOk()
             ->assertSee('id="cmo-analysis"', false)
             ->assertSee('id="cmo-brief-button"', false)
+            ->assertSee('alignAnalysis', false)
             ->assertSee(__('Ask the CMO'), false)
             ->assertSee(__('Asking the CMO...'), false)
             ->assertSee('https://adquiria.net/', false)
